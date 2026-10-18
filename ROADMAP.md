@@ -520,6 +520,36 @@ primeira oportunidade (ver Pendências conhecidas).
 Parte 3 (futuro, "C"): servir a Live na rede local (TV com navegador, tablet), reaproveitando a
 mesma página.
 
+## Próximas etapas (decididas em 2026-10-18: estabilidade e sincronia do rig)
+
+Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e quedas. Ordem:
+
+1. **Etapa 16 — um processo por câmera.** Hoje tudo roda num processo só e o SDK da Canon atende
+   uma câmera por vez; se uma câmera trava o SDK, o app inteiro trava. Cada câmera passa a ter um
+   processo "trabalhador" (o próprio Stillpoint num modo sem janela) e o app principal vira o
+   coordenador: disparo e download em paralelo de verdade, vigia com timeout por comando,
+   religar a câmera sozinho, log por câmera. Custo estimado: CPU desprezível (os trabalhadores
+   ficam esperando), RAM ~20–60 MB por câmera. **Primeiro passo (com 2 câmeras):** confirmar que
+   o SDK aceita ser carregado por vários processos na mesma máquina, cada um com a sua câmera.
+   Substitui o item "Ordens de disparo em paralelo" abaixo. Terminal não muda.
+2. **Etapa 17 — modo caixa de disparo.** O app usa a caixa (ESP32 + um canal por câmera, já
+   desenhada em `docs/hardware/caixa-de-disparo.pdf` e `hardware/trigger-box/`) para disparar:
+   o plano do Timing/Sweep vai para a caixa (PLAN/GO), que dispara com precisão de milissegundos;
+   o USB fica só para configurações e fotos. Depende do protótipo de 2 canais testado em hardware.
+3. **Etapa futura (muito depois, só com o projeto maduro) — distribuído por rede.** Vários
+   computadores pequenos, cada um com 3–4 câmeras, ligados por Ethernet a um "chefe" que coordena
+   e junta as fotos (modo "trabalhador" e modo "chefe" no Stillpoint). É o desenho dos rigs de
+   20–100 câmeras.
+
+Junto com essas etapas (sem etapa própria):
+- **Live, parte 3:** a página Live servida na rede local (TV com navegador, tablet).
+- **Medir o menor intervalo do Sweep por USB** (2 câmeras, Sweep 0,1 s) e registrar no aviso da
+  Timeline; com a caixa de disparo (etapa 17) o limite deixa de existir.
+- **Guia de montagem do rig** (documento, não código): alimentação das câmeras por fonte (bateria
+  dummy), hubs USB industriais alimentados sem encadear, cabos curtos/ativos, placa PCIe com
+  controladores USB independentes num desktop, nobreak. Lista de compras com preços no Brasil.
+- **Testes pendentes da 2.10.0** com câmeras de verdade e no Windows (ver Pendências conhecidas).
+
 ## Futuro (não planejado ainda)
 
 - **Disparo com intervalos (PRIORIDADE, pedido do dono do projeto em 2026-10-16; etapa 14).**
@@ -530,7 +560,7 @@ mesma página.
   por câmera, numa coluna em Camera settings). Download wait conta a partir do último disparo;
   cancelar no meio deixa as fotos já tiradas. Pelo USB a precisão é de dezenas de ms, boa para
   intervalos de 0,2 s para cima; com a caixa de disparo o intervalo fica exato.
-- **Ordens de disparo em paralelo (PRIORIDADE para testar com várias câmeras).** Hoje o app manda
+- **Ordens de disparo em paralelo (substituído pela etapa 16, um processo por câmera).** Hoje o app manda
   "apertar" para uma câmera por vez, em fila; a última recebe a ordem depois de todas as outras.
   Testar uma thread por câmera, todas soltas no mesmo instante (o SDK pode não aceitar). Medir
   com todas as câmeras fotografando um cronômetro de milésimos na tela de um celular: a diferença
