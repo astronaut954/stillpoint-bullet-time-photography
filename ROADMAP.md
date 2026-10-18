@@ -545,9 +545,10 @@ Junto com essas etapas (sem etapa própria):
 - **Live, parte 3:** a página Live servida na rede local (TV com navegador, tablet).
 - **Medir o menor intervalo do Sweep por USB** (2 câmeras, Sweep 0,1 s) e registrar no aviso da
   Timeline; com a caixa de disparo (etapa 17) o limite deixa de existir.
-- **Guia de montagem do rig** (documento, não código): alimentação das câmeras por fonte (bateria
-  dummy), hubs USB industriais alimentados sem encadear, cabos curtos/ativos, placa PCIe com
-  controladores USB independentes num desktop, nobreak. Lista de compras com preços no Brasil.
+- **Guia de montagem do rig** (documento, não código) — **feito em 2026-10-18**:
+  `docs/hardware/montagem-do-rig.md` (MacBook, 9–12 T7, dois hubs alimentados, fontes dummy,
+  nobreak, lista de compras com preços no Brasil, roteiro de teste e orçamento de aluguel).
+  Decidido: padronizar em **Canon T7**. Falta a variante desktop com placa PCIe (quando houver).
 - **Testes pendentes da 2.10.0** com câmeras de verdade e no Windows (ver Pendências conhecidas).
 
 ## Futuro (não planejado ainda)
