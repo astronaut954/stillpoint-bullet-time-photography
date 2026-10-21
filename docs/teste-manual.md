@@ -402,8 +402,9 @@ Full screen — com mais de um monitor, pergunta qual), Always on top, Another w
 Pergunta a responder: o SDK da Canon aceita ser carregado por **dois processos ao mesmo tempo**
 na mesma máquina, cada um com a sua câmera? Sem isso, a etapa 16 não existe.
 Programa: `SdkMultiprocTest` (gerado junto com o resto; `src/tools/sdk_multiproc_test.cpp`).
-Duas câmeras ligadas (SL3 + T7), em entradas USB diferentes. Dois terminais abertos na pasta
-do projeto. Tudo fica em `~/Desktop/sdk-multiproc-test/` (fotos e `log-<câmera>.txt`).
+Duas ou três câmeras ligadas (SL3 + T7 + T5), em entradas USB diferentes. Um terminal por
+câmera, abertos na pasta do projeto (com 3 câmeras, repetir os passos B–F com o terminal 3:
+`--model T5`; o passo F com `--at` igual nos três). Tudo fica em `~/Desktop/sdk-multiproc-test/` (fotos e `log-<câmera>.txt`).
 
 Compilar (Mac):
 ```
