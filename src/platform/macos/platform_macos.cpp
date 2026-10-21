@@ -5,11 +5,14 @@
 #include <IOKit/IOKitLib.h>
 #include <mach-o/dyld.h>
 #include <signal.h>
+#include <fcntl.h>
+#include <poll.h>
 #include <spawn.h>
 #include <sys/wait.h>
 #include <termios.h>
 #include <unistd.h>
 
+#include <cerrno>
 #include <chrono>
 #include <climits>
 #include <cstdio>
@@ -342,6 +345,127 @@ open "$APP"
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(200));
         }
+    }
+
+    // ---- Processo auxiliar (trabalhadores de câmera) ----
+
+    std::unique_ptr<ChildProcess> ChildProcess::Spawn(const std::vector<std::string>& args)
+    {
+        if (args.empty())
+            return nullptr;
+        // Escrever num filho que já saiu não pode derrubar o app
+        static const bool ignorePipe = (signal(SIGPIPE, SIG_IGN), true);
+        (void)ignorePipe;
+        int toChild[2] = { -1, -1 }, fromChild[2] = { -1, -1 };
+        if (pipe(toChild) != 0)
+            return nullptr;
+        if (pipe(fromChild) != 0)
+        {
+            close(toChild[0]); close(toChild[1]);
+            return nullptr;
+        }
+        posix_spawn_file_actions_t actions;
+        posix_spawn_file_actions_init(&actions);
+        posix_spawn_file_actions_adddup2(&actions, toChild[0], STDIN_FILENO);
+        posix_spawn_file_actions_adddup2(&actions, fromChild[1], STDOUT_FILENO);
+        posix_spawn_file_actions_addclose(&actions, toChild[0]);
+        posix_spawn_file_actions_addclose(&actions, toChild[1]);
+        posix_spawn_file_actions_addclose(&actions, fromChild[0]);
+        posix_spawn_file_actions_addclose(&actions, fromChild[1]);
+        std::vector<char*> argv;
+        for (const auto& a : args)
+            argv.push_back(const_cast<char*>(a.c_str()));
+        argv.push_back(nullptr);
+        pid_t child = 0;
+        const int rc = posix_spawn(&child, argv[0], &actions, nullptr, argv.data(), environ);
+        posix_spawn_file_actions_destroy(&actions);
+        close(toChild[0]);
+        close(fromChild[1]);
+        if (rc != 0)
+        {
+            close(toChild[1]); close(fromChild[0]);
+            return nullptr;
+        }
+        fcntl(fromChild[0], F_SETFL, fcntl(fromChild[0], F_GETFL) | O_NONBLOCK);
+        // Os canais não passam para outros filhos (cada trabalhador tem o seu)
+        fcntl(toChild[1], F_SETFD, FD_CLOEXEC);
+        fcntl(fromChild[0], F_SETFD, FD_CLOEXEC);
+        std::unique_ptr<ChildProcess> p(new ChildProcess());
+        p->pid = child;
+        p->writeFd = toChild[1];
+        p->readFd = fromChild[0];
+        return p;
+    }
+
+    ChildProcess::~ChildProcess()
+    {
+        if (Running())
+            Kill();
+        if (writeFd >= 0) close(writeFd);
+        if (readFd >= 0) close(readFd);
+    }
+
+    bool ChildProcess::WriteLine(const std::string& line)
+    {
+        if (writeFd < 0)
+            return false;
+        const std::string data = line + "\n";
+        size_t done = 0;
+        while (done < data.size())
+        {
+            const ssize_t n = write(writeFd, data.data() + done, data.size() - done);
+            if (n < 0)
+            {
+                if (errno == EINTR) continue;
+                return false;  // EPIPE: o filho fechou (SIGPIPE é ignorado pelo app)
+            }
+            done += static_cast<size_t>(n);
+        }
+        return true;
+    }
+
+    bool ChildProcess::ReadLine(std::string& line)
+    {
+        if (readFd >= 0)
+        {
+            char chunk[4096];
+            for (;;)
+            {
+                const ssize_t n = read(readFd, chunk, sizeof(chunk));
+                if (n > 0) { buffer.append(chunk, static_cast<size_t>(n)); continue; }
+                if (n < 0 && errno == EINTR) continue;
+                break;  // nada mais agora (EAGAIN) ou canal fechado
+            }
+        }
+        const size_t nl = buffer.find('\n');
+        if (nl == std::string::npos)
+            return false;
+        line = buffer.substr(0, nl);
+        if (!line.empty() && line.back() == '\r')
+            line.pop_back();
+        buffer.erase(0, nl + 1);
+        return true;
+    }
+
+    bool ChildProcess::Running()
+    {
+        if (exited || pid <= 0)
+            return false;
+        int status = 0;
+        const pid_t done = waitpid(static_cast<pid_t>(pid), &status, WNOHANG);
+        if (done == static_cast<pid_t>(pid) || done < 0)
+            exited = true;
+        return !exited;
+    }
+
+    void ChildProcess::Kill()
+    {
+        if (exited || pid <= 0)
+            return;
+        kill(static_cast<pid_t>(pid), SIGKILL);
+        int status = 0;
+        waitpid(static_cast<pid_t>(pid), &status, 0);
+        exited = true;
     }
 
     std::string Sha256OfFile(const fs::path& file)

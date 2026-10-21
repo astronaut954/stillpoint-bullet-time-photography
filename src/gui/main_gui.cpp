@@ -3,9 +3,10 @@
 // A janela é uma página HTML/CSS/JS (assets/ui/) exibida pelo navegador do
 // próprio sistema (WebView2 no Windows, WebKit no Mac) dentro de uma janela
 // nativa. O trabalho com as câmeras roda numa thread própria ("thread das
-// câmeras"), usando o mesmo núcleo do terminal (BulletTime / CanonController).
-// A conexão é automática: sem pedidos, essa thread acompanha as câmeras a cada
-// ~0,4 s (CanonController::MonitorTick), e cada câmera conecta em paralelo.
+// câmeras") pelo coordenador CameraFleet (camera_fleet.cpp): cada câmera fica num
+// processo trabalhador próprio (StillpointWorker), e este app não carrega o SDK da
+// Canon. A conexão é automática: sem pedidos, essa thread acompanha as câmeras a
+// cada ~0,4 s (CameraFleet::MonitorTick), e cada câmera conecta em paralelo.
 //
 // Comunicação:
 //   página -> C++ : funções JavaScript ligadas com webview::bind (shoot, identify...)
@@ -25,7 +26,7 @@
 #include "audio_player.h"
 #include "bullet_time.h"
 #include "path_utils.h"
-#include "canon_controller.h"
+#include "camera_fleet.h"
 #include "logger.h"
 #include "path_utils.h"
 #include "platform/platform.h"
@@ -459,23 +460,23 @@ namespace
     bool IsSingleShot(long long drive) { return drive == 0x00 || drive == 0x06 || drive == 0x13; }
 
     // Configurações de todas as câmeras conectadas, na ordem do app
-    std::vector<CameraSettings> ReadAllSettings(CanonController& controller)
+    std::vector<CameraSettings> ReadAllSettings(CameraFleet& controller)
     {
         std::vector<const CameraContext*> ordered;
         for (const auto& cam : controller.GetCameras())
-            if (cam.sessionOpen && (cam.camera != nullptr || cam.fake))
+            if (cam.sessionOpen)
                 ordered.push_back(&cam);
         std::sort(ordered.begin(), ordered.end(),
             [](const CameraContext* a, const CameraContext* b) { return a->orderPrefix < b->orderPrefix; });
         std::vector<CameraSettings> all;
         for (const CameraContext* cam : ordered)
-            all.push_back(CameraSettingsCanon::Read(*cam));
+            all.push_back(controller.ReadSettings(*cam));
         return all;
     }
 
     // Põe em disparo único as câmeras que não estão (all: leitura atual, atualizada
     // nas que mudaram). Avisa uma vez por câmera se não der.
-    void EnsureSingleShot(CanonController& controller, std::vector<CameraSettings>& all, std::map<std::string, bool>& warned)
+    void EnsureSingleShot(CameraFleet& controller, std::vector<CameraSettings>& all, std::map<std::string, bool>& warned)
     {
         for (auto& s : all)
         {
@@ -490,11 +491,11 @@ namespace
             if (cam == controller.GetCameras().end())
                 continue;
             std::string error;
-            if (CameraSettingsCanon::Write(*cam, "drive", 0x00, error))
+            if (controller.WriteSetting(*cam, "drive", 0x00, error))
             {
                 Log(s.camera + " was set to single shooting (it was on " + drive->label + ")");
                 warned.erase(s.camera);
-                s = CameraSettingsCanon::Read(*cam);
+                s = controller.ReadSettings(*cam);
             }
             else if (!warned[s.camera])
             {
@@ -504,7 +505,7 @@ namespace
         }
     }
 
-    void EnsureSingleShot(CanonController& controller, std::map<std::string, bool>& warned)
+    void EnsureSingleShot(CameraFleet& controller, std::map<std::string, bool>& warned)
     {
         auto all = ReadAllSettings(controller);
         EnsureSingleShot(controller, all, warned);
@@ -522,7 +523,7 @@ namespace
 
     // As fotos de uma sessão do Test shot, uma por câmera, com as configurações atuais
     // (as que a câmera usou nessa foto) e a medida, para o MatchDebug
-    std::vector<MatchDebug::Photo> DebugPhotos(CanonController& controller, PhotoStore& store, const StoredSession& session,
+    std::vector<MatchDebug::Photo> DebugPhotos(CameraFleet& controller, PhotoStore& store, const StoredSession& session,
                                                const std::map<std::string, ColorMatch::Stats>* measured)
     {
         std::map<std::string, const StoredPhoto*> picks;
@@ -532,11 +533,11 @@ namespace
         std::vector<MatchDebug::Photo> photos;
         for (const auto& cam : controller.GetCameras())
         {
-            if (!cam.sessionOpen || (cam.camera == nullptr && !cam.fake))
+            if (!cam.sessionOpen)
                 continue;
             MatchDebug::Photo photo;
             photo.camera = cam.shortName;
-            photo.settings = CameraSettingsCanon::Read(cam);
+            photo.settings = controller.ReadSettings(cam);
             const auto pick = picks.find(cam.shortName);
             if (pick != picks.end())
             {
@@ -557,7 +558,7 @@ namespace
     std::filesystem::path ChartCalibrationFile() { return Platform::AppDataFolder() / "chart-calibration.txt"; }
 
     // Configurações para a tela Camera settings (JSON)
-    std::string CameraSettingsJson(CanonController& controller, const std::vector<CameraSettings>& all)
+    std::string CameraSettingsJson(CameraFleet& controller, const std::vector<CameraSettings>& all)
     {
         const auto calibrations = AutoMatch::LoadCalibration(CalibrationFile());
         const auto charts = AutoMatch::LoadChartCalibration(ChartCalibrationFile());
@@ -608,14 +609,14 @@ namespace
     }
 
     // Lê tudo uma vez, confere o disparo único e manda para a página
-    void EmitCameraSettings(CanonController& controller, GuiListener& listener, std::map<std::string, bool>& warned)
+    void EmitCameraSettings(CameraFleet& controller, GuiListener& listener, std::map<std::string, bool>& warned)
     {
         auto all = ReadAllSettings(controller);
         EnsureSingleShot(controller, all, warned);
         listener.Emit(Json("cameraSettings").Raw("cameras", CameraSettingsJson(controller, all)));
     }
 
-    Json CamerasSnapshot(CanonController& controller)
+    Json CamerasSnapshot(CameraFleet& controller)
     {
         const auto pending = controller.GetPendingConnections();
 
@@ -944,8 +945,7 @@ namespace
         window.set_size(960, 680, WEBVIEW_HINT_MIN);
 
         GuiListener listener(window);
-        CanonController controller;
-        BulletTime bulletTime(controller, listener);
+        CameraFleet controller(listener);
         PhotoStore store(Platform::AppDataFolder() / "Photos");
         // Sessões salvas e mantidas no app ficam só até fechar: se o app fechou de
         // repente, saem agora
@@ -977,8 +977,6 @@ namespace
                 return;
             if (!fakeCount)  // câmeras simuladas: sem SDK, só a leitura das configurações abaixo
             {
-                if (!controller.HasPendingConnections())
-                    EdsGetEvent();  // com uma câmera conectando, o SDK está ocupado
                 // Redesenha quando algo mudou, e a cada volta enquanto há câmera conectando
                 // ou ligando (para o tempo de espera andar)
                 if (controller.MonitorTick(&listener) || controller.HasPendingConnections()
@@ -1077,7 +1075,7 @@ namespace
                 // sair em seguida, então o sistema libera o resto.
 #ifndef __APPLE__
                 if (sdkReady)
-                    controller.TerminateSdk();
+                    controller.Stop();
 #else
                 (void)sdkReady;
 #endif
@@ -1117,7 +1115,7 @@ namespace
                 Log("Fake cameras: " + std::to_string(fakeCount) + " (STILLPOINT_FAKE_CAMERAS)");
                 return;
             }
-            sdkReady = controller.InitializeSdk();
+            sdkReady = controller.Start();
             if (!sdkReady)
             {
                 listener.Emit(Json("sdkFailed"));
@@ -1478,7 +1476,7 @@ namespace
                 if (cameraConnecting())
                     return;
                 EnsureSingleShot(controller, singleShotWarned);  // uma foto por câmera
-                bulletTime.RunSequence(settings);
+                controller.RunSequence(settings);
                 emitSessions();
             });
             return "null";
@@ -1489,7 +1487,7 @@ namespace
         window.bind("cancelShoot", [&](const std::string&) -> std::string
         {
             fakeCancel = true;
-            bulletTime.RequestCancel();
+            controller.RequestCancel();
             return "null";
         });
 
@@ -1529,18 +1527,16 @@ namespace
                 {
                     if (!cam.sessionOpen || (target != "*" && cam.shortName != target))
                         continue;
-                    if (target == "*" && !CameraSettingsCanon::Read(cam).adjustable)
+                    if (target == "*" && !controller.ReadSettings(cam).adjustable)
                         continue;
                     std::string error;
-                    if (!CameraSettingsCanon::Write(cam, key, value, error))
+                    if (!controller.WriteSetting(cam, key, value, error))
                         errors.push_back(cam.shortName + ": " + error);
                 }
                 std::string text;
                 for (const auto& e : errors)
                     text += (text.empty() ? "" : " ") + e;
                 listener.Emit(result.Add("ok", errors.empty()).Add("error", text));
-                if (!fakeCount)
-                    EdsGetEvent();
                 EmitCameraSettings(controller, listener, singleShotWarned);
             });
             return "null";
@@ -1559,7 +1555,7 @@ namespace
                 for (const auto& cam : controller.GetCameras())
                 {
                     if (cam.shortName == name)
-                        bulletTime.TestCamera(cam);
+                        controller.TestCamera(cam);
                 }
             });
             return "null";
@@ -1797,7 +1793,7 @@ namespace
                 if (fakeCount)
                     fakeRun(settings);
                 else
-                    bulletTime.RunSequence(settings);
+                    controller.RunSequence(settings);
                 controller.SetOutputFolder(previous);
                 if (debugMode)
                 {
@@ -1847,7 +1843,7 @@ namespace
         window.bind("cancelTest", [&](const std::string&) -> std::string
         {
             testCancel = true;
-            bulletTime.RequestCancel();
+            controller.RequestCancel();
             cardPick.wake.notify_all();
             return "null";
         });
@@ -1943,7 +1939,7 @@ namespace
                     EnsureSingleShot(controller, singleShotWarned);
                     const std::string previous = controller.GetOutputFolder();
                     controller.SetOutputFolder(orderStore.Root().string());
-                    bulletTime.RunSequence(settings);
+                    controller.RunSequence(settings);
                     controller.SetOutputFolder(previous);
                     const auto sessions = orderStore.ListSessions();
                     if (sessions.empty() || testCancel)
@@ -1974,9 +1970,6 @@ namespace
                         while (!cardPick.confirmed && !testCancel)
                         {
                             cardPick.wake.wait_for(lock, std::chrono::milliseconds(200));
-                            lock.unlock();
-                            EdsGetEvent();  // as câmeras continuam respondendo enquanto espera
-                            lock.lock();
                         }
                         if (testCancel)
                             return false;
@@ -2123,7 +2116,7 @@ namespace
                     EnsureSingleShot(controller, singleShotWarned);
                     const std::string previous = controller.GetOutputFolder();
                     controller.SetOutputFolder(orderStore.Root().string());
-                    bulletTime.RunSequence(settings);
+                    controller.RunSequence(settings);
                     controller.SetOutputFolder(previous);
                     const auto sessions = orderStore.ListSessions();
                     if (sessions.empty() || testCancel)
@@ -2153,9 +2146,6 @@ namespace
                         while (!cardPick.confirmed && !testCancel)
                         {
                             cardPick.wake.wait_for(lock, std::chrono::milliseconds(200));
-                            lock.unlock();
-                            EdsGetEvent();  // as câmeras continuam respondendo enquanto espera
-                            lock.lock();
                         }
                         if (testCancel)
                             return false;

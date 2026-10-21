@@ -1,7 +1,7 @@
 #include "auto_match.h"
 
 #include "camera_settings.h"
-#include "canon_controller.h"
+#include "camera_fleet.h"
 
 #include <algorithm>
 #include <chrono>
@@ -46,10 +46,10 @@ namespace
         { 4, 4000 },  // White fluorescent
     };
 
-    const CameraContext* Find(CanonController& controller, const std::string& name)
+    const CameraContext* Find(CameraFleet& controller, const std::string& name)
     {
         for (const auto& cam : controller.GetCameras())
-            if (cam.shortName == name && cam.sessionOpen && (cam.camera != nullptr || cam.fake))
+            if (cam.shortName == name && cam.sessionOpen)
                 return &cam;
         return nullptr;
     }
@@ -207,24 +207,23 @@ namespace
     // Deixa a câmera terminar de aplicar o que mudou
     void Settle()
     {
-        EdsGetEvent();
+        // (o SDK roda no processo da câmera; aqui só o tempo)
         std::this_thread::sleep_for(std::chrono::milliseconds(300));
-        EdsGetEvent();
     }
 
-    void Write(CanonController& controller, const std::string& name, const std::string& key, long long value,
+    void Write(CameraFleet& controller, const std::string& name, const std::string& key, long long value,
                std::vector<std::string>& notes)
     {
         const CameraContext* ctx = Find(controller, name);
         if (!ctx)
             return;
         std::string error;
-        if (!CameraSettingsCanon::Write(*ctx, key, value, error))
+        if (!controller.WriteSetting(*ctx, key, value, error))
             notes.push_back(name + ": " + error);
     }
 
     // Volta as configurações que o app pode ter mudado (cancelar, calibração com a cartela)
-    void Restore(CanonController& controller, const std::vector<std::string>& names,
+    void Restore(CameraFleet& controller, const std::vector<std::string>& names,
                  const std::map<std::string, CameraSettings>& before)
     {
         for (const auto& name : names)
@@ -236,43 +235,43 @@ namespace
             if (it == before.end())
                 continue;
             const CameraSettings& was = it->second;
-            const CameraSettings now = CameraSettingsCanon::Read(*ctx);
+            const CameraSettings now = controller.ReadSettings(*ctx);
             std::string error;
             for (const char* key : { "tv", "av", "iso", "expcomp", "style" })
             {
                 const CameraSetting* a = Get(was, key);
                 const CameraSetting* b = Get(now, key);
                 if (a && b && a->value != b->value && !b->choices.empty())
-                    CameraSettingsCanon::Write(*ctx, key, a->value, error);
+                    controller.WriteSetting(*ctx, key, a->value, error);
             }
             const CameraSetting* wbWas = Get(was, "wb");
             if (wbWas && WbId(was) != WbId(now))
             {
                 if (wbWas->value == kWbKelvin)
-                    CameraSettingsCanon::Write(*ctx, "kelvin", was.kelvin, error);
+                    controller.WriteSetting(*ctx, "kelvin", was.kelvin, error);
                 else
-                    CameraSettingsCanon::Write(*ctx, "wb", wbWas->value, error);
+                    controller.WriteSetting(*ctx, "wb", wbWas->value, error);
             }
             if (was.styleDetailAvailable && now.styleDetailAvailable)
             {
                 if (now.contrast != was.contrast)
-                    CameraSettingsCanon::Write(*ctx, "contrast", was.contrast, error);
+                    controller.WriteSetting(*ctx, "contrast", was.contrast, error);
                 if (now.saturation != was.saturation)
-                    CameraSettingsCanon::Write(*ctx, "saturation", was.saturation, error);
+                    controller.WriteSetting(*ctx, "saturation", was.saturation, error);
                 if (now.colorTone != was.colorTone)
-                    CameraSettingsCanon::Write(*ctx, "colortone", was.colorTone, error);
+                    controller.WriteSetting(*ctx, "colortone", was.colorTone, error);
             }
             if (was.shiftAvailable && now.shiftAB != was.shiftAB)
-                CameraSettingsCanon::Write(*ctx, "shiftab", was.shiftAB, error);
+                controller.WriteSetting(*ctx, "shiftab", was.shiftAB, error);
             if (was.shiftAvailable && now.shiftGM != was.shiftGM)
-                CameraSettingsCanon::Write(*ctx, "shiftgm", was.shiftGM, error);
+                controller.WriteSetting(*ctx, "shiftgm", was.shiftGM, error);
         }
         Settle();
     }
 
     // Uma configuração da mesma escala de luz em todas: o valor mais perto da média que
     // todas aceitam (sem valor em comum: o mais perto em cada uma)
-    void UnifyLight(CanonController& controller, const std::vector<std::string>& names, const std::string& key,
+    void UnifyLight(CameraFleet& controller, const std::vector<std::string>& names, const std::string& key,
                     std::vector<std::string>& notes)
     {
         struct Item { std::string name; CameraSetting s; };
@@ -280,7 +279,7 @@ namespace
         for (const auto& n : names)
             if (const CameraContext* ctx = Find(controller, n))
             {
-                const CameraSettings s = CameraSettingsCanon::Read(*ctx);
+                const CameraSettings s = controller.ReadSettings(*ctx);
                 if (const CameraSetting* c = Get(s, key); c && !c->choices.empty())
                     items.push_back({ n, *c });
             }
@@ -334,14 +333,14 @@ namespace
 
     // Picture Style: o mais comum entre as câmeras (empate: a primeira na ordem). Nunca
     // Auto, que muda o estilo a cada cena; se só houver Auto, Standard.
-    void UnifyStyle(CanonController& controller, const std::vector<std::string>& names, std::vector<std::string>& notes)
+    void UnifyStyle(CameraFleet& controller, const std::vector<std::string>& names, std::vector<std::string>& notes)
     {
         struct Item { std::string name; CameraSetting s; };
         std::vector<Item> items;
         for (const auto& n : names)
             if (const CameraContext* ctx = Find(controller, n))
             {
-                const CameraSettings s = CameraSettingsCanon::Read(*ctx);
+                const CameraSettings s = controller.ReadSettings(*ctx);
                 if (const CameraSetting* c = Get(s, "style"); c && !c->choices.empty())
                     items.push_back({ n, *c });
             }
@@ -383,7 +382,7 @@ namespace
     // ao contrário do ajuste), então o app só garante que todas usem a mesma curva.
     // Com a calibração da cartela, os modelos diferentes do mais comum andam a diferença
     // medida (ex.: T7 com Saturation −1 para ficar como a SL3).
-    void UnifyStyleDetails(CanonController& controller, const std::vector<std::string>& names, std::vector<std::string>& notes,
+    void UnifyStyleDetails(CameraFleet& controller, const std::vector<std::string>& names, std::vector<std::string>& notes,
                            const std::map<std::string, AutoMatch::ChartOffsets>& offsets)
     {
         struct Item { std::string name; CameraSettings s; const AutoMatch::ChartOffsets* chart = nullptr; };
@@ -391,7 +390,7 @@ namespace
         for (const auto& n : names)
             if (const CameraContext* ctx = Find(controller, n))
             {
-                CameraSettings s = CameraSettingsCanon::Read(*ctx);
+                CameraSettings s = controller.ReadSettings(*ctx);
                 if (!s.styleDetailAvailable)
                     continue;
                 Item it{ n, std::move(s) };
@@ -561,7 +560,7 @@ namespace
 
     // O que falta para a câmera chegar no alvo. apply: muda na câmera. Devolve se falta
     // mudar algo (com apply: se mudou). notes: o que não dá para resolver pelo app.
-    bool Correct(CanonController& controller, Cam& c, const Stats& target, bool apply, std::vector<std::string>& notes)
+    bool Correct(CameraFleet& controller, Cam& c, const Stats& target, bool apply, std::vector<std::string>& notes)
     {
         if (!c.last.ok)
         {
@@ -572,7 +571,7 @@ namespace
         const CameraContext* ctx = Find(controller, c.name);
         if (!ctx)
             return false;
-        const CameraSettings s = CameraSettingsCanon::Read(*ctx);
+        const CameraSettings s = controller.ReadSettings(*ctx);
         bool wanted = false, changed = false;
         std::string error;
         std::vector<std::string> why;  // para o registro do modo debug
@@ -618,9 +617,9 @@ namespace
                         why.push_back("fine-tune " + ShiftText(s.shiftAB, s.shiftGM) + " -> " + ShiftText(ab, gm)
                                       + " (wanted " + Num(abWant, 1) + " / " + Num(gmWant, 1) + ")");
                         if (apply && ab != s.shiftAB)
-                            changed = CameraSettingsCanon::Write(*ctx, "shiftab", ab, error) || changed;
+                            changed = controller.WriteSetting(*ctx, "shiftab", ab, error) || changed;
                         if (apply && gm != s.shiftGM)
-                            changed = CameraSettingsCanon::Write(*ctx, "shiftgm", gm, error) || changed;
+                            changed = controller.WriteSetting(*ctx, "shiftgm", gm, error) || changed;
                     }
                 }
             }
@@ -671,7 +670,7 @@ namespace
                     };
                     why.push_back(label(e->value) + " -> " + label(best) + " (brightness " + Num(wantEv) + " stop, gain " + Num(c.evGain) + ")");
                     if (apply)
-                        changed = CameraSettingsCanon::Write(*ctx, key, best, error) || changed;
+                        changed = controller.WriteSetting(*ctx, key, best, error) || changed;
                 }
                 else if (std::abs(wantEv) > 0.5)
                     notes.push_back(c.name + ": its brightness is different, and its " + (key == "iso" ? "ISO" : "exposure compensation")
@@ -693,7 +692,7 @@ namespace
     }
 
     // Balanço comum depois da foto em Daylight: o que deixa a cor média perto do alvo
-    void ChooseCommonWb(CanonController& controller, const std::vector<Cam>& cams, const std::vector<std::string>& wbCams,
+    void ChooseCommonWb(CameraFleet& controller, const std::vector<Cam>& cams, const std::vector<std::string>& wbCams,
                         const Stats& target, std::vector<std::string>& notes)
     {
         double sum = 0;
@@ -707,7 +706,7 @@ namespace
             const CameraContext* ctx = Find(controller, c.name);
             if (!ctx)
                 continue;
-            const CameraSettings s = CameraSettingsCanon::Read(*ctx);
+            const CameraSettings s = controller.ReadSettings(*ctx);
             const CameraSetting* wb = Get(s, "wb");
             if (!wb || wb->choices.empty())
                 continue;
@@ -753,7 +752,7 @@ namespace
     // sempre a média, duas câmeras a 1/6 de stop de cada lado ficariam paradas (ou
     // trocariam de lugar). Então o alvo é o nível que todas conseguem alcançar mais
     // perto, sem se afastar muito da média.
-    double BrightnessTarget(CanonController& controller, const std::vector<Cam>& cams, double average)
+    double BrightnessTarget(CameraFleet& controller, const std::vector<Cam>& cams, double average)
     {
         std::vector<std::vector<double>> reach;
         std::vector<double> candidates{ average };
@@ -764,7 +763,7 @@ namespace
             std::vector<double> levels{ c.last.ev };
             if (const CameraContext* ctx = Find(controller, c.name))
             {
-                const CameraSettings s = CameraSettingsCanon::Read(*ctx);
+                const CameraSettings s = controller.ReadSettings(*ctx);
                 const std::string key = BrightnessKey(s);
                 const CameraSetting* e = Get(s, key);
                 double now = 0;
@@ -802,7 +801,7 @@ namespace
     // Depois da primeira foto no balanço comum (já se sabe quanto a cor de cada câmera
     // anda por mired): se outro predefinido deixa o ajuste fino mais perto do zero,
     // troca. Só predefinidos (com Kelvin, o primeiro valor já é o mais perto).
-    void RefineCommonWb(CanonController& controller, const std::vector<Cam>& cams, const std::vector<std::string>& wbCams,
+    void RefineCommonWb(CameraFleet& controller, const std::vector<Cam>& cams, const std::vector<std::string>& wbCams,
                         const Stats& target, std::vector<std::string>& notes)
     {
         double sum = 0, current = 0;
@@ -816,7 +815,7 @@ namespace
             const CameraContext* ctx = Find(controller, c.name);
             if (!ctx)
                 continue;
-            const CameraSettings s = CameraSettingsCanon::Read(*ctx);
+            const CameraSettings s = controller.ReadSettings(*ctx);
             const CameraSetting* wb = Get(s, "wb");
             if (!wb || wb->choices.empty() || wb->value == kWbKelvin || !kPresetKelvin.count(wb->value))
                 return;
@@ -911,7 +910,7 @@ namespace AutoMatch
         return all;
     }
 
-    Result Run(CanonController& controller, const Shoot& shoot, const std::filesystem::path& calibrationFile,
+    Result Run(CameraFleet& controller, const Shoot& shoot, const std::filesystem::path& calibrationFile,
                const std::function<bool()>& cancelled, const Options& options,
                const std::function<void(const std::string&)>& trace)
     {
@@ -926,9 +925,9 @@ namespace AutoMatch
         std::map<std::string, CameraSettings> before;
         for (const auto& cam : controller.GetCameras())
         {
-            if (!cam.sessionOpen || (cam.camera == nullptr && !cam.fake))
+            if (!cam.sessionOpen)
                 continue;
-            CameraSettings s = CameraSettingsCanon::Read(cam);
+            CameraSettings s = controller.ReadSettings(cam);
             if (s.adjustable)
             {
                 ordered.push_back({ cam.orderPrefix, cam.shortName });
@@ -977,7 +976,7 @@ namespace AutoMatch
             const CameraContext* ctx = Find(controller, name);
             if (!ctx)
                 continue;
-            const CameraSettings s = CameraSettingsCanon::Read(*ctx);
+            const CameraSettings s = controller.ReadSettings(*ctx);
             const CameraSetting* wb = Get(s, "wb");
             if (!wb)
                 continue;
@@ -1031,7 +1030,7 @@ namespace AutoMatch
                 }
                 const auto it = measured.find(c.name);
                 c.flipped = false;
-                Learn(c, it != measured.end() ? it->second : Stats{}, CameraSettingsCanon::Read(*ctx));
+                Learn(c, it != measured.end() ? it->second : Stats{}, controller.ReadSettings(*ctx));
                 if (c.flipped && !extraShot)
                 {
                     extraShot = true;
@@ -1054,7 +1053,7 @@ namespace AutoMatch
                 if (!ctx)
                     continue;
                 const auto from = SummaryLabels(before[name]);
-                const auto to = SummaryLabels(CameraSettingsCanon::Read(*ctx));
+                const auto to = SummaryLabels(controller.ReadSettings(*ctx));
                 Change change{ name, {} };
                 for (const auto& [setting, value] : to)
                 {
@@ -1110,7 +1109,7 @@ namespace AutoMatch
             {
                 Write(controller, name, "wb", kWbDaylight, notes);
                 const CameraContext* ctx = Find(controller, name);
-                if (ctx && CameraSettingsCanon::Read(*ctx).shiftAvailable)
+                if (ctx && controller.ReadSettings(*ctx).shiftAvailable)
                 {
                     Write(controller, name, "shiftab", 0, notes);
                     Write(controller, name, "shiftgm", 0, notes);
@@ -1131,7 +1130,7 @@ namespace AutoMatch
                 const CameraContext* ctx = Find(controller, c.name);
                 if (c.calibrated || !c.last.ok || !ctx)
                     continue;
-                const CameraSettings s = CameraSettingsCanon::Read(*ctx);
+                const CameraSettings s = controller.ReadSettings(*ctx);
                 if (s.shiftAvailable && Changeable(s, "wb"))
                     probes.push_back({ c.name, s.shiftAB, s.shiftGM, c.last });
             }
@@ -1298,7 +1297,7 @@ namespace AutoMatch
         return all;
     }
 
-    ChartResult CalibrateChart(CanonController& controller, const ChartShoot& shoot, const std::filesystem::path& chartFile,
+    ChartResult CalibrateChart(CameraFleet& controller, const ChartShoot& shoot, const std::filesystem::path& chartFile,
                                const std::function<bool()>& cancelled, const std::function<void(const std::string&)>& trace)
     {
         ChartResult result;
@@ -1311,9 +1310,9 @@ namespace AutoMatch
         std::set<std::string> models;
         for (const auto& cam : controller.GetCameras())
         {
-            if (!cam.sessionOpen || (cam.camera == nullptr && !cam.fake))
+            if (!cam.sessionOpen)
                 continue;
-            CameraSettings s = CameraSettingsCanon::Read(cam);
+            CameraSettings s = controller.ReadSettings(cam);
             if (!s.adjustable || !s.styleDetailAvailable)
             {
                 result.notes.push_back(cam.shortName + ": its Picture Style cannot be changed from the app, so it was not calibrated.");
@@ -1354,7 +1353,7 @@ namespace AutoMatch
             const CameraContext* ctx = Find(controller, name);
             if (!ctx)
                 continue;
-            const CameraSettings s = CameraSettingsCanon::Read(*ctx);
+            const CameraSettings s = controller.ReadSettings(*ctx);
             if (!sameFixed)
                 if (const CameraSetting* wb = Get(s, "wb"); wb && !wb->choices.empty() && Accepts(*wb, kDaylight) && wb->value != kDaylight)
                     Write(controller, name, "wb", kDaylight, notes);
@@ -1371,7 +1370,7 @@ namespace AutoMatch
         for (const auto& name : names)
             if (const CameraContext* ctx = Find(controller, name))
             {
-                const CameraSettings s = CameraSettingsCanon::Read(*ctx);
+                const CameraSettings s = controller.ReadSettings(*ctx);
                 if (const CameraSetting* style = Get(s, "style"))
                     styleOf[name] = style->value;
             }

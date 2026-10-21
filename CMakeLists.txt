@@ -183,6 +183,21 @@ endif()
 stillpoint_copy_runtime_files(StillpointTerminal)
 
 # ---------------------------------------------------------------------------
+# Trabalhador de câmera (etapa 16): um processo por câmera, aberto pelo app de janela.
+# Sem janela; conversa com o app por stdin/stdout (include/worker_protocol.h).
+# Fica ao lado do app (mesma pasta de build; no .app, Contents/MacOS).
+# ---------------------------------------------------------------------------
+add_executable(StillpointWorker src/worker/main_worker.cpp)
+target_link_libraries(StillpointWorker PRIVATE stillpoint_core)
+if(WIN32)
+    target_compile_definitions(StillpointWorker PRIVATE _CONSOLE)
+else()
+    set_target_properties(StillpointWorker PROPERTIES
+        BUILD_RPATH "@executable_path/Frameworks;@executable_path/../Frameworks"
+        INSTALL_RPATH "@executable_path/Frameworks;@executable_path/../Frameworks")
+endif()
+
+# ---------------------------------------------------------------------------
 # Teste de viabilidade da etapa 16: um processo por câmera (ver o topo do .cpp e
 # docs/teste-manual.md, seção 20). Não entra nos instaladores.
 # ---------------------------------------------------------------------------

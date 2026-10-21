@@ -7,6 +7,7 @@
 #include <atomic>
 #include <ctime>
 #include <filesystem>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -81,6 +82,39 @@ namespace Platform
     // saída, ou -1 se não abriu, se passou de timeoutSeconds ou se cancel virou true
     // (nesses casos o programa é encerrado).
     int RunProcess(const std::vector<std::string>& args, int timeoutSeconds, const std::atomic<bool>* cancel = nullptr);
+
+    // Processo auxiliar com conversa por linhas (os trabalhadores de câmera da etapa 16):
+    // escreve no stdin dele e lê o stdout dele sem bloquear. Ao destruir, se ainda
+    // estiver rodando, é encerrado à força.
+    class ChildProcess
+    {
+    public:
+        // args[0] = programa. nullptr se não abriu.
+        static std::unique_ptr<ChildProcess> Spawn(const std::vector<std::string>& args);
+        ~ChildProcess();
+        ChildProcess(const ChildProcess&) = delete;
+        ChildProcess& operator=(const ChildProcess&) = delete;
+
+        // Manda uma linha (acrescenta a quebra de linha). false se o canal fechou.
+        bool WriteLine(const std::string& line);
+        // Lê uma linha se houver uma inteira esperando (não bloqueia). false = nada ainda.
+        bool ReadLine(std::string& line);
+        bool Running();
+        // Encerra à força (SIGKILL / TerminateProcess) e espera sair.
+        void Kill();
+        long long Pid() const { return pid; }
+
+    private:
+        ChildProcess() = default;
+        long long pid = 0;
+        void* handle = nullptr;   // Windows: HANDLE do processo
+        void* writeEnd = nullptr; // Windows: HANDLE do stdin do filho
+        void* readEnd = nullptr;  // Windows: HANDLE do stdout do filho
+        int writeFd = -1;         // Mac
+        int readFd = -1;          // Mac
+        std::string buffer;       // bytes lidos ainda sem quebra de linha
+        bool exited = false;
+    };
 
     // SHA-256 do arquivo em hexadecimal minúsculo ("" se não deu para ler).
     std::string Sha256OfFile(const std::filesystem::path& file);

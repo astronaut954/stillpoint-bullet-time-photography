@@ -444,6 +444,45 @@ Anotar os resultados na tabela abaixo e no ROADMAP (etapa 16, "primeiro passo").
 ok, a etapa 16 segue para a implementação; se B ou D falharem, a etapa muda de desenho (um
 processo só, com vigia por thread) antes de qualquer código.
 
+## 21. Um processo por câmera (etapa 16)
+
+O app de janela não carrega mais o SDK da Canon: cada câmera fica num processo
+`StillpointWorker` (ao lado do app; no .app, dentro de `Contents/MacOS`). Se uma câmera trava
+o SDK, só o processo dela para; o app o encerra e abre outro. Log por câmera em
+`~/Library/Application Support/Stillpoint/Logs/worker-<série>.txt` (Windows:
+`%LOCALAPPDATA%\Stillpoint\Logs`). O terminal não muda.
+
+Compilar (Mac):
+```
+cd ~/Developer/stillpoint
+cmake --preset macos-arm64
+cmake --build --preset macos-arm64-release
+./build/macos-arm64/Stillpoint
+```
+
+- [ ] **Conexão.** Com as 3 câmeras ligadas, abrir o app: as três aparecem como "connecting"
+      e depois "connected", em paralelo (não uma depois da outra). No Monitor de Atividade há
+      três processos `StillpointWorker`. Nomes e ordem como antes (SL3_1, T7_1, T5_1).
+- [ ] **Identify** em cada uma: o obturador até a metade responde na câmera certa.
+- [ ] **It's bullet time, At once**, Download wait 10 s: as três fotos chegam; nomes dos
+      arquivos como sempre (`01_SL3_1_IMG_xxxx.CR3`). Repetir 3 vezes.
+- [ ] **Timing: One after another 0,5 s; Groups; Sweep 0,2 s** com a Live aberta: sons de grupo e
+      metrônomo nos tempos certos; a Live mostra cada disparo; as fotos chegam numeradas pelo item.
+- [ ] **Cancelar** na contagem e esperando as fotos: para como antes.
+- [ ] **Camera settings**: a tela mostra as três; mudar ISO numa e em All cameras; Test shot; Match
+      automatically: tudo como na 2.10.0. (Cada leitura passa pelo processo da câmera.)
+- [ ] **Queda.** Desligar a T5 no botão: em até ~15 s ela aparece "disconnected"; as outras duas
+      seguem disparando. Religar: volta sozinha com o mesmo nome e posição.
+- [ ] **Travamento simulado.** No Monitor de Atividade, "Forçar encerrar" um `StillpointWorker`:
+      a câmera dele aparece como caída e volta sozinha em alguns segundos; o app não trava.
+- [ ] **Restart camera connections** (menu): as três caem e voltam.
+- [ ] **Fechar o app**: os três processos somem (Monitor de Atividade).
+- [ ] **Câmeras simuladas** (`STILLPOINT_FAKE_CAMERAS=9 ./build/macos-arm64/Stillpoint`): tudo como
+      antes, sem processos trabalhadores.
+- [ ] **Terminal**: `./build/macos-arm64/"Stillpoint Terminal App"` igual à 2.10.0.
+- [ ] **Windows**: compila (`StillpointWorker.exe` ao lado de `Stillpoint.exe`); conexão, disparo e
+      Camera settings com as câmeras.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |

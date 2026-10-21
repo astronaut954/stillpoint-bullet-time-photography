@@ -44,11 +44,13 @@ if IS_MAC:
     PLATFORM = "macos-arm64"
     BUILD_EXE = REPO_ROOT / "build" / "macos-arm64" / "Stillpoint Terminal App"
     BUILD_GUI = REPO_ROOT / "build" / "macos-arm64" / "Stillpoint"
+    BUILD_WORKER = REPO_ROOT / "build" / "macos-arm64" / "StillpointWorker"
     EDSDK_FRAMEWORK = REPO_ROOT / "third_party" / "edsdk" / "macos" / "EDSDK.framework"
 else:
     PLATFORM = "windows-x64"
     BUILD_EXE = REPO_ROOT / "build" / "windows-x64" / "Release" / "Stillpoint Terminal App.exe"
     BUILD_GUI = REPO_ROOT / "build" / "windows-x64" / "Release" / "Stillpoint.exe"
+    BUILD_WORKER = REPO_ROOT / "build" / "windows-x64" / "Release" / "StillpointWorker.exe"
     EDSDK_DLL = REPO_ROOT / "third_party" / "edsdk" / "x64" / "Dll" / "EDSDK.dll"
     EDSIMAGE_DLL = REPO_ROOT / "third_party" / "edsdk" / "x64" / "Dll" / "EdsImage.dll"
 
@@ -269,6 +271,7 @@ def make_mac_app(dest_dir: Path) -> None:
     Stillpoint.app/Contents/
         Info.plist
         MacOS/Stillpoint                 (o programa de janela)
+        MacOS/StillpointWorker           (o trabalhador: um processo por câmera)
         Frameworks/EDSDK.framework       (o SDK da Canon)
         Resources/assets                 (sons e a página da interface)
         Resources/AppIcon.icns           (ícone)
@@ -281,6 +284,9 @@ def make_mac_app(dest_dir: Path) -> None:
     (contents / "Resources").mkdir()
 
     copy_file(BUILD_GUI, contents / "MacOS" / BUILD_GUI.name)
+    # Trabalhador de câmera (um processo por câmera, etapa 16): ao lado do app, que o
+    # acha por Platform::ExecutableDirectory
+    copy_file(BUILD_WORKER, contents / "MacOS" / BUILD_WORKER.name)
     subprocess.run(["ditto", str(EDSDK_FRAMEWORK), str(contents / "Frameworks" / "EDSDK.framework")], check=True)
     print(f"[COPYDIR] {EDSDK_FRAMEWORK} -> {contents / 'Frameworks' / 'EDSDK.framework'}")
     copy_tree(ASSETS_DIR, contents / "Resources" / "assets")
@@ -319,6 +325,7 @@ def make_mac_app(dest_dir: Path) -> None:
 def main():
     ensure_file(BUILD_EXE, f"{BUILD_EXE.name} (Release build)")
     ensure_file(BUILD_GUI, f"{BUILD_GUI.name} (Release build of the window app)")
+    ensure_file(BUILD_WORKER, f"{BUILD_WORKER.name} (Release build of the camera worker; the window app needs it beside it)")
     if IS_MAC:
         ensure_dir(EDSDK_FRAMEWORK, "EDSDK.framework")
         ensure_file(MAC_ICON, "app-icon.icns")
@@ -368,6 +375,7 @@ def main():
         dlls = [EDSDK_DLL, EDSIMAGE_DLL] + [
             d for d in BUILD_EXE.parent.glob("*.dll") if d.name not in ("EDSDK.dll", "EdsImage.dll")]
         copy_file(BUILD_GUI, DIST_DIR / BUILD_GUI.name)
+        copy_file(BUILD_WORKER, DIST_DIR / BUILD_WORKER.name)  # trabalhador de câmera (etapa 16)
         copy_file(BUILD_EXE, terminal_dir / (TERMINAL_EXE_NAME + ".exe"))
         for folder in (DIST_DIR, terminal_dir):
             for dll in dlls:

@@ -540,6 +540,16 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    relógio do computador com 26 ms entre o primeiro e o terceiro processo. Numa rodada a T7
    travou dentro do comando de disparo e só o processo dela parou — os outros dois dispararam,
    baixaram e fecharam normalmente: é exatamente o isolamento que a etapa quer.
+   **Implementação (2026-10-21, mesmo branch):** `StillpointWorker` (`src/worker/`), um
+   processo por câmera que obedece ordens por texto (`include/worker_protocol.h`); coordenador
+   `CameraFleet` (`src/gui/camera_fleet.*`) no lugar do CanonController + BulletTime na
+   janela: conexão em paralelo (um trabalhador por câmera vista no USB), disparo por horário
+   do relógio do computador (plano do Timing/Sweep mandado a cada processo), vigia com tempo
+   limite (processo que não responde é encerrado e reaberto; a câmera volta com o mesmo nome),
+   log por câmera em `Logs/worker-<série>.txt`. Camera settings, Test shot e Match passam pelos
+   processos (`CameraFleet::ReadSettings/WriteSetting`). Decidido: sem chave para o modo
+   antigo. Terminal e câmeras simuladas não mudam. Teste: `docs/teste-manual.md`, seção 21.
+   Status: aguardando teste no Mac com SL3 + T7 + T5.
 2. **Etapa 17 — modo caixa de disparo.** O app usa a caixa (ESP32 + um canal por câmera, já
    desenhada em `docs/hardware/caixa-de-disparo.pdf` e `hardware/trigger-box/`) para disparar:
    o plano do Timing/Sweep vai para a caixa (PLAN/GO), que dispara com precisão de milissegundos;

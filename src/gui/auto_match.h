@@ -27,7 +27,7 @@
 #include <string>
 #include <vector>
 
-class CanonController;
+class CameraFleet;
 
 namespace AutoMatch
 {
@@ -97,7 +97,7 @@ namespace AutoMatch
     // 4 fotos (como estão; Contrast +2; Saturation +2; Color tone +2), sempre com o mesmo
     // Picture Style e o mesmo balanço de branco em todas; depois tudo volta como estava.
     // Precisa de pelo menos 2 modelos diferentes. Guarda o resultado em chartFile.
-    ChartResult CalibrateChart(CanonController& controller, const ChartShoot& shoot, const std::filesystem::path& chartFile,
+    ChartResult CalibrateChart(CameraFleet& controller, const ChartShoot& shoot, const std::filesystem::path& chartFile,
                                const std::function<bool()>& cancelled,
                                const std::function<void(const std::string&)>& trace = nullptr);
 
@@ -106,7 +106,7 @@ namespace AutoMatch
     // cancelled: a pessoa pediu para parar (conferido entre as fotos; Shoot também deve
     // devolver false). Ao parar, as câmeras voltam às configurações de antes.
     // trace: recebe, linha a linha, o que foi medido e decidido (modo debug; pode ser vazio).
-    Result Run(CanonController& controller, const Shoot& shoot, const std::filesystem::path& calibrationFile,
+    Result Run(CameraFleet& controller, const Shoot& shoot, const std::filesystem::path& calibrationFile,
                const std::function<bool()>& cancelled, const Options& options = {},
                const std::function<void(const std::string&)>& trace = nullptr);
 }

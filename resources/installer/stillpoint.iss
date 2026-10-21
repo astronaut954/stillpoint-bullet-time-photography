@@ -53,6 +53,7 @@ Name: "terminalapp"; Description: "Also install the terminal app (optional)"; Gr
 
 [Files]
 Source: "{#DistDir}\Stillpoint.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#DistDir}\StillpointWorker.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#DistDir}\*.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#DistDir}\assets\*"; DestDir: "{app}\assets"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "{#DistDir}\README.md"; DestDir: "{app}"; Flags: ignoreversion

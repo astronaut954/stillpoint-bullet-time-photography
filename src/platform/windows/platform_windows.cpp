@@ -5,6 +5,7 @@
 #include <objbase.h>
 #include <shellapi.h>
 #include <setupapi.h>
+#include <algorithm>
 #include <cwctype>
 #include <chrono>
 #include <clocale>
@@ -331,6 +332,120 @@ namespace Platform
         }
         CloseHandle(process.hProcess);
         return result;
+    }
+
+    // ---- Processo auxiliar (trabalhadores de câmera) ----
+
+    std::unique_ptr<ChildProcess> ChildProcess::Spawn(const std::vector<std::string>& args)
+    {
+        if (args.empty())
+            return nullptr;
+        SECURITY_ATTRIBUTES inherit{};
+        inherit.nLength = sizeof(inherit);
+        inherit.bInheritHandle = TRUE;
+        HANDLE childStdinRead = nullptr, childStdinWrite = nullptr;
+        HANDLE childStdoutRead = nullptr, childStdoutWrite = nullptr;
+        if (!CreatePipe(&childStdinRead, &childStdinWrite, &inherit, 0))
+            return nullptr;
+        if (!CreatePipe(&childStdoutRead, &childStdoutWrite, &inherit, 0))
+        {
+            CloseHandle(childStdinRead); CloseHandle(childStdinWrite);
+            return nullptr;
+        }
+        // Só as pontas do filho são herdadas
+        SetHandleInformation(childStdinWrite, HANDLE_FLAG_INHERIT, 0);
+        SetHandleInformation(childStdoutRead, HANDLE_FLAG_INHERIT, 0);
+
+        std::wstring commandLine;
+        for (const auto& arg : args)
+            commandLine += (commandLine.empty() ? L"" : L" ") + QuoteArg(Widen(arg));
+        const std::wstring program = Widen(args[0]);
+        STARTUPINFOW startup{};
+        startup.cb = sizeof(startup);
+        startup.dwFlags = STARTF_USESTDHANDLES;
+        startup.hStdInput = childStdinRead;
+        startup.hStdOutput = childStdoutWrite;
+        startup.hStdError = GetStdHandle(STD_ERROR_HANDLE);
+        PROCESS_INFORMATION process{};
+        const BOOL ok = CreateProcessW(program.c_str(), commandLine.data(), nullptr, nullptr, TRUE, CREATE_NO_WINDOW,
+                                       nullptr, nullptr, &startup, &process);
+        CloseHandle(childStdinRead);
+        CloseHandle(childStdoutWrite);
+        if (!ok)
+        {
+            CloseHandle(childStdinWrite); CloseHandle(childStdoutRead);
+            return nullptr;
+        }
+        CloseHandle(process.hThread);
+        std::unique_ptr<ChildProcess> p(new ChildProcess());
+        p->pid = process.dwProcessId;
+        p->handle = process.hProcess;
+        p->writeEnd = childStdinWrite;
+        p->readEnd = childStdoutRead;
+        return p;
+    }
+
+    ChildProcess::~ChildProcess()
+    {
+        if (Running())
+            Kill();
+        if (writeEnd) CloseHandle(static_cast<HANDLE>(writeEnd));
+        if (readEnd) CloseHandle(static_cast<HANDLE>(readEnd));
+        if (handle) CloseHandle(static_cast<HANDLE>(handle));
+    }
+
+    bool ChildProcess::WriteLine(const std::string& line)
+    {
+        if (!writeEnd)
+            return false;
+        const std::string data = line + "\n";
+        DWORD written = 0;
+        return WriteFile(static_cast<HANDLE>(writeEnd), data.data(), static_cast<DWORD>(data.size()), &written, nullptr)
+               && written == data.size();
+    }
+
+    bool ChildProcess::ReadLine(std::string& line)
+    {
+        if (readEnd)
+        {
+            for (;;)
+            {
+                DWORD available = 0;
+                if (!PeekNamedPipe(static_cast<HANDLE>(readEnd), nullptr, 0, nullptr, &available, nullptr) || available == 0)
+                    break;
+                char chunk[4096];
+                DWORD got = 0;
+                if (!ReadFile(static_cast<HANDLE>(readEnd), chunk, static_cast<DWORD>(std::min<DWORD>(available, sizeof(chunk))), &got, nullptr) || got == 0)
+                    break;
+                buffer.append(chunk, got);
+            }
+        }
+        const size_t nl = buffer.find('\n');
+        if (nl == std::string::npos)
+            return false;
+        line = buffer.substr(0, nl);
+        if (!line.empty() && line.back() == '\r')
+            line.pop_back();
+        buffer.erase(0, nl + 1);
+        return true;
+    }
+
+    bool ChildProcess::Running()
+    {
+        if (exited || !handle)
+            return false;
+        if (WaitForSingleObject(static_cast<HANDLE>(handle), 0) == WAIT_OBJECT_0)
+            exited = true;
+        return !exited;
+    }
+
+    void ChildProcess::Kill()
+    {
+        if (exited || !handle)
+            return;
+        TerminateProcess(static_cast<HANDLE>(handle), 1);
+        WaitForSingleObject(static_cast<HANDLE>(handle), 3000);
+        exited = true;
     }
 
     std::string Sha256OfFile(const fs::path& file)
