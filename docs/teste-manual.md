@@ -397,6 +397,52 @@ Full screen — com mais de um monitor, pergunta qual), Always on top, Another w
       fotos de teste. Os valores voltam ao início ao abrir o app de novo.
 - [ ] Windows: tudo acima, e a janela Live em tela cheia e de volta a janela.
 
+## 20. Teste de viabilidade da etapa 16 (um processo por câmera)
+
+Pergunta a responder: o SDK da Canon aceita ser carregado por **dois processos ao mesmo tempo**
+na mesma máquina, cada um com a sua câmera? Sem isso, a etapa 16 não existe.
+Programa: `SdkMultiprocTest` (gerado junto com o resto; `src/tools/sdk_multiproc_test.cpp`).
+Duas câmeras ligadas (SL3 + T7), em entradas USB diferentes. Dois terminais abertos na pasta
+do projeto. Tudo fica em `~/Desktop/sdk-multiproc-test/` (fotos e `log-<câmera>.txt`).
+
+Compilar (Mac):
+```
+cd ~/Developer/stillpoint
+cmake --build --preset macos-arm64-release --target SdkMultiprocTest
+```
+O programa fica em `build/macos-arm64/SdkMultiprocTest`.
+
+- [ ] **A. Lista.** Num terminal: `./build/macos-arm64/SdkMultiprocTest --list` → mostra as 2
+      câmeras com índice, modelo e porta; termina sozinho.
+- [ ] **B. Dois processos, uma câmera cada.** Terminal 1:
+      `./build/macos-arm64/SdkMultiprocTest --model SL3`. Esperar `EdsOpenSession: 0x00000000 (ok)`
+      e `ready`. Terminal 2: `./build/macos-arm64/SdkMultiprocTest --model T7`. Esperar o mesmo.
+      Anotar: a segunda abriu? Em quantos segundos? (a T7 recém-ligada pode levar ~40 s)
+- [ ] **C. Lista com a outra ocupada.** No terminal 2, digitar `l` e Enter: o SDK deste processo
+      ainda vê as 2 câmeras (ou só a dele)? Anotar.
+- [ ] **D. Abrir a câmera do outro.** No terminal 2, `o` e Enter: tenta abrir a SL3 (que está
+      com o terminal 1). Esperado: erro (DEVICE_BUSY ou parecido). Se abrir (`!! opened`), anotar
+      — significa que o SDK não protege e o app terá de garantir isso sozinho. Depois, no
+      terminal 1, `s` e Enter: a SL3 ainda dispara e baixa a foto?
+- [ ] **E. Disparo alternado.** `s` no terminal 1, depois `s` no terminal 2: cada uma dispara e
+      a foto aparece em `~/Desktop/sdk-multiproc-test/` com o nome da câmera (`download ... (ok)`).
+- [ ] **F. Disparo simultâneo.** Fechar os dois com `q`. Olhar o relógio do Mac e escolher um
+      horário 2 minutos à frente (ex.: 15:42:00). Terminal 1:
+      `./build/macos-arm64/SdkMultiprocTest --model SL3 --at 15:42:00`; terminal 2:
+      `./build/macos-arm64/SdkMultiprocTest --model T7 --at 15:42:00`. As duas disparam sozinhas
+      nesse horário e fecham 20 s depois. Nos dois logs, comparar o horário (ms) da linha
+      `PressShutter DOWN`: a diferença é o quanto o relógio do computador sincroniza dois
+      processos (esperado: poucos ms). As duas fotos chegaram?
+- [ ] **G. Queda de uma.** Repetir B. Desligar a T7 no botão. O terminal 2 mostra evento/erro
+      e o terminal 1 continua normal (`s` na SL3 ainda funciona)? Religar a T7: `q` no terminal 2
+      e abrir de novo com `--model T7`: conecta de novo com o terminal 1 ainda aberto?
+- [ ] **H. Terminal.** O app de terminal (`Stillpoint Terminal App`) continua igual (este teste
+      não mexe no app).
+
+Anotar os resultados na tabela abaixo e no ROADMAP (etapa 16, "primeiro passo"). Com B, D e F
+ok, a etapa 16 segue para a implementação; se B ou D falharem, a etapa muda de desenho (um
+processo só, com vigia por thread) antes de qualquer código.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |

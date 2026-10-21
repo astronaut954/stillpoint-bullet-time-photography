@@ -1,0 +1,402 @@
+// Teste de viabilidade da etapa 16 (um processo por câmera).
+//
+// Pergunta: o SDK da Canon aceita ser carregado por vários processos ao mesmo tempo na
+// mesma máquina, cada processo com a sua câmera? Este programa de terminal abre UMA
+// câmera por processo. Rode duas cópias em dois terminais, uma para cada câmera, e siga
+// docs/teste-manual.md (seção 20). Não faz parte do app: só existe para esse teste.
+//
+// Uso:
+//   SdkMultiprocTest --list                     lista as câmeras que o SDK vê e sai
+//   SdkMultiprocTest --camera N [opções]        abre só a câmera N (0, 1...) e fica à espera
+//   SdkMultiprocTest --model T7 [opções]        abre a primeira câmera cujo nome contém "T7"
+// Opções:
+//   --out <pasta>     onde salvar as fotos (padrão: ~/Desktop/sdk-multiproc-test)
+//   --at HH:MM:SS     dispara sozinho nesse horário (relógio do computador) e sai 20 s depois
+// Comandos (digitar e Enter) enquanto a câmera está aberta:
+//   s   dispara uma foto      l   lista de novo as câmeras que o SDK vê
+//   o   tenta abrir a sessão das OUTRAS câmeras (espera-se erro: estão com outro processo)
+//   q   fecha e sai
+// Tudo que acontece vai para a tela e para <pasta>/log-<câmera>.txt, com o horário em ms.
+
+#include "EDSDK.h"
+#include "platform/platform.h"
+
+#include <atomic>
+#include <chrono>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <ctime>
+#include <filesystem>
+#include <fstream>
+#include <iostream>
+#include <mutex>
+#include <queue>
+#include <string>
+#include <thread>
+#include <vector>
+#ifdef _WIN32
+#include <process.h>
+#else
+#include <unistd.h>
+#endif
+
+namespace fs = std::filesystem;
+
+namespace
+{
+    std::ofstream g_logFile;
+    std::mutex g_logMutex;
+    std::string g_tag = "test";
+    std::atomic<int> g_downloaded{ 0 };
+    fs::path g_outDir;
+
+    std::string Now()
+    {
+        using namespace std::chrono;
+        const auto now = system_clock::now();
+        const std::time_t t = system_clock::to_time_t(now);
+        const int ms = static_cast<int>(duration_cast<milliseconds>(now.time_since_epoch()).count() % 1000);
+        const std::tm local = Platform::LocalTime(t);
+        char buf[32];
+        std::snprintf(buf, sizeof(buf), "%02d:%02d:%02d.%03d", local.tm_hour, local.tm_min, local.tm_sec, ms);
+        return buf;
+    }
+
+    void Log(const std::string& msg)
+    {
+        std::lock_guard<std::mutex> lock(g_logMutex);
+        const std::string line = Now() + " [" + g_tag + "] " + msg;
+        std::cout << line << std::endl;
+        if (g_logFile.is_open())
+            g_logFile << line << std::endl;
+    }
+
+    std::string Err(EdsError e)
+    {
+        char buf[16];
+        std::snprintf(buf, sizeof(buf), "0x%08X", static_cast<unsigned>(e));
+        std::string s = buf;
+        if (e == EDS_ERR_OK) s += " (ok)";
+        else if (e == EDS_ERR_DEVICE_BUSY) s += " (DEVICE_BUSY)";
+        else if (e == EDS_ERR_DEVICE_NOT_FOUND) s += " (DEVICE_NOT_FOUND)";
+        else if (e == EDS_ERR_COMM_DISCONNECTED) s += " (COMM_DISCONNECTED)";
+        else if (e == EDS_ERR_SESSION_NOT_OPEN) s += " (SESSION_NOT_OPEN)";
+        else if (e == EDS_ERR_TAKE_PICTURE_AF_NG) s += " (AF_NG)";
+        return s;
+    }
+
+    struct Found
+    {
+        EdsCameraRef ref = nullptr;
+        std::string model;
+        std::string port;
+    };
+
+    // Lista as câmeras que o SDK vê agora. Quem chama solta as referências que não usar.
+    std::vector<Found> ListCameras()
+    {
+        std::vector<Found> out;
+        Platform::ProcessEvents(1000);  // Mac: o SDK só enxerga as câmeras depois de processar eventos
+        EdsCameraListRef list = nullptr;
+        EdsError err = EdsGetCameraList(&list);
+        if (err != EDS_ERR_OK || list == nullptr)
+        {
+            Log("EdsGetCameraList: " + Err(err));
+            return out;
+        }
+        EdsUInt32 count = 0;
+        EdsGetChildCount(list, &count);
+        Log("EdsGetCameraList: " + std::to_string(count) + " camera(s)");
+        for (EdsUInt32 i = 0; i < count; ++i)
+        {
+            Found f;
+            if (EdsGetChildAtIndex(list, i, &f.ref) != EDS_ERR_OK || f.ref == nullptr)
+                continue;
+            EdsDeviceInfo info{};
+            if (EdsGetDeviceInfo(f.ref, &info) == EDS_ERR_OK)
+            {
+                f.model = info.szDeviceDescription;
+                f.port = info.szPortName;
+            }
+            Log("  [" + std::to_string(i) + "] " + f.model + "  port=" + f.port);
+            out.push_back(f);
+        }
+        EdsRelease(list);
+        return out;
+    }
+
+    EdsError EDSCALLBACK OnObjectEvent(EdsObjectEvent event, EdsBaseRef object, EdsVoid*)
+    {
+        if (event == kEdsObjectEvent_DirItemRequestTransfer && object != nullptr)
+        {
+            EdsDirectoryItemInfo info{};
+            EdsError err = EdsGetDirectoryItemInfo(static_cast<EdsDirectoryItemRef>(object), &info);
+            if (err == EDS_ERR_OK)
+            {
+                fs::create_directories(g_outDir);
+                const fs::path path = g_outDir / (g_tag + "_" + Now().substr(0, 8) + "_" + std::string(info.szFileName));
+                std::string clean = path.string();
+                for (char& c : clean) if (c == ':') c = '-';
+                EdsStreamRef stream = nullptr;
+                err = EdsCreateFileStream(clean.c_str(), kEdsFileCreateDisposition_CreateAlways, kEdsAccess_ReadWrite, &stream);
+                if (err == EDS_ERR_OK)
+                {
+                    err = EdsDownload(static_cast<EdsDirectoryItemRef>(object), info.size, stream);
+                    if (err == EDS_ERR_OK)
+                        err = EdsDownloadComplete(static_cast<EdsDirectoryItemRef>(object));
+                    EdsRelease(stream);
+                }
+                Log("download " + clean + ": " + Err(err));
+                if (err == EDS_ERR_OK)
+                    ++g_downloaded;
+            }
+            else
+                Log("EdsGetDirectoryItemInfo: " + Err(err));
+        }
+        if (object)
+            EdsRelease(object);
+        return EDS_ERR_OK;
+    }
+
+    EdsError EDSCALLBACK OnStateEvent(EdsStateEvent event, EdsUInt32 param, EdsVoid*)
+    {
+        char buf[64];
+        std::snprintf(buf, sizeof(buf), "state event 0x%08X param %u", static_cast<unsigned>(event), static_cast<unsigned>(param));
+        Log(buf);
+        return EDS_ERR_OK;
+    }
+
+    // Deixa o SDK entregar eventos (Mac: run loop; os dois: EdsGetEvent) por `ms`
+    void Pump(int ms)
+    {
+        const auto end = std::chrono::steady_clock::now() + std::chrono::milliseconds(ms);
+        do
+        {
+            Platform::ProcessEvents(0);
+            EdsGetEvent();
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        } while (std::chrono::steady_clock::now() < end);
+    }
+
+    EdsError OpenSession(EdsCameraRef cam)
+    {
+        // Como no app: a sessão abre numa thread auxiliar (no Mac pode levar ~40 s) e o
+        // run loop continua rodando aqui.
+        std::atomic<bool> done{ false };
+        EdsError err = EDS_ERR_OK;
+        std::thread worker([&]()
+        {
+            Platform::BeginSdkThread();
+            err = EdsOpenSession(cam);
+            Platform::EndSdkThread();
+            done = true;
+        });
+        const auto start = std::chrono::steady_clock::now();
+        int tick = 0;
+        while (!done)
+        {
+            Platform::ProcessEvents(0);
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            if (++tick % 50 == 0)
+                Log("  ... opening session (" + std::to_string(tick / 10) + " s)");
+        }
+        worker.join();
+        const double s = std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
+        Log("EdsOpenSession: " + Err(err) + " in " + std::to_string(s).substr(0, 5) + " s");
+        return err;
+    }
+
+    bool Shoot(EdsCameraRef cam)
+    {
+        const EdsError down = EdsSendCommand(cam, kEdsCameraCommand_PressShutterButton, kEdsCameraCommand_ShutterButton_Completely_NonAF);
+        Log("PressShutter DOWN: " + Err(down));
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        const EdsError off = EdsSendCommand(cam, kEdsCameraCommand_PressShutterButton, kEdsCameraCommand_ShutterButton_OFF);
+        Log("PressShutter OFF: " + Err(off));
+        return down == EDS_ERR_OK;
+    }
+
+    // Lê o teclado numa thread, para o run loop continuar girando
+    std::mutex g_cmdMutex;
+    std::queue<std::string> g_cmds;
+    void ReadCommands()
+    {
+        std::string line;
+        while (std::getline(std::cin, line))
+        {
+            std::lock_guard<std::mutex> lock(g_cmdMutex);
+            g_cmds.push(line);
+        }
+    }
+
+    bool ParseAt(const std::string& hhmmss, std::chrono::system_clock::time_point& when)
+    {
+        int h = 0, m = 0, s = 0;
+        if (std::sscanf(hhmmss.c_str(), "%d:%d:%d", &h, &m, &s) != 3)
+            return false;
+        const std::time_t now = std::time(nullptr);
+        std::tm local = Platform::LocalTime(now);
+        local.tm_hour = h; local.tm_min = m; local.tm_sec = s;
+        const std::time_t target = std::mktime(&local);
+        when = std::chrono::system_clock::from_time_t(target);
+        return true;
+    }
+}
+
+int main(int argc, char** argv)
+{
+    Platform::InitConsole();
+    bool list = false;
+    int cameraIndex = -1;
+    std::string model;
+    std::string at;
+    g_outDir = Platform::DownloadsFolder().parent_path() / "Desktop" / "sdk-multiproc-test";
+    for (int i = 1; i < argc; ++i)
+    {
+        const std::string a = argv[i];
+        auto next = [&](std::string& v) { if (i + 1 < argc) v = argv[++i]; };
+        if (a == "--list") list = true;
+        else if (a == "--camera") { std::string v; next(v); cameraIndex = std::atoi(v.c_str()); }
+        else if (a == "--model") next(model);
+        else if (a == "--out") { std::string v; next(v); g_outDir = v; }
+        else if (a == "--at") next(at);
+        else { std::cerr << "Opção desconhecida: " << a << "\n"; return 2; }
+    }
+    if (!list && cameraIndex < 0 && model.empty())
+    {
+        std::cerr << "Uso: SdkMultiprocTest --list | --camera N | --model T7 [--out pasta] [--at HH:MM:SS]\n";
+        return 2;
+    }
+
+    Log("pid " + std::to_string(static_cast<long long>(
+#ifdef _WIN32
+        _getpid()
+#else
+        getpid()
+#endif
+        )));
+    EdsError err = EdsInitializeSDK();
+    Log("EdsInitializeSDK: " + Err(err));
+    if (err != EDS_ERR_OK)
+        return 1;
+
+    std::vector<Found> cams = ListCameras();
+    if (list)
+    {
+        for (auto& c : cams) EdsRelease(c.ref);
+        EdsTerminateSDK();
+        Log("EdsTerminateSDK");
+        return 0;
+    }
+
+    int chosen = -1;
+    for (size_t i = 0; i < cams.size(); ++i)
+    {
+        if (cameraIndex >= 0 && static_cast<int>(i) == cameraIndex) chosen = static_cast<int>(i);
+        if (!model.empty() && chosen < 0 && cams[i].model.find(model) != std::string::npos) chosen = static_cast<int>(i);
+    }
+    if (chosen < 0)
+    {
+        Log("camera not found");
+        for (auto& c : cams) EdsRelease(c.ref);
+        EdsTerminateSDK();
+        return 1;
+    }
+    for (size_t i = 0; i < cams.size(); ++i)
+        if (static_cast<int>(i) != chosen) EdsRelease(cams[i].ref);
+    EdsCameraRef cam = cams[chosen].ref;
+    g_tag = cams[chosen].model;
+    for (char& c : g_tag) if (c == ' ' || c == '/') c = '_';
+    fs::create_directories(g_outDir);
+    g_logFile.open((g_outDir / ("log-" + g_tag + ".txt")).string(), std::ios::app);
+    Log("---- chosen [" + std::to_string(chosen) + "] " + cams[chosen].model + " port=" + cams[chosen].port);
+
+    EdsSetObjectEventHandler(cam, kEdsObjectEvent_All, OnObjectEvent, nullptr);
+    EdsSetCameraStateEventHandler(cam, kEdsStateEvent_All, OnStateEvent, nullptr);
+
+    if (OpenSession(cam) != EDS_ERR_OK)
+    {
+        EdsRelease(cam);
+        EdsTerminateSDK();
+        return 1;
+    }
+    EdsUInt32 saveTo = kEdsSaveTo_Host;
+    Log("SaveTo_Host: " + Err(EdsSetPropertyData(cam, kEdsPropID_SaveTo, 0, sizeof(saveTo), &saveTo)));
+    EdsCapacity capacity{};
+    capacity.numberOfFreeClusters = 0x7FFFFFFF;
+    capacity.bytesPerSector = 512;
+    capacity.reset = 1;
+    Log("SetCapacity: " + Err(EdsSetCapacity(cam, capacity)));
+
+    std::chrono::system_clock::time_point shootAt;
+    bool scheduled = false;
+    if (!at.empty())
+    {
+        if (!ParseAt(at, shootAt)) { Log("--at: use HH:MM:SS"); }
+        else { scheduled = true; Log("will shoot at " + at); }
+    }
+    else
+        Log("ready. commands: s = shoot, l = list, o = open others, q = quit");
+
+    std::thread reader(ReadCommands);
+    reader.detach();
+
+    bool shotDone = false;
+    std::chrono::steady_clock::time_point quitAt{};
+    while (true)
+    {
+        Pump(50);
+        if (scheduled && !shotDone && std::chrono::system_clock::now() >= shootAt)
+        {
+            Shoot(cam);
+            shotDone = true;
+            quitAt = std::chrono::steady_clock::now() + std::chrono::seconds(20);
+        }
+        if (shotDone && std::chrono::steady_clock::now() >= quitAt)
+        {
+            Log("downloaded " + std::to_string(g_downloaded.load()) + " photo(s); quitting");
+            break;
+        }
+        std::string cmd;
+        {
+            std::lock_guard<std::mutex> lock(g_cmdMutex);
+            if (!g_cmds.empty()) { cmd = g_cmds.front(); g_cmds.pop(); }
+        }
+        if (cmd.empty())
+            continue;
+        if (cmd == "s")
+            Shoot(cam);
+        else if (cmd == "l")
+        {
+            std::vector<Found> again = ListCameras();
+            for (auto& c : again) EdsRelease(c.ref);
+        }
+        else if (cmd == "o")
+        {
+            std::vector<Found> again = ListCameras();
+            for (auto& c : again)
+            {
+                if (c.port == cams[chosen].port) { EdsRelease(c.ref); continue; }
+                Log("trying EdsOpenSession on " + c.model + " (other process's camera)");
+                const EdsError e = EdsOpenSession(c.ref);
+                Log("  result: " + Err(e));
+                if (e == EDS_ERR_OK)
+                {
+                    Log("  !! opened — closing again: " + Err(EdsCloseSession(c.ref)));
+                }
+                EdsRelease(c.ref);
+            }
+        }
+        else if (cmd == "q")
+            break;
+        else
+            Log("unknown command: " + cmd);
+    }
+
+    Log("EdsCloseSession: " + Err(EdsCloseSession(cam)));
+    EdsRelease(cam);
+    EdsTerminateSDK();
+    Log("EdsTerminateSDK; photos downloaded: " + std::to_string(g_downloaded.load()));
+    return 0;
+}

@@ -532,6 +532,9 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    ficam esperando), RAM ~20–60 MB por câmera. **Primeiro passo (com 2 câmeras):** confirmar que
    o SDK aceita ser carregado por vários processos na mesma máquina, cada um com a sua câmera.
    Substitui o item "Ordens de disparo em paralelo" abaixo. Terminal não muda.
+   **Em andamento (branch `etapa-16-processo-por-camera`, 2026-10-21):** programa de teste
+   `SdkMultiprocTest` (`src/tools/sdk_multiproc_test.cpp`) e roteiro em `docs/teste-manual.md`,
+   seção 20. Resultado do teste no Mac: pendente.
 2. **Etapa 17 — modo caixa de disparo.** O app usa a caixa (ESP32 + um canal por câmera, já
    desenhada em `docs/hardware/caixa-de-disparo.pdf` e `hardware/trigger-box/`) para disparar:
    o plano do Timing/Sweep vai para a caixa (PLAN/GO), que dispara com precisão de milissegundos;

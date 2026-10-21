@@ -183,6 +183,17 @@ endif()
 stillpoint_copy_runtime_files(StillpointTerminal)
 
 # ---------------------------------------------------------------------------
+# Teste de viabilidade da etapa 16: um processo por câmera (ver o topo do .cpp e
+# docs/teste-manual.md, seção 20). Não entra nos instaladores.
+# ---------------------------------------------------------------------------
+add_executable(SdkMultiprocTest src/tools/sdk_multiproc_test.cpp)
+target_link_libraries(SdkMultiprocTest PRIVATE stillpoint_core)
+if(NOT WIN32)
+    set_target_properties(SdkMultiprocTest PROPERTIES
+        BUILD_RPATH "@executable_path/Frameworks;@executable_path/../Frameworks")
+endif()
+
+# ---------------------------------------------------------------------------
 # Interface gráfica (janela nativa com HTML/CSS; ver assets/ui)
 # ---------------------------------------------------------------------------
 if(STILLPOINT_BUILD_GUI)
