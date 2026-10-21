@@ -211,9 +211,13 @@ namespace
 
     bool Shoot(EdsCameraRef cam)
     {
+        // Registra ANTES de cada chamada: se o SDK travar dentro dela, a linha "calling"
+        // fica sem a resposta e mostra onde parou.
+        Log("calling PressShutter DOWN");
         const EdsError down = EdsSendCommand(cam, kEdsCameraCommand_PressShutterButton, kEdsCameraCommand_ShutterButton_Completely_NonAF);
         Log("PressShutter DOWN: " + Err(down));
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        Log("calling PressShutter OFF");
         const EdsError off = EdsSendCommand(cam, kEdsCameraCommand_PressShutterButton, kEdsCameraCommand_ShutterButton_OFF);
         Log("PressShutter OFF: " + Err(off));
         return down == EDS_ERR_OK;
@@ -361,9 +365,27 @@ int main(int argc, char** argv)
 
     bool shotDone = false;
     std::chrono::steady_clock::time_point quitAt{};
+    // Vigia: se o laço principal ficar mais de 5 s sem girar (SDK travado), avisa na tela
+    std::atomic<long long> lastLoopMs{ 0 };
+    auto nowMs = []() { return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count(); };
+    lastLoopMs = nowMs();
+    std::thread([&]()
+    {
+        while (true)
+        {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            const long long idle = nowMs() - lastLoopMs.load();
+            if (idle > 5000 && idle % 5000 < 1000)
+                Log("!! main loop stuck for " + std::to_string(idle / 1000) + " s (SDK call not returning)");
+        }
+    }).detach();
+    int heartbeat = 0;
     while (true)
     {
         Pump(50);
+        lastLoopMs = nowMs();
+        if (scheduled && !shotDone && ++heartbeat % 600 == 0)
+            Log("  ... waiting for " + at);
         if (scheduled && !shotDone && std::chrono::system_clock::now() >= shootAt)
         {
             Shoot(cam);
