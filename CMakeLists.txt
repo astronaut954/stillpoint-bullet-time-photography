@@ -267,6 +267,7 @@ if(STILLPOINT_BUILD_GUI)
 
     set(STILLPOINT_GUI_SOURCES
         src/gui/main_gui.cpp
+        src/gui/camera_fleet.cpp
         src/gui/auto_match.cpp
         src/gui/match_debug.cpp
         src/gui/chart.cpp
