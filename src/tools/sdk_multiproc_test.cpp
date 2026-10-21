@@ -12,6 +12,8 @@
 // Opções:
 //   --out <pasta>     onde salvar as fotos (padrão: ~/Desktop/sdk-multiproc-test)
 //   --at HH:MM:SS     dispara sozinho nesse horário (relógio do computador) e sai 20 s depois
+//   --wait S          espera até S segundos as câmeras aparecerem no SDK (padrão 90; no Mac
+//                     uma câmera recém-ligada leva ~40 s para o SDK enxergar)
 // Comandos (digitar e Enter) enquanto a câmera está aberta:
 //   s   dispara uma foto      l   lista de novo as câmeras que o SDK vê
 //   o   tenta abrir a sessão das OUTRAS câmeras (espera-se erro: estão com outro processo)
@@ -251,6 +253,7 @@ int main(int argc, char** argv)
     int cameraIndex = -1;
     std::string model;
     std::string at;
+    int waitSeconds = 90;
     g_outDir = Platform::DownloadsFolder().parent_path() / "Desktop" / "sdk-multiproc-test";
     for (int i = 1; i < argc; ++i)
     {
@@ -261,6 +264,7 @@ int main(int argc, char** argv)
         else if (a == "--model") next(model);
         else if (a == "--out") { std::string v; next(v); g_outDir = v; }
         else if (a == "--at") next(at);
+        else if (a == "--wait") { std::string v; next(v); waitSeconds = std::atoi(v.c_str()); }
         else { std::cerr << "Opção desconhecida: " << a << "\n"; return 2; }
     }
     if (!list && cameraIndex < 0 && model.empty())
@@ -282,6 +286,19 @@ int main(int argc, char** argv)
         return 1;
 
     std::vector<Found> cams = ListCameras();
+    {
+        // Espera as câmeras aparecerem (lista de novo a cada 2 s)
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(waitSeconds);
+        int waited = 0;
+        while (cams.empty() && std::chrono::steady_clock::now() < deadline)
+        {
+            Pump(2000);
+            waited += 2;
+            if (waited % 10 == 0)
+                Log("  ... no cameras yet (" + std::to_string(waited) + " s). Are they on and plugged in?");
+            cams = ListCameras();
+        }
+    }
     if (list)
     {
         for (auto& c : cams) EdsRelease(c.ref);
