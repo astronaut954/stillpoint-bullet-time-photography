@@ -566,9 +566,10 @@ Junto com essas etapas (sem etapa própria):
 - **Medir o menor intervalo do Sweep por USB** — **medido em 2026-10-21** (SL3 + T7 + T5, um
   processo por câmera): o limite não é o USB, é a câmera: ela recusa ("busy") uma nova foto
   0,9 s depois da anterior e aceita a 1,8 s. Entre câmeras diferentes, 0,3 s funcionou; 0,1 e
-  0,15 s ainda não foram testados com 9 câmeras. A Timeline avisa quando o plano pede a mesma
-  câmera em menos de 1,2 s; o processo da câmera insiste por até 0,4 s no "busy". Com a caixa
-  de disparo (etapa 17) o limite entre câmeras deixa de existir; o da mesma câmera, não.
+  0,15 s ainda não foram testados com 9 câmeras. **Decisão pendente (dono do projeto):** o que
+  fazer com esse limite — avisar na Timeline, insistir no "busy", fundir Sweep com One after
+  another, ou nada por enquanto. Nada foi mudado no Sweep. Com a caixa de disparo (etapa 17) o
+  limite entre câmeras deixa de existir; o da mesma câmera, não.
 - **Guia de montagem do rig** (documento, não código) — **feito em 2026-10-18**:
   `docs/hardware/montagem-do-rig.md` (MacBook, 9–12 T7, dois hubs alimentados, fontes dummy,
   nobreak, lista de compras com preços no Brasil, roteiro de teste e orçamento de aluguel).

@@ -3311,7 +3311,7 @@
       let k = 0;
       for (let l = 0; l < loops; l++) order.forEach((o) => add(o, (k++) * ms));
       if (direction === "pingpong" && N > 1) add(1, (k++) * ms);
-      if (sweep) warn = "Over USB, a camera needs about 1.2 s before it can fire again (measured 2026-10-21); faster needs the trigger box.";
+      if (sweep) warn = "Shortest interval the cameras keep up with over USB is still to be measured (around 0.1–0.2 s). Faster than that needs the trigger box.";
     } else if (timing.mode === "groups") {
       const g = Math.max(1, Math.min(N, Math.round(num(timing.groups, 1, 99, 2))));
       const gap = num(timing.gap, 0.05, 600, 1) * 1000;
@@ -3335,13 +3335,6 @@
       if (!shots.length) warn = "No camera is in any step. Add cameras to the steps.";
     }
     shots.sort((a, b) => a.t - b.t || a.order - b.order);
-    // A mesma câmera de novo em menos de ~1,2 s: a câmera recusa ("busy") e a foto some
-    // (medido em 2026-10-21 com SL3, T7 e T5: recusa a 0,9 s, aceita a 1,8 s)
-    const REFIRE_MS = 1200;
-    const lastAt = {};
-    let tight = 0, tightGap = Infinity;
-    shots.forEach((s) => { if (lastAt[s.order] !== undefined) { const g = s.t - lastAt[s.order]; if (g < REFIRE_MS) { tight++; tightGap = Math.min(tightGap, g); } } lastAt[s.order] = s.t; });
-    if (tight) warn = "Some cameras fire again only " + fmtS(tightGap) + " after their previous shot; they need about 1.2 s and may refuse (\"busy\"). Use a longer interval or more cameras." + (warn ? " " + warn : "");
     const span = shots.length ? shots[shots.length - 1].t : 0;
     const total = !shots.length ? "" : span === 0 ? shots.length + " shots at once" : shots.length + " shots over " + fmtS(span);
     return { shots, warn, total, N };
