@@ -534,7 +534,12 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    Substitui o item "Ordens de disparo em paralelo" abaixo. Terminal não muda.
    **Em andamento (branch `etapa-16-processo-por-camera`, 2026-10-21):** programa de teste
    `SdkMultiprocTest` (`src/tools/sdk_multiproc_test.cpp`) e roteiro em `docs/teste-manual.md`,
-   seção 20. Resultado do teste no Mac: pendente.
+   seção 20. **Resultado no Mac (2026-10-21, SL3 + T7 + T5): aprovado.** Três processos, cada um
+   com a sua câmera, abrem em ~0,5 s; o SDK recusa abrir a câmera de outro processo
+   (0xC0, porta em uso), então a exclusividade vem do próprio SDK; disparo simultâneo pelo
+   relógio do computador com 26 ms entre o primeiro e o terceiro processo. Numa rodada a T7
+   travou dentro do comando de disparo e só o processo dela parou — os outros dois dispararam,
+   baixaram e fecharam normalmente: é exatamente o isolamento que a etapa quer.
 2. **Etapa 17 — modo caixa de disparo.** O app usa a caixa (ESP32 + um canal por câmera, já
    desenhada em `docs/hardware/caixa-de-disparo.pdf` e `hardware/trigger-box/`) para disparar:
    o plano do Timing/Sweep vai para a caixa (PLAN/GO), que dispara com precisão de milissegundos;
