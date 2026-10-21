@@ -292,10 +292,21 @@ namespace
         return false;
     }
 
-    void Fire(Worker::Item& item)
+    void Fire(Worker::Item& item, long long retryUntilMs)
     {
         item.fired = true;
-        const EdsError down = EdsSendCommand(g.cam.camera, kEdsCameraCommand_PressShutterButton, kEdsCameraCommand_ShutterButton_Completely_NonAF);
+        // "Camera is busy" (0x81): a câmera ainda está terminando a foto anterior (medido em
+        // 2026-10-21: recusa a 0,9 s, aceita a 1,8 s). Insiste a cada 25 ms até retryUntilMs
+        // (no máximo 400 ms e nunca passando da hora do próximo item desta câmera).
+        EdsError down = EDS_ERR_OK;
+        for (;;)
+        {
+            down = EdsSendCommand(g.cam.camera, kEdsCameraCommand_PressShutterButton, kEdsCameraCommand_ShutterButton_Completely_NonAF);
+            if (down != EDS_ERR_DEVICE_BUSY || NowMs() >= retryUntilMs)
+                break;
+            EdsSendCommand(g.cam.camera, kEdsCameraCommand_PressShutterButton, kEdsCameraCommand_ShutterButton_OFF);
+            Pump(25);
+        }
         const long long at = NowMs();
         if (down == EDS_ERR_OK)
             g.pendingPrefixes.push_back(item.prefix);
@@ -431,7 +442,13 @@ int main(int argc, char** argv)
                 if (item.fired)
                     continue;
                 if (now >= g.t0 + item.atMs)
-                    Fire(item);
+                {
+                    long long retryUntil = g.t0 + item.atMs + 400;
+                    for (const auto& other : g.plan)
+                        if (!other.fired && other.atMs > item.atMs)
+                            retryUntil = std::min(retryUntil, g.t0 + other.atMs - 30);
+                    Fire(item, retryUntil);
+                }
                 else
                     allFired = false;
                 if (g.lost)

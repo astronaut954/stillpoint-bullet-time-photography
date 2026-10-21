@@ -549,7 +549,9 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    log por câmera em `Logs/worker-<série>.txt`. Camera settings, Test shot e Match passam pelos
    processos (`CameraFleet::ReadSettings/WriteSetting`). Decidido: sem chave para o modo
    antigo. Terminal e câmeras simuladas não mudam. Teste: `docs/teste-manual.md`, seção 21.
-   Status: aguardando teste no Mac com SL3 + T7 + T5.
+   **Testado no Mac em 2026-10-21 (SL3 + T7 + T5): conexão em paralelo, disparo At once e
+   com plano, queda e volta da T5 com o mesmo nome, Restart camera connections — tudo ok.**
+   Pendente: Camera settings/Test shot/Match, fechar o app, Windows.
 2. **Etapa 17 — modo caixa de disparo.** O app usa a caixa (ESP32 + um canal por câmera, já
    desenhada em `docs/hardware/caixa-de-disparo.pdf` e `hardware/trigger-box/`) para disparar:
    o plano do Timing/Sweep vai para a caixa (PLAN/GO), que dispara com precisão de milissegundos;
@@ -561,8 +563,12 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
 
 Junto com essas etapas (sem etapa própria):
 - **Live, parte 3:** a página Live servida na rede local (TV com navegador, tablet).
-- **Medir o menor intervalo do Sweep por USB** (2 câmeras, Sweep 0,1 s) e registrar no aviso da
-  Timeline; com a caixa de disparo (etapa 17) o limite deixa de existir.
+- **Medir o menor intervalo do Sweep por USB** — **medido em 2026-10-21** (SL3 + T7 + T5, um
+  processo por câmera): o limite não é o USB, é a câmera: ela recusa ("busy") uma nova foto
+  0,9 s depois da anterior e aceita a 1,8 s. Entre câmeras diferentes, 0,3 s funcionou; 0,1 e
+  0,15 s ainda não foram testados com 9 câmeras. A Timeline avisa quando o plano pede a mesma
+  câmera em menos de 1,2 s; o processo da câmera insiste por até 0,4 s no "busy". Com a caixa
+  de disparo (etapa 17) o limite entre câmeras deixa de existir; o da mesma câmera, não.
 - **Guia de montagem do rig** (documento, não código) — **feito em 2026-10-18**:
   `docs/hardware/montagem-do-rig.md` (MacBook, 9–12 T7, dois hubs alimentados, fontes dummy,
   nobreak, lista de compras com preços no Brasil, roteiro de teste e orçamento de aluguel).
