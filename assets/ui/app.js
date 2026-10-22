@@ -640,6 +640,7 @@
   function placedRows() { return [...ui.cameraList.querySelectorAll("li.camera[data-placed='1']")]; }
   function camPointerDown(e, li) {
     if (e.button !== 0 || busy || e.target.closest("button")) return;
+    e.preventDefault();  // sem seleção de texto pelo caminho do arraste
     camDrag = { li, y: e.clientY, moved: false, scroll: ui.cameraList.scrollTop };
     li.setPointerCapture(e.pointerId);
     li.onpointermove = camPointerMove;
@@ -3608,6 +3609,7 @@
   function stepRows(root) { return [...root.querySelectorAll(".timing-step")]; }
   function stepPointerDown(e, row, index, root) {
     if (e.button !== 0 || timing.steps.length <= 1 || e.target.closest("button, input, select")) return;
+    e.preventDefault();  // sem seleção de texto pelo caminho do arraste
     stepDrag = { row, index, root, y: e.clientY, moved: false };
     row.setPointerCapture(e.pointerId);
     row.onpointermove = stepPointerMove;
