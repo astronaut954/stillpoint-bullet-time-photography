@@ -586,6 +586,9 @@ do plano (abaixo).
       durante os disparos aparece "photo offered by the camera; kept there (deferred, n waiting)" e
       nenhuma linha `download`; depois do 5º disparo, "downloading 5 deferred photo(s)" e as 5
       linhas `download … (ok)`. Esperado: 5/5 aceitas (o download não atrasa mais o pedido).
+- [ ] **Resultado D/E (2026-10-22):** T7 e SL3 seguraram 6 RAW e baixaram depois; T5 segura 3–4 e
+      recusa as seguintes (decisão: sem teto; ver ROADMAP). SL3 limite ~1,0 s, T5 ~1,07 s (as três
+      a 1/5 s). T5 com cartão ruim: SDK travado 2 min por foto, erro 0x02, câmera caiu.
 - [ ] **E. Quantas a câmera segura (sem cartão).** Tire o cartão e rode
       `./build/macos-arm64/SdkMultiprocTest --model T7 --repeat 12 --gap 1000 --defer`. Anotar em
       qual foto a câmera começa a recusar (memória interna cheia) e se as fotos anteriores baixam

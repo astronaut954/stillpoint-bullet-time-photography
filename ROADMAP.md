@@ -37,6 +37,7 @@ Status: `feito` · `em andamento` · `próximo` · `depois`
 | 13 | Match colors | Picture Style pelo app (botão "±": contraste, saturação, tom de cor) e igualado pelo Match; brilho medido como o olho vê; "Use gray card" (acha o cartão, a pessoa confere, cinza neutro); "Calibrate with chart" (cartela impressa, diferença por modelo); modo debug; perguntar se descarta as sessões depois de salvar. Testado no Mac com SL3 + T7 até o cartão cinza (2026-10-16); a cartela ainda não foi testada com câmeras. Versão 2.8.0. | feito |
 | 14 | Disparo com intervalos (Timing) | Campo Timing no painel Bullet time (botão Advanced): todas juntas, uma depois da outra (intervalo, direção 1→N / N→1 / ida e volta, loops), grupos, ímpar/par e custom (passos: câmeras + tempo). Linha do tempo. Disparo com plano no núcleo (uma foto por item; o número da foto é a posição no plano). Câmeras simuladas para testar sem câmeras (STILLPOINT_FAKE_CAMERAS). Testado no Mac com câmeras simuladas (2026-10-16); com câmeras de verdade, ainda não. Versão 2.9.0. | feito |
 | 15 | Janela Live | Palco em tela cheia para um segundo monitor (ou janela flutuante): contagem inicial (a da janela principal continua), câmeras na ordem do rig disparando (branca → verde, próxima tracejada), contagem entre grupos, fotos chegando e a sequência em loop no fim. Modos Operator e Audience; layout arco (padrão), círculo ou linha; bip por grupo (opcional, ligado). Janela separada (até duas), tela cheia por monitor, sons sobrepostos com ducking, modo Sweep no Timing. Testado no Mac com câmeras simuladas (2026-10-17); Windows e câmeras de verdade ainda não. Versão 2.10.0. | feito |
+| 16 | Um processo por câmera + Sweep | Cada câmera num processo próprio (`StillpointWorker`), coordenados pelo `CameraFleet`: conexão em paralelo, disparo por relógio, vigia e religação, log por câmera. Junto: Sweep único com Direction em todos os modos, aviso e tratamento de foto recusada (câmera precisa de ~1,2 s entre fotos suas), download adiado até o fim do plano. Testado no Mac com SL3 + T7 + T5 (2026-10-21/22); Windows compilado e testado com simuladas. Versão 2.11.0. | feito |
 
 ### Etapa 5: mudanças pedidas para a interface (registradas em 2026-10-10)
 
@@ -609,6 +610,13 @@ Junto com essas etapas (sem etapa própria):
   "n missing" na sessão (arquivo `.missing` na pasta, escrito pelo CameraFleet; some ao salvar e
   descartar como qualquer sessão). As câmeras simuladas passaram a recusar como a T7 (foto a
   menos de ~1 s da anterior aceita), para testar tudo isso sem câmera.
+  **Medição das três (2026-10-22, todas a 1/5 s, RAW):** limite da própria câmera SL3 ~1,0 s,
+  T7 ~0,93 s, T5 ~1,07 s (o 1/5 s entra nesse tempo; mais rápido, o limite cai ~0,2 s); plano a
+  1,2 s aceito nas três. Memória interna com download adiado: T7 e SL3 seguraram 6 RAW (máximo
+  não medido); **a T5 segura só 3–4 e recusa as seguintes**. Com cartão ruim a T5 travou o SDK
+  por 2 min por foto e caiu (cartão trocado, não voltou). **Decisão (2026-10-22): sem teto de
+  fotos seguradas (opção B)** — melhor para o rig de T7; a T5 perde fotos em planos com 4+ fotos
+  por câmera. Se uma câmera "pequena" entrar no rig: teto por modelo (opção C).
 - **Guia de montagem do rig** (documento, não código) — **feito em 2026-10-18**:
   `docs/hardware/montagem-do-rig.md` (MacBook, 9–12 T7, dois hubs alimentados, fontes dummy,
   nobreak, lista de compras com preços no Brasil, roteiro de teste e orçamento de aluguel).
@@ -681,6 +689,11 @@ Junto com essas etapas (sem etapa própria):
 Atualizar esta tabela sempre que uma função mudar de status.
 
 ## Pendências conhecidas
+
+- **2.11.0 (etapa 16 + Sweep) publicada em 2026-10-22 com o Windows testado só com câmeras
+  simuladas** (decisão do dono do projeto): a janela Live e as câmeras de verdade no Windows
+  continuam sem teste (ver 2.10.0 abaixo); no Mac falta só o resumo de foto recusada com câmeras
+  de verdade (teste-manual 21). Conferir na primeira oportunidade.
 
 - **2.10.0 (etapa 15) publicada sem teste no Windows nem com câmeras de verdade (2026-10-17).**
   No Windows nunca compilou: janela Live (segunda instância webview/WebView2), tela cheia por
