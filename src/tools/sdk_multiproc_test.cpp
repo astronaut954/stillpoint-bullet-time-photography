@@ -14,6 +14,15 @@
 //   --at HH:MM:SS     dispara sozinho nesse horário (relógio do computador) e sai 20 s depois
 //   --wait S          espera até S segundos as câmeras aparecerem no SDK (padrão 90; no Mac
 //                     uma câmera recém-ligada leva ~40 s para o SDK enxergar)
+//   --repeat N --gap MS [--retry] [--retry-max MS] [--retry-every MS]
+//                     Medição da mesma câmera repetindo (2026-10-21): dispara N fotos nesta
+//                     câmera, uma a cada MS milissegundos pelo relógio. Com --retry, uma foto
+//                     recusada ("busy") é pedida de novo a cada --retry-every ms (padrão 50)
+//                     até a câmera aceitar ou passarem --retry-max ms (padrão 3000). No fim
+//                     imprime, foto a foto: hora prevista, hora aceita, atraso, tentativas,
+//                     resultado; espera 20 s pelas fotos e sai. Responde: qual o menor espaço
+//                     que a câmera aceita, quanto a foto atrasa quando se insiste, e se insistir
+//                     atrapalha (travar, foto não baixar).
 // Comandos (digitar e Enter) enquanto a câmera está aberta:
 //   s   dispara uma foto      l   lista de novo as câmeras que o SDK vê
 //   o   tenta abrir a sessão das OUTRAS câmeras (espera-se erro: estão com outro processo)
@@ -23,6 +32,7 @@
 #include "EDSDK.h"
 #include "platform/platform.h"
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <cstdio>
@@ -209,6 +219,29 @@ namespace
         return err;
     }
 
+    // Uma foto com insistência: pede, e se a câmera recusa ("busy") pede de novo a cada
+    // `everyMs` até aceitar ou passar `maxMs`. Devolve o resultado, quantas vezes pediu e
+    // quando (ms do relógio) a câmera aceitou.
+    struct FireResult { EdsError err = EDS_ERR_OK; int attempts = 0; long long acceptedMs = 0; };
+    long long WallMs() { return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count(); }
+    FireResult FireWithRetry(EdsCameraRef cam, bool retry, int maxMs, int everyMs)
+    {
+        FireResult r;
+        const long long start = WallMs();
+        while (true)
+        {
+            ++r.attempts;
+            r.err = EdsSendCommand(cam, kEdsCameraCommand_PressShutterButton, kEdsCameraCommand_ShutterButton_Completely_NonAF);
+            r.acceptedMs = WallMs();
+            if (r.err == EDS_ERR_OK || !retry || r.err != EDS_ERR_DEVICE_BUSY || r.acceptedMs - start >= maxMs)
+                break;
+            Pump(everyMs);
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        EdsSendCommand(cam, kEdsCameraCommand_PressShutterButton, kEdsCameraCommand_ShutterButton_OFF);
+        return r;
+    }
+
     bool Shoot(EdsCameraRef cam)
     {
         // Registra ANTES de cada chamada: se o SDK travar dentro dela, a linha "calling"
@@ -258,6 +291,8 @@ int main(int argc, char** argv)
     std::string model;
     std::string at;
     int waitSeconds = 90;
+    int repeat = 0, gapMs = 0, retryMaxMs = 3000, retryEveryMs = 50;
+    bool retry = false;
     g_outDir = Platform::DownloadsFolder().parent_path() / "Desktop" / "sdk-multiproc-test";
     for (int i = 1; i < argc; ++i)
     {
@@ -269,11 +304,21 @@ int main(int argc, char** argv)
         else if (a == "--out") { std::string v; next(v); g_outDir = v; }
         else if (a == "--at") next(at);
         else if (a == "--wait") { std::string v; next(v); waitSeconds = std::atoi(v.c_str()); }
+        else if (a == "--repeat") { std::string v; next(v); repeat = std::atoi(v.c_str()); }
+        else if (a == "--gap") { std::string v; next(v); gapMs = std::atoi(v.c_str()); }
+        else if (a == "--retry") retry = true;
+        else if (a == "--retry-max") { std::string v; next(v); retryMaxMs = std::atoi(v.c_str()); }
+        else if (a == "--retry-every") { std::string v; next(v); retryEveryMs = std::max(1, std::atoi(v.c_str())); }
         else { std::cerr << "Opção desconhecida: " << a << "\n"; return 2; }
     }
     if (!list && cameraIndex < 0 && model.empty())
     {
-        std::cerr << "Uso: SdkMultiprocTest --list | --camera N | --model T7 [--out pasta] [--at HH:MM:SS]\n";
+        std::cerr << "Uso: SdkMultiprocTest --list | --camera N | --model T7 [--out pasta] [--at HH:MM:SS] [--repeat N --gap MS [--retry]]\n";
+        return 2;
+    }
+    if (repeat > 0 && gapMs <= 0)
+    {
+        std::cerr << "--repeat precisa de --gap MS (espaço entre as fotos, em ms)\n";
         return 2;
     }
 
@@ -349,6 +394,49 @@ int main(int argc, char** argv)
     capacity.bytesPerSector = 512;
     capacity.reset = 1;
     Log("SetCapacity: " + Err(EdsSetCapacity(cam, capacity)));
+
+    if (repeat > 0)
+    {
+        // Medição: N fotos nesta câmera, uma a cada gapMs pelo relógio, a partir de daqui a 2 s
+        Pump(2000);
+        Log("repeat test: " + std::to_string(repeat) + " shots, gap " + std::to_string(gapMs) + " ms, retry " +
+            (retry ? "on (every " + std::to_string(retryEveryMs) + " ms, up to " + std::to_string(retryMaxMs) + " ms)" : "off"));
+        struct Row { long long planned, accepted; int attempts; EdsError err; };
+        std::vector<Row> rows;
+        const long long t0 = WallMs() + 1000;
+        for (int i = 0; i < repeat; ++i)
+        {
+            const long long planned = t0 + static_cast<long long>(i) * gapMs;
+            while (WallMs() < planned)
+            {
+                Platform::ProcessEvents(0);
+                EdsGetEvent();
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
+            Log("shot " + std::to_string(i + 1) + ": calling PressShutter DOWN");
+            const FireResult r = FireWithRetry(cam, retry, retryMaxMs, retryEveryMs);
+            Log("shot " + std::to_string(i + 1) + ": " + Err(r.err) + " after " + std::to_string(r.attempts) + " attempt(s), " +
+                std::to_string(r.acceptedMs - planned) + " ms late");
+            rows.push_back({ planned, r.acceptedMs, r.attempts, r.err });
+        }
+        Log("waiting 20 s for the photos");
+        Pump(20000);
+        Log("---- repeat test summary (gap " + std::to_string(gapMs) + " ms, retry " + (retry ? "on" : "off") + ")");
+        Log("shot | planned +ms | accepted +ms | late ms | attempts | result");
+        int ok = 0;
+        for (size_t i = 0; i < rows.size(); ++i)
+        {
+            const Row& w = rows[i];
+            if (w.err == EDS_ERR_OK) ++ok;
+            Log(std::to_string(i + 1) + " | " + std::to_string(w.planned - t0) + " | " + std::to_string(w.accepted - t0) + " | " +
+                std::to_string(w.accepted - w.planned) + " | " + std::to_string(w.attempts) + " | " + Err(w.err));
+        }
+        Log("accepted " + std::to_string(ok) + "/" + std::to_string(rows.size()) + "; photos downloaded: " + std::to_string(g_downloaded.load()));
+        Log("EdsCloseSession: " + Err(EdsCloseSession(cam)));
+        EdsRelease(cam);
+        EdsTerminateSDK();
+        return 0;
+    }
 
     std::chrono::system_clock::time_point shootAt;
     bool scheduled = false;

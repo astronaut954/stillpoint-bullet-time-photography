@@ -321,14 +321,28 @@ Sem câmeras: feche o app e abra com câmeras simuladas (Mac: `STILLPOINT_FAKE_C
 geram fotos de teste com o número da câmera e "#n" (número da foto na sessão).
 
 - [ ] Painel Bullet time: linha "Timing: All at once" com o botão Advanced. Advanced abre os modos
-      (At once, Sequence, Groups, Odd / even, Custom), os campos do modo e a linha do tempo; o painel
-      cresce enquanto está aberto. Hide fecha.
-- [ ] Sequence 0,5 s, 1 → 9 → 1: resumo "17 shots over 8 s"; a linha do tempo mostra 1…9 e depois
-      8…1 (bolinhas vazadas = segunda foto da câmera). Direction 9 → 1 inverte. Loops 2 dobra.
+      (At once, Sweep, Groups, Odd / even, Custom), os campos do modo e a linha do tempo; o painel
+      cresce enquanto está aberto. Hide fecha. (Desde o branch `sweep-limite`, "One after another"
+      e "Sweep" são um modo só, "Sweep": intervalo livre a partir de 0,05 s e atalhos 0,1 / 0,2 /
+      0,3 / 0,4 s.)
+- [ ] Sweep 0,5 s (digitado), 1 → 9 → 1: resumo "17 shots over 8 s"; a linha do tempo mostra 1…9 e
+      depois 8…1 (bolinhas vazadas = segunda foto da câmera). Direction 9 → 1 inverte. Loops 2 dobra.
 - [ ] Groups 3 × 1 s: "1–3", "4–6", "7–9" em 0, 1 e 2 s. Odd / even: "odd (5)" em 0 e "even (4)" em 1 s.
-- [ ] Sweep: atalhos de intervalo (0,1 / 0,15 / 0,2 / 0,3 s), direção e loops; resumo "Sweep · 0.2 s ·
-      1 → 9 · 9 shots over 1.6 s"; disparo com as 9 fotos em sequência (na Live: "Fire!", sem
-      contagem nem som de grupo).
+- [ ] Sweep: atalhos de intervalo (0,1 / 0,2 / 0,3 / 0,4 s) preenchem o campo Interval; resumo
+      "Sweep · 0.2 s · 1 → 9 · 9 shots over 1.6 s"; disparo com as 9 fotos em sequência (na Live:
+      "Fire!", sem contagem nem som de grupo).
+- [ ] **Aviso de câmera repetindo cedo demais** (medido em 2026-10-21: a câmera recusa uma nova
+      foto a 0,9 s da própria anterior; aceita a 1,8 s). Sweep 0,3 s, 1 → 9, Loops 1: sem aviso.
+      Loops 2: ainda sem aviso (cada câmera repete a 2,7 s, acima do limite). Sweep 0,1 s, Loops 2:
+      aviso "Camera 1 would shoot again 0.9 s after its previous shot (9 cameras repeat too soon).
+      Cameras need about 1.8 s between their own shots; expect missing photos.". Sweep 0,3 s,
+      1 → 9 → 1: aviso "Camera 8 would shoot again 0.6 s… (2 cameras repeat too soon)" (a 7 repete a
+      1,2 s). Sweep 0,5 s, 1 → 9 → 1: "Camera 8 … 1 s" sem o parêntese (só ela fica abaixo de 1,8 s).
+      Groups 3 × 0,5 s, Loops 2: aviso "Camera 1 … 1.5 s … (9 cameras repeat too soon)". Custom
+      com a mesma câmera em dois passos a 1 s: aviso. O aviso de "not in any step" continua
+      aparecendo junto, quando houver.
+- [ ] Um `settings.txt` antigo com `timing={"mode":"seq","interval":0.5,…}` abre como Sweep 0,5 s;
+      um com `"mode":"sweep","sweep":0.15,"sweepDirection":"back"` abre como Sweep 0,15 s, 9 → 1.
 - [ ] Custom: passos com chips; clicar num chip move a câmera para aquele passo; "Add step" cria um
       passo; o X remove. Câmera fora dos passos: aviso "Camera 9 is not in any step…".
 - [ ] Advanced fechado com um modo escolhido: etiqueta âmbar "Timing", resumo e linha do tempo
@@ -337,13 +351,13 @@ geram fotos de teste com o número da câmera e "#n" (número da foto na sessão
 - [ ] Advanced aberto: a caixa Timeline fica sempre no mesmo lugar (logo abaixo dos modos) ao trocar
       de modo; as opções do modo têm caixas do mesmo tamanho e alinhadas.
 - [ ] Fechar e abrir o app: o Timing escolhido continua.
-- [ ] It's bullet time com Sequence 0,5 s 1 → 9 → 1: a sessão fica com 17 fotos, na ordem 1…9, 8…1
+- [ ] It's bullet time com Sweep 0,5 s 1 → 9 → 1: a sessão fica com 17 fotos, na ordem 1…9, 8…1
       (olhar o número grande de cada foto e o "#n"); o download conta até 17. Sequence export toca
       nessa ordem.
 - [ ] Custom (1,2,3 em 0; 4 em 2 s; 5,6,7 em 1 s depois): 7 fotos, tempos certos (ver o log).
 - [ ] Cancelar no meio de uma sequência longa: para de disparar; as fotos já tiradas ficam.
 - [ ] All at once: igual a antes (9 fotos, uma por câmera, prefixo = ordem da câmera).
-- [ ] Com câmeras de verdade (quando houver): Sequence 1 s com 2 câmeras: fotos chegam e a sessão
+- [ ] Com câmeras de verdade (quando houver): Sweep 1 s com 2 câmeras: fotos chegam e a sessão
       tem a ordem certa; terminal app sem mudança.
 
 ## 19. Janela Live (etapa 15)
@@ -466,7 +480,7 @@ cmake --build --preset macos-arm64-release
 - [ ] **Identify** em cada uma: o obturador até a metade responde na câmera certa.
 - [ ] **It's bullet time, At once**, Download wait 10 s: as três fotos chegam; nomes dos
       arquivos como sempre (`01_SL3_1_IMG_xxxx.CR3`). Repetir 3 vezes.
-- [ ] **Timing: One after another 0,5 s; Groups; Sweep 0,2 s** com a Live aberta: sons de grupo e
+- [ ] **Timing: Sweep 0,5 s; Groups; Sweep 0,2 s** com a Live aberta: sons de grupo e
       metrônomo nos tempos certos; a Live mostra cada disparo; as fotos chegam numeradas pelo item.
 - [ ] **Cancelar** na contagem e esperando as fotos: para como antes.
 - [ ] **Camera settings**: a tela mostra as três; mudar ISO numa e em All cameras; Test shot; Match
@@ -482,6 +496,39 @@ cmake --build --preset macos-arm64-release
 - [ ] **Terminal**: `./build/macos-arm64/"Stillpoint Terminal App"` igual à 2.10.0.
 - [ ] **Windows**: compila (`StillpointWorker.exe` ao lado de `Stillpoint.exe`); conexão, disparo e
       Camera settings com as câmeras.
+
+## 22. Medição: a mesma câmera repetindo (branch `sweep-limite`)
+
+Pergunta: qual o menor espaço que uma câmera aceita entre duas fotos suas, quanto a foto atrasa
+se o programa insiste no "busy", e se insistir atrapalha. Programa: `SdkMultiprocTest` com
+`--repeat`. Uma câmera só (T7), no cabo e na porta de sempre; cartão com espaço; modo M.
+
+Compilar (Mac):
+```
+cd ~/Developer/stillpoint
+cmake --build --preset macos-arm64-release --target SdkMultiprocTest
+```
+
+- [ ] **A. Sem insistir, por espaço.** Rodar uma vez para cada espaço (900, 1200, 1500, 1800 ms):
+      ```
+      ./build/macos-arm64/SdkMultiprocTest --model T7 --repeat 5 --gap 900
+      ./build/macos-arm64/SdkMultiprocTest --model T7 --repeat 5 --gap 1200
+      ./build/macos-arm64/SdkMultiprocTest --model T7 --repeat 5 --gap 1500
+      ./build/macos-arm64/SdkMultiprocTest --model T7 --repeat 5 --gap 1800
+      ```
+      No fim de cada rodada o programa imprime a tabela `shot | planned | accepted | late | attempts
+      | result` e `accepted n/5; photos downloaded: n`. Anotar, por espaço, quantas das 5 foram
+      aceitas. O menor espaço com 5/5 é o limite real da câmera.
+- [ ] **B. Insistindo, por espaço.** As mesmas rodadas com `--retry` (ex.:
+      `./build/macos-arm64/SdkMultiprocTest --model T7 --repeat 5 --gap 900 --retry`). Anotar: todas
+      aceitas? Quantas tentativas e quantos ms de atraso (`late ms`) nas fotos que precisaram
+      insistir? As 5 fotos baixaram? A câmera continuou normal depois (`s` numa rodada comum)?
+- [ ] **C. Rápido com insistência.** `--repeat 5 --gap 300 --retry`: mostra o pior caso (o app
+      pedindo muito antes do que a câmera aceita). Anotar o atraso de cada foto.
+- [ ] Os logs ficam em `~/Desktop/sdk-multiproc-test/log-<câmera>.txt`; mandar as tabelas.
+
+Com esses números, a decisão B do Sweep ("insistir no busy" no processo da câmera) é tomada pelo
+dono do projeto.
 
 ## Resultado
 

@@ -3260,15 +3260,20 @@
   $("soundBtn").addEventListener("click", () => window.liveSetSound(sound.sound ? "0" : "1", sound.sounds ? "1" : "0"));
 
   // =================== Timing: como as câmeras disparam ===================
-  // Modos: todas juntas; uma depois da outra (intervalo, direção, loops); grupos;
-  // ímpares/pares; custom (passos: câmeras + tempo depois do passo anterior).
+  // Modos: todas juntas; Sweep (uma câmera depois da outra: intervalo livre a partir de
+  // 0,05 s, atalhos 0,1/0,2/0,3/0,4, direção, loops); grupos; ímpares/pares; custom (passos:
+  // câmeras + tempo depois do passo anterior).
   // O plano vira "câmera:ms,..." para o app; vazio = todas juntas, como sempre.
-  // Sweep: varredura rápida (uma câmera depois da outra com intervalo curto, sem pausa), o
-  // "bullet time" clássico; por baixo é a Sequence com um intervalo pré-ajustado.
-  const TIMING_DEFAULT = { mode: "all", interval: 0.5, direction: "fwd", loops: 1, groups: 2, gap: 1, oeGap: 1, sweep: 0.15, sweepDirection: "fwd", steps: [{ after: 0, cams: [1, 2, 3] }, { after: 1, cams: [4, 5, 6] }] };
-  const TIMING_MODES = [["all", "All at once"], ["sweep", "Sweep"], ["seq", "One after another"], ["groups", "Groups"], ["oddeven", "Odd / even"], ["custom", "Custom"]];
-  const TIMING_SHORT = { all: "At once", sweep: "Sweep", seq: "Sequence", groups: "Groups", oddeven: "Odd / even", custom: "Custom" };
-  const SWEEP_INTERVALS = [0.1, 0.15, 0.2, 0.3];
+  // Decisão de 2026-10-21: "One after another" e "Sweep" eram o mesmo plano com duas caras;
+  // viraram um modo só, "Sweep". Um settings.txt antigo (mode "seq", ou "sweep" com os campos
+  // sweep/sweepDirection) é convertido ao carregar.
+  const TIMING_DEFAULT = { mode: "all", interval: 0.2, direction: "fwd", loops: 1, groups: 2, gap: 1, oeGap: 1, steps: [{ after: 0, cams: [1, 2, 3] }, { after: 1, cams: [4, 5, 6] }] };
+  const TIMING_MODES = [["all", "All at once"], ["sweep", "Sweep"], ["groups", "Groups"], ["oddeven", "Odd / even"], ["custom", "Custom"]];
+  const TIMING_SHORT = { all: "At once", sweep: "Sweep", groups: "Groups", oddeven: "Odd / even", custom: "Custom" };
+  const SWEEP_INTERVALS = [0.1, 0.2, 0.3, 0.4];  // atalhos; o campo aceita qualquer valor
+  // Medido em 2026-10-21 (SL3 + T7 + T5): a câmera recusa ("busy") uma nova foto 0,9 s depois
+  // da própria anterior e aceita a 1,8 s. Abaixo disso, o app avisa (a foto pode faltar).
+  const CAMERA_REPEAT_MS = 1800;
   let timing = JSON.parse(JSON.stringify(TIMING_DEFAULT));
   let timingOpen = false;
   let timingSaveTimer = 0;
@@ -3276,7 +3281,14 @@
     if (!text) return;
     try {
       const t = JSON.parse(text);
-      if (t && typeof t === "object") timing = Object.assign(JSON.parse(JSON.stringify(TIMING_DEFAULT)), t);
+      if (t && typeof t === "object") {
+        // Formatos antigos (antes da fusão): "seq" vira Sweep com o mesmo intervalo;
+        // "sweep" antigo guardava o intervalo em `sweep` e a direção em `sweepDirection`.
+        if (t.mode === "seq") t.mode = "sweep";
+        else if (t.mode === "sweep" && t.sweep !== undefined) { t.interval = t.sweep; if (t.sweepDirection) t.direction = t.sweepDirection; }
+        delete t.sweep; delete t.sweepDirection;
+        timing = Object.assign(JSON.parse(JSON.stringify(TIMING_DEFAULT)), t);
+      }
       if (!TIMING_MODES.some(([m]) => m === timing.mode)) timing.mode = "all";
       if (!Array.isArray(timing.steps) || !timing.steps.length) timing.steps = JSON.parse(JSON.stringify(TIMING_DEFAULT.steps));
     } catch (e) { timing = JSON.parse(JSON.stringify(TIMING_DEFAULT)); }
@@ -3299,19 +3311,16 @@
     if (N === 0) return { shots, warn: "", total: "", N };
     if (timing.mode === "all") {
       for (let o = 1; o <= N; o++) add(o, 0);
-    } else if (timing.mode === "seq" || timing.mode === "sweep") {
-      const sweep = timing.mode === "sweep";
-      const ms = (sweep ? sweepInterval() : num(timing.interval, 0.05, 600, 0.5)) * 1000;
-      const direction = sweep ? timing.sweepDirection : timing.direction;
+    } else if (timing.mode === "sweep") {
+      const ms = num(timing.interval, 0.05, 600, 0.2) * 1000;
       let order = [];
       const fwd = Array.from({ length: N }, (_, i) => i + 1);
-      if (direction === "back") order = fwd.slice().reverse();
-      else if (direction === "pingpong") order = N > 1 ? fwd.concat(fwd.slice(1, -1).reverse()) : fwd;  // 1..N..2 (o 1 final entra no fim)
+      if (timing.direction === "back") order = fwd.slice().reverse();
+      else if (timing.direction === "pingpong") order = N > 1 ? fwd.concat(fwd.slice(1, -1).reverse()) : fwd;  // 1..N..2 (o 1 final entra no fim)
       else order = fwd;
       let k = 0;
       for (let l = 0; l < loops; l++) order.forEach((o) => add(o, (k++) * ms));
-      if (direction === "pingpong" && N > 1) add(1, (k++) * ms);
-      if (sweep) warn = "Shortest interval the cameras keep up with over USB is still to be measured (around 0.1–0.2 s). Faster than that needs the trigger box.";
+      if (timing.direction === "pingpong" && N > 1) add(1, (k++) * ms);
     } else if (timing.mode === "groups") {
       const g = Math.max(1, Math.min(N, Math.round(num(timing.groups, 1, 99, 2))));
       const gap = num(timing.gap, 0.05, 600, 1) * 1000;
@@ -3335,9 +3344,34 @@
       if (!shots.length) warn = "No camera is in any step. Add cameras to the steps.";
     }
     shots.sort((a, b) => a.t - b.t || a.order - b.order);
+    // Mesma câmera repetindo cedo demais (loops, ida e volta, custom): a câmera recusa a
+    // foto. Menor espaço entre duas fotos da mesma câmera, em qualquer modo.
+    const repeat = timingTightestRepeat(shots);
+    if (repeat && repeat.gap < CAMERA_REPEAT_MS) {
+      const text = "Camera " + repeat.order + " would shoot again " + fmtS(repeat.gap) + " after its previous shot" +
+        (repeat.count > 1 ? " (" + repeat.count + " cameras repeat too soon)" : "") +
+        ". Cameras need about " + fmtS(CAMERA_REPEAT_MS) + " between their own shots; expect missing photos.";
+      warn = warn ? warn + " " + text : text;
+    }
     const span = shots.length ? shots[shots.length - 1].t : 0;
     const total = !shots.length ? "" : span === 0 ? shots.length + " shots at once" : shots.length + " shots over " + fmtS(span);
     return { shots, warn, total, N };
+  }
+  // Menor espaço entre duas fotos da mesma câmera no plano (ms), qual câmera e quantas
+  // câmeras ficam abaixo do limite. null quando nenhuma câmera repete.
+  function timingTightestRepeat(shots) {
+    const byCam = new Map();
+    shots.forEach((s) => { if (!byCam.has(s.order)) byCam.set(s.order, []); byCam.get(s.order).push(s.t); });
+    let best = null, count = 0;
+    byCam.forEach((times, order) => {
+      times.sort((a, b) => a - b);
+      let gap = Infinity;
+      for (let i = 1; i < times.length; i++) gap = Math.min(gap, times[i] - times[i - 1]);
+      if (gap === Infinity) return;
+      if (gap < CAMERA_REPEAT_MS) count++;
+      if (!best || gap < best.gap) best = { order, gap };
+    });
+    return best ? { order: best.order, gap: best.gap, count } : null;
   }
   function timingLabel(orders) {
     if (orders.length === 1) return String(orders[0]);
@@ -3378,15 +3412,13 @@
     const name = TIMING_MODES.find(([m]) => m === timing.mode)[1];
     const parts = [name];
     const loops = Math.round(num(timing.loops, 1, 99, 1));
-    if (timing.mode === "seq") parts.push(num(timing.interval, 0.05, 600, 0.5) + " s", timing.direction === "back" ? plan.N + " → 1" : timing.direction === "pingpong" ? "1 → " + plan.N + " → 1" : "1 → " + plan.N);
-    if (timing.mode === "sweep") parts.push(sweepInterval() + " s", timing.sweepDirection === "back" ? plan.N + " → 1" : timing.sweepDirection === "pingpong" ? "1 → " + plan.N + " → 1" : "1 → " + plan.N);
+    if (timing.mode === "sweep") parts.push(num(timing.interval, 0.05, 600, 0.2) + " s", timing.direction === "back" ? plan.N + " → 1" : timing.direction === "pingpong" ? "1 → " + plan.N + " → 1" : "1 → " + plan.N);
     if (timing.mode === "groups") parts.push(Math.round(num(timing.groups, 1, 99, 2)) + " groups · " + num(timing.gap, 0.05, 600, 1) + " s");
     if (timing.mode === "oddeven") parts.push("evens " + num(timing.oeGap, 0.05, 600, 1) + " s later");
     if (timing.mode === "custom") parts.push(timing.steps.length + " steps");
     if (timing.mode !== "all" && loops > 1) parts.push("×" + loops);
     return parts.join(" · ");
   }
-  function sweepInterval() { return SWEEP_INTERVALS.includes(Number(timing.sweep)) ? Number(timing.sweep) : 0.15; }
   function field(label, unit, value, onChange, opts) {
     const o = opts || {};
     const lab = el("label", "field"); lab.appendChild(el("span", "", label));
@@ -3416,16 +3448,14 @@
     const seg = segmented(TIMING_MODES.map(([m]) => [m, TIMING_SHORT[m]]), timing.mode, (v) => { timing.mode = v; timingSave(); renderTiming(); });
     while (seg.firstChild) modes.appendChild(seg.firstChild);
     const f = $("timingFields"); f.innerHTML = "";
-    if (timing.mode === "seq") {
-      f.appendChild(field("Interval", "sec", timing.interval, (v) => { timing.interval = num(v, 0.05, 600, 0.5); timingSave(); }));
-      f.appendChild(selectField("Direction", [["fwd", "1 → " + plan.N], ["back", plan.N + " → 1"], ["pingpong", "1 → " + plan.N + " → 1"]], timing.direction, (v) => { timing.direction = v; timingSave(); }));
-    }
     if (timing.mode === "sweep") {
-      // Intervalo por atalhos (sem digitar): 0,1 / 0,15 / 0,2 / 0,3 s
-      const lab = el("label", "field sweep-field"); lab.appendChild(el("span", "", "Interval (sec)"));
-      lab.appendChild(segmented(SWEEP_INTERVALS.map((v) => [String(v), String(v)]), String(sweepInterval()), (v) => { timing.sweep = Number(v); timingSave(); renderTiming(); }));
+      // Intervalo: campo livre (a partir de 0,05 s) e atalhos 0,1 / 0,2 / 0,3 / 0,4 s
+      const interval = num(timing.interval, 0.05, 600, 0.2);
+      f.appendChild(field("Interval", "sec", interval, (v) => { timing.interval = num(v, 0.05, 600, 0.2); timingSave(); }, { title: "Time from one camera to the next. Shortcuts on the right; any value from 0.05 s." }));
+      const lab = el("label", "field sweep-field"); lab.appendChild(el("span", "", "Shortcuts"));
+      lab.appendChild(segmented(SWEEP_INTERVALS.map((v) => [String(v), String(v)]), String(interval), (v) => { timing.interval = Number(v); timingSave(); renderTiming(); }));
       f.appendChild(lab);
-      f.appendChild(selectField("Direction", [["fwd", "1 → " + plan.N], ["back", plan.N + " → 1"], ["pingpong", "1 → " + plan.N + " → 1"]], timing.sweepDirection, (v) => { timing.sweepDirection = v; timingSave(); }));
+      f.appendChild(selectField("Direction", [["fwd", "1 → " + plan.N], ["back", plan.N + " → 1"], ["pingpong", "1 → " + plan.N + " → 1"]], timing.direction, (v) => { timing.direction = v; timingSave(); }));
     }
     if (timing.mode === "groups") {
       f.appendChild(field("Groups", "", timing.groups, (v) => { timing.groups = Math.round(num(v, 1, 99, 2)); timingSave(); }));

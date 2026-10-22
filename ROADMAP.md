@@ -570,6 +570,16 @@ Junto com essas etapas (sem etapa própria):
   fazer com esse limite — avisar na Timeline, insistir no "busy", fundir Sweep com One after
   another, ou nada por enquanto. Nada foi mudado no Sweep. Com a caixa de disparo (etapa 17) o
   limite entre câmeras deixa de existir; o da mesma câmera, não.
+  **Decisões de 2026-10-21 (noite), branch `sweep-limite`:** (C) "One after another" e "Sweep"
+  viraram um modo só, **Sweep** — intervalo livre a partir de 0,05 s, atalhos 0,1 / 0,2 / 0,3 /
+  0,4 s, direção e loops; `settings.txt` antigo (`seq`, ou `sweep` com `sweep`/`sweepDirection`)
+  é convertido ao abrir. (A) Aviso na Timeline, em qualquer modo, quando uma câmera repetiria a
+  menos de 1,8 s da própria foto anterior ("Camera 8 would shoot again 0.6 s…"); só interface,
+  conferido aqui com 9 câmeras simuladas (plano e aviso; ver teste-manual seção 18). (B)
+  "Insistir no busy" fica para depois da medição: `SdkMultiprocTest --repeat N --gap MS [--retry]`
+  mede o limite real da câmera e o atraso de insistir (teste-manual seção 22). Dado do teste de
+  2026-10-21: o "problema" sentido no Sweep com 3 câmeras era este limite (Sweep 0,3 s × 3
+  câmeras = a mesma câmera de novo a 0,9 s).
 - **Guia de montagem do rig** (documento, não código) — **feito em 2026-10-18**:
   `docs/hardware/montagem-do-rig.md` (MacBook, 9–12 T7, dois hubs alimentados, fontes dummy,
   nobreak, lista de compras com preços no Brasil, roteiro de teste e orçamento de aluguel).
