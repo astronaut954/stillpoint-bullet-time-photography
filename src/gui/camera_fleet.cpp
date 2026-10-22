@@ -1,3 +1,6 @@
+#if defined(_WIN32) && !defined(NOMINMAX)
+#define NOMINMAX  // windows.h (via o cabeçalho de plataforma) define min/max, que quebram std::min/std::max
+#endif
 #include "camera_fleet.h"
 
 #include <fstream>

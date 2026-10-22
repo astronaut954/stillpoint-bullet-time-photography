@@ -34,6 +34,9 @@
 //   q   fecha e sai
 // Tudo que acontece vai para a tela e para <pasta>/log-<câmera>.txt, com o horário em ms.
 
+#if defined(_WIN32) && !defined(NOMINMAX)
+#define NOMINMAX  // o EDSDK.h inclui windows.h, que define min/max e quebra std::max
+#endif
 #include "EDSDK.h"
 #include "platform/platform.h"
 
