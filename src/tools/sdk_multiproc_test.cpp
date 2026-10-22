@@ -23,6 +23,11 @@
 //                     resultado; espera 20 s pelas fotos e sai. Responde: qual o menor espaço
 //                     que a câmera aceita, quanto a foto atrasa quando se insiste, e se insistir
 //                     atrapalha (travar, foto não baixar).
+//   --defer           (com --repeat) não baixa as fotos durante os disparos: a câmera as
+//                     segura na memória interna e o programa baixa todas depois do último
+//                     disparo, em ordem. Mede quantas fotos a câmera aguenta segurar (sem
+//                     cartão: se a memória encher, ela recusa o disparo) e tira o download
+//                     (~1 s cada) do caminho do disparo.
 // Comandos (digitar e Enter) enquanto a câmera está aberta:
 //   s   dispara uma foto      l   lista de novo as câmeras que o SDK vê
 //   o   tenta abrir a sessão das OUTRAS câmeras (espera-se erro: estão com outro processo)
@@ -62,6 +67,8 @@ namespace
     std::string g_tag = "test";
     std::atomic<int> g_downloaded{ 0 };
     fs::path g_outDir;
+    bool g_defer = false;                              // --defer: guardar e baixar depois
+    std::vector<EdsDirectoryItemRef> g_deferredItems;  // fotos oferecidas pela câmera, na ordem
 
     std::string Now()
     {
@@ -138,8 +145,47 @@ namespace
         return out;
     }
 
+    void DownloadDeferred()
+    {
+        Log("downloading " + std::to_string(g_deferredItems.size()) + " deferred photo(s)");
+        for (EdsDirectoryItemRef item : g_deferredItems)
+        {
+            EdsDirectoryItemInfo info{};
+            EdsError err = EdsGetDirectoryItemInfo(item, &info);
+            if (err == EDS_ERR_OK)
+            {
+                fs::create_directories(g_outDir);
+                const fs::path path = g_outDir / (g_tag + "_" + Now().substr(0, 8) + "_" + std::string(info.szFileName));
+                std::string clean = path.string();
+                for (char& c : clean) if (c == ':') c = '-';
+                EdsStreamRef stream = nullptr;
+                err = EdsCreateFileStream(clean.c_str(), kEdsFileCreateDisposition_CreateAlways, kEdsAccess_ReadWrite, &stream);
+                if (err == EDS_ERR_OK)
+                {
+                    err = EdsDownload(item, info.size, stream);
+                    if (err == EDS_ERR_OK)
+                        err = EdsDownloadComplete(item);
+                    EdsRelease(stream);
+                }
+                Log("download " + clean + ": " + Err(err));
+                if (err == EDS_ERR_OK)
+                    ++g_downloaded;
+            }
+            else
+                Log("EdsGetDirectoryItemInfo: " + Err(err));
+            EdsRelease(item);
+        }
+        g_deferredItems.clear();
+    }
+
     EdsError EDSCALLBACK OnObjectEvent(EdsObjectEvent event, EdsBaseRef object, EdsVoid*)
     {
+        if (event == kEdsObjectEvent_DirItemRequestTransfer && object != nullptr && g_defer)
+        {
+            g_deferredItems.push_back(static_cast<EdsDirectoryItemRef>(object));
+            Log("photo offered by the camera; kept there (deferred, " + std::to_string(g_deferredItems.size()) + " waiting)");
+            return EDS_ERR_OK;
+        }
         if (event == kEdsObjectEvent_DirItemRequestTransfer && object != nullptr)
         {
             EdsDirectoryItemInfo info{};
@@ -307,6 +353,7 @@ int main(int argc, char** argv)
         else if (a == "--repeat") { std::string v; next(v); repeat = std::atoi(v.c_str()); }
         else if (a == "--gap") { std::string v; next(v); gapMs = std::atoi(v.c_str()); }
         else if (a == "--retry") retry = true;
+        else if (a == "--defer") g_defer = true;
         else if (a == "--retry-max") { std::string v; next(v); retryMaxMs = std::atoi(v.c_str()); }
         else if (a == "--retry-every") { std::string v; next(v); retryEveryMs = std::max(1, std::atoi(v.c_str())); }
         else { std::cerr << "Opção desconhecida: " << a << "\n"; return 2; }
@@ -400,7 +447,8 @@ int main(int argc, char** argv)
         // Medição: N fotos nesta câmera, uma a cada gapMs pelo relógio, a partir de daqui a 2 s
         Pump(2000);
         Log("repeat test: " + std::to_string(repeat) + " shots, gap " + std::to_string(gapMs) + " ms, retry " +
-            (retry ? "on (every " + std::to_string(retryEveryMs) + " ms, up to " + std::to_string(retryMaxMs) + " ms)" : "off"));
+            (retry ? "on (every " + std::to_string(retryEveryMs) + " ms, up to " + std::to_string(retryMaxMs) + " ms)" : "off") +
+            (g_defer ? ", downloads deferred until after the last shot" : ""));
         struct Row { long long planned, accepted; int attempts; EdsError err; };
         std::vector<Row> rows;
         const long long t0 = WallMs() + 1000;
@@ -419,9 +467,18 @@ int main(int argc, char** argv)
                 std::to_string(r.acceptedMs - planned) + " ms late");
             rows.push_back({ planned, r.acceptedMs, r.attempts, r.err });
         }
+        if (g_defer)
+        {
+            Pump(1500);  // deixa a câmera oferecer a última foto
+            const long long before = WallMs();
+            DownloadDeferred();
+            Log("deferred downloads took " + std::to_string(WallMs() - before) + " ms");
+        }
         Log("waiting 20 s for the photos");
         Pump(20000);
-        Log("---- repeat test summary (gap " + std::to_string(gapMs) + " ms, retry " + (retry ? "on" : "off") + ")");
+        if (g_defer && !g_deferredItems.empty())
+            DownloadDeferred();  // alguma foto só foi oferecida agora
+        Log("---- repeat test summary (gap " + std::to_string(gapMs) + " ms, retry " + (retry ? "on" : "off") + (g_defer ? ", deferred" : "") + ")");
         Log("shot | planned +ms | accepted +ms | late ms | attempts | result");
         int ok = 0;
         for (size_t i = 0; i < rows.size(); ++i)

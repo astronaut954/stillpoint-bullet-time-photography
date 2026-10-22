@@ -580,6 +580,16 @@ Junto com essas etapas (sem etapa própria):
   mede o limite real da câmera e o atraso de insistir (teste-manual seção 22). Dado do teste de
   2026-10-21: o "problema" sentido no Sweep com 3 câmeras era este limite (Sweep 0,3 s × 3
   câmeras = a mesma câmera de novo a 0,9 s).
+  **Medição de 2026-10-22 (T7, RAW, teste-manual seção 22):** o limite da câmera é **~0,95 s**
+  (aceitou a 2ª foto 929 ms depois da 1ª); o "1,8 s" de antes vinha do download (~1 s por CR2)
+  travando o laço do processo e atrasando o pedido seguinte. Insistir no "busy" funciona (5/5)
+  mas atrasa 0,8–2,9 s por foto, acumulando. **Decisões do dono do projeto (2026-10-22):**
+  (1) aviso na Timeline a **1,0 s**; (2) **não insistir** — foto fora do tempo vale o mesmo que
+  foto faltando; (3) **download adiado**: enquanto o plano tem disparos por fazer, o processo da
+  câmera guarda as fotos oferecidas (a câmera as segura na memória interna) e baixa tudo em
+  ordem depois do último disparo (`StillpointWorker`, `g.deferred`; At once e Test shot não
+  mudam; cancelar e sair baixam o que ficou). Limite sem cartão: a memória da câmera (a medir,
+  seção 22 E). Pendente: como avisar o usuário de uma foto recusada (ver pendências abaixo).
 - **Guia de montagem do rig** (documento, não código) — **feito em 2026-10-18**:
   `docs/hardware/montagem-do-rig.md` (MacBook, 9–12 T7, dois hubs alimentados, fontes dummy,
   nobreak, lista de compras com preços no Brasil, roteiro de teste e orçamento de aluguel).

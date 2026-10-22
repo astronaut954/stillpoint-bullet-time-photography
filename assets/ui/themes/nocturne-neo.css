@@ -879,7 +879,7 @@ table.cs tr.has-note td { border-bottom-color: transparent; }
 .timing-warn { margin: 6px 0 0; font: 11px var(--noct-font-mono); color: var(--noct-pending); }
 .tl { position: relative; height: 50px; margin: 0 10px; }
 .tl.small { height: 24px; }
-.tl.small.stagger { height: 36px; }
+.tl.small.stagger { height: 44px; }
 .tl .axis { position: absolute; left: 14px; right: 14px; top: 20px; border-top: 1px dashed var(--noct-border-strong); }
 .tl.small .axis { top: 12px; }
 .tl .tick { position: absolute; top: 36px; transform: translateX(-50%); font: 10px var(--noct-font-mono); color: var(--noct-text-dim); white-space: nowrap; }
@@ -888,9 +888,10 @@ table.cs tr.has-note td { border-bottom-color: transparent; }
 .tl .dot { position: absolute; top: 10px; height: 20px; width: auto; min-width: 20px; margin: 0; flex: none; padding: 0 6px; box-sizing: border-box; transform: translateX(-50%); border-radius: 10px; white-space: nowrap;
   background: var(--noct-primary); color: var(--noct-on-primary); font: 700 10px var(--noct-font-mono); display: flex; align-items: center; justify-content: center; box-shadow: var(--noct-glow-primary-soft); }
 .tl.small .dot { top: 4px; height: 16px; min-width: 16px; font-size: 8px; padding: 0 3px; border-radius: 8px; }
-.tl.small.stagger .axis { top: 18px; }
+/* Duas alturas: a mesma folga (4 px) acima e abaixo da linha tracejada */
+.tl.small.stagger .axis { top: 22px; }
 .tl.small.stagger .dot { top: 2px; }
-.tl.small.stagger .dot.low { top: 18px; }
+.tl.small.stagger .dot.low { top: 27px; }
 .tl .dot.second { background: var(--noct-elevated); color: var(--noct-primary); border: 1px solid var(--noct-primary); box-shadow: none; }
 .tl .dot.off { background: transparent; color: var(--noct-text-dim); border: 1px dashed var(--noct-text-dim); box-shadow: none; }
 /* Custom: passos (câmeras + tempo depois do passo anterior) */
@@ -907,8 +908,9 @@ body.timing-open .app { --controls-h: clamp(320px, 64vh, 720px); }
 .cam-chip.used { opacity: .35; }
 .timing-step .step-x { flex: none; width: 26px; height: 26px; padding: 0; color: var(--noct-text-muted); }
 .timing-step .step-x:hover { color: var(--noct-danger); }
-.tl.stagger:not(.small) { height: 66px; }
+/* Duas alturas: a mesma folga (5 px) acima e abaixo da linha tracejada; os tempos abaixo de tudo */
+.tl.stagger:not(.small) { height: 72px; }
 .tl.stagger:not(.small) .axis { top: 30px; }
-.tl.stagger:not(.small) .dot { top: 6px; }
-.tl.stagger:not(.small) .dot.low { top: 34px; }
-.tl.stagger:not(.small) .tick { top: 54px; }
+.tl.stagger:not(.small) .dot { top: 5px; }
+.tl.stagger:not(.small) .dot.low { top: 36px; }
+.tl.stagger:not(.small) .tick { top: 59px; }

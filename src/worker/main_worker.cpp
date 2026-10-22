@@ -125,6 +125,13 @@ namespace
         fs::path dir;
         bool planActive = false;
         std::deque<int> pendingPrefixes;  // fotos que ainda vão chegar, na ordem
+        // Download adiado (decisão de 2026-10-22): enquanto um plano ainda tem disparos por
+        // fazer, as fotos que a câmera oferece ficam na fila (a câmera as segura na memória
+        // interna) e só são baixadas depois do último disparo, em ordem. Um download leva ~1 s
+        // (CR2 pelo USB) e trava este laço; baixar no meio do plano atrasava o disparo
+        // seguinte desta câmera (medido no SdkMultiprocTest --repeat).
+        struct Deferred { EdsDirectoryItemRef item = nullptr; int prefix = 0; };
+        std::deque<Deferred> deferred;
     } g;
 
     std::string SafeName(std::string name)
@@ -160,6 +167,56 @@ namespace
         }
     }
 
+    // Baixa uma foto que a câmera ofereceu e avisa o app. Não solta o item: quem chama solta.
+    void DownloadItem(EdsDirectoryItemRef item, int prefix)
+    {
+        EdsDirectoryItemInfo info{};
+        EdsError err = EdsGetDirectoryItemInfo(item, &info);
+        if (err == EDS_ERR_OK)
+        {
+            std::error_code ec;
+            fs::create_directories(g.dir, ec);
+            const fs::path path = UniquePath(g.dir, prefix, g.cam.shortName, std::string(info.szFileName));
+            EdsStreamRef stream = nullptr;
+            err = EdsCreateFileStream(path.string().c_str(), kEdsFileCreateDisposition_CreateAlways, kEdsAccess_ReadWrite, &stream);
+            if (err == EDS_ERR_OK)
+            {
+                err = EdsDownload(item, info.size, stream);
+                if (err == EDS_ERR_OK)
+                    err = EdsDownloadComplete(item);
+                EdsRelease(stream);
+            }
+            if (err == EDS_ERR_OK)
+                Send({ "photo", std::to_string(prefix), path.string() });
+            else
+                Send({ "photofail", std::to_string(prefix), Hex(err) });
+        }
+        else
+            Send({ "photofail", std::to_string(prefix), Hex(err) });
+    }
+
+    bool PlanHasShotsLeft()
+    {
+        if (!g.planActive)
+            return false;
+        for (const auto& item : g.plan)
+            if (!item.fired)
+                return true;
+        return false;
+    }
+
+    // Baixa, em ordem, as fotos que ficaram na fila durante o plano
+    void DrainDeferred()
+    {
+        while (!g.deferred.empty())
+        {
+            const auto d = g.deferred.front();
+            g.deferred.pop_front();
+            DownloadItem(d.item, d.prefix);
+            EdsRelease(d.item);
+        }
+    }
+
     EdsError EDSCALLBACK OnObjectEvent(EdsObjectEvent event, EdsBaseRef object, EdsVoid*)
     {
         if (event == kEdsObjectEvent_DirItemRequestTransfer && object != nullptr)
@@ -170,29 +227,14 @@ namespace
                 prefix = g.pendingPrefixes.front();
                 g.pendingPrefixes.pop_front();
             }
-            EdsDirectoryItemInfo info{};
-            EdsError err = EdsGetDirectoryItemInfo(static_cast<EdsDirectoryItemRef>(object), &info);
-            if (err == EDS_ERR_OK)
+            if (PlanHasShotsLeft())
             {
-                std::error_code ec;
-                fs::create_directories(g.dir, ec);
-                const fs::path path = UniquePath(g.dir, prefix, g.cam.shortName, std::string(info.szFileName));
-                EdsStreamRef stream = nullptr;
-                err = EdsCreateFileStream(path.string().c_str(), kEdsFileCreateDisposition_CreateAlways, kEdsAccess_ReadWrite, &stream);
-                if (err == EDS_ERR_OK)
-                {
-                    err = EdsDownload(static_cast<EdsDirectoryItemRef>(object), info.size, stream);
-                    if (err == EDS_ERR_OK)
-                        err = EdsDownloadComplete(static_cast<EdsDirectoryItemRef>(object));
-                    EdsRelease(stream);
-                }
-                if (err == EDS_ERR_OK)
-                    Send({ "photo", std::to_string(prefix), path.string() });
-                else
-                    Send({ "photofail", std::to_string(prefix), Hex(err) });
+                // Ainda há disparos marcados: guarda o item (sem soltar) e baixa depois do plano
+                g.deferred.push_back({ static_cast<EdsDirectoryItemRef>(object), prefix });
+                Send({ "log", "Photo " + std::to_string(prefix) + " kept on the camera until the plan ends" });
+                return EDS_ERR_OK;
             }
-            else
-                Send({ "photofail", std::to_string(prefix), Hex(err) });
+            DownloadItem(static_cast<EdsDirectoryItemRef>(object), prefix);
         }
         if (object)
             EdsRelease(object);
@@ -370,6 +412,7 @@ namespace
                 g.plan.erase(std::remove_if(g.plan.begin(), g.plan.end(), [](const auto& i) { return !i.fired; }), g.plan.end());
                 g.planActive = false;
                 Send({ "shootdone" });
+                DrainDeferred();
             }
         }
         else if (cmd == "quit")
@@ -441,6 +484,7 @@ int main(int argc, char** argv)
             {
                 g.planActive = false;
                 Send({ "shootdone" });
+                DrainDeferred();
             }
         }
         if (g.lost)
@@ -460,7 +504,10 @@ int main(int argc, char** argv)
     if (g.cam.camera != nullptr)
     {
         if (!g.lost)
+        {
+            DrainDeferred();  // nada fica preso na câmera ao sair
             EdsCloseSession(g.cam.camera);
+        }
         EdsRelease(g.cam.camera);
     }
     EdsTerminateSDK();

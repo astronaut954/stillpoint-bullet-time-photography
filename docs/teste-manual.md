@@ -331,16 +331,15 @@ geram fotos de teste com o número da câmera e "#n" (número da foto na sessão
 - [ ] Sweep: atalhos de intervalo (0,1 / 0,2 / 0,3 / 0,4 s) preenchem o campo Interval; resumo
       "Sweep · 0.2 s · 1 → 9 · 9 shots over 1.6 s"; disparo com as 9 fotos em sequência (na Live:
       "Fire!", sem contagem nem som de grupo).
-- [ ] **Aviso de câmera repetindo cedo demais** (medido em 2026-10-21: a câmera recusa uma nova
-      foto a 0,9 s da própria anterior; aceita a 1,8 s). Sweep 0,3 s, 1 → 9, Loops 1: sem aviso.
-      Loops 2: ainda sem aviso (cada câmera repete a 2,7 s, acima do limite). Sweep 0,1 s, Loops 2:
+- [ ] **Aviso de câmera repetindo cedo demais** (medido em 2026-10-22 na T7: a câmera recusa uma
+      nova foto até ~0,95 s da própria anterior; limite do aviso: 1,0 s). Sweep 0,3 s, 1 → 9,
+      Loops 1: sem aviso. Loops 2: sem aviso (cada câmera repete a 2,7 s). Sweep 0,1 s, Loops 2:
       aviso "Camera 1 would shoot again 0.9 s after its previous shot (9 cameras repeat too soon).
-      Cameras need about 1.8 s between their own shots; expect missing photos.". Sweep 0,3 s,
-      1 → 9 → 1: aviso "Camera 8 would shoot again 0.6 s… (2 cameras repeat too soon)" (a 7 repete a
-      1,2 s). Sweep 0,5 s, 1 → 9 → 1: "Camera 8 … 1 s" sem o parêntese (só ela fica abaixo de 1,8 s).
-      Groups 3 × 0,5 s, Loops 2: aviso "Camera 1 … 1.5 s … (9 cameras repeat too soon)". Custom
-      com a mesma câmera em dois passos a 1 s: aviso. O aviso de "not in any step" continua
-      aparecendo junto, quando houver.
+      A camera needs at least 1 s between its own shots; that photo will be missing.". Sweep 0,3 s,
+      1 → 9 → 1: aviso "Camera 8 would shoot again 0.6 s…" sem parêntese (a 7 repete a 1,2 s, acima
+      do limite). Sweep 0,4 s, 1 → 9 → 1: "Camera 8 … 0.8 s". Groups 3 × 0,3 s, Loops 2: aviso
+      "Camera 1 … 0.9 s … (9 cameras repeat too soon)". Custom com a mesma câmera em dois passos a
+      0,5 s: aviso. O aviso de "not in any step" continua aparecendo junto, quando houver.
 - [ ] Um `settings.txt` antigo com `timing={"mode":"seq","interval":0.5,…}` abre como Sweep 0,5 s;
       um com `"mode":"sweep","sweep":0.15,"sweepDirection":"back"` abre como Sweep 0,15 s, 9 → 1.
 - [ ] Custom: passos com chips; clicar num chip move a câmera para aquele passo; "Add step" cria um
@@ -480,6 +479,11 @@ cmake --build --preset macos-arm64-release
 - [ ] **Identify** em cada uma: o obturador até a metade responde na câmera certa.
 - [ ] **It's bullet time, At once**, Download wait 10 s: as três fotos chegam; nomes dos
       arquivos como sempre (`01_SL3_1_IMG_xxxx.CR3`). Repetir 3 vezes.
+- [ ] **Download adiado (branch `sweep-limite`):** Sweep 1,2 s, 1 → 3 → 1, Loops 2 com 3 câmeras
+      (cada câmera repete a ≥ 2,4 s): durante o plano, o log de cada processo (`Logs/worker-*.txt`)
+      mostra "Photo n kept on the camera until the plan ends"; as fotos chegam depois do último
+      disparo, em ordem; a sessão fica completa (9 fotos) e nenhum disparo é recusado. Cancelar no
+      meio: as fotos já tiradas chegam mesmo assim.
 - [ ] **Timing: Sweep 0,5 s; Groups; Sweep 0,2 s** com a Live aberta: sons de grupo e
       metrônomo nos tempos certos; a Live mostra cada disparo; as fotos chegam numeradas pelo item.
 - [ ] **Cancelar** na contagem e esperando as fotos: para como antes.
@@ -527,8 +531,21 @@ cmake --build --preset macos-arm64-release --target SdkMultiprocTest
       pedindo muito antes do que a câmera aceita). Anotar o atraso de cada foto.
 - [ ] Os logs ficam em `~/Desktop/sdk-multiproc-test/log-<câmera>.txt`; mandar as tabelas.
 
-Com esses números, a decisão B do Sweep ("insistir no busy" no processo da câmera) é tomada pelo
-dono do projeto.
+**Resultado (2026-10-22, T7, RAW):** 0,9 s → 3/5; 1,2 s → 4/5; 1,5 s → 4/5; 1,8 s → 5/5. Com
+`--retry`, 5/5 nas duas rodadas, mas atrasos de 0,8 a 2,9 s por foto, acumulando. Na rodada de
+0,3 s com insistência a câmera aceitou a 2ª foto **929 ms** depois da 1ª: o limite da T7 é ~0,95 s.
+As recusas a 1,2 e 1,5 s vieram do download (~1 s por CR2) travando o laço e atrasando o pedido
+seguinte. Decisões (2026-10-22): não insistir; aviso na Timeline a 1,0 s; download adiado até o fim
+do plano (abaixo).
+
+- [ ] **D. Download adiado.** `./build/macos-arm64/SdkMultiprocTest --model T7 --repeat 5 --gap 1000 --defer`:
+      durante os disparos aparece "photo offered by the camera; kept there (deferred, n waiting)" e
+      nenhuma linha `download`; depois do 5º disparo, "downloading 5 deferred photo(s)" e as 5
+      linhas `download … (ok)`. Esperado: 5/5 aceitas (o download não atrasa mais o pedido).
+- [ ] **E. Quantas a câmera segura (sem cartão).** Tire o cartão e rode
+      `./build/macos-arm64/SdkMultiprocTest --model T7 --repeat 12 --gap 1000 --defer`. Anotar em
+      qual foto a câmera começa a recusar (memória interna cheia) e se as fotos anteriores baixam
+      depois. Repetir com o cartão dentro.
 
 ## Resultado
 

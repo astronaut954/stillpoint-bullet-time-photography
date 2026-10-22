@@ -3271,9 +3271,9 @@
   const TIMING_MODES = [["all", "All at once"], ["sweep", "Sweep"], ["groups", "Groups"], ["oddeven", "Odd / even"], ["custom", "Custom"]];
   const TIMING_SHORT = { all: "At once", sweep: "Sweep", groups: "Groups", oddeven: "Odd / even", custom: "Custom" };
   const SWEEP_INTERVALS = [0.1, 0.2, 0.3, 0.4];  // atalhos; o campo aceita qualquer valor
-  // Medido em 2026-10-21 (SL3 + T7 + T5): a câmera recusa ("busy") uma nova foto 0,9 s depois
-  // da própria anterior e aceita a 1,8 s. Abaixo disso, o app avisa (a foto pode faltar).
-  const CAMERA_REPEAT_MS = 1800;
+  // Medido em 2026-10-22 (T7, RAW, SdkMultiprocTest --repeat): a câmera recusa ("busy") uma
+  // nova foto até ~0,95 s depois da própria anterior. Abaixo de 1 s, o app avisa (a foto falta).
+  const CAMERA_REPEAT_MS = 1000;
   let timing = JSON.parse(JSON.stringify(TIMING_DEFAULT));
   let timingOpen = false;
   let timingSaveTimer = 0;
@@ -3350,7 +3350,7 @@
     if (repeat && repeat.gap < CAMERA_REPEAT_MS) {
       const text = "Camera " + repeat.order + " would shoot again " + fmtS(repeat.gap) + " after its previous shot" +
         (repeat.count > 1 ? " (" + repeat.count + " cameras repeat too soon)" : "") +
-        ". Cameras need about " + fmtS(CAMERA_REPEAT_MS) + " between their own shots; expect missing photos.";
+        ". A camera needs at least " + fmtS(CAMERA_REPEAT_MS) + " between its own shots; that photo will be missing.";
       warn = warn ? warn + " " + text : text;
     }
     const span = shots.length ? shots[shots.length - 1].t : 0;
