@@ -139,6 +139,7 @@
     shrink: '<path d="M5 2v3H2M12 5H9V2M9 12V9h3M2 9h3v3"/>',
     trash: '<path d="M2.5 4h9M5.5 4V2.5h3V4M3.5 4l.6 7.5h5.8l.6-7.5"/>',
     menu: '<path d="M2.5 4h9M2.5 7h9M2.5 10h9"/>',
+    close: '<path d="M3.5 3.5l7 7M10.5 3.5l-7 7"/>',
   };
   function icon(name, size) {
     const s = size || 14;
@@ -3591,7 +3592,14 @@
         chips.appendChild(chip);
       }
       row.appendChild(chips);
-      if (timing.steps.length > 1) row.appendChild(button("", () => { timing.steps.splice(i, 1); timingSave(); renderTiming(); }, { icon: "close", title: "Remove this step", kind: "btn-link step-x" }));
+      // Mover para cima/baixo e remover (o passo 1 não tem "after"; ao mover, cada passo leva o seu)
+      const tools = el("span", "step-tools");
+      const up = button("", () => { [timing.steps[i - 1], timing.steps[i]] = [timing.steps[i], timing.steps[i - 1]]; timingSave(); renderTiming(); }, { icon: "up", title: "Move this step up", kind: "btn-link step-x" });
+      const down = button("", () => { [timing.steps[i + 1], timing.steps[i]] = [timing.steps[i], timing.steps[i + 1]]; timingSave(); renderTiming(); }, { icon: "down", title: "Move this step down", kind: "btn-link step-x" });
+      const remove = button("", () => { timing.steps.splice(i, 1); timingSave(); renderTiming(); }, { icon: "close", title: "Remove this step", kind: "btn-link step-x" });
+      up.disabled = i === 0; down.disabled = i === timing.steps.length - 1; remove.disabled = timing.steps.length <= 1;
+      tools.appendChild(up); tools.appendChild(down); tools.appendChild(remove);
+      row.appendChild(tools);
       root.appendChild(row);
     });
     root.appendChild(button("Add step", () => { timing.steps.push({ after: 1, cams: [] }); timingSave(); renderTiming(); }, { kind: "btn-link" }));

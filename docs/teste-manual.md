@@ -365,7 +365,9 @@ geram fotos de teste com o número da câmera e "#n" (número da foto na sessão
 - [ ] Um `settings.txt` antigo com `timing={"mode":"seq","interval":0.5,…}` abre como Sweep 0,5 s;
       um com `"mode":"sweep","sweep":0.15,"sweepDirection":"back"` abre como Sweep 0,15 s, 9 → 1.
 - [ ] Custom: passos com chips; clicar num chip move a câmera para aquele passo; "Add step" cria um
-      passo; o X remove. Câmera fora dos passos: aviso "Camera 9 is not in any step…".
+      passo; à direita de cada passo, setas ▲ ▼ movem o passo (a primeira e a última ficam
+      apagadas nas pontas; cada passo leva o seu "after") e o X remove (apagado com um passo só).
+      Câmera fora dos passos: aviso "Camera 9 is not in any step…".
 - [ ] Advanced fechado com um modo escolhido: etiqueta âmbar "Timing", resumo e linha do tempo
       pequena com os números (33 fotos ainda legíveis; apertando mais, alterna em duas alturas).
       Em All at once nada disso aparece. O painel não rola: o botão e o "Done…" ficam à vista.
