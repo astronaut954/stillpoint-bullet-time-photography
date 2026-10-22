@@ -690,6 +690,11 @@ Atualizar esta tabela sempre que uma função mudar de status.
 
 ## Pendências conhecidas
 
+- **2.11.1 (2026-10-22):** a janela de atualização crescia com o texto das notas e, com as da
+  2.11.0, o botão Update saía da tela. Corrigido (lista rola; botões sempre à vista; conferido
+  aqui num navegador). Quem está na 2.10.0/2.11.0 ainda vê a janela antiga uma vez (as notas da
+  2.11.1 são curtas); daí em diante está resolvido. As notas não foram encurtadas de propósito.
+
 - **2.11.0 (etapa 16 + Sweep) publicada em 2026-10-22 com o Windows testado só com câmeras
   simuladas** (decisão do dono do projeto): a janela Live e as câmeras de verdade no Windows
   continuam sem teste (ver 2.10.0 abaixo); no Mac falta só o resumo de foto recusada com câmeras
