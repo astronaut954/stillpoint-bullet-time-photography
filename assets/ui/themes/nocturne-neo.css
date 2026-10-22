@@ -853,6 +853,10 @@ table.cs tr.has-note td { border-bottom-color: transparent; }
 /* Sessão já salva (mantida no app): etiqueta verde cheia, na lista e em Save sessions */
 .saved-tag { display: block; width: fit-content; margin-top: 5px; padding: 2px 7px; background: var(--noct-primary); color: var(--noct-on-primary);
   font: 700 10px var(--noct-font-mono); text-transform: uppercase; letter-spacing: .08em; box-shadow: var(--noct-glow-primary-soft); }
+/* Fotos recusadas pela câmera no disparo (âmbar, como "Settings differ") */
+.missing-tag { display: block; width: fit-content; margin-top: 5px; padding: 2px 7px; border: 1px solid var(--noct-pending); color: var(--noct-pending);
+  font: 700 10px var(--noct-font-mono); text-transform: uppercase; letter-spacing: .08em; }
+.progress.warn { color: var(--noct-pending); }
 
 /* Timing (painel Bullet time): resumo, botão Advanced, seção avançada e linha do tempo */
 .timing-summary { display: flex; align-items: center; gap: 10px; margin: -6px 0 8px; font: 11px var(--noct-font-mono); text-transform: uppercase; letter-spacing: .08em; color: var(--noct-text-muted); }

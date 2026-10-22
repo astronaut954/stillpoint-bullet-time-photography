@@ -332,14 +332,33 @@ geram fotos de teste com o número da câmera e "#n" (número da foto na sessão
       "Sweep · 0.2 s · 1 → 9 · 9 shots over 1.6 s"; disparo com as 9 fotos em sequência (na Live:
       "Fire!", sem contagem nem som de grupo).
 - [ ] **Aviso de câmera repetindo cedo demais** (medido em 2026-10-22 na T7: a câmera recusa uma
-      nova foto até ~0,95 s da própria anterior; limite do aviso: 1,0 s). Sweep 0,3 s, 1 → 9,
+      nova foto até ~0,93 s da anterior aceita, mais ~0,1–0,23 s da ordem chegar; com 1,0 s no plano ela
+      recusou um sim, outro não; limite do aviso: 1,2 s). Sweep 0,3 s, 1 → 9,
       Loops 1: sem aviso. Loops 2: sem aviso (cada câmera repete a 2,7 s). Sweep 0,1 s, Loops 2:
       aviso "Camera 1 would shoot again 0.9 s after its previous shot (9 cameras repeat too soon).
-      A camera needs at least 1 s between its own shots; that photo will be missing.". Sweep 0,3 s,
+      A camera needs at least 1.2 s between its own shots; that photo will be missing.". Sweep 0,3 s,
       1 → 9 → 1: aviso "Camera 8 would shoot again 0.6 s…" sem parêntese (a 7 repete a 1,2 s, acima
       do limite). Sweep 0,4 s, 1 → 9 → 1: "Camera 8 … 0.8 s". Groups 3 × 0,3 s, Loops 2: aviso
       "Camera 1 … 0.9 s … (9 cameras repeat too soon)". Custom com a mesma câmera em dois passos a
       0,5 s: aviso. O aviso de "not in any step" continua aparecendo junto, quando houver.
+- [ ] **Direction em Groups e Odd / even** (pedido de 2026-10-22): Groups 3 × 1 s, Direction
+      "3 → 1": "7–9" em 0, "4–6" em 1 s, "1–3" em 2 s; "1 → 3 → 1": 1–3, 4–6, 7–9, 4–6, 1–3 (5 grupos,
+      4 s); com Loops 2: 9 grupos, "×2" no resumo. Odd / even, Gap 1 s, Direction "even → odd": pares
+      em 0, ímpares em 1 s; "odd → even → odd": ímpares, pares, ímpares (3 slots, 2 s). Resumo:
+      "Groups · 3 groups · 1 s · 1 → 3 → 1" e "Odd / even · odd → even → odd · 1 s".
+- [ ] **Confirmação antes de disparar** (aprovada em 2026-10-22): com um plano que repete cedo demais
+      (Sweep 0,3 s, 1 → 9 → 1), "It's bullet time" abre "1 photo will be missing" com "Fix timing"
+      (não dispara) e "Shoot anyway" (dispara). Sem repetição cedo demais, dispara direto.
+- [ ] **Fotos recusadas, com câmeras simuladas** (elas recusam como a T7: foto pedida a menos de
+      ~1 s da anterior aceita). Sweep 0,3 s, 1 → 9 → 1, "Shoot anyway": durante o disparo a linha
+      de andamento mostra "Shot 10 of 17 · 8 refused" em âmbar; a Live marca a recusada em
+      vermelho; no fim, em vez de "Done", a linha âmbar "Done with 1 photo missing: 8 (shot 10) —
+      asked 0.6 s after their previous shot." e uma linha só na Activity com a dica "Give each
+      camera at least 1.2 s between its own shots in Timing."; a sessão tem 16 fotos e a etiqueta
+      âmbar "1 MISSING" na lista de sessões e na janela Save sessions (também depois de fechar e
+      abrir o app: arquivo `.missing` na pasta da sessão). Sweep 0,1 s, Loops 2 (9 repetem a 0,9 s):
+      "9 photos will be missing" → "Shoot anyway" → "Done with 9 photos missing: …", 9 fotos,
+      "9 MISSING". Sweep 1,5 s, 1 → 9 → 1: nada disso, "Done" normal, 17 fotos.
 - [ ] Um `settings.txt` antigo com `timing={"mode":"seq","interval":0.5,…}` abre como Sweep 0,5 s;
       um com `"mode":"sweep","sweep":0.15,"sweepDirection":"back"` abre como Sweep 0,15 s, 9 → 1.
 - [ ] Custom: passos com chips; clicar num chip move a câmera para aquele passo; "Add step" cria um
@@ -479,6 +498,10 @@ cmake --build --preset macos-arm64-release
 - [ ] **Identify** em cada uma: o obturador até a metade responde na câmera certa.
 - [ ] **It's bullet time, At once**, Download wait 10 s: as três fotos chegam; nomes dos
       arquivos como sempre (`01_SL3_1_IMG_xxxx.CR3`). Repetir 3 vezes.
+- [ ] **Fotos recusadas, com câmeras de verdade (branch `sweep-limite`):** Sweep 0,3 s, 1 → 3 → 1 com
+      3 câmeras, "Shoot anyway": a câmera 2 é recusada na volta; no fim, "Done with 1 photo missing:
+      <câmera 2> (shot 4) — asked 0.6 s after their previous shot." em âmbar, uma linha na Activity,
+      etiqueta "1 MISSING" na sessão (que tem 4 fotos). Fechar e abrir o app: a etiqueta continua.
 - [ ] **Download adiado (branch `sweep-limite`):** Sweep 1,2 s, 1 → 3 → 1, Loops 2 com 3 câmeras
       (cada câmera repete a ≥ 2,4 s): durante o plano, o log de cada processo (`Logs/worker-*.txt`)
       mostra "Photo n kept on the camera until the plan ends"; as fotos chegam depois do último

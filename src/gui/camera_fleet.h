@@ -108,6 +108,10 @@ private:
     // Disparo em andamento
     int expectedDownloads = 0;
     int completedDownloads = 0;
+    // Disparos que a câmera recusou nesta sessão ("<nº da foto> <câmera> <erro>", um por
+    // linha); no fim vão para o arquivo ".missing" da pasta da sessão (etiqueta na lista)
+    std::vector<std::string> refusedShots;
+    void WriteMissingMark();
 
     Worker* WorkerFor(const std::string& shortName);
     const Worker* WorkerFor(const std::string& shortName) const;

@@ -21,6 +21,7 @@ struct StoredSession
     std::string name;    // nome da pasta (data/hora da sessão)
     std::vector<StoredPhoto> photos; // em ordem de câmera
     bool saved = false;  // já foi salva e a pessoa escolheu mantê-la no app
+    int missing = 0;     // fotos que a câmera recusou no disparo (arquivo ".missing")
 };
 
 // Imagem RGB (3 bytes por pixel), já na orientação certa

@@ -373,6 +373,14 @@ std::vector<StoredSession> PhotoStore::ListSessions() const
         session.name = dir.path().filename().string();
 
         session.saved = fs::exists(dir.path() / kSavedMark, ec);
+        {
+            // ".missing": uma linha por foto que a câmera recusou (escrito pelo CameraFleet)
+            std::ifstream missing((dir.path() / ".missing").string());
+            std::string line;
+            while (std::getline(missing, line))
+                if (!line.empty())
+                    ++session.missing;
+        }
         for (const auto& entry : fs::directory_iterator(dir.path(), ec))
         {
             // Só fotos (arquivos que começam com "." são do app, como ".saved")

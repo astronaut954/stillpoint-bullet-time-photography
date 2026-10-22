@@ -111,6 +111,8 @@
   let busyAction = "";
   let shootCancelling = false;   // pediu para cancelar, esperando o núcleo parar
   let shootCancelled = false;    // o bullet time atual foi cancelado
+  let shootPlan = null;          // plano enviado no último disparo (para explicar recusas)
+  let shootMissing = [];         // fotos recusadas no disparo atual: { camera, index, gap }
   let camSettings = [];          // configurações de cada câmera (evento cameraSettings)
   const csPending = new Set();   // "câmera|chave" enviados e ainda sem resposta ("*" = todas)
   const csTest = { capturing: false, has: false };  // teste rápido do Camera settings
@@ -888,6 +890,14 @@
     t.title = "Already saved. It leaves the app when you close Stillpoint (the saved copy stays where you saved it).";
     return t;
   }
+  // Etiqueta de sessão com fotos que a câmera recusou no disparo (arquivo ".missing")
+  function missingTag(count) {
+    const t = document.createElement("span");
+    t.className = "missing-tag";
+    t.textContent = count + " missing";
+    t.title = plural(count, "photo was", "photos were") + " refused by the camera during the shoot (a camera asked to shoot again too soon after its previous photo).";
+    return t;
+  }
 
   function renderSessionList() {
     ui.sessionList.innerHTML = "";
@@ -900,6 +910,7 @@
       li.innerHTML = icon("folder", 16) + '<div><div class="folder-date"></div><div class="folder-meta"></div></div>';
       li.querySelector(".folder-date").textContent = label.date;
       li.querySelector(".folder-meta").textContent = [plural(count, "photo", "photos"), label.detail].filter(Boolean).join(" · ");
+      if (s.missing > 0) li.querySelector(".folder-meta").after(missingTag(s.missing));
       if (s.saved) {
         li.querySelector(".folder-meta").after(savedTag());
         li.title = "Already saved. It leaves the app when you close Stillpoint (the saved copy stays where you saved it).";
@@ -1340,6 +1351,7 @@
       li.querySelector(".export-check").addEventListener("click", (e) => e.stopPropagation());
       li.querySelector(".folder-date").textContent = label.date;
       li.querySelector(".folder-meta").textContent = [plural(sessionItems(s).length, "photo", "photos"), label.detail].filter(Boolean).join(" · ");
+      if (s.missing > 0) li.querySelector(".folder-meta").after(missingTag(s.missing));
       if (s.saved) li.querySelector(".folder-meta").after(savedTag());
       li.querySelector(".export-summary").textContent = summaryText(s);
       li.classList.toggle("different", !exp.sameForAll && s.name !== exp.active && !sameAsActive(s.name));
@@ -1775,7 +1787,7 @@
     busy(e) {
       busy = e.busy;
       busyAction = e.busy ? e.action : "";
-      if (e.busy && e.action === "shoot") { shootCancelling = false; shootCancelled = false; }
+      if (e.busy && e.action === "shoot") { shootCancelling = false; shootCancelled = false; ui.progress.classList.remove("warn"); }
       activity.busyText = "";
       renderActivity();
       if (busy) {
@@ -1875,10 +1887,20 @@
       ui.flash.style.animation = "";
       setTimeout(() => ui.flash.classList.add("hidden"), 500);
     },
+    // Disparo do plano recusado pela câmera: anota (resumo no fim) e mostra na linha de andamento
+    shotFired(e) {
+      if (e.ok || orderCapture()) return;
+      const shot = shootPlan && shootPlan.shots[e.index - 1];
+      const gap = shot ? repeatGap(shootPlan.shots, shot) : Infinity;
+      shootMissing.push({ camera: e.camera, index: e.index, gap });
+      ui.progress.textContent = "Shot " + e.index + " of " + e.total + " · " + cameraLabel(e.camera) + " refused";
+      ui.progress.classList.add("warn");
+    },
     shotFailed(e) {
       // As explicações do núcleo vêm em minúsculas ("no memory card"): vira frase
       const hint = e.hint ? e.hint.charAt(0).toUpperCase() + e.hint.slice(1) + "." : "";
-      log(cameraLabel(e.camera) + " did not take the photo.", "warn", hint);
+      // Com plano, o resumo no fim da sessão explica tudo numa linha só
+      if (!shootPlan || timing.mode === "all") log(cameraLabel(e.camera) + " did not take the photo.", "warn", hint);
     },
     waitingDownloads() {
       activity.busyText = "Receiving photos";
@@ -1907,7 +1929,20 @@
     sequenceFinished(e) {
       if (orderCapture()) return;
       if (shootCancelled) return;  // já avisado em sequenceCancelled
-      if (e.completed) {
+      ui.progress.classList.remove("warn");
+      if (e.completed && shootMissing.length) {
+        // Resumo das fotos recusadas: uma linha só, com a causa e o que fazer
+        const items = shootMissing.map((m) => cameraLabel(m.camera) + " (shot " + m.index + ")").join(", ");
+        const tooSoon = shootMissing.filter((m) => m.gap < CAMERA_REPEAT_MS);
+        const why = tooSoon.length === shootMissing.length && tooSoon.length
+          ? " — asked " + fmtS(Math.min(...tooSoon.map((m) => m.gap))) + (tooSoon.length > 1 ? " or less" : "") + " after their previous shot."
+          : tooSoon.length ? " — some asked too soon after their previous shot; the camera was busy." : " — the camera was busy.";
+        const text = "Done with " + plural(shootMissing.length, "photo", "photos") + " missing: " + items + why;
+        const hint = tooSoon.length ? "Give each camera at least " + fmtS(CAMERA_REPEAT_MS) + " between its own shots in Timing." : "Check the camera and try again.";
+        log(text, "warn", hint);
+        ui.progress.textContent = text;
+        ui.progress.classList.add("warn");
+      } else if (e.completed) {
         log("Bullet time complete", "ok");
         ui.progress.textContent = "Done. The new session is shown above.";
       } else {
@@ -3234,15 +3269,37 @@
       { label: "Restart", primary: true, onClick: () => window.restartConnections() },
     ]);
   });
-  ui.shootBtn.addEventListener("click", () => {
+  ui.shootBtn.addEventListener("click", () => startShoot(false));
+  function startShoot(confirmed) {
     if (busy && busyAction === "shoot") return cancelShoot();
     const plan = timingPlan();
     if (plan.warn && !plan.shots.length) { toast(plan.warn, 6000); return; }
+    // Câmera repetindo cedo demais: a foto vai faltar; pergunta antes (decisão de 2026-10-22)
+    const repeat = timingTightestRepeat(plan.shots);
+    if (!confirmed && repeat && repeat.gap < CAMERA_REPEAT_MS) {
+      const early = plan.shots.filter((sh) => sh.pass > 0 && repeatGap(plan.shots, sh) < CAMERA_REPEAT_MS);
+      const cams = [...new Set(early.map((sh) => sh.order))].sort((a, b) => a - b);
+      dialog(plural(early.length, "photo", "photos") + " will be missing",
+        (cams.length === 1 ? "Camera " + cams[0] + " repeats" : "Cameras " + cams.join(", ") + " repeat") + " too soon: " +
+        "a camera needs at least " + fmtS(CAMERA_REPEAT_MS) + " between its own shots and refuses the photo otherwise. " +
+        "Fix it in Timing (a longer interval or gap, or a direction without the return) or shoot anyway with " +
+        (early.length === 1 ? "that photo" : "those photos") + " missing.",
+        [{ label: "Fix timing" }, { label: "Shoot anyway", primary: true, onClick: () => startShoot(true) }]);
+      return;
+    }
+    shootPlan = plan;
+    shootMissing = [];
     const schedule = timing.mode === "all" ? "" : plan.shots.map((s) => s.cam + ":" + s.t).join(",");
     // Som: "disparo,grupos" (1/0)
     const sounds = (sound.sound ? "1" : "0") + "," + (sound.sound && sound.sounds ? "1" : "0");
     window.shoot(String(intValue(ui.countdown, 0, 0)), String(intValue(ui.sessions, 1, 1)), String(intValue(ui.downloadWait, 1, 10)), schedule, sounds);
-  });
+  }
+  // Espaço entre esta foto e a anterior da mesma câmera no plano (ms); Infinity se é a primeira
+  function repeatGap(shots, shot) {
+    let prev = -Infinity;
+    shots.forEach((sh) => { if (sh.order === shot.order && sh.t < shot.t && sh.t > prev) prev = sh.t; });
+    return prev === -Infinity ? Infinity : shot.t - prev;
+  }
 
   // =================== Live view (janela separada: assets/ui/live.html) ===================
   // O botão abre (ou traz de volta) a janela Live 1; dentro dela dá para abrir a 2ª.
@@ -3267,13 +3324,16 @@
   // Decisão de 2026-10-21: "One after another" e "Sweep" eram o mesmo plano com duas caras;
   // viraram um modo só, "Sweep". Um settings.txt antigo (mode "seq", ou "sweep" com os campos
   // sweep/sweepDirection) é convertido ao carregar.
-  const TIMING_DEFAULT = { mode: "all", interval: 0.2, direction: "fwd", loops: 1, groups: 2, gap: 1, oeGap: 1, steps: [{ after: 0, cams: [1, 2, 3] }, { after: 1, cams: [4, 5, 6] }] };
+  // Direction (Sweep: câmeras; Groups: grupos; Odd / even: ímpares/pares): fwd = 1 → N,
+  // back = N → 1, pingpong = 1 → N → 1 (os do meio repetem; com loops, 1…N…2 repetido e o 1 no fim).
+  const TIMING_DEFAULT = { mode: "all", interval: 0.2, direction: "fwd", loops: 1, groups: 2, gap: 1, groupsDirection: "fwd", oeGap: 1, oeDirection: "fwd", steps: [{ after: 0, cams: [1, 2, 3] }, { after: 1, cams: [4, 5, 6] }] };
   const TIMING_MODES = [["all", "All at once"], ["sweep", "Sweep"], ["groups", "Groups"], ["oddeven", "Odd / even"], ["custom", "Custom"]];
   const TIMING_SHORT = { all: "At once", sweep: "Sweep", groups: "Groups", oddeven: "Odd / even", custom: "Custom" };
   const SWEEP_INTERVALS = [0.1, 0.2, 0.3, 0.4];  // atalhos; o campo aceita qualquer valor
   // Medido em 2026-10-22 (T7, RAW, SdkMultiprocTest --repeat): a câmera recusa ("busy") uma
-  // nova foto até ~0,95 s depois da própria anterior. Abaixo de 1 s, o app avisa (a foto falta).
-  const CAMERA_REPEAT_MS = 1000;
+  // nova foto até ~0,93 s depois da anterior ACEITA, e a ordem de disparo leva 0,1–0,23 s para
+  // chegar; com 1,0 s no plano ela recusou um sim, outro não. Abaixo de 1,2 s, o app avisa.
+  const CAMERA_REPEAT_MS = 1200;
   let timing = JSON.parse(JSON.stringify(TIMING_DEFAULT));
   let timingOpen = false;
   let timingSaveTimer = 0;
@@ -3313,24 +3373,20 @@
       for (let o = 1; o <= N; o++) add(o, 0);
     } else if (timing.mode === "sweep") {
       const ms = num(timing.interval, 0.05, 600, 0.2) * 1000;
-      let order = [];
-      const fwd = Array.from({ length: N }, (_, i) => i + 1);
-      if (timing.direction === "back") order = fwd.slice().reverse();
-      else if (timing.direction === "pingpong") order = N > 1 ? fwd.concat(fwd.slice(1, -1).reverse()) : fwd;  // 1..N..2 (o 1 final entra no fim)
-      else order = fwd;
-      let k = 0;
-      for (let l = 0; l < loops; l++) order.forEach((o) => add(o, (k++) * ms));
-      if (timing.direction === "pingpong" && N > 1) add(1, (k++) * ms);
+      const slots = directionSlots(timing.direction, N, loops);
+      slots.forEach((o, k) => add(o, k * ms));
     } else if (timing.mode === "groups") {
       const g = Math.max(1, Math.min(N, Math.round(num(timing.groups, 1, 99, 2))));
       const gap = num(timing.gap, 0.05, 600, 1) * 1000;
       const size = Math.ceil(N / g);
-      for (let l = 0; l < loops; l++)
-        for (let o = 1; o <= N; o++) add(o, (l * g + Math.floor((o - 1) / size)) * gap);
+      // Cada "slot" é um grupo inteiro disparando junto; a direção ordena os grupos
+      const slots = directionSlots(timing.groupsDirection, g, loops);
+      slots.forEach((grp, k) => { for (let o = 1; o <= N; o++) if (Math.floor((o - 1) / size) === grp - 1) add(o, k * gap); });
     } else if (timing.mode === "oddeven") {
       const gap = num(timing.oeGap, 0.05, 600, 1) * 1000;
-      for (let l = 0; l < loops; l++)
-        for (let o = 1; o <= N; o++) add(o, (l * 2 + (o % 2 === 1 ? 0 : 1)) * gap);
+      // Dois "slots": 1 = ímpares, 2 = pares; a direção diz quem vai primeiro (e a ida e volta)
+      const slots = directionSlots(timing.oeDirection, 2, loops);
+      slots.forEach((set, k) => { for (let o = 1; o <= N; o++) if ((o % 2 === 1) === (set === 1)) add(o, k * gap); });
     } else if (timing.mode === "custom") {
       let t = 0; const times = [];
       timing.steps.forEach((st, i) => { t += (i === 0 ? 0 : num(st.after, 0, 600, 1)) * 1000; times.push(t); });
@@ -3356,6 +3412,22 @@
     const span = shots.length ? shots[shots.length - 1].t : 0;
     const total = !shots.length ? "" : span === 0 ? shots.length + " shots at once" : shots.length + " shots over " + fmtS(span);
     return { shots, warn, total, N };
+  }
+  // Ordem de 1..n segundo a direção, repetida `loops` vezes: fwd 1..n; back n..1;
+  // pingpong 1..n..2 repetido e o 1 no fim (nunca a mesma posição duas vezes seguidas).
+  function directionSlots(direction, n, loops) {
+    const fwd = Array.from({ length: n }, (_, i) => i + 1);
+    let order = fwd;
+    if (direction === "back") order = fwd.slice().reverse();
+    else if (direction === "pingpong") order = n > 1 ? fwd.concat(fwd.slice(1, -1).reverse()) : fwd;
+    const out = [];
+    for (let l = 0; l < loops; l++) out.push(...order);
+    if (direction === "pingpong" && n > 1) out.push(1);
+    return out;
+  }
+  function directionLabel(direction, n, first, last) {
+    const a = first || "1", b = last || String(n);
+    return direction === "back" ? b + " → " + a : direction === "pingpong" ? a + " → " + b + " → " + a : a + " → " + b;
   }
   // Menor espaço entre duas fotos da mesma câmera no plano (ms), qual câmera e quantas
   // câmeras ficam abaixo do limite. null quando nenhuma câmera repete.
@@ -3412,12 +3484,18 @@
     const name = TIMING_MODES.find(([m]) => m === timing.mode)[1];
     const parts = [name];
     const loops = Math.round(num(timing.loops, 1, 99, 1));
-    if (timing.mode === "sweep") parts.push(num(timing.interval, 0.05, 600, 0.2) + " s", timing.direction === "back" ? plan.N + " → 1" : timing.direction === "pingpong" ? "1 → " + plan.N + " → 1" : "1 → " + plan.N);
-    if (timing.mode === "groups") parts.push(Math.round(num(timing.groups, 1, 99, 2)) + " groups · " + num(timing.gap, 0.05, 600, 1) + " s");
-    if (timing.mode === "oddeven") parts.push("evens " + num(timing.oeGap, 0.05, 600, 1) + " s later");
+    if (timing.mode === "sweep") parts.push(num(timing.interval, 0.05, 600, 0.2) + " s", directionLabel(timing.direction, plan.N));
+    if (timing.mode === "groups") {
+      const g = Math.max(1, Math.min(Math.max(plan.N, 1), Math.round(num(timing.groups, 1, 99, 2))));
+      parts.push(g + " groups · " + num(timing.gap, 0.05, 600, 1) + " s", directionLabel(timing.groupsDirection, g));
+    }
+    if (timing.mode === "oddeven") parts.push(directionLabel(timing.oeDirection, 2, "odd", "even") + " · " + num(timing.oeGap, 0.05, 600, 1) + " s");
     if (timing.mode === "custom") parts.push(timing.steps.length + " steps");
     if (timing.mode !== "all" && loops > 1) parts.push("×" + loops);
     return parts.join(" · ");
+  }
+  function directionOptions(n, first, last) {
+    return [["fwd", directionLabel("fwd", n, first, last)], ["back", directionLabel("back", n, first, last)], ["pingpong", directionLabel("pingpong", n, first, last)]];
   }
   function field(label, unit, value, onChange, opts) {
     const o = opts || {};
@@ -3455,13 +3533,18 @@
       const lab = el("label", "field sweep-field"); lab.appendChild(el("span", "", "Shortcuts"));
       lab.appendChild(segmented(SWEEP_INTERVALS.map((v) => [String(v), String(v)]), String(interval), (v) => { timing.interval = Number(v); timingSave(); renderTiming(); }));
       f.appendChild(lab);
-      f.appendChild(selectField("Direction", [["fwd", "1 → " + plan.N], ["back", plan.N + " → 1"], ["pingpong", "1 → " + plan.N + " → 1"]], timing.direction, (v) => { timing.direction = v; timingSave(); }));
+      f.appendChild(selectField("Direction", directionOptions(plan.N), timing.direction, (v) => { timing.direction = v; timingSave(); }));
     }
     if (timing.mode === "groups") {
+      const g = Math.max(1, Math.min(Math.max(plan.N, 1), Math.round(num(timing.groups, 1, 99, 2))));
       f.appendChild(field("Groups", "", timing.groups, (v) => { timing.groups = Math.round(num(v, 1, 99, 2)); timingSave(); }));
       f.appendChild(field("Gap", "sec", timing.gap, (v) => { timing.gap = num(v, 0.05, 600, 1); timingSave(); }, { title: "Time between one group and the next." }));
+      f.appendChild(selectField("Direction", directionOptions(g), timing.groupsDirection, (v) => { timing.groupsDirection = v; timingSave(); }));
     }
-    if (timing.mode === "oddeven") f.appendChild(field("Evens delay", "sec", timing.oeGap, (v) => { timing.oeGap = num(v, 0.05, 600, 1); timingSave(); }, { title: "The even cameras fire this long after the odd ones." }));
+    if (timing.mode === "oddeven") {
+      f.appendChild(field("Gap", "sec", timing.oeGap, (v) => { timing.oeGap = num(v, 0.05, 600, 1); timingSave(); }, { title: "Time between the odd cameras and the even ones." }));
+      f.appendChild(selectField("Direction", directionOptions(2, "odd", "even"), timing.oeDirection, (v) => { timing.oeDirection = v; timingSave(); }));
+    }
     if (timing.mode !== "all") f.appendChild(field("Loops", "", timing.loops, (v) => { timing.loops = Math.round(num(v, 1, 99, 1)); timingSave(); }, { title: "Repeats the whole pattern this many times." }));
     const cust = $("timingCustom"); cust.innerHTML = ""; cust.classList.toggle("hidden", timing.mode !== "custom");
     if (timing.mode === "custom") renderTimingSteps(cust, plan.N);

@@ -589,7 +589,20 @@ Junto com essas etapas (sem etapa própria):
   câmera guarda as fotos oferecidas (a câmera as segura na memória interna) e baixa tudo em
   ordem depois do último disparo (`StillpointWorker`, `g.deferred`; At once e Test shot não
   mudam; cancelar e sair baixam o que ficou). Limite sem cartão: a memória da câmera (a medir,
-  seção 22 E). Pendente: como avisar o usuário de uma foto recusada (ver pendências abaixo).
+  seção 22 E). **Mais medição (2026-10-22, teste-manual 22 D/E):** o download adiado funciona (a T7
+  segurou 6 RAW com e sem cartão e baixou todas depois); com 1,0 s no plano a T7 recusou um
+  disparo sim, outro não — a ordem leva ~0,1–0,23 s para "contar" na câmera, então o aviso
+  passou para **1,2 s**. No app (SL3 + T7 + T5, Sweep 1,2 s 1 → 3 → 1 ×2): 9 fotos, nenhuma
+  recusa, download depois do último disparo. **Decisões (2026-10-22):** Direction também em
+  Groups (sobre os grupos) e Odd / even (ímpares → pares, pares → ímpares, ida e volta); janela
+  abre com 880 px de altura (a linha do tempo pequena em duas alturas cabe sem rolar); **foto
+  recusada sem passar despercebida:** confirmação antes de disparar um plano que repete cedo
+  demais ("n photos will be missing" — Fix timing / Shoot anyway), linha de andamento âmbar no
+  momento ("Shot 10 of 17 · 8 refused"), no fim "Done with n photos missing: … — asked 0,6 s after
+  their previous shot." em âmbar com uma linha só na Activity e a dica, e etiqueta âmbar
+  "n missing" na sessão (arquivo `.missing` na pasta, escrito pelo CameraFleet; some ao salvar e
+  descartar como qualquer sessão). As câmeras simuladas passaram a recusar como a T7 (foto a
+  menos de ~1 s da anterior aceita), para testar tudo isso sem câmera.
 - **Guia de montagem do rig** (documento, não código) — **feito em 2026-10-18**:
   `docs/hardware/montagem-do-rig.md` (MacBook, 9–12 T7, dois hubs alimentados, fontes dummy,
   nobreak, lista de compras com preços no Brasil, roteiro de teste e orçamento de aluguel).

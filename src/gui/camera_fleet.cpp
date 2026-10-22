@@ -1,5 +1,7 @@
 #include "camera_fleet.h"
 
+#include <fstream>
+
 #include "audio_player.h"
 #include "camera_settings_text.h"
 #include "logger.h"
@@ -77,6 +79,17 @@ CameraFleet::CameraFleet(BulletTimeListener& listener) : listener(listener) {}
 CameraFleet::~CameraFleet()
 {
     Stop();
+}
+
+// Fotos recusadas pela câmera nesta sessão: ".missing" na pasta da sessão (uma linha por foto:
+// "<nº> <câmera> <erro>"), para a lista de sessões mostrar a etiqueta mesmo depois de reabrir
+void CameraFleet::WriteMissingMark()
+{
+    if (refusedShots.empty() || sessionDir.empty())
+        return;
+    std::ofstream out((sessionDir / ".missing").string(), std::ios::trunc);
+    for (const auto& line : refusedShots)
+        out << line << "\n";
 }
 
 bool CameraFleet::Start()
@@ -759,6 +772,7 @@ bool CameraFleet::RunSequence(const SequenceSettings& settings)
         const long long t0 = NowEpochMs() + 250;
         expectedDownloads = 0;
         completedDownloads = 0;
+        refusedShots.clear();
         std::map<std::string, std::string> perCamera;
         for (const auto& item : plan)
         {
@@ -841,6 +855,7 @@ bool CameraFleet::RunSequence(const SequenceSettings& settings)
                         if (!ok)
                         {
                             --expectedDownloads;
+                            refusedShots.push_back(std::to_string(prefix) + " " + w->shortName + " " + f[3]);
                             if (cam)
                             {
                                 cam->lastShotError = static_cast<long>(std::strtoul(f[3].c_str(), nullptr, 16));
@@ -942,6 +957,7 @@ bool CameraFleet::RunSequence(const SequenceSettings& settings)
                 break;
             }
         }
+        WriteMissingMark();
         if (sessionFailed)
         {
             listener.OnSessionInterrupted();

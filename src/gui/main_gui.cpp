@@ -733,7 +733,7 @@ namespace
             photos += "]";
 
             Json item("session");
-            item.Add("name", session.name).Add("saved", session.saved).Raw("photos", photos);
+            item.Add("name", session.name).Add("saved", session.saved).Add("missing", session.missing).Raw("photos", photos);
             list += (firstSession ? "" : ",") + item.Str();
             firstSession = false;
         }
@@ -940,8 +940,10 @@ namespace
         webview::webview window(false, nullptr);
         window.set_title("Stillpoint");
         // Largura de abertura em que os modos do Timing (At once … Custom) cabem numa linha
-        // só (496 px no painel Bullet time); não é um mínimo, a janela pode ficar menor
-        window.set_size(1300, 840, WEBVIEW_HINT_NONE);
+        // só (496 px no painel Bullet time); não é um mínimo, a janela pode ficar menor.
+        // Altura: o painel Bullet time com a linha do tempo pequena em duas alturas (44 px)
+        // cabe sem rolar (2026-10-22).
+        window.set_size(1300, 880, WEBVIEW_HINT_NONE);
         window.set_size(960, 680, WEBVIEW_HINT_MIN);
 
         GuiListener listener(window);
@@ -1327,6 +1329,8 @@ namespace
                 int done = 0;
                 const bool groupSounds = settings.groupSounds && settings.playSounds;
                 int tickedSecond = 0;
+                std::vector<bool> fakeRefused(plan.size(), false);  // disparos "busy" das simuladas
+                std::vector<std::string> refusedLines;
                 for (size_t i = 0; i < plan.size(); ++i)
                 {
                     const bool scheduled = !settings.schedule.empty();
@@ -1358,6 +1362,20 @@ namespace
                     if (!completed)
                         break;
                     int number = 0;
+                    // Como a T7 de verdade (medido em 2026-10-22): a câmera recusa ("busy") uma foto
+                    // pedida a menos de ~0,93 s da própria anterior aceita (+ ~0,1 s da ordem chegar)
+                    bool refused = false;
+                    if (scheduled)
+                    {
+                        for (int j = static_cast<int>(i) - 1; j >= 0; --j)
+                            if (plan[j].shortName == plan[i].shortName && !fakeRefused[j])
+                            {
+                                // Conta a partir da última foto ACEITA desta câmera
+                                refused = plan[i].atMs - plan[j].atMs < 1030;
+                                break;
+                            }
+                        fakeRefused[i] = refused;
+                    }
                     for (const auto& cam : controller.GetCameras())
                         if (cam.shortName == plan[i].shortName)
                         {
@@ -1374,13 +1392,27 @@ namespace
                                     if (gapBefore > 1500 && !last && std::abs(at - static_cast<int>((at + 500) / 1000) * 1000) <= 300)
                                         AudioPlayer::PlayWavMixed(GetAssetAudioPath("countdown.wav").string());
                                 }
-                                listener.OnShotFired(cam, static_cast<int>(i) + 1, static_cast<int>(plan.size()), true);
+                                listener.OnShotFired(cam, static_cast<int>(i) + 1, static_cast<int>(plan.size()), !refused);
+                                if (refused)
+                                {
+                                    listener.OnShotFailed(cam, EDS_ERR_DEVICE_BUSY);
+                                    refusedLines.push_back(std::to_string(i + 1) + " " + cam.shortName + " 0x00000081");
+                                }
                             }
                         }
+                    if (refused)
+                        continue;
                     char prefix[8];
                     std::snprintf(prefix, sizeof(prefix), "%02d", static_cast<int>(i) + 1);
                     WriteTestPhoto(dir / (std::string(prefix) + "_" + plan[i].shortName + "_IMG_" + std::to_string(1000 + i) + ".jpg"), number, static_cast<int>(i) + 1);
                     ++done;
+                }
+                if (!refusedLines.empty())
+                {
+                    // Mesmo arquivo que o CameraFleet escreve: etiqueta "n missing" na lista
+                    std::ofstream out((dir / ".missing").string(), std::ios::trunc);
+                    for (const auto& line : refusedLines)
+                        out << line << "\n";
                 }
                 // "Download": depois dos disparos, para não atrasar os tempos do plano
                 for (int i = 0; i < done; ++i)
