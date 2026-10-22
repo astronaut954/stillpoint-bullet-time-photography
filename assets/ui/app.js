@@ -3592,17 +3592,64 @@
         chips.appendChild(chip);
       }
       row.appendChild(chips);
-      // Mover para cima/baixo e remover (o passo 1 não tem "after"; ao mover, cada passo leva o seu)
-      const tools = el("span", "step-tools");
-      const up = button("", () => { [timing.steps[i - 1], timing.steps[i]] = [timing.steps[i], timing.steps[i - 1]]; timingSave(); renderTiming(); }, { icon: "up", title: "Move this step up", kind: "btn-link step-x" });
-      const down = button("", () => { [timing.steps[i + 1], timing.steps[i]] = [timing.steps[i], timing.steps[i + 1]]; timingSave(); renderTiming(); }, { icon: "down", title: "Move this step down", kind: "btn-link step-x" });
       const remove = button("", () => { timing.steps.splice(i, 1); timingSave(); renderTiming(); }, { icon: "close", title: "Remove this step", kind: "btn-link step-x" });
-      up.disabled = i === 0; down.disabled = i === timing.steps.length - 1; remove.disabled = timing.steps.length <= 1;
-      tools.appendChild(up); tools.appendChild(down); tools.appendChild(remove);
-      row.appendChild(tools);
+      remove.disabled = timing.steps.length <= 1;
+      row.appendChild(remove);
+      // Segurar e arrastar muda a ordem dos passos (como nas câmeras); cada passo leva o seu "after"
+      row.classList.toggle("can-drag", timing.steps.length > 1);
+      row.addEventListener("pointerdown", (e) => stepPointerDown(e, row, i, root));
       root.appendChild(row);
     });
     root.appendChild(button("Add step", () => { timing.steps.push({ after: 1, cams: [] }); timingSave(); renderTiming(); }, { kind: "btn-link" }));
+  }
+
+  // ----- Arrastar passos do Custom para reordenar -----
+  let stepDrag = null;
+  function stepRows(root) { return [...root.querySelectorAll(".timing-step")]; }
+  function stepPointerDown(e, row, index, root) {
+    if (e.button !== 0 || timing.steps.length <= 1 || e.target.closest("button, input, select")) return;
+    stepDrag = { row, index, root, y: e.clientY, moved: false };
+    row.setPointerCapture(e.pointerId);
+    row.onpointermove = stepPointerMove;
+    row.onpointerup = (ev) => stepEndDrag(stepDrag && stepDrag.moved ? stepInsertion(ev.clientY) : null);
+    row.onpointercancel = () => stepEndDrag(null);
+  }
+  function stepInsertion(y) {
+    return stepRows(stepDrag.root).filter((r) => {
+      if (r === stepDrag.row) return false;
+      const b = r.getBoundingClientRect();
+      return b.top + b.height / 2 < y;
+    }).length;
+  }
+  function stepPointerMove(e) {
+    const d = stepDrag;
+    if (!d) return;
+    const dy = e.clientY - d.y;
+    if (!d.moved && Math.abs(dy) < 6) return;
+    d.moved = true;
+    d.row.classList.add("dragging");
+    d.row.style.transform = "translateY(" + dy + "px)";
+    const others = stepRows(d.root).filter((r) => r !== d.row);
+    const target = stepInsertion(e.clientY);
+    let marker = d.root.querySelector(".camera-drop");
+    if (!marker) { marker = document.createElement("div"); marker.className = "camera-drop"; d.root.appendChild(marker); }
+    const top = !others.length ? 0 : target < others.length ? others[target].offsetTop - 5
+      : others[others.length - 1].offsetTop + others[others.length - 1].offsetHeight + 3;
+    marker.style.top = top + "px";
+  }
+  function stepEndDrag(target) {
+    const d = stepDrag;
+    stepDrag = null;
+    if (!d) return;
+    d.row.onpointermove = d.row.onpointerup = d.row.onpointercancel = null;
+    d.row.classList.remove("dragging");
+    d.row.style.transform = "";
+    const marker = d.root.querySelector(".camera-drop");
+    if (marker) marker.remove();
+    if (target === null || target === d.index) return;
+    const [step] = timing.steps.splice(d.index, 1);
+    timing.steps.splice(target, 0, step);
+    timingSave(); renderTiming();
   }
   $("timingToggle").addEventListener("click", () => {
     timingOpen = !timingOpen;
