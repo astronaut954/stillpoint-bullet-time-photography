@@ -37,6 +37,9 @@
 #if defined(_WIN32) && !defined(NOMINMAX)
 #define NOMINMAX  // o EDSDK.h inclui windows.h, que define min/max e quebra std::max
 #endif
+#if defined(_WIN32) && !defined(_CRT_SECURE_NO_WARNINGS)
+#define _CRT_SECURE_NO_WARNINGS  // sscanf (leitura do --at) é tratado como erro pelo compilador da Microsoft
+#endif
 #include "EDSDK.h"
 #include "platform/platform.h"
 
