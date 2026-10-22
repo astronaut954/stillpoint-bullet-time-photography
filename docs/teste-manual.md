@@ -498,6 +498,21 @@ cmake --build --preset macos-arm64-release
 ./build/macos-arm64/Stillpoint
 ```
 
+Compilar (Windows, PowerShell; primeira compilação da camada de processos de Windows):
+```
+cd C:\Users\ra-mo\source\repos\canon-bullet-time
+git fetch origin; git checkout etapa-16-processo-por-camera; git pull
+$vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
+& "$vs\Common7\Tools\Launch-VsDevShell.ps1" -Arch amd64 -HostArch amd64 -SkipAutomaticLocation
+cmake --preset windows-x64
+cmake --build --preset windows-x64-release
+.\build\windows-x64\Release\Stillpoint.exe
+```
+No Windows, `StillpointWorker.exe` fica ao lado do `Stillpoint.exe`; os processos aparecem no
+Gerenciador de Tarefas; log em `%LOCALAPPDATA%\Stillpoint\Logs\worker-<série>.txt`. Primeiro
+sem câmera (`$env:STILLPOINT_FAKE_CAMERAS=9; .\build\windows-x64\Release\Stillpoint.exe`,
+seção 18 inteira, inclusive foto recusada e Live), depois com as câmeras, os itens abaixo.
+
 - [ ] **Conexão.** Com as 3 câmeras ligadas, abrir o app: as três aparecem como "connecting"
       e depois "connected", em paralelo (não uma depois da outra). No Monitor de Atividade há
       três processos `StillpointWorker`. Nomes e ordem como antes (SL3_1, T7_1, T5_1).

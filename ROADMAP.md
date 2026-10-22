@@ -551,7 +551,12 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    antigo. Terminal e câmeras simuladas não mudam. Teste: `docs/teste-manual.md`, seção 21.
    **Testado no Mac em 2026-10-21 (SL3 + T7 + T5): conexão em paralelo, disparo At once e
    com plano, queda e volta da T5 com o mesmo nome, Restart camera connections — tudo ok.**
-   Pendente: Camera settings/Test shot/Match, fechar o app, Windows.
+   Camera settings, Test shot, Match, fechar o app e processo encerrado à força: testados e
+   aprovados no Mac em 2026-10-21. **O branch `sweep-limite` (Sweep único, aviso de repetição,
+   download adiado, foto recusada visível, Direction em todos os modos; ver "Medir o menor
+   intervalo do Sweep" abaixo) foi mesclado aqui em 2026-10-22 (decisão do dono do projeto):
+   vai junto na 2.11.0.** Pendente: Windows (compilar, roteiro 21 e 18; a camada de processos
+   do Windows nunca compilou) e o resumo de foto recusada com câmeras de verdade.
 2. **Etapa 17 — modo caixa de disparo.** O app usa a caixa (ESP32 + um canal por câmera, já
    desenhada em `docs/hardware/caixa-de-disparo.pdf` e `hardware/trigger-box/`) para disparar:
    o plano do Timing/Sweep vai para a caixa (PLAN/GO), que dispara com precisão de milissegundos;
