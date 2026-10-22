@@ -594,7 +594,8 @@ Junto com essas etapas (sem etapa própria):
   disparo sim, outro não — a ordem leva ~0,1–0,23 s para "contar" na câmera, então o aviso
   passou para **1,2 s**. No app (SL3 + T7 + T5, Sweep 1,2 s 1 → 3 → 1 ×2): 9 fotos, nenhuma
   recusa, download depois do último disparo. **Decisões (2026-10-22):** Direction também em
-  Groups (sobre os grupos) e Odd / even (ímpares → pares, pares → ímpares, ida e volta); janela
+  Groups (sobre os grupos), Odd / even (ímpares → pares, pares → ímpares, ida e volta) e Custom
+  (sobre os passos; o "after" vale entre os mesmos passos nos dois sentidos); janela
   abre com 880 px de altura (a linha do tempo pequena em duas alturas cabe sem rolar); **foto
   recusada sem passar despercebida:** confirmação antes de disparar um plano que repete cedo
   demais ("n photos will be missing" — Fix timing / Shoot anyway), linha de andamento âmbar no

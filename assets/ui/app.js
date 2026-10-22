@@ -3326,7 +3326,7 @@
   // sweep/sweepDirection) é convertido ao carregar.
   // Direction (Sweep: câmeras; Groups: grupos; Odd / even: ímpares/pares): fwd = 1 → N,
   // back = N → 1, pingpong = 1 → N → 1 (os do meio repetem; com loops, 1…N…2 repetido e o 1 no fim).
-  const TIMING_DEFAULT = { mode: "all", interval: 0.2, direction: "fwd", loops: 1, groups: 2, gap: 1, groupsDirection: "fwd", oeGap: 1, oeDirection: "fwd", steps: [{ after: 0, cams: [1, 2, 3] }, { after: 1, cams: [4, 5, 6] }] };
+  const TIMING_DEFAULT = { mode: "all", interval: 0.2, direction: "fwd", loops: 1, groups: 2, gap: 1, groupsDirection: "fwd", oeGap: 1, oeDirection: "fwd", stepsDirection: "fwd", steps: [{ after: 0, cams: [1, 2, 3] }, { after: 1, cams: [4, 5, 6] }] };
   const TIMING_MODES = [["all", "All at once"], ["sweep", "Sweep"], ["groups", "Groups"], ["oddeven", "Odd / even"], ["custom", "Custom"]];
   const TIMING_SHORT = { all: "At once", sweep: "Sweep", groups: "Groups", oddeven: "Odd / even", custom: "Custom" };
   const SWEEP_INTERVALS = [0.1, 0.2, 0.3, 0.4];  // atalhos; o campo aceita qualquer valor
@@ -3388,12 +3388,21 @@
       const slots = directionSlots(timing.oeDirection, 2, loops);
       slots.forEach((set, k) => { for (let o = 1; o <= N; o++) if ((o % 2 === 1) === (set === 1)) add(o, k * gap); });
     } else if (timing.mode === "custom") {
-      let t = 0; const times = [];
-      timing.steps.forEach((st, i) => { t += (i === 0 ? 0 : num(st.after, 0, 600, 1)) * 1000; times.push(t); });
-      const span = t;
-      const period = span + (timing.steps.length > 1 ? num(timing.steps[1].after, 0, 600, 1) * 1000 : 1000);
-      for (let l = 0; l < loops; l++)
-        timing.steps.forEach((st, i) => (st.cams || []).filter((o) => o >= 1 && o <= N).sort((x, y) => x - y).forEach((o) => add(o, l * period + times[i])));
+      // Passos como "slots" na direção escolhida; o tempo entre dois passos vizinhos é o "after"
+      // do passo de número maior, nos dois sentidos (1 → 2 e 2 → 1 usam o after do passo 2).
+      // Entre o fim de uma volta e o começo da seguinte: o after do passo 2 (ou 1 s com um passo só).
+      const after = (i) => num(timing.steps[i].after, 0, 600, 1) * 1000;
+      const slots = directionSlots(timing.stepsDirection, timing.steps.length, loops);
+      const repeatGap = timing.steps.length > 1 ? after(1) : 1000;
+      let t = 0;
+      slots.forEach((stepNo, k) => {
+        if (k > 0) {
+          const prev = slots[k - 1];
+          // Passos vizinhos: o after do maior; volta de loop (último → primeiro): o after do passo 2
+          t += Math.abs(prev - stepNo) === 1 ? after(Math.max(prev, stepNo) - 1) : repeatGap;
+        }
+        (timing.steps[stepNo - 1].cams || []).filter((o) => o >= 1 && o <= N).sort((x, y) => x - y).forEach((o) => add(o, t));
+      });
       const used = new Set(); timing.steps.forEach((st) => (st.cams || []).forEach((o) => used.add(o)));
       const missing = []; for (let o = 1; o <= N; o++) if (!used.has(o)) missing.push(o);
       if (missing.length) warn = (missing.length === 1 ? "Camera " + missing[0] + " is" : "Cameras " + missing.join(", ") + " are") + " not in any step and will not fire.";
@@ -3490,7 +3499,7 @@
       parts.push(g + " groups · " + num(timing.gap, 0.05, 600, 1) + " s", directionLabel(timing.groupsDirection, g));
     }
     if (timing.mode === "oddeven") parts.push(directionLabel(timing.oeDirection, 2, "odd", "even") + " · " + num(timing.oeGap, 0.05, 600, 1) + " s");
-    if (timing.mode === "custom") parts.push(timing.steps.length + " steps");
+    if (timing.mode === "custom") parts.push(timing.steps.length + " steps", directionLabel(timing.stepsDirection, timing.steps.length));
     if (timing.mode !== "all" && loops > 1) parts.push("×" + loops);
     return parts.join(" · ");
   }
@@ -3546,6 +3555,7 @@
       f.appendChild(selectField("Direction", directionOptions(2, "odd", "even"), timing.oeDirection, (v) => { timing.oeDirection = v; timingSave(); }));
     }
     if (timing.mode !== "all") f.appendChild(field("Loops", "", timing.loops, (v) => { timing.loops = Math.round(num(v, 1, 99, 1)); timingSave(); }, { title: "Repeats the whole pattern this many times." }));
+    if (timing.mode === "custom") f.appendChild(selectField("Direction", directionOptions(timing.steps.length), timing.stepsDirection, (v) => { timing.stepsDirection = v; timingSave(); }));
     const cust = $("timingCustom"); cust.innerHTML = ""; cust.classList.toggle("hidden", timing.mode !== "custom");
     if (timing.mode === "custom") renderTimingSteps(cust, plan.N);
     $("timingTotal").textContent = plan.total;

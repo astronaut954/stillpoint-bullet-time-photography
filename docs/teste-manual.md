@@ -345,7 +345,10 @@ geram fotos de teste com o número da câmera e "#n" (número da foto na sessão
       "3 → 1": "7–9" em 0, "4–6" em 1 s, "1–3" em 2 s; "1 → 3 → 1": 1–3, 4–6, 7–9, 4–6, 1–3 (5 grupos,
       4 s); com Loops 2: 9 grupos, "×2" no resumo. Odd / even, Gap 1 s, Direction "even → odd": pares
       em 0, ímpares em 1 s; "odd → even → odd": ímpares, pares, ímpares (3 slots, 2 s). Resumo:
-      "Groups · 3 groups · 1 s · 1 → 3 → 1" e "Odd / even · odd → even → odd · 1 s".
+      "Groups · 3 groups · 1 s · 1 → 3 → 1" e "Odd / even · odd → even → odd · 1 s". Custom (passos
+      1,2,3 em 0; 4,5,6 após 1 s; 7,8,9 após 2 s), Direction "3 → 1": 7–9 em 0, 4–6 em 2 s, 1–3 em 3 s;
+      "1 → 3 → 1": 1–3, 4–6 (1 s), 7–9 (3 s), 4–6 (5 s), 1–3 (6 s); com Loops 2 em "1 → 3": a volta
+      recomeça 1 s depois do último passo (o "after" do passo 2), como antes.
 - [ ] **Confirmação antes de disparar** (aprovada em 2026-10-22): com um plano que repete cedo demais
       (Sweep 0,3 s, 1 → 9 → 1), "It's bullet time" abre "1 photo will be missing" com "Fix timing"
       (não dispara) e "Shoot anyway" (dispara). Sem repetição cedo demais, dispara direto.
