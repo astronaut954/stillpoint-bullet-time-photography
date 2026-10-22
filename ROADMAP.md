@@ -625,6 +625,17 @@ Junto com essas etapas (sem etapa própria):
 
 ## Futuro (não planejado ainda)
 
+- **Licença (decidido em 2026-10-22, implementação pendente).** Hoje é MIT (qualquer um, inclusive
+  empresa grande, usa de graça). Decisão do dono do projeto: trocar, numa versão futura, para o
+  modelo de **licença dupla**: grátis para pessoas e empresas pequenas (quem está começando na
+  área), licença paga para empresas acima de um corte (funcionários ou faturamento, a definir) —
+  textos prontos a avaliar: PolyForm Small Business, Fair Core License, BSL. Pontos em aberto antes
+  de fazer: (a) o corte de "empresa grande"; (b) as versões já publicadas sob MIT continuam MIT
+  para quem as baixou — decidir como tratar (a mudança vale a partir de uma versão X); (c) conferir
+  os termos do SDK da Canon quanto a distribuição comercial; (d) revisar o texto com advogado. As
+  bibliotecas usadas (MIT/BSD/Apache/OFL; LibRaw em LGPL, separada) permitem a troca. Quando fizer:
+  `LICENSE`, README, notas da versão e o About do app.
+
 - **Disparo com intervalos (PRIORIDADE, pedido do dono do projeto em 2026-10-16; etapa 14).**
   Campo "Timing" no painel Bullet time, com uma linha do tempo que mostra quando cada câmera
   dispara. Modos: All at once (padrão); One after another (intervalo em s, direção 1→N, N→1 ou
