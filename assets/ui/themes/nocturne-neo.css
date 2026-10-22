@@ -565,14 +565,15 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
 /* A janela nunca passa da altura da tela: as notas rolam e os botões ficam sempre à vista
    (2026-10-22: as notas da 2.11.0 empurraram o botão Update para fora da janela) */
 .update-dialog { width: 460px; max-width: calc(100vw - 48px); max-height: calc(100vh - 48px); display: flex; flex-direction: column; }
-.update-body { padding: 16px 18px; min-height: 0; display: flex; flex-direction: column; }
-.update-dialog .dialog-actions { flex: none; }
+.update-dialog h3, .update-dialog .dialog-actions { flex: none; }
+.update-body { padding: 16px 18px; flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.update-body > * { flex: none; }
 .dialog .update-body p { padding: 0; }
 .update-dialog .version-line { font-family: var(--noct-font-mono); font-size: 12px; color: var(--noct-text-muted); margin: 0 0 12px; }
 .update-dialog .version-line b { color: var(--noct-primary); font-weight: 600; }
 .update-notes { margin: 0 0 14px; padding: 10px 14px 10px 28px; border-left: 3px solid var(--noct-border-strong);
   background: rgba(var(--noct-primary-rgb), .04); font-size: 14px; color: var(--noct-text);
-  flex: 0 1 auto; min-height: 0; max-height: 40vh; overflow-y: auto; }
+  flex: 0 1 auto; min-height: 60px; overflow-y: auto; }  /* a lista encolhe e rola; o resto não */
 .update-notes li { margin: 3px 0; }
 .update-hint { font-size: 14px; color: var(--noct-text-muted); margin: 0; }
 .update-hint.error { color: var(--noct-danger); }
