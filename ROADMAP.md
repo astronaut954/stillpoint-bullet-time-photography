@@ -625,6 +625,23 @@ Junto com essas etapas (sem etapa própria):
 
 ## Futuro (não planejado ainda)
 
+- **Metering mode nas Camera settings (pedido em 2026-10-23).** Mostrar e mudar o modo de medição
+  de cada câmera (matricial/evaluative, parcial, pontual, ponderada ao centro) na tabela do Camera
+  settings e na linha All cameras, como ISO e os outros. No EDSDK é a propriedade MeteringMode
+  (leitura e escrita; os valores aceitos vêm de cada câmera, como as demais) — conferir na
+  documentação do SDK e na SL3/T7/T5 antes de implementar. Entra no Match automatically? Decisão
+  pendente (medição diferente entre câmeras muda o brilho medido em modos automáticos; em M não).
+- **Exportação para impressão lenticular (pedido em 2026-10-23).** Uma sessão de bullet time vira
+  uma imagem entrelaçada para lente lenticular: escolher a lente (LPI) e a impressora (DPI),
+  calcular quantos frames cabem por lentícula (DPI ÷ LPI) e avisar quando a sessão tem frames
+  demais ou de menos; entrelaçar as fotos em tiras na ordem certa (com inversão opcional e sentido
+  horizontal/vertical conforme o efeito: animação/flip ou profundidade 3D); calcular o tamanho da
+  folha de impressão a partir do tamanho da lente e do pitch; gerar uma **folha de calibragem**
+  (pitch test: várias faixas com LPI ligeiramente diferentes para medir o pitch real da combinação
+  lente + impressora) e aceitar o valor medido de volta; alinhamento, sangria e marcas de corte;
+  saída em TIFF/PNG sem perda na resolução nativa da impressora. Pré-requisito: o Project (as
+  sessões precisam ficar guardadas para reimprimir). Decisões pendentes: quais lentes/impressoras
+  cadastrar de fábrica, e se a prévia do efeito aparece no app.
 - **Licença (decidido em 2026-10-22, implementação pendente).** Hoje é MIT (qualquer um, inclusive
   empresa grande, usa de graça). Decisão do dono do projeto: trocar, numa versão futura, para o
   modelo de **licença dupla**: grátis para pessoas e empresas pequenas (quem está começando na
