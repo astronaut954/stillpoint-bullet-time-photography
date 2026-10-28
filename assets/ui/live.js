@@ -613,14 +613,9 @@ window.Live = (function () {
   }
   function close() {
     if (!el) return;
-    // Fechar em tela cheia: a janela sai da tela cheia ao ser escondida (lado nativo), então a
-    // opção guardada volta para "window" — senão, ao abrir de novo, a página mostraria "Full
-    // screen" marcado numa janela comum (2026-10-28)
-    if (S.opts.display === "full") {
-      S.opts.display = "window";
-      if (cb.save) cb.save(Object.assign({}, S.opts));
-      renderOpts();
-    }
+    // Em tela cheia, Close só sai da tela cheia (como o Esc); fechar de verdade é o passo
+    // seguinte, já em janela (decisão de 2026-10-28)
+    if (S.opts.display === "full") { setOpts({ display: "window" }); return; }
     if (cb.close) { cb.close(); return; }  // janela separada: o app esconde a janela
     S.open = false;
     el.root.classList.add("hidden");

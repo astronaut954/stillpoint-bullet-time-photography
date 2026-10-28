@@ -434,12 +434,11 @@ Full screen — com mais de um monitor, pergunta qual), Always on top, Another w
       numa câmera ou em todas muda na hora; Copy from camera e Match automatically funcionam com as
       fotos de teste. Os valores voltam ao início ao abrir o app de novo.
 - [ ] Windows: tudo acima, e a janela Live em tela cheia e de volta a janela.
-- [ ] **Fechar a Live em tela cheia (Mac, corrigido em 2026-10-28):** Live view → Full screen →
-      botão Close (ou Esc duas vezes): a janela sai da tela cheia com a animação do sistema e some;
-      a janela principal volta na hora, **sem a tela preta de vários segundos**. Mesma coisa com o
-      botão de fechar vermelho da janela Live em tela cheia. Live view abre a janela de novo —
-      **em janela, com "Window" marcado** nas opções (não "Full screen"). Esc na tela cheia: a Live
-      volta a janela **e continua em destaque** (o foco não vai para a janela principal).
+- [ ] **Live em tela cheia (Mac, 2026-10-28):** Live view → Full screen → **Close ou Esc**: só sai
+      da tela cheia; a Live volta a janela, com "Window" marcado, **e continua em destaque** (o foco
+      não vai para a janela principal). Close de novo (em janela): fecha. **Botão vermelho de
+      fechar** em tela cheia: sai da tela cheia com a animação do sistema e some, **sem a tela
+      preta de vários segundos**; Live view abre de novo em janela, com "Window" marcado.
 
 ## 20. Teste de viabilidade da etapa 16 (um processo por câmera)
 
