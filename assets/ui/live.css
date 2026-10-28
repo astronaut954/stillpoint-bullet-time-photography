@@ -132,7 +132,9 @@
 .live-screens-box { min-width: 320px; max-width: 90%; padding: 20px 24px; border: 1px solid var(--noct-border-strong); background: var(--noct-surface, #0a0f0c); display: flex; flex-direction: column; gap: 12px; align-items: stretch; }
 .live-screens-box h3 { margin: 0 0 4px; font: 700 13px var(--noct-font-mono); text-transform: uppercase; letter-spacing: .12em; color: var(--noct-text); }
 .live-screens-list { display: flex; flex-direction: column; gap: 8px; }
-.live-screens-list .btn { height: 40px; font-size: 13px; justify-content: flex-start; }
+.live-screens-list .btn { height: 40px; font-size: 13px; justify-content: flex-start; gap: 12px; }
+.live-screen-n { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: 1px solid var(--noct-border-strong); font: 700 12px var(--noct-font-mono); }  /* o mesmo número que o "Identify" mostra no monitor */
+.live-screens-actions { display: flex; justify-content: space-between; gap: 8px; }
 .live-screens-list .btn.current { border-color: var(--noct-primary); color: var(--noct-primary); }
 .live-screens-box > .btn { align-self: flex-end; }
 .live-key { margin-left: 8px; padding: 1px 5px; border: 1px solid var(--noct-border-strong); font-size: 10px; color: var(--noct-text-dim); }

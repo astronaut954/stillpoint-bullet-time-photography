@@ -518,6 +518,16 @@ Fechada em 2026-10-17 como 2.10.0 **sem** teste no Windows (primeira compilaçã
 tela cheia e waveOut lá) e **sem** câmeras de verdade — decisão do dono do projeto; conferir na
 primeira oportunidade (ver Pendências conhecidas).
 
+Ajustes de 2026-10-28 (branch `fix-live-fullscreen-hide`, depois dos vídeos do dono do projeto):
+no Mac, esconder a Live em tela cheia deixava a tela preta por segundos (agora sai da tela cheia
+antes de esconder, no `windowDidExitFullScreen:`); Close/Esc em tela cheia só saem da tela cheia
+e a Live continua em destaque; a opção "Full screen" não fica marcada numa janela comum. Escolha
+do monitor como nos programas de photo booth / OBS (decisão do dono do projeto, 2026-10-28): monitor
+lembrado por janela (não pergunta de novo enquanto ele estiver ligado), "Identify displays" (número
+grande em cada monitor por 3 s; `NativeWindow::IdentifyScreens`, Mac e Windows), "Change display"
+em tela cheia, e um vigia de monitores a cada 2 s (evento `screens`): monitor que some → tela cheia
+no principal. Nada de escolher "mesa"/Space: nenhum programa faz isso; o sistema decide.
+
 Parte 3 (futuro, "C"): servir a Live na rede local (TV com navegador, tablet), reaproveitando a
 mesma página.
 

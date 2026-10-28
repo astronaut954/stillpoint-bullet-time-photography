@@ -1775,6 +1775,12 @@ namespace
                 openLive(2);
                 return "null";
             });
+            // "Identify displays": número grande em cada monitor por 3 s
+            v.bind("liveIdentify", [](const std::string&) -> std::string
+            {
+                NativeWindow::IdentifyScreens(3);
+                return "null";
+            });
             bindSetSound(v);
             bindPhotos(v, "getPhoto", store);
 
@@ -2873,7 +2879,34 @@ namespace
         }
 
         window.set_html(LoadPage("index.html", theme));
+
+        // Vigia de monitores: a cada 2 s, se a lista mudou (TV ligada/desligada), avisa as
+        // janelas Live (evento "screens"); a página em tela cheia num monitor que sumiu
+        // passa para o principal (decisão de 2026-10-28).
+        std::atomic<bool> watchingScreens{ true };
+        std::thread screenWatcher([&]
+        {
+            std::string last;
+            while (watchingScreens)
+            {
+                std::this_thread::sleep_for(std::chrono::seconds(2));
+                if (!watchingScreens)
+                    break;
+                window.dispatch([&]
+                {
+                    const std::string now = screensJson();
+                    if (now == last)
+                        return;
+                    const bool first = last.empty();
+                    last = now;
+                    if (!first)
+                        listener.Emit(Json("screens").Raw("screens", now));
+                });
+            }
+        });
         window.run();
+        watchingScreens = false;
+        screenWatcher.detach();
 
         // Janela fechada. Se as câmeras não foram encerradas pelo caminho normal
         // (ex.: o sistema fechou o app), não esperar por elas: esperar pode travar.

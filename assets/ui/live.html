@@ -44,6 +44,7 @@
       <span class="live-tools-label">Display</span>
       <div class="segmented"><button data-display="window">Window</button><button data-display="full">Full screen</button></div>
       <label id="liveOnTopLabel" class="log-option live-tools-check"><input id="liveOnTop" type="checkbox"> Always on top</label>
+      <button id="liveChangeDisplay" class="btn btn-secondary btn-small hidden" title="Move the full screen to another display">Change display</button>
       <button id="liveAnother" class="btn btn-secondary btn-small hidden" title="A second Live window, for example Operator here and Audience on the TV">Another window</button>
       <button id="liveClose" class="btn btn-secondary btn-small">Close<span class="live-key">Esc</span></button>
     </div>
@@ -52,7 +53,10 @@
       <div class="live-screens-box">
         <h3>Full screen on which display?</h3>
         <div id="liveScreensList" class="live-screens-list"></div>
-        <button id="liveScreensCancel" class="btn btn-secondary btn-small">Cancel<span class="live-key">Esc</span></button>
+        <div class="live-screens-actions">
+          <button id="liveScreensIdentify" class="btn btn-secondary btn-small" title="Shows each display's number on it for a few seconds">Identify displays</button>
+          <button id="liveScreensCancel" class="btn btn-secondary btn-small">Cancel<span class="live-key">Esc</span></button>
+        </div>
       </div>
     </div>
   </div>
@@ -93,6 +97,7 @@
         display: (opts) => window.liveDisplay(String(info.index || 1), opts.display, opts.screen, opts.onTop ? "1" : "0"),
         setSound: (sound) => window.liveSetSound(sound.sound ? "1" : "0", sound.sounds ? "1" : "0"),
         close: () => window.liveClose(String(info.index || 1)),
+        identify: () => window.liveIdentify(),
         another: info.index === 1 ? () => window.liveAnother() : null,
       }, info.opts || "", info.sound || null, info.screens || []);
       ready = true;

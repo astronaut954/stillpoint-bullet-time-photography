@@ -434,6 +434,14 @@ Full screen — com mais de um monitor, pergunta qual), Always on top, Another w
       numa câmera ou em todas muda na hora; Copy from camera e Match automatically funcionam com as
       fotos de teste. Os valores voltam ao início ao abrir o app de novo.
 - [ ] Windows: tudo acima, e a janela Live em tela cheia e de volta a janela.
+- [ ] **Escolha do monitor (2026-10-28), com um segundo monitor/TV ligado:** Live view → Full
+      screen pela primeira vez: pergunta o monitor, cada opção com um número; "Identify displays"
+      mostra o número grande no meio de cada monitor por 3 s (por cima de tudo); escolher a TV.
+      Close/Esc e Full screen de novo: **vai direto para a TV, sem perguntar**. Em tela cheia aparece
+      "Change display" nas ferramentas: troca para o outro monitor sem sair da tela cheia (Mac:
+      sai e entra de novo com a animação). **Desligar a TV** (ou puxar o HDMI) com a Live em tela
+      cheia nela: em até ~2 s a Live passa para o monitor principal, em tela cheia. Religar a TV:
+      não volta sozinha (Change display). Windows: o mesmo, com "Display N (main)".
 - [ ] **Live em tela cheia (Mac, 2026-10-28):** Live view → Full screen → **Close ou Esc**: só sai
       da tela cheia; a Live volta a janela, com "Window" marcado, **e continua em destaque** (o foco
       não vai para a janela principal). Close de novo (em janela): fecha. **Botão vermelho de

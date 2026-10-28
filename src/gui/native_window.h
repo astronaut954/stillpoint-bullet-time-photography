@@ -44,4 +44,8 @@ namespace NativeWindow
 
     // Volta a ser uma janela normal (borda, botões, tamanho livre), sempre à frente ou não.
     void SetWindowed(void* nativeWindow, bool alwaysOnTop);
+
+    // "Identify": um número grande (1, 2, …, na ordem de Screens()) em cada monitor por
+    // alguns segundos, como nas configurações de vídeo do sistema.
+    void IdentifyScreens(int seconds);
 }

@@ -45,12 +45,19 @@ namespace
     // Então primeiro sai da tela cheia e, quando o sistema avisa que saiu
     // (windowDidExitFullScreen:), esconde.
     std::set<id> g_hideAfterExit;
+    std::map<id, std::string> g_moveAfterExit;  // "Change display": sai da tela cheia e entra de novo no outro monitor
 
     void WindowDidExitFullScreen(id, SEL, id notification)
     {
         id window = Send<id>(notification, "object");
         if (g_hideAfterExit.erase(window))
             Send<void>(window, "orderOut:", nullptr);
+        else if (const auto it = g_moveAfterExit.find(window); it != g_moveAfterExit.end())
+        {
+            const std::string target = it->second;
+            g_moveAfterExit.erase(it);
+            NativeWindow::SetFullScreen(window, target);
+        }
         else
             Send<void>(window, "makeKeyAndOrderFront:", nullptr);  // continua em destaque (o Mac passava o foco à janela principal)
     }
@@ -248,7 +255,16 @@ namespace NativeWindow
     {
         id window = static_cast<id>(nativeWindow);
         if (IsNativeFullScreen(window))
+        {
+            // Já em tela cheia: se for outro monitor, sai e entra de novo lá (ver g_moveAfterExit)
+            id wanted = ScreenNamed(screenName);
+            if (wanted && wanted != Send<id>(window, "screen"))
+            {
+                g_moveAfterExit[window] = screenName;
+                Send<void>(window, "toggleFullScreen:", nullptr);
+            }
             return true;
+        }
         id screen = ScreenNamed(screenName);
         if (!screen)
             screen = Send<id>(window, "screen");
@@ -289,6 +305,44 @@ namespace NativeWindow
         }
         Send<void>(window, "setLevel:", alwaysOnTop ? 3l : 0l);  // NSFloatingWindowLevel : NSNormalWindowLevel
         Send<void>(window, "makeKeyAndOrderFront:", nullptr);
+    }
+
+    // "Identify": uma janela sem borda, escura, com o número do monitor no meio, em cada
+    // monitor; fecha sozinha depois de `seconds` (performSelector:withObject:afterDelay:).
+    void IdentifyScreens(int seconds)
+    {
+        id screens = Send<id>(GetClass("NSScreen"), "screens");
+        const unsigned long count = Send<unsigned long>(screens, "count");
+        for (unsigned long i = 0; i < count; ++i)
+        {
+            id screen = Send<id>(screens, "objectAtIndex:", i);
+            const CGRect sf = Send<CGRect>(screen, "frame");
+            const CGFloat w = 260, h = 260;
+            const CGRect rect = CGRectMake(sf.origin.x + (sf.size.width - w) / 2, sf.origin.y + (sf.size.height - h) / 2, w, h);
+            id window = Send<id>(GetClass("NSWindow"), "alloc");
+            window = Send<id>(window, "initWithContentRect:styleMask:backing:defer:", rect, 0ul, 2ul, NO);  // borderless, buffered
+            Send<void>(window, "setReleasedWhenClosed:", YES);
+            Send<void>(window, "setLevel:", 101l);   // NSScreenSaverWindowLevel + 1: por cima de tudo, inclusive tela cheia
+            Send<void>(window, "setOpaque:", NO);
+            Send<void>(window, "setHasShadow:", NO);
+            Send<void>(window, "setIgnoresMouseEvents:", YES);
+            Send<void>(window, "setCollectionBehavior:", (1ul << 0) | (1ul << 8));  // em todos os Spaces, inclusive os de tela cheia
+            id bg = Send<id>(GetClass("NSColor"), "colorWithCalibratedRed:green:blue:alpha:", 0.0, 0.0667, 0.0, 0.92);
+            Send<void>(window, "setBackgroundColor:", bg);
+            id label = Send<id>(GetClass("NSTextField"), "alloc");
+            label = Send<id>(label, "initWithFrame:", CGRectMake(0, 60, w, 150));
+            Send<void>(label, "setStringValue:", NSStringFrom(std::to_string(i + 1)));
+            Send<void>(label, "setBezeled:", NO);
+            Send<void>(label, "setDrawsBackground:", NO);
+            Send<void>(label, "setEditable:", NO);
+            Send<void>(label, "setSelectable:", NO);
+            Send<void>(label, "setAlignment:", 1l);  // NSTextAlignmentCenter
+            Send<void>(label, "setFont:", Send<id>(GetClass("NSFont"), "boldSystemFontOfSize:", 140.0));
+            Send<void>(label, "setTextColor:", Send<id>(GetClass("NSColor"), "colorWithCalibratedRed:green:blue:alpha:", 0.0, 1.0, 0.255, 1.0));
+            Send<void>(Send<id>(window, "contentView"), "addSubview:", label);
+            Send<void>(window, "orderFrontRegardless");
+            Send<void>(window, "performSelector:withObject:afterDelay:", sel_registerName("close"), nullptr, static_cast<double>(seconds));
+        }
     }
 
     void InstallAppMenu(void* nativeWindow, std::function<void(const std::string&)> onItem)

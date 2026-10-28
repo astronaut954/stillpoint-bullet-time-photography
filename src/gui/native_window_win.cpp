@@ -118,6 +118,70 @@ namespace NativeWindow
         SetForegroundWindow(hwnd);
     }
 
+    // "Identify": janela escura sem borda com o número do monitor, uma por monitor, por cima
+    // de tudo; um timer a destrói depois de `seconds`.
+    LRESULT CALLBACK IdentifyProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
+    {
+        if (msg == WM_PAINT)
+        {
+            PAINTSTRUCT ps;
+            HDC dc = BeginPaint(hwnd, &ps);
+            RECT rc;
+            GetClientRect(hwnd, &rc);
+            HBRUSH bg = CreateSolidBrush(RGB(0, 17, 0));
+            FillRect(dc, &rc, bg);
+            DeleteObject(bg);
+            HFONT font = CreateFontW(-180, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS,
+                                     CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Segoe UI");
+            HGDIOBJ old = SelectObject(dc, font);
+            SetBkMode(dc, TRANSPARENT);
+            SetTextColor(dc, RGB(0, 255, 65));
+            const int number = static_cast<int>(GetWindowLongPtrW(hwnd, GWLP_USERDATA));
+            const std::wstring text = std::to_wstring(number);
+            DrawTextW(dc, text.c_str(), -1, &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+            SelectObject(dc, old);
+            DeleteObject(font);
+            EndPaint(hwnd, &ps);
+            return 0;
+        }
+        if (msg == WM_TIMER)
+        {
+            DestroyWindow(hwnd);
+            return 0;
+        }
+        return DefWindowProcW(hwnd, msg, wp, lp);
+    }
+
+    void IdentifyScreens(int seconds)
+    {
+        static bool registered = false;
+        if (!registered)
+        {
+            WNDCLASSW wc{};
+            wc.lpfnWndProc = IdentifyProc;
+            wc.hInstance = GetModuleHandleW(nullptr);
+            wc.lpszClassName = L"StillpointIdentify";
+            wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
+            RegisterClassW(&wc);
+            registered = true;
+        }
+        const auto list = Monitors();
+        for (size_t i = 0; i < list.size(); ++i)
+        {
+            const RECT& r = list[i].rect;
+            const int w = 260, h = 260;
+            HWND hwnd = CreateWindowExW(WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE | WS_EX_LAYERED, L"StillpointIdentify", L"",
+                                        WS_POPUP, r.left + (r.right - r.left - w) / 2, r.top + (r.bottom - r.top - h) / 2, w, h,
+                                        nullptr, nullptr, GetModuleHandleW(nullptr), nullptr);
+            if (!hwnd)
+                continue;
+            SetWindowLongPtrW(hwnd, GWLP_USERDATA, static_cast<LONG_PTR>(i + 1));
+            SetLayeredWindowAttributes(hwnd, 0, 235, LWA_ALPHA);
+            ShowWindow(hwnd, SW_SHOWNOACTIVATE);
+            SetTimer(hwnd, 1, static_cast<UINT>(seconds * 1000), nullptr);
+        }
+    }
+
     void Hide(void* nativeWindow)
     {
         ShowWindow(static_cast<HWND>(nativeWindow), SW_HIDE);

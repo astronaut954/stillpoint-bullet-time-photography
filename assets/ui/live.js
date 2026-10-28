@@ -93,13 +93,15 @@ window.Live = (function () {
       onTop: $("liveOnTop"), onTopLabel: $("liveOnTopLabel"), another: $("liveAnother"),
       sounds: $("liveSounds"), close: $("liveClose"),
       slower: $("liveSlower"), faster: $("liveFaster"), speed: $("liveSpeed"), reverse: $("liveReverse"),
-      screens: $("liveScreens"), screensList: $("liveScreensList"), screensCancel: $("liveScreensCancel"),
+      screens: $("liveScreens"), screensList: $("liveScreensList"), screensCancel: $("liveScreensCancel"), screensIdentify: $("liveScreensIdentify"), changeDisplay: $("liveChangeDisplay"),
     };
     el.sounds.addEventListener("change", () => setSound({ sounds: el.sounds.checked }));
     el.slower.addEventListener("click", () => changeSpeed(-1));
     el.faster.addEventListener("click", () => changeSpeed(1));
     el.reverse.addEventListener("change", () => setOpts({ reverse: el.reverse.checked }));
     el.screensCancel.addEventListener("click", () => el.screens.classList.add("hidden"));
+    el.screensIdentify.addEventListener("click", () => { if (cb.identify) cb.identify(); });
+    el.changeDisplay.addEventListener("click", () => chooseScreen());
     el.modeBtns.forEach((b) => b.addEventListener("click", () => setOpts({ mode: b.dataset.mode })));
     el.layoutBtns.forEach((b) => b.addEventListener("click", () => setOpts({ layout: b.dataset.layout })));
     el.displayBtns.forEach((b) => b.addEventListener("click", () => { if (b.dataset.display === "full") askFullScreen(); else setOpts({ display: "window" }); }));
@@ -143,14 +145,23 @@ window.Live = (function () {
   }
 
   // Tela cheia: com mais de um monitor, pergunta em qual; com um só, vai direto
-  function askFullScreen() {
+  // Tela cheia: com um monitor, direto; com um monitor já escolhido antes e ainda ligado,
+  // direto também (não pergunta toda vez); senão, pergunta. `always` força a pergunta
+  // ("Change display"). Decisões de 2026-10-28.
+  function askFullScreen(always) {
     if (S.screens.length < 2) { setOpts({ display: "full", screen: S.screens[0] ? S.screens[0].name : "" }); return; }
+    if (!always && S.opts.screen && S.screens.some((sc) => sc.name === S.opts.screen)) { setOpts({ display: "full", applyDisplay: S.opts.display === "full" }); return; }
+    chooseScreen();
+  }
+  function chooseScreen() {
     el.screensList.innerHTML = "";
-    S.screens.forEach((sc) => {
+    S.screens.forEach((sc, i) => {
       const b = document.createElement("button");
       b.className = "btn btn-secondary" + (sc.name === S.opts.screen ? " current" : "");
-      b.textContent = sc.name + (sc.primary ? "  ·  main display" : "");
-      b.addEventListener("click", () => { el.screens.classList.add("hidden"); setOpts({ display: "full", screen: sc.name }); });
+      b.innerHTML = '<span class="live-screen-n"></span>';
+      b.querySelector(".live-screen-n").textContent = String(i + 1);
+      b.appendChild(document.createTextNode(sc.name + (sc.primary ? "  ·  main display" : "")));
+      b.addEventListener("click", () => { el.screens.classList.add("hidden"); setOpts({ display: "full", screen: sc.name, applyDisplay: true }); });
       el.screensList.appendChild(b);
     });
     el.screens.classList.remove("hidden");
@@ -201,6 +212,7 @@ window.Live = (function () {
     el.faster.disabled = SPEEDS.indexOf(v) === SPEEDS.length - 1;
     el.reverse.checked = S.opts.reverse;
     el.onTopLabel.classList.toggle("hidden", S.opts.display === "full");
+    el.changeDisplay.classList.toggle("hidden", !(S.opts.display === "full" && S.screens.length > 1));
     el.another.classList.toggle("hidden", !cb.another);
     el.sounds.checked = S.sound.sounds;
   }
@@ -594,7 +606,15 @@ window.Live = (function () {
     setOpts(Object.assign({}, DEFAULTS, parsed), true);
   }
   function setSoundState(sound) { Object.assign(S.sound, sound || {}); renderOpts(); }
-  function setScreens(screens) { S.screens = Array.isArray(screens) ? screens : []; renderOpts(); }
+  function setScreens(screens) {
+    S.screens = Array.isArray(screens) ? screens : [];
+    // Em tela cheia num monitor que sumiu (TV desligada): passa para o principal
+    if (S.opts.display === "full" && S.screens.length && !S.screens.some((sc) => sc.name === S.opts.screen)) {
+      const main = S.screens.find((sc) => sc.primary) || S.screens[0];
+      setOpts({ display: "full", screen: main.name, applyDisplay: true });
+    }
+    renderOpts();
+  }
   function setCameras(list) {
     S.cams = (list || []).filter((c) => c.connected).map((c) => ({ name: c.name, number: c.order, model: c.model, connected: true }))
       .sort((a, b) => a.number - b.number);
