@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -37,6 +38,19 @@ namespace
     id NSStringFrom(const std::string& text)
     {
         return Send<id>(GetClass("NSString"), "stringWithUTF8String:", text.c_str());
+    }
+
+    // Janela que pediu para esconder enquanto estava em tela cheia do sistema: esconder uma
+    // janela em tela cheia deixa um "espaço" preto no Mac por vários segundos (2026-10-28).
+    // Então primeiro sai da tela cheia e, quando o sistema avisa que saiu
+    // (windowDidExitFullScreen:), esconde.
+    std::set<id> g_hideAfterExit;
+
+    void WindowDidExitFullScreen(id, SEL, id notification)
+    {
+        id window = Send<id>(notification, "object");
+        if (g_hideAfterExit.erase(window))
+            Send<void>(window, "orderOut:", nullptr);
     }
 
     BOOL WindowShouldClose(id, SEL, id sender)
@@ -183,6 +197,8 @@ namespace NativeWindow
         ::Class cls = object_getClass(delegate);
         class_addMethod(cls, sel_registerName("windowShouldClose:"),
                         reinterpret_cast<IMP>(WindowShouldClose), "B@:@");
+        class_addMethod(cls, sel_registerName("windowDidExitFullScreen:"),
+                        reinterpret_cast<IMP>(WindowDidExitFullScreen), "v@:@");
     }
 
     // ---- Janelas Live ----
@@ -215,7 +231,15 @@ namespace NativeWindow
 
     void Hide(void* nativeWindow)
     {
-        Send<void>(static_cast<id>(nativeWindow), "orderOut:", nullptr);
+        id window = static_cast<id>(nativeWindow);
+        if (IsNativeFullScreen(window))
+        {
+            // Sai da tela cheia primeiro; esconde quando a saída terminar (ver g_hideAfterExit)
+            g_hideAfterExit.insert(window);
+            Send<void>(window, "toggleFullScreen:", nullptr);
+            return;
+        }
+        Send<void>(window, "orderOut:", nullptr);
     }
 
     bool SetFullScreen(void* nativeWindow, const std::string& screenName)
