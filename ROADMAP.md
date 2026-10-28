@@ -527,6 +527,10 @@ lembrado por janela (não pergunta de novo enquanto ele estiver ligado), "Identi
 grande em cada monitor por 3 s; `NativeWindow::IdentifyScreens`, Mac e Windows), "Change display"
 em tela cheia, e um vigia de monitores a cada 2 s (evento `screens`): monitor que some → tela cheia
 no principal. Nada de escolher "mesa"/Space: nenhum programa faz isso; o sistema decide.
+**Testado no Mac com um monitor (2026-10-28):** tela preta ao fechar, Close/Esc em tela cheia e a
+opção "Full screen" marcada — ok. **Pendente:** a parte com dois monitores (pergunta com números,
+Identify displays, Change display, monitor que some) e tudo no Windows (inclusive compilar o
+Identify em GDI).
 
 Parte 3 (futuro, "C"): servir a Live na rede local (TV com navegador, tablet), reaproveitando a
 mesma página.
