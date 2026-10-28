@@ -51,6 +51,8 @@ namespace
         id window = Send<id>(notification, "object");
         if (g_hideAfterExit.erase(window))
             Send<void>(window, "orderOut:", nullptr);
+        else
+            Send<void>(window, "makeKeyAndOrderFront:", nullptr);  // continua em destaque (o Mac passava o foco à janela principal)
     }
 
     BOOL WindowShouldClose(id, SEL, id sender)

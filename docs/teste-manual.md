@@ -437,7 +437,9 @@ Full screen — com mais de um monitor, pergunta qual), Always on top, Another w
 - [ ] **Fechar a Live em tela cheia (Mac, corrigido em 2026-10-28):** Live view → Full screen →
       botão Close (ou Esc duas vezes): a janela sai da tela cheia com a animação do sistema e some;
       a janela principal volta na hora, **sem a tela preta de vários segundos**. Mesma coisa com o
-      botão de fechar vermelho da janela Live em tela cheia. Live view abre a janela de novo.
+      botão de fechar vermelho da janela Live em tela cheia. Live view abre a janela de novo —
+      **em janela, com "Window" marcado** nas opções (não "Full screen"). Esc na tela cheia: a Live
+      volta a janela **e continua em destaque** (o foco não vai para a janela principal).
 
 ## 20. Teste de viabilidade da etapa 16 (um processo por câmera)
 
