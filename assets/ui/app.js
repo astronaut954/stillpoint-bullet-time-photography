@@ -1354,6 +1354,13 @@
     renderExportList();
     renderExportSettings();
     updateExportCount();
+    // WebKit (Mac) às vezes desenha a fileira de miniaturas com o tamanho errado até a janela
+    // mudar de tamanho: um "esconde e mostra" no quadro seguinte obriga a medir de novo
+    requestAnimationFrame(() => {
+      const strip = document.querySelector(".export-strip");
+      if (!strip) return;
+      strip.style.display = "none"; void strip.offsetHeight; strip.style.display = "";
+    });
   }
 
   // Sessões que a janela de salvar mostra: todas, ou só as do Project (Export… da janela Project)

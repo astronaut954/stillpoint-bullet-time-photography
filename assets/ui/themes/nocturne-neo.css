@@ -666,11 +666,10 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
 .export-strip { list-style: none; margin: 0; padding: 0; display: flex; gap: 6px; overflow-x: auto; flex: 0 0 auto; }  /* flex fixo: o WebKit encolhia a fileira e a miniatura vazava da caixa */
 .export-modes button { display: inline-flex; align-items: center; gap: 7px; }
 .export-modes svg { flex: 0 0 auto; }
-.export-strip li { flex: 0 0 76px; }
-.export-strip .frame { --frame-w: 76px; }
-/* Altura explícita (70 px de largura útil × 2/3): o WebKit não conta a altura vinda de
-   aspect-ratio ao medir esta fileira e a miniatura vazava da caixa */
-.export-strip .frame-img { height: 47px; aspect-ratio: auto; }
+/* Medidas todas explícitas (76×53 por fora, 70×47 a imagem, 3:2): o WebKit desenhava esta
+   fileira com a miniatura maior que a caixa até a janela mudar de tamanho */
+.export-strip li.frame { flex: 0 0 76px; width: 76px; height: 53px; box-sizing: border-box; --frame-w: 76px; }
+.export-strip .frame-img { width: 70px; height: 47px; aspect-ratio: auto; }
 
 .export-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; }
 .export-label { font: 700 11px var(--noct-font-mono); color: var(--noct-text-muted); text-transform: uppercase; letter-spacing: var(--noct-tracking-widest); min-width: 74px; }
