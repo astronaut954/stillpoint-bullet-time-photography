@@ -519,7 +519,7 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
   position: fixed; left: 50%; bottom: calc(var(--log-h) + 14px); transform: translateX(-50%);
   display: inline-flex; align-items: stretch; max-width: 80%;
   box-shadow: var(--noct-glow-primary-soft); z-index: 20;
-  opacity: 1; transition: opacity 1400ms ease-out;
+  opacity: 1; transition: opacity 1500ms ease-out;
 }
 .toast.fading { opacity: 0; }
 .toast-kind { display: none; align-items: center; gap: 6px; padding: 0 10px 0 8px; background: var(--noct-primary); color: var(--noct-on-primary);
@@ -1020,6 +1020,7 @@ body.session-drag { cursor: grabbing; user-select: none; -webkit-user-select: no
 .session-folders { position: relative; }
 .session-drop-zone { position: absolute; z-index: 1; pointer-events: none; box-sizing: border-box; border: 1px dashed var(--noct-border-strong); background: rgba(var(--noct-primary-rgb), .04); display: flex; align-items: flex-end; justify-content: center; padding: 6px; }
 .session-drop-zone span { white-space: nowrap; font: 700 10px var(--noct-font-mono); text-transform: uppercase; letter-spacing: .1em; color: var(--noct-text-dim); background: var(--noct-surface); padding: 2px 6px; }
+.session-drop-zone.out { border-color: var(--noct-border); }
 .session-drop-zone.drop-ok { border-color: var(--noct-primary); background: rgba(var(--noct-primary-rgb), .1); box-shadow: var(--noct-glow-primary-soft); }
 .session-drop-zone.drop-ok span { color: var(--noct-primary); }
 .folder-divider.empty { cursor: default; }

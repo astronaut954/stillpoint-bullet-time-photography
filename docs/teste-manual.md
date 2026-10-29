@@ -694,6 +694,10 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) e depois com câmeras. Desenho em `do
       label…" / "Remove label"), "Show session", "Add/Remove from project" (com projeto aberto) e
       "Delete session…" (vermelho, com confirmação). O cabeçalho da galeria só tem "Add to project"
       (para sessão fora do projeto); tirar do projeto é pelo menu ou arrastando.
+- [ ] **Arrastar do projeto para fora:** a área "Not in project" inteira (do divisor até o fim da
+      coluna) recebe, com contorno tracejado "Drop to remove from project" — não só o texto.
+- [ ] **Rótulos sugeridos:** ao digitar um rótulo (menu do botão direito ou janela Project), os
+      rótulos já usados em outras sessões aparecem como sugestão (lista do sistema ao digitar).
 - [ ] **Arrastar de "Not in project":** a área tracejada do projeto fica dentro da coluna (corta
       nos limites dela e fica atrás da barra de rolagem). "Add to project ↑" mostra a caixinha no
       hover também na sessão selecionada.
