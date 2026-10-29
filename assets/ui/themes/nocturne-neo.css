@@ -1027,7 +1027,7 @@ body.session-drag { cursor: grabbing; user-select: none; -webkit-user-select: no
 .folder-divider.empty .chev { visibility: hidden; }
 body.session-drag * { user-select: none !important; -webkit-user-select: none !important; }
 .folder-list .folder { -webkit-user-select: none; user-select: none; }
-body.session-drag.from-app #projectBarBtn, body.session-drag.from-project .folder-divider { outline: 1px dashed var(--noct-border-strong); outline-offset: 4px; }
+body.session-drag.from-app #projectBarBtn { outline: 1px dashed var(--noct-border-strong); outline-offset: 4px; }
 /* Pergunta com campo de texto */
 /* O .dialog não tem margem interna (cada filho tem a sua): o campo fica dentro de um bloco com a mesma margem dos textos */
 .prompt-field { padding: 0 18px 18px; }
@@ -1038,7 +1038,7 @@ body.session-drag.from-app #projectBarBtn, body.session-drag.from-project .folde
 
 .folder-divider { display: flex; align-items: center; gap: 8px; margin: 12px 0 2px; padding: 4px 2px; font: 700 10px var(--noct-font-mono); text-transform: uppercase; letter-spacing: .1em; color: var(--noct-text-dim); }
 .folder-divider .line { flex: 1; height: 1px; background: var(--noct-border); }
-.folder-divider.drop-ok { color: var(--noct-primary); outline: 1px dashed var(--noct-primary); outline-offset: 4px; }
+.folder-divider.drop-ok { color: var(--noct-primary); }
 .folder-add { height: 20px; padding: 0 6px; margin: 4px 0 0 -6px; font-size: 10px; color: var(--noct-primary); border: 1px solid transparent; }
 .folder-add:hover:not(:disabled) { background: var(--noct-surface-inner); border-color: var(--noct-border-strong); }
 .folder.dragging { opacity: .55; }
@@ -1073,3 +1073,10 @@ body.session-drag.from-app #projectBarBtn, body.session-drag.from-project .folde
 .project-menu-current { display: flex; flex-direction: column; gap: 2px; padding: 6px 16px 10px; border-bottom: 1px solid var(--noct-border); margin-bottom: 6px; }
 .project-menu-current b { font: 700 15px var(--noct-font-sans); color: var(--noct-text); }
 .project-menu-current small { font: 10px var(--noct-font-mono); color: var(--noct-text-dim); word-break: break-all; }
+
+/* Sugestões de rótulo: menu do app abaixo do campo */
+.suggest { position: fixed; z-index: 80; display: flex; flex-direction: column; max-height: 200px; overflow: auto; padding: 4px 0;
+  background: var(--noct-surface); border: 1px solid var(--noct-border-strong); box-shadow: 0 12px 32px rgba(0, 0, 0, .55); }
+.suggest-item { display: block; width: 100%; text-align: left; height: 30px; padding: 0 12px; border: 0; background: transparent; color: var(--noct-text);
+  font: 600 14px var(--noct-font-sans); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.suggest-item:hover, .suggest-item.active { background: var(--noct-elevated); color: var(--noct-primary); }

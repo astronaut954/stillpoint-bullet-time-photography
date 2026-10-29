@@ -1006,6 +1006,7 @@
       const count = sessionItems(s).length;
       const li = document.createElement("li");
       li.className = "folder" + (currentSession && currentSession.name === s.name ? " active" : "");
+      li.dataset.name = s.name;
       if (projectOpen && !s.inProject && !notInProjectOpen) li.classList.add("hidden");
       li.innerHTML = icon("folder", 16) + '<div><div class="folder-date"></div><div class="folder-meta"></div></div>';
       li.querySelector(".folder-date").textContent = s.label ? s.label + " · " + label.date : label.date;
@@ -3565,14 +3566,57 @@
     recordAction({ label: after ? 'Label "' + after + '" on ' + sessionLabel(s.name).date : "Remove label from " + sessionLabel(s.name).date,
                    undo: () => window.setSessionLabel(s.name, before), redo: () => window.setSessionLabel(s.name, after) });
   }
-  // Rótulos já usados nas outras sessões: sugestões ao digitar (datalist)
-  function refreshLabelSuggestions(except) {
-    const dl = $("labelList"); dl.innerHTML = "";
-    [...new Set(sessions.filter((x) => x.label && x.name !== except).map((x) => x.label))].sort().forEach((l) => { const o = document.createElement("option"); o.value = l; dl.appendChild(o); });
+  // Rótulos já usados nas outras sessões: sugestões num menu do app, abaixo do campo
+  function labelSuggestions(except) {
+    return [...new Set(sessions.filter((x) => x.label && x.name !== except).map((x) => x.label))].sort((a, b) => a.localeCompare(b));
   }
+  // Liga um campo de texto a uma lista de sugestões (filtra ao digitar; ↑ ↓ Enter escolhem; clique também)
+  function attachSuggest(input, getItems, onPick) {
+    let box = null, items = [], active = -1;
+    const close = () => { if (box) { box.remove(); box = null; } items = []; active = -1; };
+    const render = () => {
+      const q = input.value.trim().toLowerCase();
+      items = getItems().filter((l) => l.toLowerCase() !== q && (!q || l.toLowerCase().includes(q)));
+      if (!items.length) { close(); return; }
+      if (!box) {
+        box = el("div", "suggest");
+        box.addEventListener("pointerdown", (e) => e.preventDefault());  // não tira o foco do campo
+        document.body.appendChild(box);
+      }
+      box.innerHTML = "";
+      items.forEach((l, i) => {
+        const b = el("button", "suggest-item" + (i === active ? " active" : ""), l);
+        b.type = "button";
+        b.addEventListener("click", () => { input.value = l; close(); onPick && onPick(l); });
+        box.appendChild(b);
+      });
+      const r = input.getBoundingClientRect();
+      box.style.left = r.left + "px"; box.style.top = (r.bottom + 4) + "px"; box.style.width = r.width + "px";
+    };
+    const onInput = () => { active = -1; render(); };
+    const onBlur = () => setTimeout(close, 120);
+    const onKey = (e) => {
+      if (!box) return;
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        active = e.key === "ArrowDown" ? (active + 1) % items.length : (active - 1 + items.length) % items.length;
+        render();
+      } else if (e.key === "Enter" && active >= 0) {
+        e.preventDefault(); e.stopImmediatePropagation();
+        input.value = items[active]; close(); onPick && onPick(items[active]);
+      } else if (e.key === "Escape") { e.stopImmediatePropagation(); close(); }
+    };
+    input.addEventListener("input", onInput);
+    input.addEventListener("focus", onInput);
+    input.addEventListener("blur", onBlur);
+    input.addEventListener("keydown", onKey, true);
+    return () => { close(); input.removeEventListener("input", onInput); input.removeEventListener("focus", onInput); input.removeEventListener("blur", onBlur); input.removeEventListener("keydown", onKey, true); };
+  }
+  let promptSuggestOff = null;
   function editSessionLabel(s) {
-    refreshLabelSuggestions(s.name);
-    $("promptInput").setAttribute("list", "labelList");
+    const input = $("promptInput");
+    if (promptSuggestOff) promptSuggestOff();
+    promptSuggestOff = attachSuggest(input, () => labelSuggestions(s.name));
     promptDialog(s.label ? "Rename label" : "Add label", "A short name for the session " + sessionLabel(s.name).date + " (shown next to the date).", s.label || "", s.label ? "Rename" : "Add",
       (v) => v.length > 60 ? "Up to 60 characters." : "", (v) => setSessionLabelUndoable(s, v));
   }
@@ -3710,6 +3754,11 @@
     if (e.button !== 0 || busy || e.target.closest("button")) return;
     if (sessDrag) sessEndDrag(null);
     e.preventDefault();  // sem seleção de texto pelo caminho do arraste (o clique continua valendo)
+    // A sessão segurada passa a ser a selecionada (a lista é redesenhada: pega a linha nova)
+    if (!currentSession || currentSession.name !== s.name) {
+      showSession(s);
+      li = ui.sessionList.querySelector('li.folder[data-name="' + CSS.escape(s.name) + '"]') || li;
+    }
     sessDrag = { li, s, x: e.clientX, y: e.clientY, moved: false, ghost: null, over: null };
     li.setPointerCapture(e.pointerId);
     li.onpointermove = sessPointerMove;
@@ -3788,7 +3837,7 @@
     const input = $("promptInput"), err = $("promptError");
     input.value = value || ""; err.textContent = ""; err.classList.add("hidden");
     $("promptOk").textContent = okLabel || "OK";
-    const close = () => { $("promptOverlay").classList.add("hidden"); $("promptOk").onclick = $("promptCancel").onclick = input.onkeydown = null; input.removeAttribute("list"); };
+    const close = () => { $("promptOverlay").classList.add("hidden"); $("promptOk").onclick = $("promptCancel").onclick = input.onkeydown = null; };
     const ok = () => {
       const v = input.value.trim();
       const problem = validate ? validate(v) : "";
@@ -3930,8 +3979,7 @@
       const box = li.querySelector("input[type=checkbox]"); box.checked = projectSel.has(s.name);
       box.addEventListener("change", () => { projectSelTouched = true; if (box.checked) projectSel.add(s.name); else projectSel.delete(s.name); li.classList.toggle("sel", box.checked); updateProjectCount(); });
       const labelInput = li.querySelector(".project-label"); labelInput.value = s.label || "";
-      labelInput.setAttribute("list", "labelList");
-      labelInput.addEventListener("focus", () => refreshLabelSuggestions(s.name));
+      attachSuggest(labelInput, () => labelSuggestions(s.name), () => labelInput.dispatchEvent(new Event("change")));
       labelInput.title = "Click to name this session, for example \"Pose 7\"";
       labelInput.addEventListener("change", () => setSessionLabelUndoable(s, labelInput.value.trim()));
       labelInput.addEventListener("keydown", (e) => { if (e.key === "Enter") labelInput.blur(); e.stopPropagation(); });
