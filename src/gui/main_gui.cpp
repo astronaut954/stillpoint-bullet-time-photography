@@ -2491,11 +2491,7 @@ namespace
         {
             auto args = ParseStringArgs(request);
             const bool exitAfter = !args.empty() && args[0] == "exit";
-            // args[0] "project": sessões do Project, direto para <Project>/Exports (sem perguntar a pasta)
-            const bool toProjectExports = !args.empty() && args[0] == "project" && project.IsOpen();
-            // args[1]: "delete" (apaga as sessões não salvas que ficaram) e/ou "edited" (usar as editadas)
-            const bool deleteRest = args.size() > 1 && args[1].find("delete") != std::string::npos;
-            const bool useEdited = args.size() > 1 && args[1].find("edited") != std::string::npos;
+            const bool deleteRest = args.size() > 1 && args[1] == "delete";
             const std::vector<std::string> names(args.begin() + std::min<size_t>(args.size(), 2), args.end());
             const std::string folder = NativeWindow::ChooseFolder("Choose where to save your bullet time sessions");
             if (folder.empty())
@@ -2776,7 +2772,11 @@ namespace
             namespace fs = std::filesystem;
             auto args = ParseStringArgs(request);
             const bool exitAfter = !args.empty() && args[0] == "exit";
-            const bool deleteRest = args.size() > 1 && args[1] == "delete";
+            // args[0] "project": sessões do Project, direto para <Project>/Exports (sem perguntar a pasta)
+            const bool toProjectExports = !args.empty() && args[0] == "project" && project.IsOpen();
+            // args[1]: "delete" (apaga as sessões não salvas que ficaram) e/ou "edited" (usar as editadas)
+            const bool deleteRest = args.size() > 1 && args[1].find("delete") != std::string::npos;
+            const bool useEdited = args.size() > 1 && args[1].find("edited") != std::string::npos;
             struct Naming { std::string kind, text; bool date = true; bool before = false; };
             std::vector<ExportJob> jobs;
             std::vector<Naming> namings;
