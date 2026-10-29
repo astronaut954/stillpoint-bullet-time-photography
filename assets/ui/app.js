@@ -1517,7 +1517,11 @@
 
     if (exp.mode === "photos") {
       const s = st.photos;
+      // A fileira (ul) fica dentro de uma caixa que rola (div): o WebKit do Mac pintava os
+      // filhos diretos da área de rolagem deslocados (sem a borda e o espaço interno deles)
+      const stripScroll = el("div", "export-strip-scroll");
       const strip = el("ul", "export-strip");
+      stripScroll.appendChild(strip);
       const showPhoto = () => {
         const item = items[exp.photo];
         if (!item) return;
@@ -1539,7 +1543,7 @@
         li.addEventListener("click", () => { exp.photo = k; showPhoto(); });
         strip.appendChild(li);
       });
-      outer.insertBefore(strip, box);
+      outer.insertBefore(stripScroll, box);
       showPhoto();
       const r = row("Format");
       r.appendChild(segmented(PHOTO_FORMATS, s.format, (v) => { s.format = v; rerender(); },

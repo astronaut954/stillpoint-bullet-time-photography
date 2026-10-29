@@ -667,7 +667,8 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
 .preview-play { position: absolute; right: 10px; bottom: 10px; }
 /* Rola para o lado; fica fora de .export-rows: uma área que rola dentro de outra que rola
    fazia o WebKit do Mac pintar as miniaturas deslocadas da caixa */
-.export-strip { list-style: none; margin: 0; padding: 0 0 4px; display: flex; gap: 6px; overflow-x: auto; flex: 0 0 auto; }
+.export-strip-scroll { overflow-x: auto; overflow-y: hidden; flex: 0 0 auto; padding-bottom: 4px; }
+.export-strip { list-style: none; margin: 0; padding: 0; border: 0; display: flex; gap: 6px; width: max-content; min-width: 100%; }
 .export-modes button { display: inline-flex; align-items: center; gap: 7px; }
 .export-modes svg { flex: 0 0 auto; }
 /* Medidas todas explícitas (76×53 por fora, 70×47 a imagem, 3:2): o WebKit desenhava esta
