@@ -3986,6 +3986,8 @@
     renderProjectWindow();
     $("projectOverlay").classList.remove("hidden");
     refreshProject();
+    // O campo do nome já vem com o foco e o texto selecionado
+    setTimeout(() => { const i = $("projectNameInput"); i.focus(); i.select(); }, 0);
   }
   // Relê as sessões e o estado do Project (ex.: fotos que o Lightroom acabou de gravar em
   // Edited/): ao abrir a janela Project e sempre que o app volta a ser a janela da frente.
