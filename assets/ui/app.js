@@ -269,7 +269,7 @@
     t.classList.toggle("kind-warn", !!o.warn);  // amarelo: validação, "espere as câmeras"…
     t.classList.toggle("kind-undo", o.kind === "undo");
     t.classList.toggle("kind-redo", o.kind === "redo");
-    t.querySelector(".toast-close").addEventListener("click", () => hideToast("close button"));
+    t.querySelector(".toast-close").addEventListener("click", hideToast);
     t.classList.remove("hidden", "fading");
     toast.dwell = ms || TOAST_MS;
     armToast();
@@ -282,15 +282,13 @@
     clearTimeout(toast.timer); clearTimeout(toast.fadeTimer);
     toast.timer = setTimeout(() => {
       ui.toast.classList.add("fading");
-      toast.fadeTimer = setTimeout(() => hideToast("timer"), 1500);
+      toast.fadeTimer = setTimeout(hideToast, 1500);
     }, toast.dwell || TOAST_MS);
   }
-  function hideToast(reason) {
+  function hideToast() {
     clearTimeout(toast.timer); clearTimeout(toast.fadeTimer);
-    const wasShown = !ui.toast.classList.contains("hidden");
     ui.toast.classList.add("hidden");
     ui.toast.classList.remove("fading");
-    void wasShown; void reason;
   }
   ui.toast.addEventListener("mouseenter", () => { clearTimeout(toast.timer); clearTimeout(toast.fadeTimer); ui.toast.classList.remove("fading"); });
   ui.toast.addEventListener("mouseleave", () => { if (!ui.toast.classList.contains("hidden")) armToast(); });
@@ -2562,7 +2560,7 @@
     if (manual) toast("Checking for updates…");
     const answer = (title, text) => {
       if (!manual) return;
-      hideToast("update check");
+      hideToast();
       dialog(title, text, [{ label: "OK", primary: true }]);
     };
     const failed = () => answer("Could not check for updates", "Stillpoint could not reach GitHub. Check the internet connection and try again.");
@@ -2586,7 +2584,7 @@
       updEl.chipText.textContent = "Update " + version;
       updEl.chip.classList.remove("hidden");
       log("Stillpoint " + version + " is available", "ok");
-      if (manual) { hideToast("update window"); openUpdate(); }
+      if (manual) { hideToast(); openUpdate(); }
     });
   }
   updEl.chip.addEventListener("click", openUpdate);

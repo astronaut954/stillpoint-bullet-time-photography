@@ -584,6 +584,18 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    Protótipo visual de 2026-10-22 (canvas "Stillpoint — Projects & Edit round trip"). Nome
    decidido: **Project** (não "sessão master"). Primeiro passo: desenho da pasta e do
    `project.json`, aprovado antes de codar.
+   **Feita em 2026-10-29 (branch `etapa-17-project`, versão 2.12.0).** Desenho em
+   `docs/project.md`; teste em `docs/teste-manual.md`, seção 23. Decisões do dono do projeto
+   pelo caminho: projeto como botão na barra de cima (opção C de 4 protótipos) + grupo "Not in
+   project" recolhido; sessão nova entra direto no projeto; Remove volta para o app; reordenar
+   também no projeto; rótulo por sessão com sugestões; menu do botão direito na sessão;
+   segurar e arrastar para dentro/fora; renomear o projeto (menu e campo da janela Project,
+   caracteres proibidos barrados); desfazer/refazer geral (inclui apagar, com lixeira do app
+   esvaziada ao abrir); aviso do rodapé no layout "etiqueta mono" (de 6 protótipos) e tudo
+   registrado na Activity; Enter/Esc e clicar fora nas janelas; trilho neon igual nos três
+   painéis. Testado no Mac com câmeras simuladas. **Pendente:** câmeras reais (session.json,
+   .xmp, undo de configurações — inclusive rápido, com a trava "cameras still applying" —,
+   lixeira com RAW/HD externo, ordem das câmeras) e Windows (compila; sem teste de uso).
 3. **Etapa 18 — Metering mode nas Camera settings** (ver "Futuro"; pequeno).
 4. **Etapa 19 — Exportação para impressão lenticular** (ver "Futuro"; precisa do Project).
 5. **Etapa 20 — Edit in Lightroom Classic / Photoshop.** Ida e volta: o app abre os originais
@@ -755,6 +767,14 @@ Junto com essas etapas (sem etapa própria):
 Atualizar esta tabela sempre que uma função mudar de status.
 
 ## Pendências conhecidas
+
+- **2.12.0 (etapa 17 — Project) publicada em 2026-10-29 testada só com câmeras simuladas no
+  Mac; Windows só compilou.** Faltam, com câmeras reais: sessão em `Originals/` com
+  `session.json`; `.xmp` ao lado do RAW preservado e renomeado junto ao reordenar; undo/redo nas
+  Camera settings (inclusive rápido: a trava "The cameras are still applying…" deve segurar) e
+  no Copy from camera; apagar foto/sessão + Ctrl+Z com RAW e projeto em HD externo (a lixeira
+  copia entre discos); ordem das câmeras + Ctrl+Z. No Windows: todo o roteiro 23 (botão direito,
+  arrastar, Rename com a pasta aberta no Explorer, apagar + Ctrl+Z, Save sessions).
 
 - **2.11.1 (2026-10-22):** a janela de atualização crescia com o texto das notas e, com as da
   2.11.0, o botão Update saía da tela. Corrigido (lista rola; botões sempre à vista; conferido
