@@ -4,8 +4,11 @@
 // lê e escreve objetos, listas, textos, números, true/false/null. Sem dependências.
 // Não é para dados grandes nem para validar JSON alheio com rigor.
 
-#include <map>
+#include <cctype>
+#include <cstdio>
+#include <cstdlib>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
