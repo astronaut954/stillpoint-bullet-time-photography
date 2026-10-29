@@ -342,12 +342,12 @@
   }
 
   function sessionLabel(name) {
-    // "2026-10-10_18-46-12_AB12_session_01" -> { date: "Oct 10, 18:46", detail: "Session 1" }
+    // "2026-10-10_18-46-12_AB12_session_01" -> { date: "Oct 10, 18:46:12", detail: "Session 1" }
     const m = /^(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})(?:_[A-Z0-9]+_session_(\d+))?/.exec(name);
     if (!m) return { date: name, time: "", detail: "" };
     const date = new Date(+m[1], +m[2] - 1, +m[3]);
     return {
-      date: date.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + ", " + m[4] + ":" + m[5],
+      date: date.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + ", " + m[4] + ":" + m[5] + ":" + m[6],  // com segundos: sessões no mesmo minuto
       time: m[4] + ":" + m[5] + ":" + m[6],
       detail: m[7] ? "Session " + (+m[7]) : "",
     };
