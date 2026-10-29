@@ -622,12 +622,21 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) e depois com câmeras. Desenho em `do
 - [ ] **Disparar com Project aberto:** a sessão nova vai direto para `Originals/<sessão>/`
       (com `session.json`: shotAt, timing, plan, cameras) e aparece no alto da lista (parte do
       projeto); o botão da barra conta 1 sessão. Fechar o app: **não** pergunta por sessão não salva.
-- [ ] **Divisor "Not in project":** com projeto aberto, as sessões do projeto ficam em cima; as que
-      estão só no app ficam embaixo do divisor "Not in project · n", cada uma com "Add to project ↑".
-      Sem sessões fora do projeto, o divisor não aparece.
-- [ ] **Arrastar:** arrastar uma sessão de baixo do divisor e soltar no botão do projeto (barra de
-      cima) = Add to project; arrastar uma do projeto e soltar no divisor = Remove from project. O
-      alvo ganha contorno tracejado enquanto a sessão passa por cima.
+- [ ] **Grupo "Not in project":** com projeto aberto, as sessões do projeto ficam em cima; as que
+      estão só no app ficam no grupo "› Not in project · n", **recolhido por padrão**; clicar abre
+      e fecha; cada sessão tem "Add to project ↑". Abre sozinho quando uma sessão sai do projeto e
+      quando a sessão aberta está nele. Sem sessões fora do projeto, o grupo não aparece.
+- [ ] **Segurar e arrastar:** segurar uma sessão (fora dos botões) e arrastar: uma cópia segue o
+      ponteiro; soltar sobre o botão do projeto (barra de cima) = Add to project; uma sessão do
+      projeto solta sobre "Not in project" (mesmo recolhido) = Remove from project. Os alvos
+      possíveis ganham contorno tracejado durante o arrasto; o alvo sob o ponteiro acende.
+- [ ] **Botão da janela Project** (ícone com moldura à direita de "Sessions", só com projeto
+      aberto) abre a janela Project. "Delete session" na galeria virou o ícone de lixeira com moldura.
+- [ ] **Rename project…** (menu da barra): pergunta o nome, valida (sem / \ : * ? " < > |, não
+      começa com ponto), renomeia a **pasta** e o projeto; a barra, o `settings.txt` e os recentes
+      passam a apontar para a pasta nova. Com a pasta aberta no Finder/Explorer ou por outro
+      programa (ex.: um arquivo dela aberto no Preview, no Windows), aparece a caixa "Could not
+      rename the project" com o motivo e nada muda.
 - [ ] **Add / Remove (botão):** com uma sessão da pasta de dados aberta, o botão "Add to project"
       no cabeçalho da galeria (ou o "Add to project ↑" da lista) move a pasta para `Originals/` e a
       sessão sobe para cima do divisor; "Remove from project" move de volta (volta a contar como

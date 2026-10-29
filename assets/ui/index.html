@@ -60,7 +60,10 @@
     <!-- ====================== SESSÕES ====================== -->
     <section class="panel sessions-panel">
       <aside class="session-folders">
-        <h2>Sessions <span id="sessionCount" class="count hidden">0</span></h2>
+        <div class="sessions-head">
+          <h2>Sessions <span id="sessionCount" class="count hidden">0</span></h2>
+          <button id="projectWindowBtn" class="btn btn-secondary btn-small btn-icon hidden" title="Project window" aria-label="Project window"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1.5" y="2.5" width="11" height="9"/><path d="M1.5 5.5h11M4 8h2.5M4 10h4"/></svg></button>
+        </div>
         <ul id="sessionList" class="folder-list"></ul>
         <p id="noSessions" class="empty">None yet.</p>
       </aside>
@@ -183,6 +186,17 @@
         <button id="orderCancel" class="btn btn-secondary">Cancel</button>
         <button id="orderSave" class="btn btn-primary">Save order</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Pergunta com um campo de texto (ex.: renomear o projeto) -->
+  <div id="promptOverlay" class="overlay hidden">
+    <div class="dialog">
+      <h3 id="promptTitle"></h3>
+      <p id="promptText"></p>
+      <input id="promptInput" type="text" class="prompt-input" maxlength="120" spellcheck="false">
+      <p id="promptError" class="prompt-error hidden"></p>
+      <div class="dialog-actions"><button id="promptCancel" class="btn btn-secondary">Cancel</button><button id="promptOk" class="btn btn-primary">OK</button></div>
     </div>
   </div>
 

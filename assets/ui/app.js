@@ -788,7 +788,7 @@
   const projectActionBtn = button("Add to project", () => toggleCurrentInProject(), { kind: "btn-link", title: "Keep this session in the project folder" });
   const compactActions = [
     projectActionBtn,
-    button("Delete session", deleteCurrentSession, { kind: "btn-link", title: "Delete this session" }),
+    button("", deleteCurrentSession, { icon: "trash", title: "Delete this session" }),
     fullBtn,
   ];
   const exitFullBtn = button("", () => setFullscreen(false), { icon: "shrink", title: "Exit full screen (Esc)" });
@@ -919,24 +919,28 @@
     ui.sessionList.innerHTML = "";
     ui.noSessions.classList.toggle("hidden", sessions.length > 0);
     const projectOpen = !!project.open;
-    // Com projeto aberto: as sessões do projeto primeiro; as outras sob o divisor "Not in project"
+    // Com projeto aberto: as sessões do projeto primeiro; as outras sob o grupo "Not in project",
+    // recolhido por padrão (abre ao clicar, ao tirar uma sessão do projeto e quando a sessão
+    // aberta está nele)
     const ordered = projectOpen ? sessions.filter((s) => s.inProject).concat(sessions.filter((s) => !s.inProject)) : sessions;
+    if (projectOpen && currentSession && sessions.some((x) => x.name === currentSession.name && !x.inProject)) notInProjectOpen = true;
     let dividerDone = false;
     ordered.forEach((s) => {
       if (projectOpen && !s.inProject && !dividerDone) {
         dividerDone = true;
         const n = sessions.filter((x) => !x.inProject).length;
-        const d = el("li", "folder-divider");
-        d.innerHTML = '<span>Not in project</span><span class="line"></span><span class="n"></span>';
+        const d = el("li", "folder-divider" + (notInProjectOpen ? " open" : ""));
+        d.innerHTML = '<span class="chev">' + icon("right", 10) + '</span><span>Not in project</span><span class="line"></span><span class="n"></span>';
         d.querySelector(".n").textContent = n;
-        d.title = "Sessions still only in the app. Drop one here to take it out of the project.";
-        bindProjectDrop(d, false);
+        d.title = (notInProjectOpen ? "Hide" : "Show") + " the sessions still only in the app. Drop a session here to take it out of the project.";
+        d.addEventListener("click", () => { notInProjectOpen = !notInProjectOpen; renderSessionList(); });
         ui.sessionList.appendChild(d);
       }
       const label = sessionLabel(s.name);
       const count = sessionItems(s).length;
       const li = document.createElement("li");
       li.className = "folder" + (currentSession && currentSession.name === s.name ? " active" : "");
+      if (projectOpen && !s.inProject && !notInProjectOpen) li.classList.add("hidden");
       li.innerHTML = icon("folder", 16) + '<div><div class="folder-date"></div><div class="folder-meta"></div></div>';
       li.querySelector(".folder-date").textContent = s.label ? s.label + " · " + label.date : label.date;
       li.querySelector(".folder-meta").textContent = [plural(count, "photo", "photos"), label.detail].filter(Boolean).join(" · ");
@@ -949,13 +953,8 @@
           add.addEventListener("click", (e) => { e.stopPropagation(); moveToProject(s.name, true); });
           li.querySelector("div").appendChild(add);
         }
-        // Arrastar para dentro (solta no botão do projeto, na barra) ou para fora (solta no divisor)
-        li.draggable = true;
-        li.addEventListener("dragstart", (e) => {
-          e.dataTransfer.setData("text/plain", s.name); e.dataTransfer.effectAllowed = "move";
-          li.classList.add("dragging"); document.body.classList.add("session-drag", s.inProject ? "from-project" : "from-app");
-        });
-        li.addEventListener("dragend", () => { li.classList.remove("dragging"); document.body.classList.remove("session-drag", "from-project", "from-app"); });
+        // Segurar e arrastar: para o botão do projeto (barra de cima) = entra; para "Not in project" = sai
+        li.addEventListener("pointerdown", (e) => sessPointerDown(e, li, s));
       }
       if (s.saved) {
         li.querySelector(".folder-meta").after(savedTag());
@@ -3407,6 +3406,7 @@
       }
       items.push({ label: "Project window…", onClick: openProjectWindow });
       items.push({ label: "Open folder", onClick: () => window.projectOpenFolder() });
+      items.push({ label: "Rename project…", onClick: renameProject });
       items.push("-");
     }
     return items;
@@ -3431,29 +3431,108 @@
       popupMenu(anchor, items, align);
     });
   }
-  // Soltar uma sessão arrastada: toProject=true adiciona, false remove
-  function bindProjectDrop(target, toProject) {
-    target.addEventListener("dragover", (e) => {
-      const ok = document.body.classList.contains(toProject ? "from-app" : "from-project");
-      if (!ok) return;
-      e.preventDefault(); e.dataTransfer.dropEffect = "move"; target.classList.add("drop-ok");
-    });
-    target.addEventListener("dragleave", () => target.classList.remove("drop-ok"));
-    target.addEventListener("drop", (e) => {
-      target.classList.remove("drop-ok");
-      const name = e.dataTransfer.getData("text/plain");
-      if (!name) return;
-      e.preventDefault();
-      moveToProject(name, toProject);
-    });
+  // ---- Segurar e arrastar uma sessão (eventos de ponteiro, como a lista de câmeras) ----
+  // Alvos: o botão do projeto na barra (entra no projeto) e o grupo "Not in project" (sai).
+  let notInProjectOpen = false;  // grupo "Not in project" aberto?
+  let sessDrag = null;
+  function sessDropTarget(x, y) {
+    const d = sessDrag;
+    const under = document.elementFromPoint(x, y);
+    if (!under) return null;
+    if (!d.s.inProject && under.closest("#projectBarBtn")) return { el: $("projectBarBtn"), toProject: true };
+    const div = under.closest(".folder-divider");
+    if (d.s.inProject && div) return { el: div, toProject: false };
+    return null;
+  }
+  function sessPointerDown(e, li, s) {
+    if (e.button !== 0 || busy || e.target.closest("button")) return;
+    sessDrag = { li, s, x: e.clientX, y: e.clientY, moved: false, ghost: null, over: null };
+    li.setPointerCapture(e.pointerId);
+    li.onpointermove = sessPointerMove;
+    li.onpointerup = (ev) => sessEndDrag(sessDrag && sessDrag.moved ? sessDropTarget(ev.clientX, ev.clientY) : null);
+    li.onpointercancel = () => sessEndDrag(null);
+  }
+  function sessPointerMove(e) {
+    const d = sessDrag;
+    if (!d) return;
+    const dx = e.clientX - d.x, dy = e.clientY - d.y;
+    if (!d.moved && Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+    if (!d.moved) {
+      d.moved = true;
+      d.li.classList.add("dragging");
+      document.body.classList.add("session-drag", d.s.inProject ? "from-project" : "from-app");
+      // Fantasma: cópia da linha que segue o ponteiro
+      const r = d.li.getBoundingClientRect();
+      d.ghost = d.li.cloneNode(true);
+      d.ghost.className = "folder session-ghost";
+      d.ghost.style.width = r.width + "px";
+      d.ghost.style.left = r.left + "px"; d.ghost.style.top = r.top + "px";
+      document.body.appendChild(d.ghost);
+    }
+    d.ghost.style.transform = "translate(" + dx + "px," + dy + "px)";
+    const t = sessDropTarget(e.clientX, e.clientY);
+    const el2 = t ? t.el : null;
+    if (d.over !== el2) {
+      if (d.over) d.over.classList.remove("drop-ok");
+      if (el2) el2.classList.add("drop-ok");
+      d.over = el2;
+    }
+  }
+  function sessEndDrag(target) {
+    const d = sessDrag;
+    sessDrag = null;
+    if (!d) return;
+    d.li.onpointermove = d.li.onpointerup = d.li.onpointercancel = null;
+    d.li.classList.remove("dragging");
+    if (d.ghost) d.ghost.remove();
+    if (d.over) d.over.classList.remove("drop-ok");
+    document.body.classList.remove("session-drag", "from-project", "from-app");
+    if (!target || busy) return;
+    moveToProject(d.s.name, target.toProject);
   }
   function moveToProject(name, toProject) {
     const s = sessions.find((x) => x.name === name);
     if (!s || !project.open || !!s.inProject === toProject) return;
+    if (!toProject) notInProjectOpen = true;  // a sessão que saiu fica à vista
     Promise.resolve(toProject ? window.addToProject(name) : window.removeFromProject(name)).then((r) => {
       if (r && r.error) { toast(r.error, 8000); log(r.error, "error"); }
       else log((toProject ? "Added to project: " : "Removed from project: ") + sessionLabel(name).date, "ok");
     });
+  }
+  // Pergunta com campo de texto. validate(valor) devolve uma mensagem de erro ou "".
+  function promptDialog(title, text, value, okLabel, validate, onOk) {
+    $("promptTitle").textContent = title;
+    $("promptText").textContent = text;
+    const input = $("promptInput"), err = $("promptError");
+    input.value = value || ""; err.textContent = ""; err.classList.add("hidden");
+    $("promptOk").textContent = okLabel || "OK";
+    const close = () => { $("promptOverlay").classList.add("hidden"); $("promptOk").onclick = $("promptCancel").onclick = input.onkeydown = null; };
+    const ok = () => {
+      const v = input.value.trim();
+      const problem = validate ? validate(v) : "";
+      if (problem) { err.textContent = problem; err.classList.remove("hidden"); input.focus(); return; }
+      close(); onOk(v);
+    };
+    $("promptOk").onclick = ok;
+    $("promptCancel").onclick = close;
+    input.onkeydown = (e) => { if (e.key === "Enter") { e.preventDefault(); ok(); } if (e.key === "Escape") { e.preventDefault(); close(); } };
+    $("promptOverlay").classList.remove("hidden");
+    setTimeout(() => { input.focus(); input.select(); }, 0);
+  }
+  function renameProject() {
+    if (!project.open) return;
+    promptDialog("Rename project", "The project folder is renamed too (" + project.folder + ").", project.name, "Rename",
+      (v) => !v ? "Type a name." : /[\\/:*?"<>|]/.test(v) ? "A folder name cannot have / \\ : * ? \" < > |" : v[0] === "." ? "The name cannot start with a dot." : "",
+      (v) => {
+        if (v === project.name) return;
+        if (typeof window.projectRename !== "function") { toast("This build cannot rename projects yet. Build the app again.", 8000); return; }
+        Promise.resolve(window.projectRename(v)).then((r) => {
+          if (r && r.error) { dialog("Could not rename the project", r.error, [{ label: "OK", primary: true }]); log(r.error, "error"); return; }
+          if (r && r.project) setProject(r.project);
+          toast("Project renamed: " + v); log("Project renamed: " + v, "ok");
+          refreshSessions();
+        });
+      });
   }
   function projectCounts(sep) {
     return [plural(project.sessions || 0, "session", "sessions"), plural(project.photos || 0, "photo", "photos"),
@@ -3467,10 +3546,11 @@
     $("projectBarName").textContent = open ? project.name : "No project";
     $("projectBarMeta").textContent = open ? (project.available === false ? "not reachable" : [project.sessions || 0, project.photos || 0, project.edited ? project.edited + " edited" : ""].filter((x) => x !== "").join(" · ")) : "";
     b.title = open ? project.folder : "Open or create a project (a folder of yours that keeps the sessions)";
+    $("projectWindowBtn").classList.toggle("hidden", !open);
     renderProjectAction();
   }
   $("projectBarBtn").addEventListener("click", (e) => openProjectMenu(e.currentTarget, "left", true));
-  bindProjectDrop($("projectBarBtn"), true);
+  $("projectWindowBtn").addEventListener("click", openProjectWindow);
 
   // Botão "Add to project" / "Remove from project" na sessão aberta
   function renderProjectAction() {

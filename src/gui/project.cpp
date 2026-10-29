@@ -103,6 +103,48 @@ bool Project::Open(const fs::path& folder, std::string& error)
     return true;
 }
 
+bool Project::Rename(const std::string& newName, std::string& error)
+{
+    if (!IsOpen())
+    {
+        error = "No project is open.";
+        return false;
+    }
+    if (newName.empty() || newName.find_first_of("/\\:*?\"<>|") != std::string::npos
+        || newName.front() == '.' || newName.back() == ' ')
+    {
+        error = "That name cannot be used for a folder (no / \\ : * ? \" < > | and it cannot start with a dot).";
+        return false;
+    }
+    const fs::path target = root.parent_path() / fs::path(newName);
+    std::error_code ec;
+    if (fs::equivalent(root, target, ec))
+    {
+        // Só muda maiúsculas/minúsculas (mesma pasta no Mac e no Windows): renomeia mesmo assim
+        ec.clear();
+    }
+    else if (fs::exists(target, ec))
+    {
+        error = "There is already a folder named \"" + newName + "\" next to the project.";
+        return false;
+    }
+    fs::rename(root, target, ec);
+    if (ec)
+    {
+        error = "Could not rename the folder (" + ec.message() + "). Another program may be using it "
+                "(Finder/Explorer, Lightroom, a sync app): close it there and try again.";
+        return false;
+    }
+    root = target;
+    name = newName;
+    if (!Save())
+    {
+        error = "The folder was renamed, but " + std::string(kIndexFile) + " could not be updated.";
+        return false;
+    }
+    return true;
+}
+
 void Project::Close()
 {
     root.clear();

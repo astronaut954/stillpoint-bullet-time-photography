@@ -1702,6 +1702,38 @@ namespace
         {
             return Json("project").Raw("project", projectJson()).Str();
         });
+        // projectRename(nome): renomeia a pasta do Project (o nome do projeto é o da pasta)
+        window.bind("projectRename", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            std::string error;
+            if (args.empty())
+                error = "Type a name for the project.";
+            else if (!project.IsOpen())
+                error = "No project is open.";
+            else
+            {
+                const std::string before = project.Root().string();
+                if (project.Rename(args[0], error))
+                {
+                    // Recentes e settings.txt apontam para a pasta nova
+                    auto settings = LoadSettings();
+                    std::vector<std::string> recent = recentProjects();
+                    recent.erase(std::remove(recent.begin(), recent.end(), before), recent.end());
+                    std::string joined;
+                    for (const auto& r : recent)
+                        joined += (joined.empty() ? "" : "|") + r;
+                    settings["recentProjects"] = joined;
+                    SaveSettings(settings);
+                    rememberProject(project.Root().string());
+                    applyProject();
+                    Log("Project renamed: " + project.Name() + " (" + project.Root().string() + ")");
+                }
+                else
+                    Log("Project rename failed: " + error);
+            }
+            return Json("project").Add("error", error).Raw("project", projectJson()).Str();
+        });
         // projectOpenFolder(): mostra a pasta do Project no Finder/Explorer
         window.bind("projectOpenFolder", [&](const std::string&) -> std::string
         {

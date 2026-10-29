@@ -25,6 +25,9 @@ public:
     // Abre (lê o índice); false com a mensagem se a pasta não for um Project
     bool Open(const std::filesystem::path& folder, std::string& error);
     void Close();
+    // Renomeia a pasta do Project (e o nome no índice). false com a mensagem se a pasta estiver
+    // em uso por outro programa, já existir uma com esse nome etc.
+    bool Rename(const std::string& newName, std::string& error);
     bool IsOpen() const { return !root.empty(); }
 
     const std::filesystem::path& Root() const { return root; }

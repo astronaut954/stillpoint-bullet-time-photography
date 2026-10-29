@@ -991,7 +991,23 @@ body.timing-open .app { --controls-h: clamp(320px, 64vh, 720px); }
 .project-recent-item.current { border-color: var(--noct-primary); }
 
 /* ---- Project (etapa 17): botão na barra, divisor "Not in project", menus ---- */
-/* Divisor "Not in project" na lista de sessões (também alvo para soltar e tirar do projeto) */
+.sessions-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 12px; }
+.sessions-head h2 { margin: 0; }
+/* Grupo "Not in project" na lista de sessões: recolhido por padrão; também alvo para soltar e tirar do projeto */
+.folder-divider { cursor: pointer; user-select: none; }
+.folder-divider .chev { display: inline-flex; transition: transform 150ms var(--noct-ease); }
+.folder-divider.open .chev { transform: rotate(90deg); }
+.folder-divider:hover { color: var(--noct-text-muted); }
+/* Fantasma da sessão arrastada */
+.session-ghost { position: fixed; z-index: 70; pointer-events: none; opacity: .85; background: var(--noct-elevated); border-left-color: var(--noct-info); box-shadow: 0 12px 32px rgba(0, 0, 0, .55); margin: 0; }
+.session-ghost .folder-add { display: none; }
+body.session-drag { cursor: grabbing; }
+body.session-drag.from-app #projectBarBtn, body.session-drag.from-project .folder-divider { outline: 1px dashed var(--noct-border-strong); outline-offset: 4px; }
+/* Pergunta com campo de texto */
+.prompt-input { width: 100%; box-sizing: border-box; height: 36px; margin: 6px 0 0; padding: 0 10px; border: 1px solid var(--noct-border-strong); background: var(--noct-surface-inner); color: var(--noct-text); font: 600 15px var(--noct-font-sans); }
+.prompt-input:focus { outline: none; box-shadow: var(--noct-focus-ring); }
+.prompt-error { color: var(--noct-danger); font: 12px var(--noct-font-mono); margin: 8px 0 0; }
+
 .folder-divider { display: flex; align-items: center; gap: 8px; margin: 12px 0 2px; padding: 4px 2px; font: 700 10px var(--noct-font-mono); text-transform: uppercase; letter-spacing: .1em; color: var(--noct-text-dim); }
 .folder-divider .line { flex: 1; height: 1px; background: var(--noct-border); }
 .folder-divider.drop-ok { color: var(--noct-primary); outline: 1px dashed var(--noct-primary); outline-offset: 4px; }
