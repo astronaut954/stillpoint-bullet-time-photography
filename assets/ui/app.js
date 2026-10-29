@@ -3368,8 +3368,12 @@
     if (r.project && r.project.open) { toast("Project: " + r.project.name); log("Project opened: " + r.project.name, "ok"); }
     refreshSessions();
   }
-  function newProject() { Promise.resolve(window.projectNew()).then(projectResult); }
-  function browseProject() { Promise.resolve(window.projectOpen("")).then(projectResult); }
+  function callProject(fn, ...args) {
+    if (typeof window[fn] !== "function") { toast("This build has no project support (" + fn + ")", 8000); log("Missing app function: " + fn, "error"); return Promise.resolve(null); }
+    return Promise.resolve(window[fn](...args)).catch((e) => { log("Project: " + fn + " failed: " + e, "error"); return null; });
+  }
+  function newProject() { log("New project…", "tech"); callProject("projectNew").then(projectResult); }
+  function browseProject() { callProject("projectOpen", "").then(projectResult); }
   // Escolher um Project: recentes + "Choose folder…" + "New project…"
   function pickProject() {
     const list = $("projectRecentList"); list.innerHTML = "";

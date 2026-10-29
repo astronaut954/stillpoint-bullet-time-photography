@@ -1638,9 +1638,13 @@ namespace
         // projectNew(): escolhe uma pasta (nova ou vazia) e cria o Project nela
         window.bind("projectNew", [&](const std::string&) -> std::string
         {
+            Log("New project: choosing the folder");
             const std::string folder = NativeWindow::ChooseFolder("Choose or create the folder for the new project");
             if (folder.empty())
+            {
+                Log("New project: no folder chosen");
                 return Json("project").Add("cancelled", true).Str();
+            }
             std::string error;
             if (Project::IsProject(std::filesystem::path(folder)))
                 error = openProjectAt(folder);  // já é um Project: só abre
