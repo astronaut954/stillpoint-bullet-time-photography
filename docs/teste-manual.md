@@ -686,9 +686,18 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) e depois com câmeras. Desenho em `do
       `pref.export=`); a seleção de sessões da janela de salvar volta igual dentro da mesma abertura
       do app.
 - [ ] **Desfazer / refazer** (Ctrl+Z e Ctrl+Shift+Z; no Mac também Cmd): renomear projeto, Add /
-      Remove from project (botão, arrasto, janela Project), rótulo de sessão e "Copy from camera"
-      (Camera settings). O aviso do rodapé mostra ↶ "Undo: …" ou ↷ "Redo: …". Sem nada a
-      desfazer: "Nothing to undo". Dentro de um campo de texto, Ctrl+Z é o desfazer do texto.
+      Remove from project (botão, arrasto, janela Project), rótulo de sessão, "Copy from camera" e
+      **cada mudança** no Camera settings, ordem das câmeras (^ v, arrasto, Reorder by photo),
+      ordem das fotos de uma sessão, **apagar foto** e **apagar sessão** (lixeira do app em
+      `<dados>/.trash`, esvaziada ao abrir o app: o desfazer de apagar vale só na mesma abertura;
+      a sessão volta para onde estava — projeto ou app). O aviso do rodapé mostra ↶ "Undo: …" ou
+      ↷ "Redo: …". Sem nada a desfazer: "Nothing to undo". Dentro de um campo de texto, Ctrl+Z é
+      o desfazer do texto.
+- [ ] **Botão direito → pastas:** "Open originals folder" (ou "Open folder" fora do projeto) e
+      "Open edited folder" (apagado com "none yet" sem fotos editadas; a contagem é relida ao abrir
+      o menu, então fotos novas em `Edited/` aparecem sem reabrir nada). "Edited n / m" aparece
+      também nas sessões da janela Save sessions.
+- [ ] **Save sessions:** mudar uma configuração com a coluna rolada mantém a rolagem.
 - [ ] **Aviso do rodapé:** verde neon, fica 2,5 s e some devagar; com o ponteiro em cima não some
       (sai e a contagem recomeça); o X fecha na hora.
 - [ ] **Esc em Camera settings** com a caixa "Calibrate with chart" aberta: fecha só a caixa; o

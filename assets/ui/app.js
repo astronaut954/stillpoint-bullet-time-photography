@@ -689,8 +689,8 @@
     if (index >= 0) {
       actions.append(
         smallButton(button("Identify", () => window.identify(cam.name), { title: "Half-press the shutter of this camera" }), state !== "connected", true),
-        smallButton(button("", () => window.setPrefix(cam.name, cam.order - 1), { icon: "up", title: "Move up" }), index === 0),
-        smallButton(button("", () => window.setPrefix(cam.name, cam.order + 1), { icon: "down", title: "Move down" }), index === placedCount - 1)
+        smallButton(button("", () => moveCamera(cam, -1), { icon: "up", title: "Move up" }), index === 0),
+        smallButton(button("", () => moveCamera(cam, +1), { icon: "down", title: "Move down" }), index === placedCount - 1)
       );
     }
 
@@ -756,9 +756,23 @@
     if (target === null || busy) return;
     const names = placedRows().filter((li) => li !== d.li).map((li) => li.dataset.name);
     names.splice(target, 0, d.li.dataset.name);
-    const before = placedRows().map((li) => li.dataset.name);
+    applyCameraOrder(names, "Camera order (dragged)");
+  }
+
+  // Ordem das câmeras com Desfazer: a ordem anterior volta com setOrder
+  function cameraOrderNames() { return placedCameras().slice().sort((a, b) => a.order - b.order).map((c) => c.name); }
+  function applyCameraOrder(names, what) {
+    const before = cameraOrderNames();
     if (names.join("|") === before.join("|")) return;
     window.setOrder(...names);
+    recordAction({ label: what || "Camera order", undo: () => window.setOrder(...before), redo: () => window.setOrder(...names) });
+  }
+  function moveCamera(cam, delta) {
+    const names = cameraOrderNames();
+    const i = names.indexOf(cam.name), j = i + delta;
+    if (i < 0 || j < 0 || j >= names.length) return;
+    names.splice(i, 1); names.splice(j, 0, cam.name);
+    applyCameraOrder(names, "Move " + cameraLabel(cam.name, cam.model) + (delta < 0 ? " up" : " down"));
   }
 
   function smallButton(b, locked, usesCamera) {
@@ -1037,7 +1051,15 @@
         // Segurar e arrastar: para o botão do projeto (barra de cima) = entra; para "Not in project" = sai
         li.addEventListener("pointerdown", (e) => sessPointerDown(e, li, s));
       }
-      li.addEventListener("contextmenu", (e) => { e.preventDefault(); sessionContextMenu(e, s); });
+      li.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        const x = e.clientX, y = e.clientY;
+        // Relê a lista antes (fotos editadas podem ter chegado por fora) e abre com os dados novos
+        Promise.resolve(window.listSessions()).then((list) => {
+          if (Array.isArray(list)) setSessions(list);
+          sessionContextMenu({ clientX: x, clientY: y }, sessions.find((z) => z.name === s.name) || s);
+        }, () => sessionContextMenu({ clientX: x, clientY: y }, s));
+      });
       if (s.saved) {
         li.querySelector(".folder-meta").after(savedTag());
         li.title = "Already saved. It leaves the app when you close Stillpoint (the saved copy stays where you saved it).";
@@ -1134,9 +1156,18 @@
     setEditing(false);
     if (save && changed) {
       // As prévias guardadas usam os nomes antigos dos arquivos
-      Object.keys(photoCache).filter((k) => k.startsWith("sessions/" + session.name + "/")).forEach((k) => delete photoCache[k]);
+      const before = sessionItems(session).filter((i) => i.movable).map((i) => i.group);
+      const clearCache = () => Object.keys(photoCache).filter((k) => k.startsWith("sessions/" + session.name + "/")).forEach((k) => delete photoCache[k]);
+      clearCache();
       window.reorderSession(session.name, ...groups);
       log("Photo order changed in the session from " + sessionLabel(session.name).date, "ok");
+      // Desfazer: a ordem anterior, pelos nomes de grupo que os arquivos têm depois de renumerados
+      // (o grupo é "NN_câmera"; depois do rename o número muda, então refaz pelo nome da câmera)
+      const camOf = (g) => g.replace(/^\d+_/, "");
+      const currentGroupsFor = (camOrder) => { const now = sessionItems(sessions.find((x) => x.name === session.name) || session).filter((i) => i.movable); return camOrder.map((c) => (now.find((i) => camOf(i.group) === c) || {}).group).filter(Boolean); };
+      recordAction({ label: "Photo order in " + sessionLabel(session.name).date,
+        undo: () => { clearCache(); window.reorderSession(session.name, ...currentGroupsFor(before.map(camOf))); },
+        redo: () => { clearCache(); window.reorderSession(session.name, ...currentGroupsFor(groups.map(camOf))); } });
     } else {
       showSession(session, true);
     }
@@ -1173,18 +1204,33 @@
         { label: "Cancel" },
         { label: "Delete", danger: true, onClick: () => {
           window.deletePhotos(session, item.group);
-          log("Photo " + pad(item.order || 0) + " deleted from the session of " + sessionLabel(session).date, "ok");
+          toast("Photo " + pad(item.order || 0) + " deleted from the session of " + sessionLabel(session).date);
+          recordAction({ label: "Delete photo " + pad(item.order || 0) + " from " + sessionLabel(session).date,
+            undo: () => restoreSession(session), redo: () => window.deletePhotos(session, item.group) });
         } },
       ]);
   }
 
   function deleteCurrentSession() { if (currentSession) deleteSessionAsk(currentSession); }
+  // Traz de volta da lixeira do app (sessão inteira ou as fotos apagadas); false se não deu
+  function restoreSession(name) {
+    if (typeof window.restoreSession !== "function") { toast("This build cannot restore deleted sessions yet. Build the app again.", 8000); return false; }
+    return Promise.resolve(window.restoreSession(name)).then((r) => {
+      if (r && r.ok) return true;
+      toast((r && r.error) || "Could not restore the session.", 8000);
+      return false;
+    });
+  }
   function deleteSessionAsk(s) {
     const label = sessionLabel(s.name);
     dialog("Delete this session?", "The photos from " + label.date + " will be deleted permanently" +
       (s.inProject ? " (from the project folder too)." : "."), [
       { label: "Cancel" },
-      { label: "Delete", danger: true, onClick: () => { toast("Session deleted: " + label.date + (s.inProject ? " (from the project folder)" : "")); window.deleteSession(s.name); } },
+      { label: "Delete", danger: true, onClick: () => {
+        toast("Session deleted: " + label.date + (s.inProject ? " (from the project folder)" : ""));
+        window.deleteSession(s.name);
+        recordAction({ label: "Delete session " + label.date, undo: () => restoreSession(s.name), redo: () => window.deleteSession(s.name) });
+      } },
     ]);
   }
 
@@ -1292,7 +1338,7 @@
   function closeOrder(save) {
     if (save) {
       const names = orderGallery.items.map((i) => i.name);
-      window.setOrder(...names);
+      applyCameraOrder(names, "Camera order from photos");
       log("Camera order updated from photos", "ok");
     }
     order.open = false;
@@ -1614,9 +1660,12 @@
     // altura. A fileira rola para o lado e não pode ficar dentro de outra área que rola
     // (o WebKit do Mac pinta as miniaturas deslocadas nesse caso).
     const outer = $("exportSettings");
+    const prevRows = outer.querySelector(".export-rows");
+    const keepScroll = prevRows ? prevRows.scrollTop : 0;  // a coluna é redesenhada a cada mudança: mantém a rolagem
     outer.innerHTML = "";
     const box = el("div", "export-rows");
     outer.appendChild(box);
+    if (keepScroll) requestAnimationFrame(() => { box.scrollTop = keepScroll; });
     const session = sessions.find((s) => s.name === exp.active);
     if (!session) return;
     const items = sessionItems(session).filter((i) => i.previewable);
@@ -2753,7 +2802,16 @@
     if (title) v.title = title;
     return v;
   }
+  let csRecord = true;  // false enquanto um Desfazer/Copy aplica várias mudanças de uma vez
   function csSet(camera, key, value) {
+    if (csRecord) {
+      // Desfazer: o retrato de antes (só o que mudou volta)
+      const before = csSnapshot();
+      const target = camera === "*" ? "all cameras" : camera;
+      recordAction({ label: "Camera setting " + key + " → " + value + " (" + target + ")",
+        undo: () => { csRecord = false; try { csRestore(before); } finally { csRecord = true; } },
+        redo: () => { csRecord = false; try { csSet(camera, key, value); } finally { csRecord = true; } } });
+    }
     csPending.add(camera + "|" + key);
     renderCamSettings();
     window.setCameraSetting(camera, key, String(value));
@@ -3051,6 +3109,11 @@
     });
   }
   function csRestore(snapshot) {
+    const wasRecording = csRecord; csRecord = false;
+    try { csRestoreNow(snapshot); } finally { csRecord = wasRecording; }
+    return true;
+  }
+  function csRestoreNow(snapshot) {
     const live = csSnapshot();
     snapshot.forEach((snap) => {
       const now = live.find((x) => x.camera === snap.camera);
@@ -3066,9 +3129,10 @@
   }
   function copyFromCamera(name, silent) {
     const before = csSnapshot();
-    copyFromCameraNow(name);
+    csRecord = false;
+    try { copyFromCameraNow(name); } finally { csRecord = true; }
     if (silent) return true;
-    recordAction({ label: "Copy settings from " + name, undo: () => csRestore(before), redo: () => copyFromCamera(name, true) });
+    recordAction({ label: "Copy settings from " + name, undo: () => csRestore(before), redo: () => copyFromCamera(name, true) });  // redo roda com csRecord desligado dentro de copyFromCamera
     return true;
   }
   function copyFromCameraNow(name) {
@@ -3566,9 +3630,13 @@
     items.push({ label: (s.label ? "Rename label…" : "Add label…"), onClick: () => editSessionLabel(s) });
     if (s.label) items.push({ label: "Remove label", onClick: () => setSessionLabelUndoable(s, "") });
     items.push({ label: "Show session", onClick: () => showSession(s) });
-    items.push({ label: "Open folder", onClick: () => {
+    items.push({ label: s.inProject ? "Open originals folder" : "Open folder", onClick: () => {
       if (typeof window.openSessionFolder !== "function") { toast("This build cannot open session folders yet. Build the app again.", 8000); return; }
       window.openSessionFolder(s.name);
+    } });
+    if (s.inProject) items.push({ label: "Open edited folder", sub: s.edited > 0 ? s.edited + " edited" : "none yet", disabled: !(s.edited > 0), dim: !(s.edited > 0), onClick: () => {
+      if (typeof window.openEditedFolder !== "function") { toast("This build cannot open the Edited folder yet. Build the app again.", 8000); return; }
+      window.openEditedFolder(s.name);
     } });
     if (project.open) {
       items.push("-");

@@ -91,6 +91,11 @@ public:
     // Apaga fotos de uma sessão. Cada item é um grupo "ordem_câmera" (ex.: "02_T7_1",
     // apaga o RAW e o JPEG dessa câmera) ou o nome de um arquivo. Se a sessão ficar
     // vazia, a pasta é apagada.
+    // Lixeira do app (<dados>/.trash): apagar sessão ou fotos move para lá, para o Desfazer;
+    // Restore(sessão) traz de volta (a pasta inteira, ou só as fotos se a sessão ainda existe).
+    // EmptyTrash() apaga de vez (chamado ao abrir o app: o desfazer vale só na mesma abertura).
+    bool Restore(const std::string& session, std::string& errorMessage) const;
+    void EmptyTrash() const;
     bool DeletePhotos(const std::string& session, const std::vector<std::string>& groups,
                       std::string& errorMessage) const;
 

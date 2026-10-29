@@ -1024,6 +1024,7 @@ namespace
         // Fotos de teste do "Reorder by photo": só servem para ordenar, são apagadas depois
         PhotoStore orderStore(Platform::AppDataFolder() / "Order photos");
         orderStore.DeleteAll();
+        store.EmptyTrash();  // o Desfazer de apagar vale só dentro da mesma abertura do app
         PreviewThread previews;
 
         bool sdkReady = false;
@@ -1755,6 +1756,29 @@ namespace
                     Log("Project rename failed: " + error);
             }
             return Json("project").Add("error", error).Raw("project", projectJson()).Str();
+        });
+        // restoreSession(sessão): traz de volta da lixeira do app (Desfazer de apagar sessão/fotos)
+        window.bind("restoreSession", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            std::string error;
+            const bool ok = !args.empty() && store.Restore(args[0], error);
+            if (!ok)
+                Log("Restore failed: " + error);
+            emitSessions();
+            return Json("restore").Add("ok", ok).Add("error", error).Str();
+        });
+        // openEditedFolder(sessão): mostra <Project>/Edited/<sessão> no Finder/Explorer (cria se não existir)
+        window.bind("openEditedFolder", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            if (args.empty() || !project.IsOpen() || args[0].find_first_of("/\\") != std::string::npos)
+                return Json("folder").Add("ok", false).Str();
+            std::error_code ec;
+            const auto dir = project.Edited() / args[0];
+            std::filesystem::create_directories(dir, ec);
+            Platform::OpenInFileManager(dir);
+            return Json("folder").Add("ok", !ec).Str();
         });
         // openSessionFolder(sessão): mostra a pasta da sessão (no app ou no Project) no Finder/Explorer
         window.bind("openSessionFolder", [&](const std::string& request) -> std::string
