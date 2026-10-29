@@ -229,6 +229,7 @@
 
   // Atividade: frases para a pessoa + detalhes técnicos (ocultos até marcar a opção)
   function log(text, kind, hint) {
+    log.lastText = text; log.lastAt = Date.now();
     const li = document.createElement("li");
     if (kind) li.className = kind;
     const now = new Date();
@@ -271,7 +272,9 @@
     t.classList.remove("hidden", "fading");
     toast.dwell = ms || TOAST_MS;
     armToast();
-    if (typeof log === "function") log("Notice shown: " + text, "tech");  // diagnóstico: por que um aviso não apareceu
+    // Tudo que o app avisa fica também na Activity (sem repetir quando quem chamou já registrou)
+    if (!(log.lastText === text && Date.now() - (log.lastAt || 0) < 1500))
+      log(text, o.kind ? "ok" : (ms && ms >= 8000 ? "error" : ""));
   }
   function armToast() {
     clearTimeout(toast.timer); clearTimeout(toast.fadeTimer);
@@ -1183,7 +1186,7 @@
     dialog("Delete this session?", "The photos from " + label.date + " will be deleted permanently" +
       (s.inProject ? " (from the project folder too)." : "."), [
       { label: "Cancel" },
-      { label: "Delete", danger: true, onClick: () => window.deleteSession(s.name) },
+      { label: "Delete", danger: true, onClick: () => { log("Session deleted: " + label.date + (s.inProject ? " (from the project folder)" : ""), "ok"); window.deleteSession(s.name); } },
     ]);
   }
 
@@ -3576,6 +3579,7 @@
     const before = s.label || "";
     if (before === after) return;
     window.setSessionLabel(s.name, after);
+    log(after ? 'Label "' + after + '" on ' + sessionLabel(s.name).date : "Label removed from " + sessionLabel(s.name).date, "ok");
     recordAction({ label: after ? 'Label "' + after + '" on ' + sessionLabel(s.name).date : "Remove label from " + sessionLabel(s.name).date,
                    undo: () => window.setSessionLabel(s.name, before), redo: () => window.setSessionLabel(s.name, after) });
   }
@@ -3711,7 +3715,7 @@
       }
       items.push({ label: project.open ? "Switch project…" : "Open project…", onClick: browseProject });
       items.push({ label: "New project…", onClick: newProject });
-      if (project.open) items.push({ label: "Close project", onClick: () => Promise.resolve(window.projectClose()).then(projectResult) });
+      if (project.open) items.push({ label: "Close project", onClick: () => { const name = project.name; Promise.resolve(window.projectClose()).then((r) => { log("Project closed: " + name + " (the sessions stay in its folder)", "ok"); projectResult(r); }); } });
       popupMenu(anchor, items, align);
     });
   }
@@ -4032,7 +4036,7 @@
   $("projectCloseProjectBtn").addEventListener("click", () => {
     dialog("Close the project?", "The project's sessions leave the list (they stay in " + project.folder + "; nothing is deleted). New sessions go back to staying in the app until you save them. You can open the project again any time.", [
       { label: "Cancel" },
-      { label: "Close project", primary: true, onClick: () => { closeProjectWindow(); Promise.resolve(window.projectClose()).then(projectResult); } },
+      { label: "Close project", primary: true, onClick: () => { const name = project.name; closeProjectWindow(); Promise.resolve(window.projectClose()).then((r) => { log("Project closed: " + name + " (the sessions stay in its folder)", "ok"); projectResult(r); }); } },
     ]);
   });
   $("projectRemoveBtn").addEventListener("click", () => {
