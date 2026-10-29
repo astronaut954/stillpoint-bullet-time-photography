@@ -263,9 +263,10 @@
     t.querySelector(".toast-text").textContent = body;
     t.querySelector(".toast-arrow").textContent = o.kind === "undo" ? "↶" : o.kind === "redo" ? "↷" : "";
     // Sem undo/redo, o chip diz "Event" (renomear, atualização disponível, avisos…)
-    t.querySelector(".toast-kind-text").textContent = o.kind === "undo" ? "Undo" : o.kind === "redo" ? "Redo" : "Event";
+    t.querySelector(".toast-kind-text").textContent = o.kind === "undo" ? "Undo" : o.kind === "redo" ? "Redo" : o.warn ? "Warning" : "Event";
     t.classList.toggle("with-arrow", !!o.kind);
     t.classList.toggle("kind-event", !o.kind);
+    t.classList.toggle("kind-warn", !!o.warn);  // amarelo: validação, "espere as câmeras"…
     t.classList.toggle("kind-undo", o.kind === "undo");
     t.classList.toggle("kind-redo", o.kind === "redo");
     t.querySelector(".toast-close").addEventListener("click", () => hideToast("close button"));
@@ -306,7 +307,7 @@
   // mudança ainda em curso espera ela terminar (senão a câmera recebe ordens cruzadas)
   function camerasBusyFor(a) {
     if (!a || !a.camera || typeof csPending === "undefined" || !csPending.size) return false;
-    toast("The cameras are still applying the previous change. Try again in a moment.", TOAST_MS, { silent: true });
+    toast("The cameras are still applying the previous change. Try again in a moment.", TOAST_MS, { silent: true, warn: true });
     return true;
   }
   function doUndo() {
@@ -4004,13 +4005,13 @@
     input.addEventListener("beforeinput", (e) => {
       if (onlyWhenFlagged && !input.dataset.folderName) return;
       // Tecla com caractere proibido: barra; colar com vários: o "input" abaixo limpa
-      if (e.data && e.data.length === 1 && FOLDER_FORBIDDEN.test(e.data)) { FOLDER_FORBIDDEN.lastIndex = 0; e.preventDefault(); toast("A folder name cannot have / \\ : * ? \" < > |", TOAST_MS, { silent: true }); }
+      if (e.data && e.data.length === 1 && FOLDER_FORBIDDEN.test(e.data)) { FOLDER_FORBIDDEN.lastIndex = 0; e.preventDefault(); toast("A folder name cannot have / \\ : * ? \" < > |", TOAST_MS, { silent: true, warn: true }); }
       FOLDER_FORBIDDEN.lastIndex = 0;
     });
     input.addEventListener("input", () => {  // colar com caracteres proibidos: limpa
       if (onlyWhenFlagged && !input.dataset.folderName) return;
       const clean = input.value.replace(FOLDER_FORBIDDEN, "");
-      if (clean !== input.value) { const pos = Math.max(0, (input.selectionStart || 0) - (input.value.length - clean.length)); input.value = clean; try { input.setSelectionRange(pos, pos); } catch (e) {} toast("Characters a folder name cannot have were removed (/ \\ : * ? \" < > |)", TOAST_MS, { silent: true }); }
+      if (clean !== input.value) { const pos = Math.max(0, (input.selectionStart || 0) - (input.value.length - clean.length)); input.value = clean; try { input.setSelectionRange(pos, pos); } catch (e) {} toast("Characters a folder name cannot have were removed (/ \\ : * ? \" < > |)", TOAST_MS, { silent: true, warn: true }); }
     });
   }
   blockFolderChars($("promptInput"), true);  // só quando o campo pede um nome de pasta (Rename project)
@@ -4023,7 +4024,7 @@
       const v = input.value.trim();
       if (!project.open || v === project.name) { input.value = project.name || ""; input.classList.remove("invalid"); return; }
       const why = problem(v);
-      if (why) { input.classList.add("invalid"); toast(why, 5000, { silent: true }); input.focus(); return; }
+      if (why) { input.classList.add("invalid"); toast(why, 5000, { silent: true, warn: true }); input.focus(); return; }
       const before = project.name;
       applyRename(v).then((ok) => {
         if (ok) recordAction({ label: 'Rename project "' + before + '" → "' + v + '"', undo: () => applyRename(before), redo: () => applyRename(v) });

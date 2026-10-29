@@ -535,6 +535,11 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
 .toast-text { flex: 1; min-width: 0; }
 .toast-close { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 22px; height: 22px; border: 0; background: transparent; color: var(--noct-text-dim); cursor: pointer; }
 .toast-close:hover { color: var(--noct-primary); background: var(--noct-elevated); }
+/* Aviso amarelo (validação, espera) */
+.toast.kind-warn { box-shadow: 0 0 24px rgba(var(--noct-pending-rgb), .18); }
+.toast.kind-warn .toast-kind { background: var(--noct-pending); color: var(--noct-on-primary); }
+.toast.kind-warn .toast-body { border-color: var(--noct-pending); color: var(--noct-pending); }
+.toast.kind-warn .toast-close:hover { color: var(--noct-pending); }
 
 /* ---------- Escolher quais sessões salvar ---------- */
 .save-dialog { width: min(560px, 92%); }
@@ -1097,5 +1102,5 @@ body.session-drag.from-app .folder-placeholder { border-color: transparent; }
   font: 600 15px var(--noct-font-sans); text-transform: none; letter-spacing: 0; }
 .project-name-input:hover { border-color: var(--noct-primary-dim); }
 .project-name-input:focus { outline: none; border-color: var(--noct-primary); box-shadow: var(--noct-focus-ring); }
-.project-name-input.invalid { border-color: var(--noct-pending); }
+.project-name-input.invalid, .project-name-input.invalid:focus { border-color: var(--noct-pending); box-shadow: 0 0 0 1px var(--noct-pending), 0 0 18px rgba(var(--noct-pending-rgb), .18); }
 .project-title-row small { flex-basis: 100%; }
