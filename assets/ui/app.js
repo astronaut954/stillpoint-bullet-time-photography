@@ -250,12 +250,70 @@
     }
   }
 
-  function toast(text, ms) {
-    ui.toast.textContent = text;
-    ui.toast.classList.remove("hidden");
-    clearTimeout(toast.timer);
-    toast.timer = setTimeout(() => ui.toast.classList.add("hidden"), ms || 3500);
+  // Aviso no rodapé: fica 2,5 s e some devagar; com o ponteiro em cima, espera; X fecha na
+  // hora. opts.kind: "undo" / "redo" mostra a seta correspondente.
+  const TOAST_MS = 2500;
+  function toast(text, ms, opts) {
+    const t = ui.toast, o = opts || {};
+    t.innerHTML = '<span class="toast-arrow" aria-hidden="true"></span><span class="toast-text"></span><button class="toast-close" type="button" aria-label="Close">' + icon("close", 12) + '</button>';
+    t.querySelector(".toast-text").textContent = text;
+    t.querySelector(".toast-arrow").textContent = o.kind === "undo" ? "↶" : o.kind === "redo" ? "↷" : "";
+    t.classList.toggle("with-arrow", !!o.kind);
+    t.classList.toggle("kind-undo", o.kind === "undo");
+    t.classList.toggle("kind-redo", o.kind === "redo");
+    t.querySelector(".toast-close").addEventListener("click", hideToast);
+    t.classList.remove("hidden", "fading");
+    toast.dwell = ms || TOAST_MS;
+    armToast();
   }
+  function armToast() {
+    clearTimeout(toast.timer); clearTimeout(toast.fadeTimer);
+    toast.timer = setTimeout(() => {
+      ui.toast.classList.add("fading");
+      toast.fadeTimer = setTimeout(hideToast, 450);
+    }, toast.dwell || TOAST_MS);
+  }
+  function hideToast() {
+    clearTimeout(toast.timer); clearTimeout(toast.fadeTimer);
+    ui.toast.classList.add("hidden");
+    ui.toast.classList.remove("fading");
+  }
+  ui.toast.addEventListener("mouseenter", () => { clearTimeout(toast.timer); clearTimeout(toast.fadeTimer); ui.toast.classList.remove("fading"); });
+  ui.toast.addEventListener("mouseleave", () => { if (!ui.toast.classList.contains("hidden")) armToast(); });
+
+  // ---- Desfazer / refazer (Ctrl+Z, Ctrl+Shift+Z; no Mac também com Cmd) ----
+  // Cada ação registrada tem um texto e as duas funções (podem devolver uma Promise; false = não deu).
+  const history = { undo: [], redo: [] };
+  function recordAction(action) {
+    history.undo.push(action);
+    if (history.undo.length > 50) history.undo.shift();
+    history.redo.length = 0;
+  }
+  function doUndo() {
+    const a = history.undo.pop();
+    if (!a) { toast("Nothing to undo"); return; }
+    Promise.resolve(a.undo()).then((ok) => {
+      if (ok === false) return;
+      history.redo.push(a);
+      toast("Undo: " + a.label, TOAST_MS, { kind: "undo" });
+    });
+  }
+  function doRedo() {
+    const a = history.redo.pop();
+    if (!a) { toast("Nothing to redo"); return; }
+    Promise.resolve(a.redo()).then((ok) => {
+      if (ok === false) return;
+      history.undo.push(a);
+      toast("Redo: " + a.label, TOAST_MS, { kind: "redo" });
+    });
+  }
+  document.addEventListener("keydown", (e) => {
+    if (!(e.metaKey || e.ctrlKey) || e.altKey || (e.key !== "z" && e.key !== "Z" && e.key !== "y")) return;
+    const tag = e.target.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA") return;  // dentro de um campo, o desfazer é o do texto
+    e.preventDefault(); e.stopImmediatePropagation();
+    if (e.key === "y" || e.shiftKey) doRedo(); else doUndo();
+  }, true);
 
   function dialog(title, text, actions) {
     ui.dialogTitle.textContent = title;
@@ -2425,7 +2483,7 @@
     if (manual) toast("Checking for updates…");
     const answer = (title, text) => {
       if (!manual) return;
-      ui.toast.classList.add("hidden");
+      hideToast();
       dialog(title, text, [{ label: "OK", primary: true }]);
     };
     const failed = () => answer("Could not check for updates", "Stillpoint could not reach GitHub. Check the internet connection and try again.");
@@ -2449,7 +2507,7 @@
       updEl.chipText.textContent = "Update " + version;
       updEl.chip.classList.remove("hidden");
       log("Stillpoint " + version + " is available", "ok");
-      if (manual) { ui.toast.classList.add("hidden"); openUpdate(); }
+      if (manual) { hideToast(); openUpdate(); }
     });
   }
   updEl.chip.addEventListener("click", openUpdate);
@@ -2964,7 +3022,40 @@
   }
 
   // Deixa todas as câmeras iguais a uma escolhida
-  function copyFromCamera(name) {
+  // Retrato das configurações de cada câmera (para desfazer o "Copy from camera")
+  function csSnapshot() {
+    const keys = ["iso", "tv", "av", "expcomp", "style", "quality", "wb"];
+    return camSettings.filter((c) => c.adjustable).map((c) => {
+      const snap = { camera: c.camera, values: {} };
+      keys.forEach((k) => { const st = c.settings[k]; if (st && st.available && st.choices.length) snap.values[k] = st.value; });
+      if (snap.values.wb === 9) snap.values.kelvin = c.kelvin;
+      if (c.shiftAvailable) { snap.values.shiftab = c.shiftAB; snap.values.shiftgm = c.shiftGM; }
+      if (c.styleDetail) STYLE_DETAILS.forEach(([key, , f]) => { snap.values[key] = c[f]; });
+      return snap;
+    });
+  }
+  function csRestore(snapshot) {
+    const live = csSnapshot();
+    snapshot.forEach((snap) => {
+      const now = live.find((x) => x.camera === snap.camera);
+      if (!now) return;
+      Object.keys(snap.values).forEach((k) => {
+        if (k === "kelvin") return;
+        if (snap.values[k] === now.values[k]) return;
+        if (k === "wb" && snap.values.wb === 9) csSet(snap.camera, "kelvin", snap.values.kelvin);
+        else csSet(snap.camera, k, snap.values[k]);
+      });
+    });
+    return true;
+  }
+  function copyFromCamera(name, silent) {
+    const before = csSnapshot();
+    copyFromCameraNow(name);
+    if (silent) return true;
+    recordAction({ label: "Copy settings from " + name, undo: () => csRestore(before), redo: () => copyFromCamera(name, true) });
+    return true;
+  }
+  function copyFromCameraNow(name) {
     const c = camSettings.find((x) => x.camera === name);
     if (!c) return;
     ["iso", "tv", "av", "expcomp", "style", "quality"].forEach((k) => {
@@ -3596,10 +3687,19 @@
   function moveToProject(name, toProject) {
     const s = sessions.find((x) => x.name === name);
     if (!s || !project.open || !!s.inProject === toProject) return;
+    applyMove([name], toProject).then((ok) => {
+      if (ok) recordAction({ label: (toProject ? "Add to project: " : "Remove from project: ") + sessionLabel(name).date,
+                              undo: () => applyMove([name], !toProject), redo: () => applyMove([name], toProject) });
+    });
+  }
+  // Move de fato (uma ou várias); devolve Promise<true/false>
+  function applyMove(names, toProject) {
+    if (!project.open) return Promise.resolve(false);
     if (!toProject) notInProjectOpen = true;  // a sessão que saiu fica à vista
-    Promise.resolve(toProject ? window.addToProject(name) : window.removeFromProject(name)).then((r) => {
-      if (r && r.error) { toast(r.error, 8000); log(r.error, "error"); }
-      else log((toProject ? "Added to project: " : "Removed from project: ") + sessionLabel(name).date, "ok");
+    return Promise.resolve(toProject ? window.addToProject(...names) : window.removeFromProject(...names)).then((r) => {
+      if (r && r.error) { toast(r.error, 8000); log(r.error, "error"); return false; }
+      log((toProject ? "Added to project: " : "Removed from project: ") + names.map((n) => sessionLabel(n).date).join(", "), "ok");
+      return true;
     });
   }
   // Pergunta com campo de texto. validate(valor) devolve uma mensagem de erro ou "".
@@ -3628,14 +3728,22 @@
       (v) => !v ? "Type a name." : /[\\/:*?"<>|]/.test(v) ? "A folder name cannot have / \\ : * ? \" < > |" : v[0] === "." ? "The name cannot start with a dot." : "",
       (v) => {
         if (v === project.name) return;
-        if (typeof window.projectRename !== "function") { toast("This build cannot rename projects yet. Build the app again.", 8000); return; }
-        Promise.resolve(window.projectRename(v)).then((r) => {
-          if (r && r.error) { dialog("Could not rename the project", r.error, [{ label: "OK", primary: true }]); log(r.error, "error"); return; }
-          if (r && r.project) setProject(r.project);
-          toast("Project renamed: " + v); log("Project renamed: " + v, "ok");
-          refreshSessions();
+        const before = project.name;
+        applyRename(v).then((ok) => {
+          if (ok) recordAction({ label: 'Rename project "' + before + '" → "' + v + '"', undo: () => applyRename(before), redo: () => applyRename(v) });
         });
       });
+  }
+  // Renomeia de fato; devolve Promise<true/false>
+  function applyRename(name) {
+    if (typeof window.projectRename !== "function") { toast("This build cannot rename projects yet. Build the app again.", 8000); return Promise.resolve(false); }
+    return Promise.resolve(window.projectRename(name)).then((r) => {
+      if (r && r.error) { dialog("Could not rename the project", r.error, [{ label: "OK", primary: true }]); log(r.error, "error"); return false; }
+      if (r && r.project) setProject(r.project);
+      toast("Project renamed: " + name); log("Project renamed: " + name, "ok");
+      refreshSessions();
+      return true;
+    });
   }
   function projectCounts(sep) {
     return [plural(project.sessions || 0, "session", "sessions"), plural(project.photos || 0, "photo", "photos"),
@@ -3667,11 +3775,7 @@
   }
   function toggleCurrentInProject() {
     if (!currentSession || !project.open) return;
-    const name = currentSession.name, inProject = currentSession.inProject;
-    Promise.resolve(inProject ? window.removeFromProject(name) : window.addToProject(name)).then((r) => {
-      if (r && r.error) { toast(r.error, 8000); log(r.error, "error"); }
-      else log((inProject ? "Removed from project: " : "Added to project: ") + sessionLabel(name).date, "ok");
-    });
+    moveToProject(currentSession.name, !currentSession.inProject);
   }
   function projectResult(r) {
     if (!r || r.cancelled) return;
@@ -3763,7 +3867,13 @@
       box.addEventListener("change", () => { projectSelTouched = true; if (box.checked) projectSel.add(s.name); else projectSel.delete(s.name); li.classList.toggle("sel", box.checked); updateProjectCount(); });
       const labelInput = li.querySelector(".project-label"); labelInput.value = s.label || "";
       labelInput.title = "Click to name this session, for example \"Pose 7\"";
-      labelInput.addEventListener("change", () => { window.setSessionLabel(s.name, labelInput.value.trim()); });
+      labelInput.addEventListener("change", () => {
+        const before = s.label || "", after = labelInput.value.trim();
+        if (before === after) return;
+        window.setSessionLabel(s.name, after);
+        recordAction({ label: 'Label "' + (after || "—") + '" on ' + sessionLabel(s.name).date,
+                       undo: () => window.setSessionLabel(s.name, before), redo: () => window.setSessionLabel(s.name, after) });
+      });
       labelInput.addEventListener("keydown", (e) => { if (e.key === "Enter") labelInput.blur(); e.stopPropagation(); });
       li.querySelector(".folder-meta").textContent = [label.date, s.timing || label.detail].filter(Boolean).join(" · ");
       li.querySelector(".project-row-count").textContent = String(total);
@@ -3808,7 +3918,10 @@
     dialog(names.length === 1 ? "Remove the session from the project?" : "Remove " + names.length + " sessions from the project?",
       "The photos move back to the app (out of the project folder); nothing is deleted. They count as unsaved again.", [
       { label: "Cancel" },
-      { label: "Remove", primary: true, onClick: () => Promise.resolve(window.removeFromProject(...names)).then((r) => { if (r && r.error) toast(r.error, 8000); renderProjectWindow(); }) },
+      { label: "Remove", primary: true, onClick: () => applyMove(names, false).then((ok) => {
+        renderProjectWindow();
+        if (ok) recordAction({ label: "Remove from project: " + plural(names.length, "session", "sessions"), undo: () => applyMove(names, true), redo: () => applyMove(names, false) });
+      }) },
     ]);
   });
   // Export…: a janela de salvar, só com as sessões do Project e "Use edited photos"

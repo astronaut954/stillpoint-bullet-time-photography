@@ -682,6 +682,14 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) e depois com câmeras. Desenho em `do
       voltam iguais na próxima vez, inclusive depois de fechar e abrir o app (`settings.txt`,
       `pref.export=`); a seleção de sessões da janela de salvar volta igual dentro da mesma abertura
       do app.
+- [ ] **Desfazer / refazer** (Ctrl+Z e Ctrl+Shift+Z; no Mac também Cmd): renomear projeto, Add /
+      Remove from project (botão, arrasto, janela Project), rótulo de sessão e "Copy from camera"
+      (Camera settings). O aviso do rodapé mostra ↶ "Undo: …" ou ↷ "Redo: …". Sem nada a
+      desfazer: "Nothing to undo". Dentro de um campo de texto, Ctrl+Z é o desfazer do texto.
+- [ ] **Aviso do rodapé:** verde neon, fica 2,5 s e some devagar; com o ponteiro em cima não some
+      (sai e a contagem recomeça); o X fecha na hora.
+- [ ] **Esc em Camera settings** com a caixa "Calibrate with chart" aberta: fecha só a caixa; o
+      segundo Esc fecha o Camera settings.
 - [ ] Fechar e abrir o app: o Project continua aberto (`settings.txt`, `project=`).
 
 ## Resultado
