@@ -539,7 +539,8 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
 .toast.kind-warn { box-shadow: 0 0 24px rgba(var(--noct-pending-rgb), .18); }
 .toast.kind-warn .toast-kind { background: var(--noct-pending); color: var(--noct-on-primary); }
 .toast.kind-warn .toast-body { border-color: var(--noct-pending); color: var(--noct-pending); }
-.toast.kind-warn .toast-close:hover { color: var(--noct-pending); }
+.toast.kind-warn .toast-close { color: var(--noct-pending); opacity: .8; }
+.toast.kind-warn .toast-close:hover { color: var(--noct-pending); opacity: 1; background: rgba(var(--noct-pending-rgb), .12); }
 
 /* ---------- Escolher quais sessões salvar ---------- */
 .save-dialog { width: min(560px, 92%); }
