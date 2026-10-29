@@ -1005,7 +1005,7 @@ body.session-drag { cursor: grabbing; }
 body.session-drag.from-app #projectBarBtn, body.session-drag.from-project .folder-divider { outline: 1px dashed var(--noct-border-strong); outline-offset: 4px; }
 /* Pergunta com campo de texto */
 /* O .dialog não tem margem interna (cada filho tem a sua): o campo fica dentro de um bloco com a mesma margem dos textos */
-.prompt-field { padding: 0 18px 4px; }
+.prompt-field { padding: 0 18px 18px; }
 .prompt-field p { padding: 16px 0 10px; }
 .prompt-input { display: block; width: 100%; box-sizing: border-box; height: 38px; margin: 0; padding: 0 12px; border: 1px solid var(--noct-border-strong); background: var(--noct-surface-inner); color: var(--noct-text); font: 600 15px var(--noct-font-sans); }
 .prompt-input:focus { outline: none; box-shadow: var(--noct-focus-ring); }
