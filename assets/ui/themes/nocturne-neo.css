@@ -668,6 +668,9 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
 .export-modes svg { flex: 0 0 auto; }
 .export-strip li { flex: 0 0 76px; }
 .export-strip .frame { --frame-w: 76px; }
+/* Altura explícita (70 px de largura útil × 2/3): o WebKit não conta a altura vinda de
+   aspect-ratio ao medir esta fileira e a miniatura vazava da caixa */
+.export-strip .frame-img { height: 47px; aspect-ratio: auto; }
 
 .export-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; }
 .export-label { font: 700 11px var(--noct-font-mono); color: var(--noct-text-muted); text-transform: uppercase; letter-spacing: var(--noct-tracking-widest); min-width: 74px; }
