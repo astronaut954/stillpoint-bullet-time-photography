@@ -785,7 +785,9 @@
   // miniaturas. Os outros controles (navegar, play, reordenar, apagar foto) ficam
   // na tela cheia, junto com a data da sessão.
   const fullBtn = button("", () => setFullscreen(true), { icon: "expand", title: "Full screen (F)" });
+  const projectActionBtn = button("Add to project", () => toggleCurrentInProject(), { kind: "btn-link", title: "Keep this session in the project folder" });
   const compactActions = [
+    projectActionBtn,
     button("Delete session", deleteCurrentSession, { kind: "btn-link", title: "Delete this session" }),
     fullBtn,
   ];
@@ -892,6 +894,18 @@
     t.title = "Already saved. It leaves the app when you close Stillpoint (the saved copy stays where you saved it).";
     return t;
   }
+  // Etiqueta de sessão guardada no Project: "In project" ou "Edited n/m" (verde quando completa)
+  function projectTag(s) {
+    const t = document.createElement("span");
+    const total = s.photos.length;
+    const complete = s.edited > 0 && s.edited >= total;
+    t.className = "project-tag" + (complete ? " ok" : s.edited > 0 ? " part" : "");
+    t.textContent = s.edited > 0 ? "Edited " + s.edited + " / " + total : "In project";
+    t.title = complete ? "Every photo has an edited version in the project's Edited folder."
+      : s.edited > 0 ? "Some photos have an edited version in the project's Edited folder; the others do not."
+      : "Kept in the project folder (originals). It stays in the app until you remove it.";
+    return t;
+  }
   // Etiqueta de sessão com fotos que a câmera recusou no disparo (arquivo ".missing")
   function missingTag(count) {
     const t = document.createElement("span");
@@ -910,9 +924,10 @@
       const li = document.createElement("li");
       li.className = "folder" + (currentSession && currentSession.name === s.name ? " active" : "");
       li.innerHTML = icon("folder", 16) + '<div><div class="folder-date"></div><div class="folder-meta"></div></div>';
-      li.querySelector(".folder-date").textContent = label.date;
+      li.querySelector(".folder-date").textContent = s.label ? s.label + " · " + label.date : label.date;
       li.querySelector(".folder-meta").textContent = [plural(count, "photo", "photos"), label.detail].filter(Boolean).join(" · ");
       if (s.missing > 0) li.querySelector(".folder-meta").after(missingTag(s.missing));
+      if (s.inProject) li.querySelector(".folder-meta").after(projectTag(s));
       if (s.saved) {
         li.querySelector(".folder-meta").after(savedTag());
         li.title = "Already saved. It leaves the app when you close Stillpoint (the saved copy stays where you saved it).";
@@ -959,6 +974,7 @@
   }
 
   function showSession(session, keepIndex) {
+    setTimeout(renderProjectAction, 0);
     stopPlay();
     if (editing.on) setEditing(false);
     currentSession = session;
@@ -1056,7 +1072,8 @@
     if (!currentSession) return;
     const name = currentSession.name;
     const label = sessionLabel(name);
-    dialog("Delete this session?", "The photos from " + label.date + " will be deleted permanently.", [
+    dialog("Delete this session?", "The photos from " + label.date + " will be deleted permanently" +
+      (currentSession.inProject ? " (from the project folder too)." : "."), [
       { label: "Cancel" },
       { label: "Delete", danger: true, onClick: () => window.deleteSession(name) },
     ]);
@@ -1217,7 +1234,7 @@
   const LOSSY_PHOTOS = ["jpg", "webp", "heic"];  // PNG e TIFF são sempre sem perda
   function qualityLabel(q) { return QUALITIES.find((x) => x[0] === q)[1]; }
   const exp = { mode: "photos", exitAfter: false, selected: new Set(), active: "", settings: {}, heic: { ok: true, reason: "" },
-                timer: null, frame: 0, photo: 0, sameForAll: true };
+                timer: null, frame: 0, photo: 0, sameForAll: true, project: false };
 
   // Configuração da sessão aberta igual nas outras (só a parte do modo atual e o nome)
   function settingsKey() { return exp.mode === "photos" ? "photos" : "seq"; }
@@ -1299,14 +1316,19 @@
     $("modeOverlay").classList.remove("hidden");
   }
 
-  function openExport(mode) {
+  function openExport(mode, projectNames) {
     $("modeOverlay").classList.add("hidden");
     exp.mode = mode;
+    exp.project = Array.isArray(projectNames);
+    const all = exportable();
     // Salvando para fechar: só as que ainda não foram salvas (as já salvas ficam marcadas fora)
-    const unsaved = sessions.filter((s) => !s.saved);
-    exp.selected = new Set((exp.exitAfter && unsaved.length ? unsaved : sessions).map((s) => s.name));
-    Object.keys(exp.settings).forEach((k) => { if (!sessions.some((s) => s.name === k)) delete exp.settings[k]; });
-    if (!sessions.some((s) => s.name === exp.active)) exp.active = (currentSession && currentSession.name) || sessions[0].name;
+    const unsaved = all.filter((s) => !s.saved);
+    exp.selected = new Set(exp.project ? projectNames : (exp.exitAfter && unsaved.length ? unsaved : all).map((s) => s.name));
+    Object.keys(exp.settings).forEach((k) => { if (!all.some((s) => s.name === k)) delete exp.settings[k]; });
+    if (!all.some((s) => s.name === exp.active)) exp.active = (currentSession && all.some((s) => s.name === currentSession.name) && currentSession.name) || all[0].name;
+    if (exp.project && project.exportDefaults) {
+      $("exportEdited").checked = project.exportDefaults.useEdited !== false;
+    }
     exp.photo = 0;
     Promise.resolve(window.exportFormats && window.exportFormats()).then((f) => {
       if (f) exp.heic = { ok: f.heic, reason: f.heicReason || "" };
@@ -1319,6 +1341,7 @@
   function closeExport() {
     stopPreview();
     $("exportOverlay").classList.add("hidden");
+    exp.project = false;
   }
 
   function renderExport() {
@@ -1333,10 +1356,12 @@
     updateExportCount();
   }
 
+  // Sessões que a janela de salvar mostra: todas, ou só as do Project (Export… da janela Project)
+  function exportable() { return exp.project ? sessions.filter((s) => s.inProject) : sessions; }
   function renderExportList() {
     const list = $("exportList");
     list.innerHTML = "";
-    sessions.forEach((s) => {
+    exportable().forEach((s) => {
       const label = sessionLabel(s.name);
       const li = document.createElement("li");
       li.className = "export-item" + (s.name === exp.active ? " active" : "") + (exp.selected.has(s.name) ? "" : " off");
@@ -1370,15 +1395,23 @@
   }
 
   function updateExportCount() {
+    const all = exportable();
     const chosen = exp.selected.size;
-    const seqEmpty = exp.mode === "sequence" && sessions.some((s) => exp.selected.has(s.name) && !settingsFor(s.name).seq.formats.length);
+    const seqEmpty = exp.mode === "sequence" && all.some((s) => exp.selected.has(s.name) && !settingsFor(s.name).seq.formats.length);
+    // Project: sessão com só parte das fotos editadas misturaria editadas e originais
+    const partial = exp.project && $("exportEdited").checked
+      ? all.filter((s) => exp.selected.has(s.name) && s.edited > 0 && s.edited < s.photos.length) : [];
     $("exportCount").textContent = seqEmpty ? "Choose at least one format for each selected session"
-      : chosen + " of " + plural(sessions.length, "session", "sessions") + " selected";
+      : partial.length ? (partial.length === 1 ? sessionTitle(partial[0]) + " has" : partial.length + " sessions have") + " only some photos edited: edited and original frames would be mixed."
+      : chosen + " of " + plural(all.length, "session", "sessions") + " selected";
+    $("exportCount").classList.toggle("warn", partial.length > 0);
     $("exportConfirm").disabled = chosen === 0 || seqEmpty;
-    $("exportConfirm").textContent = chosen ? "Save " + plural(chosen, "session", "sessions") : "Save";
-    $("exportSelectAll").disabled = chosen === sessions.length;
+    $("exportConfirm").textContent = chosen ? (exp.project ? "Export " : "Save ") + plural(chosen, "session", "sessions") : (exp.project ? "Export" : "Save");
+    $("exportSelectAll").disabled = chosen === all.length;
     $("exportUnselectAll").disabled = chosen === 0;
+    $("exportEditedLabel").classList.toggle("hidden", !exp.project);
   }
+  function sessionTitle(s) { const l = sessionLabel(s.name); return s.label ? s.label + " · " + l.date : l.date; }
 
   function refreshSummaries() {
     [...$("exportList").children].forEach((li, i) => {
@@ -1650,10 +1683,14 @@
   }
 
   function runExport(deleteRest) {
-    const names = sessions.filter((s) => exp.selected.has(s.name)).map((s) => s.name);
+    const names = exportable().filter((s) => exp.selected.has(s.name)).map((s) => s.name);
     exp.waiting = true;  // a janela fica aberta até salvar de fato
-    window.exportSessions(exp.exitAfter ? "exit" : "", deleteRest ? "delete" : "", ...names.map(exportSpec));
+    // Project: "project" = direto para <Project>/Exports; "edited" = usar as editadas quando houver
+    const flags = [deleteRest ? "delete" : "", exp.project && $("exportEdited").checked ? "edited" : ""].filter(Boolean).join(",");
+    if (exp.project) window.projectExportDefaults(JSON.stringify({ mode: exp.mode, useEdited: $("exportEdited").checked }));
+    window.exportSessions(exp.project ? "project" : exp.exitAfter ? "exit" : "", flags, ...names.map(exportSpec));
   }
+  $("exportEdited").addEventListener("change", updateExportCount);
 
   // Formatos misturados: salvando como Original, umas câmeras mandaram RAW e outras só JPEG
   // (Quality diferente). Avisa antes, para a pessoa igualar em Camera settings se quiser.
@@ -1681,8 +1718,8 @@
       ]);
       return;
     }
-    const left = sessions.length - chosen;
-    if (!left) return runExport(false);
+    const left = exportable().length - chosen;
+    if (!left || exp.project) return runExport(false);  // Project: exportar nunca apaga nada
     dialog("Delete the sessions you did not select?",
       plural(left, "session was", "sessions were") + " not selected. You can delete " + (left === 1 ? "it" : "them") +
       " after the others are saved, or keep " + (left === 1 ? "it" : "them") + " in the app to save later.", [
@@ -1698,7 +1735,7 @@
   $("modeCancel").addEventListener("click", () => $("modeOverlay").classList.add("hidden"));
   $("exportModePhotos").addEventListener("click", () => { exp.mode = "photos"; renderExport(); });
   $("exportModeSequence").addEventListener("click", () => { exp.mode = "sequence"; renderExport(); });
-  $("exportSelectAll").addEventListener("click", () => { exp.selected = new Set(sessions.map((s) => s.name)); renderExportList(); updateExportCount(); });
+  $("exportSelectAll").addEventListener("click", () => { exp.selected = new Set(exportable().map((s) => s.name)); renderExportList(); updateExportCount(); });
   $("exportUnselectAll").addEventListener("click", () => { exp.selected.clear(); renderExportList(); updateExportCount(); });
   $("exportCancel").addEventListener("click", closeExport);
   $("exportConfirm").addEventListener("click", confirmExport);
@@ -1789,6 +1826,7 @@
     busy(e) {
       busy = e.busy;
       busyAction = e.busy ? e.action : "";
+      setTimeout(renderProjectAction, 0);
       if (e.busy && e.action === "shoot") { shootCancelling = false; shootCancelled = false; ui.progress.classList.remove("warn"); }
       activity.busyText = "";
       renderActivity();
@@ -2063,7 +2101,7 @@
     },
 
     // Fotos guardadas
-    sessions(e) { setSessions(e.sessions); },
+    sessions(e) { if (e.project) setProject(e.project); setSessions(e.sessions); },
     // Som do disparo (botão da barra de cima e das janelas Live): um ajuste só, do app
     soundChanged(e) { sound = { sound: !!e.sound, sounds: !!e.sounds }; renderSoundBtn(); },
     saving() { activity.saving = true; renderActivity(); },
@@ -3264,6 +3302,189 @@
     }
   }, true);
 
+  // =================== Project (etapa 17) ===================
+  // A pasta escolhida pela pessoa onde as sessões ficam guardadas (docs/project.md). O app
+  // manda o estado junto com a lista de sessões (evento "sessions", campo project).
+  let project = { open: false };
+  const projectSel = new Set();  // sessões marcadas na janela Project
+  function setProject(p) {
+    project = p || { open: false };
+    renderProjectStrip();
+    if (!$("projectOverlay").classList.contains("hidden")) renderProjectWindow();
+  }
+  function fmtBytes(b) {
+    if (!(b > 0)) return "";
+    return b >= 1e9 ? (b / 1e9).toFixed(1) + " GB" : b >= 1e6 ? Math.round(b / 1e6) + " MB" : Math.round(b / 1e3) + " KB";
+  }
+  function renderProjectStrip() {
+    const open = !!project.open;
+    $("projectStrip").classList.toggle("on", open);
+    $("projectStrip").classList.toggle("unavailable", open && project.available === false);
+    $("projectName").textContent = open ? project.name : "No project";
+    $("projectMeta").textContent = open
+      ? (project.available === false ? "Folder not reachable (external drive off?): " + project.folder : project.folder)
+      : "New sessions stay in the app until you save them. A project keeps them in a folder of yours.";
+    $("projectMeta").title = open ? project.folder : "";
+    const tags = $("projectTags"); tags.innerHTML = "";
+    if (open) {
+      [[plural(project.sessions || 0, "session", "sessions"), "dim"], [plural(project.photos || 0, "photo", "photos"), "dim"],
+       project.edited ? [project.edited + " edited", "ok"] : null, project.bytes > 0 ? [fmtBytes(project.bytes), "dim"] : null]
+        .filter(Boolean).forEach(([text, cls]) => { const t = document.createElement("span"); t.className = "project-tag " + cls; t.textContent = text; tags.appendChild(t); });
+    }
+    $("projectNone").classList.toggle("hidden", open);
+    $("projectSome").classList.toggle("hidden", !open);
+    $("projectOpenBtn").textContent = open ? "Switch…" : "Open…";
+    renderProjectAction();
+  }
+  // Botão "Add to project" / "Remove from project" na sessão aberta
+  function renderProjectAction() {
+    const s = currentSession;
+    const show = !!project.open && !!s && !busy;
+    projectActionBtn.classList.toggle("hidden", !show);
+    if (!s) return;
+    projectActionBtn.textContent = s.inProject ? "Remove from project" : "Add to project";
+    projectActionBtn.title = s.inProject ? "Move this session back to the app (it leaves the project folder; nothing is deleted)"
+                                         : "Move this session into the project folder (Originals)";
+  }
+  function toggleCurrentInProject() {
+    if (!currentSession || !project.open) return;
+    const name = currentSession.name, inProject = currentSession.inProject;
+    Promise.resolve(inProject ? window.removeFromProject(name) : window.addToProject(name)).then((r) => {
+      if (r && r.error) { toast(r.error, 8000); log(r.error, "error"); }
+      else log((inProject ? "Removed from project: " : "Added to project: ") + sessionLabel(name).date, "ok");
+    });
+  }
+  function projectResult(r) {
+    if (!r || r.cancelled) return;
+    if (r.error) { toast(r.error, 8000); log(r.error, "error"); return; }
+    if (r.notProject) {
+      dialog("Not a project folder", "This folder has no " + "stillpoint-project.json" + ". Create a new project in it? Stillpoint adds the project file and the Originals, Edited and Exports folders; nothing already there is touched.", [
+        { label: "Cancel" },
+        { label: "Create project here", primary: true, onClick: () => Promise.resolve(window.projectCreateAt(r.folder)).then(projectResult) },
+      ]);
+      return;
+    }
+    if (r.project) setProject(r.project);
+    if (r.project && r.project.open) { toast("Project: " + r.project.name); log("Project opened: " + r.project.name, "ok"); }
+    refreshSessions();
+  }
+  function newProject() { Promise.resolve(window.projectNew()).then(projectResult); }
+  function browseProject() { Promise.resolve(window.projectOpen("")).then(projectResult); }
+  // Escolher um Project: recentes + "Choose folder…" + "New project…"
+  function pickProject() {
+    const list = $("projectRecentList"); list.innerHTML = "";
+    Promise.resolve(window.projectRecent()).then((r) => {
+      const recent = (r && r.projects) || [];
+      if (!recent.length) { const p = document.createElement("p"); p.className = "empty"; p.textContent = "No recent projects."; list.appendChild(p); }
+      recent.forEach((p) => {
+        const b = document.createElement("button");
+        b.className = "btn btn-secondary project-recent-item" + (project.open && p.folder === project.folder ? " current" : "");
+        b.disabled = !p.available;
+        b.innerHTML = '<b></b><small></small>';
+        b.querySelector("b").textContent = p.name + (p.available ? "" : "  ·  not reachable");
+        b.querySelector("small").textContent = p.folder;
+        b.addEventListener("click", () => { $("projectPickOverlay").classList.add("hidden"); Promise.resolve(window.projectOpen(p.folder)).then(projectResult); });
+        list.appendChild(b);
+      });
+    });
+    $("projectPickOverlay").classList.remove("hidden");
+  }
+  $("projectPickCancel").addEventListener("click", () => $("projectPickOverlay").classList.add("hidden"));
+  $("projectPickBrowse").addEventListener("click", () => { $("projectPickOverlay").classList.add("hidden"); browseProject(); });
+  $("projectPickNew").addEventListener("click", () => { $("projectPickOverlay").classList.add("hidden"); newProject(); });
+  $("projectNewBtn").addEventListener("click", newProject);
+  $("projectOpenBtn").addEventListener("click", pickProject);
+  $("projectWindowBtn").addEventListener("click", openProjectWindow);
+
+  // ---- Janela Project ----
+  function projectSessions() { return sessions.filter((s) => s.inProject); }
+  function openProjectWindow() {
+    if (!project.open) return;
+    projectSel.clear();
+    projectSessions().forEach((s) => projectSel.add(s.name));
+    renderProjectWindow();
+    $("projectOverlay").classList.remove("hidden");
+  }
+  function closeProjectWindow() { $("projectOverlay").classList.add("hidden"); }
+  function renderProjectWindow() {
+    const list = projectSessions();
+    $("projectTitle").textContent = "Project · " + (project.name || "");
+    $("projectSub").textContent = [project.folder, plural(project.sessions || 0, "session", "sessions"), plural(project.photos || 0, "photo", "photos"), fmtBytes(project.bytes)].filter(Boolean).join(" · ");
+    const ul = $("projectList"); ul.innerHTML = "";
+    $("projectEmpty").classList.toggle("hidden", list.length > 0);
+    [...projectSel].forEach((n) => { if (!list.some((s) => s.name === n)) projectSel.delete(n); });
+    list.forEach((s) => {
+      const label = sessionLabel(s.name);
+      const total = s.photos.length;
+      const li = document.createElement("li");
+      li.className = "project-row" + (projectSel.has(s.name) ? " sel" : "");
+      li.innerHTML = '<label class="export-check"><input type="checkbox"><span class="save-check" aria-hidden="true"></span></label>' +
+        '<span class="export-thumb"></span>' +
+        '<span class="project-row-main"><input class="project-label" type="text" maxlength="60" placeholder="Label (optional)"><span class="folder-meta"></span></span>' +
+        '<span class="project-row-count"></span><span class="project-row-edited"></span>' +
+        '<button class="btn btn-link btn-small project-row-play" title="Show this session">Show</button>';
+      const box = li.querySelector("input[type=checkbox]"); box.checked = projectSel.has(s.name);
+      box.addEventListener("change", () => { if (box.checked) projectSel.add(s.name); else projectSel.delete(s.name); li.classList.toggle("sel", box.checked); updateProjectCount(); });
+      const labelInput = li.querySelector(".project-label"); labelInput.value = s.label || "";
+      labelInput.title = "Click to name this session, for example \"Pose 7\"";
+      labelInput.addEventListener("change", () => { window.setSessionLabel(s.name, labelInput.value.trim()); });
+      labelInput.addEventListener("keydown", (e) => { if (e.key === "Enter") labelInput.blur(); e.stopPropagation(); });
+      li.querySelector(".folder-meta").textContent = [label.date, s.timing || label.detail].filter(Boolean).join(" · ");
+      li.querySelector(".project-row-count").textContent = String(total);
+      const ed = li.querySelector(".project-row-edited");
+      if (s.edited > 0) { const t = projectTag(s); ed.appendChild(t); }
+      else { const t = document.createElement("span"); t.className = "project-tag dim"; t.textContent = "originals"; ed.appendChild(t); }
+      if (s.missing > 0) ed.appendChild(missingTag(s.missing));
+      const first = s.photos.find((p) => p.previewable);
+      if (first) sessionPhoto(s.name, first.file, 320).then((url) => { if (url) li.querySelector(".export-thumb").style.backgroundImage = "url(" + url + ")"; });
+      li.querySelector(".project-row-play").addEventListener("click", () => { closeProjectWindow(); showSession(s); });
+      ul.appendChild(li);
+    });
+    updateProjectCount();
+  }
+  function updateProjectCount() {
+    const list = projectSessions();
+    const n = projectSel.size;
+    $("projectListCount").textContent = n + " of " + plural(list.length, "session", "sessions") + " selected";
+    $("projectExportBtn").disabled = n === 0 || project.available === false;
+    $("projectExportBtn").textContent = n ? "Export " + plural(n, "session", "sessions") + "…" : "Export…";
+    $("projectRemoveBtn").disabled = n === 0;
+    $("projectSelectAll").disabled = n === list.length;
+    $("projectUnselectAll").disabled = n === 0;
+    const editedOnes = list.filter((s) => s.edited > 0 && s.edited >= s.photos.length);
+    $("projectSelectEdited").disabled = !editedOnes.length;
+    $("projectHint").textContent = project.available === false ? "The project folder is not reachable." : "";
+  }
+  $("projectSelectAll").addEventListener("click", () => { projectSessions().forEach((s) => projectSel.add(s.name)); renderProjectWindow(); });
+  $("projectUnselectAll").addEventListener("click", () => { projectSel.clear(); renderProjectWindow(); });
+  $("projectSelectEdited").addEventListener("click", () => { projectSel.clear(); projectSessions().filter((s) => s.edited > 0 && s.edited >= s.photos.length).forEach((s) => projectSel.add(s.name)); renderProjectWindow(); });
+  $("projectCloseBtn").addEventListener("click", closeProjectWindow);
+  $("projectFolderBtn").addEventListener("click", () => window.projectOpenFolder());
+  $("projectSwitchBtn").addEventListener("click", () => { closeProjectWindow(); pickProject(); });
+  $("projectCloseProjectBtn").addEventListener("click", () => {
+    dialog("Close the project?", "The project's sessions leave the list (they stay in " + project.folder + "; nothing is deleted). New sessions go back to staying in the app until you save them. You can open the project again any time.", [
+      { label: "Cancel" },
+      { label: "Close project", primary: true, onClick: () => { closeProjectWindow(); Promise.resolve(window.projectClose()).then(projectResult); } },
+    ]);
+  });
+  $("projectRemoveBtn").addEventListener("click", () => {
+    const names = [...projectSel];
+    dialog(names.length === 1 ? "Remove the session from the project?" : "Remove " + names.length + " sessions from the project?",
+      "The photos move back to the app (out of the project folder); nothing is deleted. They count as unsaved again.", [
+      { label: "Cancel" },
+      { label: "Remove", primary: true, onClick: () => Promise.resolve(window.removeFromProject(...names)).then((r) => { if (r && r.error) toast(r.error, 8000); renderProjectWindow(); }) },
+    ]);
+  });
+  // Export…: a janela de salvar, só com as sessões do Project e "Use edited photos"
+  $("projectExportBtn").addEventListener("click", () => {
+    const names = [...projectSel];
+    if (!names.length) return;
+    closeProjectWindow();
+    exp.exitAfter = false;
+    const mode = project.exportDefaults && project.exportDefaults.mode === "photos" ? "photos" : "sequence";
+    openExport(mode, names);
+  });
+
   // =================== Ações ===================
   ui.restartBtn.addEventListener("click", () => {
     dialog("Restart camera connections?", "Use this when a camera is on and plugged in but does not connect. All cameras reconnect.", [
@@ -3294,7 +3515,8 @@
     const schedule = timing.mode === "all" ? "" : plan.shots.map((s) => s.cam + ":" + s.t).join(",");
     // Som: "disparo,grupos" (1/0)
     const sounds = (sound.sound ? "1" : "0") + "," + (sound.sound && sound.sounds ? "1" : "0");
-    window.shoot(String(intValue(ui.countdown, 0, 0)), String(intValue(ui.sessions, 1, 1)), String(intValue(ui.downloadWait, 1, 10)), schedule, sounds);
+    window.shoot(String(intValue(ui.countdown, 0, 0)), String(intValue(ui.sessions, 1, 1)), String(intValue(ui.downloadWait, 1, 10)), schedule, sounds,
+      timing.mode === "all" ? "All at once" : timingSummaryText(plan));
   }
   // Espaço entre esta foto e a anterior da mesma câmera no plano (ms); Infinity se é a primeira
   function repeatGap(shots, shot) {
@@ -3714,6 +3936,7 @@
     if (info && info.unsavedSessions > 0) offerRecovery(info.unsavedSessions);
     if (info && info.testRestart) { testRestart = true; ui.restartAppBtn.classList.remove("hidden"); }
     upd.info = info || null;
+    if (info && info.project) setProject(info.project);
     timingLoad(info && info.timing);
     renderTiming();
     if (info && info.live) {

@@ -34,6 +34,7 @@
 
 #include "native_window.h"
 #include "photo_store.h"
+#include "project.h"
 #include "exporter.h"
 #include "camera_settings.h"
 #include "auto_match.h"
@@ -733,7 +734,9 @@ namespace
             photos += "]";
 
             Json item("session");
-            item.Add("name", session.name).Add("saved", session.saved).Add("missing", session.missing).Raw("photos", photos);
+            item.Add("name", session.name).Add("saved", session.saved).Add("missing", session.missing)
+                .Add("inProject", session.inProject).Add("label", session.label).Add("edited", session.edited)
+                .Add("timing", session.timing).Raw("photos", photos);
             list += (firstSession ? "" : ",") + item.Str();
             firstSession = false;
         }
@@ -952,6 +955,72 @@ namespace
         // Sessões salvas e mantidas no app ficam só até fechar: se o app fechou de
         // repente, saem agora
         store.DeleteSaved();
+        // Project (etapa 17): pasta da pessoa com as sessões guardadas; lembrado em
+        // settings.txt (project=). Com um Project aberto, as sessões novas vão direto para
+        // <Project>/Originals (decisão do dono do projeto, 2026-10-29).
+        Project project;
+        {
+            const auto settings = LoadSettings();
+            std::string error;
+            if (settings.count("project") && !settings.at("project").empty())
+                if (!project.Open(std::filesystem::path(settings.at("project")), error))
+                    Log("Project not opened: " + error);
+            if (project.IsOpen())
+                store.SetProject(project.Originals(), project.Edited());
+        }
+        auto projectJson = [&]
+        {
+            Json info("project");
+            if (!project.IsOpen())
+                return info.Add("open", false).Str();
+            int sessions = 0, edited = 0, photos = 0;
+            std::vector<std::string> folders;
+            for (const auto& session : store.ListSessions())
+                if (session.inProject)
+                {
+                    ++sessions;
+                    photos += static_cast<int>(session.photos.size());
+                    if (session.edited > 0 && session.edited >= static_cast<int>(session.photos.size()))
+                        ++edited;
+                    folders.push_back(session.name);
+                }
+            project.SyncIndex(folders);
+            return info.Add("open", true).Add("name", project.Name()).Add("folder", project.Root().string())
+                .Add("available", project.Available()).Add("sessions", sessions).Add("photos", photos)
+                .Add("edited", edited).Add("bytes", static_cast<double>(project.SizeBytes()))
+                .Raw("exportDefaults", project.ExportDefaults().empty() ? "null" : project.ExportDefaults()).Str();
+        };
+        // Pastas recentes de Project (settings.txt, recentProjects=, separadas por "|")
+        auto recentProjects = [&]() -> std::vector<std::string>
+        {
+            std::vector<std::string> out;
+            const auto settings = LoadSettings();
+            if (!settings.count("recentProjects"))
+                return out;
+            std::stringstream text(settings.at("recentProjects"));
+            for (std::string part; std::getline(text, part, '|');)
+                if (!part.empty())
+                    out.push_back(part);
+            return out;
+        };
+        auto rememberProject = [&](const std::string& folder)
+        {
+            auto settings = LoadSettings();
+            settings["project"] = folder;
+            if (!folder.empty())
+            {
+                std::vector<std::string> recent = recentProjects();
+                recent.erase(std::remove(recent.begin(), recent.end(), folder), recent.end());
+                recent.insert(recent.begin(), folder);
+                if (recent.size() > 10)
+                    recent.resize(10);
+                std::string joined;
+                for (const auto& r : recent)
+                    joined += (joined.empty() ? "" : "|") + r;
+                settings["recentProjects"] = joined;
+            }
+            SaveSettings(settings);
+        };
         // Fotos de teste do "Reorder by photo": só servem para ordenar, são apagadas depois
         PhotoStore orderStore(Platform::AppDataFolder() / "Order photos");
         orderStore.DeleteAll();
@@ -1018,7 +1087,7 @@ namespace
 
         auto emitSessions = [&]
         {
-            listener.Emit(Json("sessions").Raw("sessions", SessionsJson(store)));
+            listener.Emit(Json("sessions").Raw("sessions", SessionsJson(store)).Raw("project", projectJson()));
         };
 
         // Executa um pedido na thread das câmeras, avisando a página de "ocupado"
@@ -1112,7 +1181,7 @@ namespace
                         cam.fake = true;
                         list.push_back(cam);
                     }
-                controller.SetOutputFolder(store.Root().string());
+                controller.SetOutputFolder(project.IsOpen() ? project.Originals().string() : store.Root().string());
                 sdkReady = true;
                 Log("Fake cameras: " + std::to_string(fakeCount) + " (STILLPOINT_FAKE_CAMERAS)");
                 return;
@@ -1123,7 +1192,7 @@ namespace
                 listener.Emit(Json("sdkFailed"));
                 return;
             }
-            controller.SetOutputFolder(store.Root().string());
+            controller.SetOutputFolder(project.IsOpen() ? project.Originals().string() : store.Root().string());
         };
 
         const std::string version = AppVersion();
@@ -1182,6 +1251,7 @@ namespace
                 .Add("debug", debugMode.load())
                 .Add("timing", settings.count("timing") ? settings.at("timing") : std::string())
                 .Add("live", settings.count("live") ? settings.at("live") : std::string())
+                .Raw("project", projectJson())
                 .Add("fakeCameras", fakeCount).Str();
         });
 
@@ -1502,15 +1572,171 @@ namespace
                 listener.Emit(Json("livePlan").Add("countdown", settings.countdownSeconds).Add("sessions", settings.sessionCount)
                     .Add("all", settings.schedule.empty()).Raw("shots", "[" + items + "]"));
             }
-            run("shoot", [&, settings]
+            // Resumo do Timing (texto da página, 6º argumento) para o session.json do Project
+            const std::string timingText = args.size() > 5 ? args[5] : std::string();
+            const std::string planText = args.size() > 3 ? args[3] : std::string();
+            auto writeSessionInfo = [&, timingText, planText]
             {
-                if (fakeCount) { fakeRun(settings); emitSessions(); return; }
+                if (!project.IsOpen())
+                    return;
+                // Sessões do Project ainda sem session.json: acabaram de ser disparadas
+                for (const auto& session : store.ListSessions())
+                {
+                    if (!session.inProject)
+                        continue;
+                    std::error_code ec;
+                    if (std::filesystem::exists(store.SessionDir(session.name) / "session.json", ec))
+                        continue;
+                    std::string cams = "[";
+                    for (const auto& cam : controller.GetCameras())
+                        if (cam.sessionOpen || cam.fake)
+                            cams += std::string(cams.size() > 1 ? "," : "") + Json("camera").Add("order", cam.orderPrefix)
+                                .Add("name", cam.shortName).Add("model", cam.modelName).Str();
+                    cams += "]";
+                    std::string shotAt = session.name;  // "2026-10-22_14-30-05" -> "2026-10-22T14:30:05"
+                    if (shotAt.size() >= 19) { shotAt[10] = 'T'; shotAt[13] = ':'; shotAt[16] = ':'; }
+                    store.WriteSessionInfo(session.name, Json("info").Add("shotAt", shotAt).Add("timing", timingText)
+                        .Add("plan", planText).Raw("cameras", cams).Str());
+                }
+            };
+            run("shoot", [&, settings, writeSessionInfo]
+            {
+                if (fakeCount) { fakeRun(settings); writeSessionInfo(); emitSessions(); return; }
                 if (cameraConnecting())
                     return;
                 EnsureSingleShot(controller, singleShotWarned);  // uma foto por câmera
                 controller.RunSequence(settings);
+                writeSessionInfo();
                 emitSessions();
             });
+            return "null";
+        });
+
+        // =================== Project (etapa 17) ===================
+        auto applyProject = [&]
+        {
+            if (project.IsOpen())
+                store.SetProject(project.Originals(), project.Edited());
+            else
+                store.SetProject({}, {});
+            if (sdkReady)
+                controller.SetOutputFolder(project.IsOpen() ? project.Originals().string() : store.Root().string());
+            emitSessions();
+        };
+        auto openProjectAt = [&](const std::string& folder) -> std::string
+        {
+            std::string error;
+            Project fresh;
+            if (!fresh.Open(std::filesystem::path(folder), error))
+                return error;
+            project = fresh;
+            rememberProject(folder);
+            applyProject();
+            Log("Project opened: " + project.Name() + " (" + folder + ")");
+            return "";
+        };
+        // projectNew(): escolhe uma pasta (nova ou vazia) e cria o Project nela
+        window.bind("projectNew", [&](const std::string&) -> std::string
+        {
+            const std::string folder = NativeWindow::ChooseFolder("Choose or create the folder for the new project");
+            if (folder.empty())
+                return Json("project").Add("cancelled", true).Str();
+            std::string error;
+            if (Project::IsProject(std::filesystem::path(folder)))
+                error = openProjectAt(folder);  // já é um Project: só abre
+            else if (Project::Create(std::filesystem::path(folder), "", error))
+                error = openProjectAt(folder);
+            return Json("project").Add("error", error).Raw("project", projectJson()).Str();
+        });
+        // projectOpen(pasta opcional): abre um Project (pergunta a pasta se não vier)
+        window.bind("projectOpen", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            std::string folder = !args.empty() ? args[0] : std::string();
+            if (folder.empty())
+                folder = NativeWindow::ChooseFolder("Choose the project folder");
+            if (folder.empty())
+                return Json("project").Add("cancelled", true).Str();
+            if (!Project::IsProject(std::filesystem::path(folder)))
+                return Json("project").Add("notProject", true).Add("folder", folder).Str();  // a página pergunta se cria
+            const std::string error = openProjectAt(folder);
+            return Json("project").Add("error", error).Raw("project", projectJson()).Str();
+        });
+        // projectCreateAt(pasta): cria o Project numa pasta que a pessoa já escolheu
+        window.bind("projectCreateAt", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            std::string error;
+            if (!args.empty() && Project::Create(std::filesystem::path(args[0]), "", error))
+                error = openProjectAt(args[0]);
+            return Json("project").Add("error", error).Raw("project", projectJson()).Str();
+        });
+        // projectClose(): fecha o Project (as sessões dele saem da lista; nada é apagado)
+        window.bind("projectClose", [&](const std::string&) -> std::string
+        {
+            project.Close();
+            rememberProject("");
+            applyProject();
+            return Json("project").Raw("project", projectJson()).Str();
+        });
+        // projectRecent(): pastas recentes com nome e se estão acessíveis
+        window.bind("projectRecent", [&](const std::string&) -> std::string
+        {
+            std::string list = "[";
+            for (const auto& folder : recentProjects())
+            {
+                Project p;
+                std::string error;
+                const bool ok = p.Open(std::filesystem::path(folder), error);
+                list += std::string(list.size() > 1 ? "," : "") + Json("recent").Add("folder", folder)
+                    .Add("name", ok ? p.Name() : std::filesystem::path(folder).filename().string()).Add("available", ok).Str();
+            }
+            return Json("recent").Raw("projects", list + "]").Str();
+        });
+        // projectInfo(): estado atual (para abrir a janela Project)
+        window.bind("projectInfo", [&](const std::string&) -> std::string
+        {
+            return Json("project").Raw("project", projectJson()).Str();
+        });
+        // projectOpenFolder(): mostra a pasta do Project no Finder/Explorer
+        window.bind("projectOpenFolder", [&](const std::string&) -> std::string
+        {
+            if (project.IsOpen())
+                Platform::OpenInFileManager(project.Root());
+            return "null";
+        });
+        // addToProject(sessão, ...) / removeFromProject(sessão, ...): move as pastas
+        auto moveSessions = [&](const std::string& request, bool toProject) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            std::string error;
+            int moved = 0;
+            for (const auto& name : args)
+            {
+                if (store.MoveSession(name, toProject, error))
+                    ++moved;
+                else
+                    break;
+            }
+            emitSessions();
+            return Json("moved").Add("count", moved).Add("error", error).Str();
+        };
+        window.bind("addToProject", [&](const std::string& request) -> std::string { return moveSessions(request, true); });
+        window.bind("removeFromProject", [&](const std::string& request) -> std::string { return moveSessions(request, false); });
+        // setSessionLabel(sessão, rótulo)
+        window.bind("setSessionLabel", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            const bool ok = args.size() >= 2 && store.SetLabel(args[0], args[1]);
+            emitSessions();
+            return Json("label").Add("ok", ok).Str();
+        });
+        // projectExportDefaults(json): guarda as últimas configurações de export do Project
+        window.bind("projectExportDefaults", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            if (!args.empty() && project.IsOpen())
+                project.SetExportDefaults(args[0]);
             return "null";
         });
 
@@ -2261,7 +2487,11 @@ namespace
         {
             auto args = ParseStringArgs(request);
             const bool exitAfter = !args.empty() && args[0] == "exit";
-            const bool deleteRest = args.size() > 1 && args[1] == "delete";
+            // args[0] "project": sessões do Project, direto para <Project>/Exports (sem perguntar a pasta)
+            const bool toProjectExports = !args.empty() && args[0] == "project" && project.IsOpen();
+            // args[1]: "delete" (apaga as sessões não salvas que ficaram) e/ou "edited" (usar as editadas)
+            const bool deleteRest = args.size() > 1 && args[1].find("delete") != std::string::npos;
+            const bool useEdited = args.size() > 1 && args[1].find("edited") != std::string::npos;
             const std::vector<std::string> names(args.begin() + std::min<size_t>(args.size(), 2), args.end());
             const std::string folder = NativeWindow::ChooseFolder("Choose where to save your bullet time sessions");
             if (folder.empty())
@@ -2313,6 +2543,7 @@ namespace
         {
             std::string session;              // pasta da sessão dentro do app
             std::string folderName;           // nome final (data, número ou nome dado)
+            bool useEdited = false;           // Project: usar a versão editada quando houver
             bool sequence = false;
             std::string photoFormat;          // "original", "jpg"... ("" = não salvar fotos)
             Export::Quality photoQuality = Export::Quality::High;
@@ -2347,7 +2578,20 @@ namespace
                         listener.Emit(Json("exportProgress").Add("session", job.session).Add("index", static_cast<int>(index))
                                           .Add("total", static_cast<int>(jobs.size())).Add("step", step).Add("fraction", fraction));
                     };
-                    const fs::path source = store.Root() / job.session;
+                    const fs::path source = store.SessionDir(job.session);
+                    if (source.empty())
+                        continue;
+                    // Project: a foto editada (Edited/<sessão>/) no lugar do original, quando pedido
+                    auto photoPath = [&](const std::string& file) -> fs::path
+                    {
+                        if (job.useEdited && session->inProject)
+                        {
+                            const fs::path edited = store.EditedFile(job.session, file);
+                            if (!edited.empty())
+                                return edited;
+                        }
+                        return source / file;
+                    };
                     std::error_code ec;
                     fs::path target = fs::path(folder) / job.folderName;
                     for (int n = 2; !replace && fs::exists(target, ec); ++n)
@@ -2409,7 +2653,7 @@ namespace
                     {
                         std::vector<fs::path> photos;
                         for (const auto& f : perCamera)
-                            photos.push_back(source / f);
+                            photos.push_back(photoPath(f));
                         for (const auto& format : job.options.formats)
                         {
                             Export::SequenceOptions one = job.options;
@@ -2451,7 +2695,7 @@ namespace
                         {
                             if (exportCancel) { error = "cancelled"; break; }
                             report(static_cast<double>(i) / files.size(), original ? "photos-save" : job.photoFormat);
-                            const fs::path from = source / files[i];
+                            const fs::path from = photoPath(files[i]);
                             if (original)
                             {
                                 const std::string ext = from.extension().string();
@@ -2470,9 +2714,12 @@ namespace
                         if (!error.empty())
                             break;
                     }
-                    // Tudo salvo. Fechando o app, a sessão sai do app; senão a pessoa escolhe
+                    // Tudo salvo. Sessão do Project: fica onde está (exportar não a tira de lá).
+                    // Fora do Project: fechando o app, a sessão sai; senão a pessoa escolhe
                     // depois se descarta ou mantém (pergunta na tela)
-                    if (exitAfter)
+                    if (session->inProject)
+                        ;
+                    else if (exitAfter)
                         store.DeleteSession(job.session);
                     else
                     {
@@ -2489,7 +2736,7 @@ namespace
                     Platform::OpenInFileManager(done == 1 ? savedTo.front() : std::filesystem::path(folder));
                 if (error.empty() && deleteRest)
                     for (const auto& session : store.ListSessions())
-                        if (std::find(names.begin(), names.end(), session.name) == names.end())
+                        if (!session.inProject && std::find(names.begin(), names.end(), session.name) == names.end())
                             store.DeleteSession(session.name);
                 if (!error.empty())
                     Log("Save sessions: " + error);
@@ -2562,12 +2809,21 @@ namespace
                     job.photoFormat = f[6];
                     job.photoQuality = Export::ParseQuality(f.size() > 7 ? f[7] : "");
                 }
+                job.useEdited = useEdited;
                 jobs.push_back(job);
                 namings.push_back(naming);
             }
             if (jobs.empty())
                 return "null";
-            const std::string folder = NativeWindow::ChooseFolder("Choose where to save your bullet time sessions");
+            std::string folder;
+            if (toProjectExports)
+            {
+                std::error_code ec;
+                fs::create_directories(project.Exports(), ec);
+                folder = project.Exports().string();
+            }
+            else
+                folder = NativeWindow::ChooseFolder("Choose where to save your bullet time sessions");
             if (folder.empty())
             {
                 listener.Emit(Json("saveCancelled"));

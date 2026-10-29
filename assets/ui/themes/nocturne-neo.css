@@ -930,3 +930,63 @@ body.timing-open .app { --controls-h: clamp(320px, 64vh, 720px); }
 .tl.stagger:not(.small) .dot { top: 5px; }
 .tl.stagger:not(.small) .dot.low { top: 36px; }
 .tl.stagger:not(.small) .tick { top: 59px; }
+
+/* ---- Project (etapa 17): faixa no painel Sessions, etiquetas, janela Project ---- */
+.project-strip { margin: 0 0 10px; padding: 10px 12px; border: 1px solid var(--noct-border); background: var(--noct-surface-inner); display: flex; flex-direction: column; gap: 6px; }
+.project-strip.on { border-color: var(--noct-border-strong); }
+.project-strip.unavailable { border-color: var(--noct-pending); }
+.project-strip-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.project-strip-label { font: 700 10px var(--noct-font-mono); text-transform: uppercase; letter-spacing: .1em; color: var(--noct-text-muted); }
+.project-strip .btn-link.btn-small { height: 22px; padding: 0 6px; font-size: 10px; }
+.project-name { font: 700 17px/1.1 var(--noct-font-sans); color: var(--noct-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.project-strip:not(.on) .project-name { color: var(--noct-text-muted); }
+.project-meta { font: 11px var(--noct-font-mono); color: var(--noct-text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.project-strip:not(.on) .project-meta { white-space: normal; font-family: var(--noct-font-sans); font-size: 13px; color: var(--noct-text-muted); }
+.project-strip.unavailable .project-meta { color: var(--noct-pending); white-space: normal; }
+.project-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+.project-tags:empty { display: none; }
+.project-actions { display: flex; gap: 6px; margin-top: 2px; }
+.project-actions .btn-small { height: 26px; }
+.project-tag { display: inline-block; width: fit-content; margin-top: 5px; padding: 2px 7px; border: 1px solid var(--noct-border-strong); color: var(--noct-text-muted);
+  font: 700 10px var(--noct-font-mono); text-transform: uppercase; letter-spacing: .08em; white-space: nowrap; }
+.project-tags .project-tag { margin-top: 0; }
+.project-tag.ok { background: var(--noct-primary); color: var(--noct-on-primary); border-color: var(--noct-primary); }
+.project-tag.part { border-color: var(--noct-pending); color: var(--noct-pending); }
+.project-tag.dim { border-color: var(--noct-border); color: var(--noct-text-dim); }
+.save-count.warn { color: var(--noct-pending); text-transform: none; letter-spacing: .02em; }
+
+.project-sheet { padding: 0; gap: 0; width: min(1100px, 94vw); }
+.project-head-actions { display: flex; gap: 8px; }
+.project-body { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 12px 18px; gap: 8px; overflow: hidden; }
+.project-body .save-tools { display: flex; align-items: center; gap: 8px; }
+.project-cols, .project-row { display: grid; grid-template-columns: 24px 72px minmax(0, 1fr) 70px 180px 70px; gap: 12px; align-items: center; }
+/* A mesma caixinha de marcar da janela de salvar; o input nativo fica escondido */
+.project-row .export-check { display: block; position: relative; width: 16px; height: 16px; }
+.project-row input[type=checkbox] { position: absolute; opacity: 0; pointer-events: none; }
+.project-row input:checked + .save-check { background: var(--noct-primary); border-color: var(--noct-primary); box-shadow: var(--noct-glow-primary-soft); }
+.project-row input:checked + .save-check::after {
+  content: ""; position: absolute; left: 5px; top: 1px; width: 4px; height: 9px;
+  border: solid var(--noct-on-primary); border-width: 0 2px 2px 0; transform: rotate(45deg);
+}
+.project-row .save-check { margin-top: 0; display: block; }
+.project-row .export-thumb { display: block; }
+.project-row .folder-meta { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.project-cols { padding: 0 12px; font: 700 10px var(--noct-font-mono); text-transform: uppercase; letter-spacing: .08em; color: var(--noct-text-dim); }
+.project-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; min-height: 0; display: flex; flex-direction: column; gap: 6px; }
+.project-row { padding: 8px 12px; border: 1px solid var(--noct-border); background: var(--noct-surface-inner); }
+.project-row.sel { border-color: var(--noct-border-strong); }
+.project-row-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.project-label { height: 26px; padding: 0 8px; border: 1px solid transparent; background: transparent; color: var(--noct-text); font: 700 15px var(--noct-font-sans); min-width: 0; }
+.project-label:hover, .project-label:focus { border-color: var(--noct-border-strong); background: var(--noct-surface); outline: none; }
+.project-label::placeholder { color: var(--noct-text-dim); font-weight: 400; }
+.project-row .folder-meta { font: 11px var(--noct-font-mono); color: var(--noct-text-muted); padding-left: 8px; }
+.project-row-count { font: 15px var(--noct-font-mono); color: var(--noct-text); }
+.project-row-edited { display: flex; gap: 6px; flex-wrap: wrap; }
+.project-row-edited .project-tag, .project-row-edited .missing-tag { margin-top: 0; }
+.project-pick { width: min(520px, 92vw); }
+.project-recent { display: flex; flex-direction: column; gap: 8px; padding: 12px 18px; max-height: 50vh; overflow-y: auto; }
+.project-recent .empty { margin: 0; }
+.project-recent-item { height: auto; padding: 8px 12px; flex-direction: column; align-items: flex-start; gap: 2px; text-transform: none; letter-spacing: 0; }
+.project-recent-item b { font: 700 14px var(--noct-font-sans); }
+.project-recent-item small { font: 11px var(--noct-font-mono); color: var(--noct-text-muted); }
+.project-recent-item.current { border-color: var(--noct-primary); }

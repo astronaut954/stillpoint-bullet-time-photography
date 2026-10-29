@@ -607,6 +607,47 @@ do plano (abaixo).
       qual foto a câmera começa a recusar (memória interna cheia) e se as fotos anteriores baixam
       depois. Repetir com o cartão dentro.
 
+## 23. Project (etapa 17)
+
+Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) e depois com câmeras. Desenho em `docs/project.md`.
+
+- [ ] **Sem Project:** o painel Sessions mostra a faixa "Project · No project" com "New project…" e
+      "Open…"; disparar cria a sessão na pasta de dados, como sempre; nenhuma etiqueta nova.
+- [ ] **New project…:** escolher (ou criar) uma pasta vazia, ex. `~/Pictures/Stillpoint/Teste`.
+      A faixa passa a mostrar o nome (o da pasta), o caminho e "0 sessions"; aviso "Project: Teste"
+      na Activity. Na pasta: `stillpoint-project.json`, `Originals/`, `Edited/`, `Exports/`.
+- [ ] **Disparar com Project aberto:** a sessão nova vai direto para `Originals/<sessão>/`
+      (com `session.json`: shotAt, timing, plan, cameras) e aparece na lista com "In project"; a
+      faixa conta 1 session. Fechar o app: **não** pergunta por sessão não salva.
+- [ ] **Add / Remove:** com uma sessão da pasta de dados aberta (feita antes do Project, ou depois
+      de "Remove from project"), o botão "Add to project" no cabeçalho da galeria move a pasta para
+      `Originals/` (etiqueta "In project"); "Remove from project" move de volta (volta a contar
+      como não salva). Nada é apagado nos dois sentidos.
+- [ ] **Janela Project (botão "Project…" na faixa):** lista com caixinha, miniatura, rótulo
+      editável (clicar, digitar "Pose 7", Enter → aparece na lista de sessões como "Pose 7 · Oct 22,
+      14:30"), data e Timing, nº de fotos, etiqueta "originals" / "Edited n / m"; "Show" abre a
+      sessão; "Edited only" marca só as completas; "Remove from project" com confirmação; "Open
+      folder" abre a pasta; "Close project" (confirmação) tira as sessões da lista sem apagar.
+- [ ] **Edited/:** copiar à mão 3 fotos de uma sessão de 9 para `Edited/<sessão>/` com o mesmo
+      nome (pode ser o próprio JPG renomeado para .jpg): a etiqueta vira "Edited 3 / 9" (âmbar) na
+      lista e na janela; com as 9, "Edited 9 / 9" (verde) e a faixa conta "1 edited".
+- [ ] **Export… (janela Project):** abre a janela de salvar só com as sessões do Project
+      selecionadas; no rodapé, "Use edited photos when available" (ligado); com uma sessão 3/9
+      marcada, aviso âmbar "… has only some photos edited"; o botão diz "Export n sessions"; não
+      pergunta a pasta: grava em `Exports/<nome>/`; **a sessão continua no app e no Project** (sem
+      a pergunta "Discard from app"); Sequence usa as fotos de `Edited/` onde existem.
+- [ ] **Save sessions (botão de cima) com Project aberto:** continua como antes (pergunta a
+      pasta); uma sessão do Project selecionada é copiada e **fica**; as da pasta de dados seguem a
+      regra antiga (Discard / Keep).
+- [ ] **Switch… / Open…:** lista de recentes (nome + caminho; "not reachable" apagado) e "Choose
+      folder…"; escolher uma pasta sem o json pergunta "Create project here"; "New project…".
+- [ ] **Project em HD desligado:** fechar o app, desconectar (ou renomear a pasta), abrir: faixa
+      âmbar "Folder not reachable", lista só com as sessões da pasta de dados; voltar a pasta e
+      "Open…" → tudo de volta.
+- [ ] **Reordenar fotos / apagar foto** numa sessão do Project: funciona como fora dele (renomeia
+      dentro de `Originals/`).
+- [ ] Fechar e abrir o app: o Project continua aberto (`settings.txt`, `project=`).
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |

@@ -122,10 +122,21 @@ Os botões "Open in Lightroom / Photoshop" ficam para a etapa 20; nesta etapa a 
 - Mover um Project inteiro de lugar pelo app (é só mover a pasta; o app reabre por "Open
   project").
 
-## Decisões pendentes (resumo)
+## Decisões (2026-10-29, dono do projeto)
 
-1. Sessão nova entra direto no Project aberto (padrão ligado) ou sempre "Add to project"?
-2. "Remove from project": volta para o app ou só apagar?
-3. Reordenar fotos dentro do Project: permitir (renomeando originais/XMP/editadas) ou não?
-4. Rótulo por sessão ("Pose 7") nesta etapa?
-5. Nome do arquivo: `stillpoint-project.json` (visível, autoexplicativo) — ok?
+1. Sessão nova **entra direto** no Project aberto.
+2. "Remove from project" **volta para o app** (como não salva).
+3. Reordenar fotos **também dentro do Project**.
+4. Rótulo por sessão **nesta etapa**.
+5. `stillpoint-project.json` — ok.
+
+## Ajustes feitos na implementação
+
+- `.missing` e `.previews` continuam dentro da pasta da sessão (arquivos escondidos), também
+  no Project; `session.json` guarda `shotAt`, `label`, `timing`, `plan`, `cameras`.
+- `session.json`, `.xmp`, `.json` e `.txt` nunca contam como foto.
+- A opção "Add new sessions to the project" não existe como chave: com Project aberto, entra
+  sempre (decisão 1); para não entrar, fecha-se o Project.
+- Export de sessão do Project: `exportSessions("project", "edited", …)` grava em `Exports/`
+  sem perguntar a pasta e nunca apaga nem marca a sessão; o "Save sessions" comum continua
+  igual (pergunta a pasta; sessão do Project é copiada e fica).

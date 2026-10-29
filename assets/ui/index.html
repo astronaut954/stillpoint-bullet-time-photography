@@ -55,6 +55,15 @@
     <section class="panel sessions-panel">
       <aside class="session-folders">
         <h2>Sessions <span id="sessionCount" class="count hidden">0</span></h2>
+        <!-- Project (etapa 17): a pasta onde as sessões ficam guardadas -->
+        <div id="projectStrip" class="project-strip">
+          <div class="project-strip-head"><span class="project-strip-label">Project</span><button id="projectOpenBtn" class="btn btn-link btn-small">Open…</button></div>
+          <div id="projectName" class="project-name">No project</div>
+          <div id="projectMeta" class="project-meta">New sessions stay in the app until you save them.</div>
+          <div id="projectTags" class="project-tags"></div>
+          <div id="projectNone" class="project-actions"><button id="projectNewBtn" class="btn btn-secondary btn-small">New project…</button></div>
+          <div id="projectSome" class="project-actions hidden"><button id="projectWindowBtn" class="btn btn-secondary btn-small">Project…</button></div>
+        </div>
         <ul id="sessionList" class="folder-list"></ul>
         <p id="noSessions" class="empty">None yet.</p>
       </aside>
@@ -346,8 +355,53 @@
       </div>
       <div class="export-foot">
         <span id="exportCount" class="save-count"></span><span class="spacer"></span>
+        <label id="exportEditedLabel" class="log-option hidden" title="When a session has edited photos in the project's Edited folder, use them instead of the originals"><input id="exportEdited" type="checkbox" checked> Use edited photos when available</label>
         <button id="exportCancel" class="btn btn-secondary">Cancel</button>
         <button id="exportConfirm" class="btn btn-primary">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Project: a janela com as sessões guardadas -->
+  <div id="projectOverlay" class="overlay hidden">
+    <div class="sheet project-sheet">
+      <div class="export-head">
+        <h3><span id="projectTitle">Project</span><small id="projectSub"></small></h3>
+        <div class="project-head-actions">
+          <button id="projectFolderBtn" class="btn btn-secondary btn-small">Open folder</button>
+          <button id="projectSwitchBtn" class="btn btn-secondary btn-small">Switch…</button>
+          <button id="projectCloseProjectBtn" class="btn btn-secondary btn-small" title="Close the project (nothing is deleted; the sessions stay in the folder)">Close project</button>
+        </div>
+      </div>
+      <div class="project-body">
+        <div class="save-tools">
+          <span id="projectListCount" class="save-count"></span><span class="spacer"></span>
+          <button id="projectSelectAll" class="btn btn-link btn-small">Select all</button>
+          <button id="projectUnselectAll" class="btn btn-link btn-small">Unselect all</button>
+          <button id="projectSelectEdited" class="btn btn-link btn-small">Edited only</button>
+        </div>
+        <div class="project-cols"><span></span><span></span><span>Session</span><span>Photos</span><span>Edited</span><span></span></div>
+        <ul id="projectList" class="project-list"></ul>
+        <p id="projectEmpty" class="empty hidden">No sessions in this project yet. Shoot, or use "Add to project" on a session.</p>
+      </div>
+      <div class="export-foot">
+        <span id="projectHint" class="save-count"></span><span class="spacer"></span>
+        <button id="projectRemoveBtn" class="btn btn-secondary">Remove from project</button>
+        <button id="projectCloseBtn" class="btn btn-secondary">Close</button>
+        <button id="projectExportBtn" class="btn btn-primary">Export…</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Project: trocar (recentes ou outra pasta) -->
+  <div id="projectPickOverlay" class="overlay hidden">
+    <div class="dialog project-pick">
+      <h3>Open a project</h3>
+      <div id="projectRecentList" class="project-recent"></div>
+      <div class="dialog-actions">
+        <button id="projectPickCancel" class="btn btn-secondary">Cancel</button>
+        <button id="projectPickNew" class="btn btn-secondary">New project…</button>
+        <button id="projectPickBrowse" class="btn btn-primary">Choose folder…</button>
       </div>
     </div>
   </div>

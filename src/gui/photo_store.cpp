@@ -5,6 +5,7 @@
 #endif
 
 #include "photo_store.h"
+#include "json_lite.h"
 
 #include <algorithm>
 #include <cmath>
@@ -352,25 +353,195 @@ fs::path PhotoStore::SessionPath(const std::string& session) const
     // Só aceita um nome de pasta simples (sem "..", barras etc.)
     if (session.empty() || session.find_first_of("/\\") != std::string::npos || session == "." || session == "..")
         return {};
+    // Na pasta de dados ou, se não estiver lá, no Project
+    std::error_code ec;
+    if (fs::is_directory(root / session, ec))
+        return root / session;
+    if (!projectRoot.empty() && fs::is_directory(projectRoot / session, ec))
+        return projectRoot / session;
     return root / session;
+}
+
+fs::path PhotoStore::SessionDir(const std::string& session) const
+{
+    const fs::path dir = SessionPath(session);
+    std::error_code ec;
+    return !dir.empty() && fs::is_directory(dir, ec) ? dir : fs::path();
+}
+
+void PhotoStore::SetProject(const fs::path& originals, const fs::path& edited)
+{
+    projectRoot = originals;
+    projectEdited = edited;
+}
+
+namespace
+{
+    const char* const kSessionInfo = "session.json";
+
+    JsonLite::Value ReadSessionInfo(const fs::path& dir)
+    {
+        std::ifstream in(dir / kSessionInfo, std::ios::binary);
+        if (!in)
+            return JsonLite::Value();
+        const std::string text((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+        return JsonLite::Parse(text);
+    }
+
+    bool WriteSessionInfoFile(const fs::path& dir, const JsonLite::Value& info)
+    {
+        std::ofstream out(dir / kSessionInfo, std::ios::binary | std::ios::trunc);
+        out << JsonLite::Stringify(info);
+        return static_cast<bool>(out);
+    }
+
+    std::string BaseName(const std::string& file)
+    {
+        const auto dot = file.rfind('.');
+        return dot == std::string::npos ? file : file.substr(0, dot);
+    }
+
+    bool IsEditedExtension(const std::string& file)
+    {
+        std::string ext = fs::path(file).extension().string();
+        for (char& c : ext) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        return ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".tif" || ext == ".tiff";
+    }
+}
+
+fs::path PhotoStore::EditedFile(const std::string& session, const std::string& file) const
+{
+    if (projectEdited.empty() || session.find_first_of("/\\") != std::string::npos)
+        return {};
+    std::error_code ec;
+    const fs::path dir = projectEdited / session;
+    if (!fs::is_directory(dir, ec))
+        return {};
+    const std::string base = BaseName(file);
+    fs::path best;
+    fs::file_time_type bestTime{};
+    for (const auto& entry : fs::directory_iterator(dir, ec))
+    {
+        if (!entry.is_regular_file())
+            continue;
+        const std::string name = entry.path().filename().string();
+        if (name.rfind('.', 0) == 0 || BaseName(name) != base || !IsEditedExtension(name))
+            continue;
+        const auto time = entry.last_write_time(ec);
+        if (best.empty() || time > bestTime)
+        {
+            best = entry.path();
+            bestTime = time;
+        }
+    }
+    return best;
+}
+
+bool PhotoStore::SetLabel(const std::string& session, const std::string& label) const
+{
+    const fs::path dir = SessionDir(session);
+    if (dir.empty())
+        return false;
+    JsonLite::Value info = ReadSessionInfo(dir);
+    if (!info.isObject())
+        info = JsonLite::Value::NewObject();
+    info.set("label", label);
+    return WriteSessionInfoFile(dir, info);
+}
+
+bool PhotoStore::WriteSessionInfo(const std::string& session, const std::string& jsonText) const
+{
+    const fs::path dir = SessionDir(session);
+    if (dir.empty())
+        return false;
+    bool ok = false;
+    JsonLite::Value fresh = JsonLite::Parse(jsonText, &ok);
+    if (!ok || !fresh.isObject())
+        return false;
+    JsonLite::Value info = ReadSessionInfo(dir);
+    if (!info.isObject())
+        info = JsonLite::Value::NewObject();
+    for (const auto& [key, value] : *fresh.obj)
+        info.set(key, value);  // mantém o que já havia (ex.: o rótulo)
+    return WriteSessionInfoFile(dir, info);
+}
+
+bool PhotoStore::MoveSession(const std::string& session, bool toProject, std::string& errorMessage) const
+{
+    if (projectRoot.empty())
+    {
+        errorMessage = "No project is open.";
+        return false;
+    }
+    const fs::path from = SessionDir(session);
+    if (from.empty())
+    {
+        errorMessage = "Session not found: " + session;
+        return false;
+    }
+    const fs::path destRoot = toProject ? projectRoot : root;
+    std::error_code ec;
+    fs::create_directories(destRoot, ec);
+    fs::path to = destRoot / session;
+    if (fs::equivalent(from.parent_path(), destRoot, ec))
+        return true;  // já está lá
+    if (fs::exists(to, ec))
+    {
+        errorMessage = "A session with this name already exists there: " + session;
+        return false;
+    }
+    fs::remove_all(from / kPreviewFolder, ec);
+    ec.clear();
+    fs::rename(from, to, ec);
+    if (ec)
+    {
+        ec.clear();
+        fs::copy(from, to, fs::copy_options::recursive, ec);
+        if (ec)
+        {
+            errorMessage = "Could not move " + session + ": " + ec.message();
+            fs::remove_all(to, ec);
+            return false;
+        }
+        fs::remove_all(from, ec);
+    }
+    return true;
 }
 
 std::vector<StoredSession> PhotoStore::ListSessions() const
 {
     std::vector<StoredSession> sessions;
+    ReadSessions(root, false, sessions);
+    if (!projectRoot.empty())
+        ReadSessions(projectRoot, true, sessions);
+    // Mais recente primeiro (nomes começam com data e hora)
+    std::sort(sessions.begin(), sessions.end(),
+        [](const StoredSession& a, const StoredSession& b) { return a.name > b.name; });
+    return sessions;
+}
+
+void PhotoStore::ReadSessions(const fs::path& base, bool inProject, std::vector<StoredSession>& sessions) const
+{
     std::error_code ec;
-    if (!fs::exists(root, ec))
-        return sessions;
+    if (!fs::exists(base, ec))
+        return;
 
     static const std::regex photoName(R"(^(\d+)_([^_]+_\d+)_.+$)");
 
-    for (const auto& dir : fs::directory_iterator(root, ec))
+    for (const auto& dir : fs::directory_iterator(base, ec))
     {
         if (!dir.is_directory() || dir.path().filename().string().rfind('.', 0) == 0)
             continue;
 
         StoredSession session;
         session.name = dir.path().filename().string();
+        session.inProject = inProject;
+        if (inProject)
+        {
+            const JsonLite::Value info = ReadSessionInfo(dir.path());
+            session.label = info.get("label").asString();
+            session.timing = info.get("timing").asString();
+        }
 
         session.saved = fs::exists(dir.path() / kSavedMark, ec);
         {
@@ -383,11 +554,20 @@ std::vector<StoredSession> PhotoStore::ListSessions() const
         }
         for (const auto& entry : fs::directory_iterator(dir.path(), ec))
         {
-            // Só fotos (arquivos que começam com "." são do app, como ".saved")
+            // Só fotos (arquivos que começam com "." são do app, como ".saved"; session.json
+            // e os .xmp do Lightroom também não são fotos)
             if (!entry.is_regular_file() || entry.path().filename().string().rfind('.', 0) == 0)
                 continue;
             StoredPhoto photo;
             photo.file = entry.path().filename().string();
+            if (photo.file == kSessionInfo)
+                continue;
+            {
+                std::string ext = entry.path().extension().string();
+                for (char& c : ext) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+                if (ext == ".xmp" || ext == ".json" || ext == ".txt")
+                    continue;
+            }
             std::smatch match;
             if (std::regex_match(photo.file, match, photoName))
             {
@@ -395,6 +575,8 @@ std::vector<StoredSession> PhotoStore::ListSessions() const
                 photo.camera = match[2].str();
             }
             photo.previewable = IsJpeg(photo.file) || IsRaw(photo.file);
+            if (inProject && !EditedFile(session.name, photo.file).empty())
+                ++session.edited;
             session.photos.push_back(photo);
         }
 
@@ -405,11 +587,6 @@ std::vector<StoredSession> PhotoStore::ListSessions() const
         if (!session.photos.empty())
             sessions.push_back(session);
     }
-
-    // Mais recente primeiro (nomes começam com data e hora)
-    std::sort(sessions.begin(), sessions.end(),
-        [](const StoredSession& a, const StoredSession& b) { return a.name > b.name; });
-    return sessions;
 }
 
 int PhotoStore::CountSessions() const
@@ -421,7 +598,7 @@ int PhotoStore::CountUnsaved() const
 {
     int count = 0;
     for (const auto& session : ListSessions())
-        if (!session.saved)
+        if (!session.saved && !session.inProject)  // no Project já está guardada
             ++count;
     return count;
 }
@@ -495,7 +672,9 @@ int PhotoStore::SaveSessions(const fs::path& destination, const std::vector<std:
     {
         if (!names.empty() && std::find(names.begin(), names.end(), session.name) == names.end())
             continue;
-        const fs::path from = root / session.name;
+        const fs::path from = SessionDir(session.name);
+        if (from.empty())
+            continue;
         fs::remove_all(from / kPreviewFolder, ec);
 
         // Não sobrescreve: "nome", "nome (2)", "nome (3)"...
@@ -639,18 +818,20 @@ bool PhotoStore::DeleteSession(const std::string& session) const
     return !dir.empty() && fs::remove_all(dir, ec) > 0 && !ec;
 }
 
+// As limpezas automáticas só mexem na pasta de dados; o Project é da pessoa
 void PhotoStore::DeleteAll() const
 {
     std::error_code ec;
     for (const auto& session : ListSessions())
-        fs::remove_all(root / session.name, ec);
+        if (!session.inProject)
+            fs::remove_all(root / session.name, ec);
 }
 
 void PhotoStore::DeleteSaved() const
 {
     std::error_code ec;
     for (const auto& session : ListSessions())
-        if (session.saved)
+        if (session.saved && !session.inProject)
             fs::remove_all(root / session.name, ec);
 }
 
@@ -658,7 +839,7 @@ void PhotoStore::DeleteUnsaved() const
 {
     std::error_code ec;
     for (const auto& session : ListSessions())
-        if (!session.saved)
+        if (!session.saved && !session.inProject)
             fs::remove_all(root / session.name, ec);
 }
 

@@ -22,6 +22,11 @@ struct StoredSession
     std::vector<StoredPhoto> photos; // em ordem de câmera
     bool saved = false;  // já foi salva e a pessoa escolheu mantê-la no app
     int missing = 0;     // fotos que a câmera recusou no disparo (arquivo ".missing")
+    // Project (etapa 17): sessão guardada em <Project>/Originals/ em vez da pasta de dados
+    bool inProject = false;
+    std::string label;   // rótulo opcional ("Pose 7"), em session.json
+    int edited = 0;      // fotos com versão editada em <Project>/Edited/<sessão>/
+    std::string timing;  // resumo do Timing usado ("Sweep · 0.2 s · 1 → 9"), em session.json
 };
 
 // Imagem RGB (3 bytes por pixel), já na orientação certa
@@ -48,6 +53,22 @@ public:
     explicit PhotoStore(std::filesystem::path root);
 
     const std::filesystem::path& Root() const { return root; }
+
+    // Project aberto: as sessões de <originals> também aparecem (inProject); <edited> é a
+    // pasta das versões editadas. Caminhos vazios = sem Project.
+    void SetProject(const std::filesystem::path& originals, const std::filesystem::path& edited);
+    const std::filesystem::path& ProjectOriginals() const { return projectRoot; }
+    const std::filesystem::path& ProjectEdited() const { return projectEdited; }
+    // Pasta de uma sessão (na pasta de dados ou no Project); vazio se não existir
+    std::filesystem::path SessionDir(const std::string& session) const;
+    // Move uma sessão para dentro (toProject=true) ou para fora do Project. Mesmo disco:
+    // renomeia; outro disco: copia e apaga. Retorna false com a mensagem de erro.
+    bool MoveSession(const std::string& session, bool toProject, std::string& errorMessage) const;
+    // session.json: rótulo e resumo do Timing (só para sessões no Project)
+    bool SetLabel(const std::string& session, const std::string& label) const;
+    bool WriteSessionInfo(const std::string& session, const std::string& jsonText) const;
+    // Arquivo editado de uma foto (em Edited/<sessão>/, mesmo nome-base, o mais recente); vazio se não houver
+    std::filesystem::path EditedFile(const std::string& session, const std::string& file) const;
 
     std::vector<StoredSession> ListSessions() const;
     int CountSessions() const;
@@ -86,8 +107,11 @@ public:
 
 private:
     std::filesystem::path SessionPath(const std::string& session) const;
+    void ReadSessions(const std::filesystem::path& base, bool inProject, std::vector<StoredSession>& out) const;
 
     std::filesystem::path root;
+    std::filesystem::path projectRoot;    // <Project>/Originals (vazio = sem Project)
+    std::filesystem::path projectEdited;  // <Project>/Edited
 };
 
 std::string Base64Encode(const std::string& data);
