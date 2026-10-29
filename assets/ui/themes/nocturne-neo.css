@@ -65,8 +65,9 @@
   --noct-danger-rgb: 255, 0, 64;
 
   /* Trilho à esquerda de cada painel: quanto mais importante, mais claro */
-  --rail-sessions: var(--neo-green-300);  --rail-sessions-rgb: 0, 153, 38;
-  --rail-cameras: var(--neo-green-200);   --rail-cameras-rgb: 0, 204, 51;
+  /* Trilho neon à esquerda dos três painéis: a mesma cor (a do Bullet Time) em todos */
+  --rail-sessions: var(--neo-green-100);  --rail-sessions-rgb: 0, 255, 65;
+  --rail-cameras: var(--neo-green-100);   --rail-cameras-rgb: 0, 255, 65;
   --rail-shoot: var(--neo-green-100);     --rail-shoot-rgb: 0, 255, 65;
 
   /* ---- tipografia e efeitos do Nocturne ---- */
