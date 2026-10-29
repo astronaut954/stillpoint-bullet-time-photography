@@ -1479,8 +1479,13 @@
 
   function renderExportSettings() {
     stopPreview();
-    const box = $("exportSettings");
-    box.innerHTML = "";
+    // outer: foto grande e fileira de miniaturas (não rola); box: o resto, que rola se faltar
+    // altura. A fileira rola para o lado e não pode ficar dentro de outra área que rola
+    // (o WebKit do Mac pinta as miniaturas deslocadas nesse caso).
+    const outer = $("exportSettings");
+    outer.innerHTML = "";
+    const box = el("div", "export-rows");
+    outer.appendChild(box);
     const session = sessions.find((s) => s.name === exp.active);
     if (!session) return;
     const items = sessionItems(session).filter((i) => i.previewable);
@@ -1492,7 +1497,7 @@
     if (sessions.length > 1) {
       const scope = checkOption("Same settings for all sessions", exp.sameForAll, (v) => { exp.sameForAll = v; rerender(); });
       scope.classList.add("export-scope");
-      box.appendChild(scope);
+      outer.insertBefore(scope, box);
     }
 
     const preview = el("div", "export-preview");
@@ -1500,7 +1505,7 @@
     img.alt = "";
     const caption = el("div", "stage-caption");
     preview.append(img, caption);
-    box.appendChild(preview);
+    outer.insertBefore(preview, box);
     const show = (i, text, file) => {
       const item = items[i];
       if (!item) return;
@@ -1534,7 +1539,7 @@
         li.addEventListener("click", () => { exp.photo = k; showPhoto(); });
         strip.appendChild(li);
       });
-      box.appendChild(strip);
+      outer.insertBefore(strip, box);
       showPhoto();
       const r = row("Format");
       r.appendChild(segmented(PHOTO_FORMATS, s.format, (v) => { s.format = v; rerender(); },
