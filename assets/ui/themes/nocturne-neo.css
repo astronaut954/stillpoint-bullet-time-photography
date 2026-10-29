@@ -520,7 +520,7 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
   background: var(--noct-surface); border: 1px solid var(--noct-primary); border-left-width: 3px;
   box-shadow: var(--noct-glow-primary-soft), 0 12px 32px rgba(0, 0, 0, .55);
   padding: 9px 8px 9px 16px; font-size: 15px; font-weight: 600; color: var(--noct-primary); z-index: 20; max-width: 80%;
-  opacity: 1; transition: opacity 450ms var(--noct-ease);
+  opacity: 1; transition: opacity 1400ms ease-out;
 }
 .toast.fading { opacity: 0; }
 .toast-arrow { display: none; font: 700 20px/1 var(--noct-font-sans); }
@@ -1012,7 +1012,8 @@ body.timing-open .app { --controls-h: clamp(320px, 64vh, 720px); }
 .session-ghost .folder-add { display: none; }
 body.session-drag { cursor: grabbing; user-select: none; -webkit-user-select: none; }
 /* Área do projeto na lista enquanto se arrasta uma sessão de fora */
-.session-drop-zone { position: fixed; z-index: 65; pointer-events: none; box-sizing: border-box; border: 1px dashed var(--noct-border-strong); background: rgba(var(--noct-primary-rgb), .04); display: flex; align-items: flex-end; justify-content: center; padding: 6px; }
+.session-folders { position: relative; }
+.session-drop-zone { position: absolute; z-index: 1; pointer-events: none; box-sizing: border-box; border: 1px dashed var(--noct-border-strong); background: rgba(var(--noct-primary-rgb), .04); display: flex; align-items: flex-end; justify-content: center; padding: 6px; }
 .session-drop-zone span { white-space: nowrap; font: 700 10px var(--noct-font-mono); text-transform: uppercase; letter-spacing: .1em; color: var(--noct-text-dim); background: var(--noct-surface); padding: 2px 6px; }
 .session-drop-zone.drop-ok { border-color: var(--noct-primary); background: rgba(var(--noct-primary-rgb), .1); box-shadow: var(--noct-glow-primary-soft); }
 .session-drop-zone.drop-ok span { color: var(--noct-primary); }
@@ -1032,7 +1033,8 @@ body.session-drag.from-app #projectBarBtn, body.session-drag.from-project .folde
 .folder-divider { display: flex; align-items: center; gap: 8px; margin: 12px 0 2px; padding: 4px 2px; font: 700 10px var(--noct-font-mono); text-transform: uppercase; letter-spacing: .1em; color: var(--noct-text-dim); }
 .folder-divider .line { flex: 1; height: 1px; background: var(--noct-border); }
 .folder-divider.drop-ok { color: var(--noct-primary); outline: 1px dashed var(--noct-primary); outline-offset: 4px; }
-.folder-add { height: 18px; padding: 0 4px; margin: 4px 0 0 -4px; font-size: 10px; color: var(--noct-primary); }
+.folder-add { height: 20px; padding: 0 6px; margin: 4px 0 0 -6px; font-size: 10px; color: var(--noct-primary); border: 1px solid transparent; }
+.folder-add:hover:not(:disabled) { background: var(--noct-surface-inner); border-color: var(--noct-border-strong); }
 .folder.dragging { opacity: .55; }
 /* Botão do projeto na barra de cima (também alvo para soltar e adicionar) */
 .project-bar {
@@ -1057,6 +1059,8 @@ body.session-drag.from-app #projectBarBtn, body.session-drag.from-project .folde
 .topbar { justify-content: flex-start; }
 .topbar-right { margin-left: auto; }
 .project-menu button.dim { color: var(--noct-text-dim); }
+.project-menu button.danger { color: var(--noct-danger); }
+.project-menu button.danger:hover { background: rgba(var(--noct-danger-rgb), .12); color: var(--noct-danger); }
 .project-menu button:disabled { cursor: default; }
 .project-menu button:disabled:hover { background: transparent; color: var(--noct-text-dim); }
 .project-menu-label { padding: 6px 16px 2px; font: 700 10px var(--noct-font-mono); text-transform: uppercase; letter-spacing: .1em; color: var(--noct-text-dim); }

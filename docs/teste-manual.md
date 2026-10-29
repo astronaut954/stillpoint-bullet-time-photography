@@ -690,6 +690,13 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) e depois com câmeras. Desenho em `do
       (sai e a contagem recomeça); o X fecha na hora.
 - [ ] **Esc em Camera settings** com a caixa "Calibrate with chart" aberta: fecha só a caixa; o
       segundo Esc fecha o Camera settings.
+- [ ] **Botão direito numa sessão:** menu à direita do ponteiro com "Add label…" (ou "Rename
+      label…" / "Remove label"), "Show session", "Add/Remove from project" (com projeto aberto) e
+      "Delete session…" (vermelho, com confirmação). O cabeçalho da galeria só tem "Add to project"
+      (para sessão fora do projeto); tirar do projeto é pelo menu ou arrastando.
+- [ ] **Arrastar de "Not in project":** a área tracejada do projeto fica dentro da coluna (corta
+      nos limites dela e fica atrás da barra de rolagem). "Add to project ↑" mostra a caixinha no
+      hover também na sessão selecionada.
 - [ ] Fechar e abrir o app: o Project continua aberto (`settings.txt`, `project=`).
 
 ## Resultado

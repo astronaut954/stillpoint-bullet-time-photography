@@ -270,7 +270,7 @@
     clearTimeout(toast.timer); clearTimeout(toast.fadeTimer);
     toast.timer = setTimeout(() => {
       ui.toast.classList.add("fading");
-      toast.fadeTimer = setTimeout(hideToast, 450);
+      toast.fadeTimer = setTimeout(hideToast, 1400);
     }, toast.dwell || TOAST_MS);
   }
   function hideToast() {
@@ -1020,6 +1020,7 @@
         // Segurar e arrastar: para o botão do projeto (barra de cima) = entra; para "Not in project" = sai
         li.addEventListener("pointerdown", (e) => sessPointerDown(e, li, s));
       }
+      li.addEventListener("contextmenu", (e) => { e.preventDefault(); sessionContextMenu(e, s); });
       if (s.saved) {
         li.querySelector(".folder-meta").after(savedTag());
         li.title = "Already saved. It leaves the app when you close Stillpoint (the saved copy stays where you saved it).";
@@ -1072,6 +1073,7 @@
     if (editing.on) setEditing(false);
     currentSession = session;
     renderSessionList();
+    if (typeof renderProjectAction === "function") renderProjectAction();  // "Add to project" só fora do projeto
     ui.viewerEmpty.classList.toggle("hidden", !!session);
     ui.sessionGallery.classList.toggle("hidden", !session);
     if (!session) {
@@ -1161,14 +1163,13 @@
       ]);
   }
 
-  function deleteCurrentSession() {
-    if (!currentSession) return;
-    const name = currentSession.name;
-    const label = sessionLabel(name);
+  function deleteCurrentSession() { if (currentSession) deleteSessionAsk(currentSession); }
+  function deleteSessionAsk(s) {
+    const label = sessionLabel(s.name);
     dialog("Delete this session?", "The photos from " + label.date + " will be deleted permanently" +
-      (currentSession.inProject ? " (from the project folder too)." : "."), [
+      (s.inProject ? " (from the project folder too)." : "."), [
       { label: "Cancel" },
-      { label: "Delete", danger: true, onClick: () => window.deleteSession(name) },
+      { label: "Delete", danger: true, onClick: () => window.deleteSession(s.name) },
     ]);
   }
 
@@ -3445,6 +3446,8 @@
       e.stopImmediatePropagation();
       return;
     }
+    // Uma confirmação (ex.: "Calibrate with chart") por cima: o Esc fecha só ela
+    if (overlayKeydown(e)) return;  // (já parou o evento)
     const open = ["aboutOverlay", "settingsOverlay", "camSettingsOverlay"].find((id) => !$(id).classList.contains("hidden"));
     if (open === "camSettingsOverlay" && csTest.has && e.target.tagName !== "SELECT" && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
       e.preventDefault();
@@ -3498,22 +3501,31 @@
   });
   // Teclado nas confirmações: Enter = o botão principal (verde), Esc = sair (como clicar fora).
   // Esc também fecha as outras janelas flutuantes; Enter só vale nas confirmações (dialog).
-  document.addEventListener("keydown", (e) => {
-    if (openMenu) return;  // o menu trata o Esc
+  // Chamada aqui (captura) e também no começo do tratador de teclas do Camera settings /
+  // Settings / About, que é registrado antes e pararia o evento: devolve true se tratou.
+  function overlayKeydown(e) {
+    if (e.overlayHandled || openMenu) return false;
     const open = ["promptOverlay", "dialogOverlay", "modeOverlay", "projectPickOverlay", "projectOverlay", "exportOverlay", "orderOverlay"]
       .find((id) => !$(id).classList.contains("hidden"));
-    if (!open) return;
+    if (!open) return false;
     if (e.key === "Escape") {
-      if (open === "promptOverlay") return;  // o campo já trata Enter/Esc
+      if (open === "promptOverlay") return false;  // o campo já trata Enter/Esc
+      e.overlayHandled = true;
       e.preventDefault(); e.stopImmediatePropagation();
       OVERLAY_CANCEL[open]();
-    } else if (e.key === "Enter" && open === "dialogOverlay" && e.target.tagName !== "INPUT" && e.target.tagName !== "TEXTAREA") {
+      return true;
+    }
+    if (e.key === "Enter" && open === "dialogOverlay" && e.target.tagName !== "INPUT" && e.target.tagName !== "TEXTAREA") {
       const primary = [...ui.dialogActions.children].filter((x) => x.classList.contains("btn-primary"));
-      if (primary.length !== 1) return;
+      if (primary.length !== 1) return false;
+      e.overlayHandled = true;
       e.preventDefault(); e.stopImmediatePropagation();
       primary[0].click();
+      return true;
     }
-  }, true);
+    return false;  // outras teclas seguem o caminho normal (ex.: digitar num campo)
+  }
+  document.addEventListener("keydown", overlayKeydown, true);
 
   // =================== Project (etapa 17) ===================
   // A pasta escolhida pela pessoa onde as sessões ficam guardadas (docs/project.md). O app
@@ -3533,30 +3545,72 @@
   // Menu flutuante (fixo na tela, fecha ao clicar fora ou com Esc). items: {label, onClick, dim, html} ou "-"
   let openMenu = null;
   function closeMenu() { if (openMenu) { openMenu.remove(); openMenu = null; } }
-  function popupMenu(anchor, items, align) {
+  // Menu do botão direito numa sessão: rótulo, projeto, apagar
+  function sessionContextMenu(e, s) {
+    const items = [];
+    items.push({ label: (s.label ? "Rename label…" : "Add label…"), onClick: () => editSessionLabel(s) });
+    if (s.label) items.push({ label: "Remove label", onClick: () => setSessionLabelUndoable(s, "") });
+    items.push({ label: "Show session", onClick: () => showSession(s) });
+    if (project.open) {
+      items.push("-");
+      items.push({ label: s.inProject ? "Remove from project" : "Add to project", onClick: () => moveToProject(s.name, !s.inProject) });
+    }
+    items.push("-");
+    items.push({ label: "Delete session…", danger: true, onClick: () => deleteSessionAsk(s) });
+    popupMenuAt(e.clientX, e.clientY, items);
+  }
+  function setSessionLabelUndoable(s, after) {
+    const before = s.label || "";
+    if (before === after) return;
+    window.setSessionLabel(s.name, after);
+    recordAction({ label: after ? 'Label "' + after + '" on ' + sessionLabel(s.name).date : "Remove label from " + sessionLabel(s.name).date,
+                   undo: () => window.setSessionLabel(s.name, before), redo: () => window.setSessionLabel(s.name, after) });
+  }
+  function editSessionLabel(s) {
+    promptDialog(s.label ? "Rename label" : "Add label", "A short name for the session " + sessionLabel(s.name).date + " (shown next to the date).", s.label || "", s.label ? "Rename" : "Add",
+      (v) => v.length > 60 ? "Up to 60 characters." : "", (v) => setSessionLabelUndoable(s, v));
+  }
+  // Menu numa posição da tela (botão direito): sempre à direita do ponteiro; se não couber, encosta na borda direita
+  function popupMenuAt(x, y, items) {
+    const m = buildMenu(items);
+    document.body.appendChild(m);
+    const left = Math.min(x + 2, window.innerWidth - m.offsetWidth - 8);
+    const top = Math.min(y + 2, window.innerHeight - m.offsetHeight - 8);
+    m.style.left = Math.max(8, left) + "px"; m.style.top = Math.max(8, top) + "px";
+    openMenu = m;
+    armMenuClose(m);
+  }
+  function buildMenu(items) {
     closeMenu();
     const m = el("div", "app-menu project-menu");
     m.setAttribute("role", "menu");
     items.forEach((it) => {
       if (it === "-") { m.appendChild(document.createElement("hr")); return; }
       if (it.html) { m.appendChild(it.html); return; }
-      const b = el("button", (it.dim ? "dim " : "") + (it.name ? "name" : ""), it.label);
+      const b = el("button", (it.dim ? "dim " : "") + (it.name ? "name " : "") + (it.danger ? "danger" : ""), it.label);
       b.setAttribute("role", "menuitem");
       if (it.sub) { const k = el("span", "app-menu-key", it.sub); b.appendChild(k); }
       if (it.disabled) b.disabled = true;
       b.addEventListener("click", () => { closeMenu(); it.onClick && it.onClick(); });
       m.appendChild(b);
     });
+    return m;
+  }
+  function armMenuClose(m) {
+    setTimeout(() => {
+      const away = (e) => { if (!m.contains(e.target)) { closeMenu(); document.removeEventListener("mousedown", away, true); } };
+      document.addEventListener("mousedown", away, true);
+    }, 0);
+  }
+  function popupMenu(anchor, items, align) {
+    const m = buildMenu(items);
     document.body.appendChild(m);
     const r = anchor.getBoundingClientRect();
     m.style.top = Math.round(r.bottom + 6) + "px";
     if (align === "right") m.style.right = Math.round(window.innerWidth - r.right) + "px";
     else m.style.left = Math.round(Math.min(r.left, window.innerWidth - m.offsetWidth - 12)) + "px";
     openMenu = m;
-    setTimeout(() => {
-      const away = (e) => { if (!m.contains(e.target)) { closeMenu(); document.removeEventListener("mousedown", away, true); } };
-      document.addEventListener("mousedown", away, true);
-    }, 0);
+    armMenuClose(m);
   }
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && openMenu) closeMenu(); });
   function projectMenuItems(withCurrent) {
@@ -3601,13 +3655,23 @@
   let notInProjectOpen = false;  // grupo "Not in project" aberto?
   let pendingProjectFocus = false;  // projeto recém-aberto: selecionar a primeira sessão dele quando a lista chegar
   let sessDrag = null;
-  // Retângulo do grupo do projeto na lista (do alto da lista até o divisor "Not in project")
+  // Retângulo do grupo do projeto na lista (do alto da lista até o divisor "Not in project"),
+  // em coordenadas da tela, já cortado pela caixa da coluna (o que está rolado para fora não conta)
   function projectGroupRect() {
-    const list = ui.sessionList.getBoundingClientRect();
+    const aside = ui.sessionList.parentElement;
+    const list = ui.sessionList.getBoundingClientRect(), box = aside.getBoundingClientRect();
     const divider = ui.sessionList.querySelector(".folder-divider");
-    const aside = ui.sessionList.parentElement.getBoundingClientRect();
-    const top = Math.max(list.top, aside.top), bottom = divider ? divider.getBoundingClientRect().top - 6 : Math.min(list.bottom, aside.bottom);
-    return { left: aside.left + 6, top: top - 4, width: aside.width - 12, height: Math.max(40, bottom - top + 4) };
+    const rawTop = list.top - 4, rawBottom = divider ? divider.getBoundingClientRect().top - 6 : list.bottom;
+    const top = Math.max(rawTop, box.top), bottom = Math.min(rawBottom, box.bottom - 2);
+    return { left: box.left + 6, top, width: aside.clientWidth - 12, height: Math.max(0, bottom - top), rawTop, rawBottom };
+  }
+  // Posição da zona dentro da coluna (rola junto; a coluna corta e a barra de rolagem fica por cima)
+  function placeDropZone(zone) {
+    const aside = ui.sessionList.parentElement;
+    const r = projectGroupRect(), box = aside.getBoundingClientRect();
+    zone.style.left = "6px"; zone.style.right = "6px";
+    zone.style.top = (r.rawTop - box.top + aside.scrollTop) + "px";
+    zone.style.height = Math.max(40, r.rawBottom - r.rawTop) + "px";
   }
   function sessDropTarget(x, y) {
     const d = sessDrag;
@@ -3654,13 +3718,10 @@
       if (!d.s.inProject) {
         d.zone = el("div", "session-drop-zone");
         d.zone.innerHTML = '<span>Drop to add to project</span>';
-        document.body.appendChild(d.zone);
+        ui.sessionList.parentElement.appendChild(d.zone);
       }
     }
-    if (d.zone) {
-      const z = projectGroupRect();
-      d.zone.style.left = z.left + "px"; d.zone.style.top = z.top + "px"; d.zone.style.width = z.width + "px"; d.zone.style.height = z.height + "px";
-    }
+    if (d.zone) placeDropZone(d.zone);
     d.ghost.style.transform = "translate(" + dx + "px," + dy + "px)";
     const t = sessDropTarget(e.clientX, e.clientY);
     const el2 = t ? t.el : null;
@@ -3767,11 +3828,11 @@
   function renderProjectAction() {
     const s = currentSession;
     const show = !!project.open && !!s && !busy;
-    projectActionBtn.classList.toggle("hidden", !show);
+    // Só "Add to project": tirar do projeto é pelo menu do botão direito ou arrastando
+    projectActionBtn.classList.toggle("hidden", !show || !!s.inProject);
     if (!s) return;
-    projectActionBtn.textContent = s.inProject ? "Remove from project" : "Add to project";
-    projectActionBtn.title = s.inProject ? "Move this session back to the app (it leaves the project folder; nothing is deleted)"
-                                         : "Move this session into the project folder (Originals)";
+    projectActionBtn.textContent = "Add to project";
+    projectActionBtn.title = "Move this session into the project folder (Originals)";
   }
   function toggleCurrentInProject() {
     if (!currentSession || !project.open) return;
@@ -3867,13 +3928,7 @@
       box.addEventListener("change", () => { projectSelTouched = true; if (box.checked) projectSel.add(s.name); else projectSel.delete(s.name); li.classList.toggle("sel", box.checked); updateProjectCount(); });
       const labelInput = li.querySelector(".project-label"); labelInput.value = s.label || "";
       labelInput.title = "Click to name this session, for example \"Pose 7\"";
-      labelInput.addEventListener("change", () => {
-        const before = s.label || "", after = labelInput.value.trim();
-        if (before === after) return;
-        window.setSessionLabel(s.name, after);
-        recordAction({ label: 'Label "' + (after || "—") + '" on ' + sessionLabel(s.name).date,
-                       undo: () => window.setSessionLabel(s.name, before), redo: () => window.setSessionLabel(s.name, after) });
-      });
+      labelInput.addEventListener("change", () => setSessionLabelUndoable(s, labelInput.value.trim()));
       labelInput.addEventListener("keydown", (e) => { if (e.key === "Enter") labelInput.blur(); e.stopPropagation(); });
       li.querySelector(".folder-meta").textContent = [label.date, s.timing || label.detail].filter(Boolean).join(" · ");
       li.querySelector(".project-row-count").textContent = String(total);
