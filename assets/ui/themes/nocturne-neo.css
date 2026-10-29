@@ -1088,3 +1088,14 @@ body.session-drag.from-app #projectBarBtn { outline: 1px dashed var(--noct-borde
 .folder-placeholder svg { color: var(--noct-text-dim); margin-top: 1px; }
 /* Arrastando uma sessão para o projeto vazio: só a zona tracejada (o espaço perde a borda) */
 body.session-drag.from-app .folder-placeholder { border-color: transparent; }
+
+/* Nome do projeto editável no topo da janela Project */
+.project-title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.project-title-label { white-space: nowrap; }
+.project-name-input { min-width: 180px; width: 320px; max-width: 100%; height: 30px; padding: 0 10px; box-sizing: border-box;
+  border: 1px solid transparent; background: transparent; color: var(--noct-primary);
+  font: 700 13px var(--noct-font-mono); text-transform: uppercase; letter-spacing: var(--noct-tracking-widest); }
+.project-name-input:hover { border-color: var(--noct-border); }
+.project-name-input:focus { outline: none; border-color: var(--noct-border-strong); background: var(--noct-surface-inner); box-shadow: var(--noct-focus-ring); text-transform: none; letter-spacing: 0; font: 600 15px var(--noct-font-sans); }
+.project-name-input.invalid { border-color: var(--noct-pending); }
+.project-title-row small { flex-basis: 100%; }

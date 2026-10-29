@@ -638,6 +638,9 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) e depois com câmeras. Desenho em `do
       Camera settings e About.
 - [ ] **Botão da janela Project** (ícone com moldura à direita de "Sessions", só com projeto
       aberto) abre a janela Project. "Delete session" na galeria virou o ícone de lixeira com moldura.
+- [ ] **Nome na janela Project:** o nome no topo é um campo; clicar, mudar e Enter (ou sair do
+      campo) renomeia como o "Rename project…"; nome inválido fica âmbar com aviso; Esc desfaz a
+      edição; Cmd+Z desfaz o rename.
 - [ ] **Rename project…** (menu da barra): pergunta o nome, valida (sem / \ : * ? " < > |, não
       começa com ponto), renomeia a **pasta** e o projeto; a barra, o `settings.txt` e os recentes
       passam a apontar para a pasta nova. Com a pasta aberta no Finder/Explorer ou por outro

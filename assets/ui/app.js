@@ -3905,6 +3905,30 @@
   }
   $("projectBarBtn").addEventListener("click", (e) => openProjectMenu(e.currentTarget, "left", true));
   $("projectWindowBtn").addEventListener("click", openProjectWindow);
+  // Nome do projeto no topo da janela Project: editar e Enter (ou sair do campo) renomeia a pasta
+  (function () {
+    const input = $("projectNameInput");
+    const problem = (v) => !v ? "Type a name." : /[\\/:*?"<>|]/.test(v) ? "A folder name cannot have / \\ : * ? \" < > |" : v[0] === "." ? "The name cannot start with a dot." : "";
+    const commit = () => {
+      const v = input.value.trim();
+      if (!project.open || v === project.name) { input.value = project.name || ""; input.classList.remove("invalid"); return; }
+      const why = problem(v);
+      if (why) { input.classList.add("invalid"); toast(why, 5000); input.focus(); return; }
+      const before = project.name;
+      applyRename(v).then((ok) => {
+        if (ok) recordAction({ label: 'Rename project "' + before + '" → "' + v + '"', undo: () => applyRename(before), redo: () => applyRename(v) });
+        else input.value = project.name || "";
+        input.classList.remove("invalid");
+      });
+    };
+    input.addEventListener("keydown", (e) => {
+      e.stopPropagation();
+      if (e.key === "Enter") { e.preventDefault(); input.blur(); }
+      if (e.key === "Escape") { e.preventDefault(); input.value = project.name || ""; input.classList.remove("invalid"); input.blur(); }
+    });
+    input.addEventListener("input", () => input.classList.toggle("invalid", !!problem(input.value.trim())));
+    input.addEventListener("change", commit);
+  })();
 
   function projectResult(r) {
     if (!r || r.cancelled) return;
@@ -3977,7 +4001,8 @@
   function closeProjectWindow() { $("projectOverlay").classList.add("hidden"); }
   function renderProjectWindow() {
     const list = projectSessions();
-    $("projectTitle").textContent = "Project · " + (project.name || "");
+    const nameInput = $("projectNameInput");
+    if (document.activeElement !== nameInput) { nameInput.value = project.name || ""; nameInput.classList.remove("invalid"); }
     $("projectSub").textContent = [project.folder, plural(project.sessions || 0, "session", "sessions"), plural(project.photos || 0, "photo", "photos"), fmtBytes(project.bytes)].filter(Boolean).join(" · ");
     const ul = $("projectList"); ul.innerHTML = "";
     $("projectEmpty").classList.toggle("hidden", list.length > 0);

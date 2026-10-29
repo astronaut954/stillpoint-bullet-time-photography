@@ -379,7 +379,9 @@
   <div id="projectOverlay" class="overlay hidden">
     <div class="sheet project-sheet">
       <div class="export-head">
-        <h3><span id="projectTitle">Project</span><small id="projectSub"></small></h3>
+        <h3 class="project-title-row"><span class="project-title-label">Project ·</span>
+          <input id="projectNameInput" class="project-name-input" type="text" maxlength="120" spellcheck="false" autocomplete="off" title="Project name (also the folder name). Change it and press Enter to rename.">
+          <small id="projectSub"></small></h3>
         <div class="project-head-actions">
           <button id="projectFolderBtn" class="btn btn-secondary btn-small">Open folder</button>
           <button id="projectSwitchBtn" class="btn btn-secondary btn-small">Switch…</button>
