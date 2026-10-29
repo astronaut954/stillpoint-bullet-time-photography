@@ -591,7 +591,8 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    também no projeto; rótulo por sessão com sugestões; menu do botão direito na sessão;
    segurar e arrastar para dentro/fora; renomear o projeto (menu e campo da janela Project,
    caracteres proibidos barrados); desfazer/refazer geral (inclui apagar, com lixeira do app
-   esvaziada ao abrir); aviso do rodapé no layout "etiqueta mono" (de 6 protótipos) e tudo
+   `.trash` na pasta de dados, esvaziada ao abrir o app — decisão confirmada em 2026-10-29:
+   fechar o app torna as exclusões definitivas); aviso do rodapé no layout "etiqueta mono" (de 6 protótipos) e tudo
    registrado na Activity; Enter/Esc e clicar fora nas janelas; trilho neon igual nos três
    painéis. Testado no Mac com câmeras simuladas. **Pendente:** câmeras reais (session.json,
    .xmp, undo de configurações — inclusive rápido, com a trava "cameras still applying" —,
