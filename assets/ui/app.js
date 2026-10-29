@@ -919,6 +919,7 @@
   }
 
   function renderSessionList() {
+    if (sessDrag) sessEndDrag(null);  // a linha arrastada vai sumir: termina o arraste
     ui.sessionList.innerHTML = "";
     ui.noSessions.classList.toggle("hidden", sessions.length > 0);
     const projectOpen = !!project.open;
@@ -3491,11 +3492,15 @@
   }
   function sessPointerDown(e, li, s) {
     if (e.button !== 0 || busy || e.target.closest("button")) return;
+    if (sessDrag) sessEndDrag(null);
+    e.preventDefault();  // sem seleção de texto pelo caminho do arraste (o clique continua valendo)
     sessDrag = { li, s, x: e.clientX, y: e.clientY, moved: false, ghost: null, over: null };
     li.setPointerCapture(e.pointerId);
     li.onpointermove = sessPointerMove;
     li.onpointerup = (ev) => sessEndDrag(sessDrag && sessDrag.moved ? sessDropTarget(ev.clientX, ev.clientY) : null);
+    // Se a linha sumir no meio (lista redesenhada) ou o sistema cancelar, termina sem soltar
     li.onpointercancel = () => sessEndDrag(null);
+    li.onlostpointercapture = () => { if (sessDrag && sessDrag.li === li && !sessDrag.ending) sessEndDrag(null); };
   }
   function sessPointerMove(e) {
     const d = sessDrag;
@@ -3525,9 +3530,10 @@
   }
   function sessEndDrag(target) {
     const d = sessDrag;
-    sessDrag = null;
     if (!d) return;
-    d.li.onpointermove = d.li.onpointerup = d.li.onpointercancel = null;
+    d.ending = true;
+    sessDrag = null;
+    d.li.onpointermove = d.li.onpointerup = d.li.onpointercancel = d.li.onlostpointercapture = null;
     d.li.classList.remove("dragging");
     if (d.ghost) d.ghost.remove();
     if (d.over) d.over.classList.remove("drop-ok");

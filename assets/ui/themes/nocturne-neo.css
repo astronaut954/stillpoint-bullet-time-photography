@@ -1001,7 +1001,9 @@ body.timing-open .app { --controls-h: clamp(320px, 64vh, 720px); }
 /* Fantasma da sessão arrastada */
 .session-ghost { position: fixed; z-index: 70; pointer-events: none; opacity: .85; background: var(--noct-elevated); border-left-color: var(--noct-info); box-shadow: 0 12px 32px rgba(0, 0, 0, .55); margin: 0; }
 .session-ghost .folder-add { display: none; }
-body.session-drag { cursor: grabbing; }
+body.session-drag { cursor: grabbing; user-select: none; -webkit-user-select: none; }
+body.session-drag * { user-select: none !important; -webkit-user-select: none !important; }
+.folder-list .folder { -webkit-user-select: none; user-select: none; }
 body.session-drag.from-app #projectBarBtn, body.session-drag.from-project .folder-divider { outline: 1px dashed var(--noct-border-strong); outline-offset: 4px; }
 /* Pergunta com campo de texto */
 /* O .dialog não tem margem interna (cada filho tem a sua): o campo fica dentro de um bloco com a mesma margem dos textos */
