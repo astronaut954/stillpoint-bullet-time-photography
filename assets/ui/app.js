@@ -3722,6 +3722,7 @@
   let promptSuggestOff = null;
   function editSessionLabel(s) {
     const input = $("promptInput");
+    delete input.dataset.folderName;
     if (promptSuggestOff) promptSuggestOff();
     promptSuggestOff = attachSuggest(input, () => labelSuggestions(s.name));
     promptDialog(s.label ? "Rename label" : "Add label", "A short name for the session " + sessionLabel(s.name).date + " (shown next to the date).", s.label || "", s.label ? "Rename" : "Add",
@@ -3959,8 +3960,9 @@
   }
   function renameProject() {
     if (!project.open) return;
+    $("promptInput").dataset.folderName = "1";
     promptDialog("Rename project", "The project folder is renamed too (" + project.folder + ").", project.name, "Rename",
-      (v) => !v ? "Type a name." : /[\\/:*?"<>|]/.test(v) ? "A folder name cannot have / \\ : * ? \" < > |" : v[0] === "." ? "The name cannot start with a dot." : "",
+      (v) => !v ? "Type a name." : v[0] === "." ? "The name cannot start with a dot." : "",
       (v) => {
         if (v === project.name) return;
         const before = project.name;
@@ -3996,15 +3998,32 @@
   }
   $("projectBarBtn").addEventListener("click", (e) => openProjectMenu(e.currentTarget, "left", true));
   $("projectWindowBtn").addEventListener("click", openProjectWindow);
+  // Campo de nome de pasta: os caracteres proibidos nem entram (sem precisar de aviso depois)
+  const FOLDER_FORBIDDEN = /[\\/:*?"<>|]/g;
+  function blockFolderChars(input, onlyWhenFlagged) {
+    input.addEventListener("beforeinput", (e) => {
+      if (onlyWhenFlagged && !input.dataset.folderName) return;
+      // Tecla com caractere proibido: barra; colar com vários: o "input" abaixo limpa
+      if (e.data && e.data.length === 1 && FOLDER_FORBIDDEN.test(e.data)) { FOLDER_FORBIDDEN.lastIndex = 0; e.preventDefault(); toast("A folder name cannot have / \\ : * ? \" < > |", TOAST_MS, { silent: true }); }
+      FOLDER_FORBIDDEN.lastIndex = 0;
+    });
+    input.addEventListener("input", () => {  // colar com caracteres proibidos: limpa
+      if (onlyWhenFlagged && !input.dataset.folderName) return;
+      const clean = input.value.replace(FOLDER_FORBIDDEN, "");
+      if (clean !== input.value) { const pos = Math.max(0, (input.selectionStart || 0) - (input.value.length - clean.length)); input.value = clean; try { input.setSelectionRange(pos, pos); } catch (e) {} toast("Characters a folder name cannot have were removed (/ \\ : * ? \" < > |)", TOAST_MS, { silent: true }); }
+    });
+  }
+  blockFolderChars($("promptInput"), true);  // só quando o campo pede um nome de pasta (Rename project)
   // Nome do projeto no topo da janela Project: editar e Enter (ou sair do campo) renomeia a pasta
   (function () {
     const input = $("projectNameInput");
-    const problem = (v) => !v ? "Type a name." : /[\\/:*?"<>|]/.test(v) ? "A folder name cannot have / \\ : * ? \" < > |" : v[0] === "." ? "The name cannot start with a dot." : "";
+    blockFolderChars(input);
+    const problem = (v) => !v ? "Type a name." : v[0] === "." ? "The name cannot start with a dot." : "";
     const commit = () => {
       const v = input.value.trim();
       if (!project.open || v === project.name) { input.value = project.name || ""; input.classList.remove("invalid"); return; }
       const why = problem(v);
-      if (why) { input.classList.add("invalid"); toast(why, 5000); input.focus(); return; }
+      if (why) { input.classList.add("invalid"); toast(why, 5000, { silent: true }); input.focus(); return; }
       const before = project.name;
       applyRename(v).then((ok) => {
         if (ok) recordAction({ label: 'Rename project "' + before + '" → "' + v + '"', undo: () => applyRename(before), redo: () => applyRename(v) });
