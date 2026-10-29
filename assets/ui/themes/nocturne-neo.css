@@ -1004,9 +1004,12 @@ body.timing-open .app { --controls-h: clamp(320px, 64vh, 720px); }
 body.session-drag { cursor: grabbing; }
 body.session-drag.from-app #projectBarBtn, body.session-drag.from-project .folder-divider { outline: 1px dashed var(--noct-border-strong); outline-offset: 4px; }
 /* Pergunta com campo de texto */
-.prompt-input { width: 100%; box-sizing: border-box; height: 36px; margin: 6px 0 0; padding: 0 10px; border: 1px solid var(--noct-border-strong); background: var(--noct-surface-inner); color: var(--noct-text); font: 600 15px var(--noct-font-sans); }
+/* O .dialog não tem margem interna (cada filho tem a sua): o campo fica dentro de um bloco com a mesma margem dos textos */
+.prompt-field { padding: 0 18px 4px; }
+.prompt-field p { padding: 16px 0 10px; }
+.prompt-input { display: block; width: 100%; box-sizing: border-box; height: 38px; margin: 0; padding: 0 12px; border: 1px solid var(--noct-border-strong); background: var(--noct-surface-inner); color: var(--noct-text); font: 600 15px var(--noct-font-sans); }
 .prompt-input:focus { outline: none; box-shadow: var(--noct-focus-ring); }
-.prompt-error { color: var(--noct-danger); font: 12px var(--noct-font-mono); margin: 8px 0 0; }
+.prompt-error { color: var(--noct-danger); font: 12px var(--noct-font-mono); margin: 0; padding: 8px 0 8px !important; }
 
 .folder-divider { display: flex; align-items: center; gap: 8px; margin: 12px 0 2px; padding: 4px 2px; font: 700 10px var(--noct-font-mono); text-transform: uppercase; letter-spacing: .1em; color: var(--noct-text-dim); }
 .folder-divider .line { flex: 1; height: 1px; background: var(--noct-border); }
