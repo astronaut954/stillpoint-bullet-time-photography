@@ -663,7 +663,9 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
 .export-preview img { max-width: 100%; max-height: 100%; object-fit: contain; }
 .export-preview .stage-caption b { margin-right: 6px; }
 .preview-play { position: absolute; right: 10px; bottom: 10px; }
-.export-strip { list-style: none; margin: 0; padding: 0; display: flex; gap: 6px; overflow-x: auto; flex: 0 0 auto; }  /* flex fixo: o WebKit encolhia a fileira e a miniatura vazava da caixa */
+/* Sem rolagem própria (quebra em linhas): uma área que rola dentro de outra que rola
+   (.export-settings) fazia o WebKit do Mac pintar as miniaturas deslocadas da caixa */
+.export-strip { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; overflow: visible; flex: 0 0 auto; }
 .export-modes button { display: inline-flex; align-items: center; gap: 7px; }
 .export-modes svg { flex: 0 0 auto; }
 /* Medidas todas explícitas (76×53 por fora, 70×47 a imagem, 3:2): o WebKit desenhava esta
