@@ -1524,9 +1524,13 @@
       items.forEach((item, k) => {
         const li = el("li", "frame");
         const thumb = el("div", "frame-img");
+        // Miniatura como <img> (não como imagem de fundo): no WebKit do Mac o fundo desta fileira
+        // era pintado maior que a caixa até algo forçar um redesenho
+        const pic = document.createElement("img"); pic.alt = "";
+        thumb.appendChild(pic);
         thumb.appendChild(el("span", "frame-badge", pad(item.order)));
         li.appendChild(thumb);
-        sessionPhoto(session.name, item.file, 320).then((url) => { if (url) thumb.style.backgroundImage = "url(" + url + ")"; });
+        sessionPhoto(session.name, item.file, 320).then((url) => { if (url) pic.src = url; });
         li.addEventListener("click", () => { exp.photo = k; showPhoto(); });
         strip.appendChild(li);
       });
