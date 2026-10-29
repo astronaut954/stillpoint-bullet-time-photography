@@ -669,10 +669,13 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
 /* Medidas todas explícitas (76×53 por fora, 70×47 a imagem, 3:2): o WebKit desenhava esta
    fileira com a miniatura maior que a caixa até a janela mudar de tamanho */
 .export-strip li.frame { flex: 0 0 76px; width: 76px; height: 53px; box-sizing: border-box; --frame-w: 76px; }
-.export-strip .frame-img { width: 70px; height: 47px; aspect-ratio: auto; overflow: hidden; }
-.export-strip .frame-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+/* Sem nada posicionado (position) dentro da fileira: ela rola dentro de outra área que rola
+   (.export-settings) e o WebKit do Mac pintava o conteúdo posicionado deslocado da caixa.
+   Imagem e número ficam na mesma célula de uma grade. */
+.export-strip .frame-img { width: 70px; height: 47px; aspect-ratio: auto; overflow: hidden; position: static; display: grid; }
+.export-strip .frame-img img { grid-area: 1 / 1; width: 100%; height: 100%; object-fit: cover; display: block; }
 .export-strip .frame-img img:not([src]) { visibility: hidden; }
-.export-strip .frame-badge { z-index: 1; }
+.export-strip .frame-badge { grid-area: 1 / 1; position: static; justify-self: start; align-self: start; margin: 3px; }
 
 .export-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; }
 .export-label { font: 700 11px var(--noct-font-mono); color: var(--noct-text-muted); text-transform: uppercase; letter-spacing: var(--noct-tracking-widest); min-width: 74px; }
