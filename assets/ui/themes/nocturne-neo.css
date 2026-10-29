@@ -524,12 +524,13 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
 .toast.fading { opacity: 0; }
 .toast-kind { display: none; align-items: center; gap: 6px; padding: 0 10px 0 8px; background: var(--noct-primary); color: var(--noct-on-primary);
   font: 700 11px var(--noct-font-mono); letter-spacing: .16em; text-transform: uppercase; white-space: nowrap; }
-.toast.with-arrow .toast-kind { display: inline-flex; }
+.toast.with-arrow .toast-kind, .toast.kind-event .toast-kind { display: inline-flex; }
+.toast.kind-event .toast-arrow { display: none; }
 .toast-arrow { font: 700 16px/1 var(--noct-font-sans); }
 .toast-body { display: inline-flex; align-items: center; gap: 8px; padding: 7px 6px 7px 12px; min-height: 30px; box-sizing: border-box;
   border: 1px solid var(--noct-primary); background: var(--noct-surface); color: var(--noct-primary);
   font: 700 11px/1.5 var(--noct-font-mono); letter-spacing: .1em; text-transform: uppercase; }
-.toast.with-arrow .toast-body { border-left: 0; }
+.toast.with-arrow .toast-body, .toast.kind-event .toast-body { border-left: 0; }
 .toast-text { flex: 1; min-width: 0; }
 .toast-close { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 22px; height: 22px; border: 0; background: transparent; color: var(--noct-text-dim); cursor: pointer; }
 .toast-close:hover { color: var(--noct-primary); background: var(--noct-elevated); }
@@ -1020,7 +1021,7 @@ body.session-drag { cursor: grabbing; user-select: none; -webkit-user-select: no
 .session-folders { position: relative; }
 .session-drop-zone { position: absolute; z-index: 1; pointer-events: none; box-sizing: border-box; border: 1px dashed var(--noct-border-strong); background: rgba(var(--noct-primary-rgb), .04); display: flex; align-items: flex-end; justify-content: center; padding: 6px; }
 .session-drop-zone span { white-space: nowrap; font: 700 10px var(--noct-font-mono); text-transform: uppercase; letter-spacing: .1em; color: var(--noct-text-dim); background: var(--noct-surface); padding: 2px 6px; }
-.session-drop-zone.out { border-color: var(--noct-border); }
+.session-drop-zone.out { border-color: var(--noct-border); align-items: flex-start; padding-top: 30px; }  /* etiqueta no alto, logo abaixo do divisor: a zona pode passar do fim visível da coluna */
 .session-drop-zone.drop-ok { border-color: var(--noct-primary); background: rgba(var(--noct-primary-rgb), .1); box-shadow: var(--noct-glow-primary-soft); }
 .session-drop-zone.drop-ok span { color: var(--noct-primary); }
 .folder-divider.empty { cursor: default; }

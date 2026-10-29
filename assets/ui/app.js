@@ -261,8 +261,10 @@
     const body = o.kind ? text.replace(/^(Undo|Redo):\s*/, "") : text;
     t.querySelector(".toast-text").textContent = body;
     t.querySelector(".toast-arrow").textContent = o.kind === "undo" ? "↶" : o.kind === "redo" ? "↷" : "";
-    t.querySelector(".toast-kind-text").textContent = o.kind === "undo" ? "Undo" : o.kind === "redo" ? "Redo" : "";
+    // Sem undo/redo, o chip diz "Event" (renomear, atualização disponível, avisos…)
+    t.querySelector(".toast-kind-text").textContent = o.kind === "undo" ? "Undo" : o.kind === "redo" ? "Redo" : "Event";
     t.classList.toggle("with-arrow", !!o.kind);
+    t.classList.toggle("kind-event", !o.kind);
     t.classList.toggle("kind-undo", o.kind === "undo");
     t.classList.toggle("kind-redo", o.kind === "redo");
     t.querySelector(".toast-close").addEventListener("click", hideToast);
@@ -3576,7 +3578,8 @@
     const close = () => { if (box) { box.remove(); box = null; } items = []; active = -1; };
     const render = () => {
       const q = input.value.trim().toLowerCase();
-      items = getItems().filter((l) => l.toLowerCase() !== q && (!q || l.toLowerCase().includes(q)));
+      // Só depois de digitar algo (campo vazio não sugere)
+      items = q ? getItems().filter((l) => l.toLowerCase() !== q && l.toLowerCase().includes(q)) : [];
       if (!items.length) { close(); return; }
       if (!box) {
         box = el("div", "suggest");
