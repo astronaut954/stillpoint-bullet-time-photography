@@ -1756,6 +1756,18 @@ namespace
             }
             return Json("project").Add("error", error).Raw("project", projectJson()).Str();
         });
+        // openSessionFolder(sessão): mostra a pasta da sessão (no app ou no Project) no Finder/Explorer
+        window.bind("openSessionFolder", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            if (!args.empty())
+            {
+                const auto dir = store.SessionDir(args[0]);
+                if (!dir.empty())
+                    Platform::OpenInFileManager(dir);
+            }
+            return "null";
+        });
         // projectOpenFolder(): mostra a pasta do Project no Finder/Explorer
         window.bind("projectOpenFolder", [&](const std::string&) -> std::string
         {

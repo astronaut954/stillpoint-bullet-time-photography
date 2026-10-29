@@ -1516,6 +1516,7 @@
       li.querySelector(".folder-date").textContent = label.date;
       li.querySelector(".folder-meta").textContent = [plural(sessionItems(s).length, "photo", "photos"), label.detail].filter(Boolean).join(" · ");
       if (s.missing > 0) li.querySelector(".folder-meta").after(missingTag(s.missing));
+      if (s.inProject && s.edited > 0) li.querySelector(".folder-meta").after(projectTag(s));  // "Edited n / m" também aqui
       if (s.saved) li.querySelector(".folder-meta").after(savedTag());
       li.querySelector(".export-summary").textContent = summaryText(s);
       li.classList.toggle("different", !exp.sameForAll && s.name !== exp.active && !sameAsActive(s.name));
@@ -3565,6 +3566,10 @@
     items.push({ label: (s.label ? "Rename label…" : "Add label…"), onClick: () => editSessionLabel(s) });
     if (s.label) items.push({ label: "Remove label", onClick: () => setSessionLabelUndoable(s, "") });
     items.push({ label: "Show session", onClick: () => showSession(s) });
+    items.push({ label: "Open folder", onClick: () => {
+      if (typeof window.openSessionFolder !== "function") { toast("This build cannot open session folders yet. Build the app again.", 8000); return; }
+      window.openSessionFolder(s.name);
+    } });
     if (project.open) {
       items.push("-");
       items.push({ label: s.inProject ? "Remove from project" : "Add to project", onClick: () => moveToProject(s.name, !s.inProject) });
