@@ -879,6 +879,9 @@
     const newest = sessions[0] || null;
     const current = currentSession && sessions.find((x) => x.name === currentSession.name);
     const arrivedNewer = newest && !known.includes(newest.name);
+    // Projeto acabou de ser aberto: mostra a primeira sessão dele e recolhe "Not in project"
+    const firstOfProject = pendingProjectFocus && sessions.find((x) => x.inProject);
+    if (firstOfProject) { pendingProjectFocus = false; notInProjectOpen = false; showSession(firstOfProject); return; }
 
     if (!newest) showSession(null);
     else if (!current || arrivedNewer) showSession(newest);
@@ -1283,10 +1286,28 @@
     });
   }
 
+  // Últimas configurações usadas (gravadas pelo programa em settings.txt): valem como padrão
+  // da próxima vez, nesta e nas próximas aberturas do app
+  let exportPrefs = null;
   function defaultSettings() {
-    return { naming: { kind: "date", text: "", date: true, position: "after" },
-             photos: { format: "original", quality: "high" },
-             seq: { formats: ["mp4"], fps: 6, loops: 3, reverse: true, height: 1080, alsoPhotos: true, quality: "high" } };
+    const base = { naming: { kind: "date", text: "", date: true, position: "after" },
+                   photos: { format: "original", quality: "high" },
+                   seq: { formats: ["mp4"], fps: 6, loops: 3, reverse: true, height: 1080, alsoPhotos: true, quality: "high" } };
+    const p = exportPrefs && exportPrefs.settings;
+    if (p) ["naming", "photos", "seq"].forEach((k) => { if (p[k] && typeof p[k] === "object") Object.assign(base[k], JSON.parse(JSON.stringify(p[k]))); });
+    return base;
+  }
+  let exportPrefsTimer = null;
+  function rememberExportPrefs() {
+    if (!exp.active || typeof window.savePref !== "function") return;
+    exportPrefs = { mode: exp.mode, sameForAll: exp.sameForAll, settings: JSON.parse(JSON.stringify(settingsFor(exp.active))) };
+    clearTimeout(exportPrefsTimer);
+    exportPrefsTimer = setTimeout(() => window.savePref("export", JSON.stringify(exportPrefs)), 300);
+  }
+  function loadPrefs(info) {
+    const prefs = (info && info.prefs) || {};
+    try { exportPrefs = prefs.export ? JSON.parse(prefs.export) : null; } catch (e) { exportPrefs = null; }
+    if (exportPrefs && typeof exportPrefs.sameForAll === "boolean") exp.sameForAll = exportPrefs.sameForAll;
   }
   function settingsFor(name) {
     if (!exp.settings[name]) exp.settings[name] = defaultSettings();
@@ -1351,7 +1372,10 @@
     const all = exportable();
     // Salvando para fechar: só as que ainda não foram salvas (as já salvas ficam marcadas fora)
     const unsaved = all.filter((s) => !s.saved);
-    exp.selected = new Set(exp.project ? projectNames : (exp.exitAfter && unsaved.length ? unsaved : all).map((s) => s.name));
+    // Seleção: a do Project (vinda da janela Project), a que a pessoa deixou da última vez
+    // (só as sessões que ainda existem) ou todas
+    const kept = exp.selectedTouched ? [...exp.selected].filter((n) => all.some((s) => s.name === n)) : [];
+    exp.selected = new Set(exp.project ? projectNames : kept.length ? kept : (exp.exitAfter && unsaved.length ? unsaved : all).map((s) => s.name));
     Object.keys(exp.settings).forEach((k) => { if (!all.some((s) => s.name === k)) delete exp.settings[k]; });
     if (!all.some((s) => s.name === exp.active)) exp.active = (currentSession && all.some((s) => s.name === currentSession.name) && currentSession.name) || all[0].name;
     if (exp.project && project.exportDefaults) {
@@ -1406,7 +1430,7 @@
       const box = li.querySelector("input");
       box.checked = exp.selected.has(s.name);
       box.addEventListener("change", () => {
-        if (box.checked) exp.selected.add(s.name); else exp.selected.delete(s.name);
+        exp.selectedTouched = true; if (box.checked) exp.selected.add(s.name); else exp.selected.delete(s.name);
         li.classList.toggle("off", !box.checked);
         updateExportCount();
       });
@@ -1519,7 +1543,7 @@
     const items = sessionItems(session).filter((i) => i.previewable);
     const st = settingsFor(session.name);
     const label = sessionLabel(session.name).date;
-    const rerender = () => { syncAll(); renderExportSettings(); refreshSummaries(); };
+    const rerender = () => { syncAll(); renderExportSettings(); refreshSummaries(); rememberExportPrefs(); };
 
     // Mesma configuração para todas (padrão) ou uma por sessão
     if (sessions.length > 1) {
@@ -1665,7 +1689,7 @@
       total.appendChild(sum);
       box.appendChild(total);
       box.appendChild(el("div", "export-note", "MP4 and MOV have the loops inside the video. GIF, WEBP and AVIF repeat without stopping."));
-      box.appendChild(checkOption("Also save the photos (original format)", s.alsoPhotos, (v) => { s.alsoPhotos = v; syncAll(); refreshSummaries(); }));
+      box.appendChild(checkOption("Also save the photos (original format)", s.alsoPhotos, (v) => { s.alsoPhotos = v; syncAll(); refreshSummaries(); rememberExportPrefs(); }));
     }
 
     // Nome da pasta e dos arquivos
@@ -1781,10 +1805,10 @@
   $("modePhotos").addEventListener("click", () => openExport("photos"));
   $("modeSequence").addEventListener("click", () => openExport("sequence"));
   $("modeCancel").addEventListener("click", () => $("modeOverlay").classList.add("hidden"));
-  $("exportModePhotos").addEventListener("click", () => { exp.mode = "photos"; renderExport(); });
-  $("exportModeSequence").addEventListener("click", () => { exp.mode = "sequence"; renderExport(); });
-  $("exportSelectAll").addEventListener("click", () => { exp.selected = new Set(exportable().map((s) => s.name)); renderExportList(); updateExportCount(); });
-  $("exportUnselectAll").addEventListener("click", () => { exp.selected.clear(); renderExportList(); updateExportCount(); });
+  $("exportModePhotos").addEventListener("click", () => { exp.mode = "photos"; renderExport(); rememberExportPrefs(); });
+  $("exportModeSequence").addEventListener("click", () => { exp.mode = "sequence"; renderExport(); rememberExportPrefs(); });
+  $("exportSelectAll").addEventListener("click", () => { exp.selectedTouched = true; exp.selected = new Set(exportable().map((s) => s.name)); renderExportList(); updateExportCount(); });
+  $("exportUnselectAll").addEventListener("click", () => { exp.selectedTouched = true; exp.selected.clear(); renderExportList(); updateExportCount(); });
   $("exportCancel").addEventListener("click", closeExport);
   $("exportConfirm").addEventListener("click", confirmExport);
   $("progressCancel").addEventListener("click", () => {
@@ -3350,6 +3374,26 @@
     }
   }, true);
 
+  // ---- Clicar fora de uma janela flutuante = Cancel (ou fechar) ----
+  // Só quando o clique começa e termina no fundo escuro (arrastar para fora não fecha).
+  const OVERLAY_CANCEL = {
+    promptOverlay: () => $("promptCancel").click(),
+    projectOverlay: () => closeProjectWindow(),
+    projectPickOverlay: () => $("projectPickOverlay").classList.add("hidden"),
+    modeOverlay: () => $("modeOverlay").classList.add("hidden"),
+    exportOverlay: () => { if (!exp.waiting) closeExport(); },
+    settingsOverlay: () => $("settingsOverlay").classList.add("hidden"),
+    // Confirmações: só as que têm um botão "Cancel" (as outras exigem uma escolha)
+    dialogOverlay: () => { const b = [...ui.dialogActions.children].find((x) => x.textContent === "Cancel"); if (b) b.click(); },
+  };
+  Object.keys(OVERLAY_CANCEL).forEach((id) => {
+    const overlay = $(id);
+    if (!overlay) return;
+    let downOutside = false;
+    overlay.addEventListener("mousedown", (e) => { downOutside = e.target === overlay && e.button === 0; });
+    overlay.addEventListener("mouseup", (e) => { if (downOutside && e.target === overlay) OVERLAY_CANCEL[id](); downOutside = false; });
+  });
+
   // =================== Project (etapa 17) ===================
   // A pasta escolhida pela pessoa onde as sessões ficam guardadas (docs/project.md). O app
   // manda o estado junto com a lista de sessões (evento "sessions", campo project).
@@ -3434,6 +3478,7 @@
   // ---- Segurar e arrastar uma sessão (eventos de ponteiro, como a lista de câmeras) ----
   // Alvos: o botão do projeto na barra (entra no projeto) e o grupo "Not in project" (sai).
   let notInProjectOpen = false;  // grupo "Not in project" aberto?
+  let pendingProjectFocus = false;  // projeto recém-aberto: selecionar a primeira sessão dele quando a lista chegar
   let sessDrag = null;
   function sessDropTarget(x, y) {
     const d = sessDrag;
@@ -3580,6 +3625,8 @@
       ]);
       return;
     }
+    const opened = r.project && r.project.open && (!project.open || project.folder !== r.project.folder);
+    if (opened) pendingProjectFocus = true;
     if (r.project) setProject(r.project);
     if (r.project && r.project.open) { toast("Project: " + r.project.name); log("Project opened: " + r.project.name, "ok"); }
     refreshSessions();
@@ -3615,10 +3662,12 @@
 
   // ---- Janela Project ----
   function projectSessions() { return sessions.filter((s) => s.inProject); }
+  let projectSelTouched = false;  // a pessoa já mexeu na seleção? (senão, todas marcadas)
   function openProjectWindow() {
     if (!project.open) return;
-    projectSel.clear();
-    projectSessions().forEach((s) => projectSel.add(s.name));
+    const names = projectSessions().map((s) => s.name);
+    [...projectSel].forEach((n) => { if (!names.includes(n)) projectSel.delete(n); });
+    if (!projectSelTouched || !projectSel.size) names.forEach((n) => projectSel.add(n));
     renderProjectWindow();
     $("projectOverlay").classList.remove("hidden");
     refreshProject();
@@ -3653,7 +3702,7 @@
         '<span class="project-row-count"></span><span class="project-row-edited"></span>' +
         '<button class="btn btn-link btn-small project-row-play" title="Show this session">Show</button>';
       const box = li.querySelector("input[type=checkbox]"); box.checked = projectSel.has(s.name);
-      box.addEventListener("change", () => { if (box.checked) projectSel.add(s.name); else projectSel.delete(s.name); li.classList.toggle("sel", box.checked); updateProjectCount(); });
+      box.addEventListener("change", () => { projectSelTouched = true; if (box.checked) projectSel.add(s.name); else projectSel.delete(s.name); li.classList.toggle("sel", box.checked); updateProjectCount(); });
       const labelInput = li.querySelector(".project-label"); labelInput.value = s.label || "";
       labelInput.title = "Click to name this session, for example \"Pose 7\"";
       labelInput.addEventListener("change", () => { window.setSessionLabel(s.name, labelInput.value.trim()); });
@@ -3684,9 +3733,9 @@
     $("projectSelectEdited").disabled = !editedOnes.length;
     $("projectHint").textContent = project.available === false ? "The project folder is not reachable." : "";
   }
-  $("projectSelectAll").addEventListener("click", () => { projectSessions().forEach((s) => projectSel.add(s.name)); renderProjectWindow(); });
-  $("projectUnselectAll").addEventListener("click", () => { projectSel.clear(); renderProjectWindow(); });
-  $("projectSelectEdited").addEventListener("click", () => { projectSel.clear(); projectSessions().filter((s) => s.edited > 0 && s.edited >= s.photos.length).forEach((s) => projectSel.add(s.name)); renderProjectWindow(); });
+  $("projectSelectAll").addEventListener("click", () => { projectSelTouched = true; projectSessions().forEach((s) => projectSel.add(s.name)); renderProjectWindow(); });
+  $("projectUnselectAll").addEventListener("click", () => { projectSelTouched = true; projectSel.clear(); renderProjectWindow(); });
+  $("projectSelectEdited").addEventListener("click", () => { projectSelTouched = true; projectSel.clear(); projectSessions().filter((s) => s.edited > 0 && s.edited >= s.photos.length).forEach((s) => projectSel.add(s.name)); renderProjectWindow(); });
   $("projectCloseBtn").addEventListener("click", closeProjectWindow);
   $("projectFolderBtn").addEventListener("click", () => window.projectOpenFolder());
   $("projectSwitchBtn").addEventListener("click", () => { closeProjectWindow(); pickProject(); });
@@ -4165,6 +4214,7 @@
     if (info && info.unsavedSessions > 0) offerRecovery(info.unsavedSessions);
     if (info && info.testRestart) { testRestart = true; ui.restartAppBtn.classList.remove("hidden"); }
     upd.info = info || null;
+    loadPrefs(info);
     if (info && info.project) setProject(info.project);
     timingLoad(info && info.timing);
     renderTiming();

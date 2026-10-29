@@ -1252,6 +1252,15 @@ namespace
                 .Add("timing", settings.count("timing") ? settings.at("timing") : std::string())
                 .Add("live", settings.count("live") ? settings.at("live") : std::string())
                 .Raw("project", projectJson())
+                .Raw("prefs", [&]
+                {
+                    // Preferências da página (savePref): chaves "pref.<nome>" do settings.txt
+                    Json prefs("prefs");
+                    for (const auto& [key, value] : settings)
+                        if (key.rfind("pref.", 0) == 0)
+                            prefs.Add(key.substr(5), value);
+                    return prefs.Str();
+                }())
                 .Add("fakeCameras", fakeCount).Str();
         });
 
@@ -1312,6 +1321,19 @@ namespace
                 return Json("settings").Add("ok", false).Str();
             auto current = LoadSettings();
             current["timing"] = args[0];
+            return Json("settings").Add("ok", SaveSettings(current)).Str();
+        });
+
+        // savePref(nome, valor): preferência da página (ex.: últimas configurações de export),
+        // guardada em settings.txt como "pref.<nome>=" e devolvida no uiReady (prefs)
+        window.bind("savePref", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            if (args.size() < 2 || args[0].empty() || args[0].find_first_not_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") != std::string::npos
+                || args[1].find('\n') != std::string::npos)
+                return Json("settings").Add("ok", false).Str();
+            auto current = LoadSettings();
+            current["pref." + args[0]] = args[1];
             return Json("settings").Add("ok", SaveSettings(current)).Str();
         });
 

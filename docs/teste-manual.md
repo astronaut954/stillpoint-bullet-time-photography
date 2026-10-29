@@ -666,6 +666,16 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) e depois com câmeras. Desenho em `do
       de novo pelo menu → tudo de volta.
 - [ ] **Reordenar fotos / apagar foto** numa sessão do Project: funciona como fora dele (renomeia
       dentro de `Originals/`).
+- [ ] **Abrir um projeto com sessões** (Open/Switch): a primeira sessão dele fica selecionada e o
+      grupo "Not in project" recolhido.
+- [ ] **Clicar fora de uma janela** (Rename, janela Project, "Save sessions" (Photos/Sequence),
+      Save as photos/sequence, Settings, lista de recentes e confirmações que têm "Cancel") = Cancel.
+      Começar o clique dentro e soltar fora não fecha.
+- [ ] **Seleções lembradas:** desmarcar uma sessão na janela Project, fechar e abrir de novo →
+      continua desmarcada; na janela de salvar, formato/nome/velocidade/"Same settings" escolhidos
+      voltam iguais na próxima vez, inclusive depois de fechar e abrir o app (`settings.txt`,
+      `pref.export=`); a seleção de sessões da janela de salvar volta igual dentro da mesma abertura
+      do app.
 - [ ] Fechar e abrir o app: o Project continua aberto (`settings.txt`, `project=`).
 
 ## Resultado
