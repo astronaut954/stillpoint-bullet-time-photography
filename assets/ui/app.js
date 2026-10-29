@@ -1036,7 +1036,9 @@
     if (projectOpen && !sessions.some((x) => x.inProject)) {
       // Projeto sem sessões: um espaço de verdade para soltar (senão a área do projeto some)
       const ph = el("li", "folder-placeholder");
-      ph.innerHTML = '<span>' + icon("folder", 16) + '</span><span>No sessions in the project yet.<br>Drag one here or shoot.</span>';
+      ph.innerHTML = '<span>' + icon("folder", 16) + '</span><span>' + (project.available === false
+        ? "The project folder is not reachable.<br>Sessions you shoot now stay in the app."
+        : "No sessions in the project yet.<br>Drag one here or shoot.") + '</span>';
       ui.sessionList.appendChild(ph);
     }
     ordered.forEach((s) => {
@@ -2816,18 +2818,39 @@
     return v;
   }
   let csRecord = true;  // false enquanto um Desfazer/Copy aplica várias mudanças de uma vez
+  // Nome do ajuste e valor como a pessoa vê na tela ("ISO 400", "Aperture f/5.6"), para a Activity e o
+  // Desfazer — o código da Canon (120, 56…) só no detalhe técnico (2.12.1)
+  function csDescribe(camera, key, value) {
+    const names = { kelvin: "Color temperature", shiftab: "WB fine-tune A/B", shiftgm: "WB fine-tune G/M" };
+    const col = CS_COLS.find(([k]) => k === key);
+    const det = STYLE_DETAILS.find(([k]) => k === key);
+    const name = col ? col[1] : det ? "Picture Style " + det[1].toLowerCase() : names[key] || key;
+    let text = String(value);
+    if (key === "kelvin") text = value + " K";
+    else if (key === "shiftab" || key === "shiftgm" || det) text = signed(+value);
+    else {
+      const cams = camera === "*" ? camSettings : camSettings.filter((c) => c.camera === camera);
+      for (const c of cams) {
+        const st = c.settings && c.settings[key];
+        const hit = st && st.choices && st.choices.find(([v]) => v === +value);
+        if (hit) { text = hit[1]; break; }
+      }
+    }
+    return { name, text, code: key + " = " + value };
+  }
   function csSet(camera, key, value) {
     if (csRecord) {
       // Desfazer: o retrato de antes (só o que mudou volta)
       const before = csSnapshot();
       const target = camera === "*" ? "all cameras" : camera;
-      recordAction({ label: "Camera setting " + key + " → " + value + " (" + target + ")", camera: true,
+      const d = csDescribe(camera, key, value);
+      recordAction({ label: d.name + " → " + d.text + " (" + target + ")", camera: true,
         undo: () => { csRecord = false; try { csRestore(before); } finally { csRecord = true; } },
         redo: () => { csRecord = false; try { csSet(camera, key, value); } finally { csRecord = true; } } });
-      // Activity: o resumo sempre; o detalhe (qual ajuste, que valor) só em Show technical details
+      // Activity: o resumo com o valor; o código da Canon só em Show technical details
       if (!(log.lastText === "Camera settings changed (" + target + ")" && Date.now() - (log.lastAt || 0) < 2000))
         log("Camera settings changed (" + target + ")", "ok");
-      log("Camera setting " + key + " = " + value + " on " + target, "tech");
+      log(d.name + " → " + d.text + " on " + target + " (" + d.code + ")", "tech");
     }
     csPending.add(camera + "|" + key);
     renderCamSettings();
@@ -3778,18 +3801,24 @@
         const h = el("div", "project-menu-current");
         h.innerHTML = '<span class="project-menu-label" style="padding:0">Current</span><b></b><small></small>';
         h.querySelector("b").textContent = project.name;
-        h.querySelector("small").textContent = project.folder;
+        h.querySelector("small").textContent = project.folder + (project.available === false ? "  ·  not reachable" : "");
         items.push({ html: h });
       }
+      const off = project.available === false;  // pasta fora do ar: só o que não precisa dela
+      if (off) items.push({ label: "Check the folder again", onClick: reloadProjectNow });
       items.push({ label: "Project window…", onClick: openProjectWindow });
-      items.push({ label: "Open folder", onClick: () => window.projectOpenFolder() });
-      items.push({ label: "Rename project…", onClick: renameProject });
+      items.push({ label: "Open folder", onClick: () => window.projectOpenFolder(), disabled: off, dim: off });
+      items.push({ label: "Rename project…", onClick: renameProject, disabled: off, dim: off });
       items.push("-");
     }
     return items;
   }
   // Lista de recentes + abrir/novo/fechar; abre o menu já com os recentes carregados
   function openProjectMenu(anchor, align, withCurrent) {
+    // Relê o projeto antes de montar o menu: uma pasta que voltou (HD religado) aparece já certa
+    refreshProject(() => openProjectMenuNow(anchor, align, withCurrent));
+  }
+  function openProjectMenuNow(anchor, align, withCurrent) {
     Promise.resolve(window.projectRecent && window.projectRecent()).then((r) => {
       const recent = ((r && r.projects) || []).filter((p) => !project.open || p.folder !== project.folder);
       const items = projectMenuItems(withCurrent);
@@ -3993,9 +4022,25 @@
     $("projectBarName").textContent = open ? project.name : "No project";
     $("projectBarMeta").textContent = open ? (project.available === false ? "not reachable" : [project.sessions || 0, project.photos || 0, project.edited ? project.edited + " edited" : ""].filter((x) => x !== "").join(" · ")) : "";
     b.title = open ? project.folder : "Open or create a project (a folder of yours that keeps the sessions)";
+    $("projectReload").classList.toggle("hidden", !(open && project.available === false));
     $("projectWindowBtn").classList.toggle("hidden", !open);
   }
-  $("projectBarBtn").addEventListener("click", (e) => openProjectMenu(e.currentTarget, "left", true));
+  $("projectBarBtn").addEventListener("click", (e) => {
+    if (e.target.closest("#projectReload")) return;  // o ↻ só relê a pasta, sem abrir o menu
+    openProjectMenu(e.currentTarget, "left", true);
+  });
+  // ↻ (pasta do projeto fora do ar): tenta ler de novo agora; se voltou, as sessões aparecem
+  function reloadProjectNow() {
+    const was = project.available;
+    const r = $("projectReload");
+    r.classList.remove("spin"); void r.offsetWidth; r.classList.add("spin");
+    refreshProject(() => {
+      if (was === false && project.available !== false) toast("Project reachable again: " + project.name);
+      else if (project.available === false) toast("Project folder still not reachable: " + project.folder, 3000, { warn: true, silent: true });
+    });
+  }
+  $("projectReload").addEventListener("click", (e) => { e.stopPropagation(); reloadProjectNow(); });
+  $("projectReload").addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); reloadProjectNow(); } });
   $("projectWindowBtn").addEventListener("click", openProjectWindow);
   // Campo de nome de pasta: os caracteres proibidos nem entram (sem precisar de aviso depois)
   const FOLDER_FORBIDDEN = /[\\/:*?"<>|]/g;
@@ -4100,14 +4145,17 @@
   }
   // Relê as sessões e o estado do Project (ex.: fotos que o Lightroom acabou de gravar em
   // Edited/): ao abrir a janela Project e sempre que o app volta a ser a janela da frente.
-  function refreshProject() {
-    if (!project.open || typeof window.projectInfo !== "function") return;
-    Promise.all([window.listSessions(), window.projectInfo()]).then(([list, r]) => {
-      setSessions(list);
+  // Relê o projeto e as sessões (ao voltar ao primeiro plano, ao abrir o menu do botão e no ↻).
+  // Se a pasta estava fora do ar e voltou, o app religa sozinho (projectInfo faz isso do lado C++).
+  function refreshProject(done) {
+    if (!project.open || typeof window.projectInfo !== "function") { if (done) done(); return; }
+    Promise.all([window.projectInfo(), window.listSessions()]).then(([r, list]) => {
       if (r && r.project) setProject(r.project);
-    }).catch(() => {});
+      setSessions(list);
+      if (done) done();
+    }).catch(() => { if (done) done(); });
   }
-  window.addEventListener("focus", refreshProject);
+  window.addEventListener("focus", () => refreshProject());
   document.addEventListener("visibilitychange", () => { if (!document.hidden) refreshProject(); });
   function closeProjectWindow() { $("projectOverlay").classList.add("hidden"); }
   function renderProjectWindow() {

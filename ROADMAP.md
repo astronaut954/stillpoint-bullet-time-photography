@@ -771,13 +771,20 @@ Atualizar esta tabela sempre que uma função mudar de status.
 
 ## Pendências conhecidas
 
-- **2.12.0 (etapa 17 — Project) publicada em 2026-10-29 testada só com câmeras simuladas no
-  Mac; Windows só compilou.** Faltam, com câmeras reais: sessão em `Originals/` com
-  `session.json`; `.xmp` ao lado do RAW preservado e renomeado junto ao reordenar; undo/redo nas
-  Camera settings (inclusive rápido: a trava "The cameras are still applying…" deve segurar) e
-  no Copy from camera; apagar foto/sessão + Ctrl+Z com RAW e projeto em HD externo (a lixeira
-  copia entre discos); ordem das câmeras + Ctrl+Z. No Windows: todo o roteiro 23 (botão direito,
-  arrastar, Rename com a pasta aberta no Explorer, apagar + Ctrl+Z, Save sessions).
+- **2.12.0 (etapa 17 — Project) publicada em 2026-10-29; no mesmo dia testada no Mac com
+  câmeras reais (T7 + SL3 + T5): tudo aprovado** — `session.json`, `.xmp` renomeado junto,
+  undo/redo das Camera settings e do Copy from camera, apagar + Ctrl+Z com RAW (também em HD
+  externo), ordem das câmeras, foto recusada do Sweep (pendência da 2.11.0 fechada). Achados,
+  corrigidos na **2.12.1** (branch `etapa-17-ajustes`): (1) bug — HD ejetado com o app fechado →
+  ao abrir ficava "No project" em vez de âmbar "not reachable"; agora o projeto fica lembrado em
+  âmbar, as sessões novas vão para o app, e ele religa sozinho quando a pasta volta (ao abrir o
+  menu do botão, no ↻ ao lado do "not reachable" ou ao voltar ao app); (2) pedido — reler o projeto
+  ao abrir o menu e o ícone ↻; (3) `session.json` sem os campos `"type"`; (4) Activity e Undo das
+  Camera settings com os valores da tela ("ISO → 400") e o código só no detalhe técnico.
+  A 2.12.1 foi conferida só no navegador (sem câmeras); o item (1) precisa do teste com o HD
+  externo no Mac (teste-manual 23, "Project em HD desligado"). **Ainda pendente no Windows:** todo
+  o roteiro 23 (botão direito, arrastar, Rename com a pasta aberta no Explorer, apagar + Ctrl+Z,
+  Save sessions) e as câmeras reais.
 
 - **2.11.1 (2026-10-22):** a janela de atualização crescia com o texto das notas e, com as da
   2.11.0, o botão Update saía da tela. Corrigido (lista rola; botões sempre à vista; conferido
@@ -786,8 +793,8 @@ Atualizar esta tabela sempre que uma função mudar de status.
 
 - **2.11.0 (etapa 16 + Sweep) publicada em 2026-10-22 com o Windows testado só com câmeras
   simuladas** (decisão do dono do projeto): a janela Live e as câmeras de verdade no Windows
-  continuam sem teste (ver 2.10.0 abaixo); no Mac falta só o resumo de foto recusada com câmeras
-  de verdade (teste-manual 21). Conferir na primeira oportunidade.
+  continuam sem teste (ver 2.10.0 abaixo); o resumo de foto recusada com câmeras de verdade
+  (teste-manual 21) foi aprovado no Mac em 2026-10-29.
 
 - **2.10.0 (etapa 15) publicada sem teste no Windows nem com câmeras de verdade (2026-10-17).**
   No Windows nunca compilou: janela Live (segunda instância webview/WebView2), tela cheia por

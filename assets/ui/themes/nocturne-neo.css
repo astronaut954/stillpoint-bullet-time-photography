@@ -1062,6 +1062,12 @@ body.session-drag.from-app #projectBarBtn { outline: 1px dashed var(--noct-borde
 .project-bar span { color: var(--noct-text-dim); white-space: nowrap; }
 .project-bar.on { border-color: var(--noct-border-strong); }
 .project-bar.unavailable { border-color: var(--noct-pending); }
+.project-bar.unavailable span { color: var(--noct-pending); }
+/* ↻ ao lado do "not reachable": tenta ler a pasta de novo (2.12.1) */
+.project-reload { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; margin: 0 -2px; color: var(--noct-pending); border: 1px solid transparent; transition: border-color 150ms var(--noct-ease), transform 300ms var(--noct-ease); }
+.project-reload:hover, .project-reload:focus-visible { border-color: var(--noct-pending); outline: none; }
+.project-reload.spin svg { animation: project-reload-spin 600ms linear; }
+@keyframes project-reload-spin { to { transform: rotate(360deg); } }
 .project-bar:hover, .project-bar.drop-ok { border-color: var(--noct-primary); color: var(--noct-primary); }
 .project-bar.drop-ok { background: var(--noct-elevated); box-shadow: var(--noct-glow-primary-soft); }
 .topbar .brand { flex: 0 0 auto; }

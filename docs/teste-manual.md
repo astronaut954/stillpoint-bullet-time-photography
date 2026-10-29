@@ -671,8 +671,10 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) e depois com câmeras. Desenho em `do
       apagado); "Switch/Open project…" abre o seletor de pasta; uma pasta sem o json pergunta
       "Create project here". O botão "Switch…" da janela Project abre a lista de recentes.
 - [ ] **Project em HD desligado:** fechar o app, desconectar (ou renomear a pasta), abrir: botão da
-      barra âmbar "not reachable", lista só com as sessões da pasta de dados; voltar a pasta e abrir
-      de novo pelo menu → tudo de volta.
+      barra âmbar "not reachable" (2.12.1; na 2.12.0 ficava "No project"), lista só com as sessões
+      da pasta de dados; disparar agora cria a sessão no app, não no projeto. Voltar a pasta e
+      abrir o menu do botão (ou clicar no ícone ↻ ao lado do "not reachable", ou trocar de janela
+      e voltar) → as sessões do projeto voltam sozinhas, sem reabrir pelos recentes.
 - [ ] **Reordenar fotos / apagar foto** numa sessão do Project: funciona como fora dele (renomeia
       dentro de `Originals/`).
 - [ ] **Abrir um projeto com sessões** (Open/Switch): a primeira sessão dele fica selecionada e o
@@ -689,8 +691,10 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) e depois com câmeras. Desenho em `do
       Remove from project (botão, arrasto, janela Project), rótulo de sessão, "Copy from camera" e
       **cada mudança** no Camera settings, ordem das câmeras (^ v, arrasto, Reorder by photo),
       ordem das fotos de uma sessão, **apagar foto** e **apagar sessão** (lixeira do app em
-      `<dados>/.trash`, esvaziada ao abrir o app: o desfazer de apagar vale só na mesma abertura;
-      a sessão volta para onde estava — projeto ou app). O aviso do rodapé mostra ↶ "Undo: …" ou
+      `<dados>/Photos/.trash` — no Mac, `~/Library/Application Support/Stillpoint/Photos/.trash` —,
+      esvaziada ao abrir o app: o desfazer de apagar vale só na mesma abertura; a sessão volta
+      para onde estava — projeto ou app). Apagar uma foto **não** renumera as outras: o número é a
+      posição da câmera, e o buraco fica. O aviso do rodapé mostra ↶ "Undo: …" ou
       ↷ "Redo: …". Sem nada a desfazer: "Nothing to undo". Dentro de um campo de texto, Ctrl+Z é
       o desfazer do texto.
 - [ ] **Botão direito → pastas:** "Open originals folder" (ou "Open folder" fora do projeto) e
@@ -721,6 +725,7 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) e depois com câmeras. Desenho em `do
 | --- | --- | --- | --- | --- | --- |
 | 2026-10 | Windows | v1.3.0 | Canon SL3 + Canon T7 | sim | Teste de referência, antes da migração |
 | 2026-10-29 | Mac (M5, macOS 26) | etapa-17-project (2.12.0) | 9 simuladas | sim | Roteiro 23 com câmeras simuladas aprovado pelo dono do projeto (projeto, arrastar, botão direito, rótulos, rename, undo/redo, avisos, Activity). Windows: compila; sem teste de uso. Câmeras reais: pendente |
+| 2026-10-29 | Mac (M5, macOS 26) | v2.12.0 | Canon T7 + SL3 + T5 | sim | Câmeras reais: sessão em `Originals/` com `session.json`; `.xmp` renomeado junto no Reorder + Cmd+Z; Camera settings com undo/redo (um por segundo, sem travar; valores batem com o LCD; disparo depois OK); Copy from camera + undo; apagar foto/sessão + Cmd+Z com RAW (`Photos/.trash`, vazia ao reabrir); projeto em HD externo (apagar + undo copiando entre discos; reabrir pelos recentes); ordem das câmeras (^ v e Reorder by photo) + undo; foto recusada (Sweep 0,3 s, 1→3→1: "1 MISSING" sobrevive ao reabrir). **Bug:** HD ejetado com o app fechado → ao abrir, "No project" em vez de âmbar "not reachable" (corrigido na 2.12.1). |
 | 2026-10-10 | Windows | etapa-1-cmake (CMake + EDSDK 13.20.10) | Canon SL3 + Canon T7 | sim | Checklist completa |
 | 2026-10-10 | Windows | etapa-2-plataforma (camada de plataforma) | Canon SL3 + Canon T7 | sim | Teste reduzido: detecção, pasta Downloads, áudio, 2 sessões, desconexão |
 | 2026-10-10 | Mac (M5, macOS 26) | etapa-3-macos | Canon SL3 + Canon T7 | sim | Primeiro teste no Mac: detecção, áudio, BULLET TIME, download |

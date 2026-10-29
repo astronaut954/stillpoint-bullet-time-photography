@@ -24,6 +24,13 @@ public:
 
     // Abre (lê o índice); false com a mensagem se a pasta não for um Project
     bool Open(const std::filesystem::path& folder, std::string& error);
+    // Lembra um Project cuja pasta não está acessível agora (HD desligado ao abrir o app):
+    // fica "aberto" com o nome da pasta, mas Available() é false até ReloadIfBack() conseguir ler.
+    void Remember(const std::filesystem::path& folder);
+    // Se a pasta lembrada voltou, lê o índice; true quando acabou de voltar
+    bool ReloadIfBack();
+    // Índice lido (false = só lembrado, pasta fora do ar)
+    bool Loaded() const { return loaded; }
     void Close();
     // Renomeia a pasta do Project (e o nome no índice). false com a mensagem se a pasta estiver
     // em uso por outro programa, já existir uma com esse nome etc.
@@ -53,6 +60,7 @@ private:
     bool Save() const;
 
     std::filesystem::path root;
+    bool loaded = false;
     std::string name;
     std::string created;
     std::vector<std::pair<std::string, std::string>> sessions;  // pasta, quando entrou

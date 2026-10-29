@@ -97,10 +97,28 @@ bool Project::Open(const fs::path& folder, std::string& error)
         if (item.isObject() && !item.get("folder").asString().empty())
             sessions.emplace_back(item.get("folder").asString(), item.get("added").asString());
     exportDefaults = index.has("export") ? JsonLite::Stringify(index.get("export"), 0) : std::string();
+    loaded = true;
     std::error_code ec;
     fs::create_directories(Originals(), ec);
     fs::create_directories(Edited(), ec);
     return true;
+}
+
+void Project::Remember(const fs::path& folder)
+{
+    Close();
+    root = folder;
+    name = folder.filename().string();
+    loaded = false;
+}
+
+bool Project::ReloadIfBack()
+{
+    if (!IsOpen() || loaded || !IsProject(root))
+        return false;
+    std::string error;
+    const fs::path folder = root;
+    return Open(folder, error);
 }
 
 bool Project::Rename(const std::string& newName, std::string& error)
@@ -152,17 +170,18 @@ void Project::Close()
     created.clear();
     sessions.clear();
     exportDefaults.clear();
+    loaded = false;
 }
 
 bool Project::Available() const
 {
-    return IsOpen() && IsProject(root);
+    return IsOpen() && loaded && IsProject(root);
 }
 
 void Project::SyncIndex(const std::vector<std::string>& folders)
 {
-    if (!IsOpen())
-        return;
+    if (!Available())
+        return;  // pasta fora do ar: não mexe no índice (ele é refeito quando a pasta voltar)
     std::vector<std::pair<std::string, std::string>> fresh;
     bool changed = false;
     for (const auto& folder : folders)

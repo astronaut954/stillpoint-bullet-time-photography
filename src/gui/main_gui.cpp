@@ -148,6 +148,7 @@ namespace
     {
     public:
         explicit Json(const std::string& type) : type(type) { Add("type", type); }
+        Json() = default;  // objeto sem o campo "type" (arquivos como o session.json do Project)
         const std::string& Type() const { return type; }
 
         Json& Add(const std::string& key, const std::string& value) { return Raw(key, JsonString(value)); }
@@ -964,8 +965,13 @@ namespace
             std::string error;
             if (settings.count("project") && !settings.at("project").empty())
                 if (!project.Open(std::filesystem::path(settings.at("project")), error))
-                    Log("Project not opened: " + error);
-            if (project.IsOpen())
+                {
+                    // Pasta fora do ar (HD desligado) ou sem o índice: o Project fica lembrado e
+                    // aparece em âmbar ("not reachable") até a pasta voltar (2.12.1)
+                    project.Remember(std::filesystem::path(settings.at("project")));
+                    Log("Project not reachable: " + settings.at("project") + " (" + error + ")");
+                }
+            if (project.Available())
                 store.SetProject(project.Originals(), project.Edited());
         }
         auto projectJson = [&]
@@ -1182,7 +1188,7 @@ namespace
                         cam.fake = true;
                         list.push_back(cam);
                     }
-                controller.SetOutputFolder(project.IsOpen() ? project.Originals().string() : store.Root().string());
+                controller.SetOutputFolder(project.Available() ? project.Originals().string() : store.Root().string());
                 sdkReady = true;
                 Log("Fake cameras: " + std::to_string(fakeCount) + " (STILLPOINT_FAKE_CAMERAS)");
                 return;
@@ -1193,7 +1199,7 @@ namespace
                 listener.Emit(Json("sdkFailed"));
                 return;
             }
-            controller.SetOutputFolder(project.IsOpen() ? project.Originals().string() : store.Root().string());
+            controller.SetOutputFolder(project.Available() ? project.Originals().string() : store.Root().string());
         };
 
         const std::string version = AppVersion();
@@ -1600,7 +1606,7 @@ namespace
             const std::string planText = args.size() > 3 ? args[3] : std::string();
             auto writeSessionInfo = [&, timingText, planText]
             {
-                if (!project.IsOpen())
+                if (!project.Available())
                     return;
                 // Sessões do Project ainda sem session.json: acabaram de ser disparadas
                 for (const auto& session : store.ListSessions())
@@ -1613,12 +1619,12 @@ namespace
                     std::string cams = "[";
                     for (const auto& cam : controller.GetCameras())
                         if (cam.sessionOpen || cam.fake)
-                            cams += std::string(cams.size() > 1 ? "," : "") + Json("camera").Add("order", cam.orderPrefix)
+                            cams += std::string(cams.size() > 1 ? "," : "") + Json().Add("order", cam.orderPrefix)
                                 .Add("name", cam.shortName).Add("model", cam.modelName).Str();
                     cams += "]";
                     std::string shotAt = session.name;  // "2026-10-22_14-30-05" -> "2026-10-22T14:30:05"
                     if (shotAt.size() >= 19) { shotAt[10] = 'T'; shotAt[13] = ':'; shotAt[16] = ':'; }
-                    store.WriteSessionInfo(session.name, Json("info").Add("shotAt", shotAt).Add("timing", timingText)
+                    store.WriteSessionInfo(session.name, Json().Add("shotAt", shotAt).Add("timing", timingText)
                         .Add("plan", planText).Raw("cameras", cams).Str());
                 }
             };
@@ -1636,15 +1642,24 @@ namespace
         });
 
         // =================== Project (etapa 17) ===================
+        // Com a pasta do Project fora do ar (Available() false), as sessões novas vão para a
+        // pasta do app, como sem Project; quando a pasta volta, reloadProjectIfBack() religa.
         auto applyProject = [&]
         {
-            if (project.IsOpen())
+            if (project.Available())
                 store.SetProject(project.Originals(), project.Edited());
             else
                 store.SetProject({}, {});
             if (sdkReady)
-                controller.SetOutputFolder(project.IsOpen() ? project.Originals().string() : store.Root().string());
+                controller.SetOutputFolder(project.Available() ? project.Originals().string() : store.Root().string());
             emitSessions();
+        };
+        auto reloadProjectIfBack = [&]
+        {
+            if (!project.ReloadIfBack())
+                return;
+            Log("Project reachable again: " + project.Name() + " (" + project.Root().string() + ")");
+            applyProject();
         };
         auto openProjectAt = [&](const std::string& folder) -> std::string
         {
@@ -1723,6 +1738,7 @@ namespace
         // projectInfo(): estado atual (para abrir a janela Project)
         window.bind("projectInfo", [&](const std::string&) -> std::string
         {
+            reloadProjectIfBack();  // a página chama ao voltar ao primeiro plano, ao abrir o menu e no ↻
             return Json("project").Raw("project", projectJson()).Str();
         });
         // projectRename(nome): renomeia a pasta do Project (o nome do projeto é o da pasta)
@@ -1734,6 +1750,8 @@ namespace
                 error = "Type a name for the project.";
             else if (!project.IsOpen())
                 error = "No project is open.";
+            else if (!project.Available())
+                error = "The project folder is not reachable right now.";
             else
             {
                 const std::string before = project.Root().string();
@@ -1772,7 +1790,7 @@ namespace
         window.bind("openEditedFolder", [&](const std::string& request) -> std::string
         {
             const auto args = ParseStringArgs(request);
-            if (args.empty() || !project.IsOpen() || args[0].find_first_of("/\\") != std::string::npos)
+            if (args.empty() || !project.Available() || args[0].find_first_of("/\\") != std::string::npos)
                 return Json("folder").Add("ok", false).Str();
             std::error_code ec;
             const auto dir = project.Edited() / args[0];
@@ -1795,7 +1813,7 @@ namespace
         // projectOpenFolder(): mostra a pasta do Project no Finder/Explorer
         window.bind("projectOpenFolder", [&](const std::string&) -> std::string
         {
-            if (project.IsOpen())
+            if (project.Available())
                 Platform::OpenInFileManager(project.Root());
             return "null";
         });
@@ -1829,7 +1847,7 @@ namespace
         window.bind("projectExportDefaults", [&](const std::string& request) -> std::string
         {
             const auto args = ParseStringArgs(request);
-            if (!args.empty() && project.IsOpen())
+            if (!args.empty() && project.Available())
                 project.SetExportDefaults(args[0]);
             return "null";
         });
@@ -2863,7 +2881,7 @@ namespace
             auto args = ParseStringArgs(request);
             const bool exitAfter = !args.empty() && args[0] == "exit";
             // args[0] "project": sessões do Project, direto para <Project>/Exports (sem perguntar a pasta)
-            const bool toProjectExports = !args.empty() && args[0] == "project" && project.IsOpen();
+            const bool toProjectExports = !args.empty() && args[0] == "project" && project.Available();
             // args[1]: "delete" (apaga as sessões não salvas que ficaram) e/ou "edited" (usar as editadas)
             const bool deleteRest = args.size() > 1 && args[1].find("delete") != std::string::npos;
             const bool useEdited = args.size() > 1 && args[1].find("edited") != std::string::npos;
