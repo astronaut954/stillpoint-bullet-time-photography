@@ -2498,7 +2498,7 @@
     $("settingsRestart").classList.toggle("hidden", !prefs.restart);
     // Onde o projeto aparece (teste A/B/C): vale na hora, guardado nesta máquina
     $("settingsProjectLayout").innerHTML = "";
-    $("settingsProjectLayout").appendChild(segmented(PROJECT_LAYOUTS, projectLayout(), (v) => { setProjectLayout(v); renderSettings(); }));
+    $("settingsProjectLayout").appendChild(segmented(PROJECT_LAYOUTS, projectLayout(), (v) => { setProjectLayout(v, true); renderSettings(); }));
     // Modo debug: vale na hora
     $("settingsDebug").innerHTML = "";
     $("settingsDebug").appendChild(segmented([["off", "Off"], ["on", "On"]], prefs.debug ? "on" : "off", (v) => {
@@ -3378,15 +3378,19 @@
     return b >= 1e9 ? (b / 1e9).toFixed(1) + " GB" : b >= 1e6 ? Math.round(b / 1e6) + " MB" : Math.round(b / 1e3) + " KB";
   }
   // ---- Onde o projeto aparece (teste das opções A/B/C; guardado só nesta máquina) ----
+  // (guardado em settings.txt pelo programa: a página não tem armazenamento próprio no WebKit)
   const PROJECT_LAYOUTS = [["strip", "A · Box"], ["column", "B · Column title"], ["topbar", "C · Top bar"]];
-  function projectLayout() {
-    try { const v = localStorage.getItem("stillpoint.projectLayout"); return PROJECT_LAYOUTS.some(([k]) => k === v) ? v : "strip"; }
-    catch (e) { return "strip"; }
-  }
-  function setProjectLayout(v) {
-    try { localStorage.setItem("stillpoint.projectLayout", v); } catch (e) {}
+  let projectLayoutValue = "strip";
+  function projectLayout() { return projectLayoutValue; }
+  function setProjectLayout(v, save) {
+    if (!PROJECT_LAYOUTS.some(([k]) => k === v)) v = "strip";
+    projectLayoutValue = v;
     renderProjectStrip();
     renderSessionList();
+    if (save) {
+      if (typeof window.saveProjectLayout !== "function") { toast("This build has no project-layout setting yet. Build the app again.", 8000); return; }
+      Promise.resolve(window.saveProjectLayout(v)).then((r) => { if (!r || !r.ok) toast("Could not save the settings"); });
+    }
   }
   // Menu flutuante (fixo na tela, fecha ao clicar fora ou com Esc). items: {label, onClick, dim, html} ou "-"
   let openMenu = null;
@@ -4151,6 +4155,7 @@
     if (info && info.unsavedSessions > 0) offerRecovery(info.unsavedSessions);
     if (info && info.testRestart) { testRestart = true; ui.restartAppBtn.classList.remove("hidden"); }
     upd.info = info || null;
+    if (info && info.projectLayout) setProjectLayout(info.projectLayout, false);
     if (info && info.project) setProject(info.project);
     timingLoad(info && info.timing);
     renderTiming();

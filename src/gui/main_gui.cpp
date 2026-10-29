@@ -1251,6 +1251,7 @@ namespace
                 .Add("debug", debugMode.load())
                 .Add("timing", settings.count("timing") ? settings.at("timing") : std::string())
                 .Add("live", settings.count("live") ? settings.at("live") : std::string())
+                .Add("projectLayout", settings.count("projectLayout") ? settings.at("projectLayout") : std::string())
                 .Raw("project", projectJson())
                 .Add("fakeCameras", fakeCount).Str();
         });
@@ -1312,6 +1313,17 @@ namespace
                 return Json("settings").Add("ok", false).Str();
             auto current = LoadSettings();
             current["timing"] = args[0];
+            return Json("settings").Add("ok", SaveSettings(current)).Str();
+        });
+
+        // saveProjectLayout(strip|column|topbar): onde o projeto aparece (teste das opções A/B/C)
+        window.bind("saveProjectLayout", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            if (args.empty() || args[0].find_first_not_of("abcdefghijklmnopqrstuvwxyz") != std::string::npos)
+                return Json("settings").Add("ok", false).Str();
+            auto current = LoadSettings();
+            current["projectLayout"] = args[0];
             return Json("settings").Add("ok", SaveSettings(current)).Str();
         });
 
