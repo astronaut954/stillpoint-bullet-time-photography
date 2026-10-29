@@ -101,9 +101,14 @@ Substitui os arquivos `.saved` e `.missing` de hoje dentro do Project (fora dele
 | Fechar o app com sessões não salvas | pergunta | sessões no Project **não contam** como não salvas |
 | Preview/cache | na pasta de dados | igual (cache fora do Project; o Project só tem originais, editadas e exports) |
 
-Janelas (do protótipo de 2026-10-22): faixa de Projeto no painel Sessions (nome, pasta,
-contagens, Switch); janela **Project** (lista com estado originals / n de m edited, seleção,
-Export com "Use edited when available"; "Open folder", "Switch project", "New project").
+Janelas: o projeto aberto é um **botão na barra de cima**, ao lado do logo (nome · sessões ·
+fotos · editadas ▾), com menu: projeto atual (caminho, "Project window…", "Open folder"),
+recentes, "Switch project…", "New project…", "Close project" (decisão de 2026-10-29, depois de
+comparar quatro opções em protótipo — https://claude.ai/artifact/Wh9kwPwy1Wq4EKWYsgeLeP). Na
+lista de sessões, as do projeto ficam em cima e as que estão só no app embaixo do divisor **"Not
+in project · n"** (com "Add to project ↑"); arrastar uma sessão até o botão da barra adiciona,
+até o divisor remove. Janela **Project** (lista com estado originals / n de m edited, seleção,
+rótulo, Export com "Use edited when available"; "Open folder", "Switch", "Close project").
 Os botões "Open in Lightroom / Photoshop" ficam para a etapa 20; nesta etapa a pasta
 `Edited/` já é reconhecida (quem exportar do Lightroom à mão já vê "edited").
 

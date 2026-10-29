@@ -947,31 +947,15 @@ body.timing-open .app { --controls-h: clamp(320px, 64vh, 720px); }
 .tl.stagger:not(.small) .tick { top: 59px; }
 
 /* ---- Project (etapa 17): faixa no painel Sessions, etiquetas, janela Project ---- */
-.project-strip { margin: 0 0 10px; padding: 10px 12px; border: 1px solid var(--noct-border); background: var(--noct-surface-inner); display: flex; flex-direction: column; gap: 6px; }
-.project-strip.on { border-color: var(--noct-border-strong); }
-.project-strip.unavailable { border-color: var(--noct-pending); }
-.project-strip-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.project-strip-label { font: 700 10px var(--noct-font-mono); text-transform: uppercase; letter-spacing: .1em; color: var(--noct-text-muted); }
-.project-strip .btn-link.btn-small { height: 22px; padding: 0 6px; font-size: 10px; }
-.project-name { font: 700 17px/1.1 var(--noct-font-sans); color: var(--noct-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.project-strip:not(.on) .project-name { color: var(--noct-text-muted); }
-.project-meta { font: 11px var(--noct-font-mono); color: var(--noct-text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.project-strip:not(.on) .project-meta:empty { display: none; }
-.project-strip.unavailable .project-meta { color: var(--noct-pending); white-space: normal; }
-.project-tags { display: flex; gap: 6px; flex-wrap: wrap; }
-.project-tags:empty { display: none; }
 .project-actions { display: flex; gap: 6px; margin-top: 2px; }
 .project-actions .btn-small { height: 26px; }
 .project-tag { display: inline-block; width: fit-content; margin-top: 5px; padding: 2px 7px; border: 1px solid var(--noct-border-strong); color: var(--noct-text-muted);
   font: 700 10px var(--noct-font-mono); text-transform: uppercase; letter-spacing: .08em; white-space: nowrap; }
-.project-tags .project-tag { margin-top: 0; }
 .project-tag.ok { background: var(--noct-primary); color: var(--noct-on-primary); border-color: var(--noct-primary); }
 .project-tag.part { border-color: var(--noct-pending); color: var(--noct-pending); }
-.project-tag.dim { border-color: var(--noct-border); color: var(--noct-text-dim); }
 .save-count.warn { color: var(--noct-pending); text-transform: none; letter-spacing: .02em; }
 
 .project-sheet { padding: 0; gap: 0; width: min(1100px, 94vw); }
-.project-head-actions { display: flex; gap: 8px; }
 .project-body { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 12px 18px; gap: 8px; overflow: hidden; }
 .project-body .save-tools { display: flex; align-items: center; gap: 8px; }
 .project-cols, .project-row { display: grid; grid-template-columns: 24px 72px minmax(0, 1fr) 70px 180px 70px; gap: 12px; align-items: center; }
@@ -1006,30 +990,14 @@ body.timing-open .app { --controls-h: clamp(320px, 64vh, 720px); }
 .project-recent-item small { font: 11px var(--noct-font-mono); color: var(--noct-text-muted); }
 .project-recent-item.current { border-color: var(--noct-primary); }
 
-/* ---- Project: opções B (título da coluna) e C (barra superior), em teste ---- */
-.sessions-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 12px; }
-.sessions-head h2 { margin: 0; }
-.sessions-head .btn-link.btn-small { height: 22px; padding: 0 6px; font-size: 10px; color: var(--noct-primary); }
-.project-head { display: flex; flex-direction: column; gap: 3px; padding: 0 0 10px; margin: 0 0 8px; border-bottom: 1px solid var(--noct-border); }
-.project-head.unavailable { border-bottom-color: var(--noct-pending); }
-.project-head-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.project-head-top .project-strip-label { display: inline-flex; align-items: center; gap: 6px; }
-.project-dots { height: 22px; padding: 0 6px; font-size: 15px; letter-spacing: 0; line-height: 1; }
-.project-head .project-name { font-size: 19px; line-height: 1.05; }
-.project-head-meta { font: 10px/1.5 var(--noct-font-mono); color: var(--noct-text-dim); text-transform: uppercase; letter-spacing: .06em; }
-.project-head.unavailable .project-head-meta { color: var(--noct-pending); white-space: normal; }
-.project-head.drop-ok { background: var(--noct-elevated); outline: 1px dashed var(--noct-primary); outline-offset: 4px; }
-/* Divisor "Not in project" (B) */
+/* ---- Project (etapa 17): botão na barra, divisor "Not in project", menus ---- */
+/* Divisor "Not in project" na lista de sessões (também alvo para soltar e tirar do projeto) */
 .folder-divider { display: flex; align-items: center; gap: 8px; margin: 12px 0 2px; padding: 4px 2px; font: 700 10px var(--noct-font-mono); text-transform: uppercase; letter-spacing: .1em; color: var(--noct-text-dim); }
 .folder-divider .line { flex: 1; height: 1px; background: var(--noct-border); }
 .folder-divider.drop-ok { color: var(--noct-primary); outline: 1px dashed var(--noct-primary); outline-offset: 4px; }
 .folder-add { height: 18px; padding: 0 4px; margin: 4px 0 0 -4px; font-size: 10px; color: var(--noct-primary); }
 .folder.dragging { opacity: .55; }
-body.session-drag .folder-divider, body.session-drag .project-head { transition: outline-color 120ms var(--noct-ease); }
-/* Ponto que marca as sessões do projeto (C) */
-.project-dot { display: inline-block; width: 6px; height: 6px; margin: 0 7px 2px 0; border: 1px solid var(--noct-text-dim); border-radius: 50%; vertical-align: middle; }
-.project-dot.in { background: var(--noct-primary); border-color: var(--noct-primary); box-shadow: 0 0 6px rgba(var(--noct-primary-rgb), .6); }
-/* Botão do projeto na barra (C) */
+/* Botão do projeto na barra de cima (também alvo para soltar e adicionar) */
 .project-bar {
   display: inline-flex; align-items: center; gap: 8px; height: 30px; margin-left: 14px; padding: 0 10px 0 8px;
   border: 1px solid var(--noct-border); background: var(--noct-surface-inner); color: var(--noct-text-muted); cursor: pointer;

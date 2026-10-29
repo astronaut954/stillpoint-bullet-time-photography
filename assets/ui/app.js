@@ -918,13 +918,12 @@
   function renderSessionList() {
     ui.sessionList.innerHTML = "";
     ui.noSessions.classList.toggle("hidden", sessions.length > 0);
-    const layout = projectLayout();
     const projectOpen = !!project.open;
-    const grouped = layout === "column" && projectOpen;  // opção B: as do projeto primeiro, as outras sob um divisor
-    const ordered = grouped ? sessions.filter((s) => s.inProject).concat(sessions.filter((s) => !s.inProject)) : sessions;
+    // Com projeto aberto: as sessões do projeto primeiro; as outras sob o divisor "Not in project"
+    const ordered = projectOpen ? sessions.filter((s) => s.inProject).concat(sessions.filter((s) => !s.inProject)) : sessions;
     let dividerDone = false;
     ordered.forEach((s) => {
-      if (grouped && !s.inProject && !dividerDone) {
+      if (projectOpen && !s.inProject && !dividerDone) {
         dividerDone = true;
         const n = sessions.filter((x) => !x.inProject).length;
         const d = el("li", "folder-divider");
@@ -942,22 +941,15 @@
       li.querySelector(".folder-date").textContent = s.label ? s.label + " · " + label.date : label.date;
       li.querySelector(".folder-meta").textContent = [plural(count, "photo", "photos"), label.detail].filter(Boolean).join(" · ");
       if (s.missing > 0) li.querySelector(".folder-meta").after(missingTag(s.missing));
-      if (layout === "strip") {
-        if (s.inProject) li.querySelector(".folder-meta").after(projectTag(s));
-      } else if (projectOpen) {
-        // B e C: sem a etiqueta "In project" em cada linha; só a de editadas, e um ponto (C) ou o divisor (B)
+      if (projectOpen) {
+        // Só a etiqueta de editadas (estar no projeto é a posição na lista)
         if (s.inProject && s.edited > 0) li.querySelector(".folder-meta").after(projectTag(s));
-        if (layout === "topbar") {
-          const dot = el("span", "project-dot" + (s.inProject ? " in" : ""));
-          dot.title = s.inProject ? "In the project" : "Not in the project";
-          li.querySelector(".folder-date").prepend(dot);
-          if (!s.inProject) li.querySelector(".folder-meta").textContent += " · not in project";
-        } else if (!s.inProject) {
+        if (!s.inProject) {
           const add = el("button", "btn btn-link btn-small folder-add", "Add to project ↑");
           add.addEventListener("click", (e) => { e.stopPropagation(); moveToProject(s.name, true); });
           li.querySelector("div").appendChild(add);
         }
-        // Arrastar para dentro/fora do projeto (solta no cabeçalho do projeto, no botão da barra ou no divisor)
+        // Arrastar para dentro (solta no botão do projeto, na barra) ou para fora (solta no divisor)
         li.draggable = true;
         li.addEventListener("dragstart", (e) => {
           e.dataTransfer.setData("text/plain", s.name); e.dataTransfer.effectAllowed = "move";
@@ -2496,9 +2488,6 @@
     $("settingsLanguages").innerHTML = "";
     $("settingsLanguages").appendChild(segmented(languages.map((l) => [l.id, l.name]), prefs.language, (v) => saveSettings(prefs.theme, v)));
     $("settingsRestart").classList.toggle("hidden", !prefs.restart);
-    // Onde o projeto aparece (teste A/B/C): vale na hora, guardado nesta máquina
-    $("settingsProjectLayout").innerHTML = "";
-    $("settingsProjectLayout").appendChild(segmented(PROJECT_LAYOUTS, projectLayout(), (v) => { setProjectLayout(v, true); renderSettings(); }));
     // Modo debug: vale na hora
     $("settingsDebug").innerHTML = "";
     $("settingsDebug").appendChild(segmented([["off", "Off"], ["on", "On"]], prefs.debug ? "on" : "off", (v) => {
@@ -3369,28 +3358,13 @@
   const projectSel = new Set();  // sessões marcadas na janela Project
   function setProject(p) {
     project = p || { open: false };
-    renderProjectStrip();
+    renderProjectBar();
     renderSessionList();
     if (!$("projectOverlay").classList.contains("hidden")) renderProjectWindow();
   }
   function fmtBytes(b) {
     if (!(b > 0)) return "";
     return b >= 1e9 ? (b / 1e9).toFixed(1) + " GB" : b >= 1e6 ? Math.round(b / 1e6) + " MB" : Math.round(b / 1e3) + " KB";
-  }
-  // ---- Onde o projeto aparece (teste das opções A/B/C; guardado só nesta máquina) ----
-  // (guardado em settings.txt pelo programa: a página não tem armazenamento próprio no WebKit)
-  const PROJECT_LAYOUTS = [["strip", "A · Box"], ["column", "B · Column title"], ["topbar", "C · Top bar"]];
-  let projectLayoutValue = "strip";
-  function projectLayout() { return projectLayoutValue; }
-  function setProjectLayout(v, save) {
-    if (!PROJECT_LAYOUTS.some(([k]) => k === v)) v = "strip";
-    projectLayoutValue = v;
-    renderProjectStrip();
-    renderSessionList();
-    if (save) {
-      if (typeof window.saveProjectLayout !== "function") { toast("This build has no project-layout setting yet. Build the app again.", 8000); return; }
-      Promise.resolve(window.saveProjectLayout(v)).then((r) => { if (!r || !r.ok) toast("Could not save the settings"); });
-    }
   }
   // Menu flutuante (fixo na tela, fecha ao clicar fora ou com Esc). items: {label, onClick, dim, html} ou "-"
   let openMenu = null;
@@ -3426,7 +3400,7 @@
     if (project.open) {
       if (withCurrent) {
         const h = el("div", "project-menu-current");
-        h.innerHTML = '<span class="project-strip-label">Current</span><b></b><small></small>';
+        h.innerHTML = '<span class="project-menu-label" style="padding:0">Current</span><b></b><small></small>';
         h.querySelector("b").textContent = project.name;
         h.querySelector("small").textContent = project.folder;
         items.push({ html: h });
@@ -3485,60 +3459,19 @@
     return [plural(project.sessions || 0, "session", "sessions"), plural(project.photos || 0, "photo", "photos"),
             project.edited ? project.edited + " edited" : "", fmtBytes(project.bytes)].filter(Boolean).join(sep);
   }
-  function renderProjectHead() {
-    const open = !!project.open, layout = projectLayout();
-    const head = $("projectHead");
-    head.classList.toggle("hidden", !(layout === "column" && open));
-    head.classList.toggle("unavailable", open && project.available === false);
-    $("projectHeadBtn").classList.toggle("hidden", !(layout === "column" && !open));
-    if (layout === "column" && open) {
-      $("projectHeadName").textContent = project.name;
-      $("projectHeadName").title = project.folder;
-      $("projectHeadMeta").textContent = project.available === false ? "Folder not reachable (external drive off?)" : projectCounts(" · ");
-    }
-    // O título "Sessions" some quando o projeto é o título (B)
-    document.querySelector(".sessions-head").classList.toggle("hidden", layout === "column" && open);
-  }
   function renderProjectBar() {
-    const open = !!project.open, layout = projectLayout();
+    const open = !!project.open;
     const b = $("projectBarBtn");
-    b.classList.toggle("hidden", layout !== "topbar");
     b.classList.toggle("on", open);
     b.classList.toggle("unavailable", open && project.available === false);
     $("projectBarName").textContent = open ? project.name : "No project";
     $("projectBarMeta").textContent = open ? (project.available === false ? "not reachable" : [project.sessions || 0, project.photos || 0, project.edited ? project.edited + " edited" : ""].filter((x) => x !== "").join(" · ")) : "";
     b.title = open ? project.folder : "Open or create a project (a folder of yours that keeps the sessions)";
-  }
-  $("projectMenuBtn").addEventListener("click", (e) => openProjectMenu(e.currentTarget, "right", false));
-  $("projectHeadBtn").addEventListener("click", (e) => openProjectMenu(e.currentTarget, "right", false));
-  $("projectBarBtn").addEventListener("click", (e) => openProjectMenu(e.currentTarget, "left", true));
-  bindProjectDrop($("projectHead"), true);
-  bindProjectDrop($("projectBarBtn"), true);
-
-  function renderProjectStrip() {
-    renderProjectHead();
-    renderProjectBar();
-    const layout = projectLayout();
-    $("projectStrip").classList.toggle("hidden", layout !== "strip");
-    const open = !!project.open;
-    $("projectStrip").classList.toggle("on", open);
-    $("projectStrip").classList.toggle("unavailable", open && project.available === false);
-    $("projectName").textContent = open ? project.name : "No project";
-    $("projectMeta").textContent = open
-      ? (project.available === false ? "Folder not reachable (external drive off?): " + project.folder : project.folder)
-      : "";
-    $("projectMeta").title = open ? project.folder : "";
-    const tags = $("projectTags"); tags.innerHTML = "";
-    if (open) {
-      [[plural(project.sessions || 0, "session", "sessions"), "dim"], [plural(project.photos || 0, "photo", "photos"), "dim"],
-       project.edited ? [project.edited + " edited", "ok"] : null, project.bytes > 0 ? [fmtBytes(project.bytes), "dim"] : null]
-        .filter(Boolean).forEach(([text, cls]) => { const t = document.createElement("span"); t.className = "project-tag " + cls; t.textContent = text; tags.appendChild(t); });
-    }
-    $("projectNone").classList.toggle("hidden", open);
-    $("projectSome").classList.toggle("hidden", !open);
-    $("projectOpenBtn").textContent = open ? "Switch…" : "Open…";
     renderProjectAction();
   }
+  $("projectBarBtn").addEventListener("click", (e) => openProjectMenu(e.currentTarget, "left", true));
+  bindProjectDrop($("projectBarBtn"), true);
+
   // Botão "Add to project" / "Remove from project" na sessão aberta
   function renderProjectAction() {
     const s = currentSession;
@@ -3599,9 +3532,6 @@
   $("projectPickCancel").addEventListener("click", () => $("projectPickOverlay").classList.add("hidden"));
   $("projectPickBrowse").addEventListener("click", () => { $("projectPickOverlay").classList.add("hidden"); browseProject(); });
   $("projectPickNew").addEventListener("click", () => { $("projectPickOverlay").classList.add("hidden"); newProject(); });
-  $("projectNewBtn").addEventListener("click", newProject);
-  $("projectOpenBtn").addEventListener("click", pickProject);
-  $("projectWindowBtn").addEventListener("click", openProjectWindow);
 
   // ---- Janela Project ----
   function projectSessions() { return sessions.filter((s) => s.inProject); }
@@ -4155,7 +4085,6 @@
     if (info && info.unsavedSessions > 0) offerRecovery(info.unsavedSessions);
     if (info && info.testRestart) { testRestart = true; ui.restartAppBtn.classList.remove("hidden"); }
     upd.info = info || null;
-    if (info && info.projectLayout) setProjectLayout(info.projectLayout, false);
     if (info && info.project) setProject(info.project);
     timingLoad(info && info.timing);
     renderTiming();

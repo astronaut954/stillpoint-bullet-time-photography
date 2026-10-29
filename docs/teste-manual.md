@@ -611,26 +611,36 @@ do plano (abaixo).
 
 Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) e depois com câmeras. Desenho em `docs/project.md`.
 
-- [ ] **Sem Project:** o painel Sessions mostra a faixa "Project · No project" com "New project…" e
-      "Open…"; disparar cria a sessão na pasta de dados, como sempre; nenhuma etiqueta nova.
+- [ ] **Sem Project:** na barra de cima, ao lado do logo, o botão "No project ▾"; o menu traz os
+      recentes (se houver), "Open project…" e "New project…". Disparar cria a sessão na pasta de
+      dados, como sempre; a lista não tem divisor nem etiqueta nova.
 - [ ] **New project…:** escolher (ou criar) uma pasta vazia, ex. `~/Pictures/Stillpoint/Teste`.
-      A faixa passa a mostrar o nome (o da pasta), o caminho e "0 sessions"; aviso "Project: Teste"
-      na Activity. Na pasta: `stillpoint-project.json`, `Originals/`, `Edited/`, `Exports/`.
+      O botão da barra passa a mostrar o nome (o da pasta) e "0 · 0"; aviso "Project: Teste" na
+      Activity. Na pasta: `stillpoint-project.json`, `Originals/`, `Edited/`, `Exports/`. O menu
+      do botão agora tem o projeto atual (nome, caminho, "Project window…", "Open folder"), os
+      recentes, "Switch project…", "New project…" e "Close project".
 - [ ] **Disparar com Project aberto:** a sessão nova vai direto para `Originals/<sessão>/`
-      (com `session.json`: shotAt, timing, plan, cameras) e aparece na lista com "In project"; a
-      faixa conta 1 session. Fechar o app: **não** pergunta por sessão não salva.
-- [ ] **Add / Remove:** com uma sessão da pasta de dados aberta (feita antes do Project, ou depois
-      de "Remove from project"), o botão "Add to project" no cabeçalho da galeria move a pasta para
-      `Originals/` (etiqueta "In project"); "Remove from project" move de volta (volta a contar
-      como não salva). Nada é apagado nos dois sentidos.
-- [ ] **Janela Project (botão "Project…" na faixa):** lista com caixinha, miniatura, rótulo
+      (com `session.json`: shotAt, timing, plan, cameras) e aparece no alto da lista (parte do
+      projeto); o botão da barra conta 1 sessão. Fechar o app: **não** pergunta por sessão não salva.
+- [ ] **Divisor "Not in project":** com projeto aberto, as sessões do projeto ficam em cima; as que
+      estão só no app ficam embaixo do divisor "Not in project · n", cada uma com "Add to project ↑".
+      Sem sessões fora do projeto, o divisor não aparece.
+- [ ] **Arrastar:** arrastar uma sessão de baixo do divisor e soltar no botão do projeto (barra de
+      cima) = Add to project; arrastar uma do projeto e soltar no divisor = Remove from project. O
+      alvo ganha contorno tracejado enquanto a sessão passa por cima.
+- [ ] **Add / Remove (botão):** com uma sessão da pasta de dados aberta, o botão "Add to project"
+      no cabeçalho da galeria (ou o "Add to project ↑" da lista) move a pasta para `Originals/` e a
+      sessão sobe para cima do divisor; "Remove from project" move de volta (volta a contar como
+      não salva). Nada é apagado nos dois sentidos.
+- [ ] **Janela Project ("Project window…" no menu da barra):** lista com caixinha, miniatura, rótulo
       editável (clicar, digitar "Pose 7", Enter → aparece na lista de sessões como "Pose 7 · Oct 22,
       14:30"), data e Timing, nº de fotos, etiqueta "originals" / "Edited n / m"; "Show" abre a
       sessão; "Edited only" marca só as completas; "Remove from project" com confirmação; "Open
       folder" abre a pasta; "Close project" (confirmação) tira as sessões da lista sem apagar.
 - [ ] **Edited/:** copiar à mão 3 fotos de uma sessão de 9 para `Edited/<sessão>/` com o mesmo
-      nome (pode ser o próprio JPG renomeado para .jpg): a etiqueta vira "Edited 3 / 9" (âmbar) na
-      lista e na janela; com as 9, "Edited 9 / 9" (verde) e a faixa conta "1 edited".
+      nome (pode ser o próprio JPG renomeado para .jpg) e voltar ao app (clicar nele): a etiqueta
+      vira "Edited 3 / 9" (âmbar) na lista e na janela, sem reabrir; com as 9, "Edited 9 / 9"
+      (verde) e o botão da barra mostra "1 edited".
 - [ ] **Export… (janela Project):** abre a janela de salvar só com as sessões do Project
       selecionadas; no rodapé, "Use edited photos when available" (ligado); com uma sessão 3/9
       marcada, aviso âmbar "… has only some photos edited"; o botão diz "Export n sessions"; não
@@ -639,35 +649,15 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) e depois com câmeras. Desenho em `do
 - [ ] **Save sessions (botão de cima) com Project aberto:** continua como antes (pergunta a
       pasta); uma sessão do Project selecionada é copiada e **fica**; as da pasta de dados seguem a
       regra antiga (Discard / Keep).
-- [ ] **Switch… / Open…:** lista de recentes (nome + caminho; "not reachable" apagado) e "Choose
-      folder…"; escolher uma pasta sem o json pergunta "Create project here"; "New project…".
-- [ ] **Project em HD desligado:** fechar o app, desconectar (ou renomear a pasta), abrir: faixa
-      âmbar "Folder not reachable", lista só com as sessões da pasta de dados; voltar a pasta e
-      "Open…" → tudo de volta.
+- [ ] **Switch project… / Open project…:** no menu da barra, os recentes (nome; "not reachable"
+      apagado); "Switch/Open project…" abre o seletor de pasta; uma pasta sem o json pergunta
+      "Create project here". O botão "Switch…" da janela Project abre a lista de recentes.
+- [ ] **Project em HD desligado:** fechar o app, desconectar (ou renomear a pasta), abrir: botão da
+      barra âmbar "not reachable", lista só com as sessões da pasta de dados; voltar a pasta e abrir
+      de novo pelo menu → tudo de volta.
 - [ ] **Reordenar fotos / apagar foto** numa sessão do Project: funciona como fora dele (renomeia
       dentro de `Originals/`).
 - [ ] Fechar e abrir o app: o Project continua aberto (`settings.txt`, `project=`).
-
-### 23b. Onde o projeto aparece (teste das opções A / B / C)
-
-Settings → "Project area" (guardado só nesta máquina; vale na hora). Protótipos em
-https://claude.ai/artifact/Wh9kwPwy1Wq4EKWYsgeLeP.
-
-- [ ] **A · Box:** a faixa de hoje acima da lista (sem a legenda); etiqueta "In project" em cada
-      sessão do projeto.
-- [ ] **B · Column title:** com projeto aberto, o título "Sessions" dá lugar a "Project / nome /
-      contagens" com um menu "⋯" (Project window, Open folder, Recent, Switch, New, Close). A
-      lista mostra primeiro as sessões do projeto, depois o divisor "Not in project · n" e as
-      outras, cada uma com "Add to project ↑". Sem projeto: título "Sessions" + botão "Project ▾"
-      (recentes, Open, New).
-- [ ] **C · Top bar:** o projeto é um botão ao lado do logo (nome · sessões · fotos · editadas ▾);
-      o menu traz o projeto atual (nome, caminho, Project window, Open folder), os recentes e
-      Switch / New / Close. A lista fica como sempre, com um ponto verde nas sessões do projeto e
-      "· not in project" nas outras. Sem projeto: botão "No project ▾".
-- [ ] **Arrastar (B e C):** arrastar uma sessão fora do projeto e soltar no cabeçalho do projeto
-      (B) ou no botão da barra (C) = Add to project; em B, arrastar uma do projeto e soltar no
-      divisor "Not in project" = Remove. Enquanto arrasta, o alvo ganha contorno tracejado.
-- [ ] A janela Project, Add/Remove pela galeria e o Export continuam iguais nas três.
 
 ## Resultado
 
