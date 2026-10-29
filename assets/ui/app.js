@@ -2101,7 +2101,7 @@
     },
 
     // Fotos guardadas
-    sessions(e) { if (e.project) setProject(e.project); setSessions(e.sessions); },
+    sessions(e) { setSessions(e.sessions); if (e.project) setProject(e.project); },  // sessões antes: a janela Project desenha a partir delas
     // Som do disparo (botão da barra de cima e das janelas Live): um ajuste só, do app
     soundChanged(e) { sound = { sound: !!e.sound, sounds: !!e.sounds }; renderSoundBtn(); },
     saving() { activity.saving = true; renderActivity(); },
@@ -3408,7 +3408,19 @@
     projectSessions().forEach((s) => projectSel.add(s.name));
     renderProjectWindow();
     $("projectOverlay").classList.remove("hidden");
+    refreshProject();
   }
+  // Relê as sessões e o estado do Project (ex.: fotos que o Lightroom acabou de gravar em
+  // Edited/): ao abrir a janela Project e sempre que o app volta a ser a janela da frente.
+  function refreshProject() {
+    if (!project.open || typeof window.projectInfo !== "function") return;
+    Promise.all([window.listSessions(), window.projectInfo()]).then(([list, r]) => {
+      setSessions(list);
+      if (r && r.project) setProject(r.project);
+    }).catch(() => {});
+  }
+  window.addEventListener("focus", refreshProject);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) refreshProject(); });
   function closeProjectWindow() { $("projectOverlay").classList.add("hidden"); }
   function renderProjectWindow() {
     const list = projectSessions();
