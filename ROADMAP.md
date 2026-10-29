@@ -572,11 +572,35 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    intervalo do Sweep" abaixo) foi mesclado aqui em 2026-10-22 (decisão do dono do projeto):
    vai junto na 2.11.0.** Pendente: Windows (compilar, roteiro 21 e 18; a camada de processos
    do Windows nunca compilou) e o resumo de foto recusada com câmeras de verdade.
-2. **Etapa 17 — modo caixa de disparo.** O app usa a caixa (ESP32 + um canal por câmera, já
-   desenhada em `docs/hardware/caixa-de-disparo.pdf` e `hardware/trigger-box/`) para disparar:
-   o plano do Timing/Sweep vai para a caixa (PLAN/GO), que dispara com precisão de milissegundos;
-   o USB fica só para configurações e fotos. Depende do protótipo de 2 canais testado em hardware.
-3. **Etapa futura (muito depois, só com o projeto maduro) — distribuído por rede.** Vários
+**Fila decidida em 2026-10-28** (regra do dono do projeto: a caixa de disparo fica sempre por
+último; o que entrar de novo vai na frente dela):
+
+2. **Etapa 17 — Project.** Uma pasta escolhida pela pessoa (`Originals/`, `Edited/`,
+   `project.json`) guarda sessões para exportar depois, de novo, com outras configurações.
+   "Add to project" no painel Sessions (a sessão fica no disco como originais, em vez de sair do
+   app ao salvar); janela Project: sessões com estado (originals / n de m edited), seleção,
+   Export Photos/Sequence "edited when available"; faixa de Projeto no painel Sessions; guarda
+   também os XMP que o Lightroom gravar ao lado dos RAW (edição não destrutiva preservada).
+   Protótipo visual de 2026-10-22 (canvas "Stillpoint — Projects & Edit round trip"). Nome
+   decidido: **Project** (não "sessão master"). Primeiro passo: desenho da pasta e do
+   `project.json`, aprovado antes de codar.
+3. **Etapa 18 — Metering mode nas Camera settings** (ver "Futuro"; pequeno).
+4. **Etapa 19 — Exportação para impressão lenticular** (ver "Futuro"; precisa do Project).
+5. **Etapa 20 — Edit in Lightroom Classic / Photoshop.** Ida e volta: o app abre os originais
+   do Project no Lightroom Classic (o dono do projeto usa o Classic); um plugin do Stillpoint
+   (SDK Lua do Classic) agrupa cada sessão como coleção e tem "Export to Stillpoint", que
+   renderiza com o motor da Adobe para `Edited/` com os nomes certos; o app vigia `Edited/` e
+   casa os arquivos com as sessões pelo nome; os XMP ficam no Project. O app **não** aplica as
+   edições do XMP por conta própria (o motor do Camera Raw é fechado; uma prévia "parecida" seria
+   pior que nenhuma). Photoshop / Camera Raw: abre os frames; aviso de que o resultado sai num
+   formato não RAW (TIFF/JPEG) em `Edited/`. Lightroom "normal" (nuvem): sem SDK nem XMP — só o
+   caminho manual (exportar para `Edited/`).
+6. **Etapa 21 — modo caixa de disparo (sempre a última).** O app usa a caixa (ESP32 + um canal
+   por câmera, já desenhada em `docs/hardware/caixa-de-disparo.pdf` e `hardware/trigger-box/`)
+   para disparar: o plano do Timing/Sweep vai para a caixa (PLAN/GO), que dispara com precisão
+   de milissegundos; o USB fica só para configurações e fotos. Depende do protótipo de 2 canais
+   testado em hardware.
+7. **Etapa futura (muito depois, só com o projeto maduro) — distribuído por rede.** Vários
    computadores pequenos, cada um com 3–4 câmeras, ligados por Ethernet a um "chefe" que coordena
    e junta as fotos (modo "trabalhador" e modo "chefe" no Stillpoint). É o desenho dos rigs de
    20–100 câmeras.
@@ -639,13 +663,13 @@ Junto com essas etapas (sem etapa própria):
 
 ## Futuro (não planejado ainda)
 
-- **Metering mode nas Camera settings (pedido em 2026-10-23).** Mostrar e mudar o modo de medição
+- **Metering mode nas Camera settings (pedido em 2026-10-23; etapa 18).** Mostrar e mudar o modo de medição
   de cada câmera (matricial/evaluative, parcial, pontual, ponderada ao centro) na tabela do Camera
   settings e na linha All cameras, como ISO e os outros. No EDSDK é a propriedade MeteringMode
   (leitura e escrita; os valores aceitos vêm de cada câmera, como as demais) — conferir na
   documentação do SDK e na SL3/T7/T5 antes de implementar. Entra no Match automatically? Decisão
   pendente (medição diferente entre câmeras muda o brilho medido em modos automáticos; em M não).
-- **Exportação para impressão lenticular (pedido em 2026-10-23).** Uma sessão de bullet time vira
+- **Exportação para impressão lenticular (pedido em 2026-10-23; etapa 19).** Uma sessão de bullet time vira
   uma imagem entrelaçada para lente lenticular: escolher a lente (LPI) e a impressora (DPI),
   calcular quantos frames cabem por lentícula (DPI ÷ LPI) e avisar quando a sessão tem frames
   demais ou de menos; entrelaçar as fotos em tiras na ordem certa (com inversão opcional e sentido
