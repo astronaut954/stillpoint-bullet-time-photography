@@ -288,7 +288,7 @@
     const wasShown = !ui.toast.classList.contains("hidden");
     ui.toast.classList.add("hidden");
     ui.toast.classList.remove("fading");
-    if (wasShown && typeof log === "function") log("Notice hidden (" + (reason || "other") + ")", "tech");
+    void wasShown; void reason;
   }
   ui.toast.addEventListener("mouseenter", () => { clearTimeout(toast.timer); clearTimeout(toast.fadeTimer); ui.toast.classList.remove("fading"); });
   ui.toast.addEventListener("mouseleave", () => { if (!ui.toast.classList.contains("hidden")) armToast(); });
@@ -307,8 +307,7 @@
     Promise.resolve(a.undo()).then((ok) => {
       if (ok === false) return;
       history.redo.push(a);
-      toast("Undo: " + a.label, TOAST_MS, { kind: "undo" });
-      log("Undo: " + a.label, "ok");
+      toast("Undo: " + a.label, TOAST_MS, { kind: "undo" });  // (a Activity recebe a mesma linha)
     });
   }
   function doRedo() {
@@ -318,7 +317,6 @@
       if (ok === false) return;
       history.undo.push(a);
       toast("Redo: " + a.label, TOAST_MS, { kind: "redo" });
-      log("Redo: " + a.label, "ok");
     });
   }
   document.addEventListener("keydown", (e) => {
@@ -1186,7 +1184,7 @@
     dialog("Delete this session?", "The photos from " + label.date + " will be deleted permanently" +
       (s.inProject ? " (from the project folder too)." : "."), [
       { label: "Cancel" },
-      { label: "Delete", danger: true, onClick: () => { log("Session deleted: " + label.date + (s.inProject ? " (from the project folder)" : ""), "ok"); window.deleteSession(s.name); } },
+      { label: "Delete", danger: true, onClick: () => { toast("Session deleted: " + label.date + (s.inProject ? " (from the project folder)" : "")); window.deleteSession(s.name); } },
     ]);
   }
 
@@ -3579,7 +3577,7 @@
     const before = s.label || "";
     if (before === after) return;
     window.setSessionLabel(s.name, after);
-    log(after ? 'Label "' + after + '" on ' + sessionLabel(s.name).date : "Label removed from " + sessionLabel(s.name).date, "ok");
+    toast(after ? 'Label "' + after + '" on ' + sessionLabel(s.name).date : "Label removed from " + sessionLabel(s.name).date);
     recordAction({ label: after ? 'Label "' + after + '" on ' + sessionLabel(s.name).date : "Remove label from " + sessionLabel(s.name).date,
                    undo: () => window.setSessionLabel(s.name, before), redo: () => window.setSessionLabel(s.name, after) });
   }
@@ -3715,7 +3713,7 @@
       }
       items.push({ label: project.open ? "Switch project…" : "Open project…", onClick: browseProject });
       items.push({ label: "New project…", onClick: newProject });
-      if (project.open) items.push({ label: "Close project", onClick: () => { const name = project.name; Promise.resolve(window.projectClose()).then((r) => { log("Project closed: " + name + " (the sessions stay in its folder)", "ok"); projectResult(r); }); } });
+      if (project.open) items.push({ label: "Close project", onClick: () => { const name = project.name; Promise.resolve(window.projectClose()).then((r) => { toast("Project closed: " + name + " (the sessions stay in its folder)"); projectResult(r); }); } });
       popupMenu(anchor, items, align);
     });
   }
@@ -3844,7 +3842,7 @@
     if (!toProject) notInProjectOpen = true;  // a sessão que saiu fica à vista
     return Promise.resolve(toProject ? window.addToProject(...names) : window.removeFromProject(...names)).then((r) => {
       if (r && r.error) { toast(r.error, 8000); log(r.error, "error"); return false; }
-      log((toProject ? "Added to project: " : "Removed from project: ") + names.map((n) => sessionLabel(n).date).join(", "), "ok");
+      toast((toProject ? "Added to project: " : "Removed from project: ") + names.map((n) => sessionLabel(n).date).join(", "));
       return true;
     });
   }
@@ -4036,7 +4034,7 @@
   $("projectCloseProjectBtn").addEventListener("click", () => {
     dialog("Close the project?", "The project's sessions leave the list (they stay in " + project.folder + "; nothing is deleted). New sessions go back to staying in the app until you save them. You can open the project again any time.", [
       { label: "Cancel" },
-      { label: "Close project", primary: true, onClick: () => { const name = project.name; closeProjectWindow(); Promise.resolve(window.projectClose()).then((r) => { log("Project closed: " + name + " (the sessions stay in its folder)", "ok"); projectResult(r); }); } },
+      { label: "Close project", primary: true, onClick: () => { const name = project.name; closeProjectWindow(); Promise.resolve(window.projectClose()).then((r) => { toast("Project closed: " + name + " (the sessions stay in its folder)"); projectResult(r); }); } },
     ]);
   });
   $("projectRemoveBtn").addEventListener("click", () => {
