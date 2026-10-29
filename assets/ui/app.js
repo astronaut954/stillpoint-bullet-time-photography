@@ -3343,7 +3343,7 @@
     $("projectName").textContent = open ? project.name : "No project";
     $("projectMeta").textContent = open
       ? (project.available === false ? "Folder not reachable (external drive off?): " + project.folder : project.folder)
-      : "New sessions stay in the app until you save them. A project keeps them in a folder of yours.";
+      : "";
     $("projectMeta").title = open ? project.folder : "";
     const tags = $("projectTags"); tags.innerHTML = "";
     if (open) {

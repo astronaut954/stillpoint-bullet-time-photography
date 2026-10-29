@@ -956,7 +956,7 @@ body.timing-open .app { --controls-h: clamp(320px, 64vh, 720px); }
 .project-name { font: 700 17px/1.1 var(--noct-font-sans); color: var(--noct-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .project-strip:not(.on) .project-name { color: var(--noct-text-muted); }
 .project-meta { font: 11px var(--noct-font-mono); color: var(--noct-text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.project-strip:not(.on) .project-meta { white-space: normal; font-family: var(--noct-font-sans); font-size: 13px; color: var(--noct-text-muted); }
+.project-strip:not(.on) .project-meta:empty { display: none; }
 .project-strip.unavailable .project-meta { color: var(--noct-pending); white-space: normal; }
 .project-tags { display: flex; gap: 6px; flex-wrap: wrap; }
 .project-tags:empty { display: none; }
