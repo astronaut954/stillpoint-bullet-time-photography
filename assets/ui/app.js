@@ -255,9 +255,13 @@
   const TOAST_MS = 2500;
   function toast(text, ms, opts) {
     const t = ui.toast, o = opts || {};
-    t.innerHTML = '<span class="toast-arrow" aria-hidden="true"></span><span class="toast-text"></span><button class="toast-close" type="button" aria-label="Close">' + icon("close", 12) + '</button>';
-    t.querySelector(".toast-text").textContent = text;
+    // Etiqueta mono (como as tags da lista): chip sólido "↶ UNDO" / "↷ REDO" + a mensagem contornada
+    t.innerHTML = '<span class="toast-kind"><span class="toast-arrow" aria-hidden="true"></span><span class="toast-kind-text"></span></span>'
+      + '<span class="toast-body"><span class="toast-text"></span><button class="toast-close" type="button" aria-label="Close">' + icon("close", 11) + '</button></span>';
+    const body = o.kind ? text.replace(/^(Undo|Redo):\s*/, "") : text;
+    t.querySelector(".toast-text").textContent = body;
     t.querySelector(".toast-arrow").textContent = o.kind === "undo" ? "↶" : o.kind === "redo" ? "↷" : "";
+    t.querySelector(".toast-kind-text").textContent = o.kind === "undo" ? "Undo" : o.kind === "redo" ? "Redo" : "";
     t.classList.toggle("with-arrow", !!o.kind);
     t.classList.toggle("kind-undo", o.kind === "undo");
     t.classList.toggle("kind-redo", o.kind === "redo");
