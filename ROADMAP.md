@@ -612,7 +612,7 @@ Junto com essas etapas (sem etapa própria):
   0,9 s depois da anterior e aceita a 1,8 s. Entre câmeras diferentes, 0,3 s funcionou; 0,1 e
   0,15 s ainda não foram testados com 9 câmeras. **Decisão pendente (dono do projeto):** o que
   fazer com esse limite — avisar na Timeline, insistir no "busy", fundir Sweep com One after
-  another, ou nada por enquanto. Nada foi mudado no Sweep. Com a caixa de disparo (etapa 17) o
+  another, ou nada por enquanto. Nada foi mudado no Sweep. Com a caixa de disparo (hoje etapa 21) o
   limite entre câmeras deixa de existir; o da mesma câmera, não.
   **Decisões de 2026-10-21 (noite), branch `sweep-limite`:** (C) "One after another" e "Sweep"
   viraram um modo só, **Sweep** — intervalo livre a partir de 0,05 s, atalhos 0,1 / 0,2 / 0,3 /
