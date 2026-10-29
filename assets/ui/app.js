@@ -267,22 +267,25 @@
     t.classList.toggle("kind-event", !o.kind);
     t.classList.toggle("kind-undo", o.kind === "undo");
     t.classList.toggle("kind-redo", o.kind === "redo");
-    t.querySelector(".toast-close").addEventListener("click", hideToast);
+    t.querySelector(".toast-close").addEventListener("click", () => hideToast("close button"));
     t.classList.remove("hidden", "fading");
     toast.dwell = ms || TOAST_MS;
     armToast();
+    if (typeof log === "function") log("Notice shown: " + text, "tech");  // diagnóstico: por que um aviso não apareceu
   }
   function armToast() {
     clearTimeout(toast.timer); clearTimeout(toast.fadeTimer);
     toast.timer = setTimeout(() => {
       ui.toast.classList.add("fading");
-      toast.fadeTimer = setTimeout(hideToast, 1500);
+      toast.fadeTimer = setTimeout(() => hideToast("timer"), 1500);
     }, toast.dwell || TOAST_MS);
   }
-  function hideToast() {
+  function hideToast(reason) {
     clearTimeout(toast.timer); clearTimeout(toast.fadeTimer);
+    const wasShown = !ui.toast.classList.contains("hidden");
     ui.toast.classList.add("hidden");
     ui.toast.classList.remove("fading");
+    if (wasShown && typeof log === "function") log("Notice hidden (" + (reason || "other") + ")", "tech");
   }
   ui.toast.addEventListener("mouseenter", () => { clearTimeout(toast.timer); clearTimeout(toast.fadeTimer); ui.toast.classList.remove("fading"); });
   ui.toast.addEventListener("mouseleave", () => { if (!ui.toast.classList.contains("hidden")) armToast(); });
@@ -2494,7 +2497,7 @@
     if (manual) toast("Checking for updates…");
     const answer = (title, text) => {
       if (!manual) return;
-      hideToast();
+      hideToast("update check");
       dialog(title, text, [{ label: "OK", primary: true }]);
     };
     const failed = () => answer("Could not check for updates", "Stillpoint could not reach GitHub. Check the internet connection and try again.");
@@ -2518,7 +2521,7 @@
       updEl.chipText.textContent = "Update " + version;
       updEl.chip.classList.remove("hidden");
       log("Stillpoint " + version + " is available", "ok");
-      if (manual) { hideToast(); openUpdate(); }
+      if (manual) { hideToast("update window"); openUpdate(); }
     });
   }
   updEl.chip.addEventListener("click", openUpdate);
