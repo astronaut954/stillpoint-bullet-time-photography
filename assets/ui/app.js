@@ -272,8 +272,9 @@
     t.classList.remove("hidden", "fading");
     toast.dwell = ms || TOAST_MS;
     armToast();
-    // Tudo que o app avisa fica também na Activity (sem repetir quando quem chamou já registrou)
-    if (!(log.lastText === text && Date.now() - (log.lastAt || 0) < 1500))
+    // Tudo que o app avisa fica também na Activity (sem repetir quando quem chamou já registrou);
+    // opts.silent: só o aviso (ex.: "Nothing to undo" não é um acontecimento)
+    if (!o.silent && !(log.lastText === text && Date.now() - (log.lastAt || 0) < 1500))
       log(text, o.kind ? "ok" : (ms && ms >= 8000 ? "error" : ""));
   }
   function armToast() {
@@ -301,9 +302,18 @@
     if (history.undo.length > 50) history.undo.shift();
     history.redo.length = 0;
   }
+  // Mudanças de câmera são enfileiradas e aplicadas uma a uma; desfazer/refazer em cima de uma
+  // mudança ainda em curso espera ela terminar (senão a câmera recebe ordens cruzadas)
+  function camerasBusyFor(a) {
+    if (!a || !a.camera || typeof csPending === "undefined" || !csPending.size) return false;
+    toast("The cameras are still applying the previous change. Try again in a moment.", TOAST_MS, { silent: true });
+    return true;
+  }
   function doUndo() {
-    const a = history.undo.pop();
-    if (!a) { toast("Nothing to undo"); return; }
+    const a = history.undo[history.undo.length - 1];
+    if (camerasBusyFor(a)) return;
+    history.undo.pop();
+    if (!a) { toast("Nothing to undo", TOAST_MS, { silent: true }); return; }
     Promise.resolve(a.undo()).then((ok) => {
       if (ok === false) return;
       history.redo.push(a);
@@ -311,8 +321,10 @@
     });
   }
   function doRedo() {
-    const a = history.redo.pop();
-    if (!a) { toast("Nothing to redo"); return; }
+    const a = history.redo[history.redo.length - 1];
+    if (camerasBusyFor(a)) return;
+    history.redo.pop();
+    if (!a) { toast("Nothing to redo", TOAST_MS, { silent: true }); return; }
     Promise.resolve(a.redo()).then((ok) => {
       if (ok === false) return;
       history.undo.push(a);
@@ -1529,6 +1541,7 @@
     $("exportModeSequence").classList.toggle("on", seq);
     renderExportList();
     renderExportSettings();
+    if (renderExportSettings.restoreScroll) renderExportSettings.restoreScroll();  // já com o conteúdo montado
     updateExportCount();
     // WebKit (Mac) às vezes desenha a fileira de miniaturas com o tamanho errado até a janela
     // mudar de tamanho: um "esconde e mostra" no quadro seguinte obriga a medir de novo
@@ -1665,13 +1678,13 @@
     outer.innerHTML = "";
     const box = el("div", "export-rows");
     outer.appendChild(box);
-    if (keepScroll) requestAnimationFrame(() => { box.scrollTop = keepScroll; });
+    renderExportSettings.restoreScroll = () => { if (keepScroll) box.scrollTop = keepScroll; };
     const session = sessions.find((s) => s.name === exp.active);
     if (!session) return;
     const items = sessionItems(session).filter((i) => i.previewable);
     const st = settingsFor(session.name);
     const label = sessionLabel(session.name).date;
-    const rerender = () => { syncAll(); renderExportSettings(); refreshSummaries(); rememberExportPrefs(); };
+    const rerender = () => { syncAll(); renderExportSettings(); if (renderExportSettings.restoreScroll) renderExportSettings.restoreScroll(); refreshSummaries(); rememberExportPrefs(); };
 
     // Mesma configuração para todas (padrão) ou uma por sessão
     if (sessions.length > 1) {
@@ -2685,6 +2698,7 @@
     if (theme === prefs.theme && language === prefs.language) return;
     Promise.resolve(window.saveSettings(theme, language)).then((r) => {
       if (!r || !r.ok) { toast("Could not save the settings"); return; }
+      log("Settings: theme " + theme + ", language " + language + (r.restart ? " (applies after restart)" : ""), "ok");
       prefs.theme = theme;
       prefs.language = language;
       prefs.restart = !!r.restart;
@@ -2808,9 +2822,13 @@
       // Desfazer: o retrato de antes (só o que mudou volta)
       const before = csSnapshot();
       const target = camera === "*" ? "all cameras" : camera;
-      recordAction({ label: "Camera setting " + key + " → " + value + " (" + target + ")",
+      recordAction({ label: "Camera setting " + key + " → " + value + " (" + target + ")", camera: true,
         undo: () => { csRecord = false; try { csRestore(before); } finally { csRecord = true; } },
         redo: () => { csRecord = false; try { csSet(camera, key, value); } finally { csRecord = true; } } });
+      // Activity: o resumo sempre; o detalhe (qual ajuste, que valor) só em Show technical details
+      if (!(log.lastText === "Camera settings changed (" + target + ")" && Date.now() - (log.lastAt || 0) < 2000))
+        log("Camera settings changed (" + target + ")", "ok");
+      log("Camera setting " + key + " = " + value + " on " + target, "tech");
     }
     csPending.add(camera + "|" + key);
     renderCamSettings();
@@ -3132,7 +3150,7 @@
     csRecord = false;
     try { copyFromCameraNow(name); } finally { csRecord = true; }
     if (silent) return true;
-    recordAction({ label: "Copy settings from " + name, undo: () => csRestore(before), redo: () => copyFromCamera(name, true) });  // redo roda com csRecord desligado dentro de copyFromCamera
+    recordAction({ label: "Copy settings from " + name, camera: true, undo: () => csRestore(before), redo: () => copyFromCamera(name, true) });  // redo roda com csRecord desligado dentro de copyFromCamera
     return true;
   }
   function copyFromCameraNow(name) {
@@ -3634,7 +3652,7 @@
       if (typeof window.openSessionFolder !== "function") { toast("This build cannot open session folders yet. Build the app again.", 8000); return; }
       window.openSessionFolder(s.name);
     } });
-    if (s.inProject) items.push({ label: "Open edited folder", sub: s.edited > 0 ? s.edited + " edited" : "none yet", disabled: !(s.edited > 0), dim: !(s.edited > 0), onClick: () => {
+    if (s.inProject) items.push({ label: "Open edited folder", sub: s.edited > 0 ? s.edited + " edited" : "", disabled: !(s.edited > 0), dim: !(s.edited > 0), onClick: () => {
       if (typeof window.openEditedFolder !== "function") { toast("This build cannot open the Edited folder yet. Build the app again.", 8000); return; }
       window.openEditedFolder(s.name);
     } });
@@ -4201,7 +4219,7 @@
   // =================== Live view (janela separada: assets/ui/live.html) ===================
   // O botão abre (ou traz de volta) a janela Live 1; dentro dela dá para abrir a 2ª.
   // As janelas Live pedem o disparo e o cancelamento por aqui (o plano do Timing é desta página).
-  $("liveBtn").addEventListener("click", () => window.openLive("1"));
+  $("liveBtn").addEventListener("click", () => { log("Live view opened", "tech"); window.openLive("1"); });
   window.liveShootRequest = () => { if (!ui.shootBtn.disabled && !(busy && busyAction === "shoot")) ui.shootBtn.click(); };
   window.liveCancelRequest = () => cancelShoot();
   // Som do disparo (contagem, "it's bullet time", bip dos grupos): ajuste do app, guardado em
@@ -4252,7 +4270,10 @@
   }
   function timingSave() {
     clearTimeout(timingSaveTimer);
-    timingSaveTimer = setTimeout(() => { if (typeof window.saveTiming === "function") window.saveTiming(JSON.stringify(timing)); }, 300);
+    timingSaveTimer = setTimeout(() => {
+      if (typeof window.saveTiming === "function") window.saveTiming(JSON.stringify(timing));
+      const t = $("timingText"); if (t && t.textContent) log("Timing: " + t.textContent, "tech");
+    }, 300);
   }
   const num = (v, min, max, fallback) => { const n = parseFloat(v); return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback; };
   const fmtS = (ms) => (Math.round(ms / 100) / 10) + " s";
