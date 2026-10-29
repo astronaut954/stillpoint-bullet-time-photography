@@ -302,6 +302,7 @@
       if (ok === false) return;
       history.redo.push(a);
       toast("Undo: " + a.label, TOAST_MS, { kind: "undo" });
+      log("Undo: " + a.label, "ok");
     });
   }
   function doRedo() {
@@ -311,6 +312,7 @@
       if (ok === false) return;
       history.undo.push(a);
       toast("Redo: " + a.label, TOAST_MS, { kind: "redo" });
+      log("Redo: " + a.label, "ok");
     });
   }
   document.addEventListener("keydown", (e) => {
@@ -1002,6 +1004,12 @@
       d.addEventListener("click", () => { if (n) { notInProjectOpen = !notInProjectOpen; renderSessionList(); } });
       ui.sessionList.appendChild(d);
     };
+    if (projectOpen && !sessions.some((x) => x.inProject)) {
+      // Projeto sem sessões: um espaço de verdade para soltar (senão a área do projeto some)
+      const ph = el("li", "folder-placeholder");
+      ph.innerHTML = '<span>' + icon("folder", 16) + '</span><span>No sessions in the project yet.<br>Drag one here or shoot.</span>';
+      ui.sessionList.appendChild(ph);
+    }
     ordered.forEach((s) => {
       if (projectOpen && !s.inProject) addDivider();
       const label = sessionLabel(s.name);
