@@ -929,17 +929,19 @@
     const ordered = projectOpen ? sessions.filter((s) => s.inProject).concat(sessions.filter((s) => !s.inProject)) : sessions;
     if (projectOpen && currentSession && sessions.some((x) => x.name === currentSession.name && !x.inProject)) notInProjectOpen = true;
     let dividerDone = false;
+    const addDivider = () => {
+      if (dividerDone) return;
+      dividerDone = true;
+      const n = sessions.filter((x) => !x.inProject).length;
+      const d = el("li", "folder-divider" + (notInProjectOpen && n ? " open" : "") + (n ? "" : " empty"));
+      d.innerHTML = '<span class="chev">' + icon("right", 10) + '</span><span>Not in project</span><span class="line"></span><span class="n"></span>';
+      d.querySelector(".n").textContent = n;
+      d.title = (n ? (notInProjectOpen ? "Hide" : "Show") + " the sessions still only in the app. " : "No session outside the project. ") + "Drop a session here to take it out of the project.";
+      d.addEventListener("click", () => { if (n) { notInProjectOpen = !notInProjectOpen; renderSessionList(); } });
+      ui.sessionList.appendChild(d);
+    };
     ordered.forEach((s) => {
-      if (projectOpen && !s.inProject && !dividerDone) {
-        dividerDone = true;
-        const n = sessions.filter((x) => !x.inProject).length;
-        const d = el("li", "folder-divider" + (notInProjectOpen ? " open" : ""));
-        d.innerHTML = '<span class="chev">' + icon("right", 10) + '</span><span>Not in project</span><span class="line"></span><span class="n"></span>';
-        d.querySelector(".n").textContent = n;
-        d.title = (notInProjectOpen ? "Hide" : "Show") + " the sessions still only in the app. Drop a session here to take it out of the project.";
-        d.addEventListener("click", () => { notInProjectOpen = !notInProjectOpen; renderSessionList(); });
-        ui.sessionList.appendChild(d);
-      }
+      if (projectOpen && !s.inProject) addDivider();
       const label = sessionLabel(s.name);
       const count = sessionItems(s).length;
       const li = document.createElement("li");
@@ -967,6 +969,7 @@
       li.addEventListener("click", () => showSession(s));
       ui.sessionList.appendChild(li);
     });
+    if (projectOpen) addDivider();  // também sem sessões fora: é o alvo para tirar do projeto arrastando
   }
 
   // Uma foto por câmera: o RAW e o JPEG da mesma câmera ficam juntos (a prévia
@@ -3377,6 +3380,12 @@
 
   // ---- Clicar fora de uma janela flutuante = Cancel (ou fechar) ----
   // Só quando o clique começa e termina no fundo escuro (arrastar para fora não fecha).
+  // Confirmação (dialog): o botão "de sair" é o "Cancel"; sem ele, o primeiro que não é o
+  // principal (ex.: "Fix timing" ao lado de "Shoot anyway"); com um botão só, ele mesmo.
+  function dialogCancelButton() {
+    const buttons = [...ui.dialogActions.children];
+    return buttons.find((x) => x.textContent === "Cancel") || buttons.find((x) => !x.classList.contains("btn-primary") && !x.classList.contains("btn-danger")) || (buttons.length === 1 ? buttons[0] : null);
+  }
   const OVERLAY_CANCEL = {
     promptOverlay: () => $("promptCancel").click(),
     projectOverlay: () => closeProjectWindow(),
@@ -3384,8 +3393,10 @@
     modeOverlay: () => $("modeOverlay").classList.add("hidden"),
     exportOverlay: () => { if (!exp.waiting) closeExport(); },
     settingsOverlay: () => $("settingsOverlay").classList.add("hidden"),
-    // Confirmações: só as que têm um botão "Cancel" (as outras exigem uma escolha)
-    dialogOverlay: () => { const b = [...ui.dialogActions.children].find((x) => x.textContent === "Cancel"); if (b) b.click(); },
+    aboutOverlay: () => $("aboutOverlay").classList.add("hidden"),
+    orderOverlay: () => ui.orderCancel.click(),
+    camSettingsOverlay: () => closeCamSettings(),
+    dialogOverlay: () => { const b = dialogCancelButton(); if (b) b.click(); },
   };
   Object.keys(OVERLAY_CANCEL).forEach((id) => {
     const overlay = $(id);
@@ -3394,6 +3405,24 @@
     overlay.addEventListener("mousedown", (e) => { downOutside = e.target === overlay && e.button === 0; });
     overlay.addEventListener("mouseup", (e) => { if (downOutside && e.target === overlay) OVERLAY_CANCEL[id](); downOutside = false; });
   });
+  // Teclado nas confirmações: Enter = o botão principal (verde), Esc = sair (como clicar fora).
+  // Esc também fecha as outras janelas flutuantes; Enter só vale nas confirmações (dialog).
+  document.addEventListener("keydown", (e) => {
+    if (openMenu) return;  // o menu trata o Esc
+    const open = ["promptOverlay", "dialogOverlay", "modeOverlay", "projectPickOverlay", "projectOverlay", "exportOverlay", "orderOverlay"]
+      .find((id) => !$(id).classList.contains("hidden"));
+    if (!open) return;
+    if (e.key === "Escape") {
+      if (open === "promptOverlay") return;  // o campo já trata Enter/Esc
+      e.preventDefault(); e.stopImmediatePropagation();
+      OVERLAY_CANCEL[open]();
+    } else if (e.key === "Enter" && open === "dialogOverlay" && e.target.tagName !== "INPUT" && e.target.tagName !== "TEXTAREA") {
+      const primary = [...ui.dialogActions.children].filter((x) => x.classList.contains("btn-primary"));
+      if (primary.length !== 1) return;
+      e.preventDefault(); e.stopImmediatePropagation();
+      primary[0].click();
+    }
+  }, true);
 
   // =================== Project (etapa 17) ===================
   // A pasta escolhida pela pessoa onde as sessões ficam guardadas (docs/project.md). O app
@@ -3481,11 +3510,23 @@
   let notInProjectOpen = false;  // grupo "Not in project" aberto?
   let pendingProjectFocus = false;  // projeto recém-aberto: selecionar a primeira sessão dele quando a lista chegar
   let sessDrag = null;
+  // Retângulo do grupo do projeto na lista (do alto da lista até o divisor "Not in project")
+  function projectGroupRect() {
+    const list = ui.sessionList.getBoundingClientRect();
+    const divider = ui.sessionList.querySelector(".folder-divider");
+    const aside = ui.sessionList.parentElement.getBoundingClientRect();
+    const top = Math.max(list.top, aside.top), bottom = divider ? divider.getBoundingClientRect().top - 6 : Math.min(list.bottom, aside.bottom);
+    return { left: aside.left + 6, top: top - 4, width: aside.width - 12, height: Math.max(40, bottom - top + 4) };
+  }
   function sessDropTarget(x, y) {
     const d = sessDrag;
     const under = document.elementFromPoint(x, y);
     if (!under) return null;
-    if (!d.s.inProject && under.closest("#projectBarBtn")) return { el: $("projectBarBtn"), toProject: true };
+    if (!d.s.inProject) {
+      if (under.closest("#projectBarBtn")) return { el: $("projectBarBtn"), toProject: true };
+      const r = projectGroupRect();
+      if (d.zone && x >= r.left && x <= r.left + r.width && y >= r.top && y <= r.top + r.height) return { el: d.zone, toProject: true };
+    }
     const div = under.closest(".folder-divider");
     if (d.s.inProject && div) return { el: div, toProject: false };
     return null;
@@ -3518,6 +3559,16 @@
       d.ghost.style.width = r.width + "px";
       d.ghost.style.left = r.left + "px"; d.ghost.style.top = r.top + "px";
       document.body.appendChild(d.ghost);
+      // Sessão de fora: a área do projeto na lista também recebe (contorno tracejado)
+      if (!d.s.inProject) {
+        d.zone = el("div", "session-drop-zone");
+        d.zone.innerHTML = '<span>Drop to add to project</span>';
+        document.body.appendChild(d.zone);
+      }
+    }
+    if (d.zone) {
+      const z = projectGroupRect();
+      d.zone.style.left = z.left + "px"; d.zone.style.top = z.top + "px"; d.zone.style.width = z.width + "px"; d.zone.style.height = z.height + "px";
     }
     d.ghost.style.transform = "translate(" + dx + "px," + dy + "px)";
     const t = sessDropTarget(e.clientX, e.clientY);
@@ -3536,6 +3587,7 @@
     d.li.onpointermove = d.li.onpointerup = d.li.onpointercancel = d.li.onlostpointercapture = null;
     d.li.classList.remove("dragging");
     if (d.ghost) d.ghost.remove();
+    if (d.zone) d.zone.remove();
     if (d.over) d.over.classList.remove("drop-ok");
     document.body.classList.remove("session-drag", "from-project", "from-app");
     if (!target || busy) return;

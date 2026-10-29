@@ -627,9 +627,15 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) e depois com câmeras. Desenho em `do
       e fecha; cada sessão tem "Add to project ↑". Abre sozinho quando uma sessão sai do projeto e
       quando a sessão aberta está nele. Sem sessões fora do projeto, o grupo não aparece.
 - [ ] **Segurar e arrastar:** segurar uma sessão (fora dos botões) e arrastar: uma cópia segue o
-      ponteiro; soltar sobre o botão do projeto (barra de cima) = Add to project; uma sessão do
-      projeto solta sobre "Not in project" (mesmo recolhido) = Remove from project. Os alvos
-      possíveis ganham contorno tracejado durante o arrasto; o alvo sob o ponteiro acende.
+      ponteiro; soltar sobre a área do projeto na lista (contorno tracejado "Drop to add to
+      project") ou sobre o botão do projeto (barra de cima) = Add to project; uma sessão do projeto
+      solta sobre "Not in project" (mesmo recolhido, e mesmo com 0 sessões fora — a linha fica
+      sempre visível com projeto aberto) = Remove from project. O alvo sob o ponteiro acende; nada
+      de texto fica selecionado pelo caminho.
+- [ ] **Teclado nas confirmações:** Enter = botão verde (ex.: "Shoot anyway"), Esc = sair ("Cancel"
+      ou, sem ele, o outro botão, ex. "Fix timing"); Esc também fecha Save, Project, recentes,
+      Reorder by photo (como Cancel) e Camera settings. Clicar fora fecha também Reorder by photo,
+      Camera settings e About.
 - [ ] **Botão da janela Project** (ícone com moldura à direita de "Sessions", só com projeto
       aberto) abre a janela Project. "Delete session" na galeria virou o ícone de lixeira com moldura.
 - [ ] **Rename project…** (menu da barra): pergunta o nome, valida (sem / \ : * ? " < > |, não
