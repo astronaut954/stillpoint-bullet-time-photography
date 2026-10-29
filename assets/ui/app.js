@@ -3711,7 +3711,7 @@
         }));
         items.push("-");
       }
-      items.push({ label: project.open ? "Switch project…" : "Open project…", onClick: browseProject });
+      items.push({ label: project.open ? "Switch project…" : "Open project…", onClick: pickProject });  // a mesma janela de recentes do "Switch…"
       items.push({ label: "New project…", onClick: newProject });
       if (project.open) items.push({ label: "Close project", onClick: () => { const name = project.name; Promise.resolve(window.projectClose()).then((r) => { toast("Project closed: " + name + " (the sessions stay in its folder)"); projectResult(r); }); } });
       popupMenu(anchor, items, align);
@@ -3986,8 +3986,8 @@
     renderProjectWindow();
     $("projectOverlay").classList.remove("hidden");
     refreshProject();
-    // O campo do nome já vem com o foco e o texto selecionado
-    setTimeout(() => { const i = $("projectNameInput"); i.focus(); i.select(); }, 0);
+    // O campo do nome já vem com o foco (cursor no fim, como se tivesse clicado nele)
+    setTimeout(() => { const i = $("projectNameInput"); i.focus(); const n = i.value.length; i.setSelectionRange(n, n); }, 0);
   }
   // Relê as sessões e o estado do Project (ex.: fotos que o Lightroom acabou de gravar em
   // Edited/): ao abrir a janela Project e sempre que o app volta a ser a janela da frente.
@@ -4057,7 +4057,7 @@
   $("projectSelectEdited").addEventListener("click", () => { projectSelTouched = true; projectSel.clear(); projectSessions().filter((s) => s.edited > 0 && s.edited >= s.photos.length).forEach((s) => projectSel.add(s.name)); renderProjectWindow(); });
   $("projectCloseBtn").addEventListener("click", closeProjectWindow);
   $("projectFolderBtn").addEventListener("click", () => window.projectOpenFolder());
-  $("projectSwitchBtn").addEventListener("click", () => { closeProjectWindow(); pickProject(); });
+  $("projectSwitchBtn").addEventListener("click", () => pickProject());  // a janela Project fica aberta por baixo
   $("projectCloseProjectBtn").addEventListener("click", () => {
     dialog("Close the project?", "The project's sessions leave the list (they stay in " + project.folder + "; nothing is deleted). New sessions go back to staying in the app until you save them. You can open the project again any time.", [
       { label: "Cancel" },
