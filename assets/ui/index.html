@@ -25,6 +25,12 @@
       <span class="brand-name">Stillpoint</span>
       <span id="brandVersion" class="brand-version"></span>
     </div>
+    <!-- Project na barra (opção C em teste): nome do projeto como título de documento -->
+    <button id="projectBarBtn" class="project-bar hidden" aria-haspopup="menu" aria-expanded="false">
+      <svg width="13" height="12" viewBox="0 0 16 14" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M1.5 4.5v7h13v-8.5h-6.5l-1.5-1.5h-5v3z"/></svg>
+      <b id="projectBarName">No project</b><span id="projectBarMeta"></span>
+      <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M2 3.5l3 3 3-3"/></svg>
+    </button>
     <div class="topbar-right">
       <div id="status" class="status">Starting</div>
       <button id="updateChip" class="update-chip hidden" title="A new version of Stillpoint is available"><span class="pulse" aria-hidden="true"></span><span id="updateChipText">Update</span></button>
@@ -54,8 +60,21 @@
     <!-- ====================== SESSÕES ====================== -->
     <section class="panel sessions-panel">
       <aside class="session-folders">
-        <h2>Sessions <span id="sessionCount" class="count hidden">0</span></h2>
-        <!-- Project (etapa 17): a pasta onde as sessões ficam guardadas -->
+        <div class="sessions-head">
+          <h2>Sessions <span id="sessionCount" class="count hidden">0</span></h2>
+          <!-- Opção B sem projeto: menu de abrir/criar no lugar do título -->
+          <button id="projectHeadBtn" class="btn btn-link btn-small hidden" aria-haspopup="menu">Project ▾</button>
+        </div>
+        <!-- Project (etapa 17), opção B em teste: o projeto é o título da coluna -->
+        <div id="projectHead" class="project-head hidden">
+          <div class="project-head-top">
+            <span class="project-strip-label"><svg width="11" height="10" viewBox="0 0 16 14" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M1.5 4.5v7h13v-8.5h-6.5l-1.5-1.5h-5v3z"/></svg>Project</span>
+            <button id="projectMenuBtn" class="btn btn-link btn-small project-dots" aria-label="Project menu" aria-haspopup="menu">⋯</button>
+          </div>
+          <div id="projectHeadName" class="project-name"></div>
+          <div id="projectHeadMeta" class="project-head-meta"></div>
+        </div>
+        <!-- Project (etapa 17), opção A: faixa acima da lista -->
         <div id="projectStrip" class="project-strip">
           <div class="project-strip-head"><span class="project-strip-label">Project</span><button id="projectOpenBtn" class="btn btn-link btn-small">Open…</button></div>
           <div id="projectName" class="project-name">No project</div>
@@ -275,6 +294,10 @@
         <div class="settings-row">
           <span class="export-label">Language</span>
           <div><div id="settingsLanguages"></div><div class="export-note">More languages will appear here.</div></div>
+        </div>
+        <div class="settings-row">
+          <span class="export-label">Project area</span>
+          <div><div id="settingsProjectLayout"></div><div class="export-note">Where the open project shows: a box above the sessions (A), as the title of the sessions column (B) or in the top bar (C). Test setting.</div></div>
         </div>
         <div class="settings-row">
           <span class="export-label">Debug</span>

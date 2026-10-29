@@ -648,6 +648,27 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) e depois com câmeras. Desenho em `do
       dentro de `Originals/`).
 - [ ] Fechar e abrir o app: o Project continua aberto (`settings.txt`, `project=`).
 
+### 23b. Onde o projeto aparece (teste das opções A / B / C)
+
+Settings → "Project area" (guardado só nesta máquina; vale na hora). Protótipos em
+https://claude.ai/artifact/Wh9kwPwy1Wq4EKWYsgeLeP.
+
+- [ ] **A · Box:** a faixa de hoje acima da lista (sem a legenda); etiqueta "In project" em cada
+      sessão do projeto.
+- [ ] **B · Column title:** com projeto aberto, o título "Sessions" dá lugar a "Project / nome /
+      contagens" com um menu "⋯" (Project window, Open folder, Recent, Switch, New, Close). A
+      lista mostra primeiro as sessões do projeto, depois o divisor "Not in project · n" e as
+      outras, cada uma com "Add to project ↑". Sem projeto: título "Sessions" + botão "Project ▾"
+      (recentes, Open, New).
+- [ ] **C · Top bar:** o projeto é um botão ao lado do logo (nome · sessões · fotos · editadas ▾);
+      o menu traz o projeto atual (nome, caminho, Project window, Open folder), os recentes e
+      Switch / New / Close. A lista fica como sempre, com um ponto verde nas sessões do projeto e
+      "· not in project" nas outras. Sem projeto: botão "No project ▾".
+- [ ] **Arrastar (B e C):** arrastar uma sessão fora do projeto e soltar no cabeçalho do projeto
+      (B) ou no botão da barra (C) = Add to project; em B, arrastar uma do projeto e soltar no
+      divisor "Not in project" = Remove. Enquanto arrasta, o alvo ganha contorno tracejado.
+- [ ] A janela Project, Add/Remove pela galeria e o Export continuam iguais nas três.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |

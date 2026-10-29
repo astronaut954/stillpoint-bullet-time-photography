@@ -1005,3 +1005,56 @@ body.timing-open .app { --controls-h: clamp(320px, 64vh, 720px); }
 .project-recent-item b { font: 700 14px var(--noct-font-sans); }
 .project-recent-item small { font: 11px var(--noct-font-mono); color: var(--noct-text-muted); }
 .project-recent-item.current { border-color: var(--noct-primary); }
+
+/* ---- Project: opções B (título da coluna) e C (barra superior), em teste ---- */
+.sessions-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 12px; }
+.sessions-head h2 { margin: 0; }
+.sessions-head .btn-link.btn-small { height: 22px; padding: 0 6px; font-size: 10px; color: var(--noct-primary); }
+.project-head { display: flex; flex-direction: column; gap: 3px; padding: 0 0 10px; margin: 0 0 8px; border-bottom: 1px solid var(--noct-border); }
+.project-head.unavailable { border-bottom-color: var(--noct-pending); }
+.project-head-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.project-head-top .project-strip-label { display: inline-flex; align-items: center; gap: 6px; }
+.project-dots { height: 22px; padding: 0 6px; font-size: 15px; letter-spacing: 0; line-height: 1; }
+.project-head .project-name { font-size: 19px; line-height: 1.05; }
+.project-head-meta { font: 10px/1.5 var(--noct-font-mono); color: var(--noct-text-dim); text-transform: uppercase; letter-spacing: .06em; }
+.project-head.unavailable .project-head-meta { color: var(--noct-pending); white-space: normal; }
+.project-head.drop-ok { background: var(--noct-elevated); outline: 1px dashed var(--noct-primary); outline-offset: 4px; }
+/* Divisor "Not in project" (B) */
+.folder-divider { display: flex; align-items: center; gap: 8px; margin: 12px 0 2px; padding: 4px 2px; font: 700 10px var(--noct-font-mono); text-transform: uppercase; letter-spacing: .1em; color: var(--noct-text-dim); }
+.folder-divider .line { flex: 1; height: 1px; background: var(--noct-border); }
+.folder-divider.drop-ok { color: var(--noct-primary); outline: 1px dashed var(--noct-primary); outline-offset: 4px; }
+.folder-add { height: 18px; padding: 0 4px; margin: 4px 0 0 -4px; font-size: 10px; color: var(--noct-primary); }
+.folder.dragging { opacity: .55; }
+body.session-drag .folder-divider, body.session-drag .project-head { transition: outline-color 120ms var(--noct-ease); }
+/* Ponto que marca as sessões do projeto (C) */
+.project-dot { display: inline-block; width: 6px; height: 6px; margin: 0 7px 2px 0; border: 1px solid var(--noct-text-dim); border-radius: 50%; vertical-align: middle; }
+.project-dot.in { background: var(--noct-primary); border-color: var(--noct-primary); box-shadow: 0 0 6px rgba(var(--noct-primary-rgb), .6); }
+/* Botão do projeto na barra (C) */
+.project-bar {
+  display: inline-flex; align-items: center; gap: 8px; height: 30px; margin-left: 14px; padding: 0 10px 0 8px;
+  border: 1px solid var(--noct-border); background: var(--noct-surface-inner); color: var(--noct-text-muted); cursor: pointer;
+  font: 500 11px var(--noct-font-mono); letter-spacing: .06em; max-width: 360px; transition: border-color 150ms var(--noct-ease);
+}
+.project-bar b { font: 700 14px var(--noct-font-sans); letter-spacing: 0; color: var(--noct-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.project-bar:not(.on) b { color: var(--noct-text-muted); font-weight: 600; }
+.project-bar span:empty { display: none; }
+.project-bar span { color: var(--noct-text-dim); white-space: nowrap; }
+.project-bar.on { border-color: var(--noct-border-strong); }
+.project-bar.unavailable { border-color: var(--noct-pending); }
+.project-bar:hover, .project-bar.drop-ok { border-color: var(--noct-primary); color: var(--noct-primary); }
+.project-bar.drop-ok { background: var(--noct-elevated); box-shadow: var(--noct-glow-primary-soft); }
+.topbar .brand { flex: 0 0 auto; }
+/* Menus do projeto (fixos na tela, por cima de tudo) */
+.project-menu { position: fixed; top: 0; left: auto; right: auto; z-index: 60; min-width: 240px; max-width: 340px; }
+.project-menu button { white-space: nowrap; }
+.project-menu button.name { font: 600 14px var(--noct-font-sans); text-transform: none; letter-spacing: 0; }
+.project-menu button.name .app-menu-key { font: 500 10px var(--noct-font-mono); }
+.topbar { justify-content: flex-start; }
+.topbar-right { margin-left: auto; }
+.project-menu button.dim { color: var(--noct-text-dim); }
+.project-menu button:disabled { cursor: default; }
+.project-menu button:disabled:hover { background: transparent; color: var(--noct-text-dim); }
+.project-menu-label { padding: 6px 16px 2px; font: 700 10px var(--noct-font-mono); text-transform: uppercase; letter-spacing: .1em; color: var(--noct-text-dim); }
+.project-menu-current { display: flex; flex-direction: column; gap: 2px; padding: 6px 16px 10px; border-bottom: 1px solid var(--noct-border); margin-bottom: 6px; }
+.project-menu-current b { font: 700 15px var(--noct-font-sans); color: var(--noct-text); }
+.project-menu-current small { font: 10px var(--noct-font-mono); color: var(--noct-text-dim); word-break: break-all; }

@@ -918,7 +918,22 @@
   function renderSessionList() {
     ui.sessionList.innerHTML = "";
     ui.noSessions.classList.toggle("hidden", sessions.length > 0);
-    sessions.forEach((s) => {
+    const layout = projectLayout();
+    const projectOpen = !!project.open;
+    const grouped = layout === "column" && projectOpen;  // opção B: as do projeto primeiro, as outras sob um divisor
+    const ordered = grouped ? sessions.filter((s) => s.inProject).concat(sessions.filter((s) => !s.inProject)) : sessions;
+    let dividerDone = false;
+    ordered.forEach((s) => {
+      if (grouped && !s.inProject && !dividerDone) {
+        dividerDone = true;
+        const n = sessions.filter((x) => !x.inProject).length;
+        const d = el("li", "folder-divider");
+        d.innerHTML = '<span>Not in project</span><span class="line"></span><span class="n"></span>';
+        d.querySelector(".n").textContent = n;
+        d.title = "Sessions still only in the app. Drop one here to take it out of the project.";
+        bindProjectDrop(d, false);
+        ui.sessionList.appendChild(d);
+      }
       const label = sessionLabel(s.name);
       const count = sessionItems(s).length;
       const li = document.createElement("li");
@@ -927,7 +942,29 @@
       li.querySelector(".folder-date").textContent = s.label ? s.label + " · " + label.date : label.date;
       li.querySelector(".folder-meta").textContent = [plural(count, "photo", "photos"), label.detail].filter(Boolean).join(" · ");
       if (s.missing > 0) li.querySelector(".folder-meta").after(missingTag(s.missing));
-      if (s.inProject) li.querySelector(".folder-meta").after(projectTag(s));
+      if (layout === "strip") {
+        if (s.inProject) li.querySelector(".folder-meta").after(projectTag(s));
+      } else if (projectOpen) {
+        // B e C: sem a etiqueta "In project" em cada linha; só a de editadas, e um ponto (C) ou o divisor (B)
+        if (s.inProject && s.edited > 0) li.querySelector(".folder-meta").after(projectTag(s));
+        if (layout === "topbar") {
+          const dot = el("span", "project-dot" + (s.inProject ? " in" : ""));
+          dot.title = s.inProject ? "In the project" : "Not in the project";
+          li.querySelector(".folder-date").prepend(dot);
+          if (!s.inProject) li.querySelector(".folder-meta").textContent += " · not in project";
+        } else if (!s.inProject) {
+          const add = el("button", "btn btn-link btn-small folder-add", "Add to project ↑");
+          add.addEventListener("click", (e) => { e.stopPropagation(); moveToProject(s.name, true); });
+          li.querySelector("div").appendChild(add);
+        }
+        // Arrastar para dentro/fora do projeto (solta no cabeçalho do projeto, no botão da barra ou no divisor)
+        li.draggable = true;
+        li.addEventListener("dragstart", (e) => {
+          e.dataTransfer.setData("text/plain", s.name); e.dataTransfer.effectAllowed = "move";
+          li.classList.add("dragging"); document.body.classList.add("session-drag", s.inProject ? "from-project" : "from-app");
+        });
+        li.addEventListener("dragend", () => { li.classList.remove("dragging"); document.body.classList.remove("session-drag", "from-project", "from-app"); });
+      }
       if (s.saved) {
         li.querySelector(".folder-meta").after(savedTag());
         li.title = "Already saved. It leaves the app when you close Stillpoint (the saved copy stays where you saved it).";
@@ -2459,6 +2496,9 @@
     $("settingsLanguages").innerHTML = "";
     $("settingsLanguages").appendChild(segmented(languages.map((l) => [l.id, l.name]), prefs.language, (v) => saveSettings(prefs.theme, v)));
     $("settingsRestart").classList.toggle("hidden", !prefs.restart);
+    // Onde o projeto aparece (teste A/B/C): vale na hora, guardado nesta máquina
+    $("settingsProjectLayout").innerHTML = "";
+    $("settingsProjectLayout").appendChild(segmented(PROJECT_LAYOUTS, projectLayout(), (v) => { setProjectLayout(v); renderSettings(); }));
     // Modo debug: vale na hora
     $("settingsDebug").innerHTML = "";
     $("settingsDebug").appendChild(segmented([["off", "Off"], ["on", "On"]], prefs.debug ? "on" : "off", (v) => {
@@ -3330,13 +3370,152 @@
   function setProject(p) {
     project = p || { open: false };
     renderProjectStrip();
+    renderSessionList();
     if (!$("projectOverlay").classList.contains("hidden")) renderProjectWindow();
   }
   function fmtBytes(b) {
     if (!(b > 0)) return "";
     return b >= 1e9 ? (b / 1e9).toFixed(1) + " GB" : b >= 1e6 ? Math.round(b / 1e6) + " MB" : Math.round(b / 1e3) + " KB";
   }
+  // ---- Onde o projeto aparece (teste das opções A/B/C; guardado só nesta máquina) ----
+  const PROJECT_LAYOUTS = [["strip", "A · Box"], ["column", "B · Column title"], ["topbar", "C · Top bar"]];
+  function projectLayout() {
+    try { const v = localStorage.getItem("stillpoint.projectLayout"); return PROJECT_LAYOUTS.some(([k]) => k === v) ? v : "strip"; }
+    catch (e) { return "strip"; }
+  }
+  function setProjectLayout(v) {
+    try { localStorage.setItem("stillpoint.projectLayout", v); } catch (e) {}
+    renderProjectStrip();
+    renderSessionList();
+  }
+  // Menu flutuante (fixo na tela, fecha ao clicar fora ou com Esc). items: {label, onClick, dim, html} ou "-"
+  let openMenu = null;
+  function closeMenu() { if (openMenu) { openMenu.remove(); openMenu = null; } }
+  function popupMenu(anchor, items, align) {
+    closeMenu();
+    const m = el("div", "app-menu project-menu");
+    m.setAttribute("role", "menu");
+    items.forEach((it) => {
+      if (it === "-") { m.appendChild(document.createElement("hr")); return; }
+      if (it.html) { m.appendChild(it.html); return; }
+      const b = el("button", (it.dim ? "dim " : "") + (it.name ? "name" : ""), it.label);
+      b.setAttribute("role", "menuitem");
+      if (it.sub) { const k = el("span", "app-menu-key", it.sub); b.appendChild(k); }
+      if (it.disabled) b.disabled = true;
+      b.addEventListener("click", () => { closeMenu(); it.onClick && it.onClick(); });
+      m.appendChild(b);
+    });
+    document.body.appendChild(m);
+    const r = anchor.getBoundingClientRect();
+    m.style.top = Math.round(r.bottom + 6) + "px";
+    if (align === "right") m.style.right = Math.round(window.innerWidth - r.right) + "px";
+    else m.style.left = Math.round(Math.min(r.left, window.innerWidth - m.offsetWidth - 12)) + "px";
+    openMenu = m;
+    setTimeout(() => {
+      const away = (e) => { if (!m.contains(e.target)) { closeMenu(); document.removeEventListener("mousedown", away, true); } };
+      document.addEventListener("mousedown", away, true);
+    }, 0);
+  }
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && openMenu) closeMenu(); });
+  function projectMenuItems(withCurrent) {
+    const items = [];
+    if (project.open) {
+      if (withCurrent) {
+        const h = el("div", "project-menu-current");
+        h.innerHTML = '<span class="project-strip-label">Current</span><b></b><small></small>';
+        h.querySelector("b").textContent = project.name;
+        h.querySelector("small").textContent = project.folder;
+        items.push({ html: h });
+      }
+      items.push({ label: "Project window…", onClick: openProjectWindow });
+      items.push({ label: "Open folder", onClick: () => window.projectOpenFolder() });
+      items.push("-");
+    }
+    return items;
+  }
+  // Lista de recentes + abrir/novo/fechar; abre o menu já com os recentes carregados
+  function openProjectMenu(anchor, align, withCurrent) {
+    Promise.resolve(window.projectRecent && window.projectRecent()).then((r) => {
+      const recent = ((r && r.projects) || []).filter((p) => !project.open || p.folder !== project.folder);
+      const items = projectMenuItems(withCurrent);
+      if (recent.length) {
+        const lab = el("div", "project-menu-label", "Recent");
+        items.push({ html: lab });
+        recent.slice(0, 5).forEach((p) => items.push({
+          label: p.name, name: true, sub: p.available ? "" : "not reachable", disabled: !p.available, dim: !p.available,
+          onClick: () => Promise.resolve(window.projectOpen(p.folder)).then(projectResult),
+        }));
+        items.push("-");
+      }
+      items.push({ label: project.open ? "Switch project…" : "Open project…", onClick: browseProject });
+      items.push({ label: "New project…", onClick: newProject });
+      if (project.open) items.push({ label: "Close project", onClick: () => Promise.resolve(window.projectClose()).then(projectResult) });
+      popupMenu(anchor, items, align);
+    });
+  }
+  // Soltar uma sessão arrastada: toProject=true adiciona, false remove
+  function bindProjectDrop(target, toProject) {
+    target.addEventListener("dragover", (e) => {
+      const ok = document.body.classList.contains(toProject ? "from-app" : "from-project");
+      if (!ok) return;
+      e.preventDefault(); e.dataTransfer.dropEffect = "move"; target.classList.add("drop-ok");
+    });
+    target.addEventListener("dragleave", () => target.classList.remove("drop-ok"));
+    target.addEventListener("drop", (e) => {
+      target.classList.remove("drop-ok");
+      const name = e.dataTransfer.getData("text/plain");
+      if (!name) return;
+      e.preventDefault();
+      moveToProject(name, toProject);
+    });
+  }
+  function moveToProject(name, toProject) {
+    const s = sessions.find((x) => x.name === name);
+    if (!s || !project.open || !!s.inProject === toProject) return;
+    Promise.resolve(toProject ? window.addToProject(name) : window.removeFromProject(name)).then((r) => {
+      if (r && r.error) { toast(r.error, 8000); log(r.error, "error"); }
+      else log((toProject ? "Added to project: " : "Removed from project: ") + sessionLabel(name).date, "ok");
+    });
+  }
+  function projectCounts(sep) {
+    return [plural(project.sessions || 0, "session", "sessions"), plural(project.photos || 0, "photo", "photos"),
+            project.edited ? project.edited + " edited" : "", fmtBytes(project.bytes)].filter(Boolean).join(sep);
+  }
+  function renderProjectHead() {
+    const open = !!project.open, layout = projectLayout();
+    const head = $("projectHead");
+    head.classList.toggle("hidden", !(layout === "column" && open));
+    head.classList.toggle("unavailable", open && project.available === false);
+    $("projectHeadBtn").classList.toggle("hidden", !(layout === "column" && !open));
+    if (layout === "column" && open) {
+      $("projectHeadName").textContent = project.name;
+      $("projectHeadName").title = project.folder;
+      $("projectHeadMeta").textContent = project.available === false ? "Folder not reachable (external drive off?)" : projectCounts(" · ");
+    }
+    // O título "Sessions" some quando o projeto é o título (B)
+    document.querySelector(".sessions-head").classList.toggle("hidden", layout === "column" && open);
+  }
+  function renderProjectBar() {
+    const open = !!project.open, layout = projectLayout();
+    const b = $("projectBarBtn");
+    b.classList.toggle("hidden", layout !== "topbar");
+    b.classList.toggle("on", open);
+    b.classList.toggle("unavailable", open && project.available === false);
+    $("projectBarName").textContent = open ? project.name : "No project";
+    $("projectBarMeta").textContent = open ? (project.available === false ? "not reachable" : [project.sessions || 0, project.photos || 0, project.edited ? project.edited + " edited" : ""].filter((x) => x !== "").join(" · ")) : "";
+    b.title = open ? project.folder : "Open or create a project (a folder of yours that keeps the sessions)";
+  }
+  $("projectMenuBtn").addEventListener("click", (e) => openProjectMenu(e.currentTarget, "right", false));
+  $("projectHeadBtn").addEventListener("click", (e) => openProjectMenu(e.currentTarget, "right", false));
+  $("projectBarBtn").addEventListener("click", (e) => openProjectMenu(e.currentTarget, "left", true));
+  bindProjectDrop($("projectHead"), true);
+  bindProjectDrop($("projectBarBtn"), true);
+
   function renderProjectStrip() {
+    renderProjectHead();
+    renderProjectBar();
+    const layout = projectLayout();
+    $("projectStrip").classList.toggle("hidden", layout !== "strip");
     const open = !!project.open;
     $("projectStrip").classList.toggle("on", open);
     $("projectStrip").classList.toggle("unavailable", open && project.available === false);
