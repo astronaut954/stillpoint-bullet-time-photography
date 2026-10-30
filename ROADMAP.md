@@ -786,7 +786,11 @@ Atualizar esta tabela sempre que uma função mudar de status.
   padrão para projetos novos — `~/Pictures/Stillpoint` (Mac) / `Pictures\Stillpoint` (Windows),
   criada ao usar; "New project…" pede só o nome e cria `<padrão>/<nome>` (nome já existente → aviso na
   caixa, nada é criado), com "Choose another folder…" para uma vez; Settings → New projects → Change… troca o padrão (`projectsFolder=`);
-  "Open project…" começa na pasta padrão. **Ainda pendente no Windows:** todo
+  "Open project…" começa na pasta padrão. **2.12.3** (branch `etapa-17-menu-lento`): o menu do botão
+  de projeto às vezes travava a janela por segundos — a cada releitura do projeto o app somava o
+  tamanho de todos os arquivos das pastas (lento com RAW / HD externo) e a lista de recentes lia o
+  índice de cada pasta; agora o tamanho só é medido ao abrir a janela Project, os recentes só
+  conferem se a pasta existe e o menu abre antes de reler. **Ainda pendente no Windows:** todo
   o roteiro 23 (botão direito, arrastar, Rename com a pasta aberta no Explorer, apagar + Ctrl+Z,
   Save sessions) e as câmeras reais.
 

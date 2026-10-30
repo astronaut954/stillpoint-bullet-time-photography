@@ -974,7 +974,9 @@ namespace
             if (project.Available())
                 store.SetProject(project.Originals(), project.Edited());
         }
-        auto projectJson = [&]
+        // withSize: soma o tamanho das pastas do Project (percorre todos os arquivos — lento com muitos
+        // RAW ou HD externo), só quando a janela Project pede; a barra e a lista não precisam
+        auto projectJson = [&](bool withSize = false)
         {
             Json info("project");
             if (!project.IsOpen())
@@ -991,10 +993,12 @@ namespace
                     folders.push_back(session.name);
                 }
             project.SyncIndex(folders);
-            return info.Add("open", true).Add("name", project.Name()).Add("folder", project.Root().string())
+            info.Add("open", true).Add("name", project.Name()).Add("folder", project.Root().string())
                 .Add("available", project.Available()).Add("sessions", sessions).Add("photos", photos)
-                .Add("edited", edited).Add("bytes", static_cast<double>(project.SizeBytes()))
-                .Raw("exportDefaults", project.ExportDefaults().empty() ? "null" : project.ExportDefaults()).Str();
+                .Add("edited", edited);
+            if (withSize)
+                info.Add("bytes", static_cast<double>(project.SizeBytes()));
+            return info.Raw("exportDefaults", project.ExportDefaults().empty() ? "null" : project.ExportDefaults()).Str();
         };
         // Pasta onde "New project…" cria os projetos (2.12.2): settings.txt projectsFolder=, ou
         // <Imagens>/Stillpoint (criada quando for usada; decisão do dono do projeto, 2026-10-30)
@@ -1793,19 +1797,20 @@ namespace
             std::string list = "[";
             for (const auto& folder : recentProjects())
             {
-                Project p;
-                std::string error;
-                const bool ok = p.Open(std::filesystem::path(folder), error);
+                // Só confere se a pasta existe e tem o índice (barato); o nome do projeto é o da pasta
+                const bool ok = Project::IsProject(std::filesystem::path(folder));
                 list += std::string(list.size() > 1 ? "," : "") + Json("recent").Add("folder", folder)
-                    .Add("name", ok ? p.Name() : std::filesystem::path(folder).filename().string()).Add("available", ok).Str();
+                    .Add("name", std::filesystem::path(folder).filename().string()).Add("available", ok).Str();
             }
             return Json("recent").Raw("projects", list + "]").Str();
         });
         // projectInfo(): estado atual (para abrir a janela Project)
-        window.bind("projectInfo", [&](const std::string&) -> std::string
+        window.bind("projectInfo", [&](const std::string& request) -> std::string
         {
             reloadProjectIfBack();  // a página chama ao voltar ao primeiro plano, ao abrir o menu e no ↻
-            return Json("project").Raw("project", projectJson()).Str();
+            const auto args = ParseStringArgs(request);
+            const bool withSize = !args.empty() && args[0] == "size";  // só a janela Project pede o tamanho
+            return Json("project").Raw("project", projectJson(withSize)).Str();
         });
         // projectRename(nome): renomeia a pasta do Project (o nome do projeto é o da pasta)
         window.bind("projectRename", [&](const std::string& request) -> std::string

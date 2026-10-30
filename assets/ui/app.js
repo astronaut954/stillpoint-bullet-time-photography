@@ -3653,7 +3653,10 @@
   let project = { open: false };
   const projectSel = new Set();  // sessões marcadas na janela Project
   function setProject(p) {
-    project = p || { open: false };
+    p = p || { open: false };
+    // O tamanho (bytes) só vem quando a janela Project pede; nas outras atualizações fica o último
+    if (p.open && p.bytes === undefined && project.open && project.folder === p.folder && project.bytes !== undefined) p.bytes = project.bytes;
+    project = p;
     renderProjectBar();
     renderSessionList();
     if (!$("projectOverlay").classList.contains("hidden")) renderProjectWindow();
@@ -3816,8 +3819,10 @@
   }
   // Lista de recentes + abrir/novo/fechar; abre o menu já com os recentes carregados
   function openProjectMenu(anchor, align, withCurrent) {
-    // Relê o projeto antes de montar o menu: uma pasta que voltou (HD religado) aparece já certa
-    refreshProject(() => openProjectMenuNow(anchor, align, withCurrent));
+    // O menu abre na hora com o que está na tela; a releitura do projeto (pasta que voltou, contagens)
+    // corre em paralelo e atualiza a barra — ela não pode segurar o clique
+    openProjectMenuNow(anchor, align, withCurrent);
+    refreshProject();
   }
   function openProjectMenuNow(anchor, align, withCurrent) {
     Promise.resolve(window.projectRecent && window.projectRecent()).then((r) => {
@@ -4182,7 +4187,7 @@
     if (!projectSelTouched || !projectSel.size) names.forEach((n) => projectSel.add(n));
     renderProjectWindow();
     $("projectOverlay").classList.remove("hidden");
-    refreshProject();
+    refreshProject(null, true);  // com o tamanho das pastas (só aqui: é a parte lenta)
     // O campo do nome já vem com o foco (cursor no fim, como se tivesse clicado nele)
     setTimeout(() => { const i = $("projectNameInput"); i.focus(); const n = i.value.length; i.setSelectionRange(n, n); }, 0);
   }
@@ -4190,9 +4195,9 @@
   // Edited/): ao abrir a janela Project e sempre que o app volta a ser a janela da frente.
   // Relê o projeto e as sessões (ao voltar ao primeiro plano, ao abrir o menu do botão e no ↻).
   // Se a pasta estava fora do ar e voltou, o app religa sozinho (projectInfo faz isso do lado C++).
-  function refreshProject(done) {
+  function refreshProject(done, withSize) {
     if (!project.open || typeof window.projectInfo !== "function") { if (done) done(); return; }
-    Promise.all([window.projectInfo(), window.listSessions()]).then(([r, list]) => {
+    Promise.all([window.projectInfo(withSize ? "size" : ""), window.listSessions()]).then(([r, list]) => {
       if (r && r.project) setProject(r.project);
       setSessions(list);
       if (done) done();
