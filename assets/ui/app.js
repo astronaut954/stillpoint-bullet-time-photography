@@ -131,8 +131,8 @@
     swap: '<path d="M2.5 5h8l-2.5-2.5M11.5 9h-8l2.5 2.5"/>',
     // Modo teatro, como no YouTube: tela com barra embaixo e dois ângulos dentro
     // (para fora = entrar; para dentro = sair)
-    expand: '<rect x="1.5" y="2.5" width="11" height="8"/><path d="M1.5 12.5h11" stroke-width="2"/><path d="M5.6 4.6L3.7 6.5l1.9 1.9M8.4 4.6l1.9 1.9-1.9 1.9"/>',
-    collapse: '<rect x="1.5" y="2.5" width="11" height="8"/><path d="M1.5 12.5h11" stroke-width="2"/><path d="M3.6 4.6l1.9 1.9-1.9 1.9M10.4 4.6L8.5 6.5l1.9 1.9"/>',
+    theaterIn: '<rect x="1.5" y="2.5" width="11" height="8"/><path d="M1.5 12.5h11" stroke-width="2"/><path d="M5.6 4.6L3.7 6.5l1.9 1.9M8.4 4.6l1.9 1.9-1.9 1.9"/>',
+    theaterOut: '<rect x="1.5" y="2.5" width="11" height="8"/><path d="M1.5 12.5h11" stroke-width="2"/><path d="M3.6 4.6l1.9 1.9-1.9 1.9M10.4 4.6L8.5 6.5l1.9 1.9"/>',
     up: '<path d="M3 9l4-4 4 4"/>',
     down: '<path d="M3 5l4 4 4-4"/>',
     left: '<path d="M9 3L5 7l4 4"/>',
@@ -1878,14 +1878,14 @@
       views.addEventListener("pointerdown", (e) => e.stopPropagation());
       preview.appendChild(views);
       // Modo teatro: a prévia ocupa a coluna toda e as configurações somem; o botão de novo volta
-      const theater = button("", () => { exp.lentTheater = !exp.lentTheater; applyTheater(); }, { icon: "expand", title: "Theater mode: larger preview, settings hidden", kind: "btn-overlay" });
+      const theater = button("", () => { exp.lentTheater = !exp.lentTheater; applyTheater(); }, { icon: "theaterIn", title: "Theater mode: larger preview, settings hidden", kind: "btn-overlay" });
       theater.classList.add("lent-theater-btn");
       theater.addEventListener("pointerdown", (e) => e.stopPropagation());
       preview.appendChild(theater);
       const applyTheater = () => {
         outer.classList.toggle("theater", !!exp.lentTheater);
         theater.classList.toggle("on", !!exp.lentTheater);
-        theater.innerHTML = icon(exp.lentTheater ? "collapse" : "expand");  // setas para fora = entrar; para dentro = sair
+        theater.innerHTML = icon(exp.lentTheater ? "theaterOut" : "theaterIn", 26);  // ângulos para fora = entrar; para dentro = sair
         theater.title = exp.lentTheater ? "Leave theater mode" : "Theater mode: larger preview, settings hidden";
         if (exp.lentView === "interlaced") requestAnimationFrame(fitCanvas);
       };
