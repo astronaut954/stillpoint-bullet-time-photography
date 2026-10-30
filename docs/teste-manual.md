@@ -781,6 +781,19 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) serve para tudo, menos para a impress
       todas as saídas fecha a prévia grande deslizando, e marcar uma abre. Na lista de câmeras, ^ e v
       fazem as duas linhas trocarem de lugar deslizando.
 - [ ] **Caixas de marcar:** o sinal ✓ centralizado em todas (sessões, seções, Originals/Converted).
+- [ ] **Espaços estáveis:** o espaço entre a fileira de miniaturas e a seção Photos é sempre o mesmo
+      (abrir/recolher, trocar de prévia, com ou sem a barra de rolagem da fileira). Quando as seções
+      precisam rolar, a barra fica afastada das caixas, e as caixas não estreitam quando ela aparece.
+- [ ] **Nome da seção ligada:** clicar no nome ou na descrição não faz nada (só "PREVIEW" leva a prévia).
+- [ ] **Teatro:** entrar e sair do modo teatro faz a prévia crescer e encolher deslizando.
+- [ ] **Bullet time (animações):** Advanced e Hide deslizam a altura do painel; trocar o modo
+      (At once, Sweep…), Add step e o X de um passo deslizam em vez de pular.
+- [ ] **Listas de opções:** em Camera settings (e no Direction do Bullet time), abrir qualquer lista
+      mostra a lista com a cara do app (fundo escuro, verde na opção atual), não a do sistema. ↑ ↓ e
+      Enter escolhem; Esc fecha só a lista (a janela continua aberta); clicar de novo na caixa fecha.
+- [ ] **Camera settings:** Hide photos e Show photos recolhem e abrem a fileira deslizando.
+- [ ] **Activity:** ^ / v, arrastar e Reorder by photo aparecem na Activity ("Move … up", "Camera
+      order (dragged)"), não só o Undo e o Redo; a nova ordem completa fica nos detalhes técnicos.
 - [ ] **Várias saídas:** Photos + Sequence + Lenticular marcadas → Save: na pasta da sessão, `Photos/`,
       `Sequence/` e `Lenticular/`; só uma marcada → os arquivos direto na pasta da sessão. Na lista à
       esquerda: "→ Originals + MP4 + Lenticular 60/720". Export… da janela Project faz o mesmo em

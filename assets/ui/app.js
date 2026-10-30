@@ -791,6 +791,8 @@
     const before = cameraOrderNames();
     if (names.join("|") === before.join("|")) return;
     window.setOrder(...names);
+    log(what || "Camera order changed", "ok");
+    log("Camera order: " + names.map((n, i) => (i + 1) + " " + n).join(", "), "tech");
     recordAction({ label: what || "Camera order", undo: () => window.setOrder(...before), redo: () => window.setOrder(...names) });
   }
   function moveCamera(cam, delta) {
@@ -1313,8 +1315,19 @@
     $("csTestBox").classList.toggle("zoom", csZoom);
   }
   function csSetCollapsed(on) {
+    const wrap = $("csTestBox").querySelector(".carousel-wrap");
+    if (on && !csCollapsed && wrap && !wrap.classList.contains("hidden") && wrap.offsetHeight) {
+      // Recolhe deslizando; no fim esconde de fato
+      csCollapsed = true;
+      csHideBtn.textContent = "Show photos";
+      csSetZoom(false);
+      slideClosed(wrap, () => { if (csCollapsed) $("csTestBox").classList.add("collapsed"); });
+      return;
+    }
+    const opening = !on && csCollapsed;
     csCollapsed = !!on;
     $("csTestBox").classList.toggle("collapsed", csCollapsed);
+    if (opening && wrap) slideOpen(wrap);
     csHideBtn.textContent = csCollapsed ? "Show photos" : "Hide photos";
     if (csCollapsed) csSetZoom(false);
   }
@@ -1770,6 +1783,30 @@
     return i;
   }
 
+  // Deslizar a altura de um bloco de "antes" para a altura de agora (o conteúdo novo já está lá).
+  // Com fade: o conteúdo novo aparece aos poucos.
+  const EASE_MS = 220;
+  function slideHeight(node, from, opts) {
+    if (!node || !node.animate || node.classList.contains("hidden")) return;
+    const to = node.offsetHeight;
+    if (Math.abs(to - from) < 2) return;
+    // flex-grow 0 durante a animação: um bloco que estica (a prévia no teatro) seguiria a altura
+    node.animate([{ height: from + "px", overflow: "hidden", flexGrow: 0, flexShrink: 0 }, { height: to + "px", overflow: "hidden", flexGrow: 0, flexShrink: 0 }], { duration: EASE_MS, easing: "ease" });
+    if (opts && opts.fade) node.animate([{ opacity: 0 }, { opacity: 1 }], { duration: EASE_MS, easing: "ease" });
+  }
+  // Fechar deslizando até 0 e então esconder (done: o que fazer no fim)
+  function slideClosed(node, done) {
+    if (!node || !node.animate || node.classList.contains("hidden")) { if (done) done(); return; }
+    const a = node.animate([{ height: node.offsetHeight + "px", opacity: 1, overflow: "hidden" }, { height: "0px", opacity: 0, overflow: "hidden" }],
+      { duration: EASE_MS, easing: "ease", fill: "forwards" });
+    a.onfinish = () => { if (done) done(); a.cancel(); };
+  }
+  // Abrir deslizando de 0 (o bloco já visível)
+  function slideOpen(node) {
+    if (!node || !node.animate) return;
+    node.animate([{ height: "0px", opacity: 0, overflow: "hidden" }, { height: node.offsetHeight + "px", opacity: 1, overflow: "hidden" }], { duration: EASE_MS, easing: "ease" });
+  }
+
   // Prévia grande e fileira de miniaturas: abrem e fecham deslizando em vez de aparecer e sumir
   // de uma vez (a coluna é redesenhada a cada mudança; o que sai volta por um instante e fecha).
   // A fileira anima por uma caixa em volta dela (.export-strip-slot): a área que rola fica
@@ -1990,7 +2027,14 @@
       views.addEventListener("pointerdown", (e) => e.stopPropagation());
       preview.appendChild(views);
       // Modo teatro: a prévia ocupa a coluna toda e as configurações somem; o botão de novo volta
-      const theater = button("", () => { exp.lentTheater = !exp.lentTheater; applyTheater(); }, { icon: "theaterIn", title: "Theater mode: larger preview, settings hidden", kind: "btn-secondary" });
+      const theater = button("", () => {
+        const from = preview.offsetHeight;
+        exp.lentTheater = !exp.lentTheater;
+        applyTheater();
+        slideHeight(preview, from);
+        if (!exp.lentTheater) [outer.querySelector(".export-rows"), outer.querySelector(".export-scope")].forEach((n) => n && n.animate && n.animate([{ opacity: 0 }, { opacity: 1 }], { duration: EASE_MS, easing: "ease" }));
+        if (exp.lentView === "interlaced") setTimeout(() => requestAnimationFrame(fitCanvas), EASE_MS + 20);
+      }, { icon: "theaterIn", title: "Theater mode: larger preview, settings hidden", kind: "btn-secondary" });
       theater.classList.add("lent-theater-btn");
       theater.addEventListener("pointerdown", (e) => e.stopPropagation());
       preview.appendChild(theater);
@@ -2251,8 +2295,6 @@
       const pick = (e) => { e.stopPropagation(); st.outputs[kind] = true; exp.mode = kind; rerender(); };
       const name = el("span", "exp-sec-name");
       name.append(el("b", "exp-sec-title", title), el("span", "exp-sec-sub", sub));
-      name.title = on ? (focused ? "" : "Show the " + title + " preview") : "Turn on " + title;
-      if (on && !focused) { name.classList.add("clickable"); name.addEventListener("click", pick); }
       if (!on) { head.classList.add("pick"); head.title = "Turn on " + title; head.addEventListener("click", pick); }
       head.append(check, name);
       const sum = el("span", "exp-sec-sum", on ? outputText(session, kind) : "Off");
@@ -3256,8 +3298,85 @@
     });
     sel.value = current;
     sel.addEventListener("change", () => onPick(sel.value));
+    appSelect(sel);
     return sel;
   }
+  // Lista de opções do app no lugar da do sistema (que no Mac e no Windows tem outra cara).
+  // O <select> continua por baixo: valor, "change" e teclado de foco funcionam como antes.
+  let selectMenu = null;
+  function closeSelectMenu() {
+    if (!selectMenu) return;
+    const m = selectMenu; selectMenu = null;
+    m.sel.classList.remove("open");
+    m.remove();
+  }
+  function appSelect(sel) {
+    const open = () => {
+      closeMenu();
+      const opts = [...sel.options];
+      const m = el("div", "app-menu project-menu select-menu");
+      m.setAttribute("role", "listbox");
+      m.sel = sel;
+      const buttons = opts.map((o) => {
+        const b = el("button", o.value === sel.value ? "current" : "", o.textContent);
+        b.type = "button";
+        b.setAttribute("role", "option");
+        if (o.disabled) b.disabled = true;
+        b.addEventListener("click", () => {
+          closeSelectMenu();
+          sel.focus();
+          if (sel.value !== o.value) { sel.value = o.value; sel.dispatchEvent(new Event("change", { bubbles: true })); }
+        });
+        m.appendChild(b);
+        return b;
+      });
+      document.body.appendChild(m);
+      const r = sel.getBoundingClientRect();
+      m.style.minWidth = Math.round(r.width) + "px";
+      const below = window.innerHeight - r.bottom - 12, above = r.top - 12;
+      const down = below >= Math.min(m.offsetHeight, 240) || below >= above;
+      m.style.maxHeight = Math.max(120, Math.floor(down ? below : above) - 4) + "px";
+      m.style.left = Math.round(Math.max(8, Math.min(r.left, window.innerWidth - m.offsetWidth - 8))) + "px";
+      m.style.top = Math.round(down ? r.bottom + 4 : r.top - 4 - m.offsetHeight) + "px";
+      const cur = buttons.find((b) => b.classList.contains("current")) || buttons.find((b) => !b.disabled);
+      if (cur) { cur.scrollIntoView({ block: "center" }); cur.focus({ preventScroll: true }); }
+      // ↑ ↓ andam pela lista; Enter escolhe (é um botão); Esc e Tab fecham
+      m.addEventListener("keydown", (e) => {
+        const live = buttons.filter((b) => !b.disabled);
+        const i = live.indexOf(document.activeElement);
+        if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+          e.preventDefault();
+          const n = live[Math.max(0, Math.min(live.length - 1, i + (e.key === "ArrowDown" ? 1 : -1)))];
+          if (n) n.focus();
+        } else if (e.key === "Tab") { e.preventDefault(); closeSelectMenu(); sel.focus(); }
+      });
+      sel.classList.add("open");
+      selectMenu = m;
+    };
+    sel.addEventListener("mousedown", (e) => {
+      if (e.button !== 0 || sel.disabled) return;
+      e.preventDefault();
+      if (sel.justClosed) return;  // o clique que fechou a lista não a abre de novo
+      sel.focus();
+      open();
+    });
+    sel.addEventListener("keydown", (e) => {
+      if (e.key === " " || e.key === "Enter" || e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); open(); }
+    });
+  }
+  // Fora da lista: fecha (no próprio menu de escolha, marca para o mesmo clique não reabrir)
+  document.addEventListener("pointerdown", (e) => {
+    if (!selectMenu || selectMenu.contains(e.target)) return;
+    const s = selectMenu.sel;
+    if (e.target === s) { s.justClosed = true; setTimeout(() => { s.justClosed = false; }, 0); }
+    closeSelectMenu();
+  }, true);
+  // Esc fecha só a lista (não a janela de baixo)
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && selectMenu) { e.preventDefault(); e.stopImmediatePropagation(); const s = selectMenu.sel; closeSelectMenu(); s.focus(); }
+  }, true);
+  window.addEventListener("resize", () => closeSelectMenu());
+  document.addEventListener("scroll", (e) => { if (selectMenu && !selectMenu.contains(e.target)) closeSelectMenu(); }, true);
   function csText(text, cls, title) {
     const v = el("span", "cs-val" + (cls ? " " + cls : ""), text);
     if (title) v.title = title;
@@ -5063,7 +5182,20 @@
     lab.appendChild(csSelect(options, current, (v) => { onChange(v); renderTiming(); }));
     return lab;
   }
-  function renderTiming() {
+  // Redesenha o Timing deslizando a altura (troca de modo, passos, campos). still: sem
+  // animação (mudança de tamanho da janela)
+  let timingMode = null;
+  function renderTiming(still) {
+    const adv = $("timingAdv"), fields = $("timingFields");
+    const was = timingOpen && !adv.classList.contains("hidden") ? adv.offsetHeight : null;
+    const modeChanged = timingMode !== null && timingMode !== timing.mode;
+    timingMode = timing.mode;
+    renderTimingNow();
+    if (still === true || was === null || !timingOpen) return;
+    slideHeight(adv, was);
+    if (modeChanged) [fields, $("timingCustom")].forEach((n) => n.animate && !n.classList.contains("hidden") && n.animate([{ opacity: 0 }, { opacity: 1 }], { duration: EASE_MS, easing: "ease" }));
+  }
+  function renderTimingNow() {
     const plan = timingPlan();
     const custom = timing.mode !== "all";
     $("timingText").textContent = timingSummaryText(plan) + (plan.total ? " · " + plan.total : "");
@@ -5195,10 +5327,17 @@
   }
   $("timingToggle").addEventListener("click", () => {
     timingOpen = !timingOpen;
-    document.body.classList.toggle("timing-open", timingOpen);  // o painel Bullet time cresce
-    renderTiming();
+    document.body.classList.toggle("timing-open", timingOpen);  // o painel Bullet time cresce (deslizando, no CSS)
+    if (timingOpen) {
+      renderTiming(true);
+      slideOpen($("timingAdv"));
+    } else {
+      // Fecha deslizando; só no fim some (e aparece o resumo pequeno)
+      $("timingToggle").textContent = "Advanced";
+      slideClosed($("timingAdv"), () => { renderTiming(true); const mini = $("timingMini"); if (!mini.classList.contains("hidden")) slideOpen(mini); });
+    }
   });
-  window.addEventListener("resize", () => renderTiming());
+  window.addEventListener("resize", () => renderTiming(true));
 
   // Cancelar o bullet time: botão na contagem, Esc na contagem ou o botão de disparo
   // (que vira "Cancel bullet time" enquanto roda). O que já foi disparado não volta.

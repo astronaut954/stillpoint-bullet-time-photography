@@ -690,7 +690,9 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
 
 .export-settings { min-height: 0; overflow: hidden; overflow: clip; padding: 14px 18px; display: flex; flex-direction: column; gap: 14px; }
 /* As linhas de configuração rolam sozinhas (a foto grande e a fileira ficam fixas acima) */
-.export-rows { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 14px; }
+/* A barra de rolagem fica num espaço reservado, afastada 8 px das caixas e sem estreitar nada
+   quando aparece */
+.export-rows { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 14px; scrollbar-gutter: stable; padding-right: 8px; margin-right: -18px; }
 .export-preview { position: relative; height: 200px; flex: 0 0 auto; background: #000; border: 1px solid var(--noct-border); display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .export-preview img { max-width: 100%; max-height: 100%; object-fit: contain; }
 .export-preview .stage-caption b { margin-right: 6px; }
@@ -770,7 +772,9 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
 .export-settings.theater .export-preview img, .export-settings.theater .export-preview .lent-canvas { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; object-fit: contain; }
 .export-settings.theater .export-preview .lent-canvas { border: 0; }
 .lent-presets { margin-left: 8px; }
-.export-strip-scroll { overflow-x: auto; overflow-y: hidden; flex: 0 0 auto; padding-bottom: 4px; }
+/* Altura fixa (miniatura 53 + 4 + barra de rolagem 10): com ou sem a barra, o espaço até a seção
+   de baixo é sempre o mesmo */
+.export-strip-scroll { overflow-x: auto; overflow-y: hidden; flex: 0 0 auto; padding-bottom: 4px; height: 67px; }
 /* Prévia e fileira abrem e fecham deslizando; fechadas, a margem negativa come o espaço
    entre os blocos. A fileira anima pela caixa em volta (a área que rola não muda) */
 .export-strip-slot { flex: 0 0 auto; }
@@ -1211,3 +1215,12 @@ body.session-drag.from-app .folder-placeholder { border-color: transparent; }
 /* Visto ampliado: o sinal ficava 1 px à direita e abaixo do centro da caixa */
 input:checked + .save-check::after { left: 4px !important; top: 0 !important; }
 .log-option input:checked::after { left: 3.5px; top: .5px; }
+
+/* Bullet time: Advanced / Hide desliza a altura do painel */
+.app { transition: grid-template-rows .22s ease; }
+/* Lista de opções no lugar da do sistema */
+.select-menu { overflow-y: auto; min-width: 0; max-width: 360px; padding: 4px 0; }
+.select-menu button { height: 28px; padding: 0 12px; text-transform: none; letter-spacing: .02em; font: 500 12px var(--noct-font-mono); }
+.select-menu button.current { color: var(--noct-primary); background: rgba(var(--noct-primary-rgb), .08); }
+.select-menu button:disabled { color: var(--noct-text-dim); cursor: default; background: transparent; }
+.cs-sel.open { border-color: var(--noct-primary); }
