@@ -804,6 +804,14 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) serve para tudo, menos para a impress
       "Delete photo 03…" → confirmar: a miniatura encolhe e some, a foto grande se apaga. Cmd+Z volta.
 - [ ] **Apagar sessão:** pela lixeira, pelo botão direito ou "Delete session": a linha da sessão voa
       até o botão da lixeira (encolhendo), a lixeira dá um pulo e a linha fecha. Cmd+Z volta.
+- [ ] **Arrasto da prévia lenticular:** segurando e saindo da prévia, a seta (↕ ou ↔) continua até
+      soltar o botão.
+- [ ] **Tela cheia:** só o ícone da lixeira (sem "Delete session"); ele apaga a sessão, e a foto grande
+      voa até ele. Uma foto: botão direito nela, ou a tecla Delete.
+- [ ] **Desfazer no Camera settings (câmeras reais):** (1) mude o Metering de uma câmera → Cmd+Z volta,
+      Cmd+Shift+Z refaz. (2) Mude o ISO, depois rode Test shot com Match automatically (com mudanças):
+      o primeiro Cmd+Z desfaz o Match inteiro ("Undo: Match automatically (n cameras)"), o segundo só
+      o ISO — o resultado do Match não volta junto. Cmd+Shift+Z refaz o Match.
 - [ ] **Activity:** ^ / v, arrastar e Reorder by photo aparecem na Activity ("Move … up", "Camera
       order (dragged)"), não só o Undo e o Redo; a nova ordem completa fica nos detalhes técnicos.
 - [ ] **Várias saídas:** Photos + Sequence + Lenticular marcadas → Save: na pasta da sessão, `Photos/`,

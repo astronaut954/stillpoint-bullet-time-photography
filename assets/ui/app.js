@@ -911,6 +911,8 @@
     fullBtn,
   ];
   const exitFullBtn = button("", () => setFullscreen(false), { icon: "shrink", title: "Exit full screen (Esc)" });
+  // Na tela cheia a lixeira apaga a sessão (como fora dela); uma foto: botão direito ou a tecla Delete
+  const fullTrashBtn = button("", deleteCurrentSession, { icon: "trash", title: "Delete this session (a photo: right-click it, or the Delete key)" });
   // "Reverse loop" (ligado por padrão): o play vai e volta (1, 2, 3, 2, 1...);
   // desligado, recomeça do início (1, 2, 3, 1, 2, 3...)
   const reverseLoopOption = document.createElement("label");
@@ -958,8 +960,7 @@
     speedGroup,
     reverseLoopOption,
     button("Reorder", startReorder, { title: "Change the order of the photos in this session" }),
-    button("", deleteCurrentPhoto, { icon: "trash", title: "Delete this photo (Delete key)" }),
-    button("Delete session", deleteCurrentSession, { kind: "btn-link", title: "Delete this session" }),
+    fullTrashBtn,
     exitFullBtn,
   ];
   const editActions = [
@@ -1274,12 +1275,16 @@
   // Apagar sessão: uma cópia da linha voa até o botão da lixeira (encolhendo e sumindo), a linha
   // fecha no lugar e a lixeira dá um pulo; só então a sessão é apagada
   function flyToTrash(name, done) {
-    const li = [...ui.sessionList.querySelectorAll("li.folder")].find((x) => x.dataset.name === name);
-    const trash = compactActions[0];
+    const full = isFullscreen() && currentSession && currentSession.name === name;
+    // Tela cheia: a área da foto (miniaturas + foto grande) vai até o ícone da lixeira da tela cheia
+    const li = full ? ui.sessionGallery.querySelector(".stage")
+      : [...ui.sessionList.querySelectorAll("li.folder")].find((x) => x.dataset.name === name);
+    const trash = full ? fullTrashBtn : compactActions[0];
     const from = li && !li.classList.contains("hidden") ? li.getBoundingClientRect() : null;
     const to = trash && trash.offsetParent ? trash.getBoundingClientRect() : null;
     if (!from || !from.width || !li.animate) { done(); return; }
     const ghost = li.cloneNode(true);
+    if (full) ghost.classList.add("stage-ghost");
     ghost.classList.add("trash-ghost");
     Object.assign(ghost.style, { left: from.left + "px", top: from.top + "px", width: from.width + "px", height: from.height + "px" });
     document.body.appendChild(ghost);
@@ -1289,8 +1294,14 @@
                    { transform: "translate(" + dx * 0.5 + "px, " + (dy * 0.5 - 30) + "px) scale(.55)", opacity: .9, offset: .5 },
                    { transform: "translate(" + dx + "px, " + dy + "px) scale(.08)", opacity: 0 }],
                   { duration: 520, easing: "cubic-bezier(.5, 0, .7, 1)", fill: "forwards" });
-    li.animate([{ height: from.height + "px", opacity: 1 }, { height: "0px", opacity: 0, marginTop: "0px", marginBottom: "0px", paddingTop: "0px", paddingBottom: "0px" }],
-               { duration: 360, delay: 120, easing: "ease", fill: "forwards" });
+    if (full) {
+      // Na tela cheia a foto e as miniaturas se apagam no lugar enquanto a cópia voa
+      [li, ui.sessionGallery.querySelector(".carousel-wrap")].forEach((n) => n && n.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 260, easing: "ease", fill: "forwards" }));
+      setTimeout(() => [li, ui.sessionGallery.querySelector(".carousel-wrap")].forEach((n) => n && n.getAnimations().forEach((a) => a.cancel())), 900);
+    } else {
+      li.animate([{ height: from.height + "px", opacity: 1 }, { height: "0px", opacity: 0, marginTop: "0px", marginBottom: "0px", paddingTop: "0px", paddingBottom: "0px" }],
+                 { duration: 360, delay: 120, easing: "ease", fill: "forwards" });
+    }
     setTimeout(() => { if (to && trash.animate) trash.animate([{ transform: "scale(1)" }, { transform: "scale(1.25)" }, { transform: "scale(1)" }], { duration: 240, easing: "ease-out" }); }, 470);
     setTimeout(() => { ghost.remove(); done(); }, 540);
   }
@@ -2046,6 +2057,7 @@
       preview.addEventListener("pointerdown", (e) => {
         if (exp.lentView === "interlaced" || e.target.closest("button")) return;  // botões (teatro, vistas) não começam arrasto
         drag = { x: e.clientX, y: e.clientY, start: frameAt }; preview.setPointerCapture(e.pointerId); e.preventDefault();
+        document.documentElement.classList.add(vertical ? "drag-ns" : "drag-ew");
       });
       preview.addEventListener("pointermove", (e) => {
         if (!drag) return;
@@ -2054,7 +2066,7 @@
         const step = Math.max(vertical ? 12 : 24, span / Math.max(2, n) / 2);
         showFrame(drag.start + Math.round(((vertical ? e.clientY - drag.y : e.clientX - drag.x)) / step));
       });
-      const endDrag = () => { drag = null; };
+      const endDrag = () => { drag = null; document.documentElement.classList.remove("drag-ns", "drag-ew"); };
       preview.addEventListener("pointerup", endDrag); preview.addEventListener("pointercancel", endDrag);
 
       // Segunda vista: o arquivo entrelaçado em si — a imagem inteira como vai sair impressa (reduzida
@@ -2827,6 +2839,15 @@
       const actions = [{ label: "OK", primary: true }];
       if (e.debugFolder) actions.unshift({ label: "Open debug folder", link: true, onClick: () => window.openDebugFolder() });
       dialog(title, parts.join("\n\n"), actions);
+      // Desfazer: as câmeras voltam ao que eram antes do Match; Refazer: ao resultado do Match
+      if (blocks.length && csTest.before) {
+        const before = csTest.before;
+        let after = null;
+        recordAction({ label: "Match automatically (" + plural(blocks.length, "camera", "cameras") + ")", camera: true,
+          undo: () => { after = csSnapshot(); return csRestore(before); },
+          redo: () => (after ? csRestore(after) : false) });
+      }
+      csTest.before = null;
       if (e.debugFolder) log("Debug data saved", "tech", e.debugFolder);
       log("Match automatically: " + (blocks.length ? plural(blocks.length, "camera", "cameras") + " changed" : "no change"), e.ok ? "ok" : "warn");
     },
@@ -3479,7 +3500,9 @@
       const target = camera === "*" ? "all cameras" : camera;
       const d = csDescribe(camera, key, value);
       recordAction({ label: d.name + " → " + d.text + " (" + target + ")", camera: true,
-        undo: () => { csRecord = false; try { csRestore(before); } finally { csRecord = true; } },
+        // Desfazer volta só este ajuste (e só nesta câmera): mudanças feitas depois, por outra
+        // ação ou pelo Match automatically, ficam como estão
+        undo: () => { csRecord = false; try { csRestore(before, { keys: csKeyGroup(key), camera }); } finally { csRecord = true; } },
         redo: () => { csRecord = false; try { csSet(camera, key, value); } finally { csRecord = true; } } });
       // Activity: o resumo com o valor; o código da Canon só em Show technical details
       if (!(log.lastText === "Camera settings changed (" + target + ")" && Date.now() - (log.lastAt || 0) < 2000))
@@ -3806,7 +3829,7 @@
   // Deixa todas as câmeras iguais a uma escolhida
   // Retrato das configurações de cada câmera (para desfazer o "Copy from camera")
   function csSnapshot() {
-    const keys = ["iso", "tv", "av", "expcomp", "style", "quality", "wb"];
+    const keys = ["iso", "tv", "av", "expcomp", "metering", "style", "quality", "wb"];
     return camSettings.filter((c) => c.adjustable).map((c) => {
       const snap = { camera: c.camera, values: {} };
       keys.forEach((k) => { const st = c.settings[k]; if (st && st.available && st.choices.length) snap.values[k] = st.value; });
@@ -3816,24 +3839,34 @@
       return snap;
     });
   }
-  function csRestore(snapshot) {
+  // only: { keys, camera } — volta só esses ajustes (e só essa câmera); sem only, tudo o que mudou
+  function csRestore(snapshot, only) {
     const wasRecording = csRecord; csRecord = false;
-    try { csRestoreNow(snapshot); } finally { csRecord = wasRecording; }
+    try { csRestoreNow(snapshot, only); } finally { csRecord = wasRecording; }
     return true;
   }
-  function csRestoreNow(snapshot) {
+  function csRestoreNow(snapshot, only) {
     const live = csSnapshot();
     snapshot.forEach((snap) => {
+      if (only && only.camera && only.camera !== "*" && only.camera !== snap.camera) return;
       const now = live.find((x) => x.camera === snap.camera);
       if (!now) return;
       Object.keys(snap.values).forEach((k) => {
         if (k === "kelvin") return;
-        if (snap.values[k] === now.values[k]) return;
+        if (only && only.keys && !only.keys.includes(k)) return;
+        const kelvinOff = k === "wb" && snap.values.wb === 9 && now.values.kelvin !== snap.values.kelvin;
+        if (snap.values[k] === now.values[k] && !kelvinOff) return;
         if (k === "wb" && snap.values.wb === 9) csSet(snap.camera, "kelvin", snap.values.kelvin);
         else csSet(snap.camera, k, snap.values[k]);
       });
     });
     return true;
+  }
+  // Ajustes que andam juntos: o balanço de branco com a temperatura; o estilo com os seus ajustes
+  function csKeyGroup(key) {
+    if (key === "wb" || key === "kelvin") return ["wb", "kelvin"];
+    if (key === "style") return ["style", "contrast", "saturation", "colortone"];
+    return [key];
   }
   function copyFromCamera(name, silent) {
     const before = csSnapshot();
@@ -3923,6 +3956,7 @@
     csGallery.setItems([]);
     csGallery.setHead(match ? "Test shot · matching" : "Test shot", "");
     csGallery.message("Taking a photo with each camera");
+    csTest.before = match ? csSnapshot() : null;  // para desfazer o Match automatically de uma vez
     if (match) window.autoMatch(intValue(ui.downloadWait, 1, 10), $("csCard").checked ? 1 : 0);
     else window.takeOrderPhotos(intValue(ui.downloadWait, 1, 10));
   }

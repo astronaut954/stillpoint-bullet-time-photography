@@ -1229,3 +1229,9 @@ input:checked + .save-check::after { left: 4px !important; top: 0 !important; }
 /* Sessão indo para a lixeira (cópia da linha que voa até o botão) */
 .trash-ghost { position: fixed; z-index: 90; margin: 0; pointer-events: none; list-style: none; box-sizing: border-box;
   background: var(--noct-elevated); border: 1px solid var(--noct-danger); box-shadow: 0 10px 30px rgba(0, 0, 0, .6); transform-origin: center; }
+.trash-ghost.stage-ghost { background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.trash-ghost.stage-ghost img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.trash-ghost.stage-ghost .stage-tools, .trash-ghost.stage-ghost .stage-message { display: none; }
+/* Arrastando a prévia do lenticular: a seta fica em toda a tela até soltar */
+html.drag-ew, html.drag-ew * { cursor: ew-resize !important; }
+html.drag-ns, html.drag-ns * { cursor: ns-resize !important; }
