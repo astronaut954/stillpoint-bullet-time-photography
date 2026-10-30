@@ -129,6 +129,7 @@
     minus: '<path d="M3 7h8"/>',
     plus: '<path d="M3 7h8M7 3v8"/>',
     swap: '<path d="M2.5 5h8l-2.5-2.5M11.5 9h-8l2.5 2.5"/>',
+    theater: '<rect x="1.5" y="3" width="11" height="8"/><path d="M4 5.5h6M4 8.5h6" opacity=".6"/>',
     up: '<path d="M3 9l4-4 4 4"/>',
     down: '<path d="M3 5l4 4 4-4"/>',
     left: '<path d="M9 3L5 7l4 4"/>',
@@ -1550,6 +1551,7 @@
 
   function renderExport() {
     const seq = exp.mode === "sequence", lent = exp.mode === "lenticular";
+    if (!lent) { exp.lentTheater = false; $("exportSettings").classList.remove("theater"); }
     $("exportTitle").textContent = lent ? "Save for lenticular print" : seq ? "Save as sequence" : "Save as photos";
     $("exportSub").textContent = lent ? "Each session becomes one interlaced TIFF to print under a lenticular lens sheet. Choose the lens, the printer and the print size."
                                  : seq ? "Each session becomes a video or animated image. Click a session to see and change its settings."
@@ -1839,69 +1841,118 @@
       const endDrag = () => { drag = null; };
       preview.addEventListener("pointerup", endDrag); preview.addEventListener("pointercancel", endDrag);
 
-      // Segunda vista: o arquivo entrelaçado em si — recorte 1:1 do centro da imagem final (as faixas
-      // no tamanho real em pixels), montado na página com as mesmas contas do app
+      // Segunda vista: o arquivo entrelaçado em si — a imagem inteira como vai sair impressa (reduzida
+      // para caber; a olho nu as faixas se misturam, como no papel sem a lâmina) e uma lupa que mostra
+      // o ponto sob o mouse em pixels reais. Montada na página com as mesmas contas do app.
       const canvas = document.createElement("canvas");
       canvas.className = "lent-canvas hidden";
       preview.insertBefore(canvas, caption);
+      const loupe = document.createElement("canvas");
+      loupe.className = "lent-loupe hidden"; loupe.width = 180; loupe.height = 180;
+      preview.appendChild(loupe);
+      const loupeTag = el("span", "lent-loupe-tag hidden", "2×");
+      preview.appendChild(loupeTag);
       const views = el("div", "segmented lent-views");
+      let full = null;  // canvas com a imagem entrelaçada inteira (ou reduzida, se for grande demais)
       const setView = (v) => {
         exp.lentView = v;
         [...views.children].forEach((b) => b.classList.toggle("on", b.dataset.view === v));
         const inter = v === "interlaced";
         img.classList.toggle("hidden", inter);
         canvas.classList.toggle("hidden", !inter);
+        if (!inter) { loupe.classList.add("hidden"); loupeTag.classList.add("hidden"); }
         preview.classList.toggle("interlaced", inter);
         if (inter) drawInterlaced(); else showFrame(frameAt);
       };
       [["tilt", "Tilt"], ["interlaced", "Interlaced"]].forEach(([v, t]) => {
-        const b = el("button", "", t); b.dataset.view = v; b.title = v === "tilt" ? "Drag to see the photos change, as when tilting the print" : "The interlaced file itself: a 1:1 crop of the centre, strips at their real pixel size";
+        const b = el("button", "", t); b.dataset.view = v; b.title = v === "tilt" ? "Drag to see the photos change, as when tilting the print" : "The whole interlaced file, as it prints; move the mouse over it for a close-up";
         b.addEventListener("click", (e) => { e.stopPropagation(); setView(v); });
         views.appendChild(b);
       });
       views.addEventListener("pointerdown", (e) => e.stopPropagation());
       preview.appendChild(views);
-      const drawInterlaced = () => {
-        const cw = Math.min(plan.w, Math.max(200, preview.clientWidth - 2)), ch = Math.min(plan.h, Math.max(120, preview.clientHeight - 2));
-        canvas.width = cw; canvas.height = ch;
+      // Modo teatro: a prévia ocupa a coluna toda e as configurações somem; o botão de novo volta
+      const theater = button("", () => { exp.lentTheater = !exp.lentTheater; applyTheater(); }, { icon: "theater", title: "Theater mode: larger preview, settings hidden", kind: "btn-overlay" });
+      theater.classList.add("lent-theater-btn");
+      preview.appendChild(theater);
+      const applyTheater = () => {
+        outer.classList.toggle("theater", !!exp.lentTheater);
+        theater.classList.toggle("on", !!exp.lentTheater);
+        theater.title = exp.lentTheater ? "Leave theater mode" : "Theater mode: larger preview, settings hidden";
+        if (exp.lentView === "interlaced") requestAnimationFrame(fitCanvas);
+      };
+      const fitCanvas = () => {
+        if (!full) return;
+        // Cabe na prévia mantendo a proporção do papel; o navegador reduz (as faixas se misturam, como a olho nu)
+        const pw = Math.max(50, preview.clientWidth - 2), ph = Math.max(50, preview.clientHeight - 2);
+        const scale = Math.min(pw / plan.w, ph / plan.h);
+        canvas.width = Math.max(1, Math.round(plan.w * scale)); canvas.height = Math.max(1, Math.round(plan.h * scale));
         const ctx = canvas.getContext("2d");
-        ctx.fillStyle = "#000"; ctx.fillRect(0, 0, cw, ch);
-        const x0 = Math.floor((plan.w - cw) / 2), y0 = Math.floor((plan.h - ch) / 2);  // recorte central, em pixels do arquivo
+        ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(full, 0, 0, canvas.width, canvas.height);
+      };
+      const drawInterlaced = () => {
         const horizontal = l.effect !== "3d";
-        const perLens = plan.cols;
+        // Imagem inteira em pixels reais; acima de ~24 Mpx monta reduzida (a lupa avisa)
+        const limit = 24e6;
+        const f = plan.w * plan.h > limit ? Math.sqrt(limit / (plan.w * plan.h)) : 1;
+        const W = Math.max(1, Math.round(plan.w * f)), H = Math.max(1, Math.round(plan.h * f));
+        const perLens = plan.cols * f;
         const ownerOf = (i) => { const pos = (i + 0.5) / perLens, frac = pos - Math.floor(pos); let k = Math.min(n - 1, Math.floor(frac * n)); return l.reverse ? n - 1 - k : k; };
-        const out = ctx.createImageData(cw, ch);
-        const scratch = document.createElement("canvas"); scratch.width = cw; scratch.height = ch;
-        const sctx = scratch.getContext("2d");
-        let pending = 0;
         const token = (drawInterlaced.token = (drawInterlaced.token || 0) + 1);
-        const finish = () => { if (token === drawInterlaced.token) { ctx.putImageData(out, 0, 0); } };
+        full = document.createElement("canvas"); full.width = W; full.height = H;
+        const fctx = full.getContext("2d");
+        fctx.fillStyle = "#000"; fctx.fillRect(0, 0, W, H);
+        loupeTag.textContent = f < 1 ? "2× (preview built at " + Math.round(f * 100) + "%)" : "2× · real pixels";
+        caption.innerHTML = "";
+        caption.append(el("b", "", "Interlaced"), document.createTextNode(" the whole file as it prints · " + plan.w + " × " + plan.h + " px · " + lentSizeText(l) + " · " +
+          (plan.cols ? plan.cols.toFixed(2).replace(/\.?0+$/, "") : "—") + " px per lens · strips " + (horizontal ? "horizontal" : "vertical") + " · move the mouse for a close-up"));
+        fitCanvas();
+        // Faixas de cada foto: desenha a foto (cobrindo o papel) só nas linhas/colunas dela
+        const lines = horizontal ? H : W;
+        const runs = [];  // [início, comprimento, foto]
+        for (let i = 0; i < lines;) { const k = ownerOf(i); let j = i + 1; while (j < lines && ownerOf(j) === k) j++; runs.push([i, j - i, k]); i = j; }
+        let loaded = 0;
         items.forEach((item, k) => {
-          pending++;
           sessionPhoto(session.name, item.file, 1600).then((url) => new Promise((res) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = url || ""; })).then((im) => {
             if (token !== drawInterlaced.token) return;
             if (im) {
-              // Mesma regra do app: a foto cobre a imagem final inteira (corte centrado); aqui só o recorte
-              const s = Math.max(plan.w / im.naturalWidth, plan.h / im.naturalHeight);
+              const s = Math.max(W / im.naturalWidth, H / im.naturalHeight);
               const fw = im.naturalWidth * s, fh = im.naturalHeight * s;
-              const ox = (fw - plan.w) / 2, oy = (fh - plan.h) / 2;
-              sctx.clearRect(0, 0, cw, ch);
-              sctx.drawImage(im, (x0 + ox) / s, (y0 + oy) / s, cw / s, ch / s, 0, 0, cw, ch);
-              const src = sctx.getImageData(0, 0, cw, ch).data;
-              if (horizontal) {
-                for (let y = 0; y < ch; y++) if (ownerOf(y0 + y) === k) out.data.set(src.subarray(y * cw * 4, (y + 1) * cw * 4), y * cw * 4);
-              } else {
-                for (let x = 0; x < cw; x++) if (ownerOf(x0 + x) === k)
-                  for (let y = 0; y < ch; y++) { const o = (y * cw + x) * 4; out.data[o] = src[o]; out.data[o + 1] = src[o + 1]; out.data[o + 2] = src[o + 2]; out.data[o + 3] = 255; }
-              }
+              const ox = (fw - W) / 2, oy = (fh - H) / 2;
+              fctx.imageSmoothingEnabled = true;
+              runs.forEach(([start, len, owner]) => {
+                if (owner !== k) return;
+                if (horizontal) fctx.drawImage(im, ox / s, (oy + start) / s, W / s, len / s, 0, start, W, len);
+                else fctx.drawImage(im, (ox + start) / s, oy / s, len / s, H / s, start, 0, len, H);
+              });
             }
-            if (--pending === 0) finish();
+            if (++loaded === n) fitCanvas();
           });
         });
-        caption.innerHTML = "";
-        caption.append(el("b", "", "Interlaced"), document.createTextNode(" 1:1 crop of the centre · " + cw + " × " + ch + " of " + plan.w + " × " + plan.h + " px · " +
-          (plan.cols ? plan.cols.toFixed(2).replace(/\.?0+$/, "") : "—") + " px per lens · strips " + (horizontal ? "horizontal" : "vertical")));
       };
+      // Lupa: segue o mouse; mostra o ponto em pixels reais ampliados 2×
+      preview.addEventListener("pointermove", (e) => {
+        if (exp.lentView !== "interlaced" || !full) return;
+        const r = canvas.getBoundingClientRect();
+        const inside = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+        loupe.classList.toggle("hidden", !inside); loupeTag.classList.toggle("hidden", !inside);
+        if (!inside) return;
+        const fx = (e.clientX - r.left) / r.width * full.width, fy = (e.clientY - r.top) / r.height * full.height;
+        const half = loupe.width / 4;  // 2×: 90 px reais viram 180 na tela
+        const lctx = loupe.getContext("2d");
+        lctx.imageSmoothingEnabled = false;
+        lctx.fillStyle = "#000"; lctx.fillRect(0, 0, loupe.width, loupe.height);
+        lctx.drawImage(full, fx - half, fy - half, half * 2, half * 2, 0, 0, loupe.width, loupe.height);
+        const pr = preview.getBoundingClientRect();
+        let lx = e.clientX - pr.left + 18, ly = e.clientY - pr.top + 18;
+        if (lx + loupe.width > pr.width - 8) lx = e.clientX - pr.left - loupe.width - 18;
+        if (ly + loupe.height > pr.height - 8) ly = e.clientY - pr.top - loupe.height - 18;
+        loupe.style.left = lx + "px"; loupe.style.top = ly + "px";
+        loupeTag.style.left = lx + "px"; loupeTag.style.top = (ly + loupe.height + 4) + "px";
+      });
+      preview.addEventListener("pointerleave", () => { loupe.classList.add("hidden"); loupeTag.classList.add("hidden"); });
+      applyTheater();
       setView(exp.lentView === "interlaced" ? "interlaced" : "tilt");
 
       // Leitura: o que a combinação lâmina + impressora dá para esta sessão

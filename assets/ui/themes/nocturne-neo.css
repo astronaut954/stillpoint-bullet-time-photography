@@ -714,9 +714,17 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
 .lent-readout .lent-note { color: var(--noct-text-muted); font-size: 12px; margin-top: 4px; }
 .export-preview.lent-preview { cursor: ew-resize; user-select: none; -webkit-user-select: none; touch-action: none; }
 .export-preview.lent-preview.interlaced { cursor: default; }
-.export-preview .lent-canvas { max-width: 100%; max-height: 100%; image-rendering: pixelated; }
-.export-preview .lent-views { position: absolute; right: 10px; top: 10px; }
-.export-preview .lent-views button { height: 24px; padding: 0 10px; font-size: 10px; }
+.export-preview .lent-canvas { max-width: 100%; max-height: 100%; border: 1px solid var(--noct-border-strong); box-sizing: border-box; }
+.export-preview .lent-views { position: absolute; right: 10px; top: 10px; background: #000; }
+.export-preview .lent-views button { height: 24px; padding: 0 10px; font-size: 10px; background: #000; color: var(--noct-text-muted); }
+.export-preview .lent-views button.on { background: var(--noct-primary); color: var(--noct-on-primary); }
+.export-preview .lent-loupe { position: absolute; pointer-events: none; border: 1px solid var(--noct-primary); box-shadow: 0 0 0 1px #000, 0 6px 20px rgba(0,0,0,.6); image-rendering: pixelated; z-index: 2; }
+.export-preview .lent-loupe-tag { position: absolute; pointer-events: none; font: 700 9px var(--noct-font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--noct-primary); background: #000; padding: 2px 5px; z-index: 2; }
+.export-preview .lent-theater-btn { position: absolute; left: 10px; top: 10px; }
+.export-preview .lent-theater-btn.on { border-color: var(--noct-primary); color: var(--noct-primary); }
+/* Modo teatro: a prévia toma a coluna e as configurações somem */
+.export-settings.theater .export-rows, .export-settings.theater .export-scope { display: none; }
+.export-settings.theater .export-preview { height: auto; flex: 1 1 auto; min-height: 0; }
 .lent-presets { margin-left: 8px; }
 .export-strip-scroll { overflow-x: auto; overflow-y: hidden; flex: 0 0 auto; padding-bottom: 4px; }
 .export-strip { list-style: none; margin: 0; padding: 0; border: 0; display: flex; gap: 6px; width: max-content; min-width: 100%; }
