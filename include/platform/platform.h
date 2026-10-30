@@ -159,4 +159,10 @@ namespace Platform
 
     // Abre uma pasta no Finder (Mac) ou no Explorador de Arquivos (Windows).
     void OpenInFileManager(const std::filesystem::path& folder);
+
+    // Mostra um arquivo selecionado na pasta dele, no Finder (Mac) ou no Explorador (Windows).
+    void RevealInFileManager(const std::filesystem::path& file);
+
+    // Abre um arquivo no programa padrão do sistema para aquele tipo (Pré-visualização, Fotos...).
+    void OpenWithDefaultApp(const std::filesystem::path& file);
 }

@@ -604,4 +604,14 @@ open "$APP"
     {
         Spawn({ "/usr/bin/open", folder.string() });
     }
+
+    void RevealInFileManager(const fs::path& file)
+    {
+        Spawn({ "/usr/bin/open", "-R", file.string() });
+    }
+
+    void OpenWithDefaultApp(const fs::path& file)
+    {
+        Spawn({ "/usr/bin/open", file.string() });
+    }
 }

@@ -800,6 +800,9 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) serve para tudo, menos para a impress
 - [ ] **Alinhamento:** a borda direita das caixas Photos/Sequence/Lenticular alinha com a da prévia,
       com e sem rolagem.
 - [ ] **Copy from camera (Camera settings):** a lista "Choose…" abre com a cara do app.
+- [ ] **Botão direito numa foto:** "Show in Finder" abre o Finder com a foto selecionada (no Windows,
+      "Show in Explorer"); "Open in default app" abre a foto no programa padrão (Pré-visualização,
+      Fotos…). Câmera que não mandou foto: as duas opções ficam apagadas.
 - [ ] **Apagar foto:** botão direito numa miniatura ou na foto grande (tela principal e tela cheia) →
       "Delete photo 03…" → confirmar: a miniatura encolhe e some, a foto grande se apaga. Cmd+Z volta.
 - [ ] **Apagar sessão:** pela lixeira, pelo botão direito ou "Delete session": a linha da sessão voa

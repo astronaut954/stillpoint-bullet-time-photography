@@ -897,7 +897,20 @@
       if (editing.on || !currentSession) return;
       const item = sessionGallery.items[sessionGallery.index];
       if (!item) return;
-      popupMenuAt(e.clientX, e.clientY, [{ label: "Delete photo " + pad(item.order || sessionGallery.index + 1) + "…", danger: true, onClick: deleteCurrentPhoto }]);
+      const win = upd.info && upd.info.os === "windows";
+      const fileAction = (what) => {
+        if (typeof window.photoFile !== "function") { toast("This build cannot do that yet. Build the app again.", 8000); return; }
+        Promise.resolve(window.photoFile(item.session || currentSession.name, item.file, what)).then((r) => {
+          if (r && r.ok === false) toast(r.error || "Could not open " + item.file + ".", 8000);
+        });
+      };
+      const hasFile = !!item.file;
+      popupMenuAt(e.clientX, e.clientY, [
+        { label: win ? "Show in Explorer" : "Show in Finder", disabled: !hasFile, dim: !hasFile, onClick: () => fileAction("reveal") },
+        { label: "Open in default app", disabled: !hasFile, dim: !hasFile, onClick: () => fileAction("open") },
+        "-",
+        { label: "Delete photo " + pad(item.order || sessionGallery.index + 1) + "…", danger: true, onClick: deleteCurrentPhoto },
+      ]);
     },
   });
   const editing = { on: false };  // reordenando as fotos da sessão aberta

@@ -1943,6 +1943,24 @@ namespace
             }
             return "null";
         });
+        // photoFile(sessão, arquivo, "reveal" | "open"): mostra a foto selecionada no Finder/Explorer
+        // ou abre no programa padrão (botão direito numa foto)
+        window.bind("photoFile", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            if (args.size() < 3 || args[1].empty() || args[1].find_first_of("/\\") != std::string::npos || args[1].find("..") != std::string::npos)
+                return Json("photoFile").Add("ok", false).Str();
+            const auto dir = store.SessionDir(args[0]);
+            std::error_code ec;
+            const auto file = dir / args[1];
+            if (dir.empty() || !std::filesystem::exists(file, ec))
+                return Json("photoFile").Add("ok", false).Add("error", "The file is no longer there.").Str();
+            if (args[2] == "open")
+                Platform::OpenWithDefaultApp(file);
+            else
+                Platform::RevealInFileManager(file);
+            return Json("photoFile").Add("ok", true).Str();
+        });
         // projectOpenFolder(): mostra a pasta do Project no Finder/Explorer
         window.bind("projectOpenFolder", [&](const std::string&) -> std::string
         {

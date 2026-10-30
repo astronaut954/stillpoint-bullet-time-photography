@@ -637,4 +637,15 @@ namespace Platform
     {
         ShellExecuteW(nullptr, L"open", folder.wstring().c_str(), nullptr, nullptr, SW_SHOWNORMAL);
     }
+
+    void RevealInFileManager(const fs::path& file)
+    {
+        const std::wstring args = L"/select,\"" + file.wstring() + L"\"";
+        ShellExecuteW(nullptr, L"open", L"explorer.exe", args.c_str(), nullptr, SW_SHOWNORMAL);
+    }
+
+    void OpenWithDefaultApp(const fs::path& file)
+    {
+        ShellExecuteW(nullptr, L"open", file.wstring().c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+    }
 }
