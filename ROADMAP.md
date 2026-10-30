@@ -627,8 +627,15 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    Verificado no Linux com fotos de cor sólida (padrão `RRGGGBBYYY` a 10 px por lente e 4 fotos;
    dpi no TIFF; reverse; eixo 3D). **Não validado no papel:** o dono não tem impressora nem lâmina;
    registrar o resultado da primeira impressão (gráfica + kit de lâminas) antes de dar por
-   concluída. Entrega 2 (pendente): folha de pitch test com faixas ao redor do LPI nominal e o
-   valor medido guardado por combinação lâmina + impressora; marcas de corte/registro e sangria.
+   concluída. **Entrega 2 (2026-10-30, mesmo branch e versão; decisões do dono no mesmo dia):**
+   folha de pitch test — 11 faixas preto/branco ao redor do LPI (ou do pitch já medido), de 0,1 em
+   0,1, com "Finer steps" discreto para 0,05 ou 0,02; números impressos com uma fonte de bloco
+   própria; papel com as mesmas opções de tamanho da exportação (começa em A4/Letter); TIFF em tons de
+   cinza gravado linha a linha (`Export::WritePitchTest`), salvo na pasta padrão do Save e mostrado
+   no Finder; abre pelo "Print pitch test…" da seção Lenticular e por um ícone na tela principal.
+   Marcas: corte e alinhamento ligados e sangria de 3 mm por padrão (podem desligar); margem branca de
+   0,4 pol em volta; as lentes contam a partir da linha de corte. O pitch medido fica guardado com as
+   últimas configurações de exportação (não por combinação lâmina + impressora).
    Decisões do dono (2026-10-30): listas de fábrica acima; cm como padrão; prévia na tela; aba
    dentro do Export.
 5. **Etapa 20 — Edit in Lightroom Classic / Photoshop.** Ida e volta: o app abre os originais

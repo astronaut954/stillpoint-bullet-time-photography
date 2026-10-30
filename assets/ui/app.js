@@ -129,6 +129,7 @@
     minus: '<path d="M3 7h8"/>',
     plus: '<path d="M3 7h8M7 3v8"/>',
     swap: '<path d="M2.5 5h8l-2.5-2.5M11.5 9h-8l2.5 2.5"/>',
+    lens: '<rect x="1.5" y="2.5" width="11" height="9"/><path d="M1.5 5.5c1.4-1.6 2.3-1.6 3.7 0s2.3 1.6 3.7 0 2.3-1.6 3.6 0M4.5 8.5h5"/>',
     // Modo teatro, como no YouTube: tela com barra embaixo e dois ângulos dentro
     // (para fora = entrar; para dentro = sair)
     // Modo teatro: só as setas (para fora = entrar; para dentro = sair), no botão igual ao da janela Project
@@ -1537,7 +1538,9 @@
                    seq: { formats: ["mp4"], fps: 6, loops: 3, reverse: true, height: 1080, alsoPhotos: true, quality: "high" },
                    // lpi: lâmina; pitch: medido na folha de teste (0 = usar o nominal); dpi: impressora;
                    // tamanho em cm (unit "cm"|"in" só muda a exibição); effect "flip" (animação) | "3d"
-                   lent: { lpi: 60, pitch: 0, dpi: 720, widthCm: 15, heightCm: 10, unit: "cm", effect: "flip", reverse: false } };
+                   lent: { lpi: 60, pitch: 0, dpi: 720, widthCm: 15, heightCm: 10, unit: "cm", effect: "flip", reverse: false,
+                           // marcas (entrega 2, decisão do dono em 2026-10-30): corte e alinhamento ligados, sangria 3 mm
+                           cropMarks: true, alignMarks: true, bleedMm: 3 } };
     const p = exportPrefs && exportPrefs.settings;
     if (p) ["naming", "outputs", "photos", "seq", "lent"].forEach((k) => { if (p[k] && typeof p[k] === "object") Object.assign(base[k], JSON.parse(JSON.stringify(p[k]))); });
     // Preferências de antes da 2.14 (um modo só): o modo vira a saída ligada; Sequence com
@@ -1833,7 +1836,9 @@
     // < 1 ponto por foto: a impressora não consegue separar as faixas; < 2: funciona, mas umas fotos
     // ficam com 1 ponto e outras com 2 (transição menos uniforme)
     const warn = photos > 0 && per < 1 ? "bad" : photos > 0 && per < 2 ? "tight" : "";
-    return { cols, w, h, per, lenses, warn };
+    // Arquivo: impressão + sangria em volta + margem de 0,4 pol para as marcas (como o programa faz)
+    const bleed = Math.round((l.bleedMm || 0) / 25.4 * l.dpi), margin = l.cropMarks || l.alignMarks ? Math.round(0.4 * l.dpi) : 0;
+    return { cols, w, h, per, lenses, warn, fileW: w + 2 * (bleed + margin), fileH: h + 2 * (bleed + margin) };
   }
   const cmText = (v) => (Math.round(v * 10) / 10).toString();
   const inText = (v) => (Math.round(v / CM_PER_IN * 100) / 100).toString();
@@ -1856,6 +1861,136 @@
     i.addEventListener("change", commit);
     i.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); commit(); i.blur(); } });
     return i;
+  }
+
+  // ---- Folha de teste de pitch (entrega 2) ----
+  // Abre de dois lugares: o botão na seção Lenticular (com a lâmina e a impressora dela) e o
+  // ícone da tela principal (com as últimas usadas). 11 faixas em volta do LPI (ou do pitch já
+  // medido): de 0,1 em 0,1 por padrão; "Finer steps" (discreto) para 0,05 ou 0,02.
+  const pitchState = { l: null, step: 0.1, fine: false };
+  function openPitchTest(from) {
+    const base = from || (exportPrefs && exportPrefs.settings && exportPrefs.settings.lent) || defaultSettings().lent;
+    // Cópia: mexer aqui não muda a impressão; o tamanho começa em A4 (ou Letter em polegadas)
+    const l = JSON.parse(JSON.stringify(base));
+    l.widthCm = l.unit === "in" ? 8.5 * CM_PER_IN : 21; l.heightCm = l.unit === "in" ? 11 * CM_PER_IN : 29.7;
+    pitchState.l = l; pitchState.target = from || null;
+    pitchState.step = 0.1; pitchState.fine = false;
+    let ov = $("pitchOverlay");
+    if (!ov) {
+      ov = el("div", "overlay pitch-overlay hidden"); ov.id = "pitchOverlay";
+      ov.addEventListener("click", (e) => { if (e.target === ov) closePitchTest(); });
+      document.body.appendChild(ov);
+    }
+    renderPitchTest();
+    ov.classList.remove("hidden");
+  }
+  function closePitchTest() { const ov = $("pitchOverlay"); if (ov) ov.classList.add("hidden"); }
+  function renderPitchTest() {
+    const ov = $("pitchOverlay"), l = pitchState.l;
+    const scroll = ov.querySelector(".pitch-body") ? ov.querySelector(".pitch-body").scrollTop : 0;
+    ov.innerHTML = "";
+    const d = el("div", "dialog pitch-dialog");
+    d.appendChild(el("h3", "", "Pitch test"));
+    d.appendChild(el("p", "pitch-sub", "Measures the real LPI of your lens sheet with your printer. Print the sheet at 100%, lay the lens sheet on top " +
+      "(strips in the same direction) and tilt it: the strip that turns black or white all at once, with no bands, is your real pitch. " +
+      "Type its number in \"Measured pitch\" in the Lenticular settings."));
+    const body = el("div", "pitch-body");
+    const rerender = () => renderPitchTest();
+    lentEffectRows(l, body, rerender, { noReverse: true });
+    lentLensRows(l, body, rerender);
+    lentPrinterRows(l, body, rerender);
+    lentSizeRow(l, body, rerender, "Paper size");
+    // 11 faixas em volta do LPI (ou do pitch medido, se já houver)
+    const center = l.pitch > 0 ? l.pitch : l.lpi;
+    const step = pitchState.step, half = step * 5, dec = step < 0.0999 ? 2 : 1;
+    const strips = row("Strips");
+    strips.appendChild(el("span", "pitch-range", "11 strips · " + (center - half).toFixed(dec) + " to " + (center + half).toFixed(dec) + " LPI, every " + step));
+    if (!pitchState.fine) strips.appendChild(button("Finer steps", () => { pitchState.fine = true; rerender(); }, { kind: "btn-link", title: "Smaller steps around the value, for a second, more precise test" }));
+    else strips.appendChild(segmented([["0.1", "0.1"], ["0.05", "0.05"], ["0.02", "0.02"]], String(step), (v) => { pitchState.step = Number(v); rerender(); }));
+    body.appendChild(strips);
+    if (l.pitch > 0) body.appendChild(el("div", "export-note", "Centered on your measured pitch (" + l.pitch + "). For a second, more precise test, use finer steps."));
+    const W = Math.round(l.widthCm / CM_PER_IN * l.dpi), H = Math.round(l.heightCm / CM_PER_IN * l.dpi);
+    body.appendChild(el("div", "export-note", W + " × " + H + " px, black and white TIFF · saved in " + (exp.destDefault || "the Exports folder") + " and shown in the " + (upd.info && upd.info.os === "windows" ? "Explorer" : "Finder") + "."));
+    d.appendChild(body);
+    const actions = el("div", "dialog-actions");
+    actions.appendChild(button("Cancel", closePitchTest));
+    const ok = button("Save pitch test", () => {
+      if (typeof window.lenticularPitchTest !== "function") { toast("This build cannot do that yet. Build the app again.", 8000); return; }
+      if (!(center > 0 && l.dpi > 0 && l.widthCm > 0 && l.heightCm > 0)) { toast("Check the lens, printer and size values.", 6000, { warn: true }); return; }
+      ok.disabled = true;
+      window.lenticularPitchTest(String(l.dpi), (l.widthCm / CM_PER_IN).toFixed(4), (l.heightCm / CM_PER_IN).toFixed(4), l.effect, String(center), String(step), "");
+      toast("Making the pitch test sheet…");
+      closePitchTest();
+    }, { kind: "btn-primary" });
+    actions.appendChild(ok);
+    d.appendChild(actions);
+    ov.appendChild(d);
+    const nb = ov.querySelector(".pitch-body"); if (nb) nb.scrollTop = scroll;
+  }
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && $("pitchOverlay") && !$("pitchOverlay").classList.contains("hidden") && !selectMenu) { e.stopImmediatePropagation(); closePitchTest(); } }, true);
+
+  // ---- Lenticular: controles usados na janela de salvar e na folha de teste ----
+  function lentEffectRows(l, box, rerender) {
+      const effect = row("Effect");
+      effect.appendChild(segmented([["flip", "Animation (tilt up/down)"], ["3d", "3D (left/right)"]], l.effect, (v) => {
+        l.effect = v;
+        const list = v === "3d" ? LENSES_3D : LENSES;
+        if (!list.some(([x]) => x === l.lpi) && !l.lpiOther) l.lpi = list[list.length - 1][0];
+        rerender();
+      }));
+      if (!(arguments[3] && arguments[3].noReverse)) effect.appendChild(checkOption("Reverse order", l.reverse, (v) => { l.reverse = v; rerender(); }));
+      box.appendChild(effect);
+      box.appendChild(el("div", "export-note", l.effect === "3d"
+        ? "3D needs photos taken side by side along a straight line (left to right). A bullet-time arc only works partly. Lens strips stand vertical."
+        : "Animation shows one photo after another as the print tilts up and down: the bullet-time turn. Lens strips lie horizontal."));
+  }
+  function lentLensRows(l, box, rerender, opts) {
+      const lens = row("Lens sheet");
+      const lensList = l.effect === "3d" ? LENSES_3D : LENSES;
+      const lensOpts = lensList.concat([["other", "Other"]]);
+      const lensCurrent = l.lpiOther ? "other" : l.lpi;
+      lens.appendChild(segmented(lensOpts, lensCurrent, (v) => { if (v === "other") { l.lpiOther = true; } else { l.lpiOther = false; l.lpi = v; } rerender(); }));
+      if (l.lpiOther) lens.appendChild(numField(l.lpi, (v) => { l.lpi = v; rerender(); }, { placeholder: "LPI", width: "64px" }));
+      if (opts && opts.measured) {
+        const pitchLabel = el("span", "export-label lent-sub", "Measured pitch");
+        lens.appendChild(pitchLabel);
+        lens.appendChild(numField(l.pitch, (v) => { l.pitch = v; rerender(); }, { placeholder: String(l.lpi), width: "72px", allowEmpty: true }));
+        lens.appendChild(button("Print pitch test…", () => openPitchTest(l), { kind: "btn-link", title: "A sheet to measure the real LPI of your lens sheet with your printer" }));
+      }
+      box.appendChild(lens);
+      box.appendChild(el("div", "export-note", "LPI = lenses per inch, printed on the sheet's package. 40–75 LPI for photo-size animation; 20–40 for 3D and posters." +
+        (opts && opts.measured ? " \"Measured pitch\": the number of the smoothest strip on the pitch test (empty = use the LPI above)." : "")));
+  }
+  function lentPrinterRows(l, box, rerender) {
+      const printer = row("Printer");
+      const dpiOpts = PRINTERS.concat([["other", "Other"]]);
+      printer.appendChild(segmented(dpiOpts, l.dpiOther ? "other" : l.dpi, (v) => { if (v === "other") { l.dpiOther = true; } else { l.dpiOther = false; l.dpi = v; } rerender(); }));
+      if (l.dpiOther) printer.appendChild(numField(l.dpi, (v) => { l.dpi = Math.round(v); rerender(); }, { placeholder: "dpi", width: "64px" }));
+      box.appendChild(printer);
+      box.appendChild(el("div", "export-note", PRINTER_HELP));
+  }
+  function lentSizeRow(l, box, rerender, label) {
+      const size = row(label || "Print size");
+      const unitIn = l.unit === "in";
+      const wField = numField(unitIn ? inText(l.widthCm) : cmText(l.widthCm), (v) => { l.widthCm = unitIn ? v * CM_PER_IN : v; rerender(); }, { width: "64px" });
+      const hField = numField(unitIn ? inText(l.heightCm) : cmText(l.heightCm), (v) => { l.heightCm = unitIn ? v * CM_PER_IN : v; rerender(); }, { width: "64px" });
+      size.append(wField, el("span", "lent-x", "×"), hField);
+      size.appendChild(segmented([["cm", "cm"], ["in", "in"]], l.unit, (v) => { l.unit = v; rerender(); }));
+      const swap = button("", () => { const w = l.widthCm; l.widthCm = l.heightCm; l.heightCm = w; rerender(); }, { icon: "swap", title: "Swap width and height" });
+      swap.classList.add("btn-small");
+      size.appendChild(swap);
+      const presets = el("span", "chips lent-presets");
+      // Em cm: tamanhos de foto métricos; em polegadas: os americanos (4 × 6, 5 × 7, 8 × 10, Letter)
+      const presetList = unitIn
+        ? [["4 × 6", 4 * CM_PER_IN, 6 * CM_PER_IN], ["6 × 4", 6 * CM_PER_IN, 4 * CM_PER_IN], ["5 × 7", 5 * CM_PER_IN, 7 * CM_PER_IN], ["8 × 10", 8 * CM_PER_IN, 10 * CM_PER_IN], ["Letter", 8.5 * CM_PER_IN, 11 * CM_PER_IN]]
+        : [["10 × 15", 10, 15], ["15 × 10", 15, 10], ["20 × 30", 20, 30], ["30 × 20", 30, 20], ["A4", 21, 29.7]];
+      presetList.forEach(([t, w, h]) => {
+        const c = el("button", "chip" + (Math.abs(l.widthCm - w) < 0.05 && Math.abs(l.heightCm - h) < 0.05 ? " on" : ""), t);
+        c.addEventListener("click", () => { l.widthCm = w; l.heightCm = h; rerender(); });
+        presets.appendChild(c);
+      });
+      size.appendChild(presets);
+      box.appendChild(size);
   }
 
   // Deslizar a altura de um bloco de "antes" para a altura de agora (o conteúdo novo já está lá).
@@ -2232,69 +2367,27 @@
       read.appendChild(cols);
       const perText = plan.per ? plan.per.toFixed(2).replace(/\.?0+$/, "") : "—";
       read.appendChild(el("div", "", plural(n, "photo", "photos") + " → " + perText + " printer " + (plan.per === 1 ? "dot" : "dots") + " per photo in each lens"));
-      read.appendChild(el("div", "lent-dim", plan.w + " × " + plan.h + " px · " + plural(plan.lenses, "lens", "lenses") + " across the print · TIFF, no compression"));
+      read.appendChild(el("div", "lent-dim", plan.w + " × " + plan.h + " px · " + plural(plan.lenses, "lens", "lenses") + " across the print · TIFF, no compression" +
+        (plan.fileW !== plan.w ? " · file " + plan.fileW + " × " + plan.fileH + " px with " + [l.bleedMm ? l.bleedMm + " mm bleed" : "", l.cropMarks || l.alignMarks ? "marks" : ""].filter(Boolean).join(" and ") : "")));
       if (plan.warn === "bad") read.appendChild(el("div", "lent-warn", "Less than one printer dot per photo: the printer cannot separate the strips. Use a higher dpi, a coarser lens (fewer LPI), or a session with fewer photos."));
       else if (plan.warn === "tight") read.appendChild(el("div", "lent-warn", "Under 2 dots per photo: it works, but some photos get 1 dot and others 2, so the change between them is less even. A higher dpi (1440 instead of 720), a coarser lens or fewer photos gives a cleaner result."));
       if (!l.pitch) read.appendChild(el("div", "lent-note", "Using the nominal LPI. Real sheets differ a little (59.8 instead of 60, say): print a pitch test to measure yours and type it in \"Measured pitch\"."));
       box.appendChild(read);
 
-      // Efeito
-      const effect = row("Effect");
-      effect.appendChild(segmented([["flip", "Animation (tilt up/down)"], ["3d", "3D (left/right)"]], l.effect, (v) => {
-        l.effect = v;
-        const list = v === "3d" ? LENSES_3D : LENSES;
-        if (!list.some(([x]) => x === l.lpi) && !l.lpiOther) l.lpi = list[list.length - 1][0];
-        rerender();
-      }));
-      effect.appendChild(checkOption("Reverse order", l.reverse, (v) => { l.reverse = v; rerender(); }));
-      box.appendChild(effect);
-      box.appendChild(el("div", "export-note", l.effect === "3d"
-        ? "3D needs photos taken side by side along a straight line (left to right). A bullet-time arc only works partly. Lens strips stand vertical."
-        : "Animation shows one photo after another as the print tilts up and down: the bullet-time turn. Lens strips lie horizontal."));
-
-      // Lâmina
-      const lens = row("Lens sheet");
-      const lensList = l.effect === "3d" ? LENSES_3D : LENSES;
-      const lensOpts = lensList.concat([["other", "Other"]]);
-      const lensCurrent = l.lpiOther ? "other" : l.lpi;
-      lens.appendChild(segmented(lensOpts, lensCurrent, (v) => { if (v === "other") { l.lpiOther = true; } else { l.lpiOther = false; l.lpi = v; } rerender(); }));
-      if (l.lpiOther) lens.appendChild(numField(l.lpi, (v) => { l.lpi = v; rerender(); }, { placeholder: "LPI", width: "64px" }));
-      const pitchLabel = el("span", "export-label lent-sub", "Measured pitch");
-      lens.appendChild(pitchLabel);
-      lens.appendChild(numField(l.pitch, (v) => { l.pitch = v; rerender(); }, { placeholder: String(l.lpi), width: "72px", allowEmpty: true }));
-      box.appendChild(lens);
-      box.appendChild(el("div", "export-note", "LPI = lenses per inch, printed on the sheet's package. 40–75 LPI for photo-size animation; 20–40 for 3D and posters. Leave \"Measured pitch\" empty until you have printed a pitch test (next version)."));
-
-      // Impressora / saída
-      const printer = row("Printer");
-      const dpiOpts = PRINTERS.concat([["other", "Other"]]);
-      printer.appendChild(segmented(dpiOpts, l.dpiOther ? "other" : l.dpi, (v) => { if (v === "other") { l.dpiOther = true; } else { l.dpiOther = false; l.dpi = v; } rerender(); }));
-      if (l.dpiOther) printer.appendChild(numField(l.dpi, (v) => { l.dpi = Math.round(v); rerender(); }, { placeholder: "dpi", width: "64px" }));
-      box.appendChild(printer);
-      box.appendChild(el("div", "export-note", PRINTER_HELP));
-
-      // Tamanho
-      const size = row("Print size");
-      const unitIn = l.unit === "in";
-      const wField = numField(unitIn ? inText(l.widthCm) : cmText(l.widthCm), (v) => { l.widthCm = unitIn ? v * CM_PER_IN : v; rerender(); }, { width: "64px" });
-      const hField = numField(unitIn ? inText(l.heightCm) : cmText(l.heightCm), (v) => { l.heightCm = unitIn ? v * CM_PER_IN : v; rerender(); }, { width: "64px" });
-      size.append(wField, el("span", "lent-x", "×"), hField);
-      size.appendChild(segmented([["cm", "cm"], ["in", "in"]], l.unit, (v) => { l.unit = v; rerender(); }));
-      const swap = button("", () => { const w = l.widthCm; l.widthCm = l.heightCm; l.heightCm = w; rerender(); }, { icon: "swap", title: "Swap width and height" });
-      swap.classList.add("btn-small");
-      size.appendChild(swap);
-      const presets = el("span", "chips lent-presets");
-      // Em cm: tamanhos de foto métricos; em polegadas: os americanos (4 × 6, 5 × 7, 8 × 10, Letter)
-      const presetList = unitIn
-        ? [["4 × 6", 4 * CM_PER_IN, 6 * CM_PER_IN], ["6 × 4", 6 * CM_PER_IN, 4 * CM_PER_IN], ["5 × 7", 5 * CM_PER_IN, 7 * CM_PER_IN], ["8 × 10", 8 * CM_PER_IN, 10 * CM_PER_IN], ["Letter", 8.5 * CM_PER_IN, 11 * CM_PER_IN]]
-        : [["10 × 15", 10, 15], ["15 × 10", 15, 10], ["20 × 30", 20, 30], ["30 × 20", 30, 20], ["A4", 21, 29.7]];
-      presetList.forEach(([t, w, h]) => {
-        const c = el("button", "chip" + (Math.abs(l.widthCm - w) < 0.05 && Math.abs(l.heightCm - h) < 0.05 ? " on" : ""), t);
-        c.addEventListener("click", () => { l.widthCm = w; l.heightCm = h; rerender(); });
-        presets.appendChild(c);
-      });
-      size.appendChild(presets);
-      box.appendChild(size);
+      // Efeito, lâmina, impressora e tamanho: os mesmos controles da folha de teste de pitch
+      lentEffectRows(l, box, rerender);
+      lentLensRows(l, box, rerender, { measured: true });
+      lentPrinterRows(l, box, rerender);
+      lentSizeRow(l, box, rerender);
+      // Marcas de impressão (entrega 2)
+      const marks = row("Marks");
+      marks.appendChild(checkOption("Crop marks", !!l.cropMarks, (v) => { l.cropMarks = v; rerender(); }));
+      marks.appendChild(checkOption("Alignment marks", !!l.alignMarks, (v) => { l.alignMarks = v; rerender(); }));
+      marks.appendChild(el("span", "export-label lent-sub", "Bleed"));
+      marks.appendChild(segmented([["0", "None"], ["3", "3 mm"]], String(l.bleedMm || 0), (v) => { l.bleedMm = Number(v); rerender(); }));
+      box.appendChild(marks);
+      box.appendChild(el("div", "export-note", "Crop marks: short lines in the margin showing where to cut. Alignment marks: crosses on each side to place the lens sheet. " +
+        "Bleed: the picture goes a little past the cut line, so a cut slightly off leaves no white edge. With marks, the file has a white margin around the print."));
       box.appendChild(el("div", "export-note", "The photos are scaled to cover this size exactly (cropped at the edges if the shape differs). " +
         "Print at 100% / actual size, never \"fit to page\": the file already has the right dpi and size."));
       } else {
@@ -2500,7 +2593,8 @@
     return [...head, "outputs",
       o.photos ? [st.photos.original ? "original" : "", st.photos.convert ? st.photos.format : ""].filter(Boolean).join(",") : "", st.photos.quality,
       o.sequence ? s.formats.join(",") : "", s.fps, s.loops, s.reverse ? 1 : 0, s.height, s.quality,
-      o.lenticular ? 1 : 0, lentPitch(l), l.dpi, (l.widthCm / CM_PER_IN).toFixed(4), (l.heightCm / CM_PER_IN).toFixed(4), l.effect, l.reverse ? 1 : 0].join("|");
+      o.lenticular ? 1 : 0, lentPitch(l), l.dpi, (l.widthCm / CM_PER_IN).toFixed(4), (l.heightCm / CM_PER_IN).toFixed(4), l.effect, l.reverse ? 1 : 0,
+      l.cropMarks ? 1 : 0, l.alignMarks ? 1 : 0, l.bleedMm || 0].join("|");
   }
 
   function runExport(deleteRest) {
@@ -2927,6 +3021,10 @@
     saving() { activity.saving = true; renderActivity(); },
     exportProgress(e) { showProgress(e); },
     exportFolderError(e) { toast(e.error, 8000, { warn: true }); },
+    pitchTestDone(e) {
+      if (e.ok) { toast("Pitch test saved: " + e.file.split(/[\\/]/).pop()); log("Pitch test saved", "ok", e.file); }
+      else { toast(e.error || "Could not make the pitch test.", 8000, { warn: true }); log("Pitch test failed", "warn", e.error); }
+    },
     saveCancelled() {
       if (exp.waiting) exp.waiting = false;  // a janela continua aberta como estava
       else toast("Save cancelled");
@@ -5104,6 +5202,13 @@
   // O botão abre (ou traz de volta) a janela Live 1; dentro dela dá para abrir a 2ª.
   // As janelas Live pedem o disparo e o cancelamento por aqui (o plano do Timing é desta página).
   $("liveBtn").addEventListener("click", () => { log("Live view opened", "tech"); window.openLive("1"); });
+  // Folha de teste do lenticular direto da tela principal (sem abrir a janela de salvar)
+  $("pitchBtn").innerHTML = icon("lens", 15);
+  $("pitchBtn").addEventListener("click", () => {
+    if (typeof window.exportDestination === "function" && !exp.destDefault)
+      Promise.resolve(window.exportDestination()).then((d) => { if (d) exp.destDefault = d.folder; if ($("pitchOverlay") && !$("pitchOverlay").classList.contains("hidden")) renderPitchTest(); });
+    openPitchTest(null);
+  });
   window.liveShootRequest = () => { if (!ui.shootBtn.disabled && !(busy && busyAction === "shoot")) ui.shootBtn.click(); };
   window.liveCancelRequest = () => cancelShoot();
   // Som do disparo (contagem, "it's bullet time", bip dos grupos): ajuste do app, guardado em

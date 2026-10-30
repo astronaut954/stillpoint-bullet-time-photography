@@ -837,6 +837,23 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) serve para tudo, menos para a impress
       as lentes no sentido certo (deitadas para Animation) e inclinar: as fotos devem trocar. Anotar
       aqui o resultado e a combinação usada.
 
+### 24b. Lenticular, entrega 2 (folha de teste e marcas) — câmeras simuladas
+
+- [ ] Ícone da lâmina na barra de cima (ao lado do som): abre **Pitch test** com Effect, Lens sheet,
+      Printer, Paper size (as mesmas opções da exportação; começa em A4) e "11 strips · 59.5 to 60.5
+      LPI, every 0.1". "Finer steps" mostra 0.1 / 0.05 / 0.02 e a faixa muda (0.02 → 59.90 to 60.10).
+- [ ] Save pitch test: aviso "Making the pitch test sheet…", depois "Pitch test saved" e o Finder abre
+      com o arquivo selecionado em `Imagens/Stillpoint/Exports` (ou `<Projeto>/Exports`). Abrir o TIFF:
+      11 faixas listradas com o número em cima de cada uma (3D: faixas uma embaixo da outra, número à
+      esquerda). Esc fecha só a janela do teste.
+- [ ] Save sessions → Lenticular → Lens sheet: "Print pitch test…" abre a mesma janela com a lâmina e a
+      impressora escolhidas ali. Com "Measured pitch" preenchido (ex.: 59.8), as faixas ficam em volta
+      dele (59.3 to 60.3).
+- [ ] Marks: "Crop marks" e "Alignment marks" marcadas e Bleed "3 mm" por padrão; a leitura mostra
+      "file … px with 3 mm bleed and marks". Salvar: o TIFF tem margem branca, risquinhos nos 4 cantos
+      e uma cruz com círculo no meio de cada lado. Desmarcar tudo e Bleed "None": o TIFF volta a ter só a
+      imagem, no tamanho exato.
+
 ## 25. Rodada única com câmeras reais (2.14.0)
 
 Tudo o que só dá para conferir com as câmeras de verdade, numa vez só. Abrir **sem** as câmeras

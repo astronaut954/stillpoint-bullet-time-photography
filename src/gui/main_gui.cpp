@@ -1965,6 +1965,50 @@ namespace
             const std::string folder = NativeWindow::ChooseFolder("Choose where to save your bullet time sessions", start);
             return Json("exportFolder").Add("folder", folder).Str();
         });
+        // lenticularPitchTest(dpi, largura pol, altura pol, "flip"|"3d", centro, passo, pasta):
+        // grava a folha de teste de pitch (na pasta dada ou na padrão de salvar) e mostra no Finder
+        window.bind("lenticularPitchTest", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            if (args.size() < 6)
+                return Json("pitchTest").Add("ok", false).Add("error", "Missing values.").Str();
+            Export::PitchTestOptions o;
+            try
+            {
+                o.dpi = std::stoi(args[0]);
+                o.widthInches = std::stod(args[1]);
+                o.heightInches = std::stod(args[2]);
+                o.horizontalLenses = args[3] != "3d";
+                o.center = std::stod(args[4]);
+                o.step = std::stod(args[5]);
+            }
+            catch (...) { return Json("pitchTest").Add("ok", false).Add("error", "Check the lens, printer and size values.").Str(); }
+            namespace fs = std::filesystem;
+            std::error_code ec;
+            const fs::path folder = args.size() > 6 && !args[6].empty() ? fs::path(args[6]) : defaultExportFolder();
+            fs::create_directories(folder, ec);
+            char name[160];
+            const int decimals = o.step < 0.0999 ? 2 : 1;
+            const double half = o.step * (o.count - 1) / 2.0;
+            std::snprintf(name, sizeof(name), "Pitch test %.*f-%.*f LPI %ddpi %s", decimals, o.center - half, decimals, o.center + half,
+                          o.dpi, o.horizontalLenses ? "animation" : "3d");
+            fs::path file = folder / (std::string(name) + ".tiff");
+            for (int n = 2; fs::exists(file, ec); ++n)
+                file = folder / (std::string(name) + " (" + std::to_string(n) + ").tiff");
+            // Em segundo plano (a folha pode ter centenas de megapixels); avisa no fim
+            previews.Post([&, o, file]
+            {
+                std::string error;
+                const bool ok = Export::WritePitchTest(o, file, error);
+                if (ok)
+                {
+                    Log("Pitch test saved: " + file.string());
+                    Platform::RevealInFileManager(file);
+                }
+                listener.Emit(Json("pitchTestDone").Add("ok", ok).Add("file", file.string()).Add("error", error));
+            });
+            return Json("pitchTest").Add("ok", true).Add("file", file.string()).Str();
+        });
         // photoFile(sessão, arquivo, "reveal" | "open"): mostra a foto selecionada no Finder/Explorer
         // ou abre no programa padrão (botão direito numa foto)
         window.bind("photoFile", [&](const std::string& request) -> std::string
@@ -3138,6 +3182,10 @@ namespace
                     job.lenticular = at(14) == "1";
                     job.lent.horizontalLenses = at(19) != "3d";
                     job.lent.reverse = at(20) == "1";
+                    // Entrega 2: 21 marcas de corte 1/0 | 22 marcas de alinhamento 1/0 | 23 sangria em mm
+                    job.lent.cropMarks = at(21) == "1";
+                    job.lent.alignMarks = at(22) == "1";
+                    try { if (!at(23).empty()) job.lent.bleedInches = std::max(0.0, std::stod(at(23))) / 25.4; } catch (...) {}
                 }
                 else if (job.lenticular)
                 {

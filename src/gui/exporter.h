@@ -64,6 +64,11 @@ namespace Export
         bool horizontalLenses = true;  // animação (inclinar para cima/baixo): lentes deitadas, faixas em linhas;
                                        // 3D (olhos esquerdo/direito): lentes em pé, faixas em colunas
         bool reverse = false;        // ordem das fotos dentro de cada lente ao contrário
+        // Entrega 2: marcas de impressão. Com marcas, o arquivo ganha uma margem branca em volta
+        // (com as marcas); a sangria estende a imagem além da linha de corte.
+        bool cropMarks = false;      // risquinhos nos cantos: onde cortar
+        bool alignMarks = false;     // cruzes no meio de cada lado: para posicionar a lâmina
+        double bleedInches = 0;      // sangria (3 mm = 0,118 pol)
     };
     struct LenticularInfo
     {
@@ -71,6 +76,8 @@ namespace Export
         double columnsPerLens = 0;         // dpi ÷ lpi
         double pixelsPerPhoto = 0;         // columnsPerLens ÷ fotos
         int lenses = 0;                    // quantas lentes a imagem cobre
+        int fileWidth = 0, fileHeight = 0; // pixels do arquivo (com sangria e margem das marcas)
+        int bleed = 0, margin = 0;         // pixels de sangria e de margem para as marcas
     };
     LenticularInfo LenticularPlan(const LenticularOptions& options, int photos);
 
@@ -79,4 +86,18 @@ namespace Export
     bool WriteLenticular(const std::vector<std::filesystem::path>& photos, const std::filesystem::path& destWithoutExtension,
                          const LenticularOptions& options, const Progress& progress,
                          const std::atomic<bool>* cancel, std::string& error);
+
+    // Folha de teste de pitch: `count` faixas lado a lado, cada uma com listras preto/branco
+    // calculadas para um LPI (center − meio … center + meio, de `step` em `step`), com o número
+    // impresso em cima de cada faixa. Com a lâmina por cima, a faixa que fica lisa (troca inteira
+    // de preto para branco ao inclinar) é o pitch real da combinação lâmina + impressora.
+    struct PitchTestOptions
+    {
+        int dpi = 720;
+        double widthInches = 8.27, heightInches = 11.69;  // A4
+        bool horizontalLenses = true;                     // animação: listras deitadas
+        double center = 60, step = 0.1;
+        int count = 11;
+    };
+    bool WritePitchTest(const PitchTestOptions& options, const std::filesystem::path& file, std::string& error);
 }
