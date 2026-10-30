@@ -460,6 +460,7 @@
       } else {
         li.addEventListener("click", () => select(i));
       }
+      if (opts.onContext) li.addEventListener("contextmenu", (e) => { e.preventDefault(); select(i); opts.onContext(e); });
       return li;
     }
 
@@ -506,6 +507,7 @@
       }
     }
 
+    if (opts.onContext) root.querySelector(".stage img").addEventListener("contextmenu", (e) => { if (items[index]) { e.preventDefault(); opts.onContext(e); } });
     function select(i) {
       if (!items.length) return;
       index = (i + items.length) % items.length;
@@ -890,6 +892,13 @@
   // =================== Sessões ===================
   const sessionGallery = Gallery(ui.sessionGallery, {
     load: (item, size) => sessionPhoto(item.session, item.file, size),
+    // Botão direito numa foto (miniatura ou foto grande): apagar
+    onContext: (e) => {
+      if (editing.on || !currentSession) return;
+      const item = sessionGallery.items[sessionGallery.index];
+      if (!item) return;
+      popupMenuAt(e.clientX, e.clientY, [{ label: "Delete photo " + pad(item.order || sessionGallery.index + 1) + "…", danger: true, onClick: deleteCurrentPhoto }]);
+    },
   });
   const editing = { on: false };  // reordenando as fotos da sessão aberta
   const playBtn = button("", togglePlay, { icon: "play", title: "Play the sequence (space)" });
@@ -1233,7 +1242,18 @@
       what + ". " + (item.files.length > 1 ? "Its RAW and JPEG files are" : "The file is") + " deleted permanently.", [
         { label: "Cancel" },
         { label: "Delete", danger: true, onClick: () => {
-          window.deletePhotos(session, item.group);
+          // A miniatura encolhe e some, a foto grande se apaga; só então o arquivo vai embora
+          const thumb = ui.sessionGallery.querySelector(".carousel .frame.selected");
+          const big = ui.sessionGallery.querySelector(".stage img");
+          if (thumb && thumb.animate) thumb.animate([{ opacity: 1, transform: "scale(1)" }, { opacity: 0, transform: "scale(.4) translateY(30%)" }], { duration: 260, easing: "ease-in", fill: "forwards" });
+          if (big && big.animate && big.getAttribute("src")) big.animate([{ opacity: 1, transform: "scale(1)" }, { opacity: 0, transform: "scale(.85)" }], { duration: 260, easing: "ease-in", fill: "forwards" });
+          // A foto grande volta a aparecer quando a próxima carregar (ou, se nada mudar, em 1,5 s)
+          const reveal = () => { if (big) big.getAnimations().forEach((a) => a.cancel()); if (thumb && thumb.isConnected) thumb.getAnimations().forEach((a) => a.cancel()); };
+          setTimeout(() => {
+            window.deletePhotos(session, item.group);
+            if (big) big.addEventListener("load", reveal, { once: true });
+            setTimeout(reveal, 1500);
+          }, 270);
           toast("Photo " + pad(item.order || 0) + " deleted from the session of " + sessionLabel(session).date);
           recordAction({ label: "Delete photo " + pad(item.order || 0) + " from " + sessionLabel(session).date,
             undo: () => restoreSession(session), redo: () => window.deletePhotos(session, item.group) });
@@ -1251,6 +1271,29 @@
       return false;
     });
   }
+  // Apagar sessão: uma cópia da linha voa até o botão da lixeira (encolhendo e sumindo), a linha
+  // fecha no lugar e a lixeira dá um pulo; só então a sessão é apagada
+  function flyToTrash(name, done) {
+    const li = [...ui.sessionList.querySelectorAll("li.folder")].find((x) => x.dataset.name === name);
+    const trash = compactActions[0];
+    const from = li && !li.classList.contains("hidden") ? li.getBoundingClientRect() : null;
+    const to = trash && trash.offsetParent ? trash.getBoundingClientRect() : null;
+    if (!from || !from.width || !li.animate) { done(); return; }
+    const ghost = li.cloneNode(true);
+    ghost.classList.add("trash-ghost");
+    Object.assign(ghost.style, { left: from.left + "px", top: from.top + "px", width: from.width + "px", height: from.height + "px" });
+    document.body.appendChild(ghost);
+    const dx = to ? to.left + to.width / 2 - (from.left + from.width / 2) : 0;
+    const dy = to ? to.top + to.height / 2 - (from.top + from.height / 2) : 40;
+    ghost.animate([{ transform: "translate(0, 0) scale(1)", opacity: 1 },
+                   { transform: "translate(" + dx * 0.5 + "px, " + (dy * 0.5 - 30) + "px) scale(.55)", opacity: .9, offset: .5 },
+                   { transform: "translate(" + dx + "px, " + dy + "px) scale(.08)", opacity: 0 }],
+                  { duration: 520, easing: "cubic-bezier(.5, 0, .7, 1)", fill: "forwards" });
+    li.animate([{ height: from.height + "px", opacity: 1 }, { height: "0px", opacity: 0, marginTop: "0px", marginBottom: "0px", paddingTop: "0px", paddingBottom: "0px" }],
+               { duration: 360, delay: 120, easing: "ease", fill: "forwards" });
+    setTimeout(() => { if (to && trash.animate) trash.animate([{ transform: "scale(1)" }, { transform: "scale(1.25)" }, { transform: "scale(1)" }], { duration: 240, easing: "ease-out" }); }, 470);
+    setTimeout(() => { ghost.remove(); done(); }, 540);
+  }
   function deleteSessionAsk(s) {
     const label = sessionLabel(s.name);
     dialog("Delete this session?", "The photos from " + label.date + " will be deleted permanently" +
@@ -1258,7 +1301,7 @@
       { label: "Cancel" },
       { label: "Delete", danger: true, onClick: () => {
         toast("Session deleted: " + label.date + (s.inProject ? " (from the project folder)" : ""));
-        window.deleteSession(s.name);
+        flyToTrash(s.name, () => window.deleteSession(s.name));
         recordAction({ label: "Delete session " + label.date, undo: () => restoreSession(s.name), redo: () => window.deleteSession(s.name) });
       } },
     ]);
@@ -1868,6 +1911,18 @@
     const rows = el("div", "export-rows");
     outer.appendChild(rows);
     renderExportSettings.restoreScroll = () => { if (keepScroll) rows.scrollTop = keepScroll; };
+    // As caixas terminam no mesmo ponto que a prévia: o espaço da direita (18 px) é dividido
+    // entre a barra de rolagem, quando ela existe e ocupa lugar, e um respiro até as caixas
+    const fitRows = () => {
+      const bar = rows.offsetWidth - rows.clientWidth - (parseFloat(getComputedStyle(rows).borderLeftWidth) || 0) - (parseFloat(getComputedStyle(rows).borderRightWidth) || 0);
+      rows.style.paddingRight = Math.max(0, 18 - Math.max(0, bar)) + "px";
+    };
+    if (exp.rowsObserver) exp.rowsObserver.disconnect();
+    if (window.ResizeObserver) {
+      exp.rowsObserver = new ResizeObserver(() => fitRows());
+      exp.rowsObserver.observe(rows);
+      requestAnimationFrame(() => { [...rows.children].forEach((c) => exp.rowsObserver && exp.rowsObserver.observe(c)); fitRows(); });
+    }
     const session = sessions.find((s) => s.name === exp.active);
     if (!session) return;
     const items = sessionItems(session).filter((i) => i.previewable);
@@ -1973,25 +2028,31 @@
       const plan = lentPlan(l, n);
       // Prévia do efeito: arrastar para os lados troca a foto, como inclinar a lâmina
       preview.classList.add("lent-preview");
+      // Animação: as lentes ficam deitadas e o efeito aparece inclinando a folha para cima e para
+      // baixo; 3D: lentes em pé, girando para os lados
+      const vertical = l.effect !== "3d";
+      preview.classList.toggle("tilt-vertical", vertical);
       const order = l.reverse ? items.map((_, i) => n - 1 - i) : items.map((_, i) => i);
       let frameAt = Math.min(exp.frame >= 0 ? exp.frame : 0, Math.max(0, n - 1));
       const showFrame = (k) => {
         frameAt = Math.max(0, Math.min(n - 1, k));
         exp.frame = frameAt;
         const i = order[frameAt];
-        show(i, ["Tilt preview", " " + label + " · photo " + (i + 1) + " of " + n + " · drag left and right"]);
+        show(i, ["Tilt preview", " " + label + " · photo " + (i + 1) + " of " + n + (vertical ? " · drag up and down" : " · drag left and right")]);
       };
       if (focused) showFrame(frameAt);
       items.forEach((item) => sessionPhoto(session.name, item.file, 1600));
       let drag = null;
       preview.addEventListener("pointerdown", (e) => {
         if (exp.lentView === "interlaced" || e.target.closest("button")) return;  // botões (teatro, vistas) não começam arrasto
-        drag = { x: e.clientX, start: frameAt }; preview.setPointerCapture(e.pointerId); e.preventDefault();
+        drag = { x: e.clientX, y: e.clientY, start: frameAt }; preview.setPointerCapture(e.pointerId); e.preventDefault();
       });
       preview.addEventListener("pointermove", (e) => {
         if (!drag) return;
-        const step = Math.max(24, preview.clientWidth / Math.max(2, n) / 2);  // metade da largura por foto
-        showFrame(drag.start + Math.round((e.clientX - drag.x) / step));
+        // Metade do tamanho da prévia por foto (no sentido do arrasto)
+        const span = vertical ? preview.clientHeight : preview.clientWidth;
+        const step = Math.max(vertical ? 12 : 24, span / Math.max(2, n) / 2);
+        showFrame(drag.start + Math.round(((vertical ? e.clientY - drag.y : e.clientX - drag.x)) / step));
       });
       const endDrag = () => { drag = null; };
       preview.addEventListener("pointerup", endDrag); preview.addEventListener("pointercancel", endDrag);
@@ -2067,7 +2128,8 @@
         full = document.createElement("canvas"); full.width = W; full.height = H;
         const fctx = full.getContext("2d");
         fctx.fillStyle = "#000"; fctx.fillRect(0, 0, W, H);
-        loupeTag.textContent = f < 1 ? "2× (preview built at " + Math.round(f * 100) + "%)" : "2× · real pixels";
+        loupeTag.textContent = f < 1 ? "2× · built at " + Math.round(f * 100) + "%" : "2× · real pixels";
+        loupeTag.title = f < 1 ? "The preview of the file was built at " + Math.round(f * 100) + "% of the real size" : "";
         caption.innerHTML = "";
         caption.append(el("b", "", "Interlaced"), document.createTextNode(" the whole file as it prints · " + plan.w + " × " + plan.h + " px · " + lentSizeText(l) + " · " +
           (plan.cols ? plan.cols.toFixed(2).replace(/\.?0+$/, "") : "—") + " px per lens · strips " + (horizontal ? "horizontal" : "vertical") + " · move the mouse for a close-up"));
@@ -2106,17 +2168,22 @@
         loupe.classList.toggle("hidden", !inside); loupeTag.classList.toggle("hidden", !inside);
         if (!inside) return;
         const fx = (e.clientX - r.left) / r.width * full.width, fy = (e.clientY - r.top) / r.height * full.height;
-        const half = loupe.width / 4;  // 2×: 90 px reais viram 180 na tela
+        // Tamanho conforme a prévia (fora do teatro ela tem 200 px de altura): sempre cabe
+        const pr = preview.getBoundingClientRect();
+        const size = Math.round(Math.max(80, Math.min(180, pr.height - 40, pr.width / 3)));
+        if (loupe.width !== size) { loupe.width = size; loupe.height = size; }
+        const half = loupe.width / 4;  // 2×: cada pixel real vira 2 na tela
         const lctx = loupe.getContext("2d");
         lctx.imageSmoothingEnabled = false;
         lctx.fillStyle = "#000"; lctx.fillRect(0, 0, loupe.width, loupe.height);
         lctx.drawImage(full, fx - half, fy - half, half * 2, half * 2, 0, 0, loupe.width, loupe.height);
-        const pr = preview.getBoundingClientRect();
         let lx = e.clientX - pr.left + 18, ly = e.clientY - pr.top + 18;
-        if (lx + loupe.width > pr.width - 8) lx = e.clientX - pr.left - loupe.width - 18;
-        if (ly + loupe.height > pr.height - 8) ly = e.clientY - pr.top - loupe.height - 18;
+        if (lx + size > pr.width - 8) lx = e.clientX - pr.left - size - 18;
+        if (ly + size > pr.height - 8) ly = e.clientY - pr.top - size - 18;
+        lx = Math.max(8, Math.min(lx, pr.width - size - 8)); ly = Math.max(8, Math.min(ly, pr.height - size - 8));
         loupe.style.left = lx + "px"; loupe.style.top = ly + "px";
-        loupeTag.style.left = lx + "px"; loupeTag.style.top = (ly + loupe.height + 4) + "px";
+        // A etiqueta vai dentro da lupa, no canto de cima (embaixo ela saía da prévia)
+        loupeTag.style.left = (lx + 4) + "px"; loupeTag.style.top = (ly + 4) + "px";
       });
       preview.addEventListener("pointerleave", () => { loupe.classList.add("hidden"); loupeTag.classList.add("hidden"); });
       if (focused) {
@@ -2299,11 +2366,13 @@
       head.append(check, name);
       const sum = el("span", "exp-sec-sum", on ? outputText(session, kind) : "Off");
       head.appendChild(sum);
-      if (on && !focused) {
-        const hint = el("button", "exp-sec-hint", "Preview");
+      if (on) {
+        // Fica nas seções ligadas; na que está na prévia, aceso
+        const hint = el("button", "exp-sec-hint" + (focused ? " on" : ""), "Preview");
         hint.type = "button";
-        hint.title = "Show the " + title + " preview";
-        hint.addEventListener("click", pick);
+        hint.title = focused ? "This output is in the preview" : "Show the " + title + " preview";
+        hint.setAttribute("aria-pressed", focused ? "true" : "false");
+        hint.addEventListener("click", (e) => { e.stopPropagation(); if (!focused) pick(e); });
         head.appendChild(hint);
       }
       // Recolher / abrir as configurações (a saída continua ligada); vale para todas as sessões
@@ -4172,6 +4241,7 @@
   $("csDone").addEventListener("click", closeCamSettings);
   $("csRead").addEventListener("click", () => window.readCameraSettings());
   $("csCopy").addEventListener("change", (e) => { if (e.target.value) copyFromCamera(e.target.value); });
+  appSelect($("csCopy"));
 
   // Esc fecha o menu, o About e o Settings; com eles abertos, as teclas não
   // chegam à tela de trás. Windows: Ctrl+, abre o Settings.

@@ -792,6 +792,18 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) serve para tudo, menos para a impress
       mostra a lista com a cara do app (fundo escuro, verde na opção atual), não a do sistema. ↑ ↓ e
       Enter escolhem; Esc fecha só a lista (a janela continua aberta); clicar de novo na caixa fecha.
 - [ ] **Camera settings:** Hide photos e Show photos recolhem e abrem a fileira deslizando.
+- [ ] **Lupa (Interlaced):** fora do teatro a lupa é menor e fica sempre dentro da prévia, com a
+      etiqueta "2× …" dentro dela; no teatro, maior.
+- [ ] **Tilt:** com Animation, arrastar para cima e para baixo troca a foto ("drag up and down",
+      cursor ↕); com 3D, para os lados.
+- [ ] **PREVIEW:** fica visível em todas as seções ligadas; na que está na prévia, aceso (verde).
+- [ ] **Alinhamento:** a borda direita das caixas Photos/Sequence/Lenticular alinha com a da prévia,
+      com e sem rolagem.
+- [ ] **Copy from camera (Camera settings):** a lista "Choose…" abre com a cara do app.
+- [ ] **Apagar foto:** botão direito numa miniatura ou na foto grande (tela principal e tela cheia) →
+      "Delete photo 03…" → confirmar: a miniatura encolhe e some, a foto grande se apaga. Cmd+Z volta.
+- [ ] **Apagar sessão:** pela lixeira, pelo botão direito ou "Delete session": a linha da sessão voa
+      até o botão da lixeira (encolhendo), a lixeira dá um pulo e a linha fecha. Cmd+Z volta.
 - [ ] **Activity:** ^ / v, arrastar e Reorder by photo aparecem na Activity ("Move … up", "Camera
       order (dragged)"), não só o Undo e o Redo; a nova ordem completa fica nos detalhes técnicos.
 - [ ] **Várias saídas:** Photos + Sequence + Lenticular marcadas → Save: na pasta da sessão, `Photos/`,

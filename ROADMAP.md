@@ -725,6 +725,12 @@ Junto com essas etapas (sem etapa própria):
   saída em TIFF/PNG sem perda na resolução nativa da impressora. Pré-requisito: o Project (as
   sessões precisam ficar guardadas para reimprimir). Decisões pendentes: quais lentes/impressoras
   cadastrar de fábrica, e se a prévia do efeito aparece no app.
+- **Lixeira do app (pedido em 2026-10-30).** Um lugar que guarda as fotos e sessões apagadas, de onde
+  dá para recuperar uma por uma (ou várias) ou esvaziar de vez. Hoje o apagado vai para uma lixeira
+  interna (`Photos/.trash`) que só o Desfazer usa e que é esvaziada ao abrir o app. Decisões
+  pendentes: por quanto tempo guardar (até esvaziar à mão, ou N dias), onde fica o acesso (menu,
+  botão na lista de sessões), se mostra o espaço ocupado, e o que acontece com as do Project
+  (lixeira dentro da pasta do projeto ou uma só do app).
 - **Licença (decidido em 2026-10-22, implementação pendente).** Hoje é MIT (qualquer um, inclusive
   empresa grande, usa de graça). Decisão do dono do projeto: trocar, numa versão futura, para o
   modelo de **licença dupla**: grátis para pessoas e empresas pequenas (quem está começando na

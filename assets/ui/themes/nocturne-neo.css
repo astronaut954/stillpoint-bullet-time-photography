@@ -692,7 +692,7 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
 /* As linhas de configuração rolam sozinhas (a foto grande e a fileira ficam fixas acima) */
 /* A barra de rolagem fica num espaço reservado, afastada 8 px das caixas e sem estreitar nada
    quando aparece */
-.export-rows { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 14px; scrollbar-gutter: stable; padding-right: 8px; margin-right: -18px; }
+.export-rows { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 14px; padding-right: 18px; margin-right: -18px; }
 .export-preview { position: relative; height: 200px; flex: 0 0 auto; background: #000; border: 1px solid var(--noct-border); display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .export-preview img { max-width: 100%; max-height: 100%; object-fit: contain; }
 .export-preview .stage-caption b { margin-right: 6px; }
@@ -733,6 +733,7 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
 .exp-sec:not(.on) .exp-sec-sum { color: var(--noct-text-dim); }
 .exp-sec-hint { font: 700 9px var(--noct-font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--noct-text-dim); background: transparent; border: 1px solid var(--noct-border); padding: 2px 6px; cursor: pointer; }
 .exp-sec-hint:hover { color: var(--noct-primary); border-color: var(--noct-primary); }
+.exp-sec-hint.on { background: var(--noct-primary); border-color: var(--noct-primary); color: var(--noct-on-primary); cursor: default; }
 .exp-sec-body { padding: 4px 12px 12px; border-top: 1px solid var(--noct-border); display: flex; flex-direction: column; gap: 12px; padding-top: 12px; }
 .exp-none { color: var(--noct-pending); }
 .exp-sec-fold { flex: none; }
@@ -757,12 +758,13 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
 .lent-readout .lent-note { color: var(--noct-text-muted); font-size: 12px; margin-top: 4px; }
 .export-preview.lent-preview { cursor: ew-resize; user-select: none; -webkit-user-select: none; touch-action: none; }
 .export-preview.lent-preview.interlaced { cursor: default; }
+.export-preview.lent-preview.tilt-vertical:not(.interlaced) { cursor: ns-resize; }
 .export-preview .lent-canvas { max-width: 100%; max-height: 100%; border: 1px solid var(--noct-border-strong); box-sizing: border-box; }
 .export-preview .lent-views { position: absolute; right: 10px; top: 10px; background: #000; }
 .export-preview .lent-views button { height: 24px; padding: 0 10px; font-size: 10px; background: #000; color: var(--noct-text-muted); }
 .export-preview .lent-views button.on { background: var(--noct-primary); color: var(--noct-on-primary); }
 .export-preview .lent-loupe { position: absolute; pointer-events: none; border: 1px solid var(--noct-primary); box-shadow: 0 0 0 1px #000, 0 6px 20px rgba(0,0,0,.6); image-rendering: pixelated; z-index: 2; }
-.export-preview .lent-loupe-tag { position: absolute; pointer-events: none; font: 700 9px var(--noct-font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--noct-primary); background: #000; padding: 2px 5px; z-index: 2; }
+.export-preview .lent-loupe-tag { white-space: nowrap; position: absolute; pointer-events: none; font: 700 9px var(--noct-font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--noct-primary); background: #000; padding: 2px 5px; z-index: 2; }
 /* Mesmo botão do "Project window" (btn-secondary btn-small btn-icon), só com as setas dentro */
 .export-preview .lent-theater-btn { position: absolute; left: 10px; top: 10px; }
 /* Modo teatro: a prévia toma a coluna e as configurações somem */
@@ -1224,3 +1226,6 @@ input:checked + .save-check::after { left: 4px !important; top: 0 !important; }
 .select-menu button.current { color: var(--noct-primary); background: rgba(var(--noct-primary-rgb), .08); }
 .select-menu button:disabled { color: var(--noct-text-dim); cursor: default; background: transparent; }
 .cs-sel.open { border-color: var(--noct-primary); }
+/* Sessão indo para a lixeira (cópia da linha que voa até o botão) */
+.trash-ghost { position: fixed; z-index: 90; margin: 0; pointer-events: none; list-style: none; box-sizing: border-box;
+  background: var(--noct-elevated); border: 1px solid var(--noct-danger); box-shadow: 0 10px 30px rgba(0, 0, 0, .6); transform-origin: center; }
