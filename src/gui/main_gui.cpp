@@ -1710,8 +1710,9 @@ namespace
                 if (!std::filesystem::is_directory(base, ec))
                     return Json("project").Add("error", "Could not create the projects folder " + base.string() + " (" + ec.message() + ").").Str();
                 const std::filesystem::path target = base / name;
-                if (std::filesystem::exists(target, ec) && !Project::IsProject(target) && !std::filesystem::is_empty(target, ec))
-                    return Json("project").Add("error", "There is already a folder named \"" + name + "\" in " + base.string() + ", and it is not a Stillpoint project.").Str();
+                if (std::filesystem::exists(target, ec))  // nome já usado: a página avisa antes; aqui é a trava
+                    return Json("project").Add("error", (Project::IsProject(target) ? "There is already a project named \"" : "There is already a folder named \"")
+                        + name + "\" in " + base.string() + ".").Str();
                 folder = target.string();
                 Log("New project: " + folder);
             }
@@ -1727,6 +1728,17 @@ namespace
             }
             const std::string error = createOrOpenProject(folder);
             return Json("project").Add("error", error).Raw("project", projectJson()).Str();
+        });
+        // projectNameFree(nome): o nome ainda não existe na pasta padrão? (aviso na caixa New project)
+        window.bind("projectNameFree", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            const std::string name = !args.empty() ? args[0] : std::string();
+            std::error_code ec;
+            const std::filesystem::path target = projectsFolder() / name;
+            const bool exists = !name.empty() && std::filesystem::exists(target, ec);
+            return Json("name").Add("free", !exists).Add("project", exists && Project::IsProject(target))
+                .Add("folder", projectsFolder().string()).Str();
         });
         // projectsFolderInfo() / projectsFolderChange(): a pasta onde os projetos novos são criados
         // (settings.txt, projectsFolder=; padrão <Imagens>/Stillpoint). Change abre o seletor.

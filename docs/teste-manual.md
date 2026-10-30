@@ -619,7 +619,8 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) e depois com câmeras. Desenho em `do
       cria `~/Pictures/Stillpoint/<nome>` (a pasta `Stillpoint` é criada na primeira vez) e abre o
       projeto. O botão da barra passa a mostrar o nome e "0 · 0"; aviso "Project: Teste" na
       Activity. Na pasta: `stillpoint-project.json`, `Originals/`, `Edited/`, `Exports/`. Nome já
-      usado por uma pasta cheia que não é projeto → aviso; por um projeto → só abre. "Choose
+      usado na pasta padrão (projeto ou pasta qualquer) → aviso âmbar na própria caixa ("There is
+      already a project named…"), a caixa fica aberta e nada é criado nem aberto. "Choose
       another folder…" (à esquerda, na mesma caixa) abre o seletor do sistema já na pasta padrão,
       como antes. O menu do botão agora tem o projeto atual (nome, caminho, "Project window…",
       "Open folder"), os recentes, "Switch project…", "New project…" e "Close project".

@@ -3980,11 +3980,17 @@
     extra.textContent = opts.extra ? opts.extra.label : "";
     const close = () => { $("promptOverlay").classList.add("hidden"); $("promptOk").onclick = $("promptCancel").onclick = extra.onclick = input.onkeydown = null; };
     extra.onclick = opts.extra ? () => { close(); opts.extra.onClick(); } : null;
+    let checking = false;
     const ok = () => {
+      if (checking) return;
       const v = input.value.trim();
-      const problem = validate ? validate(v) : "";
-      if (problem) { err.textContent = problem; err.classList.remove("hidden"); input.focus(); return; }
-      close(); onOk(v);
+      checking = true;
+      // validate pode devolver o aviso na hora ou numa Promise (ex.: perguntar ao app se o nome existe)
+      Promise.resolve(validate ? validate(v) : "").then((problem) => {
+        checking = false;
+        if (problem) { err.textContent = problem; err.classList.remove("hidden"); input.focus(); return; }
+        close(); onOk(v);
+      }).catch(() => { checking = false; close(); onOk(v); });
     };
     $("promptOk").onclick = ok;
     $("promptCancel").onclick = close;
@@ -4118,7 +4124,14 @@
     if (typeof window.projectsFolderInfo !== "function") { callProject("projectNew").then(projectResult); return; }  // app antigo
     $("promptInput").dataset.folderName = "1";
     promptDialog("New project", "A folder with this name will be created in " + shortPath(projectsFolder) + ".", "", "Create",
-      (v) => !v ? "Type a name for the project." : v[0] === "." ? "The name cannot start with a dot." : "",
+      (v) => {
+        if (!v) return "Type a name for the project.";
+        if (v[0] === ".") return "The name cannot start with a dot.";
+        if (typeof window.projectNameFree !== "function") return "";
+        return Promise.resolve(window.projectNameFree(v)).then((r) => !r || r.free ? ""
+          : (r.project ? "There is already a project named \"" + v + "\" in " + shortPath(r.folder) + ". Open it from Recent or choose another name."
+                       : "There is already a folder named \"" + v + "\" in " + shortPath(r.folder) + ". Choose another name."));
+      },
       (v) => callProject("projectNew", v).then(projectResult),
       { extra: { label: "Choose another folder…", onClick: () => callProject("projectNew", "").then(projectResult) } });
   }

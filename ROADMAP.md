@@ -784,8 +784,8 @@ Atualizar esta tabela sempre que uma função mudar de status.
   A 2.12.1 foi testada no Mac (HD externo em âmbar + ↻, textos, session.json) e publicada em
   2026-10-30. **2.12.2** (branch `etapa-17-pasta-padrao`, decisão do dono em 2026-10-30): pasta
   padrão para projetos novos — `~/Pictures/Stillpoint` (Mac) / `Pictures\Stillpoint` (Windows),
-  criada ao usar; "New project…" pede só o nome e cria `<padrão>/<nome>`, com "Choose another
-  folder…" para uma vez; Settings → New projects → Change… troca o padrão (`projectsFolder=`);
+  criada ao usar; "New project…" pede só o nome e cria `<padrão>/<nome>` (nome já existente → aviso na
+  caixa, nada é criado), com "Choose another folder…" para uma vez; Settings → New projects → Change… troca o padrão (`projectsFolder=`);
   "Open project…" começa na pasta padrão. **Ainda pendente no Windows:** todo
   o roteiro 23 (botão direito, arrastar, Rename com a pasta aberta no Explorer, apagar + Ctrl+Z,
   Save sessions) e as câmeras reais.
