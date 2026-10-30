@@ -1235,3 +1235,5 @@ input:checked + .save-check::after { left: 4px !important; top: 0 !important; }
 /* Arrastando a prévia do lenticular: a seta fica em toda a tela até soltar */
 html.drag-ew, html.drag-ew * { cursor: ew-resize !important; }
 html.drag-ns, html.drag-ns * { cursor: ns-resize !important; }
+/* Pasta de destino na janela de salvar: o caminho corta no começo se não couber */
+.export-dest { font: 12px var(--noct-font-mono); color: var(--noct-text); max-width: 420px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; }

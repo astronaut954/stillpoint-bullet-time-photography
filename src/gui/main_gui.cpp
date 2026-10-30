@@ -1010,6 +1010,15 @@ namespace
                 return std::filesystem::path(settings.at("projectsFolder"));
             return Platform::PicturesFolder() / "Stillpoint";
         };
+        // Para onde a janela de salvar manda (2.14, decisão do dono em 2026-10-30): com Project
+        // aberto, <Project>/Exports; sem, <pasta do Stillpoint>/Exports (a mesma base dos projetos
+        // novos: <Imagens>/Stillpoint, ou a que a pessoa escolheu em Settings)
+        auto defaultExportFolder = [&]() -> std::filesystem::path
+        {
+            if (project.Available())
+                return project.Exports();
+            return projectsFolder() / "Exports";
+        };
         // Pastas recentes de Project (settings.txt, recentProjects=, separadas por "|")
         auto recentProjects = [&]() -> std::vector<std::string>
         {
@@ -1942,6 +1951,19 @@ namespace
                     Platform::OpenInFileManager(dir);
             }
             return "null";
+        });
+        // exportDestination(): a pasta padrão da janela de salvar (para mostrar)
+        window.bind("exportDestination", [&](const std::string&) -> std::string
+        {
+            return Json("exportDestination").Add("folder", defaultExportFolder().string()).Add("project", project.Available()).Str();
+        });
+        // chooseExportFolder(começo): outra pasta, só para este salvamento ("" = cancelou)
+        window.bind("chooseExportFolder", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            const std::string start = args.empty() ? std::string() : args[0];
+            const std::string folder = NativeWindow::ChooseFolder("Choose where to save your bullet time sessions", start);
+            return Json("exportFolder").Add("folder", folder).Str();
         });
         // photoFile(sessão, arquivo, "reveal" | "open"): mostra a foto selecionada no Finder/Explorer
         // ou abre no programa padrão (botão direito numa foto)
@@ -3068,10 +3090,13 @@ namespace
             // args[1]: "delete" (apaga as sessões não salvas que ficaram) e/ou "edited" (usar as editadas)
             const bool deleteRest = args.size() > 1 && args[1].find("delete") != std::string::npos;
             const bool useEdited = args.size() > 1 && args[1].find("edited") != std::string::npos;
+            // "dest" (2.14): args[2] é a pasta escolhida ("" = a padrão) e as sessões vêm depois
+            const bool withDest = args.size() > 1 && args[1].find("dest") != std::string::npos;
+            const std::string destArg = withDest && args.size() > 2 ? args[2] : std::string();
             struct Naming { std::string kind, text; bool date = true; bool before = false; };
             std::vector<ExportJob> jobs;
             std::vector<Naming> namings;
-            for (size_t i = 2; i < args.size(); ++i)
+            for (size_t i = withDest ? 3 : 2; i < args.size(); ++i)
             {
                 std::vector<std::string> f;
                 std::stringstream text(args[i]);
@@ -3156,7 +3181,22 @@ namespace
             if (jobs.empty())
                 return "null";
             std::string folder;
-            if (toProjectExports)
+            if (withDest)
+            {
+                // Sem perguntar: a pasta escolhida na janela ou a padrão (criada se preciso)
+                std::error_code ec;
+                const fs::path target = destArg.empty() ? defaultExportFolder() : fs::path(destArg);
+                fs::create_directories(target, ec);
+                if (fs::is_directory(target, ec))
+                    folder = target.string();
+                else
+                {
+                    listener.Emit(Json("exportFolderError").Add("error", "Could not use the folder " + target.string() + ". Choose another folder."));
+                    listener.Emit(Json("saveCancelled"));
+                    return "null";
+                }
+            }
+            else if (toProjectExports)
             {
                 std::error_code ec;
                 fs::create_directories(project.Exports(), ec);

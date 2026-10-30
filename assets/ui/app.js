@@ -1665,6 +1665,13 @@
       $("exportEdited").checked = project.exportDefaults.useEdited !== false;
     }
     exp.photo = 0;
+    exp.dest = null;  // outra pasta escolhida vale só para uma vez
+    if (typeof window.exportDestination === "function")
+      Promise.resolve(window.exportDestination()).then((d) => {
+        if (!d) return;
+        exp.destDefault = d.folder; exp.destProject = !!d.project;
+        if (!$("exportOverlay").classList.contains("hidden")) { renderExportSettings(); if (renderExportSettings.restoreScroll) renderExportSettings.restoreScroll(); }
+      });
     Promise.resolve(window.exportFormats && window.exportFormats()).then((f) => {
       if (f) exp.heic = { ok: f.heic, reason: f.heicReason || "" };
       renderExport();
@@ -1748,7 +1755,8 @@
     $("exportCount").textContent = noOutput ? "Tick at least one output for each selected session" : photosEmpty ? "Photos: choose the originals, a format, or both" : lentBad ? "Check the lens, printer and size values" : seqEmpty ? "Choose at least one sequence format for each selected session"
       : partial.length ? (partial.length === 1 ? sessionTitle(partial[0]) + " has" : partial.length + " sessions have") + " only some photos edited: edited and original frames would be mixed."
       : chosen + " of " + plural(all.length, "session", "sessions") + " selected";
-    $("exportCount").classList.toggle("warn", partial.length > 0);
+    // Aviso que impede salvar (ou que pede atenção): em amarelo
+    $("exportCount").classList.toggle("warn", partial.length > 0 || noOutput || photosEmpty || lentBad || seqEmpty);
     $("exportConfirm").disabled = chosen === 0 || noOutput || seqEmpty || lentBad || photosEmpty;
     $("exportConfirm").textContent = chosen ? (exp.project ? "Export " : "Save ") + plural(chosen, "session", "sessions") : (exp.project ? "Export" : "Save");
     $("exportSelectAll").disabled = chosen === all.length;
@@ -2445,8 +2453,22 @@
     rows.appendChild(folderLine);
     if (n.kind === "number" || (n.kind === "custom" && !n.date))
       rows.appendChild(el("div", "export-note", n.kind === "number"
-        ? "Numbers continue from the ones already in the folder you choose."
-        : "Sessions with the same name get numbers (01, 02…), continuing from the folder you choose."));
+        ? "Numbers continue from the ones already in the destination folder."
+        : "Sessions with the same name get numbers (01, 02…), continuing from the destination folder."));
+    // Onde salva: com Project aberto, <Project>/Exports; sem, <pasta do Stillpoint>/Exports.
+    // "Choose another folder…" vale só para este salvamento (como no New project)
+    const dest = row("Save to");
+    const where = exp.dest || exp.destDefault || "";
+    // Marcas de direção: o corte é no começo (rtl), mas o caminho continua lido da esquerda para a direita
+    const path = el("span", "export-dest", where ? "\u200E" + where + "\u200E" : "…");
+    path.title = where;
+    dest.appendChild(path);
+    dest.appendChild(button("Choose another folder…", () => {
+      if (typeof window.chooseExportFolder !== "function") { toast("This build cannot do that yet. Build the app again.", 8000); return; }
+      Promise.resolve(window.chooseExportFolder(where)).then((r) => { if (r && r.folder) { exp.dest = r.folder; rerender(); } });
+    }, { kind: "btn-link" }));
+    if (exp.dest) dest.appendChild(button("Use " + (exp.destProject ? "the project's Exports" : "the default"), () => { exp.dest = null; rerender(); }, { kind: "btn-link" }));
+    rows.appendChild(dest);
 
     if (!exp.sameForAll && sessions.length > 1) {
       const apply = el("div", "export-apply");
@@ -2485,9 +2507,10 @@
     const names = exportable().filter((s) => exp.selected.has(s.name)).map((s) => s.name);
     exp.waiting = true;  // a janela fica aberta até salvar de fato
     // Project: "project" = direto para <Project>/Exports; "edited" = usar as editadas quando houver
-    const flags = [deleteRest ? "delete" : "", exp.project && $("exportEdited").checked ? "edited" : ""].filter(Boolean).join(",");
+    // "dest": o 3º argumento é a pasta (vazio = a padrão), sem perguntar
+    const flags = [deleteRest ? "delete" : "", exp.project && $("exportEdited").checked ? "edited" : "", "dest"].filter(Boolean).join(",");
     if (exp.project) window.projectExportDefaults(JSON.stringify({ mode: exp.mode, useEdited: $("exportEdited").checked }));
-    window.exportSessions(exp.project ? "project" : exp.exitAfter ? "exit" : "", flags, ...names.map(exportSpec));
+    window.exportSessions(exp.project ? "project" : exp.exitAfter ? "exit" : "", flags, exp.dest || "", ...names.map(exportSpec));
   }
   $("exportEdited").addEventListener("change", updateExportCount);
 
@@ -2903,6 +2926,7 @@
     soundChanged(e) { sound = { sound: !!e.sound, sounds: !!e.sounds }; renderSoundBtn(); },
     saving() { activity.saving = true; renderActivity(); },
     exportProgress(e) { showProgress(e); },
+    exportFolderError(e) { toast(e.error, 8000, { warn: true }); },
     saveCancelled() {
       if (exp.waiting) exp.waiting = false;  // a janela continua aberta como estava
       else toast("Save cancelled");

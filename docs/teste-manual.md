@@ -811,12 +811,7 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) serve para tudo, menos para a impress
       soltar o botão.
 - [ ] **Tela cheia:** só o ícone da lixeira (sem "Delete session"); ele apaga a sessão, e a foto grande
       voa até ele. Uma foto: botão direito nela, ou a tecla Delete.
-- [ ] **Desfazer no Camera settings (câmeras reais):** (1) mude o Metering de uma câmera → Cmd+Z volta,
-      Cmd+Shift+Z refaz. (2) Mude o ISO, depois rode Test shot com Match automatically (com mudanças):
-      o primeiro Cmd+Z desfaz o Match inteiro ("Undo: Match automatically (n cameras)"), o segundo só
-      o ISO — o resultado do Match não volta junto. Cmd+Shift+Z refaz o Match.
-- [ ] **Activity:** ^ / v, arrastar e Reorder by photo aparecem na Activity ("Move … up", "Camera
-      order (dragged)"), não só o Undo e o Redo; a nova ordem completa fica nos detalhes técnicos.
+- [ ] **Câmeras reais:** os itens que precisam delas estão juntos na seção 25.
 - [ ] **Várias saídas:** Photos + Sequence + Lenticular marcadas → Save: na pasta da sessão, `Photos/`,
       `Sequence/` e `Lenticular/`; só uma marcada → os arquivos direto na pasta da sessão. Na lista à
       esquerda: "→ Originals + MP4 + Lenticular 60/720". Export… da janela Project faz o mesmo em
@@ -841,6 +836,62 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) serve para tudo, menos para a impress
 - [ ] **Impressão (quando houver lâmina e impressora/gráfica):** imprimir a 100%, encostar a lâmina com
       as lentes no sentido certo (deitadas para Animation) e inclinar: as fotos devem trocar. Anotar
       aqui o resultado e a combinação usada.
+
+## 25. Rodada única com câmeras reais (2.14.0)
+
+Tudo o que só dá para conferir com as câmeras de verdade, numa vez só. Abrir **sem** as câmeras
+simuladas (Mac):
+
+```
+cd ~/Developer/stillpoint
+unset STILLPOINT_FAKE_CAMERAS
+./build/macos-arm64/Stillpoint
+```
+
+Câmeras ligadas e conectadas antes de abrir. Uma das câmeras com Quality em RAW + JPG (as outras
+podem ficar só em JPG).
+
+**A. Camera settings**
+- [ ] Abrir Camera settings: todas as listas (ISO, Shutter, Aperture, Exp. comp., Metering, White
+      balance, Picture Style, os ajustes do ±) abrem com a cara do app, não a do Mac. ↑ ↓ e Enter
+      escolhem; Esc fecha só a lista; clicar de novo na caixa fecha. O valor escolhido chega à câmera
+      (conferir no LCD).
+- [ ] **Copy from camera → "Choose…"**: a lista também com a cara do app; escolher uma câmera copia
+      as configurações dela para as outras; Cmd+Z volta.
+- [ ] **Metering + Desfazer:** mudar o Metering de uma câmera → Cmd+Z volta (conferir no LCD) →
+      Cmd+Shift+Z refaz. Mudar o Metering em All cameras → Cmd+Z volta todas.
+- [ ] **Metering diferente antes do Match:** deixar uma câmera com outro Metering, marcar Match
+      automatically e clicar Test shot: aparece "Metering modes differ". "Set all to …" iguala e segue;
+      "Keep as they are" segue sem mudar.
+- [ ] **Match automatically + Desfazer:** mudar o ISO em All cameras; rodar Test shot com Match
+      automatically até ele mudar alguma câmera. Cmd+Z → "Undo: Match automatically (n cameras)": as
+      câmeras voltam ao que eram antes do Match (o ISO novo fica). Cmd+Z de novo → só o ISO volta.
+      Cmd+Shift+Z duas vezes → ISO e Match de volta.
+- [ ] **Hide photos / Show photos** (depois de um Test shot): a fileira de fotos recolhe e abre
+      deslizando.
+
+**B. Ordem das câmeras**
+- [ ] ^ e v numa câmera: as duas linhas trocam de lugar deslizando; a Activity mostra "Move … up/down".
+- [ ] Arrastar uma câmera: Activity "Camera order (dragged)". Reorder by photo → Save order:
+      Activity "Camera order from photos". Em Show technical details, a ordem completa.
+
+**C. Fotos de verdade (disparar 1 sessão)**
+- [ ] Botão direito numa foto (miniatura e foto grande; também na tela cheia): **Show in Finder**
+      abre o Finder com o arquivo selecionado; **Open in default app** abre a foto (a da câmera RAW +
+      JPG abre o JPG).
+- [ ] **Delete photo…** pelo botão direito na foto da câmera RAW + JPG: animação, os dois arquivos
+      saem; Cmd+Z traz os dois de volta.
+- [ ] Apagar a sessão (lixeira, fora e dentro da tela cheia): a animação até a lixeira; Cmd+Z volta.
+
+**D. Save sessions com a sessão real**
+- [ ] Sem projeto aberto: a linha **Save to** mostra `Imagens/Stillpoint/Exports` (ou a pasta de
+      projetos escolhida em Settings + `/Exports`); Save grava lá sem abrir a janela do Mac.
+- [ ] Com projeto aberto: **Save to** mostra `<Projeto>/Exports`. "Choose another folder…" troca só
+      para este salvamento (ao reabrir a janela, volta ao padrão); "Use the project's Exports" desfaz.
+- [ ] Photos com **Originals + JPG**: pastas `Originals/` (com o RAW e o JPG da câmera RAW + JPG) e
+      `JPG/` (um JPG por câmera). Com Sequence também marcada, as duas dentro de `Photos/`.
+- [ ] Lenticular com a sessão real: prévia Tilt (arrastar ↕) e Interlaced com a lupa; o TIFF sai com
+      o tamanho certo (abrir no Pré-visualização → Ferramentas → Mostrar Inspetor: dpi e tamanho).
 
 ## Resultado
 
