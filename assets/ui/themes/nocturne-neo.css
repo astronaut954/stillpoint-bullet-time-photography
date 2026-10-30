@@ -702,13 +702,18 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
 .exp-sec { border: 1px solid var(--noct-border); background: var(--noct-surface-inner); flex: 0 0 auto; }
 .exp-sec.on { border-color: var(--noct-border-strong); }
 .exp-sec.focus { border-color: var(--noct-primary); }
-.exp-sec-head { display: flex; align-items: center; gap: 10px; padding: 9px 12px; user-select: none; -webkit-user-select: none; }
+/* Mesma altura ligada (com o botão de recolher) e desligada */
+.exp-sec-head { display: flex; align-items: center; gap: 10px; padding: 9px 12px; min-height: 46px; user-select: none; -webkit-user-select: none; }
 /* Cada parte do cabeçalho tem o seu destaque ao passar o mouse (não o cabeçalho inteiro) */
 .exp-sec-name { display: inline-flex; align-items: baseline; gap: 10px; padding: 2px 4px; margin: -2px -4px; }
-.exp-sec-name.clickable, .exp-sec-sum.clickable { cursor: pointer; }
+.exp-sec-name.clickable { cursor: pointer; }
 .exp-sec-name.clickable:hover .exp-sec-title, .exp-sec-name.clickable:hover .exp-sec-sub { color: var(--noct-primary); }
-.exp-sec .exp-sec-sum.clickable:hover { color: var(--noct-primary); }
 .exp-sec-check:hover .save-check { border-color: var(--noct-primary); }
+/* Desligada: qualquer parte do cabeçalho liga, e caixa, nome e "Off" acendem juntos */
+.exp-sec-head.pick { cursor: pointer; }
+.exp-sec-head.pick:hover .save-check { border-color: var(--noct-primary); }
+.exp-sec .exp-sec-head.pick:hover .exp-sec-title, .exp-sec .exp-sec-head.pick:hover .exp-sec-sub, .exp-sec .exp-sec-head.pick:hover .exp-sec-sum { color: var(--noct-primary); }
+.exp-sec-title, .exp-sec-sub, .exp-sec-sum, .exp-sec-check .save-check, .exp-sec-hint { transition: color .15s ease, border-color .15s ease; }
 /* A mesma caixa de marcar da lista de sessões; o input nativo fica escondido */
 .exp-sec .exp-sec-check { display: block; position: relative; width: 16px; height: 16px; flex: 0 0 auto; cursor: pointer; }
 .exp-sec-check input[type=checkbox] { position: absolute; opacity: 0; pointer-events: none; }
@@ -766,9 +771,11 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
 .export-settings.theater .export-preview .lent-canvas { border: 0; }
 .lent-presets { margin-left: 8px; }
 .export-strip-scroll { overflow-x: auto; overflow-y: hidden; flex: 0 0 auto; padding-bottom: 4px; }
-/* Abre e fecha deslizando; fechada, a margem negativa come o espaço entre os blocos */
-.export-strip-scroll.strip-anim { overflow: hidden; transition: height .22s ease, opacity .22s ease, margin-bottom .22s ease; }
-.export-strip-scroll.strip-closed { height: 0 !important; opacity: 0; margin-bottom: -14px; padding-bottom: 0; }
+/* Prévia e fileira abrem e fecham deslizando; fechadas, a margem negativa come o espaço
+   entre os blocos. A fileira anima pela caixa em volta (a área que rola não muda) */
+.export-strip-slot { flex: 0 0 auto; }
+.export-preview.slide, .export-strip-slot.slide { overflow: hidden; overflow: clip; min-height: 0; transition: height .24s ease, opacity .24s ease, margin-bottom .24s ease; }
+.export-preview.slide-closed, .export-strip-slot.slide-closed { height: 0 !important; opacity: 0; margin-bottom: -14px; border-width: 0; }
 .export-strip { list-style: none; margin: 0; padding: 0; border: 0; display: flex; gap: 6px; width: max-content; min-width: 100%; }
 .export-modes button { display: inline-flex; align-items: center; gap: 7px; }
 .export-modes svg { flex: 0 0 auto; }

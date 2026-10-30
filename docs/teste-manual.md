@@ -772,11 +772,14 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) serve para tudo, menos para a impress
       or both" e o Save fica apagado. Quem salvou PNG na versão anterior abre com só Converted + PNG.
 - [ ] **Teatro:** ícone de entrar = duas pontas de seta para fora; de sair = para dentro, sem traço
       horizontal e bem separadas (não pode parecer um X).
-- [ ] **Cabeçalho das seções:** o mouse acende só a parte em que está: a caixa, o nome, o "Off" (liga)
-      e o "PREVIEW" (leva a prévia), e a seta de recolher. O espaço vazio do cabeçalho não faz nada.
-- [ ] **Miniaturas:** marcar/desmarcar Photos (ou trocar a prévia para outra saída e voltar) faz a
-      fileira de miniaturas abrir e fechar deslizando; quando abre, as miniaturas aparecem inteiras,
-      sem precisar rolar para o lado.
+- [ ] **Cabeçalho das seções:** desligada, o cabeçalho inteiro é um alvo só: o mouse em qualquer parte
+      acende caixa, nome e "Off" juntos, e o clique liga. Ligada, cada parte acende sozinha: a caixa
+      (desliga), o nome e o "PREVIEW" (levam a prévia) e a seta de recolher. Ligada, desligada ou
+      recolhida, o cabeçalho tem sempre a mesma altura.
+- [ ] **Animações:** marcar/desmarcar Photos (ou trocar a prévia para outra saída e voltar) faz a
+      fileira de miniaturas abrir e fechar deslizando, sem a fileira se reajustar no fim; desmarcar
+      todas as saídas fecha a prévia grande deslizando, e marcar uma abre. Na lista de câmeras, ^ e v
+      fazem as duas linhas trocarem de lugar deslizando.
 - [ ] **Caixas de marcar:** o sinal ✓ centralizado em todas (sessões, seções, Originals/Converted).
 - [ ] **Várias saídas:** Photos + Sequence + Lenticular marcadas → Save: na pasta da sessão, `Photos/`,
       `Sequence/` e `Lenticular/`; só uma marcada → os arquivos direto na pasta da sessão. Na lista à

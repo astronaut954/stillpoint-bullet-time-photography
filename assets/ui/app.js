@@ -642,6 +642,9 @@
 
   function renderCameras() {
     if (typeof renderTiming === "function") setTimeout(renderTiming, 0);
+    // Onde cada linha estava: depois de redesenhar, as que mudaram de lugar deslizam até o novo
+    const was = {};
+    ui.cameraList.querySelectorAll("li[data-name]").forEach((li) => { if (li.dataset.name) was[li.dataset.name] = li.getBoundingClientRect().top; });
     ui.cameraList.innerHTML = "";
     const placed = placedCameras();
     const empty = cameras.length === 0;
@@ -652,6 +655,12 @@
     cameras.filter((c) => c.order === 0).forEach((cam) => ui.cameraList.appendChild(cameraRow(cam, -1, placed.length)));
     $("cameraCount").textContent = cameras.length;
     $("cameraCount").classList.toggle("hidden", cameras.length === 0);
+    ui.cameraList.querySelectorAll("li[data-name]").forEach((li) => {
+      const top = was[li.dataset.name];
+      if (top === undefined || !li.animate) return;
+      const d = top - li.getBoundingClientRect().top;
+      if (Math.abs(d) > 1) li.animate([{ transform: "translateY(" + d + "px)" }, { transform: "none" }], { duration: 220, easing: "ease-out" });
+    });
     updateButtons();
   }
 
@@ -1761,34 +1770,44 @@
     return i;
   }
 
-  // Fileira de miniaturas (só na prévia de Photos): abre e fecha deslizando em vez de aparecer
-  // e sumir de uma vez. No fim, um empurrão na rolagem: o WebKit do Mac às vezes desenha a
-  // fileira cortada até ela rolar.
-  function animateStrip(outer, prevStrip, prevStripH, rows) {
-    const strip = outer.querySelector(".export-strip-scroll");
-    const nudge = (s) => { s.scrollLeft += 1; s.scrollLeft -= 1; };
-    if (strip && !prevStrip) {
-      const h = strip.offsetHeight;
-      strip.classList.add("strip-anim", "strip-closed");
-      void strip.offsetHeight;
-      strip.classList.remove("strip-closed");
-      strip.style.height = h + "px";
-      const done = () => { strip.classList.remove("strip-anim"); strip.style.height = ""; nudge(strip); };
-      strip.addEventListener("transitionend", (e) => { if (e.propertyName === "height") done(); }, { once: false });
-      setTimeout(done, 400);
-    } else if (strip) {
+  // Prévia grande e fileira de miniaturas: abrem e fecham deslizando em vez de aparecer e sumir
+  // de uma vez (a coluna é redesenhada a cada mudança; o que sai volta por um instante e fecha).
+  // A fileira anima por uma caixa em volta dela (.export-strip-slot): a área que rola fica
+  // intacta, com a barra de rolagem, e não muda de altura no fim. Depois, um empurrão na
+  // rolagem: o WebKit do Mac às vezes desenha a fileira cortada até ela rolar.
+  const SLIDE_MS = 240;
+  function slideBlocks(outer, before, rows) {
+    const nudge = (s) => { if (s) { s.scrollLeft += 1; s.scrollLeft -= 1; } };
+    [".export-preview", ".export-strip-slot"].forEach((sel) => {
+      const now = outer.querySelector(sel + ":not(.leaving)");
+      const old = before[sel];
+      // Entrando, ou redesenhada no meio da entrada (continua de onde a anterior estava)
+      const midway = now && old.el && old.el.classList.contains("slide") && old.h < now.offsetHeight;
+      if (now && (!old.el || midway)) {
+        // Fecha sem transição, e só então liga a transição e abre (com a transição já ligada,
+        // fechar também animaria, de 200 para 0, e a abertura não sairia do lugar)
+        const h = now.offsetHeight;
+        if (midway) now.style.height = old.h + "px"; else now.classList.add("slide-closed");
+        void now.offsetHeight;
+        now.classList.add("slide");
+        now.classList.remove("slide-closed");
+        now.style.height = h + "px";
+        setTimeout(() => { now.classList.remove("slide"); now.style.height = ""; nudge(now.querySelector(".export-strip-scroll")); }, SLIDE_MS + 30);
+      } else if (!now && old.el) {
+        old.el.classList.add("leaving", "slide");
+        old.el.style.height = old.h + "px";
+        outer.insertBefore(old.el, rows);
+        void old.el.offsetHeight;
+        old.el.style.height = "";
+        old.el.classList.add("slide-closed");
+        setTimeout(() => old.el.remove(), SLIDE_MS + 30);
+      }
+    });
+    const strip = outer.querySelector(".export-strip-slot:not(.leaving) .export-strip-scroll");
+    if (strip) {
       setTimeout(() => nudge(strip), 50);
-    } else if (prevStrip) {
-      // Sai: a fileira antiga volta por um instante e fecha
-      prevStrip.classList.add("leaving", "strip-anim");
-      prevStrip.style.height = prevStripH + "px";
-      outer.insertBefore(prevStrip, rows);
-      void prevStrip.offsetHeight;
-      prevStrip.style.height = "";
-      prevStrip.classList.add("strip-closed");
-      setTimeout(() => prevStrip.remove(), 300);
+      strip.querySelectorAll("img").forEach((i) => i.addEventListener("load", () => nudge(strip), { once: true }));
     }
-    if (strip) strip.querySelectorAll("img").forEach((i) => i.addEventListener("load", () => nudge(strip), { once: true }));
   }
 
   function renderExportSettings() {
@@ -1800,8 +1819,12 @@
     // altura. A fileira rola para o lado e não pode ficar dentro de outra área que rola
     // (o WebKit do Mac pinta as miniaturas deslocadas nesse caso).
     const outer = $("exportSettings");
-    const prevStrip = outer.querySelector(".export-strip-scroll:not(.leaving)");
-    const prevStripH = prevStrip ? prevStrip.offsetHeight : 0;  // medida antes de sair da tela
+    // O que está na tela agora, medido antes de sair (para a animação)
+    const before = {};
+    [".export-preview", ".export-strip-slot"].forEach((sel) => {
+      const e = outer.querySelector(sel + ":not(.leaving)");
+      before[sel] = { el: e, h: e ? e.offsetHeight : 0 };
+    });
     const prevRows = outer.querySelector(".export-rows");
     const keepScroll = prevRows ? prevRows.scrollTop : 0;  // a coluna é redesenhada a cada mudança: mantém a rolagem
     outer.innerHTML = "";
@@ -1869,7 +1892,12 @@
         li.addEventListener("click", () => { exp.photo = k; showPhoto(); });
         strip.appendChild(li);
       });
-      if (focused) { outer.insertBefore(stripScroll, rows); showPhoto(); }
+      if (focused) {
+        const slot = el("div", "export-strip-slot");
+        slot.appendChild(stripScroll);
+        outer.insertBefore(slot, rows);
+        showPhoto();
+      }
       // Originais e/ou uma cópia convertida, independentes; com os dois, Photos/Originals/ e Photos/<FORMATO>/
       const ro = row("Originals");
       ro.appendChild(checkOption("Keep the originals, exactly as each camera saved them (JPG and RAW)", s.original, (v) => { s.original = v; rerender(); }));
@@ -2224,10 +2252,10 @@
       const name = el("span", "exp-sec-name");
       name.append(el("b", "exp-sec-title", title), el("span", "exp-sec-sub", sub));
       name.title = on ? (focused ? "" : "Show the " + title + " preview") : "Turn on " + title;
-      if (!focused) { name.classList.add("clickable"); name.addEventListener("click", pick); }
+      if (on && !focused) { name.classList.add("clickable"); name.addEventListener("click", pick); }
+      if (!on) { head.classList.add("pick"); head.title = "Turn on " + title; head.addEventListener("click", pick); }
       head.append(check, name);
-      const sum = el("span", "exp-sec-sum" + (on ? "" : " clickable"), on ? outputText(session, kind) : "Off");
-      if (!on) { sum.title = "Turn on " + title; sum.addEventListener("click", pick); }
+      const sum = el("span", "exp-sec-sum", on ? outputText(session, kind) : "Off");
       head.appendChild(sum);
       if (on && !focused) {
         const hint = el("button", "exp-sec-hint", "Preview");
@@ -2255,7 +2283,7 @@
       rows.appendChild(sec);
     });
     if (!OUTPUT_KINDS.some((k) => st.outputs[k])) rows.appendChild(el("div", "export-note exp-none", "Tick at least one output: Photos, Sequence or Lenticular."));
-    animateStrip(outer, prevStrip, prevStripH, rows);
+    slideBlocks(outer, before, rows);
 
     // Nome da pasta e dos arquivos
     const n = st.naming;
