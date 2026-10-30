@@ -762,9 +762,19 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) serve para tudo, menos para a impress
       leva a prévia para ela; numa marcada, só leva a prévia (a seção em foco tem borda verde; as outras
       marcadas mostram "PREVIEW"). Nenhuma marcada: "Tick at least one output…" e o Save fica apagado.
       Quem usava Sequence com "Also save the photos" abre com Photos (Original) + Sequence marcadas.
+- [ ] **Recolher:** cada seção marcada tem um botão de seta à direita do cabeçalho; ele esconde só as
+      configurações (a saída continua marcada, o resumo continua no cabeçalho). Fechar e reabrir a
+      janela (ou o app) mantém recolhida.
+- [ ] **Photos — Originals e Converted:** duas caixas independentes. Só Originals = os arquivos como a
+      câmera salvou; só Converted = um arquivo por câmera no formato escolhido (clicar num formato já
+      marca Converted); as duas = pastas `Originals/` e `JPG/` (ou o formato escolhido) — dentro de
+      `Photos/` se houver outra saída marcada. Nenhuma das duas: "Photos: choose the originals, a format,
+      or both" e o Save fica apagado. Quem salvou PNG na versão anterior abre com só Converted + PNG.
+- [ ] **Teatro:** ícone de entrar = setas apontando para fora; de sair = setas apontando para dentro,
+      bem separadas (não pode parecer um X).
 - [ ] **Várias saídas:** Photos + Sequence + Lenticular marcadas → Save: na pasta da sessão, `Photos/`,
       `Sequence/` e `Lenticular/`; só uma marcada → os arquivos direto na pasta da sessão. Na lista à
-      esquerda: "→ Original + MP4 + Lenticular 60/720". Export… da janela Project faz o mesmo em
+      esquerda: "→ Originals + MP4 + Lenticular 60/720". Export… da janela Project faz o mesmo em
       `Exports/`.
 - [ ] **Prévia:** arrastar para a esquerda/direita na foto grande troca a foto ("Tilt preview · photo n
       of 9"); "Reverse order" inverte o sentido. Botão **Interlaced** (canto da prévia): mostra um

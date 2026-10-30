@@ -132,8 +132,8 @@
     // Modo teatro, como no YouTube: tela com barra embaixo e dois ângulos dentro
     // (para fora = entrar; para dentro = sair)
     // Modo teatro: só as setas (para fora = entrar; para dentro = sair), no botão igual ao da janela Project
-    theaterIn: '<path d="M5.5 3.5L2 7l3.5 3.5M8.5 3.5L12 7l-3.5 3.5"/>',
-    theaterOut: '<path d="M2.5 3.5L6 7l-3.5 3.5M11.5 3.5L8 7l3.5 3.5"/>',
+    theaterIn: '<path d="M5.5 7H1.5M3.5 5L1.5 7l2 2M8.5 7h4M10.5 5l2 2-2 2"/>',
+    theaterOut: '<path d="M1 7h3.5M2.5 5l2 2-2 2M13 7H9.5M11.5 5l-2 2 2 2"/>',
     up: '<path d="M3 9l4-4 4 4"/>',
     down: '<path d="M3 5l4 4 4-4"/>',
     left: '<path d="M9 3L5 7l4 4"/>',
@@ -1443,7 +1443,8 @@
   function defaultSettings() {
     const base = { naming: { kind: "date", text: "", date: true, position: "after" },
                    outputs: { photos: true, sequence: false, lenticular: false },
-                   photos: { format: "original", quality: "high" },
+                   // original: copiar como a câmera salvou; convert + format: uma cópia convertida (os dois podem)
+                   photos: { original: true, convert: false, format: "jpg", quality: "high" },
                    seq: { formats: ["mp4"], fps: 6, loops: 3, reverse: true, height: 1080, alsoPhotos: true, quality: "high" },
                    // lpi: lâmina; pitch: medido na folha de teste (0 = usar o nominal); dpi: impressora;
                    // tamanho em cm (unit "cm"|"in" só muda a exibição); effect "flip" (animação) | "3d"
@@ -1458,12 +1459,20 @@
       if (m === "sequence" && base.outputs.photos) base.photos.format = "original";
     }
     delete base.seq.alsoPhotos;
+    // Fotos de antes da 2.14 (um formato só, "original" ou outro)
+    const oldPhotos = p && (!p.photos || p.photos.original === undefined);
+    if (oldPhotos && (p.photos || base.photos.format === "original")) {
+      const f = base.photos.format;
+      base.photos.original = f === "original";
+      base.photos.convert = f !== "original";
+    }
+    if (base.photos.format === "original") base.photos.format = "jpg";
     return base;
   }
   let exportPrefsTimer = null;
   function rememberExportPrefs() {
     if (!exp.active || typeof window.savePref !== "function") return;
-    exportPrefs = { mode: exp.mode, sameForAll: exp.sameForAll, settings: JSON.parse(JSON.stringify(settingsFor(exp.active))) };
+    exportPrefs = { mode: exp.mode, sameForAll: exp.sameForAll, collapsed: exp.collapsed || {}, settings: JSON.parse(JSON.stringify(settingsFor(exp.active))) };
     clearTimeout(exportPrefsTimer);
     exportPrefsTimer = setTimeout(() => window.savePref("export", JSON.stringify(exportPrefs)), 300);
   }
@@ -1514,7 +1523,7 @@
   function settingsText(session) {
     const st = settingsFor(session.name);
     const parts = [];
-    if (st.outputs.photos) parts.push(PHOTO_FORMATS.find((f) => f[0] === st.photos.format)[1]);
+    if (st.outputs.photos) parts.push(photosText(st.photos) || "no photos");
     if (st.outputs.sequence) parts.push(st.seq.formats.length ? st.seq.formats.map((f) => f.toUpperCase()).join(" · ") : "no sequence format");
     if (st.outputs.lenticular) {
       const l = st.lent, plan = lentPlan(l, sessionItems(session).filter((i) => i.previewable).length);
@@ -1522,11 +1531,18 @@
     }
     return parts.length ? "→ " + parts.join(" + ") : "Nothing to save";
   }
+  // "Originals + JPG", "Originals", "JPG" ("" = nada escolhido)
+  function photosText(p) {
+    return [p.original ? "Originals" : "", p.convert ? PHOTO_FORMATS.find((f) => f[0] === p.format)[1] : ""].filter(Boolean).join(" + ");
+  }
   // Cabeçalho de cada seção: o resumo daquela saída
   function outputText(session, kind) {
     const st = settingsFor(session.name);
-    if (kind === "photos")
-      return PHOTO_FORMATS.find((f) => f[0] === st.photos.format)[1] + (LOSSY_PHOTOS.includes(st.photos.format) ? " · " + qualityLabel(st.photos.quality) : "");
+    if (kind === "photos") {
+      const p = st.photos;
+      if (!p.original && !p.convert) return "Choose originals or a format";
+      return photosText(p) + (p.convert && LOSSY_PHOTOS.includes(p.format) ? " · " + qualityLabel(p.quality) : "");
+    }
     if (kind === "lenticular") {
       const l = st.lent, plan = lentPlan(l, sessionItems(session).filter((i) => i.previewable).length);
       return lentPitch(l) + " LPI · " + l.dpi + " dpi · " + lentSizeText(l) + " · " + (l.effect === "3d" ? "3D" : "Animation") + (plan.warn ? " · ⚠" : "");
@@ -1545,6 +1561,7 @@
 
   function openExport(projectNames) {
     if (exportPrefs && OUTPUT_KINDS.includes(exportPrefs.mode)) exp.mode = exportPrefs.mode;
+    if (exportPrefs && exportPrefs.collapsed) exp.collapsed = Object.assign({}, exportPrefs.collapsed);
     exp.project = Array.isArray(projectNames);
     const all = exportable();
     // Salvando para fechar: só as que ainda não foram salvas (as já salvas ficam marcadas fora)
@@ -1635,14 +1652,15 @@
     const noOutput = chosenSt.some((st) => !OUTPUT_KINDS.some((k) => st.outputs[k]));
     const seqEmpty = chosenSt.some((st) => st.outputs.sequence && !st.seq.formats.length);
     const lentBad = chosenSt.some((st) => st.outputs.lenticular && !lentValid(st.lent));
+    const photosEmpty = chosenSt.some((st) => st.outputs.photos && !st.photos.original && !st.photos.convert);
     // Project: sessão com só parte das fotos editadas misturaria editadas e originais
     const partial = exp.project && $("exportEdited").checked
       ? all.filter((s) => exp.selected.has(s.name) && s.edited > 0 && s.edited < s.photos.length) : [];
-    $("exportCount").textContent = noOutput ? "Tick at least one output for each selected session" : lentBad ? "Check the lens, printer and size values" : seqEmpty ? "Choose at least one sequence format for each selected session"
+    $("exportCount").textContent = noOutput ? "Tick at least one output for each selected session" : photosEmpty ? "Photos: choose the originals, a format, or both" : lentBad ? "Check the lens, printer and size values" : seqEmpty ? "Choose at least one sequence format for each selected session"
       : partial.length ? (partial.length === 1 ? sessionTitle(partial[0]) + " has" : partial.length + " sessions have") + " only some photos edited: edited and original frames would be mixed."
       : chosen + " of " + plural(all.length, "session", "sessions") + " selected";
     $("exportCount").classList.toggle("warn", partial.length > 0);
-    $("exportConfirm").disabled = chosen === 0 || noOutput || seqEmpty || lentBad;
+    $("exportConfirm").disabled = chosen === 0 || noOutput || seqEmpty || lentBad || photosEmpty;
     $("exportConfirm").textContent = chosen ? (exp.project ? "Export " : "Save ") + plural(chosen, "session", "sessions") : (exp.project ? "Export" : "Save");
     $("exportSelectAll").disabled = chosen === all.length;
     $("exportUnselectAll").disabled = chosen === 0;
@@ -1802,7 +1820,7 @@
         const item = items[exp.photo];
         if (!item) return;
         const stem = item.file.replace(/\.[^.]+$/, "");
-        const target = s.format === "original" ? "" : " → " + stem + "." + s.format;
+        const target = s.convert ? " → " + stem + "." + s.format : "";
         show(exp.photo, [pad(item.order), item.title + (item.subtitle ? " · " + item.subtitle : "")], item.file + target);
         [...strip.children].forEach((li, k) => li.classList.toggle("selected", k === exp.photo));
       };
@@ -1820,11 +1838,24 @@
         strip.appendChild(li);
       });
       if (focused) { outer.insertBefore(stripScroll, rows); showPhoto(); }
-      const r = row("Format");
-      r.appendChild(segmented(PHOTO_FORMATS, s.format, (v) => { s.format = v; rerender(); },
-        (v) => (v === "heic" && !exp.heic.ok ? exp.heic.reason || "Not available on this computer" : "")));
+      // Originais e/ou uma cópia convertida, independentes; com os dois, Photos/Originals/ e Photos/<FORMATO>/
+      const ro = row("Originals");
+      ro.appendChild(checkOption("Keep the originals, exactly as each camera saved them (JPG and RAW)", s.original, (v) => { s.original = v; rerender(); }));
+      box.appendChild(ro);
+      const r = row("Converted");
+      r.appendChild(checkOption("", s.convert, (v) => { s.convert = v; rerender(); }));
+      const fmts = segmented(PHOTO_FORMATS.filter(([f]) => f !== "original"), s.format, (v) => { s.format = v; s.convert = true; rerender(); },
+        (v) => (v === "heic" && !exp.heic.ok ? exp.heic.reason || "Not available on this computer" : ""));
+      if (!s.convert) fmts.classList.add("dimmed");
+      r.appendChild(fmts);
       box.appendChild(r);
-      if (LOSSY_PHOTOS.includes(s.format)) {
+      if (s.original && s.convert) {
+        const o = settingsFor(session.name).outputs;
+        const pre = o.sequence || o.lenticular ? "Photos/" : "";
+        box.appendChild(el("div", "export-note", "Both are saved, each in its own folder: " + pre + "Originals/ and " + pre + s.format.toUpperCase() + "/."));
+      }
+      if (!s.original && !s.convert) box.appendChild(el("div", "export-note exp-none", "Choose the originals, a format, or both."));
+      if (s.convert && LOSSY_PHOTOS.includes(s.format)) {
         const q = row("Quality");
         q.appendChild(segmented(QUALITIES, s.quality, (v) => { s.quality = v; rerender(); }));
         box.appendChild(q);
@@ -1833,13 +1864,12 @@
         box.appendChild(el("div", "export-note", s.quality === "standard" ? "Smaller files, good for sharing online."
           : s.quality === "high" ? "Very close to the original photos, with smaller files. Good for most uses."
           : max[s.format] + " Largest files."));
-      } else if (s.format === "png" || s.format === "tiff") {
+      } else if (s.convert && (s.format === "png" || s.format === "tiff")) {
         box.appendChild(el("div", "export-note", s.format.toUpperCase() + " keeps every pixel: no quality is lost in the conversion."));
       }
       box.appendChild(el("div", "export-note",
-        "Original keeps each file exactly as the camera saved it (JPG and RAW): the highest quality. The other formats convert " +
-        "every photo; RAW photos are converted from the full-size image the camera keeps inside them, and when a camera " +
-        "saved RAW + JPG, the JPG is used."));
+        "The originals are the highest quality. A converted copy makes one file per camera; RAW photos are converted from the " +
+        "full-size image the camera keeps inside them, and when a camera saved RAW + JPG, the JPG is used."));
       } else if (kind === "lenticular") {
       const l = st.lent;
       const n = items.length;
@@ -2161,6 +2191,16 @@
       const sum = el("span", "exp-sec-sum", on ? outputText(session, kind) : "Off");
       head.appendChild(sum);
       if (on && !focused) head.appendChild(el("span", "exp-sec-hint", "Preview"));
+      // Recolher / abrir as configurações (a saída continua ligada); vale para todas as sessões
+      exp.collapsed = exp.collapsed || {};
+      const folded = on && !!exp.collapsed[kind];
+      if (on) {
+        const fold = button("", (e) => { e.stopPropagation(); exp.collapsed[kind] = !folded; rerender(); },
+          { icon: folded ? "down" : "up", title: folded ? "Show the " + title + " settings" : "Hide the " + title + " settings" });
+        fold.classList.add("exp-sec-fold");
+        head.appendChild(fold);
+      }
+      if (folded) sec.classList.add("folded");
       // Clicar no cabeçalho: liga (se desligada) e leva a prévia para esta saída
       head.addEventListener("click", () => {
         if (!st.outputs[kind]) st.outputs[kind] = true;
@@ -2169,7 +2209,7 @@
       });
       sec.appendChild(head);
       if (on) {
-        const body = el("div", "exp-sec-body");
+        const body = el("div", "exp-sec-body" + (folded ? " hidden" : ""));
         sec.appendChild(body);
         buildKind(kind, body, focused);
       }
@@ -2232,7 +2272,7 @@
     // e lenticular (1|0 e os valores), tudo numa linha por sessão
     const o = st.outputs, s = st.seq, l = st.lent;
     return [...head, "outputs",
-      o.photos ? st.photos.format : "", st.photos.quality,
+      o.photos ? [st.photos.original ? "original" : "", st.photos.convert ? st.photos.format : ""].filter(Boolean).join(",") : "", st.photos.quality,
       o.sequence ? s.formats.join(",") : "", s.fps, s.loops, s.reverse ? 1 : 0, s.height, s.quality,
       o.lenticular ? 1 : 0, lentPitch(l), l.dpi, (l.widthCm / CM_PER_IN).toFixed(4), (l.heightCm / CM_PER_IN).toFixed(4), l.effect, l.reverse ? 1 : 0].join("|");
   }
@@ -2252,7 +2292,7 @@
   const RAW_RE = /\.(cr2|cr3|crw|nef|nrw|arw|srf|sr2|dng|raf|orf|rw2|pef|raw)$/i;
   function mixedFormats() {
     const raw = new Set(), jpeg = new Set();
-    sessions.filter((s) => exp.selected.has(s.name) && settingsFor(s.name).outputs.photos && settingsFor(s.name).photos.format === "original").forEach((s) => {
+    sessions.filter((s) => exp.selected.has(s.name) && settingsFor(s.name).outputs.photos && settingsFor(s.name).photos.original).forEach((s) => {
       const byCam = {};
       s.photos.forEach((p) => { if (!p.camera) return; byCam[p.camera] = byCam[p.camera] || { raw: false }; if (RAW_RE.test(p.file)) byCam[p.camera].raw = true; });
       Object.keys(byCam).forEach((cam) => (byCam[cam].raw ? raw : jpeg).add(cam));

@@ -2927,7 +2927,20 @@ namespace
 
                     if (savePhotos)
                     {
-                        fs::create_directories(photosDir, ec);
+                        // photoFormat pode ser uma lista (2.14): "original", "jpg" ou "original,jpg" —
+                        // os originais e/ou uma cópia convertida; com os dois, cada um na sua subpasta
+                        // (Photos/Originals/ e Photos/JPG/)
+                        std::vector<std::string> photoFormats;
+                        std::stringstream formatList(job.photoFormat);
+                        for (std::string x; std::getline(formatList, x, ',');)
+                            if (!x.empty()) photoFormats.push_back(x);
+                        for (const std::string& photoFormat : photoFormats)
+                        {
+                        const bool original = photoFormat == "original";
+                        std::string upper = photoFormat;
+                        for (char& c : upper) c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+                        const fs::path formatDir = photoFormats.size() > 1 ? photosDir / (original ? std::string("Originals") : upper) : photosDir;
+                        fs::create_directories(formatDir, ec);
                         // Nome curto: "01_SL3_1_IMG_4821.JPG" -> "01_SL3_1.JPG" (repetido: "-2")
                         std::map<std::string, int> used;
                         auto shortStem = [&](const std::string& file, const std::string& ext)
@@ -2940,7 +2953,6 @@ namespace
                             const int n = ++used[key];
                             return n == 1 ? base : base + "-" + std::to_string(n);
                         };
-                        const bool original = job.photoFormat == "original";
                         std::vector<std::string> files;
                         if (original)
                         {
@@ -2952,12 +2964,12 @@ namespace
                         for (size_t i = 0; i < files.size() && error.empty(); ++i)
                         {
                             if (exportCancel) { error = "cancelled"; break; }
-                            report(static_cast<double>(i) / files.size(), original ? "photos-save" : job.photoFormat);
+                            report(static_cast<double>(i) / files.size(), original ? "photos-save" : photoFormat);
                             const fs::path from = photoPath(files[i]);
                             if (original)
                             {
                                 const std::string ext = from.extension().string();
-                                const fs::path to = photosDir / (shortStem(files[i], ext) + ext);
+                                const fs::path to = formatDir / (shortStem(files[i], ext) + ext);
                                 std::error_code moveError;
                                 fs::remove(to, moveError);
                                 moveError.clear();
@@ -2966,8 +2978,11 @@ namespace
                                     error = "Could not save " + to.filename().string() + ": " + moveError.message();
                             }
                             else
-                                Export::ConvertPhoto(from, photosDir / shortStem(files[i], "." + job.photoFormat), job.photoFormat,
+                                Export::ConvertPhoto(from, formatDir / shortStem(files[i], "." + photoFormat), photoFormat,
                                                      job.photoQuality, error);
+                        }
+                        if (!error.empty())
+                            break;
                         }
                         if (!error.empty())
                             break;

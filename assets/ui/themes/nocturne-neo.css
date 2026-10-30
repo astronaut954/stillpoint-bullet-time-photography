@@ -723,6 +723,11 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
 .exp-sec-head:hover .exp-sec-hint { color: var(--noct-primary); border-color: var(--noct-primary); }
 .exp-sec-body { padding: 4px 12px 12px; border-top: 1px solid var(--noct-border); display: flex; flex-direction: column; gap: 12px; padding-top: 12px; }
 .exp-none { color: var(--noct-pending); }
+.exp-sec-fold { flex: none; }
+.exp-sec-fold svg { width: 12px; height: 12px; }
+.exp-sec.folded .exp-sec-head { border-bottom: none; }
+.dimmed { opacity: .45; }
+.dimmed:hover { opacity: 1; }
 /* Lenticular (etapa 19) */
 .lent-num { box-sizing: border-box; height: 28px; padding: 0 8px; border: 1px solid var(--noct-border); background: var(--noct-surface); color: var(--noct-text); font: 12px var(--noct-font-mono); text-align: right; }
 .lent-num:focus { outline: none; border-color: var(--noct-primary); box-shadow: var(--noct-focus-ring); }
