@@ -660,6 +660,7 @@
     cameras.filter((c) => c.order === 0).forEach((cam) => ui.cameraList.appendChild(cameraRow(cam, -1, placed.length)));
     $("cameraCount").textContent = cameras.length;
     $("cameraCount").classList.toggle("hidden", cameras.length === 0);
+    fitCameraList();
     ui.cameraList.querySelectorAll("li[data-name]").forEach((li) => {
       const top = was[li.dataset.name];
       if (top === undefined || !li.animate) return;
@@ -669,6 +670,12 @@
     updateButtons();
   }
 
+  // Lista que rola: espaço entre a barra de rolagem e as câmeras
+  function fitCameraList() {
+    const list = ui.cameraList;
+    list.classList.toggle("scrolling", list.scrollHeight > list.clientHeight + 1);
+  }
+  if (window.ResizeObserver) new ResizeObserver(() => fitCameraList()).observe(ui.cameraList);
   function cameraRow(cam, index, placedCount) {
     const state = cam.state || (cam.connected ? "connected" : "disconnected");
 
@@ -1870,13 +1877,43 @@
     return i;
   }
 
+  // Zoom das lupas (prévia Interlaced e folha de teste): 1×, 1,5×, 2×, 3×, 4×, 6×, 8×
+  const LOUPE_ZOOMS = [1, 1.5, 2, 3, 4, 6, 8];
+  function loupeZoomStep(z, deltaY) {
+    const i = LOUPE_ZOOMS.indexOf(z) >= 0 ? LOUPE_ZOOMS.indexOf(z) : 2;
+    return LOUPE_ZOOMS[Math.max(0, Math.min(LOUPE_ZOOMS.length - 1, i + (deltaY < 0 ? 1 : -1)))];
+  }
+  // Marcas de corte e de alinhamento no canvas da prévia, com as mesmas medidas do programa
+  // (Export: DrawPrintMarks); f = escala da prévia em relação ao arquivo
+  function drawPrintMarks(g, l, f, d) {
+    const M = d.margin, B = d.bleed;
+    if (!M) return;
+    const t = Math.max(1, Math.round(l.dpi * 0.004 * f)), gap = l.dpi * 0.06 * f, start = M * 0.15;
+    const left = M + B, right = M + B + d.w, top = M + B, bottom = M + B + d.h;
+    g.fillStyle = "#000"; g.strokeStyle = "#000"; g.lineWidth = t;
+    if (l.cropMarks) {
+      [top, bottom].forEach((y) => { g.fillRect(start, y - t / 2, M - gap - start, t); g.fillRect(d.fw - M + gap, y - t / 2, M - gap - start, t); });
+      [left, right].forEach((x) => { g.fillRect(x - t / 2, start, t, M - gap - start); g.fillRect(x - t / 2, d.fh - M + gap, t, M - gap - start); });
+    }
+    if (l.alignMarks) {
+      const r = M * 0.28;
+      const cross = (cx, cy) => {
+        g.fillRect(cx - r - r / 3, cy - t / 2, 2 * (r + r / 3), t);
+        g.fillRect(cx - t / 2, cy - r - r / 3, t, 2 * (r + r / 3));
+        g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.stroke();
+      };
+      cross((left + right) / 2, M / 2); cross((left + right) / 2, d.fh - M / 2);
+      cross(M / 2, (top + bottom) / 2); cross(d.fw - M / 2, (top + bottom) / 2);
+    }
+  }
+
   // ---- Folha de teste de pitch (entrega 2) ----
   // Abre de três lugares: "Print pitch test…" na seção Lenticular, o botão no rodapé da janela de
   // salvar e o ícone da tela principal. 11 faixas, cada uma desenhada para um LPI um pouco
   // diferente, em volta do LPI da lâmina (ou do pitch já medido): de 0,1 em 0,1 por padrão;
   // "Finer steps" (discreto) para 0,05 ou 0,02 numa segunda folha, mais precisa.
   // A janela é montada uma vez; ao mudar uma opção só o conteúdo é refeito (sem piscar).
-  const pitchState = { l: null, step: 0.1, fine: false, preview: false };
+  const pitchState = { l: null, step: 0.1, fine: false, zoom: 2 };
   const PITCH_STRIPS = 11;
   function openPitchTest(from) {
     const base = from || (exportPrefs && exportPrefs.settings && exportPrefs.settings.lent) || defaultSettings().lent;
@@ -1894,12 +1931,9 @@
         "(strips in the same direction) and tilt it slowly: the strip that turns black or white all at once, with no bands moving across it, is your real pitch. " +
         "Type its number in \"Measured pitch\" in the Lenticular settings."));
       const main = el("div", "pitch-main");
-      main.append(el("div", "pitch-body"), el("div", "pitch-preview hidden"));
+      main.append(el("div", "pitch-body"), el("div", "pitch-preview"));
       d.appendChild(main);
       const actions = el("div", "dialog-actions");
-      const prev = button("Preview", () => { pitchState.preview = !pitchState.preview; renderPitchTest(); }, { title: "See the sheet before saving" });
-      prev.classList.add("pitch-preview-btn");
-      actions.appendChild(prev);
       actions.appendChild(el("span", "spacer"));
       actions.appendChild(button("Cancel", closePitchTest));
       const ok = button("Save pitch test", savePitchTest, { kind: "btn-primary" });
@@ -1964,20 +1998,15 @@
       (l.pitch > 0 ? " Centered on your measured pitch (" + l.pitch + ")." : "")));
     body.appendChild(el("div", "export-note", P.W + " × " + P.H + " px, black and white TIFF · saved in " + (exp.destDefault || "the Exports folder") + " and shown in the " + (upd.info && upd.info.os === "windows" ? "Explorer" : "Finder") + "."));
     body.scrollTop = scroll;
-    ov.querySelector(".pitch-dialog").classList.toggle("with-preview", pitchState.preview);
-    const pbtn = ov.querySelector(".pitch-preview-btn");
-    pbtn.classList.toggle("on", pitchState.preview);
-    pbtn.textContent = pitchState.preview ? "Hide preview" : "Preview";
     drawPitchPreview(P);
   }
   // Prévia da folha: a página inteira reduzida (as listras aparecem maiores do que são, só para mostrar
   // a direção) e, com o mouse em cima, uma lupa com as listras de verdade (2×)
   function drawPitchPreview(P) {
     const pane = $("pitchOverlay").querySelector(".pitch-preview");
-    pane.classList.toggle("hidden", !pitchState.preview);
-    if (!pitchState.preview) return;
     pane.innerHTML = "";
-    const maxW = 300, maxH = 420, sc = Math.min(maxW / P.W, maxH / P.H);
+    // Cabe na coluna (deitado ou em pé), sem rolagem
+    const maxW = 290, maxH = 400, sc = Math.min(maxW / P.W, maxH / P.H);
     const cw = Math.max(1, Math.round(P.W * sc)), ch = Math.max(1, Math.round(P.H * sc));
     const c = document.createElement("canvas"); c.width = cw * 2; c.height = ch * 2; c.style.width = cw + "px"; c.style.height = ch + "px";
     c.className = "pitch-canvas";
@@ -2001,18 +2030,22 @@
     const wrap = el("div", "pitch-canvas-wrap");
     wrap.appendChild(c);
     const loupe = document.createElement("canvas"); loupe.width = 160; loupe.height = 160; loupe.className = "pitch-loupe hidden";
-    const tag = el("span", "pitch-loupe-tag hidden", "2× · real stripes");
+    const tag = el("span", "pitch-loupe-tag hidden", pitchState.zoom + "× · real stripes");
+    tag.title = "Scroll to zoom in and out";
     wrap.append(loupe, tag);
     pane.appendChild(wrap);
-    pane.appendChild(el("div", "export-note", "Whole sheet, reduced: the stripes are drawn bigger than they print, only to show where they go. Move the mouse over it to see them at their real size (2×)."));
-    c.addEventListener("pointermove", (e) => {
+    pane.appendChild(el("div", "export-note", "Whole sheet, reduced: the stripes are drawn bigger than they print, only to show where they go. Move the mouse over it to see them at their real size; scroll to zoom in and out."));
+    let last = null;
+    const move = (e) => {
+      last = { clientX: e.clientX, clientY: e.clientY };
+      const z = pitchState.zoom;
       const r = c.getBoundingClientRect();
       const fx = Math.round((e.clientX - r.left) / r.width * P.W), fy = Math.round((e.clientY - r.top) / r.height * P.H);
-      const n = loupe.width / 2;  // 80 px da folha viram 160
+      const n = loupe.width / z;  // pixels da folha dentro da lupa
       const img = loupe.getContext("2d").createImageData(loupe.width, loupe.height);
       for (let y = 0; y < loupe.height; y++)
         for (let x = 0; x < loupe.width; x++) {
-          const v = P.at(fx - n / 2 + (x >> 1), fy - n / 2 + (y >> 1)), k = (y * loupe.width + x) * 4;
+          const v = P.at(Math.floor(fx - n / 2 + x / z), Math.floor(fy - n / 2 + y / z)), k = (y * loupe.width + x) * 4;
           img.data[k] = img.data[k + 1] = img.data[k + 2] = v; img.data[k + 3] = 255;
         }
       loupe.getContext("2d").putImageData(img, 0, 0);
@@ -2024,7 +2057,14 @@
       loupe.style.left = lx + "px"; loupe.style.top = ly + "px";
       tag.style.left = (lx + 4) + "px"; tag.style.top = (ly + 4) + "px";
       loupe.classList.remove("hidden"); tag.classList.remove("hidden");
-    });
+    };
+    c.addEventListener("pointermove", move);
+    c.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      pitchState.zoom = loupeZoomStep(pitchState.zoom, e.deltaY);
+      tag.textContent = pitchState.zoom + "× · real stripes";
+      if (last) move(last);
+    }, { passive: false });
     c.addEventListener("pointerleave", () => { loupe.classList.add("hidden"); tag.classList.add("hidden"); });
   }
   function savePitchTest() {
@@ -2063,11 +2103,10 @@
         const pitchLabel = el("span", "export-label lent-sub", "Measured pitch");
         lens.appendChild(pitchLabel);
         lens.appendChild(numField(l.pitch, (v) => { l.pitch = v; rerender(); }, { placeholder: String(l.lpi), width: "72px", allowEmpty: true }));
-        lens.appendChild(button("Print pitch test…", () => openPitchTest(l), { kind: "btn-link", title: "A sheet to measure the real LPI of your lens sheet with your printer" }));
       }
       box.appendChild(lens);
       box.appendChild(el("div", "export-note", "LPI = lenses per inch, printed on the sheet's package. 40–75 LPI for photo-size animation; 20–40 for 3D and posters." +
-        (opts && opts.measured ? " \"Measured pitch\": the number of the smoothest strip on the pitch test (empty = use the LPI above)." : "")));
+        (opts && opts.measured ? " \"Measured pitch\": the number of the smoothest strip on the pitch test (Print pitch test, below), empty = use the LPI above." : "")));
   }
   function lentPrinterRows(l, box, rerender) {
       const printer = row("Printer");
@@ -2384,10 +2423,11 @@
       };
       const fitCanvas = () => {
         if (!full) return;
-        // Cabe na prévia mantendo a proporção do papel; o navegador reduz (as faixas se misturam, como a olho nu)
+        // Cabe na prévia mantendo a proporção do arquivo (com margem e marcas); o navegador reduz
+        // (as faixas se misturam, como a olho nu)
         const pw = Math.max(50, preview.clientWidth - 2), ph = Math.max(50, preview.clientHeight - 2);
-        const scale = Math.min(pw / plan.w, ph / plan.h);
-        canvas.width = Math.max(1, Math.round(plan.w * scale)); canvas.height = Math.max(1, Math.round(plan.h * scale));
+        const scale = Math.min(pw / plan.fileW, ph / plan.fileH);
+        canvas.width = Math.max(1, Math.round(plan.fileW * scale)); canvas.height = Math.max(1, Math.round(plan.fileH * scale));
         const ctx = canvas.getContext("2d");
         ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
         ctx.drawImage(full, 0, 0, canvas.width, canvas.height);
@@ -2396,18 +2436,24 @@
         const horizontal = l.effect !== "3d";
         // Imagem inteira em pixels reais; acima de ~24 Mpx monta reduzida (a lupa avisa)
         const limit = 24e6;
-        const f = plan.w * plan.h > limit ? Math.sqrt(limit / (plan.w * plan.h)) : 1;
-        const W = Math.max(1, Math.round(plan.w * f)), H = Math.max(1, Math.round(plan.h * f));
+        const f = plan.fileW * plan.fileH > limit ? Math.sqrt(limit / (plan.fileW * plan.fileH)) : 1;
+        // O arquivo inteiro: margem branca com as marcas e, no meio, a imagem com a sangria
+        const bleed = Math.round((l.bleedMm || 0) / 25.4 * l.dpi), margin = l.cropMarks || l.alignMarks ? Math.round(0.4 * l.dpi) : 0;
+        const FW = Math.max(1, Math.round(plan.fileW * f)), FH = Math.max(1, Math.round(plan.fileH * f));
+        const off = Math.round(margin * f), b = bleed * f;
+        const W = Math.max(1, Math.round((plan.w + 2 * bleed) * f)), H = Math.max(1, Math.round((plan.h + 2 * bleed) * f));
         const perLens = plan.cols * f;
-        const ownerOf = (i) => { const pos = (i + 0.5) / perLens, frac = pos - Math.floor(pos); let k = Math.min(n - 1, Math.floor(frac * n)); return l.reverse ? n - 1 - k : k; };
+        const ownerOf = (i) => { const pos = (i - b + 0.5) / perLens, frac = pos - Math.floor(pos); let k = Math.min(n - 1, Math.floor(frac * n)); return l.reverse ? n - 1 - k : k; };
         const token = (drawInterlaced.token = (drawInterlaced.token || 0) + 1);
-        full = document.createElement("canvas"); full.width = W; full.height = H;
+        full = document.createElement("canvas"); full.width = FW; full.height = FH;
         const fctx = full.getContext("2d");
-        fctx.fillStyle = "#000"; fctx.fillRect(0, 0, W, H);
-        loupeTag.textContent = f < 1 ? "2× · built at " + Math.round(f * 100) + "%" : "2× · real pixels";
-        loupeTag.title = f < 1 ? "The preview of the file was built at " + Math.round(f * 100) + "% of the real size" : "";
+        fctx.fillStyle = "#fff"; fctx.fillRect(0, 0, FW, FH);
+        fctx.fillStyle = "#000"; fctx.fillRect(off, off, W, H);
+        drawPrintMarks(fctx, l, f, { fw: FW, fh: FH, margin: margin * f, bleed: b, w: plan.w * f, h: plan.h * f });
+        lentBuiltAt = f;
+        setLoupeTag();
         caption.innerHTML = "";
-        caption.append(el("b", "", "Interlaced"), document.createTextNode(" the whole file as it prints · " + plan.w + " × " + plan.h + " px · " + lentSizeText(l) + " · " +
+        caption.append(el("b", "", "Interlaced"), document.createTextNode(" the whole file as it prints · " + plan.fileW + " × " + plan.fileH + " px · " + lentSizeText(l) + " · " +
           (plan.cols ? plan.cols.toFixed(2).replace(/\.?0+$/, "") : "—") + " px per lens · strips " + (horizontal ? "horizontal" : "vertical") + " · move the mouse for a close-up"));
         fitCanvas();
         // Faixas de cada foto: desenha a foto (cobrindo o papel) só nas linhas/colunas dela
@@ -2425,17 +2471,32 @@
               fctx.imageSmoothingEnabled = true;
               runs.forEach(([start, len, owner]) => {
                 if (owner !== k) return;
-                if (horizontal) fctx.drawImage(im, ox / s, (oy + start) / s, W / s, len / s, 0, start, W, len);
-                else fctx.drawImage(im, (ox + start) / s, oy / s, len / s, H / s, start, 0, len, H);
+                if (horizontal) fctx.drawImage(im, ox / s, (oy + start) / s, W / s, len / s, off, off + start, W, len);
+                else fctx.drawImage(im, (ox + start) / s, oy / s, len / s, H / s, off + start, off, len, H);
               });
             }
             if (++loaded === n) fitCanvas();
           });
         });
       };
-      // Lupa: segue o mouse; mostra o ponto em pixels reais ampliados 2×
+      // Lupa: segue o mouse; mostra o ponto em pixels reais ampliados (2× de início; a roda do
+      // mouse aproxima e afasta, de 1× a 8×)
+      let lentBuiltAt = 1, lastMove = null;
+      const setLoupeTag = () => {
+        const z = exp.loupeZoom || 2;
+        loupeTag.textContent = lentBuiltAt < 1 ? z + "× · built at " + Math.round(lentBuiltAt * 100) + "%" : z + "× · real pixels";
+        loupeTag.title = (lentBuiltAt < 1 ? "The preview of the file was built at " + Math.round(lentBuiltAt * 100) + "% of the real size. " : "") + "Scroll to zoom in and out";
+      };
+      preview.addEventListener("wheel", (e) => {
+        if (exp.lentView !== "interlaced" || !full || loupe.classList.contains("hidden")) return;
+        e.preventDefault();
+        exp.loupeZoom = loupeZoomStep(exp.loupeZoom || 2, e.deltaY);
+        setLoupeTag();
+        if (lastMove) preview.dispatchEvent(new PointerEvent("pointermove", { clientX: lastMove.x, clientY: lastMove.y }));
+      }, { passive: false });
       preview.addEventListener("pointermove", (e) => {
         if (exp.lentView !== "interlaced" || !full) return;
+        lastMove = { x: e.clientX, y: e.clientY };
         // Área desenhada de fato (no teatro o canvas ocupa a caixa toda com object-fit: contain)
         const box = canvas.getBoundingClientRect();
         const sc = Math.min(box.width / canvas.width, box.height / canvas.height);
@@ -2448,7 +2509,7 @@
         const pr = preview.getBoundingClientRect();
         const size = Math.round(Math.max(80, Math.min(180, pr.height - 40, pr.width / 3)));
         if (loupe.width !== size) { loupe.width = size; loupe.height = size; }
-        const half = loupe.width / 4;  // 2×: cada pixel real vira 2 na tela
+        const half = loupe.width / 2 / (exp.loupeZoom || 2);  // zoom: cada pixel real vira z na tela
         const lctx = loupe.getContext("2d");
         lctx.imageSmoothingEnabled = false;
         lctx.fillStyle = "#000"; lctx.fillRect(0, 0, loupe.width, loupe.height);
@@ -2702,7 +2763,7 @@
       o.photos ? [st.photos.original ? "original" : "", st.photos.convert ? st.photos.format : ""].filter(Boolean).join(",") : "", st.photos.quality,
       o.sequence ? s.formats.join(",") : "", s.fps, s.loops, s.reverse ? 1 : 0, s.height, s.quality,
       o.lenticular ? 1 : 0, lentPitch(l), l.dpi, (l.widthCm / CM_PER_IN).toFixed(4), (l.heightCm / CM_PER_IN).toFixed(4), l.effect, l.reverse ? 1 : 0,
-      l.cropMarks ? 1 : 0, l.alignMarks ? 1 : 0, l.bleedMm || 0].join("|");
+      l.cropMarks ? 1 : 0, l.alignMarks ? 1 : 0, l.bleedMm || 0, l.lpi].join("|");
   }
 
   function runExport(deleteRest) {

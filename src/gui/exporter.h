@@ -69,6 +69,8 @@ namespace Export
         bool cropMarks = false;      // risquinhos nos cantos: onde cortar
         bool alignMarks = false;     // cruzes no meio de cada lado: para posicionar a lâmina
         double bleedInches = 0;      // sangria (3 mm = 0,118 pol)
+        // As configurações em texto: vão dentro do TIFF (descrição da imagem) e num .txt ao lado
+        std::string description;
     };
     struct LenticularInfo
     {

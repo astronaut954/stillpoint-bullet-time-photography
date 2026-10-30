@@ -509,16 +509,19 @@ namespace
     // TIFF simples (sem compressão), como a maioria dos programas de foto grava
     // dpi > 0: grava a resolução (XResolution/YResolution em polegadas), para a impressora
     // abrir no tamanho exato (lenticular)
-    bool WriteTiff(const RgbFrame& image, const fs::path& file, int dpi = 0)
+    bool WriteTiff(const RgbFrame& image, const fs::path& file, int dpi = 0, const std::string& description = "")
     {
         std::vector<unsigned char> out;
         auto u16 = [&](uint32_t v) { out.push_back(v & 0xFF); out.push_back((v >> 8) & 0xFF); };
         auto u32 = [&](uint32_t v) { for (int k = 0; k < 4; ++k) out.push_back((v >> (8 * k)) & 0xFF); };
         const uint32_t dataSize = static_cast<uint32_t>(image.pixels.size());
-        const int entries = dpi > 0 ? 13 : 10;
+        const bool described = !description.empty();
+        const int entries = (dpi > 0 ? 13 : 10) + (described ? 1 : 0);
         const uint32_t ifd = 8, bpsOffset = ifd + 2 + entries * 12 + 4;
         const uint32_t resOffset = bpsOffset + 6;                       // 2 RATIONAL (8 bytes cada)
-        const uint32_t dataOffset = dpi > 0 ? resOffset + 16 : bpsOffset + 6;
+        const uint32_t textOffset = dpi > 0 ? resOffset + 16 : bpsOffset + 6;
+        const uint32_t textSize = described ? static_cast<uint32_t>(description.size() + 1) : 0;  // com o 0 do fim
+        const uint32_t dataOffset = textOffset + textSize + (textSize & 1);  // começo par
         out.insert(out.end(), { 'I', 'I', 42, 0 });
         u32(ifd);
         u16(entries);
@@ -533,6 +536,8 @@ namespace
         entry(258, 3, 3, bpsOffset);  // 8, 8, 8
         entry(259, 3, 1, 1);          // sem compressão
         entry(262, 3, 1, 2);          // RGB
+        if (described)
+            entry(270, 2, textSize, textSize <= 4 ? 0 : textOffset);  // ImageDescription
         entry(273, 4, 1, dataOffset);
         entry(277, 3, 1, 3);
         entry(278, 4, 1, static_cast<uint32_t>(image.height));
@@ -551,6 +556,12 @@ namespace
         {
             u32(static_cast<uint32_t>(dpi)); u32(1);
             u32(static_cast<uint32_t>(dpi)); u32(1);
+        }
+        if (described)
+        {
+            out.insert(out.end(), description.begin(), description.end());
+            out.push_back(0);
+            if (textSize & 1) out.push_back(0);
         }
         out.insert(out.end(), image.pixels.begin(), image.pixels.end());
         return WriteBytes(file, out.data(), out.size());
@@ -910,10 +921,16 @@ namespace Export
                             &out.pixels[static_cast<size_t>(y) * W * 3], static_cast<size_t>(W) * 3);
             out = RgbFrame();
             DrawPrintMarks(sheet, info, o);
-            if (!WriteTiff(sheet, file, o.dpi)) { error = "Could not save " + file.filename().string(); return false; }
-            return true;
+            if (!WriteTiff(sheet, file, o.dpi, o.description)) { error = "Could not save " + file.filename().string(); return false; }
         }
-        if (!WriteTiff(out, file, o.dpi)) { error = "Could not save " + file.filename().string(); return false; }
+        else if (!WriteTiff(out, file, o.dpi, o.description)) { error = "Could not save " + file.filename().string(); return false; }
+        // As mesmas configurações num .txt ao lado (para a pessoa e para a gráfica)
+        if (!o.description.empty())
+        {
+            const fs::path notes = fs::path(dest).concat(" settings.txt");
+            std::ofstream txt(notes, std::ios::binary);
+            txt << o.description << "\n";
+        }
         return true;
     }
 

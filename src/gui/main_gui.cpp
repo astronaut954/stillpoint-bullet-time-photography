@@ -49,6 +49,7 @@
 #include <atomic>
 #include <chrono>
 #include <cmath>
+#include <ctime>
 #include <condition_variable>
 #include <cstdlib>
 #include <map>
@@ -2872,6 +2873,7 @@ namespace
             bool sequence = false;
             bool lenticular = false;          // etapa 19: imagem entrelaçada para lâmina lenticular (TIFF)
             Export::LenticularOptions lent;
+            double lentNominal = 0;           // LPI da embalagem (lent.lpi é o usado: o medido, se houver)
             std::string photoFormat;          // "original", "jpg"... ("" = não salvar fotos)
             Export::Quality photoQuality = Export::Quality::High;
             Export::SequenceOptions options;
@@ -3005,7 +3007,45 @@ namespace
                         std::snprintf(tag, sizeof(tag), " lenticular %.4glpi %ddpi %s", job.lent.lpi, job.lent.dpi, job.lent.horizontalLenses ? "flip" : "3d");
                         const fs::path lentDir = split ? target / "Lenticular" : target;
                         fs::create_directories(lentDir, ec);
-                        if (!Export::WriteLenticular(photos, lentDir / (job.folderName + tag), job.lent, report, &exportCancel, error))
+                        // Configurações em texto (dentro do TIFF e num .txt ao lado): para reimprimir
+                        // ou conferir depois, mesmo sem o app
+                        Export::LenticularOptions lent = job.lent;
+                        {
+                            const Export::LenticularInfo info = Export::LenticularPlan(lent, static_cast<int>(photos.size()));
+                            const double nominal = job.lentNominal > 0 ? job.lentNominal : lent.lpi;
+                            const bool measured = std::fabs(nominal - lent.lpi) > 1e-6;
+                            const std::time_t now = std::time(nullptr);
+                            char when[32];
+                            std::strftime(when, sizeof(when), "%Y-%m-%d %H:%M", std::localtime(&now));
+                            char line[512];
+                            std::string t = "Stillpoint lenticular print\n";
+                            t += "Session: " + job.folderName + " (" + job.session + ")\n";
+                            t += std::string("Saved: ") + when + " with Stillpoint " + AppVersion() + "\n\n";
+                            std::snprintf(line, sizeof(line), "Lens sheet: %.4g LPI on the package%s\n", nominal,
+                                          measured ? "" : " (no measured pitch: the package value was used)");
+                            t += line;
+                            if (measured) { std::snprintf(line, sizeof(line), "Measured pitch (used): %.4g LPI\n", lent.lpi); t += line; }
+                            std::snprintf(line, sizeof(line), "Printer: %d dpi\n", lent.dpi); t += line;
+                            std::snprintf(line, sizeof(line), "Print size: %.4g x %.4g cm (%.3g x %.3g in), %d x %d px\n",
+                                          lent.widthInches * 2.54, lent.heightInches * 2.54, lent.widthInches, lent.heightInches, info.width, info.height);
+                            t += line;
+                            t += std::string("Effect: ") + (lent.horizontalLenses ? "Animation (tilt up and down; lens strips horizontal)" : "3D (left and right; lens strips vertical)") + "\n";
+                            std::snprintf(line, sizeof(line), "Photos: %d, %s order\n", static_cast<int>(photos.size()), lent.reverse ? "reversed" : "normal");
+                            t += line;
+                            for (size_t i = 0; i < photos.size(); ++i)
+                                t += "  " + std::to_string(i + 1) + ". " + photos[i].filename().string() + "\n";
+                            std::snprintf(line, sizeof(line), "Columns per lens: %.3f; printer dots per photo: %.2f\n", info.columnsPerLens, info.pixelsPerPhoto);
+                            t += line;
+                            std::string marks;
+                            if (lent.cropMarks) marks += "crop marks";
+                            if (lent.alignMarks) marks += std::string(marks.empty() ? "" : ", ") + "alignment marks";
+                            std::snprintf(line, sizeof(line), "Marks: %s; bleed %.3g mm; file %d x %d px\n", marks.empty() ? "none" : marks.c_str(),
+                                          lent.bleedInches * 25.4, info.fileWidth, info.fileHeight);
+                            t += line;
+                            t += "\nPrint at 100% (actual size), never \"fit to page\": the file already has the right size and dpi.\n";
+                            lent.description = t;
+                        }
+                        if (!Export::WriteLenticular(photos, lentDir / (job.folderName + tag), lent, report, &exportCancel, error))
                             break;
                     }
 
@@ -3183,6 +3223,7 @@ namespace
                     job.lent.horizontalLenses = at(19) != "3d";
                     job.lent.reverse = at(20) == "1";
                     // Entrega 2: 21 marcas de corte 1/0 | 22 marcas de alinhamento 1/0 | 23 sangria em mm
+                    job.lentNominal = at(24).empty() ? 0 : std::atof(at(24).c_str());
                     job.lent.cropMarks = at(21) == "1";
                     job.lent.alignMarks = at(22) == "1";
                     try { if (!at(23).empty()) job.lent.bleedInches = std::max(0.0, std::stod(at(23))) / 25.4; } catch (...) {}

@@ -45,6 +45,7 @@ int main(int argc, char** argv)
             if (std::strcmp(argv[i], "reverse") == 0) o.reverse = true;
             if (std::strcmp(argv[i], "marks") == 0) { o.cropMarks = true; o.alignMarks = true; }
             if (std::strcmp(argv[i], "bleed") == 0) o.bleedInches = 3 / 25.4;
+            if (std::strcmp(argv[i], "describe") == 0) o.description = "Stillpoint lenticular print\nTest description";
         }
         const Export::LenticularInfo info = Export::LenticularPlan(o, static_cast<int>(photos.size()));
         std::printf("plan: %dx%d px (file %dx%d, bleed %d, margin %d), %.3f columns per lens, %.3f px per photo, %d lenses\n", info.width, info.height,

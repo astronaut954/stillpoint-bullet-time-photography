@@ -848,8 +848,16 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) serve para tudo, menos para a impress
       esquerda). Esc fecha só a janela do teste.
 - [ ] Mudar qualquer opção da janela do teste: a janela não pisca. "Finer steps" passa para 0.05
       (e mostra 0.05 / 0.02); "Normal steps" volta para 0.1. A nota lista os 11 valores das faixas.
-- [ ] **Preview** (canto de baixo à esquerda): mostra a folha inteira reduzida à direita; com o mouse
-      em cima, a lupa mostra as listras no tamanho real (2×). "Hide preview" esconde.
+- [ ] A prévia da folha fica sempre à direita (sem botão), sem rolagem lateral, deitada ou em pé.
+      Com o mouse em cima, a lupa mostra as listras no tamanho real; a roda do mouse aproxima e afasta
+      (1× a 8×, a etiqueta mostra o zoom). O mesmo na lupa da prévia Interlaced do Lenticular.
+- [ ] Prévia Interlaced do Lenticular mostra a margem branca, as marcas de corte e as cruzes; desmarcar
+      "Crop marks" / "Alignment marks" ou mudar Bleed redesenha sem elas. A seção Lenticular não tem
+      mais o "Print pitch test…" (fica no rodapé e no ícone da tela principal).
+- [ ] Salvar o Lenticular: ao lado do TIFF, "… settings.txt" com lâmina (embalagem e medido), impressora,
+      tamanho, efeito, ordem e lista das fotos, marcas, sangria e "print at 100%". O mesmo texto vai
+      dentro do TIFF (Finder → Obter Informações, ou Photoshop → Arquivo → Informações do arquivo).
+- [ ] Lista de câmeras com rolagem: um respiro entre a barra e as câmeras.
 - [ ] Rodapé da janela de salvar: **Print pitch test** entre Cancel e Save, apagado sem Lenticular e
       ativo com ele. Salvar com Lenticular sem "Measured pitch": pergunta "Print a pitch test first?"
       (Print pitch test / Save anyway / Don't ask again). Com "Measured pitch" preenchido, não pergunta.
