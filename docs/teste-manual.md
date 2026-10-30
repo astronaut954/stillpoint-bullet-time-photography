@@ -770,8 +770,14 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) serve para tudo, menos para a impress
       marca Converted); as duas = pastas `Originals/` e `JPG/` (ou o formato escolhido) — dentro de
       `Photos/` se houver outra saída marcada. Nenhuma das duas: "Photos: choose the originals, a format,
       or both" e o Save fica apagado. Quem salvou PNG na versão anterior abre com só Converted + PNG.
-- [ ] **Teatro:** ícone de entrar = setas apontando para fora; de sair = setas apontando para dentro,
-      bem separadas (não pode parecer um X).
+- [ ] **Teatro:** ícone de entrar = duas pontas de seta para fora; de sair = para dentro, sem traço
+      horizontal e bem separadas (não pode parecer um X).
+- [ ] **Cabeçalho das seções:** o mouse acende só a parte em que está: a caixa, o nome, o "Off" (liga)
+      e o "PREVIEW" (leva a prévia), e a seta de recolher. O espaço vazio do cabeçalho não faz nada.
+- [ ] **Miniaturas:** marcar/desmarcar Photos (ou trocar a prévia para outra saída e voltar) faz a
+      fileira de miniaturas abrir e fechar deslizando; quando abre, as miniaturas aparecem inteiras,
+      sem precisar rolar para o lado.
+- [ ] **Caixas de marcar:** o sinal ✓ centralizado em todas (sessões, seções, Originals/Converted).
 - [ ] **Várias saídas:** Photos + Sequence + Lenticular marcadas → Save: na pasta da sessão, `Photos/`,
       `Sequence/` e `Lenticular/`; só uma marcada → os arquivos direto na pasta da sessão. Na lista à
       esquerda: "→ Originals + MP4 + Lenticular 60/720". Export… da janela Project faz o mesmo em

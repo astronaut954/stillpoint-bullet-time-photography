@@ -132,8 +132,8 @@
     // Modo teatro, como no YouTube: tela com barra embaixo e dois ângulos dentro
     // (para fora = entrar; para dentro = sair)
     // Modo teatro: só as setas (para fora = entrar; para dentro = sair), no botão igual ao da janela Project
-    theaterIn: '<path d="M5.5 7H1.5M3.5 5L1.5 7l2 2M8.5 7h4M10.5 5l2 2-2 2"/>',
-    theaterOut: '<path d="M1 7h3.5M2.5 5l2 2-2 2M13 7H9.5M11.5 5l-2 2 2 2"/>',
+    theaterIn: '<path d="M4.5 4L1.5 7l3 3M9.5 4l3 3-3 3"/>',
+    theaterOut: '<path d="M1.5 4l3 3-3 3M12.5 4l-3 3 3 3"/>',
     up: '<path d="M3 9l4-4 4 4"/>',
     down: '<path d="M3 5l4 4 4-4"/>',
     left: '<path d="M9 3L5 7l4 4"/>',
@@ -1761,6 +1761,36 @@
     return i;
   }
 
+  // Fileira de miniaturas (só na prévia de Photos): abre e fecha deslizando em vez de aparecer
+  // e sumir de uma vez. No fim, um empurrão na rolagem: o WebKit do Mac às vezes desenha a
+  // fileira cortada até ela rolar.
+  function animateStrip(outer, prevStrip, prevStripH, rows) {
+    const strip = outer.querySelector(".export-strip-scroll");
+    const nudge = (s) => { s.scrollLeft += 1; s.scrollLeft -= 1; };
+    if (strip && !prevStrip) {
+      const h = strip.offsetHeight;
+      strip.classList.add("strip-anim", "strip-closed");
+      void strip.offsetHeight;
+      strip.classList.remove("strip-closed");
+      strip.style.height = h + "px";
+      const done = () => { strip.classList.remove("strip-anim"); strip.style.height = ""; nudge(strip); };
+      strip.addEventListener("transitionend", (e) => { if (e.propertyName === "height") done(); }, { once: false });
+      setTimeout(done, 400);
+    } else if (strip) {
+      setTimeout(() => nudge(strip), 50);
+    } else if (prevStrip) {
+      // Sai: a fileira antiga volta por um instante e fecha
+      prevStrip.classList.add("leaving", "strip-anim");
+      prevStrip.style.height = prevStripH + "px";
+      outer.insertBefore(prevStrip, rows);
+      void prevStrip.offsetHeight;
+      prevStrip.style.height = "";
+      prevStrip.classList.add("strip-closed");
+      setTimeout(() => prevStrip.remove(), 300);
+    }
+    if (strip) strip.querySelectorAll("img").forEach((i) => i.addEventListener("load", () => nudge(strip), { once: true }));
+  }
+
   function renderExportSettings() {
     stopPreview();
     // Uma janela, três saídas (decisão do dono, 2026-10-30, opção A): Photos, Sequence e
@@ -1770,6 +1800,8 @@
     // altura. A fileira rola para o lado e não pode ficar dentro de outra área que rola
     // (o WebKit do Mac pinta as miniaturas deslocadas nesse caso).
     const outer = $("exportSettings");
+    const prevStrip = outer.querySelector(".export-strip-scroll:not(.leaving)");
+    const prevStripH = prevStrip ? prevStrip.offsetHeight : 0;  // medida antes de sair da tela
     const prevRows = outer.querySelector(".export-rows");
     const keepScroll = prevRows ? prevRows.scrollTop : 0;  // a coluna é redesenhada a cada mudança: mantém a rolagem
     outer.innerHTML = "";
@@ -2187,10 +2219,23 @@
         if (input.checked) exp.mode = kind;  // a que acabou de ligar vira a prévia
         rerender();
       });
-      head.append(check, el("b", "exp-sec-title", title), el("span", "exp-sec-sub", sub));
-      const sum = el("span", "exp-sec-sum", on ? outputText(session, kind) : "Off");
+      // Ligar (se desligada) e levar a prévia para esta saída
+      const pick = (e) => { e.stopPropagation(); st.outputs[kind] = true; exp.mode = kind; rerender(); };
+      const name = el("span", "exp-sec-name");
+      name.append(el("b", "exp-sec-title", title), el("span", "exp-sec-sub", sub));
+      name.title = on ? (focused ? "" : "Show the " + title + " preview") : "Turn on " + title;
+      if (!focused) { name.classList.add("clickable"); name.addEventListener("click", pick); }
+      head.append(check, name);
+      const sum = el("span", "exp-sec-sum" + (on ? "" : " clickable"), on ? outputText(session, kind) : "Off");
+      if (!on) { sum.title = "Turn on " + title; sum.addEventListener("click", pick); }
       head.appendChild(sum);
-      if (on && !focused) head.appendChild(el("span", "exp-sec-hint", "Preview"));
+      if (on && !focused) {
+        const hint = el("button", "exp-sec-hint", "Preview");
+        hint.type = "button";
+        hint.title = "Show the " + title + " preview";
+        hint.addEventListener("click", pick);
+        head.appendChild(hint);
+      }
       // Recolher / abrir as configurações (a saída continua ligada); vale para todas as sessões
       exp.collapsed = exp.collapsed || {};
       const folded = on && !!exp.collapsed[kind];
@@ -2201,12 +2246,6 @@
         head.appendChild(fold);
       }
       if (folded) sec.classList.add("folded");
-      // Clicar no cabeçalho: liga (se desligada) e leva a prévia para esta saída
-      head.addEventListener("click", () => {
-        if (!st.outputs[kind]) st.outputs[kind] = true;
-        exp.mode = kind;
-        rerender();
-      });
       sec.appendChild(head);
       if (on) {
         const body = el("div", "exp-sec-body" + (folded ? " hidden" : ""));
@@ -2216,6 +2255,7 @@
       rows.appendChild(sec);
     });
     if (!OUTPUT_KINDS.some((k) => st.outputs[k])) rows.appendChild(el("div", "export-note exp-none", "Tick at least one output: Photos, Sequence or Lenticular."));
+    animateStrip(outer, prevStrip, prevStripH, rows);
 
     // Nome da pasta e dos arquivos
     const n = st.naming;

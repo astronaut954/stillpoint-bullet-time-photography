@@ -702,8 +702,13 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
 .exp-sec { border: 1px solid var(--noct-border); background: var(--noct-surface-inner); flex: 0 0 auto; }
 .exp-sec.on { border-color: var(--noct-border-strong); }
 .exp-sec.focus { border-color: var(--noct-primary); }
-.exp-sec-head { display: flex; align-items: center; gap: 10px; padding: 9px 12px; cursor: pointer; user-select: none; -webkit-user-select: none; }
-.exp-sec-head:hover .exp-sec-title { color: var(--noct-primary); }
+.exp-sec-head { display: flex; align-items: center; gap: 10px; padding: 9px 12px; user-select: none; -webkit-user-select: none; }
+/* Cada parte do cabeçalho tem o seu destaque ao passar o mouse (não o cabeçalho inteiro) */
+.exp-sec-name { display: inline-flex; align-items: baseline; gap: 10px; padding: 2px 4px; margin: -2px -4px; }
+.exp-sec-name.clickable, .exp-sec-sum.clickable { cursor: pointer; }
+.exp-sec-name.clickable:hover .exp-sec-title, .exp-sec-name.clickable:hover .exp-sec-sub { color: var(--noct-primary); }
+.exp-sec .exp-sec-sum.clickable:hover { color: var(--noct-primary); }
+.exp-sec-check:hover .save-check { border-color: var(--noct-primary); }
 /* A mesma caixa de marcar da lista de sessões; o input nativo fica escondido */
 .exp-sec .exp-sec-check { display: block; position: relative; width: 16px; height: 16px; flex: 0 0 auto; cursor: pointer; }
 .exp-sec-check input[type=checkbox] { position: absolute; opacity: 0; pointer-events: none; }
@@ -719,8 +724,8 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
 .exp-sec-sub { color: var(--noct-text-dim); font-size: 13px; }
 .exp-sec-sum { margin-left: auto; font: 500 11px var(--noct-font-mono); letter-spacing: .04em; color: var(--noct-text-muted); text-align: right; }
 .exp-sec:not(.on) .exp-sec-sum { color: var(--noct-text-dim); }
-.exp-sec-hint { font: 700 9px var(--noct-font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--noct-text-dim); border: 1px solid var(--noct-border); padding: 2px 6px; }
-.exp-sec-head:hover .exp-sec-hint { color: var(--noct-primary); border-color: var(--noct-primary); }
+.exp-sec-hint { font: 700 9px var(--noct-font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--noct-text-dim); background: transparent; border: 1px solid var(--noct-border); padding: 2px 6px; cursor: pointer; }
+.exp-sec-hint:hover { color: var(--noct-primary); border-color: var(--noct-primary); }
 .exp-sec-body { padding: 4px 12px 12px; border-top: 1px solid var(--noct-border); display: flex; flex-direction: column; gap: 12px; padding-top: 12px; }
 .exp-none { color: var(--noct-pending); }
 .exp-sec-fold { flex: none; }
@@ -761,6 +766,9 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
 .export-settings.theater .export-preview .lent-canvas { border: 0; }
 .lent-presets { margin-left: 8px; }
 .export-strip-scroll { overflow-x: auto; overflow-y: hidden; flex: 0 0 auto; padding-bottom: 4px; }
+/* Abre e fecha deslizando; fechada, a margem negativa come o espaço entre os blocos */
+.export-strip-scroll.strip-anim { overflow: hidden; transition: height .22s ease, opacity .22s ease, margin-bottom .22s ease; }
+.export-strip-scroll.strip-closed { height: 0 !important; opacity: 0; margin-bottom: -14px; padding-bottom: 0; }
 .export-strip { list-style: none; margin: 0; padding: 0; border: 0; display: flex; gap: 6px; width: max-content; min-width: 100%; }
 .export-modes button { display: inline-flex; align-items: center; gap: 7px; }
 .export-modes svg { flex: 0 0 auto; }
@@ -1192,3 +1200,7 @@ body.session-drag.from-app .folder-placeholder { border-color: transparent; }
 .project-name-input:focus { outline: none; border-color: var(--noct-primary); box-shadow: var(--noct-focus-ring); }
 .project-name-input.invalid, .project-name-input.invalid:focus { border-color: var(--noct-pending); box-shadow: 0 0 0 1px var(--noct-pending), 0 0 18px rgba(var(--noct-pending-rgb), .18); }
 .project-title-row small { flex-basis: 100%; }
+
+/* Visto ampliado: o sinal ficava 1 px à direita e abaixo do centro da caixa */
+input:checked + .save-check::after { left: 4px !important; top: 0 !important; }
+.log-option input:checked::after { left: 3.5px; top: .5px; }
