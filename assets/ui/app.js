@@ -129,8 +129,10 @@
     minus: '<path d="M3 7h8"/>',
     plus: '<path d="M3 7h8M7 3v8"/>',
     swap: '<path d="M2.5 5h8l-2.5-2.5M11.5 9h-8l2.5 2.5"/>',
-    expand: '<path d="M8.5 2h3.5v3.5M5.5 12H2V8.5M12 2L8 6M2 12l4-4"/>',
-    collapse: '<path d="M11.5 5.5H8V2M2.5 8.5H6V12M8 6l4-4M6 8l-4 4"/>',
+    // Modo teatro, como no YouTube: tela com barra embaixo e dois ângulos dentro
+    // (para fora = entrar; para dentro = sair)
+    expand: '<rect x="1.5" y="2.5" width="11" height="8"/><path d="M1.5 12.5h11" stroke-width="2"/><path d="M5.6 4.6L3.7 6.5l1.9 1.9M8.4 4.6l1.9 1.9-1.9 1.9"/>',
+    collapse: '<rect x="1.5" y="2.5" width="11" height="8"/><path d="M1.5 12.5h11" stroke-width="2"/><path d="M3.6 4.6l1.9 1.9-1.9 1.9M10.4 4.6L8.5 6.5l1.9 1.9"/>',
     up: '<path d="M3 9l4-4 4 4"/>',
     down: '<path d="M3 5l4 4 4-4"/>',
     left: '<path d="M9 3L5 7l4 4"/>',
