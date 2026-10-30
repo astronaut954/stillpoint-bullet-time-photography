@@ -727,7 +727,7 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) e depois com câmeras. Desenho em `do
       nos limites dela e fica atrás da barra de rolagem). "Add to project ↑" mostra a caixinha no
       hover também na sessão selecionada.
 - [ ] Fechar e abrir o app: o Project continua aberto (`settings.txt`, `project=`).
-- [ ] **Clear recent** (2.12.5): no menu do botão de projeto, abaixo dos recentes; limpa a lista
+- [ ] **Clear recent** (2.12.5): no menu do botão de projeto, texto discreto à direita do título "Recent" (acende no hover); limpa a lista
       (o projeto aberto continua lembrado), aviso "Recent projects cleared"; Cmd/Ctrl+Z devolve a
       lista inteira; fechar e abrir o app mantém o estado (`settings.txt`, `recentProjects=`).
 - [ ] **Uso do computador no Activity** (2.12.4): abrir o Activity → no rodapé, "Stillpoint — CPU ·

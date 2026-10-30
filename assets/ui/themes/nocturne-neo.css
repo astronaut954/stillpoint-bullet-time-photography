@@ -1092,6 +1092,11 @@ body.session-drag.from-app #projectBarBtn { outline: 1px dashed var(--noct-borde
 .project-menu button:disabled { cursor: default; }
 .project-menu button:disabled:hover { background: transparent; color: var(--noct-text-dim); }
 .project-menu-label { padding: 6px 16px 2px; font: 700 10px var(--noct-font-mono); text-transform: uppercase; letter-spacing: .1em; color: var(--noct-text-dim); }
+.project-menu-recent { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+/* "Clear recent": só texto, sem caixa, caixa normal (não maiúsculas); acende no hover */
+.project-menu .project-menu-clear { all: unset; cursor: pointer; font: 500 11px var(--noct-font-sans); letter-spacing: 0; text-transform: none; color: var(--noct-text-dim); transition: color 120ms var(--noct-ease); }
+.project-menu button.project-menu-clear, .project-menu button.project-menu-clear:hover, .project-menu button.project-menu-clear:focus-visible { background: transparent; box-shadow: none; padding: 0; margin: 0; width: auto; display: inline; }
+.project-menu button.project-menu-clear:hover, .project-menu button.project-menu-clear:focus-visible { color: var(--noct-primary); }
 .project-menu-current { display: flex; flex-direction: column; gap: 2px; padding: 6px 16px 10px; border-bottom: 1px solid var(--noct-border); margin-bottom: 6px; }
 .project-menu-current b { font: 700 15px var(--noct-font-sans); color: var(--noct-text); }
 .project-menu-current small { font: 10px var(--noct-font-mono); color: var(--noct-text-dim); word-break: break-all; }

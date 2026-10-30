@@ -3831,14 +3831,20 @@
       const recent = ((r && r.projects) || []).filter((p) => !project.open || p.folder !== project.folder);
       const items = projectMenuItems(withCurrent);
       if (recent.length) {
-        const lab = el("div", "project-menu-label", "Recent");
+        // "Recent" à esquerda e, na mesma linha à direita, "Clear recent" discreto (texto, acende no hover)
+        const lab = el("div", "project-menu-label project-menu-recent", "Recent");
+        if (typeof window.projectRecentSet === "function") {
+          const clear = el("button", "project-menu-clear", "Clear recent");
+          clear.type = "button";
+          clear.title = "Empty this list (Cmd/Ctrl+Z brings it back)";
+          clear.addEventListener("click", (e) => { e.stopPropagation(); closeMenu(); clearRecentProjects(((r && r.projects) || []).map((p) => p.folder)); });
+          lab.appendChild(clear);
+        }
         items.push({ html: lab });
         recent.slice(0, 5).forEach((p) => items.push({
           label: p.name, name: true, sub: p.available ? "" : "not reachable", disabled: !p.available, dim: !p.available,
           onClick: () => Promise.resolve(window.projectOpen(p.folder)).then(projectResult),
         }));
-        // Limpa a lista (o projeto aberto continua lembrado); Cmd/Ctrl+Z devolve
-        if (typeof window.projectRecentSet === "function") items.push({ label: "Clear recent", dim: true, onClick: () => clearRecentProjects(((r && r.projects) || []).map((p) => p.folder)) });
         items.push("-");
       }
       items.push({ label: project.open ? "Switch project…" : "Open project…", onClick: pickProject });  // a mesma janela de recentes do "Switch…"
