@@ -131,8 +131,8 @@
     swap: '<path d="M2.5 5h8l-2.5-2.5M11.5 9h-8l2.5 2.5"/>',
     // Modo teatro, como no YouTube: tela com barra embaixo e dois ângulos dentro
     // (para fora = entrar; para dentro = sair)
-    theaterIn: '<rect x="1.5" y="2.5" width="11" height="8"/><path d="M1.5 12.5h11" stroke-width="2"/><path d="M5.6 4.6L3.7 6.5l1.9 1.9M8.4 4.6l1.9 1.9-1.9 1.9"/>',
-    theaterOut: '<rect x="1.5" y="2.5" width="11" height="8"/><path d="M1.5 12.5h11" stroke-width="2"/><path d="M3.6 4.6l1.9 1.9-1.9 1.9M10.4 4.6L8.5 6.5l1.9 1.9"/>',
+    theaterIn: '<g stroke-width="1.2"><rect x="1.5" y="2.5" width="11" height="8"/><path d="M1.5 12.5h11" stroke-width="1.6"/><path d="M5.6 4.6L3.7 6.5l1.9 1.9M8.4 4.6l1.9 1.9-1.9 1.9"/></g>',
+    theaterOut: '<g stroke-width="1.2"><rect x="1.5" y="2.5" width="11" height="8"/><path d="M1.5 12.5h11" stroke-width="1.6"/><path d="M3.6 4.6l1.9 1.9-1.9 1.9M10.4 4.6L8.5 6.5l1.9 1.9"/></g>',
     up: '<path d="M3 9l4-4 4 4"/>',
     down: '<path d="M3 5l4 4 4-4"/>',
     left: '<path d="M9 3L5 7l4 4"/>',
@@ -1885,7 +1885,7 @@
       const applyTheater = () => {
         outer.classList.toggle("theater", !!exp.lentTheater);
         theater.classList.toggle("on", !!exp.lentTheater);
-        theater.innerHTML = icon(exp.lentTheater ? "theaterOut" : "theaterIn", 26);  // ângulos para fora = entrar; para dentro = sair
+        theater.innerHTML = icon(exp.lentTheater ? "theaterOut" : "theaterIn", 20);  // ângulos para fora = entrar; para dentro = sair
         theater.title = exp.lentTheater ? "Leave theater mode" : "Theater mode: larger preview, settings hidden";
         if (exp.lentView === "interlaced") requestAnimationFrame(fitCanvas);
       };
@@ -2026,7 +2026,11 @@
       swap.classList.add("btn-small");
       size.appendChild(swap);
       const presets = el("span", "chips lent-presets");
-      [["10 × 15", 10, 15], ["15 × 10", 15, 10], ["20 × 30", 20, 30], ["30 × 20", 30, 20], ["A4", 21, 29.7]].forEach(([t, w, h]) => {
+      // Em cm: tamanhos de foto métricos; em polegadas: os americanos (4 × 6, 5 × 7, 8 × 10, Letter)
+      const presetList = unitIn
+        ? [["4 × 6", 4 * CM_PER_IN, 6 * CM_PER_IN], ["6 × 4", 6 * CM_PER_IN, 4 * CM_PER_IN], ["5 × 7", 5 * CM_PER_IN, 7 * CM_PER_IN], ["8 × 10", 8 * CM_PER_IN, 10 * CM_PER_IN], ["Letter", 8.5 * CM_PER_IN, 11 * CM_PER_IN]]
+        : [["10 × 15", 10, 15], ["15 × 10", 15, 10], ["20 × 30", 20, 30], ["30 × 20", 30, 20], ["A4", 21, 29.7]];
+      presetList.forEach(([t, w, h]) => {
         const c = el("button", "chip" + (Math.abs(l.widthCm - w) < 0.05 && Math.abs(l.heightCm - h) < 0.05 ? " on" : ""), t);
         c.addEventListener("click", () => { l.widthCm = w; l.heightCm = h; rerender(); });
         presets.appendChild(c);
