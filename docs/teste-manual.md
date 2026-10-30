@@ -759,7 +759,9 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) serve para tudo, menos para a impress
 - [ ] **Save sessions** → terceira opção **Lenticular**; a janela "Save for lenticular print" com a aba
       Lenticular acesa (as abas Photos / Sequence continuam funcionando e lembram a escolha).
 - [ ] **Prévia:** arrastar para a esquerda/direita na foto grande troca a foto ("Tilt preview · photo n
-      of 9"); "Reverse order" inverte o sentido.
+      of 9"); "Reverse order" inverte o sentido. Botão **Interlaced** (canto da prévia): mostra um
+      recorte 1:1 do centro do arquivo final, com as faixas no tamanho real em pixels ("12 px per
+      lens · strips horizontal"); em 3D as faixas ficam verticais; mudar LPI/dpi/tamanho redesenha.
 - [ ] **Leitura:** com 9 fotos, 60 LPI e 720 dpi: "12 columns per lens", "1.33 printer dots per photo"
       em âmbar (menos de 2); 1440 dpi: 2.67, verde; 75 LPI a 600 dpi: 8 colunas, "Less than one printer
       dot" em vermelho e o botão Save continua ativo (é aviso, não trava). "Other" no LPI e no dpi

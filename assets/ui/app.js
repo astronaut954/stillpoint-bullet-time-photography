@@ -1830,7 +1830,7 @@
       showFrame(frameAt);
       items.forEach((item) => sessionPhoto(session.name, item.file, 1600));
       let drag = null;
-      preview.addEventListener("pointerdown", (e) => { drag = { x: e.clientX, start: frameAt }; preview.setPointerCapture(e.pointerId); e.preventDefault(); });
+      preview.addEventListener("pointerdown", (e) => { if (exp.lentView === "interlaced") return; drag = { x: e.clientX, start: frameAt }; preview.setPointerCapture(e.pointerId); e.preventDefault(); });
       preview.addEventListener("pointermove", (e) => {
         if (!drag) return;
         const step = Math.max(24, preview.clientWidth / Math.max(2, n) / 2);  // metade da largura por foto
@@ -1838,6 +1838,71 @@
       });
       const endDrag = () => { drag = null; };
       preview.addEventListener("pointerup", endDrag); preview.addEventListener("pointercancel", endDrag);
+
+      // Segunda vista: o arquivo entrelaçado em si — recorte 1:1 do centro da imagem final (as faixas
+      // no tamanho real em pixels), montado na página com as mesmas contas do app
+      const canvas = document.createElement("canvas");
+      canvas.className = "lent-canvas hidden";
+      preview.insertBefore(canvas, caption);
+      const views = el("div", "segmented lent-views");
+      const setView = (v) => {
+        exp.lentView = v;
+        [...views.children].forEach((b) => b.classList.toggle("on", b.dataset.view === v));
+        const inter = v === "interlaced";
+        img.classList.toggle("hidden", inter);
+        canvas.classList.toggle("hidden", !inter);
+        preview.classList.toggle("interlaced", inter);
+        if (inter) drawInterlaced(); else showFrame(frameAt);
+      };
+      [["tilt", "Tilt"], ["interlaced", "Interlaced"]].forEach(([v, t]) => {
+        const b = el("button", "", t); b.dataset.view = v; b.title = v === "tilt" ? "Drag to see the photos change, as when tilting the print" : "The interlaced file itself: a 1:1 crop of the centre, strips at their real pixel size";
+        b.addEventListener("click", (e) => { e.stopPropagation(); setView(v); });
+        views.appendChild(b);
+      });
+      views.addEventListener("pointerdown", (e) => e.stopPropagation());
+      preview.appendChild(views);
+      const drawInterlaced = () => {
+        const cw = Math.min(plan.w, Math.max(200, preview.clientWidth - 2)), ch = Math.min(plan.h, Math.max(120, preview.clientHeight - 2));
+        canvas.width = cw; canvas.height = ch;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#000"; ctx.fillRect(0, 0, cw, ch);
+        const x0 = Math.floor((plan.w - cw) / 2), y0 = Math.floor((plan.h - ch) / 2);  // recorte central, em pixels do arquivo
+        const horizontal = l.effect !== "3d";
+        const perLens = plan.cols;
+        const ownerOf = (i) => { const pos = (i + 0.5) / perLens, frac = pos - Math.floor(pos); let k = Math.min(n - 1, Math.floor(frac * n)); return l.reverse ? n - 1 - k : k; };
+        const out = ctx.createImageData(cw, ch);
+        const scratch = document.createElement("canvas"); scratch.width = cw; scratch.height = ch;
+        const sctx = scratch.getContext("2d");
+        let pending = 0;
+        const token = (drawInterlaced.token = (drawInterlaced.token || 0) + 1);
+        const finish = () => { if (token === drawInterlaced.token) { ctx.putImageData(out, 0, 0); } };
+        items.forEach((item, k) => {
+          pending++;
+          sessionPhoto(session.name, item.file, 1600).then((url) => new Promise((res) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = url || ""; })).then((im) => {
+            if (token !== drawInterlaced.token) return;
+            if (im) {
+              // Mesma regra do app: a foto cobre a imagem final inteira (corte centrado); aqui só o recorte
+              const s = Math.max(plan.w / im.naturalWidth, plan.h / im.naturalHeight);
+              const fw = im.naturalWidth * s, fh = im.naturalHeight * s;
+              const ox = (fw - plan.w) / 2, oy = (fh - plan.h) / 2;
+              sctx.clearRect(0, 0, cw, ch);
+              sctx.drawImage(im, (x0 + ox) / s, (y0 + oy) / s, cw / s, ch / s, 0, 0, cw, ch);
+              const src = sctx.getImageData(0, 0, cw, ch).data;
+              if (horizontal) {
+                for (let y = 0; y < ch; y++) if (ownerOf(y0 + y) === k) out.data.set(src.subarray(y * cw * 4, (y + 1) * cw * 4), y * cw * 4);
+              } else {
+                for (let x = 0; x < cw; x++) if (ownerOf(x0 + x) === k)
+                  for (let y = 0; y < ch; y++) { const o = (y * cw + x) * 4; out.data[o] = src[o]; out.data[o + 1] = src[o + 1]; out.data[o + 2] = src[o + 2]; out.data[o + 3] = 255; }
+              }
+            }
+            if (--pending === 0) finish();
+          });
+        });
+        caption.innerHTML = "";
+        caption.append(el("b", "", "Interlaced"), document.createTextNode(" 1:1 crop of the centre · " + cw + " × " + ch + " of " + plan.w + " × " + plan.h + " px · " +
+          (plan.cols ? plan.cols.toFixed(2).replace(/\.?0+$/, "") : "—") + " px per lens · strips " + (horizontal ? "horizontal" : "vertical")));
+      };
+      setView(exp.lentView === "interlaced" ? "interlaced" : "tilt");
 
       // Leitura: o que a combinação lâmina + impressora dá para esta sessão
       const read = el("div", "lent-readout" + (plan.warn ? " " + plan.warn : ""));

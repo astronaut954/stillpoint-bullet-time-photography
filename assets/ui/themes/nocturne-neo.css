@@ -713,6 +713,10 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
 .lent-readout.bad .lent-warn { color: var(--noct-danger); }
 .lent-readout .lent-note { color: var(--noct-text-muted); font-size: 12px; margin-top: 4px; }
 .export-preview.lent-preview { cursor: ew-resize; user-select: none; -webkit-user-select: none; touch-action: none; }
+.export-preview.lent-preview.interlaced { cursor: default; }
+.export-preview .lent-canvas { max-width: 100%; max-height: 100%; image-rendering: pixelated; }
+.export-preview .lent-views { position: absolute; right: 10px; top: 10px; }
+.export-preview .lent-views button { height: 24px; padding: 0 10px; font-size: 10px; }
 .lent-presets { margin-left: 8px; }
 .export-strip-scroll { overflow-x: auto; overflow-y: hidden; flex: 0 0 auto; padding-bottom: 4px; }
 .export-strip { list-style: none; margin: 0; padding: 0; border: 0; display: flex; gap: 6px; width: max-content; min-width: 100%; }
