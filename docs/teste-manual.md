@@ -213,8 +213,14 @@ Depois de salvar, o app pergunta se descarta as sessões salvas (Discard from ap
 - [ ] "All cameras": mudar um valor muda em todas. White balance: lista os predefinidos que todas
       aceitam (Daylight, Cloudy...); os valores em Kelvin só aparecem se todas aceitarem Kelvin
       (a SL3 e a T7 não aceitam).
+- [ ] **Tabela sem rolagem lateral** (etapa 18): com a coluna nova, Quality saiu da tabela e está no
+      popover "±" do Picture Style (linha "Quality", com as opções comuns em All cameras; o ± fica
+      âmbar tracejado se a Quality difere), e o Focus virou etiqueta ao lado do nome ("MF" normal,
+      "ONE-SHOT"/"AI SERVO" âmbar; em All cameras "AF ON n" quando alguma está em AF). ISO mostra
+      "400" (sem o "ISO"). Numa janela de 1000 px de largura, nada rola de lado (medido: tabela de
+      926 px em 958 disponíveis; em 920 px ainda cabe).
 - [ ] **Metering** (etapa 18, 2.13.0): coluna entre Exp. comp. e White balance com o modo de medição
-      lido da câmera (Evaluative / Partial / Spot / Center-weighted; confira no menu da própria
+      lido da câmera (Evaluative / Partial / Spot / Center-wtd; confira no menu da própria
       câmera); mudar numa câmera muda nela na hora; em All cameras muda em todas; Cmd/Ctrl+Z volta;
       "Copy from camera" copia também; Activity "Metering → Spot on T7_1". Câmera em modo que não
       deixa mudar (ex.: cena automática) → célula com "—". Com modos diferentes entre câmeras, a

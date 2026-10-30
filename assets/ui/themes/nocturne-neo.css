@@ -784,14 +784,18 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
 .cs-head { padding: 16px 22px; border-bottom: 1px solid var(--noct-border); }
 .cs-head h3 { display: flex; align-items: center; gap: 10px; }
 .cs-head p { margin: 6px 0 0; color: var(--noct-text-muted); font-size: 15px; }
-.cs-body { padding: 0 22px 12px; overflow: auto; min-height: 0; }
+.cs-body { padding: 0 16px 12px; overflow: auto; min-height: 0; }
 .cs-empty { padding: 28px 0; color: var(--noct-text-muted); }
 table.cs { width: 100%; border-collapse: separate; border-spacing: 0; font: 12px var(--noct-font-mono); }
-table.cs th { position: sticky; top: 0; z-index: 2; background: var(--noct-surface); text-align: left; padding: 12px 5px 8px; border-bottom: 1px solid var(--noct-border);
+table.cs th { position: sticky; top: 0; z-index: 2; background: var(--noct-surface); text-align: left; padding: 12px 3px 8px; border-bottom: 1px solid var(--noct-border);
   font: 700 10px var(--noct-font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--noct-text-muted); white-space: nowrap; }
-table.cs td { height: 44px; box-sizing: border-box; padding: 0 4px; border-bottom: 1px solid var(--noct-border); color: var(--noct-text); vertical-align: middle; white-space: nowrap; }
+table.cs td { height: 44px; box-sizing: border-box; padding: 0 3px; border-bottom: 1px solid var(--noct-border); color: var(--noct-text); vertical-align: middle; white-space: nowrap; }
 table.cs td.name { font: 600 15px var(--noct-font-sans); }
-table.cs td.name { height: 52px; max-width: 170px; overflow: hidden; text-overflow: ellipsis; }
+table.cs td.name { height: 52px; max-width: 132px; overflow: hidden; text-overflow: ellipsis; }
+/* Foco (só leitura) como etiqueta ao lado do nome: MF normal, AF âmbar */
+.cs-focus-tag { display: inline-block; margin-left: 8px; padding: 1px 5px; border: 1px solid var(--noct-border-strong); font: 700 9px var(--noct-font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--noct-text-muted); vertical-align: 2px; }
+.cs-focus-tag.warn { border-color: var(--noct-pending); color: var(--noct-pending); }
+.cs-pop-row.cs-pop-sep { margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--noct-border); }
 table.cs td.name small { display: block; overflow: hidden; text-overflow: ellipsis; font: 10px var(--noct-font-mono); color: var(--noct-text-dim); letter-spacing: .08em; text-transform: uppercase; }
 table.cs tr.all td { position: sticky; top: 37px; z-index: 1; background: var(--noct-surface-inner); }
 table.cs tr.all td.name { color: var(--noct-primary); }
@@ -802,8 +806,8 @@ table.cs tr.has-note td { border-bottom-color: transparent; }
 /* Lista própria (sem o visual do sistema): no Mac a lista nativa vinha com cantos
    redondos, setas duplas e larguras diferentes */
 .cs-sel { -webkit-appearance: none; appearance: none; box-sizing: border-box; height: 28px; max-width: 118px; margin: 0;
-  padding: 0 20px 0 7px; border: 1px solid var(--noct-border); border-radius: 0; color: var(--noct-text); line-height: 26px;
-  background: var(--noct-surface) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='5'><path d='M0 0l4 5 4-5z' fill='%2333cc66'/></svg>") no-repeat right 7px center;
+  padding: 0 17px 0 6px; border: 1px solid var(--noct-border); border-radius: 0; color: var(--noct-text); line-height: 26px;
+  background: var(--noct-surface) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='5'><path d='M0 0l4 5 4-5z' fill='%2333cc66'/></svg>") no-repeat right 5px center;
   font: 11px var(--noct-font-mono); cursor: pointer; text-overflow: ellipsis; }
 .cs-sel::-ms-expand { display: none; }
 .cs-sel:hover { border-color: var(--noct-border-strong); }
@@ -812,6 +816,7 @@ table.cs tr.has-note td { border-bottom-color: transparent; }
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='5'><path d='M0 0l4 5 4-5z' fill='%23ffb000'/></svg>"); }
 .cs-sel option { background: var(--noct-surface); color: var(--noct-text); }
 .cs-sel.small { width: 52px; max-width: 52px; }
+.cs-sel.pop-wide { width: 112px; max-width: 112px; }
 .cs-val { display: inline-flex; align-items: center; box-sizing: border-box; height: 28px; padding: 0 7px; border: 1px solid transparent; }
 .cs-val.na { border: 1px dashed var(--noct-text-dim); color: var(--noct-text-dim); min-width: 40px; justify-content: center; }
 .cs-val.diff { color: var(--noct-pending); }

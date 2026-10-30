@@ -92,7 +92,7 @@ namespace
     // Modo de medição (etapa 18): kEdsPropID_MeteringMode = 0x00000403 (EDSDK API Reference);
     // os valores aceitos vêm de cada câmera (EdsGetPropertyDesc), como os outros
     const EdsPropertyID kPropMeteringMode = 0x00000403;
-    const Table kMetering = { { 1, "Spot" }, { 3, "Evaluative" }, { 4, "Partial" }, { 5, "Center-weighted" } };
+    const Table kMetering = { { 1, "Spot" }, { 3, "Evaluative" }, { 4, "Partial" }, { 5, "Center-wtd" } };
 
     const Table kMode = {
         { 0x00, "P" }, { 0x01, "Tv" }, { 0x02, "Av" }, { 0x03, "M" }, { 0x04, "Bulb" }, { 0x05, "A-DEP" },

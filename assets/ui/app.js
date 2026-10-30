@@ -2720,8 +2720,12 @@
   // ISO, velocidade, abertura... de cada câmera, lidos da própria câmera e mudados na
   // hora. "All cameras" muda em todas as que dá para ajustar. Cada lista só tem os
   // valores que aquela câmera aceita agora.
+  // Quality fica no popover "±" (com o Picture Style) e o Focus vira etiqueta ao lado do nome:
+  // a tabela cabe sem rolagem lateral (decisão do dono, 2026-10-30)
   const CS_COLS = [["iso", "ISO"], ["tv", "Shutter"], ["av", "Aperture"], ["expcomp", "Exp. comp."], ["metering", "Metering"], ["wb", "White balance"],
-    ["shift", "WB fine-tune"], ["style", "Picture Style"], ["quality", "Quality"], ["focus", "Focus"]];
+    ["shift", "WB fine-tune"], ["style", "Picture Style"]];
+  const CS_NAMES = { quality: "Quality", focus: "Focus", kelvin: "Color temperature", shiftab: "WB fine-tune A/B", shiftgm: "WB fine-tune G/M" };
+  const isoText = (l) => String(l).replace(/^ISO\s+/i, "");  // "ISO 400" → "400": o cabeçalho já diz ISO
   // Disparo único (o app põe sozinho; não é escolha). Único silencioso também vale.
   const isSingleShot = (v) => v === 0x00 || v === 0x06 || v === 0x13;
   const KELVINS = [];
@@ -2740,7 +2744,7 @@
   function csReference() {
     const ref = {};
     const cams = camSettings.filter((c) => c.adjustable);
-    CS_COLS.forEach(([k]) => {
+    CS_COLS.concat([["quality"]]).forEach(([k]) => {  // quality: no popover ±, mas conta como diferença
       if (k === "focus" || k === "shift") return;  // ajuste fino: correção por câmera, diferente de propósito
       const counts = new Map();
       cams.forEach((c) => { const l = csLabel(c, k); if (l !== null) counts.set(l, (counts.get(l) || 0) + 1); });
@@ -2797,7 +2801,7 @@
       return { cls: "diff", text: "Not on single shot", title: "The camera is on " + drive.label + " and did not accept single shooting. Set it to single shooting on the camera." };
     if (!c.adjustable) return { cls: "locked", text: "Settings on the camera only", title: c.reason };
     const ref = csReference();
-    if (CS_COLS.some(([k]) => k !== "focus" && csDiffers(c, k, ref)) || csStyleDetailDiffers(c)) return { cls: "diff", text: "Settings differ", title: "Open Camera settings to match the cameras." };
+    if (CS_COLS.concat([["quality"]]).some(([k]) => k !== "focus" && csDiffers(c, k, ref)) || csStyleDetailDiffers(c)) return { cls: "diff", text: "Settings differ", title: "Open Camera settings to match the cameras." };
     return null;
   }
 
@@ -2824,10 +2828,9 @@
   // Nome do ajuste e valor como a pessoa vê na tela ("ISO 400", "Aperture f/5.6"), para a Activity e o
   // Desfazer — o código da Canon (120, 56…) só no detalhe técnico (2.12.1)
   function csDescribe(camera, key, value) {
-    const names = { kelvin: "Color temperature", shiftab: "WB fine-tune A/B", shiftgm: "WB fine-tune G/M" };
     const col = CS_COLS.find(([k]) => k === key);
     const det = STYLE_DETAILS.find(([k]) => k === key);
-    const name = col ? col[1] : det ? "Picture Style " + det[1].toLowerCase() : names[key] || key;
+    const name = col ? col[1] : det ? "Picture Style " + det[1].toLowerCase() : CS_NAMES[key] || key;
     let text = String(value);
     if (key === "kelvin") text = value + " K";
     else if (key === "shiftab" || key === "shiftgm" || det) text = signed(+value);
@@ -2838,6 +2841,7 @@
         const hit = st && st.choices && st.choices.find(([v]) => v === +value);
         if (hit) { text = hit[1]; break; }
       }
+      if (key === "iso") text = isoText(text);
     }
     return { name, text, code: key + " = " + value };
   }
@@ -2912,12 +2916,14 @@
       $("camSettingsOverlay").appendChild(pop);
     }
     const all = csStylePop.camera === "*";
-    const cams = all ? camSettings.filter((c) => c.adjustable && c.styleDetail) : camSettings.filter((c) => c.camera === csStylePop.camera);
+    const styleCams = all ? camSettings.filter((c) => c.adjustable && c.styleDetail) : camSettings.filter((c) => c.camera === csStylePop.camera && c.styleDetail);
+    const qualityCams = (all ? camSettings.filter((c) => c.adjustable) : camSettings.filter((c) => c.camera === csStylePop.camera)).filter(csHasQuality);
+    const cams = styleCams;
     pop.innerHTML = "";
-    pop.appendChild(el("div", "cs-pop-title", (all ? "All cameras" : csStylePop.camera) + " · Picture Style"));
+    pop.appendChild(el("div", "cs-pop-title", (all ? "All cameras" : csStylePop.camera) + " · " + [styleCams.length ? "Picture Style" : "", qualityCams.length ? "Quality" : ""].filter(Boolean).join(" & ")));
     const range = [];
     for (let v = -4; v <= 4; v++) range.push(v);
-    STYLE_DETAILS.forEach(([key, label, field]) => {
+    if (styleCams.length) STYLE_DETAILS.forEach(([key, label, field]) => {
       const values = new Set(cams.map((c) => c[field]));
       const current = values.size === 1 ? [...values][0] : null;
       const refs = all ? null : csStyleDetailRefs();
@@ -2929,7 +2935,23 @@
       row.appendChild(csSelect(options, current === null ? "" : String(current), (v) => csSet(csStylePop.camera, key, +v), "small" + (off ? " diff" : "")));
       pop.appendChild(row);
     });
-    pop.appendChild(el("div", "cs-pop-note", "Color tone: − redder, + more yellow (skin tones)."));
+    if (styleCams.length) pop.appendChild(el("div", "cs-pop-note", "Color tone: − redder, + more yellow (skin tones)."));
+    // Quality (RAW, L fine…): saiu da tabela para ela caber; em All cameras só as opções comuns
+    if (qualityCams.length) {
+      const lists = qualityCams.map((c) => c.settings.quality.choices);
+      const common = lists[0].filter(([v]) => lists.every((l) => l.some(([x]) => x === v)));
+      const values = new Set(qualityCams.map((c) => c.settings.quality.value));
+      const current = values.size === 1 ? String([...values][0]) : "";
+      const options = common.map(([v, l]) => [String(v), l]);
+      if (!current) options.unshift(["", "Different", true]);
+      else if (!options.some(([x]) => x === current)) options.unshift([current, qualityCams[0].settings.quality.label]);
+      const ref = csReference();
+      const off = !all && ref.quality !== undefined && ref.quality !== null && csLabel(qualityCams[0], "quality") !== ref.quality;
+      const row = el("label", "cs-pop-row" + (csIsPending(csStylePop.camera, ["quality"]) ? " applying" : "") + (styleCams.length ? " cs-pop-sep" : ""));
+      row.appendChild(el("span", "", "Quality"));
+      row.appendChild(csSelect(options, current, (v) => csSet(csStylePop.camera, "quality", +v), "pop-wide" + (off || !current ? " diff" : "")));
+      pop.appendChild(row);
+    }
     const r = anchor.getBoundingClientRect();
     const w = 230;
     pop.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, r.right - w)) + "px";
@@ -2982,7 +3004,7 @@
       td.appendChild(csText(currentLabel, "na" + (diff ? " diff" : ""), "The camera does not allow changing this now."));
       return td;
     }
-    let options = st.choices.filter(([v]) => !(k === "wb" && v === 9)).map(([v, l]) => [String(v), l]);
+    let options = st.choices.filter(([v]) => !(k === "wb" && v === 9)).map(([v, l]) => [String(v), k === "iso" ? isoText(l) : l]);
     if (k === "wb" && st.choices.some(([v]) => v === 9)) {
       options = options.concat(KELVINS.map((kv) => ["k" + kv, kv + " K"]));
       if (st.value === 9 && !KELVINS.includes(c.kelvin)) options.push(["k" + c.kelvin, c.kelvin + " K"]);
@@ -2992,9 +3014,10 @@
       if (k === "wb" && v.startsWith("k")) csSet(c.camera, "kelvin", +v.slice(1));
       else csSet(c.camera, k, +v);
     }, diff ? "diff" : ""));
-    if (k === "style" && c.styleDetail) td.appendChild(csStyleButton(c.camera, csStyleDetailLevel(c), c));
+    if (k === "style" && (c.styleDetail || csHasQuality(c))) td.appendChild(csStyleButton(c.camera, csStyleDetailLevel(c) || (csDiffers(c, "quality", ref) ? "partial" : ""), c));
     return td;
   }
+  function csHasQuality(c) { const q = c.settings && c.settings.quality; return !!(q && q.available && q.choices && q.choices.length); }
 
   // Célula de "All cameras": só os valores que todas as câmeras ajustáveis aceitam
   function csAllCell(k, cams) {
@@ -3050,7 +3073,7 @@
     }
     const common = lists[0].filter(([v]) => lists.every((l) => l.some(([x]) => x === v)));
     if (!common.length) { td.appendChild(csText("—", "na", "The cameras have no value in common")); return td; }
-    const options = common.map(([v, l]) => [String(v), l]);
+    const options = common.map(([v, l]) => [String(v), k === "iso" ? isoText(l) : l]);
     let current = "";
     if (same) {
       const v = String(cams.find((c) => c.settings[k] && c.settings[k].available).settings[k].value);
@@ -3058,9 +3081,9 @@
     }
     if (!current) options.unshift(["", same ? [...labels][0] : "Different", true]);
     td.appendChild(csSelect(options, current, (v) => csSet("*", k, +v), same ? "" : "diff"));
-    if (k === "style" && cams.some((c) => c.styleDetail)) {
+    if (k === "style" && cams.some((c) => c.styleDetail || csHasQuality(c))) {
       const refs = csStyleDetailRefs();
-      const n = STYLE_DETAILS.filter(([, , f]) => refs[f] !== null).length;
+      const n = cams.some((c) => c.styleDetail) ? STYLE_DETAILS.filter(([, , f]) => refs[f] !== null).length : 0;
       td.appendChild(csStyleButton("*", n === 0 ? "" : n === STYLE_DETAILS.length ? "diff" : "partial", null));
     }
     return td;
@@ -3099,6 +3122,8 @@
     const all = document.createElement("tr");
     all.className = "all";
     const allName = el("td", "name", "All cameras");
+    const afOn = camSettings.filter((c) => c.adjustable && c.settings.focus && c.settings.focus.available && !c.focusManual);
+    if (afOn.length) { const tag = el("span", "cs-focus-tag warn", "AF on " + afOn.length); tag.title = "Autofocus on: " + afOn.map((c) => c.camera).join(", ") + ". Turn the lens switch to MF."; allName.appendChild(tag); }
     allName.appendChild(el("small", "", "applies to every camera"));
     all.appendChild(allName);
     CS_COLS.forEach(([k]) => all.appendChild(csAllCell(k, adjustable)));
@@ -3107,6 +3132,13 @@
     camSettings.forEach((c) => {
       const tr = document.createElement("tr");
       const name = el("td", "name", pad(c.order) + " " + c.camera);
+      // Foco (só leitura) como etiqueta ao lado do nome: MF verde; AF âmbar com o aviso
+      const f = c.settings && c.settings.focus;
+      if (f && f.available) {
+        const tag = el("span", "cs-focus-tag" + (c.focusManual ? "" : " warn"), c.focusManual ? "MF" : f.label);
+        tag.title = c.focusManual ? "Manual focus" : "Autofocus is on. Turn the lens switch to MF so the camera fires without delay.";
+        name.appendChild(tag);
+      }
       name.appendChild(el("small", "", c.model + (c.mode ? " · " + c.mode : "")));
       tr.appendChild(name);
       if (!c.adjustable) {

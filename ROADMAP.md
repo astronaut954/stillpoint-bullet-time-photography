@@ -604,9 +604,11 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    e em All cameras (`kEdsPropID_MeteringMode` = 0x0403: 1 Spot, 3 Evaluative, 4 Partial,
    5 Center-weighted; valores aceitos lidos de cada câmera); Copy from camera copia; Undo como as
    outras. Match automatically não muda o Metering; com modos diferentes avisa antes e oferece pôr
-   todas no modo mais comum ou seguir (decisão do dono, 2026-10-30). Largura: com a coluna nova a
-   tabela ocupa 1134 px e cabe sem rolagem horizontal em janelas de 1280 px ou mais (medido no
-   navegador); abaixo disso rola de lado, como já rolava. Conferido no navegador com câmera
+   todas no modo mais comum ou seguir (decisão do dono, 2026-10-30). Largura (decisão do dono,
+   2026-10-30, opções A+B): Quality saiu da tabela para o popover ± do Picture Style, Focus virou
+   etiqueta ao lado do nome, ISO sem prefixo, Metering "Center-wtd", nome mais estreito e
+   espaçamentos menores — a tabela cabe sem rolagem lateral a partir de ~920 px de janela
+   (medido no navegador: 849 px em 920; 926 em 1000). Conferido no navegador com câmera
    simulada; **pendente** o teste com SL3/T7/T5 (teste-manual 16).
 4. **Etapa 19 — Exportação para impressão lenticular** (ver "Futuro"; precisa do Project).
 5. **Etapa 20 — Edit in Lightroom Classic / Photoshop.** Ida e volta: o app abre os originais
