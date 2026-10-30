@@ -614,11 +614,19 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) e depois com câmeras. Desenho em `do
 - [ ] **Sem Project:** na barra de cima, ao lado do logo, o botão "No project ▾"; o menu traz os
       recentes (se houver), "Open project…" e "New project…". Disparar cria a sessão na pasta de
       dados, como sempre; a lista não tem divisor nem etiqueta nova.
-- [ ] **New project…:** escolher (ou criar) uma pasta vazia, ex. `~/Pictures/Stillpoint/Teste`.
-      O botão da barra passa a mostrar o nome (o da pasta) e "0 · 0"; aviso "Project: Teste" na
-      Activity. Na pasta: `stillpoint-project.json`, `Originals/`, `Edited/`, `Exports/`. O menu
-      do botão agora tem o projeto atual (nome, caminho, "Project window…", "Open folder"), os
-      recentes, "Switch project…", "New project…" e "Close project".
+- [ ] **New project…** (2.12.2): abre a caixa do app pedindo só o nome ("A folder with this name
+      will be created in ~/Pictures/Stillpoint."); caracteres proibidos nem entram; Enter/Create
+      cria `~/Pictures/Stillpoint/<nome>` (a pasta `Stillpoint` é criada na primeira vez) e abre o
+      projeto. O botão da barra passa a mostrar o nome e "0 · 0"; aviso "Project: Teste" na
+      Activity. Na pasta: `stillpoint-project.json`, `Originals/`, `Edited/`, `Exports/`. Nome já
+      usado por uma pasta cheia que não é projeto → aviso; por um projeto → só abre. "Choose
+      another folder…" (à esquerda, na mesma caixa) abre o seletor do sistema já na pasta padrão,
+      como antes. O menu do botão agora tem o projeto atual (nome, caminho, "Project window…",
+      "Open folder"), os recentes, "Switch project…", "New project…" e "Close project".
+- [ ] **Settings → New projects** (2.12.2): mostra a pasta padrão (`~/Pictures/Stillpoint` no Mac,
+      `C:\Users\<você>\Pictures\Stillpoint` no Windows); "Change…" abre o seletor e a escolha fica
+      no `settings.txt` (`projectsFolder=`), valendo para os próximos "New project…" e como pasta
+      inicial do "Open project…". Fechar e abrir o app: continua a escolhida.
 - [ ] **Disparar com Project aberto:** a sessão nova vai direto para `Originals/<sessão>/`
       (com `session.json`: shotAt, timing, plan, cameras) e aparece no alto da lista (parte do
       projeto); o botão da barra conta 1 sessão. Fechar o app: **não** pergunta por sessão não salva.

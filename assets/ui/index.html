@@ -199,7 +199,7 @@
         <input id="promptInput" type="text" class="prompt-input" maxlength="120" spellcheck="false" autocomplete="off">
         <p id="promptError" class="prompt-error hidden"></p>
       </div>
-      <div class="dialog-actions"><button id="promptCancel" class="btn btn-secondary">Cancel</button><button id="promptOk" class="btn btn-primary">OK</button></div>
+      <div class="dialog-actions"><button id="promptExtra" class="btn btn-link btn-small prompt-extra hidden"></button><button id="promptCancel" class="btn btn-secondary">Cancel</button><button id="promptOk" class="btn btn-primary">OK</button></div>
     </div>
   </div>
 
@@ -289,6 +289,13 @@
         <div class="settings-row">
           <span class="export-label">Language</span>
           <div><div id="settingsLanguages"></div><div class="export-note">More languages will appear here.</div></div>
+        </div>
+        <div class="settings-row">
+          <span class="export-label">New projects</span>
+          <div>
+            <div class="settings-folder"><span id="settingsProjectsFolder" class="settings-folder-path"></span><button id="settingsProjectsFolderChange" class="btn btn-secondary btn-small">Change…</button></div>
+            <div class="export-note">"New project…" creates each project as a folder inside this one. You can still pick another place for a single project from the New project window.</div>
+          </div>
         </div>
         <div class="settings-row">
           <span class="export-label">Debug</span>

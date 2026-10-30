@@ -996,6 +996,15 @@ namespace
                 .Add("edited", edited).Add("bytes", static_cast<double>(project.SizeBytes()))
                 .Raw("exportDefaults", project.ExportDefaults().empty() ? "null" : project.ExportDefaults()).Str();
         };
+        // Pasta onde "New project…" cria os projetos (2.12.2): settings.txt projectsFolder=, ou
+        // <Imagens>/Stillpoint (criada quando for usada; decisão do dono do projeto, 2026-10-30)
+        auto projectsFolder = [&]() -> std::filesystem::path
+        {
+            const auto settings = LoadSettings();
+            if (settings.count("projectsFolder") && !settings.at("projectsFolder").empty())
+                return std::filesystem::path(settings.at("projectsFolder"));
+            return Platform::PicturesFolder() / "Stillpoint";
+        };
         // Pastas recentes de Project (settings.txt, recentProjects=, separadas por "|")
         auto recentProjects = [&]() -> std::vector<std::string>
         {
@@ -1259,6 +1268,7 @@ namespace
                 .Add("timing", settings.count("timing") ? settings.at("timing") : std::string())
                 .Add("live", settings.count("live") ? settings.at("live") : std::string())
                 .Raw("project", projectJson())
+                .Add("projectsFolder", projectsFolder().string())
                 .Raw("prefs", [&]
                 {
                     // Preferências da página (savePref): chaves "pref.<nome>" do settings.txt
@@ -1673,22 +1683,68 @@ namespace
             Log("Project opened: " + project.Name() + " (" + folder + ")");
             return "";
         };
-        // projectNew(): escolhe uma pasta (nova ou vazia) e cria o Project nela
-        window.bind("projectNew", [&](const std::string&) -> std::string
+        // Cria (ou abre, se já for um) o Project na pasta dada
+        auto createOrOpenProject = [&](const std::string& folder) -> std::string
         {
-            Log("New project: choosing the folder");
-            const std::string folder = NativeWindow::ChooseFolder("Choose or create the folder for the new project");
-            if (folder.empty())
-            {
-                Log("New project: no folder chosen");
-                return Json("project").Add("cancelled", true).Str();
-            }
             std::string error;
             if (Project::IsProject(std::filesystem::path(folder)))
-                error = openProjectAt(folder);  // já é um Project: só abre
-            else if (Project::Create(std::filesystem::path(folder), "", error))
-                error = openProjectAt(folder);
+                return openProjectAt(folder);  // já é um Project: só abre
+            if (Project::Create(std::filesystem::path(folder), "", error))
+                return openProjectAt(folder);
+            return error;
+        };
+        // projectNew(nome): cria <pasta padrão>/<nome> direto (2.12.2). Sem nome (ou nome vazio):
+        // pergunta a pasta no seletor do sistema, começando na pasta padrão ("Choose another folder…")
+        window.bind("projectNew", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            const std::string name = !args.empty() ? args[0] : std::string();
+            std::string folder;
+            if (!name.empty())
+            {
+                if (name.find_first_of("/\\:*?\"<>|") != std::string::npos || name.front() == '.' || name.back() == ' ')
+                    return Json("project").Add("error", "That name cannot be used for a folder (no / \\ : * ? \" < > | and it cannot start with a dot).").Str();
+                const std::filesystem::path base = projectsFolder();
+                std::error_code ec;
+                std::filesystem::create_directories(base, ec);
+                if (!std::filesystem::is_directory(base, ec))
+                    return Json("project").Add("error", "Could not create the projects folder " + base.string() + " (" + ec.message() + ").").Str();
+                const std::filesystem::path target = base / name;
+                if (std::filesystem::exists(target, ec) && !Project::IsProject(target) && !std::filesystem::is_empty(target, ec))
+                    return Json("project").Add("error", "There is already a folder named \"" + name + "\" in " + base.string() + ", and it is not a Stillpoint project.").Str();
+                folder = target.string();
+                Log("New project: " + folder);
+            }
+            else
+            {
+                Log("New project: choosing the folder");
+                folder = NativeWindow::ChooseFolder("Choose or create the folder for the new project", projectsFolder().string());
+                if (folder.empty())
+                {
+                    Log("New project: no folder chosen");
+                    return Json("project").Add("cancelled", true).Str();
+                }
+            }
+            const std::string error = createOrOpenProject(folder);
             return Json("project").Add("error", error).Raw("project", projectJson()).Str();
+        });
+        // projectsFolderInfo() / projectsFolderChange(): a pasta onde os projetos novos são criados
+        // (settings.txt, projectsFolder=; padrão <Imagens>/Stillpoint). Change abre o seletor.
+        window.bind("projectsFolderInfo", [&](const std::string&) -> std::string
+        {
+            return Json("projectsFolder").Add("folder", projectsFolder().string()).Str();
+        });
+        window.bind("projectsFolderChange", [&](const std::string&) -> std::string
+        {
+            const std::string folder = NativeWindow::ChooseFolder("Choose the folder where new projects are created", projectsFolder().string());
+            if (!folder.empty())
+            {
+                auto settings = LoadSettings();
+                settings["projectsFolder"] = folder;
+                SaveSettings(settings);
+                Log("New projects folder: " + folder);
+            }
+            return Json("projectsFolder").Add("folder", projectsFolder().string()).Add("cancelled", folder.empty()).Str();
         });
         // projectOpen(pasta opcional): abre um Project (pergunta a pasta se não vier)
         window.bind("projectOpen", [&](const std::string& request) -> std::string
@@ -1696,7 +1752,7 @@ namespace
             const auto args = ParseStringArgs(request);
             std::string folder = !args.empty() ? args[0] : std::string();
             if (folder.empty())
-                folder = NativeWindow::ChooseFolder("Choose the project folder");
+                folder = NativeWindow::ChooseFolder("Choose the project folder", projectsFolder().string());
             if (folder.empty())
                 return Json("project").Add("cancelled", true).Str();
             if (!Project::IsProject(std::filesystem::path(folder)))
@@ -1708,9 +1764,7 @@ namespace
         window.bind("projectCreateAt", [&](const std::string& request) -> std::string
         {
             const auto args = ParseStringArgs(request);
-            std::string error;
-            if (!args.empty() && Project::Create(std::filesystem::path(args[0]), "", error))
-                error = openProjectAt(args[0]);
+            const std::string error = args.empty() ? std::string("No folder.") : createOrOpenProject(args[0]);
             return Json("project").Add("error", error).Raw("project", projectJson()).Str();
         });
         // projectClose(): fecha o Project (as sessões dele saem da lista; nada é apagado)

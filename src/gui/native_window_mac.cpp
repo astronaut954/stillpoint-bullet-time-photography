@@ -170,7 +170,7 @@ namespace
 
 namespace NativeWindow
 {
-    std::string ChooseFolder(const std::string& prompt)
+    std::string ChooseFolder(const std::string& prompt, const std::string& startFolder)
     {
         id panel = Send<id>(GetClass("NSOpenPanel"), "openPanel");
         Send<void>(panel, "setCanChooseFiles:", NO);
@@ -179,6 +179,13 @@ namespace NativeWindow
         Send<void>(panel, "setAllowsMultipleSelection:", NO);
         Send<void>(panel, "setMessage:", NSStringFrom(prompt));
         Send<void>(panel, "setPrompt:", NSStringFrom("Choose"));
+        if (!startFolder.empty())
+        {
+            // Começa na pasta pedida (ex.: a pasta padrão dos projetos)
+            id url = Send<id>(GetClass("NSURL"), "fileURLWithPath:isDirectory:", NSStringFrom(startFolder), YES);
+            if (url)
+                Send<void>(panel, "setDirectoryURL:", url);
+        }
 
         const long response = Send<long>(panel, "runModal");
         if (response != 1) // NSModalResponseOK

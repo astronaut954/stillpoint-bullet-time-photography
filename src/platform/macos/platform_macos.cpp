@@ -81,6 +81,14 @@ namespace Platform
         return fs::current_path();
     }
 
+    fs::path PicturesFolder()
+    {
+        const char* home = std::getenv("HOME");
+        if (home != nullptr && *home != '\0')
+            return fs::path(home) / "Pictures";
+        return DownloadsFolder();
+    }
+
     std::tm LocalTime(std::time_t t)
     {
         std::tm result{};

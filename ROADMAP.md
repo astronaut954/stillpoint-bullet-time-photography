@@ -781,8 +781,12 @@ Atualizar esta tabela sempre que uma função mudar de status.
   menu do botão, no ↻ ao lado do "not reachable" ou ao voltar ao app); (2) pedido — reler o projeto
   ao abrir o menu e o ícone ↻; (3) `session.json` sem os campos `"type"`; (4) Activity e Undo das
   Camera settings com os valores da tela ("ISO → 400") e o código só no detalhe técnico.
-  A 2.12.1 foi conferida só no navegador (sem câmeras); o item (1) precisa do teste com o HD
-  externo no Mac (teste-manual 23, "Project em HD desligado"). **Ainda pendente no Windows:** todo
+  A 2.12.1 foi testada no Mac (HD externo em âmbar + ↻, textos, session.json) e publicada em
+  2026-10-30. **2.12.2** (branch `etapa-17-pasta-padrao`, decisão do dono em 2026-10-30): pasta
+  padrão para projetos novos — `~/Pictures/Stillpoint` (Mac) / `Pictures\Stillpoint` (Windows),
+  criada ao usar; "New project…" pede só o nome e cria `<padrão>/<nome>`, com "Choose another
+  folder…" para uma vez; Settings → New projects → Change… troca o padrão (`projectsFolder=`);
+  "Open project…" começa na pasta padrão. **Ainda pendente no Windows:** todo
   o roteiro 23 (botão direito, arrastar, Rename com a pasta aberta no Explorer, apagar + Ctrl+Z,
   Save sessions) e as câmeras reais.
 

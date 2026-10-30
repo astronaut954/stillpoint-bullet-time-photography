@@ -7,7 +7,7 @@
 
 namespace NativeWindow
 {
-    std::string ChooseFolder(const std::string&)
+    std::string ChooseFolder(const std::string&, const std::string&)
     {
         const char* folder = std::getenv("STILLPOINT_TEST_SAVE_FOLDER");
         return folder ? folder : "";

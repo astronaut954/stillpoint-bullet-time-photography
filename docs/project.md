@@ -114,7 +114,10 @@ Os botões "Open in Lightroom / Photoshop" ficam para a etapa 20; nesta etapa a 
 
 ## Trocar e abrir Projects
 
-- **New project…**: escolhe (ou cria) uma pasta vazia; o app grava o `stillpoint-project.json`.
+- **New project…**: pede só o nome e cria `<pasta padrão>/<nome>` (2.12.2; a pasta padrão é
+  `~/Pictures/Stillpoint` no Mac e `Pictures\Stillpoint` no Windows, trocável em Settings → New
+  projects, `settings.txt` `projectsFolder=`); "Choose another folder…" na mesma caixa abre o
+  seletor do sistema para criar em outro lugar só daquela vez. O app grava o `stillpoint-project.json`.
 - **Open project…**: escolhe uma pasta; sem o json, o app pergunta se quer criar um Project
   ali. Lista de recentes em `settings.txt` (`recentProjects=`), até 10.
 - Project cuja pasta sumiu (HD externo desligado): aviso e a lista mostra só as sessões da

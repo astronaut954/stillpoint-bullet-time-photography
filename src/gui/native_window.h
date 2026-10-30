@@ -8,9 +8,9 @@
 
 namespace NativeWindow
 {
-    // Abre o seletor de pastas do sistema. Retorna "" se a pessoa cancelar.
-    // Chamar na thread da janela.
-    std::string ChooseFolder(const std::string& prompt);
+    // Abre o seletor de pastas do sistema, começando em startFolder (se existir).
+    // Retorna "" se a pessoa cancelar. Chamar na thread da janela.
+    std::string ChooseFolder(const std::string& prompt, const std::string& startFolder = "");
 
     // Antes de a janela fechar, pergunta a canClose(): se devolver false, a janela
     // continua aberta (a página mostra a confirmação e encerra depois). Vale por

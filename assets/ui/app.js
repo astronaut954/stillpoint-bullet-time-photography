@@ -2645,6 +2645,7 @@
   }
   function renderSettings() {
     const info = upd.info;
+    renderProjectsFolder();
     const themes = (info.themes && info.themes.length) ? info.themes : [{ id: info.theme, name: info.theme }];
     const languages = (info.languages && info.languages.length) ? info.languages : [{ id: info.language, name: info.language }];
     $("settingsThemes").innerHTML = "";
@@ -3967,13 +3968,18 @@
     });
   }
   // Pergunta com campo de texto. validate(valor) devolve uma mensagem de erro ou "".
-  function promptDialog(title, text, value, okLabel, validate, onOk) {
+  function promptDialog(title, text, value, okLabel, validate, onOk, opts) {
+    opts = opts || {};
     $("promptTitle").textContent = title;
     $("promptText").textContent = text;
-    const input = $("promptInput"), err = $("promptError");
+    const input = $("promptInput"), err = $("promptError"), extra = $("promptExtra");
     input.value = value || ""; err.textContent = ""; err.classList.add("hidden");
     $("promptOk").textContent = okLabel || "OK";
-    const close = () => { $("promptOverlay").classList.add("hidden"); $("promptOk").onclick = $("promptCancel").onclick = input.onkeydown = null; };
+    // Botão extra à esquerda (ex.: "Choose another folder…" no New project): fecha a caixa e age
+    extra.classList.toggle("hidden", !opts.extra);
+    extra.textContent = opts.extra ? opts.extra.label : "";
+    const close = () => { $("promptOverlay").classList.add("hidden"); $("promptOk").onclick = $("promptCancel").onclick = extra.onclick = input.onkeydown = null; };
+    extra.onclick = opts.extra ? () => { close(); opts.extra.onClick(); } : null;
     const ok = () => {
       const v = input.value.trim();
       const problem = validate ? validate(v) : "";
@@ -4104,7 +4110,31 @@
     if (typeof window[fn] !== "function") { toast("This build has no project support (" + fn + ")", 8000); log("Missing app function: " + fn, "error"); return Promise.resolve(null); }
     return Promise.resolve(window[fn](...args)).catch((e) => { log("Project: " + fn + " failed: " + e, "error"); return null; });
   }
-  function newProject() { log("New project…", "tech"); callProject("projectNew").then(projectResult); }
+  // Pasta onde os projetos novos são criados (uiReady/projectsFolderInfo; Settings → Change…)
+  let projectsFolder = "";
+  const shortPath = (p) => String(p || "").replace(/^\/Users\/[^/]+(?=\/)/, "~");  // Mac: ~/Pictures/Stillpoint
+  function newProject() {
+    log("New project…", "tech");
+    if (typeof window.projectsFolderInfo !== "function") { callProject("projectNew").then(projectResult); return; }  // app antigo
+    $("promptInput").dataset.folderName = "1";
+    promptDialog("New project", "A folder with this name will be created in " + shortPath(projectsFolder) + ".", "", "Create",
+      (v) => !v ? "Type a name for the project." : v[0] === "." ? "The name cannot start with a dot." : "",
+      (v) => callProject("projectNew", v).then(projectResult),
+      { extra: { label: "Choose another folder…", onClick: () => callProject("projectNew", "").then(projectResult) } });
+  }
+  function renderProjectsFolder() {
+    const el_ = $("settingsProjectsFolder");
+    if (el_) el_.textContent = shortPath(projectsFolder) || "—";
+  }
+  $("settingsProjectsFolderChange").addEventListener("click", () => {
+    if (typeof window.projectsFolderChange !== "function") { toast("This build cannot change the projects folder yet. Build the app again.", 8000); return; }
+    Promise.resolve(window.projectsFolderChange()).then((r) => {
+      if (!r || r.cancelled) return;
+      projectsFolder = r.folder || projectsFolder;
+      renderProjectsFolder();
+      toast("New projects folder: " + shortPath(projectsFolder));
+    });
+  });
   function browseProject() { callProject("projectOpen", "").then(projectResult); }
   // Escolher um Project: recentes + "Choose folder…" + "New project…"
   function pickProject() {
@@ -4698,6 +4728,7 @@
     upd.info = info || null;
     loadPrefs(info);
     if (info && info.project) setProject(info.project);
+    if (info && info.projectsFolder) { projectsFolder = info.projectsFolder; renderProjectsFolder(); }
     timingLoad(info && info.timing);
     renderTiming();
     if (info && info.live) {

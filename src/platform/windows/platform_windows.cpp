@@ -64,6 +64,19 @@ namespace Platform
         return fs::current_path();
     }
 
+    fs::path PicturesFolder()
+    {
+        char* userProfile = nullptr;
+        size_t len = 0;
+        if (_dupenv_s(&userProfile, &len, "USERPROFILE") == 0 && userProfile != nullptr)
+        {
+            fs::path result = fs::path(userProfile) / "Pictures";
+            free(userProfile);
+            return result;
+        }
+        return DownloadsFolder();
+    }
+
     std::tm LocalTime(std::time_t t)
     {
         std::tm result{};

@@ -63,7 +63,7 @@ namespace
 
 namespace NativeWindow
 {
-    std::string ChooseFolder(const std::string& prompt)
+    std::string ChooseFolder(const std::string& prompt, const std::string& startFolder)
     {
         std::string result;
         IFileOpenDialog* dialog = nullptr;
@@ -75,6 +75,16 @@ namespace NativeWindow
         dialog->SetOptions(options | FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM);
         const std::wstring title = ToWide(prompt);
         dialog->SetTitle(title.c_str());
+        if (!startFolder.empty())
+        {
+            // Começa na pasta pedida (ex.: a pasta padrão dos projetos)
+            IShellItem* start = nullptr;
+            if (SUCCEEDED(SHCreateItemFromParsingName(ToWide(startFolder).c_str(), nullptr, IID_PPV_ARGS(&start))))
+            {
+                dialog->SetFolder(start);
+                start->Release();
+            }
+        }
 
         if (SUCCEEDED(dialog->Show(GetActiveWindow())))
         {

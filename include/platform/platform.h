@@ -26,6 +26,10 @@ namespace Platform
     // Pasta "Downloads" do usuário (ou a pasta atual, se não for possível descobrir).
     std::filesystem::path DownloadsFolder();
 
+    // Pasta "Imagens" do usuário (Mac: ~/Pictures; Windows: %USERPROFILE%\Pictures), onde o
+    // Stillpoint cria os projetos novos por padrão (<Imagens>/Stillpoint). Fallback: Downloads.
+    std::filesystem::path PicturesFolder();
+
     // Pasta de dados do app (fotos guardadas até a pessoa salvar):
     // Windows: %LOCALAPPDATA%\Stillpoint   Mac: ~/Library/Application Support/Stillpoint
     // (na primeira vez, a pasta antiga "Canon Bullet Time" é renomeada para a nova)
