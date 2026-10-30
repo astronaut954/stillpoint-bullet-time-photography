@@ -2859,6 +2859,12 @@
     renderCamSettings();
     window.setCameraSetting(camera, key, String(value));
   }
+  // Espera as câmeras terminarem de aplicar (csPending vazio) antes de seguir; desiste em 10 s
+  function csWhenIdle(fn) {
+    const started = Date.now();
+    const tick = () => { if (!csPending.size || Date.now() - started > 10000) fn(); else setTimeout(tick, 150); };
+    setTimeout(tick, 150);
+  }
   function csIsPending(camera, keys) {
     return keys.some((k) => csPending.has(camera + "|" + k) || csPending.has("*|" + k));
   }
@@ -3209,7 +3215,7 @@
   // ----- Test shot: dispara todas as câmeras (fotos temporárias, como no "Reorder by
   // photo") para conferir lado a lado. Com "Match automatically", o app também muda as
   // câmeras para ficarem parecidas (até 5 fotos) e mostra as últimas. -----
-  function csTakeTest(skipIsoCheck) {
+  function csTakeTest(skipIsoCheck, skipMeteringCheck) {
     if (csTest.capturing) {  // o botão virou "Cancel"
       if (csTest.cancelling) return;
       csTest.cancelling = true;
@@ -3229,6 +3235,23 @@
         "Set an ISO first (for example in All cameras), or continue to match only the color.",
         [{ label: "Cancel" }, { label: "Continue anyway", primary: true, onClick: () => csTakeTest(true) }]);
       return;
+    }
+    // Metering diferente entre câmeras (etapa 18): em modos automáticos cada uma mede o brilho de um
+    // jeito e o Match não iguala; a pessoa escolhe pôr todas no mesmo modo ou seguir assim
+    if (match && skipMeteringCheck !== true) {
+      const withMetering = camSettings.filter((c) => c.adjustable && c.settings.metering && c.settings.metering.available);
+      const modes = new Map();
+      withMetering.forEach((c) => { const m = c.settings.metering; if (!modes.has(m.value)) modes.set(m.value, { label: m.label, cams: [] }); modes.get(m.value).cams.push(c.camera); });
+      if (modes.size > 1) {
+        const [topValue, top] = [...modes.entries()].sort((a, b) => b[1].cams.length - a[1].cams.length)[0];
+        const list = [...modes.values()].map((m) => m.label + ": " + m.cams.join(", ")).join(" · ");
+        dialog("Metering modes differ",
+          "The cameras measure light differently (" + list + "). In automatic modes this changes the brightness each camera picks, so the match may not line up. " +
+          "Set every camera to " + top.label + ", or keep them as they are?",
+          [{ label: "Cancel" }, { label: "Keep as they are", onClick: () => csTakeTest(true, true) },
+           { label: "Set all to " + top.label, primary: true, onClick: () => { csSet("*", "metering", topValue); csWhenIdle(() => csTakeTest(true, true)); } }]);
+        return;
+      }
     }
     csTest.capturing = true;
     csTest.cancelling = false;

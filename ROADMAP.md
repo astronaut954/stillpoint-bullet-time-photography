@@ -603,8 +603,11 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    **Feita em 2026-10-30 (branch `etapa-18-metering`, versão 2.13.0).** Coluna "Metering" na tabela
    e em All cameras (`kEdsPropID_MeteringMode` = 0x0403: 1 Spot, 3 Evaluative, 4 Partial,
    5 Center-weighted; valores aceitos lidos de cada câmera); Copy from camera copia; Undo como as
-   outras. Fora do Match automatically (decisão do dono pendente — ver "Futuro"). Conferido no
-   navegador com câmera simulada; **pendente** o teste com SL3/T7/T5 (teste-manual 16).
+   outras. Match automatically não muda o Metering; com modos diferentes avisa antes e oferece pôr
+   todas no modo mais comum ou seguir (decisão do dono, 2026-10-30). Largura: com a coluna nova a
+   tabela ocupa 1134 px e cabe sem rolagem horizontal em janelas de 1280 px ou mais (medido no
+   navegador); abaixo disso rola de lado, como já rolava. Conferido no navegador com câmera
+   simulada; **pendente** o teste com SL3/T7/T5 (teste-manual 16).
 4. **Etapa 19 — Exportação para impressão lenticular** (ver "Futuro"; precisa do Project).
 5. **Etapa 20 — Edit in Lightroom Classic / Photoshop.** Ida e volta: o app abre os originais
    do Project no Lightroom Classic (o dono do projeto usa o Classic); um plugin do Stillpoint
@@ -687,8 +690,8 @@ Junto com essas etapas (sem etapa própria):
   de cada câmera (matricial/evaluative, parcial, pontual, ponderada ao centro) na tabela do Camera
   settings e na linha All cameras, como ISO e os outros. No EDSDK é a propriedade MeteringMode
   (leitura e escrita; os valores aceitos vêm de cada câmera, como as demais) — conferir na
-  documentação do SDK e na SL3/T7/T5 antes de implementar. Entra no Match automatically? Decisão
-  pendente (medição diferente entre câmeras muda o brilho medido em modos automáticos; em M não).
+  documentação do SDK e na SL3/T7/T5 antes de implementar. Feita na etapa 18 (2.13.0); no Match
+  automatically só avisa e oferece igualar (decisão de 2026-10-30).
 - **Exportação para impressão lenticular (pedido em 2026-10-23; etapa 19).** Uma sessão de bullet time vira
   uma imagem entrelaçada para lente lenticular: escolher a lente (LPI) e a impressora (DPI),
   calcular quantos frames cabem por lentícula (DPI ÷ LPI) e avisar quando a sessão tem frames

@@ -218,7 +218,10 @@ Depois de salvar, o app pergunta se descarta as sessões salvas (Discard from ap
       câmera); mudar numa câmera muda nela na hora; em All cameras muda em todas; Cmd/Ctrl+Z volta;
       "Copy from camera" copia também; Activity "Metering → Spot on T7_1". Câmera em modo que não
       deixa mudar (ex.: cena automática) → célula com "—". Com modos diferentes entre câmeras, a
-      lista das câmeras marca "Settings differ". Match automatically **não** mexe no Metering.
+      lista das câmeras marca "Settings differ". **Match automatically** com modos diferentes: antes de
+      disparar, caixa "Metering modes differ" (quem está em quê) com "Keep as they are" (segue
+      assim) e "Set all to <modo mais comum>" (muda todas, espera aplicar e segue); com todas iguais
+      a caixa não aparece (decisão do dono, 2026-10-30).
 - [ ] WB fine-tune (B/A e M/G) muda na câmera.
 - [ ] Copy from camera: todas ficam iguais à escolhida.
 - [ ] Câmera com o disco fora do M (ex.: Auto): linha com o aviso para girar para M; no painel,
