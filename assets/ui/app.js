@@ -128,6 +128,7 @@
   const ICONS = {
     minus: '<path d="M3 7h8"/>',
     plus: '<path d="M3 7h8M7 3v8"/>',
+    swap: '<path d="M2.5 5h8l-2.5-2.5M11.5 9h-8l2.5 2.5"/>',
     up: '<path d="M3 9l4-4 4 4"/>',
     down: '<path d="M3 5l4 4 4-4"/>',
     left: '<path d="M9 3L5 7l4 4"/>',
@@ -1400,12 +1401,18 @@
   const SIZES = [[720, "720p"], [1080, "1080p"], [2160, "4K"]];
   const QUALITIES = [["standard", "Standard"], ["high", "High"], ["maximum", "Maximum"]];
   const LOSSY_PHOTOS = ["jpg", "webp", "heic"];  // PNG e TIFF são sempre sem perda
+  // Lenticular (etapa 19): lâminas e saídas de fábrica (decisão do dono, 2026-10-30); "Other" = digitar
+  const LENSES = [[40, "40 LPI"], [50, "50 LPI"], [60, "60 LPI"], [75, "75 LPI"], [100, "100 LPI"]];
+  const LENSES_3D = [[20, "20 LPI"], [30, "30 LPI"], [40, "40 LPI"]];
+  const PRINTERS = [[600, "600 dpi"], [720, "720 dpi"], [1200, "1200 dpi"], [1440, "1440 dpi"]];
+  const PRINTER_HELP = "Use the printer's native resolution, not the maximum: Epson photo printers work at 720 or 1440 dpi; HP and Canon at 600 or 1200. For a print shop, ask them.";
+  const CM_PER_IN = 2.54;
   function qualityLabel(q) { return QUALITIES.find((x) => x[0] === q)[1]; }
   const exp = { mode: "photos", exitAfter: false, selected: new Set(), active: "", settings: {}, heic: { ok: true, reason: "" },
                 timer: null, frame: 0, photo: 0, sameForAll: true, project: false };
 
   // Configuração da sessão aberta igual nas outras (só a parte do modo atual e o nome)
-  function settingsKey() { return exp.mode === "photos" ? "photos" : "seq"; }
+  function settingsKey() { return exp.mode === "photos" ? "photos" : exp.mode === "lenticular" ? "lent" : "seq"; }
   function sameAsActive(name) {
     const a = settingsFor(exp.active), o = settingsFor(name), k = settingsKey();
     return JSON.stringify(a[k]) === JSON.stringify(o[k]) && JSON.stringify(a.naming) === JSON.stringify(o.naming);
@@ -1419,6 +1426,7 @@
       const t = settingsFor(o.name);
       t.photos = JSON.parse(JSON.stringify(st.photos));
       t.seq = JSON.parse(JSON.stringify(st.seq));
+      t.lent = JSON.parse(JSON.stringify(st.lent));
       t.naming = JSON.parse(JSON.stringify(st.naming));
     });
   }
@@ -1429,9 +1437,12 @@
   function defaultSettings() {
     const base = { naming: { kind: "date", text: "", date: true, position: "after" },
                    photos: { format: "original", quality: "high" },
-                   seq: { formats: ["mp4"], fps: 6, loops: 3, reverse: true, height: 1080, alsoPhotos: true, quality: "high" } };
+                   seq: { formats: ["mp4"], fps: 6, loops: 3, reverse: true, height: 1080, alsoPhotos: true, quality: "high" },
+                   // lpi: lâmina; pitch: medido na folha de teste (0 = usar o nominal); dpi: impressora;
+                   // tamanho em cm (unit "cm"|"in" só muda a exibição); effect "flip" (animação) | "3d"
+                   lent: { lpi: 60, pitch: 0, dpi: 720, widthCm: 15, heightCm: 10, unit: "cm", effect: "flip", reverse: false } };
     const p = exportPrefs && exportPrefs.settings;
-    if (p) ["naming", "photos", "seq"].forEach((k) => { if (p[k] && typeof p[k] === "object") Object.assign(base[k], JSON.parse(JSON.stringify(p[k]))); });
+    if (p) ["naming", "photos", "seq", "lent"].forEach((k) => { if (p[k] && typeof p[k] === "object") Object.assign(base[k], JSON.parse(JSON.stringify(p[k]))); });
     return base;
   }
   let exportPrefsTimer = null;
@@ -1489,6 +1500,10 @@
     if (exp.mode === "photos")
       return "→ " + PHOTO_FORMATS.find((f) => f[0] === st.photos.format)[1] +
         (LOSSY_PHOTOS.includes(st.photos.format) ? " · " + qualityLabel(st.photos.quality) : "");
+    if (exp.mode === "lenticular") {
+      const l = st.lent, plan = lentPlan(l, sessionItems(session).filter((i) => i.previewable).length);
+      return "TIFF · " + lentPitch(l) + " LPI · " + l.dpi + " dpi · " + lentSizeText(l) + " · " + (l.effect === "3d" ? "3D" : "Animation") + (plan.warn ? " · ⚠" : "");
+    }
     const s = st.seq;
     if (!s.formats.length) return "No format chosen";
     return s.formats.map((f) => f.toUpperCase()).join(" · ") + " · " + s.fps + " fps · " + plural(s.loops, "loop", "loops") +
@@ -1534,12 +1549,14 @@
   }
 
   function renderExport() {
-    const seq = exp.mode === "sequence";
-    $("exportTitle").textContent = seq ? "Save as sequence" : "Save as photos";
-    $("exportSub").textContent = seq ? "Each session becomes a video or animated image. Click a session to see and change its settings."
-                                     : "Click a session to see its photos and change its format.";
-    $("exportModePhotos").classList.toggle("on", !seq);
+    const seq = exp.mode === "sequence", lent = exp.mode === "lenticular";
+    $("exportTitle").textContent = lent ? "Save for lenticular print" : seq ? "Save as sequence" : "Save as photos";
+    $("exportSub").textContent = lent ? "Each session becomes one interlaced TIFF to print under a lenticular lens sheet. Choose the lens, the printer and the print size."
+                                 : seq ? "Each session becomes a video or animated image. Click a session to see and change its settings."
+                                       : "Click a session to see its photos and change its format.";
+    $("exportModePhotos").classList.toggle("on", !seq && !lent);
     $("exportModeSequence").classList.toggle("on", seq);
+    $("exportModeLenticular").classList.toggle("on", lent);
     renderExportList();
     renderExportSettings();
     if (renderExportSettings.restoreScroll) renderExportSettings.restoreScroll();  // já com o conteúdo montado
@@ -1596,14 +1613,15 @@
     const all = exportable();
     const chosen = exp.selected.size;
     const seqEmpty = exp.mode === "sequence" && all.some((s) => exp.selected.has(s.name) && !settingsFor(s.name).seq.formats.length);
+    const lentBad = exp.mode === "lenticular" && all.some((s) => exp.selected.has(s.name) && !lentValid(settingsFor(s.name).lent));
     // Project: sessão com só parte das fotos editadas misturaria editadas e originais
     const partial = exp.project && $("exportEdited").checked
       ? all.filter((s) => exp.selected.has(s.name) && s.edited > 0 && s.edited < s.photos.length) : [];
-    $("exportCount").textContent = seqEmpty ? "Choose at least one format for each selected session"
+    $("exportCount").textContent = lentBad ? "Check the lens, printer and size values" : seqEmpty ? "Choose at least one format for each selected session"
       : partial.length ? (partial.length === 1 ? sessionTitle(partial[0]) + " has" : partial.length + " sessions have") + " only some photos edited: edited and original frames would be mixed."
       : chosen + " of " + plural(all.length, "session", "sessions") + " selected";
     $("exportCount").classList.toggle("warn", partial.length > 0);
-    $("exportConfirm").disabled = chosen === 0 || seqEmpty;
+    $("exportConfirm").disabled = chosen === 0 || seqEmpty || lentBad;
     $("exportConfirm").textContent = chosen ? (exp.project ? "Export " : "Save ") + plural(chosen, "session", "sessions") : (exp.project ? "Export" : "Save");
     $("exportSelectAll").disabled = chosen === all.length;
     $("exportUnselectAll").disabled = chosen === 0;
@@ -1666,6 +1684,42 @@
   function stopPreview() {
     clearInterval(exp.timer);
     exp.timer = null;
+  }
+
+  // ---- Lenticular: contas e textos ----
+  const lentPitch = (l) => (l.pitch > 0 ? l.pitch : l.lpi);  // pitch medido na folha de teste, senão o nominal
+  const lentValid = (l) => lentPitch(l) > 0 && l.dpi > 0 && l.widthCm > 0 && l.heightCm > 0;
+  function lentPlan(l, photos) {
+    const pitch = lentPitch(l), cols = pitch > 0 ? l.dpi / pitch : 0;
+    const w = Math.round(l.widthCm / CM_PER_IN * l.dpi), h = Math.round(l.heightCm / CM_PER_IN * l.dpi);
+    const per = photos > 0 ? cols / photos : 0;
+    const lenses = Math.round((l.effect === "3d" ? l.widthCm : l.heightCm) / CM_PER_IN * pitch);
+    // < 1 ponto por foto: a impressora não consegue separar as faixas; < 2: funciona, mas umas fotos
+    // ficam com 1 ponto e outras com 2 (transição menos uniforme)
+    const warn = photos > 0 && per < 1 ? "bad" : photos > 0 && per < 2 ? "tight" : "";
+    return { cols, w, h, per, lenses, warn };
+  }
+  const cmText = (v) => (Math.round(v * 10) / 10).toString();
+  const inText = (v) => (Math.round(v / CM_PER_IN * 100) / 100).toString();
+  const lentSizeText = (l) => (l.unit === "in" ? inText(l.widthCm) + " × " + inText(l.heightCm) + " in" : cmText(l.widthCm) + " × " + cmText(l.heightCm) + " cm");
+  // Campo numérico pequeno (aceita vírgula); onChange só com valor válido
+  function numField(value, onChange, opts) {
+    opts = opts || {};
+    const i = document.createElement("input");
+    i.type = "text"; i.inputMode = "decimal"; i.className = "lent-num" + (opts.cls ? " " + opts.cls : "");
+    i.value = value === 0 || value === "" ? "" : String(value);
+    if (opts.placeholder) i.placeholder = opts.placeholder;
+    if (opts.width) i.style.width = opts.width;
+    const commit = () => {
+      const t = i.value.trim().replace(",", ".");
+      if (t === "" && opts.allowEmpty) { onChange(0); return; }
+      const v = parseFloat(t);
+      if (!isFinite(v) || v <= 0) { i.classList.add("invalid"); return; }
+      i.classList.remove("invalid"); onChange(v);
+    };
+    i.addEventListener("change", commit);
+    i.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); commit(); i.blur(); } });
+    return i;
   }
 
   function renderExportSettings() {
@@ -1759,6 +1813,101 @@
         "Original keeps each file exactly as the camera saved it (JPG and RAW): the highest quality. The other formats convert " +
         "every photo; RAW photos are converted from the full-size image the camera keeps inside them, and when a camera " +
         "saved RAW + JPG, the JPG is used."));
+    } else if (exp.mode === "lenticular") {
+      const l = st.lent;
+      const n = items.length;
+      const plan = lentPlan(l, n);
+      // Prévia do efeito: arrastar para os lados troca a foto, como inclinar a lâmina
+      preview.classList.add("lent-preview");
+      const order = l.reverse ? items.map((_, i) => n - 1 - i) : items.map((_, i) => i);
+      let frameAt = Math.min(exp.frame >= 0 ? exp.frame : 0, Math.max(0, n - 1));
+      const showFrame = (k) => {
+        frameAt = Math.max(0, Math.min(n - 1, k));
+        exp.frame = frameAt;
+        const i = order[frameAt];
+        show(i, ["Tilt preview", " " + label + " · photo " + (i + 1) + " of " + n + " · drag left and right"]);
+      };
+      showFrame(frameAt);
+      items.forEach((item) => sessionPhoto(session.name, item.file, 1600));
+      let drag = null;
+      preview.addEventListener("pointerdown", (e) => { drag = { x: e.clientX, start: frameAt }; preview.setPointerCapture(e.pointerId); e.preventDefault(); });
+      preview.addEventListener("pointermove", (e) => {
+        if (!drag) return;
+        const step = Math.max(24, preview.clientWidth / Math.max(2, n) / 2);  // metade da largura por foto
+        showFrame(drag.start + Math.round((e.clientX - drag.x) / step));
+      });
+      const endDrag = () => { drag = null; };
+      preview.addEventListener("pointerup", endDrag); preview.addEventListener("pointercancel", endDrag);
+
+      // Leitura: o que a combinação lâmina + impressora dá para esta sessão
+      const read = el("div", "lent-readout" + (plan.warn ? " " + plan.warn : ""));
+      const cols = el("div", "lent-cols");
+      cols.append(el("b", "", plan.cols ? plan.cols.toFixed(2).replace(/\.?0+$/, "") : "—"), el("span", "", " columns per lens"),
+                  el("span", "lent-dim", " (" + l.dpi + " dpi ÷ " + lentPitch(l) + " LPI)"));
+      read.appendChild(cols);
+      const perText = plan.per ? plan.per.toFixed(2).replace(/\.?0+$/, "") : "—";
+      read.appendChild(el("div", "", plural(n, "photo", "photos") + " → " + perText + " printer " + (plan.per === 1 ? "dot" : "dots") + " per photo in each lens"));
+      read.appendChild(el("div", "lent-dim", plan.w + " × " + plan.h + " px · " + plural(plan.lenses, "lens", "lenses") + " across the print · TIFF, no compression"));
+      if (plan.warn === "bad") read.appendChild(el("div", "lent-warn", "Less than one printer dot per photo: the printer cannot separate the strips. Use a higher dpi, a coarser lens (fewer LPI), or a session with fewer photos."));
+      else if (plan.warn === "tight") read.appendChild(el("div", "lent-warn", "Under 2 dots per photo: it works, but some photos get 1 dot and others 2, so the change between them is less even. A higher dpi (1440 instead of 720), a coarser lens or fewer photos gives a cleaner result."));
+      if (!l.pitch) read.appendChild(el("div", "lent-note", "Using the nominal LPI. Real sheets differ a little (59.8 instead of 60, say): print a pitch test to measure yours and type it in \"Measured pitch\"."));
+      box.appendChild(read);
+
+      // Efeito
+      const effect = row("Effect");
+      effect.appendChild(segmented([["flip", "Animation (tilt up/down)"], ["3d", "3D (left/right)"]], l.effect, (v) => {
+        l.effect = v;
+        const list = v === "3d" ? LENSES_3D : LENSES;
+        if (!list.some(([x]) => x === l.lpi) && !l.lpiOther) l.lpi = list[list.length - 1][0];
+        rerender();
+      }));
+      effect.appendChild(checkOption("Reverse order", l.reverse, (v) => { l.reverse = v; rerender(); }));
+      box.appendChild(effect);
+      box.appendChild(el("div", "export-note", l.effect === "3d"
+        ? "3D needs photos taken side by side along a straight line (left to right). A bullet-time arc only works partly. Lens strips stand vertical."
+        : "Animation shows one photo after another as the print tilts up and down: the bullet-time turn. Lens strips lie horizontal."));
+
+      // Lâmina
+      const lens = row("Lens sheet");
+      const lensList = l.effect === "3d" ? LENSES_3D : LENSES;
+      const lensOpts = lensList.concat([["other", "Other"]]);
+      const lensCurrent = l.lpiOther ? "other" : l.lpi;
+      lens.appendChild(segmented(lensOpts, lensCurrent, (v) => { if (v === "other") { l.lpiOther = true; } else { l.lpiOther = false; l.lpi = v; } rerender(); }));
+      if (l.lpiOther) lens.appendChild(numField(l.lpi, (v) => { l.lpi = v; rerender(); }, { placeholder: "LPI", width: "64px" }));
+      const pitchLabel = el("span", "export-label lent-sub", "Measured pitch");
+      lens.appendChild(pitchLabel);
+      lens.appendChild(numField(l.pitch, (v) => { l.pitch = v; rerender(); }, { placeholder: String(l.lpi), width: "72px", allowEmpty: true }));
+      box.appendChild(lens);
+      box.appendChild(el("div", "export-note", "LPI = lenses per inch, printed on the sheet's package. 40–75 LPI for photo-size animation; 20–40 for 3D and posters. Leave \"Measured pitch\" empty until you have printed a pitch test (next version)."));
+
+      // Impressora / saída
+      const printer = row("Printer");
+      const dpiOpts = PRINTERS.concat([["other", "Other"]]);
+      printer.appendChild(segmented(dpiOpts, l.dpiOther ? "other" : l.dpi, (v) => { if (v === "other") { l.dpiOther = true; } else { l.dpiOther = false; l.dpi = v; } rerender(); }));
+      if (l.dpiOther) printer.appendChild(numField(l.dpi, (v) => { l.dpi = Math.round(v); rerender(); }, { placeholder: "dpi", width: "64px" }));
+      box.appendChild(printer);
+      box.appendChild(el("div", "export-note", PRINTER_HELP));
+
+      // Tamanho
+      const size = row("Print size");
+      const unitIn = l.unit === "in";
+      const wField = numField(unitIn ? inText(l.widthCm) : cmText(l.widthCm), (v) => { l.widthCm = unitIn ? v * CM_PER_IN : v; rerender(); }, { width: "64px" });
+      const hField = numField(unitIn ? inText(l.heightCm) : cmText(l.heightCm), (v) => { l.heightCm = unitIn ? v * CM_PER_IN : v; rerender(); }, { width: "64px" });
+      size.append(wField, el("span", "lent-x", "×"), hField);
+      size.appendChild(segmented([["cm", "cm"], ["in", "in"]], l.unit, (v) => { l.unit = v; rerender(); }));
+      const swap = button("", () => { const w = l.widthCm; l.widthCm = l.heightCm; l.heightCm = w; rerender(); }, { icon: "swap", title: "Swap width and height" });
+      swap.classList.add("btn-small");
+      size.appendChild(swap);
+      const presets = el("span", "chips lent-presets");
+      [["10 × 15", 10, 15], ["15 × 10", 15, 10], ["20 × 30", 20, 30], ["30 × 20", 30, 20], ["A4", 21, 29.7]].forEach(([t, w, h]) => {
+        const c = el("button", "chip" + (Math.abs(l.widthCm - w) < 0.05 && Math.abs(l.heightCm - h) < 0.05 ? " on" : ""), t);
+        c.addEventListener("click", () => { l.widthCm = w; l.heightCm = h; rerender(); });
+        presets.appendChild(c);
+      });
+      size.appendChild(presets);
+      box.appendChild(size);
+      box.appendChild(el("div", "export-note", "The photos are scaled to cover this size exactly (cropped at the edges if the shape differs). " +
+        "Print at 100% / actual size, never \"fit to page\": the file already has the right dpi and size."));
     } else {
       const s = st.seq;
       const order = cycleOrder(items.length, s.reverse);
@@ -1892,6 +2041,10 @@
     const n = st.naming;
     const head = [name, n.kind, (n.text || "").replace(/\|/g, ""), n.date ? 1 : 0, n.position];
     if (exp.mode === "photos") return [...head, "photos", st.photos.format, st.photos.quality].join("|");
+    if (exp.mode === "lenticular") {
+      const l = st.lent;
+      return [...head, "lenticular", lentPitch(l), l.dpi, (l.widthCm / CM_PER_IN).toFixed(4), (l.heightCm / CM_PER_IN).toFixed(4), l.effect, l.reverse ? 1 : 0].join("|");
+    }
     const s = st.seq;
     return [...head, "sequence", s.formats.join(","), s.fps, s.loops, s.reverse ? 1 : 0, s.height, s.alsoPhotos ? 1 : 0, s.quality].join("|");
   }
@@ -1946,9 +2099,11 @@
   ui.saveBtn.addEventListener("click", () => startSave(false));
   $("modePhotos").addEventListener("click", () => openExport("photos"));
   $("modeSequence").addEventListener("click", () => openExport("sequence"));
+  $("modeLenticular").addEventListener("click", () => openExport("lenticular"));
   $("modeCancel").addEventListener("click", () => $("modeOverlay").classList.add("hidden"));
   $("exportModePhotos").addEventListener("click", () => { exp.mode = "photos"; renderExport(); rememberExportPrefs(); });
   $("exportModeSequence").addEventListener("click", () => { exp.mode = "sequence"; renderExport(); rememberExportPrefs(); });
+  $("exportModeLenticular").addEventListener("click", () => { exp.mode = "lenticular"; renderExport(); rememberExportPrefs(); });
   $("exportSelectAll").addEventListener("click", () => { exp.selectedTouched = true; exp.selected = new Set(exportable().map((s) => s.name)); renderExportList(); updateExportCount(); });
   $("exportUnselectAll").addEventListener("click", () => { exp.selectedTouched = true; exp.selected.clear(); renderExportList(); updateExportCount(); });
   $("exportCancel").addEventListener("click", closeExport);

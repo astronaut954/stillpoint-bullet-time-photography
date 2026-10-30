@@ -50,4 +50,33 @@ namespace Export
 
     // Formatos que este computador consegue gerar (HEIC no Windows depende de extensões)
     bool FormatAvailable(const std::string& format, std::string& reason);
+
+    // ---- Impressão lenticular (etapa 19) ----
+    // Uma lâmina lenticular tem `lpi` lentes cilíndricas por polegada; a impressora põe `dpi`
+    // pontos por polegada. Debaixo de cada lente cabem dpi ÷ lpi colunas de pixel, preenchidas
+    // em ordem com uma faixa de cada foto: ao inclinar a lâmina vê-se uma foto de cada vez.
+    struct LenticularOptions
+    {
+        double lpi = 60;             // pitch usado no cálculo (o medido na folha de teste, se houver)
+        int dpi = 720;               // resolução nativa da impressora / gráfica
+        double widthInches = 5.9;    // tamanho da impressão
+        double heightInches = 3.9;
+        bool horizontalLenses = true;  // animação (inclinar para cima/baixo): lentes deitadas, faixas em linhas;
+                                       // 3D (olhos esquerdo/direito): lentes em pé, faixas em colunas
+        bool reverse = false;        // ordem das fotos dentro de cada lente ao contrário
+    };
+    struct LenticularInfo
+    {
+        int width = 0, height = 0;         // pixels da imagem final
+        double columnsPerLens = 0;         // dpi ÷ lpi
+        double pixelsPerPhoto = 0;         // columnsPerLens ÷ fotos
+        int lenses = 0;                    // quantas lentes a imagem cobre
+    };
+    LenticularInfo LenticularPlan(const LenticularOptions& options, int photos);
+
+    // Entrelaça as fotos (uma por câmera, em ordem) numa imagem TIFF sem perda em `dest` (sem
+    // extensão), com o DPI gravado no arquivo para a impressão sair no tamanho exato.
+    bool WriteLenticular(const std::vector<std::filesystem::path>& photos, const std::filesystem::path& destWithoutExtension,
+                         const LenticularOptions& options, const Progress& progress,
+                         const std::atomic<bool>* cancel, std::string& error);
 }

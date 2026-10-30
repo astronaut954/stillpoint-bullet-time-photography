@@ -506,14 +506,18 @@ namespace
     }
 
     // TIFF simples (sem compressão), como a maioria dos programas de foto grava
-    bool WriteTiff(const RgbFrame& image, const fs::path& file)
+    // dpi > 0: grava a resolução (XResolution/YResolution em polegadas), para a impressora
+    // abrir no tamanho exato (lenticular)
+    bool WriteTiff(const RgbFrame& image, const fs::path& file, int dpi = 0)
     {
         std::vector<unsigned char> out;
         auto u16 = [&](uint32_t v) { out.push_back(v & 0xFF); out.push_back((v >> 8) & 0xFF); };
         auto u32 = [&](uint32_t v) { for (int k = 0; k < 4; ++k) out.push_back((v >> (8 * k)) & 0xFF); };
         const uint32_t dataSize = static_cast<uint32_t>(image.pixels.size());
-        const int entries = 10;
-        const uint32_t ifd = 8, bpsOffset = ifd + 2 + entries * 12 + 4, dataOffset = bpsOffset + 6;
+        const int entries = dpi > 0 ? 13 : 10;
+        const uint32_t ifd = 8, bpsOffset = ifd + 2 + entries * 12 + 4;
+        const uint32_t resOffset = bpsOffset + 6;                       // 2 RATIONAL (8 bytes cada)
+        const uint32_t dataOffset = dpi > 0 ? resOffset + 16 : bpsOffset + 6;
         out.insert(out.end(), { 'I', 'I', 42, 0 });
         u32(ifd);
         u16(entries);
@@ -532,11 +536,39 @@ namespace
         entry(277, 3, 1, 3);
         entry(278, 4, 1, static_cast<uint32_t>(image.height));
         entry(279, 4, 1, dataSize);
+        if (dpi > 0)
+        {
+            entry(282, 5, 1, resOffset);      // XResolution
+            entry(283, 5, 1, resOffset + 8);  // YResolution
+        }
         entry(284, 3, 1, 1);
+        if (dpi > 0)
+            entry(296, 3, 1, 2);              // ResolutionUnit: polegada
         u32(0);
         u16(8); u16(8); u16(8);
+        if (dpi > 0)
+        {
+            u32(static_cast<uint32_t>(dpi)); u32(1);
+            u32(static_cast<uint32_t>(dpi)); u32(1);
+        }
         out.insert(out.end(), image.pixels.begin(), image.pixels.end());
         return WriteBytes(file, out.data(), out.size());
+    }
+
+    // Redimensiona cobrindo w×h inteiro (corta o que sobra, centrado) — para a impressão
+    // lenticular, onde a imagem precisa ter exatamente o tamanho do papel
+    std::vector<unsigned char> Cover(const RgbFrame& src, int w, int h)
+    {
+        const double scale = std::max(static_cast<double>(w) / src.width, static_cast<double>(h) / src.height);
+        const int fw = std::max(w, static_cast<int>(std::lround(src.width * scale)));
+        const int fh = std::max(h, static_cast<int>(std::lround(src.height * scale)));
+        std::vector<unsigned char> resized(static_cast<size_t>(fw) * fh * 3);
+        stbir_resize_uint8_srgb(src.pixels.data(), src.width, src.height, 0, resized.data(), fw, fh, 0, STBIR_RGB);
+        std::vector<unsigned char> out(static_cast<size_t>(w) * h * 3);
+        const int ox = (fw - w) / 2, oy = (fh - h) / 2;
+        for (int y = 0; y < h; ++y)
+            std::memcpy(&out[static_cast<size_t>(y) * w * 3], &resized[(static_cast<size_t>(y + oy) * fw + ox) * 3], static_cast<size_t>(w) * 3);
+        return out;
     }
 }
 
@@ -660,6 +692,75 @@ namespace Export
                 return false;
             }
         }
+        return true;
+    }
+
+    LenticularInfo LenticularPlan(const LenticularOptions& o, int photos)
+    {
+        LenticularInfo info;
+        info.width = std::max(1, static_cast<int>(std::lround(o.widthInches * o.dpi)));
+        info.height = std::max(1, static_cast<int>(std::lround(o.heightInches * o.dpi)));
+        info.columnsPerLens = o.lpi > 0 ? o.dpi / o.lpi : 0;
+        info.pixelsPerPhoto = photos > 0 ? info.columnsPerLens / photos : 0;
+        const double inches = o.horizontalLenses ? o.heightInches : o.widthInches;
+        info.lenses = static_cast<int>(std::lround(inches * o.lpi));
+        return info;
+    }
+
+    // Para cada linha (lentes deitadas) ou coluna (lentes em pé) da imagem final: em qual lente
+    // ela cai, em que fração da lente, e portanto de qual foto vem. Fração de lente contínua
+    // (dpi ÷ lpi não precisa ser inteiro): é assim que o pitch medido entra no cálculo.
+    bool WriteLenticular(const std::vector<fs::path>& photos, const fs::path& dest, const LenticularOptions& o,
+                         const Progress& progress, const std::atomic<bool>* cancel, std::string& error)
+    {
+        const int n = static_cast<int>(photos.size());
+        if (n < 2) { error = "A lenticular print needs at least 2 photos."; return false; }
+        if (o.lpi <= 0 || o.dpi <= 0 || o.widthInches <= 0 || o.heightInches <= 0) { error = "Check the lens, printer and size values."; return false; }
+        const LenticularInfo info = LenticularPlan(o, n);
+        if (static_cast<double>(info.width) * info.height > 400e6) { error = "The print would be too large to build in memory (over 400 megapixels). Reduce the size or the DPI."; return false; }
+        const int W = info.width, H = info.height;
+        const double perLens = info.columnsPerLens;
+        const int lines = o.horizontalLenses ? H : W;
+        // Foto de cada linha/coluna
+        std::vector<int> owner(static_cast<size_t>(lines));
+        for (int i = 0; i < lines; ++i)
+        {
+            const double pos = (i + 0.5) / perLens;        // centro do pixel, em lentes
+            const double frac = pos - std::floor(pos);     // 0..1 dentro da lente
+            int k = std::min(n - 1, static_cast<int>(frac * n));
+            if (o.reverse) k = n - 1 - k;
+            owner[static_cast<size_t>(i)] = k;
+        }
+        RgbFrame out;
+        out.width = W; out.height = H;
+        out.pixels.assign(static_cast<size_t>(W) * H * 3, 0);
+        for (int k = 0; k < n; ++k)
+        {
+            if (cancel && *cancel) { error = "cancelled"; return false; }
+            if (progress) progress(static_cast<double>(k) / (n + 1), "lenticular");
+            RgbFrame frame;
+            if (!LoadPhotoRgb(photos[static_cast<size_t>(k)], frame)) { error = "Could not read " + photos[static_cast<size_t>(k)].filename().string(); return false; }
+            const std::vector<unsigned char> fitted = Cover(frame, W, H);
+            if (o.horizontalLenses)
+            {
+                for (int y = 0; y < H; ++y)
+                    if (owner[static_cast<size_t>(y)] == k)
+                        std::memcpy(&out.pixels[static_cast<size_t>(y) * W * 3], &fitted[static_cast<size_t>(y) * W * 3], static_cast<size_t>(W) * 3);
+            }
+            else
+            {
+                for (int y = 0; y < H; ++y)
+                {
+                    const size_t rowAt = static_cast<size_t>(y) * W * 3;
+                    for (int x = 0; x < W; ++x)
+                        if (owner[static_cast<size_t>(x)] == k)
+                            std::memcpy(&out.pixels[rowAt + static_cast<size_t>(x) * 3], &fitted[rowAt + static_cast<size_t>(x) * 3], 3);
+                }
+            }
+        }
+        if (progress) progress(static_cast<double>(n) / (n + 1), "lenticular-save");
+        const fs::path file = fs::path(dest).concat(".tiff");
+        if (!WriteTiff(out, file, o.dpi)) { error = "Could not save " + file.filename().string(); return false; }
         return true;
     }
 

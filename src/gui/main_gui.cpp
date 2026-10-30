@@ -2786,6 +2786,8 @@ namespace
             std::string folderName;           // nome final (data, número ou nome dado)
             bool useEdited = false;           // Project: usar a versão editada quando houver
             bool sequence = false;
+            bool lenticular = false;          // etapa 19: imagem entrelaçada para lâmina lenticular (TIFF)
+            Export::LenticularOptions lent;
             std::string photoFormat;          // "original", "jpg"... ("" = não salvar fotos)
             Export::Quality photoQuality = Export::Quality::High;
             Export::SequenceOptions options;
@@ -2905,6 +2907,18 @@ namespace
                                 break;
                         }
                         if (!error.empty())
+                            break;
+                    }
+
+                    if (job.lenticular)
+                    {
+                        std::vector<fs::path> photos;
+                        for (const auto& f : perCamera)
+                            photos.push_back(photoPath(f));
+                        // Nome com os parâmetros, para saber que lâmina/impressora o arquivo serve
+                        char tag[96];
+                        std::snprintf(tag, sizeof(tag), " lenticular %.4glpi %ddpi %s", job.lent.lpi, job.lent.dpi, job.lent.horizontalLenses ? "flip" : "3d");
+                        if (!Export::WriteLenticular(photos, target / (job.folderName + tag), job.lent, report, &exportCancel, error))
                             break;
                     }
 
@@ -3033,7 +3047,22 @@ namespace
                 job.session = f[0];
                 Naming naming{ f[1], f[2], f[3] == "1", f[4] == "before" };
                 job.sequence = f[5] == "sequence";
-                if (job.sequence)
+                job.lenticular = f[5] == "lenticular";
+                if (job.lenticular)
+                {
+                    // lpi | dpi | largura pol | altura pol | flip|3d | reverse
+                    try
+                    {
+                        job.lent.lpi = std::stod(f[6]);
+                        job.lent.dpi = f.size() > 7 ? std::stoi(f[7]) : 720;
+                        job.lent.widthInches = f.size() > 8 ? std::stod(f[8]) : 6;
+                        job.lent.heightInches = f.size() > 9 ? std::stod(f[9]) : 4;
+                    }
+                    catch (...) {}
+                    job.lent.horizontalLenses = !(f.size() > 10 && f[10] == "3d");
+                    job.lent.reverse = f.size() > 11 && f[11] == "1";
+                }
+                else if (job.sequence)
                 {
                     std::stringstream formats(f[6]);
                     for (std::string x; std::getline(formats, x, ',');)

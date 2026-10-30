@@ -752,6 +752,31 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) e depois com câmeras. Desenho em `do
       app volta ao consumo de antes). "Copy log" inclui a linha "Usage: …". Disparar com o Activity
       aberto: a CPU sobe durante o download e volta. Sem projeto: "App disk".
 
+## 24. Lenticular (etapa 19, entrega 1)
+
+Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) serve para tudo, menos para a impressão.
+
+- [ ] **Save sessions** → terceira opção **Lenticular**; a janela "Save for lenticular print" com a aba
+      Lenticular acesa (as abas Photos / Sequence continuam funcionando e lembram a escolha).
+- [ ] **Prévia:** arrastar para a esquerda/direita na foto grande troca a foto ("Tilt preview · photo n
+      of 9"); "Reverse order" inverte o sentido.
+- [ ] **Leitura:** com 9 fotos, 60 LPI e 720 dpi: "12 columns per lens", "1.33 printer dots per photo"
+      em âmbar (menos de 2); 1440 dpi: 2.67, verde; 75 LPI a 600 dpi: 8 colunas, "Less than one printer
+      dot" em vermelho e o botão Save continua ativo (é aviso, não trava). "Other" no LPI e no dpi
+      abre um campo numérico (vírgula aceita; inválido fica âmbar e não grava).
+- [ ] **Tamanho:** 15 × 10 cm a 720 dpi = 4252 × 2835 px; trocar para "in" mostra 5.91 × 3.94; o botão ⇄
+      inverte; presets 10 × 15 / A4 etc.
+- [ ] **3D:** a lista de lâminas passa a 20/30/40 LPI; o texto explica que as faixas ficam em pé.
+- [ ] **Save:** em `Exports/<data>/` (projeto) ou na pasta escolhida: `<data> lenticular 60lpi 720dpi
+      flip.tiff`. Abrir no Preview/Visualizador: Inspector mostra 720 × 720 dpi e o tamanho em
+      polegadas igual ao pedido. Ampliando muito, faixas horizontais finas alternando as fotos
+      (Animation) ou verticais (3D).
+- [ ] **Resumo na lista:** "TIFF · 60 LPI · 720 dpi · 15 × 10 cm · Animation" (⚠ quando há aviso); a
+      configuração volta igual na próxima abertura (`pref.export`).
+- [ ] **Impressão (quando houver lâmina e impressora/gráfica):** imprimir a 100%, encostar a lâmina com
+      as lentes no sentido certo (deitadas para Animation) e inclinar: as fotos devem trocar. Anotar
+      aqui o resultado e a combinação usada.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |

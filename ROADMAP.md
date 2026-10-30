@@ -611,6 +611,22 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    (medido no navegador: 849 px em 920; 926 em 1000). Conferido no navegador com câmera
    simulada; **pendente** o teste com SL3/T7/T5 (teste-manual 16).
 4. **Etapa 19 — Exportação para impressão lenticular** (ver "Futuro"; precisa do Project).
+   **Entrega 1 feita em 2026-10-30 (branch `etapa-19-lenticular`, versão 2.14.0).** Terceira opção
+   "Lenticular" no Save sessions / Export: lâmina (40/50/60/75/100 LPI; 3D 20/30/40; "Other"),
+   pitch medido (opcional), impressora (600/720/1200/1440 dpi; "Other" — o app não depende de
+   impressora: é só um número de dpi), tamanho em cm/pol com presets, efeito Animation (lentes
+   deitadas, faixas em linhas) ou 3D (lentes em pé, faixas em colunas), ordem invertida; leitura
+   "colunas por lente / pontos por foto" com avisos (< 1 ponto por foto = não separa; < 2 =
+   transição desigual); prévia por arrasto. Saída: TIFF sem compressão com o dpi gravado, em
+   `Exports/` (nome com lpi/dpi/efeito). `Export::WriteLenticular` (fração contínua de lente por
+   linha/coluna — o pitch medido entra direto; cada foto redimensionada para cobrir o tamanho).
+   Verificado no Linux com fotos de cor sólida (padrão `RRGGGBBYYY` a 10 px por lente e 4 fotos;
+   dpi no TIFF; reverse; eixo 3D). **Não validado no papel:** o dono não tem impressora nem lâmina;
+   registrar o resultado da primeira impressão (gráfica + kit de lâminas) antes de dar por
+   concluída. Entrega 2 (pendente): folha de pitch test com faixas ao redor do LPI nominal e o
+   valor medido guardado por combinação lâmina + impressora; marcas de corte/registro e sangria.
+   Decisões do dono (2026-10-30): listas de fábrica acima; cm como padrão; prévia na tela; aba
+   dentro do Export.
 5. **Etapa 20 — Edit in Lightroom Classic / Photoshop.** Ida e volta: o app abre os originais
    do Project no Lightroom Classic (o dono do projeto usa o Classic); um plugin do Stillpoint
    (SDK Lua do Classic) agrupa cada sessão como coleção e tem "Export to Stillpoint", que
