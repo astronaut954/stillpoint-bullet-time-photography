@@ -474,6 +474,11 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
 .log-list li.error .log-mark { background: var(--noct-danger); box-shadow: 0 0 6px var(--noct-danger); }
 .log-list li.error .log-text { color: var(--noct-danger); }
 .log-list li.tech { display: none; }
+.log-stats { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--noct-border); font: 500 11px var(--noct-font-mono); letter-spacing: .04em; color: var(--noct-text-muted); }
+.log-stats b { font-weight: 700; color: var(--noct-text); }
+.log-stats .log-stats-sep { color: var(--noct-text-dim); }
+.log-stats .tech-only { display: none; }
+.log.show-tech .log-stats .tech-only { display: inline; }
 .log-list li.tech .log-text { font: 11px/1.4 var(--noct-font-mono); color: var(--noct-text-dim); }
 .log-list.show-tech li.tech { display: grid; }
 .log-hint { display: block; color: var(--noct-text-dim); font-size: 14px; }

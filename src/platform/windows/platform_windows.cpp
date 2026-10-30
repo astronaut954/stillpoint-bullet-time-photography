@@ -5,6 +5,8 @@
 #include <objbase.h>
 #include <shellapi.h>
 #include <setupapi.h>
+#include <psapi.h>
+#include <tlhelp32.h>
 #include <algorithm>
 #include <cwctype>
 #include <chrono>
@@ -62,6 +64,73 @@ namespace Platform
         }
 
         return fs::current_path();
+    }
+
+    namespace
+    {
+        double FileTimeSeconds(const FILETIME& ft)
+        {
+            ULARGE_INTEGER v;
+            v.LowPart = ft.dwLowDateTime;
+            v.HighPart = ft.dwHighDateTime;
+            return static_cast<double>(v.QuadPart) / 1e7;  // unidades de 100 ns
+        }
+    }
+
+    ProcessUsage QueryProcessUsage(long long pid)
+    {
+        ProcessUsage out;
+        const DWORD id = pid > 0 ? static_cast<DWORD>(pid) : GetCurrentProcessId();
+        HANDLE h = pid > 0 ? OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, id) : GetCurrentProcess();
+        if (!h)
+            return out;
+        FILETIME created{}, exited{}, kernel{}, user{};
+        if (GetProcessTimes(h, &created, &exited, &kernel, &user))
+            out.cpuSeconds = FileTimeSeconds(kernel) + FileTimeSeconds(user);
+        PROCESS_MEMORY_COUNTERS mem{};
+        mem.cb = sizeof mem;
+        if (K32GetProcessMemoryInfo(h, &mem, sizeof mem))
+            out.residentBytes = static_cast<long long>(mem.WorkingSetSize);
+        if (pid > 0)
+            CloseHandle(h);
+        // Threads: pela lista de processos do sistema
+        HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+        if (snap != INVALID_HANDLE_VALUE)
+        {
+            PROCESSENTRY32W entry{};
+            entry.dwSize = sizeof entry;
+            if (Process32FirstW(snap, &entry))
+                do
+                {
+                    if (entry.th32ProcessID == id) { out.threads = static_cast<int>(entry.cntThreads); break; }
+                } while (Process32NextW(snap, &entry));
+            CloseHandle(snap);
+        }
+        out.ok = true;
+        return out;
+    }
+
+    SystemUsage QuerySystemUsage()
+    {
+        SystemUsage out;
+        FILETIME idle{}, kernel{}, user{};
+        if (!GetSystemTimes(&idle, &kernel, &user))
+            return out;
+        // kernel inclui o tempo ocioso
+        out.cpuTotalSeconds = FileTimeSeconds(kernel) + FileTimeSeconds(user);
+        out.cpuBusySeconds = out.cpuTotalSeconds - FileTimeSeconds(idle);
+        SYSTEM_INFO si{};
+        GetSystemInfo(&si);
+        out.cpuCount = si.dwNumberOfProcessors > 0 ? static_cast<int>(si.dwNumberOfProcessors) : 1;
+        MEMORYSTATUSEX ms{};
+        ms.dwLength = sizeof ms;
+        if (GlobalMemoryStatusEx(&ms))
+        {
+            out.memoryTotalBytes = static_cast<long long>(ms.ullTotalPhys);
+            out.memoryAvailableBytes = static_cast<long long>(ms.ullAvailPhys);
+        }
+        out.ok = true;
+        return out;
     }
 
     fs::path PicturesFolder()

@@ -727,6 +727,12 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) e depois com câmeras. Desenho em `do
       nos limites dela e fica atrás da barra de rolagem). "Add to project ↑" mostra a caixinha no
       hover também na sessão selecionada.
 - [ ] Fechar e abrir o app: o Project continua aberto (`settings.txt`, `project=`).
+- [ ] **Uso do computador no Activity** (2.12.4): abrir o Activity → no rodapé, "Stillpoint — CPU ·
+      410 MB · 1 + 3 camera processes | Computer — CPU · 9,1 GB of 16 GB free · Project disk 212 GB
+      free"; ~2 s depois as % de CPU aparecem e atualizam a cada 2 s. "Show technical details" acrescenta
+      os threads. Fechar o Activity: para de medir (Monitor de Atividade/Gerenciador de Tarefas: o
+      app volta ao consumo de antes). "Copy log" inclui a linha "Usage: …". Disparar com o Activity
+      aberto: a CPU sobe durante o download e volta. Sem projeto: "App disk".
 
 ## Resultado
 

@@ -2383,6 +2383,8 @@
     // Item escolhido no menu do Mac (barra de cima)
     menu(e) { menuAction(e.item); },
 
+    // Uso do computador (rodapé do Activity): resposta do systemStats()
+    stats(e) { renderStats(e); },
     // Configurações das câmeras (lidas quando as câmeras mudam ou depois de uma mudança)
     cameraSettings(e) {
       const next = e.cameras || [];
@@ -4709,9 +4711,43 @@
     ui.log.classList.toggle("expanded");
     ui.log.classList.toggle("collapsed");
     ui.logList.scrollTop = ui.logList.scrollHeight;
+    statsWatch(ui.log.classList.contains("expanded"));
   });
   ui.restartAppBtn.addEventListener("click", restartApp);
-  ui.techToggle.addEventListener("change", () => ui.logList.classList.toggle("show-tech", ui.techToggle.checked));
+  ui.techToggle.addEventListener("change", () => { ui.logList.classList.toggle("show-tech", ui.techToggle.checked); ui.log.classList.toggle("show-tech", ui.techToggle.checked); });
+
+  // ----- Uso do computador no rodapé do Activity (2.12.4) -----
+  // Mede só com o painel aberto (a cada 2 s); fechado, custo zero. A primeira amostra só dá a
+  // base da % de CPU, então os primeiros 2 s mostram "—".
+  let statsTimer = null;
+  let statsLast = null;  // último evento, para a cópia da Activity
+  function statsWatch(on) {
+    if (statsTimer) { clearInterval(statsTimer); statsTimer = null; }
+    if (!on || typeof window.systemStats !== "function") return;
+    const ask = () => { try { window.systemStats(); } catch (e) {} };
+    ask();
+    statsTimer = setInterval(ask, 2000);
+  }
+  const fmtGB = (b) => (b > 0 ? (b >= 100e9 ? Math.round(b / 1e9) : (b / 1e9).toFixed(1)) + " GB" : "—");
+  const fmtMB = (b) => (b > 0 ? Math.round(b / 1e6) + " MB" : "—");
+  const fmtPct = (v) => (typeof v === "number" ? v.toFixed(v < 10 ? 1 : 0) + "%" : "—");
+  function statsText(e, tech) {
+    if (!e || !e.ok) return { app: "Stillpoint —", sys: "Computer —" };
+    const app = ["Stillpoint " + fmtPct(e.appCpu) + " CPU", fmtMB(e.appMemory),
+      "1 + " + plural(Math.max(0, (e.processes || 1) - 1), "camera process", "camera processes")]
+      .concat(tech ? [plural(e.threads || 0, "thread", "threads")] : []).join(" · ");
+    const sys = ["Computer " + fmtPct(e.systemCpu) + " CPU", fmtGB(e.memoryAvailable) + " of " + fmtGB(e.memoryTotal) + " free",
+      (e.diskLabel || "Disk") + " " + (e.diskFree >= 0 ? fmtGB(e.diskFree) + " free" : "—")].join(" · ");
+    return { app, sys };
+  }
+  function renderStats(e) {
+    statsLast = e;
+    const t = statsText(e, false);
+    const appEl = $("logStatsApp"), sysEl = $("logStatsSys");
+    appEl.textContent = t.app;
+    if (e && e.ok) { const th = el("span", "tech-only", " · " + plural(e.threads || 0, "thread", "threads")); appEl.appendChild(th); }
+    sysEl.textContent = t.sys;
+  }
 
   // Copia a atividade que está na tela (com os detalhes técnicos, se ligados)
   function copyText(text) {
@@ -4731,6 +4767,7 @@
     const lines = [...ui.logList.children]
       .filter((li) => li.offsetParent !== null)
       .map((li) => li.querySelector(".log-time").textContent + "  " + li.querySelector(".log-text").textContent);
+    if (statsLast && statsLast.ok) { const t = statsText(statsLast, ui.techToggle.checked); lines.push("Usage: " + t.app + " | " + t.sys); }
     copyText(lines.join("\n")).then((ok) => toast(ok ? "Activity copied (" + plural(lines.length, "line", "lines") + ")" : "Could not copy the activity"));
   });
 

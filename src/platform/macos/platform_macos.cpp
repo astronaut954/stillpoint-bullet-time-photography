@@ -4,6 +4,10 @@
 #include <CoreFoundation/CoreFoundation.h>
 #include <IOKit/IOKitLib.h>
 #include <mach-o/dyld.h>
+#include <libproc.h>
+#include <mach/mach.h>
+#include <mach/mach_time.h>
+#include <sys/sysctl.h>
 #include <signal.h>
 #include <fcntl.h>
 #include <poll.h>
@@ -79,6 +83,50 @@ namespace Platform
         }
 
         return fs::current_path();
+    }
+
+    ProcessUsage QueryProcessUsage(long long pid)
+    {
+        ProcessUsage out;
+        proc_taskinfo info{};
+        const int got = proc_pidinfo(pid > 0 ? static_cast<int>(pid) : getpid(), PROC_PIDTASKINFO, 0, &info, sizeof info);
+        if (got != static_cast<int>(sizeof info))
+            return out;
+        // pti_total_user/system vêm em unidades do relógio do Mach (no Apple Silicon não são ns)
+        static mach_timebase_info_data_t tb = [] { mach_timebase_info_data_t t{}; mach_timebase_info(&t); return t; }();
+        const double ns = static_cast<double>(info.pti_total_user + info.pti_total_system) * tb.numer / (tb.denom ? tb.denom : 1);
+        out.cpuSeconds = ns / 1e9;
+        out.residentBytes = static_cast<long long>(info.pti_resident_size);
+        out.threads = info.pti_threadnum;
+        out.ok = true;
+        return out;
+    }
+
+    SystemUsage QuerySystemUsage()
+    {
+        SystemUsage out;
+        host_cpu_load_info_data_t cpu{};
+        mach_msg_type_number_t count = HOST_CPU_LOAD_INFO_COUNT;
+        if (host_statistics(mach_host_self(), HOST_CPU_LOAD_INFO, reinterpret_cast<host_info_t>(&cpu), &count) != KERN_SUCCESS)
+            return out;
+        const double tick = static_cast<double>(sysconf(_SC_CLK_TCK));
+        const double busy = static_cast<double>(cpu.cpu_ticks[CPU_STATE_USER] + cpu.cpu_ticks[CPU_STATE_SYSTEM] + cpu.cpu_ticks[CPU_STATE_NICE]);
+        out.cpuBusySeconds = busy / tick;
+        out.cpuTotalSeconds = (busy + static_cast<double>(cpu.cpu_ticks[CPU_STATE_IDLE])) / tick;
+        out.cpuCount = static_cast<int>(sysconf(_SC_NPROCESSORS_ONLN));
+        if (out.cpuCount < 1) out.cpuCount = 1;
+        long long memsize = 0;
+        size_t len = sizeof memsize;
+        if (sysctlbyname("hw.memsize", &memsize, &len, nullptr, 0) == 0)
+            out.memoryTotalBytes = memsize;
+        vm_statistics64_data_t vm{};
+        mach_msg_type_number_t vmCount = HOST_VM_INFO64_COUNT;
+        vm_size_t page = 0;
+        host_page_size(mach_host_self(), &page);
+        if (host_statistics64(mach_host_self(), HOST_VM_INFO64, reinterpret_cast<host_info64_t>(&vm), &vmCount) == KERN_SUCCESS)
+            out.memoryAvailableBytes = static_cast<long long>(vm.free_count + vm.inactive_count) * static_cast<long long>(page);
+        out.ok = true;
+        return out;
     }
 
     fs::path PicturesFolder()

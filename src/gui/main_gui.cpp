@@ -52,6 +52,7 @@
 #include <condition_variable>
 #include <cstdlib>
 #include <map>
+#include <memory>
 #include <deque>
 #include <fstream>
 #include <functional>
@@ -1743,6 +1744,54 @@ namespace
             const bool exists = !name.empty() && std::filesystem::exists(target, ec);
             return Json("name").Add("free", !exists).Add("project", exists && Project::IsProject(target))
                 .Add("folder", projectsFolder().string()).Str();
+        });
+        // =================== Uso do computador (rodapé do Activity, 2.12.4) ===================
+        // systemStats(): a página chama a cada 2 s só com o Activity aberto. Lê os contadores na
+        // thread das câmeras (é ela que conhece os processos de câmera) e responde pelo evento
+        // "stats". A % de CPU vem da diferença entre esta amostra e a anterior; a primeira só
+        // guarda a base. Nada aqui percorre pastas.
+        struct StatsSample { double wall = 0; double appCpu = 0; double sysBusy = 0; double sysTotal = 0; };
+        auto statsPrev = std::make_shared<StatsSample>();
+        window.bind("systemStats", [&, statsPrev](const std::string&) -> std::string
+        {
+            // Espaço livre no disco do projeto (ou da pasta do app): barato, pode ser aqui mesmo
+            std::error_code ec;
+            const std::filesystem::path diskPath = project.Available() ? project.Root() : store.Root();
+            const auto space = std::filesystem::space(diskPath, ec);
+            const long long diskFree = ec ? -1 : static_cast<long long>(space.available);
+            const std::string diskLabel = project.Available() ? "Project disk" : "App disk";
+            cameras.Post([&, statsPrev, diskFree, diskLabel]
+            {
+                const double now = std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
+                Platform::ProcessUsage self = Platform::QueryProcessUsage(0);
+                double appCpu = self.cpuSeconds;
+                long long appMem = self.residentBytes;
+                int threads = self.threads;
+                int processes = 1;
+                for (const long long pid : controller.WorkerPids())
+                {
+                    const Platform::ProcessUsage w = Platform::QueryProcessUsage(pid);
+                    if (!w.ok) continue;
+                    appCpu += w.cpuSeconds; appMem += w.residentBytes; threads += w.threads; ++processes;
+                }
+                const Platform::SystemUsage sys = Platform::QuerySystemUsage();
+                Json out("stats");
+                out.Add("ok", self.ok && sys.ok).Add("processes", processes).Add("threads", threads)
+                   .Add("appMemory", static_cast<double>(appMem))
+                   .Add("memoryTotal", static_cast<double>(sys.memoryTotalBytes)).Add("memoryAvailable", static_cast<double>(sys.memoryAvailableBytes))
+                   .Add("cpuCount", sys.cpuCount).Add("diskFree", static_cast<double>(diskFree)).Add("diskLabel", diskLabel);
+                const double dt = now - statsPrev->wall;
+                if (statsPrev->wall > 0 && dt > 0.2)
+                {
+                    // % do computador inteiro (todos os núcleos), como o Gerenciador de Tarefas
+                    out.Add("appCpu", std::max(0.0, (appCpu - statsPrev->appCpu) / dt / sys.cpuCount * 100.0));
+                    const double sysDt = sys.cpuTotalSeconds - statsPrev->sysTotal;
+                    out.Add("systemCpu", sysDt > 0 ? std::max(0.0, (sys.cpuBusySeconds - statsPrev->sysBusy) / sysDt * 100.0) : 0.0);
+                }
+                *statsPrev = { now, appCpu, sys.cpuBusySeconds, sys.cpuTotalSeconds };
+                listener.Emit(out);
+            });
+            return "null";
         });
         // projectsFolderInfo() / projectsFolderChange(): a pasta onde os projetos novos são criados
         // (settings.txt, projectsFolder=; padrão <Imagens>/Stillpoint). Change abre o seletor.

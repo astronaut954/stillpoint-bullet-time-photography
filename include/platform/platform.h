@@ -38,6 +38,27 @@ namespace Platform
     // Converte um horário para a hora local do computador.
     std::tm LocalTime(std::time_t t);
 
+    // Uso de recursos (rodapé do Activity, 2.12.4). Leituras baratas: contadores do sistema,
+    // sem percorrer pastas. A % de CPU é calculada por quem chama, com duas amostras.
+    struct ProcessUsage
+    {
+        bool ok = false;
+        double cpuSeconds = 0;        // tempo de CPU acumulado (usuário + sistema)
+        long long residentBytes = 0;  // memória em uso (RSS / working set)
+        int threads = 0;
+    };
+    ProcessUsage QueryProcessUsage(long long pid);  // 0 = este processo
+    struct SystemUsage
+    {
+        bool ok = false;
+        double cpuBusySeconds = 0;    // somados em todos os núcleos
+        double cpuTotalSeconds = 0;   // ocupado + ocioso, somados
+        long long memoryTotalBytes = 0;
+        long long memoryAvailableBytes = 0;
+        int cpuCount = 1;
+    };
+    SystemUsage QuerySystemUsage();
+
     // Processa eventos do sistema por até `milliseconds` (0 = só os pendentes).
     // No Mac, o SDK da Canon entrega eventos das câmeras por aqui; no Windows não faz nada.
     void ProcessEvents(int milliseconds = 0);

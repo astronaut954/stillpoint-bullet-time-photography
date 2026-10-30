@@ -69,6 +69,16 @@ public:
     bool SetCameraPrefix(const std::string& shortName, int newPrefix);
     void SetCameraOrder(const std::vector<std::string>& shortNames);
 
+    // PIDs dos processos de câmera vivos (rodapé do Activity). Chamar na thread das câmeras.
+    std::vector<long long> WorkerPids() const
+    {
+        std::vector<long long> out;
+        for (const auto& w : workers)
+            if (w && w->process && w->process->Pid() > 0)
+                out.push_back(w->process->Pid());
+        return out;
+    }
+
 private:
     struct Worker
     {

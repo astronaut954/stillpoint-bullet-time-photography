@@ -790,7 +790,13 @@ Atualizar esta tabela sempre que uma função mudar de status.
   de projeto às vezes travava a janela por segundos — a cada releitura do projeto o app somava o
   tamanho de todos os arquivos das pastas (lento com RAW / HD externo) e a lista de recentes lia o
   índice de cada pasta; agora o tamanho só é medido ao abrir a janela Project, os recentes só
-  conferem se a pasta existe e o menu abre antes de reler. **Ainda pendente no Windows:** todo
+  conferem se a pasta existe e o menu abre antes de reler. **2.12.4** (branch `etapa-17-uso-sistema`,
+  decisão do dono em 2026-10-30): rodapé do Activity com o uso do computador — Stillpoint (CPU %,
+  memória, 1 + n processos de câmera; threads só em technical details) e computador (CPU %, memória
+  livre/total, espaço livre no disco do projeto); medido só com o Activity aberto, a cada 2 s
+  (`systemStats` → evento `stats`, contadores do sistema via `Platform::QueryProcessUsage/
+  QuerySystemUsage`; nada percorre pastas); entra no "Copy log". Sem GPU/temperatura/rede (não há
+  leitura barata e confiável). **Ainda pendente no Windows:** todo
   o roteiro 23 (botão direito, arrastar, Rename com a pasta aberta no Explorer, apagar + Ctrl+Z,
   Save sessions) e as câmeras reais.
 
