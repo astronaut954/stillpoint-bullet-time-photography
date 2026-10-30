@@ -2720,7 +2720,7 @@
   // ISO, velocidade, abertura... de cada câmera, lidos da própria câmera e mudados na
   // hora. "All cameras" muda em todas as que dá para ajustar. Cada lista só tem os
   // valores que aquela câmera aceita agora.
-  const CS_COLS = [["iso", "ISO"], ["tv", "Shutter"], ["av", "Aperture"], ["expcomp", "Exp. comp."], ["wb", "White balance"],
+  const CS_COLS = [["iso", "ISO"], ["tv", "Shutter"], ["av", "Aperture"], ["expcomp", "Exp. comp."], ["metering", "Metering"], ["wb", "White balance"],
     ["shift", "WB fine-tune"], ["style", "Picture Style"], ["quality", "Quality"], ["focus", "Focus"]];
   // Disparo único (o app põe sozinho; não é escolha). Único silencioso também vale.
   const isSingleShot = (v) => v === 0x00 || v === 0x06 || v === 0x13;
@@ -3181,7 +3181,7 @@
   function copyFromCameraNow(name) {
     const c = camSettings.find((x) => x.camera === name);
     if (!c) return;
-    ["iso", "tv", "av", "expcomp", "style", "quality"].forEach((k) => {
+    ["iso", "tv", "av", "expcomp", "metering", "style", "quality"].forEach((k) => {
       const st = c.settings[k];
       if (st && st.available && st.choices.length) csSet("*", k, st.value);
     });

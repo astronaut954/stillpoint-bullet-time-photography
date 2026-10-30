@@ -89,6 +89,11 @@ namespace
 
     const Table kFocus = { { 0, "One-Shot" }, { 1, "AI Servo" }, { 2, "AI Focus" }, { 3, "MF" } };
 
+    // Modo de medição (etapa 18): kEdsPropID_MeteringMode = 0x00000403 (EDSDK API Reference);
+    // os valores aceitos vêm de cada câmera (EdsGetPropertyDesc), como os outros
+    const EdsPropertyID kPropMeteringMode = 0x00000403;
+    const Table kMetering = { { 1, "Spot" }, { 3, "Evaluative" }, { 4, "Partial" }, { 5, "Center-weighted" } };
+
     const Table kMode = {
         { 0x00, "P" }, { 0x01, "Tv" }, { 0x02, "Av" }, { 0x03, "M" }, { 0x04, "Bulb" }, { 0x05, "A-DEP" },
         { 0x06, "DEP" }, { 0x07, "C" }, { 0x08, "Lock" }, { 0x09, "Auto" }, { 0x0A, "Night Portrait" },
@@ -215,7 +220,7 @@ namespace
     // -----------------------------------------------------------------------
     struct FakeState
     {
-        long long iso = 0x58, tv = 0x70, av = 0x30, expcomp = 0, wb = 1, style = 0x81, drive = 0;
+        long long iso = 0x58, tv = 0x70, av = 0x30, expcomp = 0, wb = 1, style = 0x81, drive = 0, metering = 3;
         int kelvin = 5200, shiftAB = 0, shiftGM = 0, contrast = 0, saturation = 0, colorTone = 0;
     };
     std::map<std::string, FakeState>& FakeStates()
@@ -271,6 +276,7 @@ namespace
         out.settings.push_back(FakeSetting("tv", f.tv, &kTv, { 0x60, 0x68, 0x70, 0x78, 0x80, 0x88, 0x90, 0x98 }));
         out.settings.push_back(FakeSetting("av", f.av, &kAv, { 0x20, 0x28, 0x30, 0x38, 0x40, 0x48 }));
         out.settings.push_back(FakeSetting("expcomp", f.expcomp, &kExposure, { 0xF0, 0xF5, 0xF8, 0xFB, 0xFD, 0x00, 0x03, 0x05, 0x08, 0x0B, 0x10 }));
+        out.settings.push_back(FakeSetting("metering", f.metering, &kMetering, { 1, 3, 4, 5 }));
         out.settings.push_back(FakeSetting("wb", f.wb, &kWhiteBalance, { 0, 1, 2, 3, 4, 5, 8, 9 }));
         out.settings.push_back(FakeSetting("style", f.style, &kPictureStyle, { 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87 }));
         out.settings.push_back(FakeSetting("quality", 0x00130000 | 0x0000FF00 | 0x000000F0 | 0x0000000F, nullptr, { }, true));
@@ -296,6 +302,7 @@ namespace
         else if (key == "tv") f.tv = value;
         else if (key == "av") f.av = value;
         else if (key == "expcomp") f.expcomp = value;
+        else if (key == "metering") f.metering = value;
         else if (key == "wb") f.wb = value;
         else if (key == "style") f.style = value;
         else if (key == "drive") f.drive = value;
@@ -336,6 +343,7 @@ namespace CameraSettingsCanon
         out.settings.push_back(Make(camera, "tv", kEdsPropID_Tv, &kTv));
         out.settings.push_back(Make(camera, "av", kEdsPropID_Av, &kAv));
         out.settings.push_back(Make(camera, "expcomp", kEdsPropID_ExposureCompensation, &kExposure));
+        out.settings.push_back(Make(camera, "metering", kPropMeteringMode, &kMetering));
         out.settings.push_back(Make(camera, "wb", kEdsPropID_WhiteBalance, &kWhiteBalance, true));
         out.settings.push_back(Make(camera, "style", kEdsPropID_PictureStyle, &kPictureStyle));
         out.settings.push_back(Make(camera, "quality", kEdsPropID_ImageQuality, nullptr));
@@ -418,6 +426,7 @@ namespace CameraSettingsCanon
             { "iso", kEdsPropID_ISOSpeed }, { "tv", kEdsPropID_Tv }, { "av", kEdsPropID_Av },
             { "expcomp", kEdsPropID_ExposureCompensation }, { "style", kEdsPropID_PictureStyle },
             { "quality", kEdsPropID_ImageQuality }, { "drive", kEdsPropID_DriveMode },
+            { "metering", kPropMeteringMode },
         };
         if (auto it = simple.find(key); it != simple.end())
             return setU32(it->second, value);

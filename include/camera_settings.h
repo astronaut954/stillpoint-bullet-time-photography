@@ -17,8 +17,8 @@ struct SettingChoice
     std::string label;
 };
 
-// Uma configuração: "iso", "tv", "av", "expcomp", "wb", "style", "quality", "drive" ou
-// "focus" (só leitura). choices vazio = a câmera não deixa mudar agora.
+// Uma configuração: "iso", "tv", "av", "expcomp", "metering", "wb", "style", "quality", "drive"
+// ou "focus" (só leitura). choices vazio = a câmera não deixa mudar agora.
 struct CameraSetting
 {
     std::string key;

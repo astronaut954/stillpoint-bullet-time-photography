@@ -213,6 +213,12 @@ Depois de salvar, o app pergunta se descarta as sessões salvas (Discard from ap
 - [ ] "All cameras": mudar um valor muda em todas. White balance: lista os predefinidos que todas
       aceitam (Daylight, Cloudy...); os valores em Kelvin só aparecem se todas aceitarem Kelvin
       (a SL3 e a T7 não aceitam).
+- [ ] **Metering** (etapa 18, 2.13.0): coluna entre Exp. comp. e White balance com o modo de medição
+      lido da câmera (Evaluative / Partial / Spot / Center-weighted; confira no menu da própria
+      câmera); mudar numa câmera muda nela na hora; em All cameras muda em todas; Cmd/Ctrl+Z volta;
+      "Copy from camera" copia também; Activity "Metering → Spot on T7_1". Câmera em modo que não
+      deixa mudar (ex.: cena automática) → célula com "—". Com modos diferentes entre câmeras, a
+      lista das câmeras marca "Settings differ". Match automatically **não** mexe no Metering.
 - [ ] WB fine-tune (B/A e M/G) muda na câmera.
 - [ ] Copy from camera: todas ficam iguais à escolhida.
 - [ ] Câmera com o disco fora do M (ex.: Auto): linha com o aviso para girar para M; no painel,

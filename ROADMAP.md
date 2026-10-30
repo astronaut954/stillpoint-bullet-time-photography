@@ -600,6 +600,11 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    .xmp, undo de configurações — inclusive rápido, com a trava "cameras still applying" —,
    lixeira com RAW/HD externo, ordem das câmeras) e Windows (compila; sem teste de uso).
 3. **Etapa 18 — Metering mode nas Camera settings** (ver "Futuro"; pequeno).
+   **Feita em 2026-10-30 (branch `etapa-18-metering`, versão 2.13.0).** Coluna "Metering" na tabela
+   e em All cameras (`kEdsPropID_MeteringMode` = 0x0403: 1 Spot, 3 Evaluative, 4 Partial,
+   5 Center-weighted; valores aceitos lidos de cada câmera); Copy from camera copia; Undo como as
+   outras. Fora do Match automatically (decisão do dono pendente — ver "Futuro"). Conferido no
+   navegador com câmera simulada; **pendente** o teste com SL3/T7/T5 (teste-manual 16).
 4. **Etapa 19 — Exportação para impressão lenticular** (ver "Futuro"; precisa do Project).
 5. **Etapa 20 — Edit in Lightroom Classic / Photoshop.** Ida e volta: o app abre os originais
    do Project no Lightroom Classic (o dono do projeto usa o Classic); um plugin do Stillpoint
