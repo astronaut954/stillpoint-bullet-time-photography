@@ -1239,7 +1239,19 @@ html.drag-ns, html.drag-ns * { cursor: ns-resize !important; }
 .export-dest { font: 12px var(--noct-font-mono); color: var(--noct-text); max-width: 420px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; }
 /* Folha de teste de pitch (lenticular, entrega 2) */
 .pitch-overlay { z-index: 13; }
-.dialog.pitch-dialog { width: min(820px, 94vw); max-width: none; max-height: 88vh; display: flex; flex-direction: column; }
+.dialog.pitch-dialog { width: min(820px, 94vw); max-width: none; max-height: 88vh; display: flex; flex-direction: column; animation: none; }
+.pitch-overlay:not(.hidden) .pitch-dialog { animation: noct-in 200ms cubic-bezier(0, 0, 0.2, 1); }
+.dialog.pitch-dialog.with-preview { width: min(1160px, 96vw); }
+.pitch-main { display: flex; gap: 18px; min-height: 0; flex: 1; }
+.pitch-main .pitch-body { flex: 1; min-width: 0; }
+.pitch-preview { flex: 0 0 auto; width: 320px; padding: 4px 22px 14px 0; display: flex; flex-direction: column; gap: 10px; overflow: auto; }
+.pitch-canvas-wrap { position: relative; align-self: center; }
+.pitch-canvas { display: block; border: 1px solid var(--noct-border-strong); cursor: crosshair; }
+.pitch-loupe { position: absolute; pointer-events: none; border: 1px solid var(--noct-primary); box-shadow: 0 0 0 1px #000, 0 6px 20px rgba(0,0,0,.6); image-rendering: pixelated; z-index: 2; }
+.pitch-loupe-tag { position: absolute; pointer-events: none; white-space: nowrap; font: 700 9px var(--noct-font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--noct-primary); background: #000; padding: 2px 5px; z-index: 3; }
+.pitch-dialog .dialog-actions .spacer { flex: 1; }
+.pitch-preview-btn.on { border-color: var(--noct-primary); color: var(--noct-primary); }
 .pitch-dialog .pitch-sub { margin: 0 0 12px; }
 .pitch-body { overflow: auto; display: flex; flex-direction: column; gap: 12px; padding: 4px 22px 14px; min-height: 0; }
 .pitch-range { font: 12px var(--noct-font-mono); color: var(--noct-text); }
+.splash[data-off] { display: none !important; }

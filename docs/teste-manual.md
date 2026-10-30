@@ -846,6 +846,15 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) serve para tudo, menos para a impress
       com o arquivo selecionado em `Imagens/Stillpoint/Exports` (ou `<Projeto>/Exports`). Abrir o TIFF:
       11 faixas listradas com o número em cima de cada uma (3D: faixas uma embaixo da outra, número à
       esquerda). Esc fecha só a janela do teste.
+- [ ] Mudar qualquer opção da janela do teste: a janela não pisca. "Finer steps" passa para 0.05
+      (e mostra 0.05 / 0.02); "Normal steps" volta para 0.1. A nota lista os 11 valores das faixas.
+- [ ] **Preview** (canto de baixo à esquerda): mostra a folha inteira reduzida à direita; com o mouse
+      em cima, a lupa mostra as listras no tamanho real (2×). "Hide preview" esconde.
+- [ ] Rodapé da janela de salvar: **Print pitch test** entre Cancel e Save, apagado sem Lenticular e
+      ativo com ele. Salvar com Lenticular sem "Measured pitch": pergunta "Print a pitch test first?"
+      (Print pitch test / Save anyway / Don't ask again). Com "Measured pitch" preenchido, não pergunta.
+- [ ] Settings → **Opening** Off → fechar e abrir o app: abre direto na tela principal, sem o logo e a
+      chuva de código. On volta.
 - [ ] Save sessions → Lenticular → Lens sheet: "Print pitch test…" abre a mesma janela com a lâmina e a
       impressora escolhidas ali. Com "Measured pitch" preenchido (ex.: 59.8), as faixas ficam em volta
       dele (59.3 to 60.3).

@@ -3562,7 +3562,19 @@ namespace
             });
         }
 
-        window.set_html(LoadPage("index.html", theme));
+        {
+            // Abertura desligada em Settings (pref.splash=off): a página já vem sem ela
+            std::string page = LoadPage("index.html", theme);
+            const auto opening = LoadSettings();
+            if (opening.count("pref.splash") && opening.at("pref.splash") == "off")
+            {
+                const std::string marker = "id=\"splash\"";
+                const auto pos = page.find(marker);
+                if (pos != std::string::npos)
+                    page.insert(pos + marker.size(), " data-off=\"1\"");
+            }
+            window.set_html(page);
+        }
 
         // Vigia de monitores: a cada 2 s, se a lista mudou (TV ligada/desligada), avisa as
         // janelas Live (evento "screens"); a página em tela cheia num monitor que sumiu

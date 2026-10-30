@@ -19,6 +19,8 @@
     const root = $("splash");
     const canvas = $("splashRain");
     if (!root || !canvas) return;
+    // Desligada em Settings (o programa marca a página com data-off ao montar)
+    if (root.dataset.off === "1") { root.remove(); return; }
     const reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const LOGO_AT = reduced ? 0 : 2300;   // ms até o logo aparecer
     const LEAVE_AT = reduced ? 1200 : 4600; // ms até a abertura começar a sumir
@@ -1568,10 +1570,13 @@
     clearTimeout(exportPrefsTimer);
     exportPrefsTimer = setTimeout(() => window.savePref("export", JSON.stringify(exportPrefs)), 300);
   }
+  const startPrefs = { splash: true };  // abertura (logo + chuva de código) ao abrir o app
   function loadPrefs(info) {
     const prefs = (info && info.prefs) || {};
     try { exportPrefs = prefs.export ? JSON.parse(prefs.export) : null; } catch (e) { exportPrefs = null; }
     if (exportPrefs && typeof exportPrefs.sameForAll === "boolean") exp.sameForAll = exportPrefs.sameForAll;
+    pitchAsk = prefs.pitchAsk !== "off";
+    startPrefs.splash = prefs.splash !== "off";
   }
   function settingsFor(name) {
     if (!exp.settings[name]) exp.settings[name] = defaultSettings();
@@ -1761,6 +1766,8 @@
     // Aviso que impede salvar (ou que pede atenção): em amarelo
     $("exportCount").classList.toggle("warn", partial.length > 0 || noOutput || photosEmpty || lentBad || seqEmpty);
     $("exportConfirm").disabled = chosen === 0 || noOutput || seqEmpty || lentBad || photosEmpty;
+    // Folha de teste: só com o Lenticular marcado em alguma sessão escolhida
+    $("exportPitch").disabled = !lentSession();
     $("exportConfirm").textContent = chosen ? (exp.project ? "Export " : "Save ") + plural(chosen, "session", "sessions") : (exp.project ? "Export" : "Save");
     $("exportSelectAll").disabled = chosen === all.length;
     $("exportUnselectAll").disabled = chosen === 0;
@@ -1864,68 +1871,169 @@
   }
 
   // ---- Folha de teste de pitch (entrega 2) ----
-  // Abre de dois lugares: o botão na seção Lenticular (com a lâmina e a impressora dela) e o
-  // ícone da tela principal (com as últimas usadas). 11 faixas em volta do LPI (ou do pitch já
-  // medido): de 0,1 em 0,1 por padrão; "Finer steps" (discreto) para 0,05 ou 0,02.
-  const pitchState = { l: null, step: 0.1, fine: false };
+  // Abre de três lugares: "Print pitch test…" na seção Lenticular, o botão no rodapé da janela de
+  // salvar e o ícone da tela principal. 11 faixas, cada uma desenhada para um LPI um pouco
+  // diferente, em volta do LPI da lâmina (ou do pitch já medido): de 0,1 em 0,1 por padrão;
+  // "Finer steps" (discreto) para 0,05 ou 0,02 numa segunda folha, mais precisa.
+  // A janela é montada uma vez; ao mudar uma opção só o conteúdo é refeito (sem piscar).
+  const pitchState = { l: null, step: 0.1, fine: false, preview: false };
+  const PITCH_STRIPS = 11;
   function openPitchTest(from) {
     const base = from || (exportPrefs && exportPrefs.settings && exportPrefs.settings.lent) || defaultSettings().lent;
-    // Cópia: mexer aqui não muda a impressão; o tamanho começa em A4 (ou Letter em polegadas)
+    // Cópia: mexer aqui não muda a impressão; o papel começa em A4 (ou Letter em polegadas)
     const l = JSON.parse(JSON.stringify(base));
     l.widthCm = l.unit === "in" ? 8.5 * CM_PER_IN : 21; l.heightCm = l.unit === "in" ? 11 * CM_PER_IN : 29.7;
-    pitchState.l = l; pitchState.target = from || null;
-    pitchState.step = 0.1; pitchState.fine = false;
+    Object.assign(pitchState, { l, step: 0.1, fine: false });
     let ov = $("pitchOverlay");
     if (!ov) {
       ov = el("div", "overlay pitch-overlay hidden"); ov.id = "pitchOverlay";
       ov.addEventListener("click", (e) => { if (e.target === ov) closePitchTest(); });
+      const d = el("div", "dialog pitch-dialog");
+      d.appendChild(el("h3", "", "Pitch test"));
+      d.appendChild(el("p", "pitch-sub", "Measures the real LPI of your lens sheet with your printer. Print the sheet at 100%, lay the lens sheet on top " +
+        "(strips in the same direction) and tilt it slowly: the strip that turns black or white all at once, with no bands moving across it, is your real pitch. " +
+        "Type its number in \"Measured pitch\" in the Lenticular settings."));
+      const main = el("div", "pitch-main");
+      main.append(el("div", "pitch-body"), el("div", "pitch-preview hidden"));
+      d.appendChild(main);
+      const actions = el("div", "dialog-actions");
+      const prev = button("Preview", () => { pitchState.preview = !pitchState.preview; renderPitchTest(); }, { title: "See the sheet before saving" });
+      prev.classList.add("pitch-preview-btn");
+      actions.appendChild(prev);
+      actions.appendChild(el("span", "spacer"));
+      actions.appendChild(button("Cancel", closePitchTest));
+      const ok = button("Save pitch test", savePitchTest, { kind: "btn-primary" });
+      ok.classList.add("pitch-save");
+      actions.appendChild(ok);
+      d.appendChild(actions);
+      ov.appendChild(d);
       document.body.appendChild(ov);
     }
+    if (typeof window.exportDestination === "function" && !exp.destDefault)
+      Promise.resolve(window.exportDestination()).then((r) => { if (r) { exp.destDefault = r.folder; renderPitchTest(); } });
     renderPitchTest();
     ov.classList.remove("hidden");
   }
   function closePitchTest() { const ov = $("pitchOverlay"); if (ov) ov.classList.add("hidden"); }
+  // Mesmas contas do programa (Export::WritePitchTest): margens, faixas, área do número
+  function pitchLayout(l, step) {
+    const dpi = l.dpi, W = Math.round(l.widthCm / CM_PER_IN * dpi), H = Math.round(l.heightCm / CM_PER_IN * dpi);
+    const horizontal = l.effect !== "3d", center = l.pitch > 0 ? l.pitch : l.lpi;
+    const edge = Math.round(0.25 * dpi), gap = Math.max(2, Math.round(0.08 * dpi));
+    const digitScale = Math.max(1, Math.round(0.16 * dpi / 7)), decimals = step < 0.0999 ? 2 : 1;
+    let label = Math.round(0.45 * dpi);
+    if (!horizontal) label = Math.max(label, ((decimals === 2 ? 6 : 5) * 6 - 1) * digitScale + Math.round(0.2 * dpi));
+    const along = horizontal ? W : H, across = horizontal ? H : W;
+    const band = Math.max(1, Math.floor((along - 2 * edge - gap * (PITCH_STRIPS - 1)) / PITCH_STRIPS));
+    const first = center - step * (PITCH_STRIPS - 1) / 2;
+    const lpis = Array.from({ length: PITCH_STRIPS }, (_, b) => first + step * b);
+    const bandAt = (p) => { const q = p - edge; if (q < 0) return -1; const b = Math.floor(q / (band + gap)); return b >= PITCH_STRIPS || q - b * (band + gap) >= band ? -1 : b; };
+    // 0 = preto, 255 = branco (sem os números)
+    const at = (x, y) => {
+      const p = horizontal ? x : y, a = horizontal ? y : x, b = bandAt(p);
+      if (b < 0 || a < edge + label || a >= across - edge) return 255;
+      const pos = (a - edge - label + 0.5) * lpis[b] / dpi;
+      return pos - Math.floor(pos) < 0.5 ? 0 : 255;
+    };
+    return { W, H, horizontal, center, edge, gap, label, band, lpis, decimals, digitScale, at, across };
+  }
   function renderPitchTest() {
     const ov = $("pitchOverlay"), l = pitchState.l;
-    const scroll = ov.querySelector(".pitch-body") ? ov.querySelector(".pitch-body").scrollTop : 0;
-    ov.innerHTML = "";
-    const d = el("div", "dialog pitch-dialog");
-    d.appendChild(el("h3", "", "Pitch test"));
-    d.appendChild(el("p", "pitch-sub", "Measures the real LPI of your lens sheet with your printer. Print the sheet at 100%, lay the lens sheet on top " +
-      "(strips in the same direction) and tilt it: the strip that turns black or white all at once, with no bands, is your real pitch. " +
-      "Type its number in \"Measured pitch\" in the Lenticular settings."));
-    const body = el("div", "pitch-body");
+    if (!ov || !l) return;
+    const body = ov.querySelector(".pitch-body");
+    const scroll = body.scrollTop;
+    body.innerHTML = "";
     const rerender = () => renderPitchTest();
     lentEffectRows(l, body, rerender, { noReverse: true });
     lentLensRows(l, body, rerender);
     lentPrinterRows(l, body, rerender);
     lentSizeRow(l, body, rerender, "Paper size");
-    // 11 faixas em volta do LPI (ou do pitch medido, se já houver)
-    const center = l.pitch > 0 ? l.pitch : l.lpi;
-    const step = pitchState.step, half = step * 5, dec = step < 0.0999 ? 2 : 1;
+    const step = pitchState.step, P = pitchLayout(l, step);
+    const lo = P.lpis[0].toFixed(P.decimals), hi = P.lpis[PITCH_STRIPS - 1].toFixed(P.decimals);
     const strips = row("Strips");
-    strips.appendChild(el("span", "pitch-range", "11 strips · " + (center - half).toFixed(dec) + " to " + (center + half).toFixed(dec) + " LPI, every " + step));
-    if (!pitchState.fine) strips.appendChild(button("Finer steps", () => { pitchState.fine = true; rerender(); }, { kind: "btn-link", title: "Smaller steps around the value, for a second, more precise test" }));
-    else strips.appendChild(segmented([["0.1", "0.1"], ["0.05", "0.05"], ["0.02", "0.02"]], String(step), (v) => { pitchState.step = Number(v); rerender(); }));
+    strips.appendChild(el("span", "pitch-range", PITCH_STRIPS + " strips · " + lo + " to " + hi + " LPI"));
+    if (!pitchState.fine) strips.appendChild(button("Finer steps", () => { pitchState.fine = true; pitchState.step = 0.05; rerender(); }, { kind: "btn-link", title: "Smaller steps, for a second and more precise test" }));
+    else {
+      strips.appendChild(segmented([["0.05", "every 0.05"], ["0.02", "every 0.02"]], String(step), (v) => { pitchState.step = Number(v); rerender(); }));
+      strips.appendChild(button("Normal steps", () => { pitchState.fine = false; pitchState.step = 0.1; rerender(); }, { kind: "btn-link" }));
+    }
     body.appendChild(strips);
-    if (l.pitch > 0) body.appendChild(el("div", "export-note", "Centered on your measured pitch (" + l.pitch + "). For a second, more precise test, use finer steps."));
-    const W = Math.round(l.widthCm / CM_PER_IN * l.dpi), H = Math.round(l.heightCm / CM_PER_IN * l.dpi);
-    body.appendChild(el("div", "export-note", W + " × " + H + " px, black and white TIFF · saved in " + (exp.destDefault || "the Exports folder") + " and shown in the " + (upd.info && upd.info.os === "windows" ? "Explorer" : "Finder") + "."));
-    d.appendChild(body);
-    const actions = el("div", "dialog-actions");
-    actions.appendChild(button("Cancel", closePitchTest));
-    const ok = button("Save pitch test", () => {
-      if (typeof window.lenticularPitchTest !== "function") { toast("This build cannot do that yet. Build the app again.", 8000); return; }
-      if (!(center > 0 && l.dpi > 0 && l.widthCm > 0 && l.heightCm > 0)) { toast("Check the lens, printer and size values.", 6000, { warn: true }); return; }
-      ok.disabled = true;
-      window.lenticularPitchTest(String(l.dpi), (l.widthCm / CM_PER_IN).toFixed(4), (l.heightCm / CM_PER_IN).toFixed(4), l.effect, String(center), String(step), "");
-      toast("Making the pitch test sheet…");
-      closePitchTest();
-    }, { kind: "btn-primary" });
-    actions.appendChild(ok);
-    d.appendChild(actions);
-    ov.appendChild(d);
-    const nb = ov.querySelector(".pitch-body"); if (nb) nb.scrollTop = scroll;
+    body.appendChild(el("div", "export-note", "Each strip is printed for a slightly different LPI: " + P.lpis.map((v) => v.toFixed(P.decimals)).join(", ") + ". " +
+      (pitchState.fine ? "Finer steps: for a second sheet, after the first one showed roughly where your value is."
+        : "Start with this sheet (steps of 0.1). If two neighbouring strips look equally smooth, type the better one in \"Measured pitch\" and print again with finer steps around it.") +
+      (l.pitch > 0 ? " Centered on your measured pitch (" + l.pitch + ")." : "")));
+    body.appendChild(el("div", "export-note", P.W + " × " + P.H + " px, black and white TIFF · saved in " + (exp.destDefault || "the Exports folder") + " and shown in the " + (upd.info && upd.info.os === "windows" ? "Explorer" : "Finder") + "."));
+    body.scrollTop = scroll;
+    ov.querySelector(".pitch-dialog").classList.toggle("with-preview", pitchState.preview);
+    const pbtn = ov.querySelector(".pitch-preview-btn");
+    pbtn.classList.toggle("on", pitchState.preview);
+    pbtn.textContent = pitchState.preview ? "Hide preview" : "Preview";
+    drawPitchPreview(P);
+  }
+  // Prévia da folha: a página inteira reduzida (as listras aparecem maiores do que são, só para mostrar
+  // a direção) e, com o mouse em cima, uma lupa com as listras de verdade (2×)
+  function drawPitchPreview(P) {
+    const pane = $("pitchOverlay").querySelector(".pitch-preview");
+    pane.classList.toggle("hidden", !pitchState.preview);
+    if (!pitchState.preview) return;
+    pane.innerHTML = "";
+    const maxW = 300, maxH = 420, sc = Math.min(maxW / P.W, maxH / P.H);
+    const cw = Math.max(1, Math.round(P.W * sc)), ch = Math.max(1, Math.round(P.H * sc));
+    const c = document.createElement("canvas"); c.width = cw * 2; c.height = ch * 2; c.style.width = cw + "px"; c.style.height = ch + "px";
+    c.className = "pitch-canvas";
+    const g = c.getContext("2d"); g.scale(2 * sc, 2 * sc);
+    g.fillStyle = "#fff"; g.fillRect(0, 0, P.W, P.H);
+    const s = 1 / sc;  // um pixel da prévia, em pixels da folha
+    for (let b = 0; b < PITCH_STRIPS; b++) {
+      const p0 = P.edge + b * (P.band + P.gap), a0 = P.edge + P.label, a1 = P.across - P.edge;
+      // listras de 3 px da prévia (bem maiores que as reais): só a direção e a área
+      g.fillStyle = "#000";
+      for (let a = a0; a < a1; a += 6 * s) {
+        if (P.horizontal) g.fillRect(p0, a, P.band, 3 * s); else g.fillRect(a, p0, 3 * s, P.band);
+      }
+      g.fillStyle = "#000";
+      const fontPx = 7 * P.digitScale;
+      g.font = "600 " + fontPx + "px 'JetBrains Mono', monospace"; g.textBaseline = "middle"; g.textAlign = "center";
+      const t = P.lpis[b].toFixed(P.decimals);
+      if (P.horizontal) g.fillText(t, p0 + P.band / 2, P.edge + P.label / 2);
+      else g.fillText(t, P.edge + P.label / 2, p0 + P.band / 2);
+    }
+    const wrap = el("div", "pitch-canvas-wrap");
+    wrap.appendChild(c);
+    const loupe = document.createElement("canvas"); loupe.width = 160; loupe.height = 160; loupe.className = "pitch-loupe hidden";
+    const tag = el("span", "pitch-loupe-tag hidden", "2× · real stripes");
+    wrap.append(loupe, tag);
+    pane.appendChild(wrap);
+    pane.appendChild(el("div", "export-note", "Whole sheet, reduced: the stripes are drawn bigger than they print, only to show where they go. Move the mouse over it to see them at their real size (2×)."));
+    c.addEventListener("pointermove", (e) => {
+      const r = c.getBoundingClientRect();
+      const fx = Math.round((e.clientX - r.left) / r.width * P.W), fy = Math.round((e.clientY - r.top) / r.height * P.H);
+      const n = loupe.width / 2;  // 80 px da folha viram 160
+      const img = loupe.getContext("2d").createImageData(loupe.width, loupe.height);
+      for (let y = 0; y < loupe.height; y++)
+        for (let x = 0; x < loupe.width; x++) {
+          const v = P.at(fx - n / 2 + (x >> 1), fy - n / 2 + (y >> 1)), k = (y * loupe.width + x) * 4;
+          img.data[k] = img.data[k + 1] = img.data[k + 2] = v; img.data[k + 3] = 255;
+        }
+      loupe.getContext("2d").putImageData(img, 0, 0);
+      const wr = wrap.getBoundingClientRect();
+      let lx = e.clientX - wr.left + 14, ly = e.clientY - wr.top + 14;
+      if (lx + loupe.width > wr.width) lx = e.clientX - wr.left - loupe.width - 14;
+      if (ly + loupe.height > wr.height) ly = e.clientY - wr.top - loupe.height - 14;
+      lx = Math.max(0, lx); ly = Math.max(0, ly);
+      loupe.style.left = lx + "px"; loupe.style.top = ly + "px";
+      tag.style.left = (lx + 4) + "px"; tag.style.top = (ly + 4) + "px";
+      loupe.classList.remove("hidden"); tag.classList.remove("hidden");
+    });
+    c.addEventListener("pointerleave", () => { loupe.classList.add("hidden"); tag.classList.add("hidden"); });
+  }
+  function savePitchTest() {
+    const l = pitchState.l, P = pitchLayout(l, pitchState.step);
+    if (typeof window.lenticularPitchTest !== "function") { toast("This build cannot do that yet. Build the app again.", 8000); return; }
+    if (!(P.center > 0 && l.dpi > 0 && l.widthCm > 0 && l.heightCm > 0)) { toast("Check the lens, printer and size values.", 6000, { warn: true }); return; }
+    window.lenticularPitchTest(String(l.dpi), (l.widthCm / CM_PER_IN).toFixed(4), (l.heightCm / CM_PER_IN).toFixed(4), l.effect, String(P.center), String(pitchState.step), "");
+    toast("Making the pitch test sheet…");
+    closePitchTest();
   }
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && $("pitchOverlay") && !$("pitchOverlay").classList.contains("hidden") && !selectMenu) { e.stopImmediatePropagation(); closePitchTest(); } }, true);
 
@@ -2621,9 +2729,28 @@
     jpeg.forEach((c) => { if (raw.has(c)) jpeg.delete(c); });
     return raw.size && jpeg.size ? { raw: [...raw].sort(), jpeg: [...jpeg].sort() } : null;
   }
+  // Sessão escolhida com o Lenticular marcado (a aberta, se for o caso)
+  function lentSession() {
+    const names = [exp.active].concat([...exp.selected]).filter((n) => exp.selected.has(n));
+    return names.find((n) => settingsFor(n).outputs.lenticular) || null;
+  }
+  let pitchAsk = true;  // "Don't ask again" (pref.pitchAsk = "off")
   function confirmExport() {
     const chosen = exp.selected.size;
     if (!chosen) return;
+    // Lenticular com o LPI de fábrica (sem pitch medido): sugere a folha de teste antes
+    const lentName = lentSession();
+    if (lentName && pitchAsk && !exp.pitchChecked && !(settingsFor(lentName).lent.pitch > 0)) {
+      const l = settingsFor(lentName).lent;
+      dialog("Print a pitch test first?",
+        "The lenticular print uses the LPI on the lens package (" + l.lpi + "). Real lens sheets differ a little with each printer, and a small " +
+        "difference makes the effect blurry or striped. A pitch test (one sheet) shows the real value: type it in \"Measured pitch\" and then save.", [
+        { label: "Don't ask again", link: true, onClick: () => { pitchAsk = false; window.savePref("pitchAsk", "off"); exp.pitchChecked = true; confirmExport(); exp.pitchChecked = false; } },
+        { label: "Print pitch test", onClick: () => openPitchTest(l) },
+        { label: "Save anyway", primary: true, onClick: () => { exp.pitchChecked = true; confirmExport(); exp.pitchChecked = false; } },
+      ]);
+      return;
+    }
     const mixed = mixedFormats();
     if (mixed && !exp.formatsChecked) {
       dialog("Not every camera sent RAW",
@@ -2650,6 +2777,7 @@
   $("exportUnselectAll").addEventListener("click", () => { exp.selectedTouched = true; exp.selected.clear(); renderExportList(); updateExportCount(); });
   $("exportCancel").addEventListener("click", closeExport);
   $("exportConfirm").addEventListener("click", confirmExport);
+  $("exportPitch").addEventListener("click", () => { const n = lentSession(); if (n) openPitchTest(settingsFor(n).lent); });
   $("progressCancel").addEventListener("click", () => {
     $("progressCancel").disabled = true;
     $("progressStep").textContent = "Cancelling…";
@@ -3361,6 +3489,13 @@
     $("settingsLanguages").innerHTML = "";
     $("settingsLanguages").appendChild(segmented(languages.map((l) => [l.id, l.name]), prefs.language, (v) => saveSettings(prefs.theme, v)));
     $("settingsRestart").classList.toggle("hidden", !prefs.restart);
+    // Abertura: vale da próxima vez que o app abrir
+    $("settingsSplash").innerHTML = "";
+    $("settingsSplash").appendChild(segmented([["on", "On"], ["off", "Off"]], startPrefs.splash ? "on" : "off", (v) => {
+      startPrefs.splash = v === "on";
+      Promise.resolve(window.savePref("splash", v)).then(() => log("Opening animation " + v, "tech"));
+      renderSettings();
+    }));
     // Modo debug: vale na hora
     $("settingsDebug").innerHTML = "";
     $("settingsDebug").appendChild(segmented([["off", "Off"], ["on", "On"]], prefs.debug ? "on" : "off", (v) => {
@@ -5204,11 +5339,7 @@
   $("liveBtn").addEventListener("click", () => { log("Live view opened", "tech"); window.openLive("1"); });
   // Folha de teste do lenticular direto da tela principal (sem abrir a janela de salvar)
   $("pitchBtn").innerHTML = icon("lens", 15);
-  $("pitchBtn").addEventListener("click", () => {
-    if (typeof window.exportDestination === "function" && !exp.destDefault)
-      Promise.resolve(window.exportDestination()).then((d) => { if (d) exp.destDefault = d.folder; if ($("pitchOverlay") && !$("pitchOverlay").classList.contains("hidden")) renderPitchTest(); });
-    openPitchTest(null);
-  });
+  $("pitchBtn").addEventListener("click", () => openPitchTest(null));
   window.liveShootRequest = () => { if (!ui.shootBtn.disabled && !(busy && busyAction === "shoot")) ui.shootBtn.click(); };
   window.liveCancelRequest = () => cancelShoot();
   // Som do disparo (contagem, "it's bullet time", bip dos grupos): ajuste do app, guardado em
