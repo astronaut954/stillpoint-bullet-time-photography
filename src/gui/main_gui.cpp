@@ -1853,6 +1853,19 @@ namespace
             }
             return Json("recent").Raw("projects", list + "]").Str();
         });
+        // projectRecentSet(pastas…): substitui a lista de recentes ("Clear recent" e o seu Desfazer)
+        window.bind("projectRecentSet", [&](const std::string& request) -> std::string
+        {
+            const auto folders = ParseStringArgs(request);
+            auto settings = LoadSettings();
+            std::string joined;
+            for (const auto& f : folders)
+                if (!f.empty())
+                    joined += (joined.empty() ? "" : "|") + f;
+            settings["recentProjects"] = joined;
+            SaveSettings(settings);
+            return Json("recent").Add("count", static_cast<int>(folders.size())).Str();
+        });
         // projectInfo(): estado atual (para abrir a janela Project)
         window.bind("projectInfo", [&](const std::string& request) -> std::string
         {

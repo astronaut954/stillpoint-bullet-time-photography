@@ -3837,6 +3837,8 @@
           label: p.name, name: true, sub: p.available ? "" : "not reachable", disabled: !p.available, dim: !p.available,
           onClick: () => Promise.resolve(window.projectOpen(p.folder)).then(projectResult),
         }));
+        // Limpa a lista (o projeto aberto continua lembrado); Cmd/Ctrl+Z devolve
+        if (typeof window.projectRecentSet === "function") items.push({ label: "Clear recent", dim: true, onClick: () => clearRecentProjects(((r && r.projects) || []).map((p) => p.folder)) });
         items.push("-");
       }
       items.push({ label: project.open ? "Switch project…" : "Open project…", onClick: pickProject });  // a mesma janela de recentes do "Switch…"
@@ -4141,6 +4143,14 @@
       },
       (v) => callProject("projectNew", v).then(projectResult),
       { extra: { label: "Choose another folder…", onClick: () => callProject("projectNew", "").then(projectResult) } });
+  }
+  function clearRecentProjects(all) {
+    const keep = all.filter((f) => project.open && f === project.folder);
+    const apply = (list) => Promise.resolve(window.projectRecentSet(...list));
+    apply(keep).then(() => {
+      toast("Recent projects cleared");
+      recordAction({ label: "Clear recent projects", undo: () => apply(all), redo: () => apply(keep) });
+    });
   }
   function renderProjectsFolder() {
     const el_ = $("settingsProjectsFolder");

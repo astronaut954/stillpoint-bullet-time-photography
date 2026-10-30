@@ -796,7 +796,8 @@ Atualizar esta tabela sempre que uma função mudar de status.
   livre/total, espaço livre no disco do projeto); medido só com o Activity aberto, a cada 2 s
   (`systemStats` → evento `stats`, contadores do sistema via `Platform::QueryProcessUsage/
   QuerySystemUsage`; nada percorre pastas); entra no "Copy log". Sem GPU/temperatura/rede (não há
-  leitura barata e confiável). **Ainda pendente no Windows:** todo
+  leitura barata e confiável). **2.12.5** (branch `etapa-17-recentes`): "Clear recent" no menu do
+  projeto, com Desfazer (`projectRecentSet`). **Ainda pendente no Windows:** todo
   o roteiro 23 (botão direito, arrastar, Rename com a pasta aberta no Explorer, apagar + Ctrl+Z,
   Save sessions) e as câmeras reais.
 
