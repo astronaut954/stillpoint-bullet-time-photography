@@ -1413,14 +1413,18 @@
   const PRINTER_HELP = "Use the printer's native resolution, not the maximum: Epson photo printers work at 720 or 1440 dpi; HP and Canon at 600 or 1200. For a print shop, ask them.";
   const CM_PER_IN = 2.54;
   function qualityLabel(q) { return QUALITIES.find((x) => x[0] === q)[1]; }
+  // As três saídas de uma sessão (seções da janela de salvar); a chave de configuração de cada uma
+  const OUTPUTS = [["photos", "Photos", "one file per camera"], ["sequence", "Sequence", "video or animated image"],
+                   ["lenticular", "Lenticular", "interlaced TIFF for a lens sheet"]];
+  const OUTPUT_KINDS = OUTPUTS.map(([k]) => k);
+  const OUTPUT_KEYS = ["outputs", "photos", "seq", "lent", "naming"];
   const exp = { mode: "photos", exitAfter: false, selected: new Set(), active: "", settings: {}, heic: { ok: true, reason: "" },
                 timer: null, frame: 0, photo: 0, sameForAll: true, project: false };
 
-  // Configuração da sessão aberta igual nas outras (só a parte do modo atual e o nome)
-  function settingsKey() { return exp.mode === "photos" ? "photos" : exp.mode === "lenticular" ? "lent" : "seq"; }
+  // Configuração da sessão aberta igual nas outras (saídas ligadas, as três configurações e o nome)
   function sameAsActive(name) {
-    const a = settingsFor(exp.active), o = settingsFor(name), k = settingsKey();
-    return JSON.stringify(a[k]) === JSON.stringify(o[k]) && JSON.stringify(a.naming) === JSON.stringify(o.naming);
+    const a = settingsFor(exp.active), o = settingsFor(name);
+    return OUTPUT_KEYS.every((k) => JSON.stringify(a[k]) === JSON.stringify(o[k]));
   }
   // "Same settings for all sessions" ligado: o que muda na sessão aberta vale para todas
   function syncAll() {
@@ -1429,10 +1433,7 @@
     sessions.forEach((o) => {
       if (o.name === exp.active) return;
       const t = settingsFor(o.name);
-      t.photos = JSON.parse(JSON.stringify(st.photos));
-      t.seq = JSON.parse(JSON.stringify(st.seq));
-      t.lent = JSON.parse(JSON.stringify(st.lent));
-      t.naming = JSON.parse(JSON.stringify(st.naming));
+      OUTPUT_KEYS.forEach((k) => { t[k] = JSON.parse(JSON.stringify(st[k])); });
     });
   }
 
@@ -1441,13 +1442,22 @@
   let exportPrefs = null;
   function defaultSettings() {
     const base = { naming: { kind: "date", text: "", date: true, position: "after" },
+                   outputs: { photos: true, sequence: false, lenticular: false },
                    photos: { format: "original", quality: "high" },
                    seq: { formats: ["mp4"], fps: 6, loops: 3, reverse: true, height: 1080, alsoPhotos: true, quality: "high" },
                    // lpi: lâmina; pitch: medido na folha de teste (0 = usar o nominal); dpi: impressora;
                    // tamanho em cm (unit "cm"|"in" só muda a exibição); effect "flip" (animação) | "3d"
                    lent: { lpi: 60, pitch: 0, dpi: 720, widthCm: 15, heightCm: 10, unit: "cm", effect: "flip", reverse: false } };
     const p = exportPrefs && exportPrefs.settings;
-    if (p) ["naming", "photos", "seq", "lent"].forEach((k) => { if (p[k] && typeof p[k] === "object") Object.assign(base[k], JSON.parse(JSON.stringify(p[k]))); });
+    if (p) ["naming", "outputs", "photos", "seq", "lent"].forEach((k) => { if (p[k] && typeof p[k] === "object") Object.assign(base[k], JSON.parse(JSON.stringify(p[k]))); });
+    // Preferências de antes da 2.14 (um modo só): o modo vira a saída ligada; Sequence com
+    // "Also save the photos" liga Photos (Original) também
+    if (p && !p.outputs && exportPrefs.mode) {
+      const m = exportPrefs.mode;
+      base.outputs = { photos: m === "photos" || (m === "sequence" && p.seq && p.seq.alsoPhotos !== false), sequence: m === "sequence", lenticular: m === "lenticular" };
+      if (m === "sequence" && base.outputs.photos) base.photos.format = "original";
+    }
+    delete base.seq.alsoPhotos;
     return base;
   }
   let exportPrefsTimer = null;
@@ -1500,31 +1510,41 @@
   function summaryText(session) {
     return folderName(session) + " · " + settingsText(session);
   }
+  // Lista de sessões: as saídas ligadas, curtas ("Original + MP4 + Lenticular 60/720")
   function settingsText(session) {
     const st = settingsFor(session.name);
-    if (exp.mode === "photos")
-      return "→ " + PHOTO_FORMATS.find((f) => f[0] === st.photos.format)[1] +
-        (LOSSY_PHOTOS.includes(st.photos.format) ? " · " + qualityLabel(st.photos.quality) : "");
-    if (exp.mode === "lenticular") {
+    const parts = [];
+    if (st.outputs.photos) parts.push(PHOTO_FORMATS.find((f) => f[0] === st.photos.format)[1]);
+    if (st.outputs.sequence) parts.push(st.seq.formats.length ? st.seq.formats.map((f) => f.toUpperCase()).join(" · ") : "no sequence format");
+    if (st.outputs.lenticular) {
       const l = st.lent, plan = lentPlan(l, sessionItems(session).filter((i) => i.previewable).length);
-      return "TIFF · " + lentPitch(l) + " LPI · " + l.dpi + " dpi · " + lentSizeText(l) + " · " + (l.effect === "3d" ? "3D" : "Animation") + (plan.warn ? " · ⚠" : "");
+      parts.push("Lenticular " + lentPitch(l) + "/" + l.dpi + (plan.warn ? " ⚠" : ""));
+    }
+    return parts.length ? "→ " + parts.join(" + ") : "Nothing to save";
+  }
+  // Cabeçalho de cada seção: o resumo daquela saída
+  function outputText(session, kind) {
+    const st = settingsFor(session.name);
+    if (kind === "photos")
+      return PHOTO_FORMATS.find((f) => f[0] === st.photos.format)[1] + (LOSSY_PHOTOS.includes(st.photos.format) ? " · " + qualityLabel(st.photos.quality) : "");
+    if (kind === "lenticular") {
+      const l = st.lent, plan = lentPlan(l, sessionItems(session).filter((i) => i.previewable).length);
+      return lentPitch(l) + " LPI · " + l.dpi + " dpi · " + lentSizeText(l) + " · " + (l.effect === "3d" ? "3D" : "Animation") + (plan.warn ? " · ⚠" : "");
     }
     const s = st.seq;
     if (!s.formats.length) return "No format chosen";
-    return s.formats.map((f) => f.toUpperCase()).join(" · ") + " · " + s.fps + " fps · " + plural(s.loops, "loop", "loops") +
-      " · " + seconds(seqTotal(session, s).seconds) + " · " + qualityLabel(s.quality);
+    return s.formats.map((f) => f.toUpperCase()).join(" · ") + " · " + s.fps + " fps · " + plural(s.loops, "loop", "loops") + " · " + seconds(seqTotal(session, s).seconds);
   }
 
+  // Save sessions abre direto a janela com as três saídas (a escolha de modo saiu na 2.14)
   function startSave(exitAfter) {
     if (!sessions.length) return;
     exp.exitAfter = exitAfter;
-    $("modeText").textContent = "How do you want to save " + (sessions.length === 1 ? "the session" : "the " + sessions.length + " sessions") + "?";
-    $("modeOverlay").classList.remove("hidden");
+    openExport();
   }
 
-  function openExport(mode, projectNames) {
-    $("modeOverlay").classList.add("hidden");
-    exp.mode = mode;
+  function openExport(projectNames) {
+    if (exportPrefs && OUTPUT_KINDS.includes(exportPrefs.mode)) exp.mode = exportPrefs.mode;
     exp.project = Array.isArray(projectNames);
     const all = exportable();
     // Salvando para fechar: só as que ainda não foram salvas (as já salvas ficam marcadas fora)
@@ -1554,15 +1574,8 @@
   }
 
   function renderExport() {
-    const seq = exp.mode === "sequence", lent = exp.mode === "lenticular";
-    if (!lent) { exp.lentTheater = false; $("exportSettings").classList.remove("theater"); }
-    $("exportTitle").textContent = lent ? "Save for lenticular print" : seq ? "Save as sequence" : "Save as photos";
-    $("exportSub").textContent = lent ? "Each session becomes one interlaced TIFF to print under a lenticular lens sheet. Choose the lens, the printer and the print size."
-                                 : seq ? "Each session becomes a video or animated image. Click a session to see and change its settings."
-                                       : "Click a session to see its photos and change its format.";
-    $("exportModePhotos").classList.toggle("on", !seq && !lent);
-    $("exportModeSequence").classList.toggle("on", seq);
-    $("exportModeLenticular").classList.toggle("on", lent);
+    $("exportTitle").textContent = exp.project ? "Export sessions" : "Save sessions";
+    $("exportSub").textContent = "Tick what each session should become: photos, a sequence, a lenticular print, or several. Each session is saved in one folder.";
     renderExportList();
     renderExportSettings();
     if (renderExportSettings.restoreScroll) renderExportSettings.restoreScroll();  // já com o conteúdo montado
@@ -1618,16 +1631,18 @@
   function updateExportCount() {
     const all = exportable();
     const chosen = exp.selected.size;
-    const seqEmpty = exp.mode === "sequence" && all.some((s) => exp.selected.has(s.name) && !settingsFor(s.name).seq.formats.length);
-    const lentBad = exp.mode === "lenticular" && all.some((s) => exp.selected.has(s.name) && !lentValid(settingsFor(s.name).lent));
+    const chosenSt = all.filter((s) => exp.selected.has(s.name)).map((s) => settingsFor(s.name));
+    const noOutput = chosenSt.some((st) => !OUTPUT_KINDS.some((k) => st.outputs[k]));
+    const seqEmpty = chosenSt.some((st) => st.outputs.sequence && !st.seq.formats.length);
+    const lentBad = chosenSt.some((st) => st.outputs.lenticular && !lentValid(st.lent));
     // Project: sessão com só parte das fotos editadas misturaria editadas e originais
     const partial = exp.project && $("exportEdited").checked
       ? all.filter((s) => exp.selected.has(s.name) && s.edited > 0 && s.edited < s.photos.length) : [];
-    $("exportCount").textContent = lentBad ? "Check the lens, printer and size values" : seqEmpty ? "Choose at least one format for each selected session"
+    $("exportCount").textContent = noOutput ? "Tick at least one output for each selected session" : lentBad ? "Check the lens, printer and size values" : seqEmpty ? "Choose at least one sequence format for each selected session"
       : partial.length ? (partial.length === 1 ? sessionTitle(partial[0]) + " has" : partial.length + " sessions have") + " only some photos edited: edited and original frames would be mixed."
       : chosen + " of " + plural(all.length, "session", "sessions") + " selected";
     $("exportCount").classList.toggle("warn", partial.length > 0);
-    $("exportConfirm").disabled = chosen === 0 || seqEmpty || lentBad;
+    $("exportConfirm").disabled = chosen === 0 || noOutput || seqEmpty || lentBad;
     $("exportConfirm").textContent = chosen ? (exp.project ? "Export " : "Save ") + plural(chosen, "session", "sessions") : (exp.project ? "Export" : "Save");
     $("exportSelectAll").disabled = chosen === all.length;
     $("exportUnselectAll").disabled = chosen === 0;
@@ -1730,16 +1745,19 @@
 
   function renderExportSettings() {
     stopPreview();
-    // outer: foto grande e fileira de miniaturas (não rola); box: o resto, que rola se faltar
+    // Uma janela, três saídas (decisão do dono, 2026-10-30, opção A): Photos, Sequence e
+    // Lenticular são seções com interruptor; as marcadas abrem as configurações, as
+    // desmarcadas ficam recolhidas. A prévia de cima é a da seção em foco (exp.mode).
+    // outer: prévia e fileira de miniaturas (não rolam); rows: o resto, que rola se faltar
     // altura. A fileira rola para o lado e não pode ficar dentro de outra área que rola
     // (o WebKit do Mac pinta as miniaturas deslocadas nesse caso).
     const outer = $("exportSettings");
     const prevRows = outer.querySelector(".export-rows");
     const keepScroll = prevRows ? prevRows.scrollTop : 0;  // a coluna é redesenhada a cada mudança: mantém a rolagem
     outer.innerHTML = "";
-    const box = el("div", "export-rows");
-    outer.appendChild(box);
-    renderExportSettings.restoreScroll = () => { if (keepScroll) box.scrollTop = keepScroll; };
+    const rows = el("div", "export-rows");
+    outer.appendChild(rows);
+    renderExportSettings.restoreScroll = () => { if (keepScroll) rows.scrollTop = keepScroll; };
     const session = sessions.find((s) => s.name === exp.active);
     if (!session) return;
     const items = sessionItems(session).filter((i) => i.previewable);
@@ -1751,25 +1769,29 @@
     if (sessions.length > 1) {
       const scope = checkOption("Same settings for all sessions", exp.sameForAll, (v) => { exp.sameForAll = v; rerender(); });
       scope.classList.add("export-scope");
-      outer.insertBefore(scope, box);
+      outer.insertBefore(scope, rows);
     }
+    // Foco da prévia: a seção clicada por último, se marcada; senão a primeira marcada
+    if (!st.outputs[exp.mode]) exp.mode = OUTPUTS.map(([k]) => k).find((k) => st.outputs[k]) || "photos";
+    if (exp.mode !== "lenticular") { exp.lentTheater = false; outer.classList.remove("theater"); }
 
-    const preview = el("div", "export-preview");
-    const img = document.createElement("img");
-    img.alt = "";
-    const caption = el("div", "stage-caption");
-    preview.append(img, caption);
-    outer.insertBefore(preview, box);
-    const show = (i, text, file) => {
-      const item = items[i];
-      if (!item) return;
-      sessionPhoto(session.name, item.file, 1600).then((url) => { if (url && exp.active === session.name) img.src = url; });
-      caption.innerHTML = "";
-      caption.append(el("b", "", text[0]), document.createTextNode(text[1]));
-      if (file) caption.appendChild(el("span", "caption-file", file));
-    };
-
-    if (exp.mode === "photos") {
+    // Monta a prévia (só a da seção em foco entra na tela) e as configurações de uma saída
+    const buildKind = (kind, box, focused) => {
+      const preview = el("div", "export-preview");
+      const img = document.createElement("img");
+      img.alt = "";
+      const caption = el("div", "stage-caption");
+      preview.append(img, caption);
+      if (focused) outer.insertBefore(preview, rows);
+      const show = (i, text, file) => {
+        const item = items[i];
+        if (!item) return;
+        sessionPhoto(session.name, item.file, 1600).then((url) => { if (url && exp.active === session.name) img.src = url; });
+        caption.innerHTML = "";
+        caption.append(el("b", "", text[0]), document.createTextNode(text[1]));
+        if (file) caption.appendChild(el("span", "caption-file", file));
+      };
+      if (kind === "photos") {
       const s = st.photos;
       // A fileira (ul) fica dentro de uma caixa que rola (div): o WebKit do Mac pintava os
       // filhos diretos da área de rolagem deslocados (sem a borda e o espaço interno deles)
@@ -1797,8 +1819,7 @@
         li.addEventListener("click", () => { exp.photo = k; showPhoto(); });
         strip.appendChild(li);
       });
-      outer.insertBefore(stripScroll, box);
-      showPhoto();
+      if (focused) { outer.insertBefore(stripScroll, rows); showPhoto(); }
       const r = row("Format");
       r.appendChild(segmented(PHOTO_FORMATS, s.format, (v) => { s.format = v; rerender(); },
         (v) => (v === "heic" && !exp.heic.ok ? exp.heic.reason || "Not available on this computer" : "")));
@@ -1819,7 +1840,7 @@
         "Original keeps each file exactly as the camera saved it (JPG and RAW): the highest quality. The other formats convert " +
         "every photo; RAW photos are converted from the full-size image the camera keeps inside them, and when a camera " +
         "saved RAW + JPG, the JPG is used."));
-    } else if (exp.mode === "lenticular") {
+      } else if (kind === "lenticular") {
       const l = st.lent;
       const n = items.length;
       const plan = lentPlan(l, n);
@@ -1833,7 +1854,7 @@
         const i = order[frameAt];
         show(i, ["Tilt preview", " " + label + " · photo " + (i + 1) + " of " + n + " · drag left and right"]);
       };
-      showFrame(frameAt);
+      if (focused) showFrame(frameAt);
       items.forEach((item) => sessionPhoto(session.name, item.file, 1600));
       let drag = null;
       preview.addEventListener("pointerdown", (e) => {
@@ -1964,8 +1985,10 @@
         loupeTag.style.left = lx + "px"; loupeTag.style.top = (ly + loupe.height + 4) + "px";
       });
       preview.addEventListener("pointerleave", () => { loupe.classList.add("hidden"); loupeTag.classList.add("hidden"); });
-      applyTheater();
-      setView(exp.lentView === "interlaced" ? "interlaced" : "tilt");
+      if (focused) {
+        applyTheater();
+        setView(exp.lentView === "interlaced" ? "interlaced" : "tilt");
+      }
 
       // Leitura: o que a combinação lâmina + impressora dá para esta sessão
       const read = el("div", "lent-readout" + (plan.warn ? " " + plan.warn : ""));
@@ -2040,7 +2063,7 @@
       box.appendChild(size);
       box.appendChild(el("div", "export-note", "The photos are scaled to cover this size exactly (cropped at the edges if the shape differs). " +
         "Print at 100% / actual size, never \"fit to page\": the file already has the right dpi and size."));
-    } else {
+      } else {
       const s = st.seq;
       const order = cycleOrder(items.length, s.reverse);
       const play = button("", () => { if (exp.timer) stopPreview(); else startPreview(); setPlayIcon(); }, { icon: "pause", title: "Play / pause", kind: "btn-overlay" });
@@ -2054,10 +2077,12 @@
         show(i, ["Preview", " " + label + " · photo " + (i + 1) + " of " + items.length + " · " + s.fps + " fps"]);
       };
       const startPreview = () => { stopPreview(); exp.timer = setInterval(step, 1000 / s.fps); };
-      exp.frame = -1;
-      step();
-      startPreview();
-      setPlayIcon();
+      if (focused) {
+        exp.frame = -1;
+        step();
+        startPreview();
+        setPlayIcon();
+      }
       // Carrega todas as prévias antes, para tocar sem falhas
       items.forEach((item) => sessionPhoto(session.name, item.file, 1600));
 
@@ -2112,15 +2137,52 @@
       total.appendChild(sum);
       box.appendChild(total);
       box.appendChild(el("div", "export-note", "MP4 and MOV have the loops inside the video. GIF, WEBP and AVIF repeat without stopping."));
-      box.appendChild(checkOption("Also save the photos (original format)", s.alsoPhotos, (v) => { s.alsoPhotos = v; syncAll(); refreshSummaries(); rememberExportPrefs(); }));
-    }
+          }
+    };
+
+    OUTPUTS.forEach(([kind, title, sub]) => {
+      const on = !!st.outputs[kind];
+      const focused = on && kind === exp.mode;
+      const sec = el("section", "exp-sec" + (on ? " on" : "") + (focused ? " focus" : ""));
+      const head = el("div", "exp-sec-head");
+      const check = el("label", "export-check exp-sec-check");
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.checked = on;
+      input.setAttribute("aria-label", title);
+      check.append(input, el("span", "save-check"));
+      check.addEventListener("click", (e) => e.stopPropagation());
+      input.addEventListener("change", () => {
+        st.outputs[kind] = input.checked;
+        if (input.checked) exp.mode = kind;  // a que acabou de ligar vira a prévia
+        rerender();
+      });
+      head.append(check, el("b", "exp-sec-title", title), el("span", "exp-sec-sub", sub));
+      const sum = el("span", "exp-sec-sum", on ? outputText(session, kind) : "Off");
+      head.appendChild(sum);
+      if (on && !focused) head.appendChild(el("span", "exp-sec-hint", "Preview"));
+      // Clicar no cabeçalho: liga (se desligada) e leva a prévia para esta saída
+      head.addEventListener("click", () => {
+        if (!st.outputs[kind]) st.outputs[kind] = true;
+        exp.mode = kind;
+        rerender();
+      });
+      sec.appendChild(head);
+      if (on) {
+        const body = el("div", "exp-sec-body");
+        sec.appendChild(body);
+        buildKind(kind, body, focused);
+      }
+      rows.appendChild(sec);
+    });
+    if (!OUTPUT_KINDS.some((k) => st.outputs[k])) rows.appendChild(el("div", "export-note exp-none", "Tick at least one output: Photos, Sequence or Lenticular."));
 
     // Nome da pasta e dos arquivos
     const n = st.naming;
     const nameRow = row("Name");
     nameRow.appendChild(segmented([["date", "Date + time"], ["number", "Number"], ["custom", "Custom"]], n.kind,
       (v) => { n.kind = v; rerender(); }));
-    box.appendChild(nameRow);
+    rows.appendChild(nameRow);
     if (n.kind === "custom") {
       const custom = row("");
       custom.style.paddingLeft = "84px";
@@ -2133,38 +2195,32 @@
       custom.appendChild(input);
       custom.appendChild(checkOption("Add date + time", n.date, (v) => { n.date = v; rerender(); }));
       if (n.date) custom.appendChild(segmented([["before", "Before"], ["after", "After"]], n.position, (v) => { n.position = v; rerender(); }));
-      box.appendChild(custom);
+      rows.appendChild(custom);
     }
     const folderLine = el("div", "export-note", "Folder: " + folderName(session));
-    box.appendChild(folderLine);
+    rows.appendChild(folderLine);
     if (n.kind === "number" || (n.kind === "custom" && !n.date))
-      box.appendChild(el("div", "export-note", n.kind === "number"
+      rows.appendChild(el("div", "export-note", n.kind === "number"
         ? "Numbers continue from the ones already in the folder you choose."
         : "Sessions with the same name get numbers (01, 02…), continuing from the folder you choose."));
 
     if (!exp.sameForAll && sessions.length > 1) {
       const apply = el("div", "export-apply");
-      const key = exp.mode === "photos" ? "photos" : "seq";
-      const same = sessions.length > 1 && sessions.every((o) => JSON.stringify(settingsFor(o.name)[key]) === JSON.stringify(st[key]) &&
-        JSON.stringify(settingsFor(o.name).naming) === JSON.stringify(st.naming));
+      const same = sessions.length > 1 && sessions.every((o) => sameAsActive(o.name));
       const note = el("span", "export-note", sessions.length === 1 ? "" : same
-        ? (exp.mode === "photos" ? "All sessions use this format." : "All sessions use these settings.")
-        : (exp.mode === "photos" ? "This format is" : "These settings are") + " only for " + label + ".");
+        ? "All sessions use these settings." : "These settings are only for " + label + ".");
       apply.appendChild(note);
       apply.appendChild(button("Apply to all sessions", () => {
-        const source = JSON.stringify(st[key]);
-        const naming = JSON.stringify(st.naming);
         sessions.forEach((other) => {
           if (other.name === session.name) return;
-          settingsFor(other.name)[key] = JSON.parse(source);
-          settingsFor(other.name).naming = JSON.parse(naming);
+          OUTPUT_KEYS.forEach((k) => { settingsFor(other.name)[k] = JSON.parse(JSON.stringify(st[k])); });
         });
         rerender();
         toast("Applied to all " + plural(sessions.length, "session", "sessions"));
       }));
-      box.appendChild(apply);
+      rows.appendChild(apply);
     } else if (sessions.length > 1) {
-      box.appendChild(el("div", "export-note export-apply", "Changes apply to all sessions. Turn off \"Same settings for all sessions\" to set each one."));
+      rows.appendChild(el("div", "export-note export-apply", "Changes apply to all sessions. Turn off \"Same settings for all sessions\" to set each one."));
     }
   }
 
@@ -2172,13 +2228,13 @@
     const st = settingsFor(name);
     const n = st.naming;
     const head = [name, n.kind, (n.text || "").replace(/\|/g, ""), n.date ? 1 : 0, n.position];
-    if (exp.mode === "photos") return [...head, "photos", st.photos.format, st.photos.quality].join("|");
-    if (exp.mode === "lenticular") {
-      const l = st.lent;
-      return [...head, "lenticular", lentPitch(l), l.dpi, (l.widthCm / CM_PER_IN).toFixed(4), (l.heightCm / CM_PER_IN).toFixed(4), l.effect, l.reverse ? 1 : 0].join("|");
-    }
-    const s = st.seq;
-    return [...head, "sequence", s.formats.join(","), s.fps, s.loops, s.reverse ? 1 : 0, s.height, s.alsoPhotos ? 1 : 0, s.quality].join("|");
+    // "outputs": fotos (formato|qualidade; formato vazio = não), sequência (formatos vazios = não)
+    // e lenticular (1|0 e os valores), tudo numa linha por sessão
+    const o = st.outputs, s = st.seq, l = st.lent;
+    return [...head, "outputs",
+      o.photos ? st.photos.format : "", st.photos.quality,
+      o.sequence ? s.formats.join(",") : "", s.fps, s.loops, s.reverse ? 1 : 0, s.height, s.quality,
+      o.lenticular ? 1 : 0, lentPitch(l), l.dpi, (l.widthCm / CM_PER_IN).toFixed(4), (l.heightCm / CM_PER_IN).toFixed(4), l.effect, l.reverse ? 1 : 0].join("|");
   }
 
   function runExport(deleteRest) {
@@ -2196,7 +2252,7 @@
   const RAW_RE = /\.(cr2|cr3|crw|nef|nrw|arw|srf|sr2|dng|raf|orf|rw2|pef|raw)$/i;
   function mixedFormats() {
     const raw = new Set(), jpeg = new Set();
-    sessions.filter((s) => exp.selected.has(s.name) && exp.mode === "photos" && settingsFor(s.name).photos.format === "original").forEach((s) => {
+    sessions.filter((s) => exp.selected.has(s.name) && settingsFor(s.name).outputs.photos && settingsFor(s.name).photos.format === "original").forEach((s) => {
       const byCam = {};
       s.photos.forEach((p) => { if (!p.camera) return; byCam[p.camera] = byCam[p.camera] || { raw: false }; if (RAW_RE.test(p.file)) byCam[p.camera].raw = true; });
       Object.keys(byCam).forEach((cam) => (byCam[cam].raw ? raw : jpeg).add(cam));
@@ -2229,13 +2285,6 @@
   }
 
   ui.saveBtn.addEventListener("click", () => startSave(false));
-  $("modePhotos").addEventListener("click", () => openExport("photos"));
-  $("modeSequence").addEventListener("click", () => openExport("sequence"));
-  $("modeLenticular").addEventListener("click", () => openExport("lenticular"));
-  $("modeCancel").addEventListener("click", () => $("modeOverlay").classList.add("hidden"));
-  $("exportModePhotos").addEventListener("click", () => { exp.mode = "photos"; renderExport(); rememberExportPrefs(); });
-  $("exportModeSequence").addEventListener("click", () => { exp.mode = "sequence"; renderExport(); rememberExportPrefs(); });
-  $("exportModeLenticular").addEventListener("click", () => { exp.mode = "lenticular"; renderExport(); rememberExportPrefs(); });
   $("exportSelectAll").addEventListener("click", () => { exp.selectedTouched = true; exp.selected = new Set(exportable().map((s) => s.name)); renderExportList(); updateExportCount(); });
   $("exportUnselectAll").addEventListener("click", () => { exp.selectedTouched = true; exp.selected.clear(); renderExportList(); updateExportCount(); });
   $("exportCancel").addEventListener("click", closeExport);
@@ -2254,7 +2303,7 @@
     }
     const total = e.total || 1;
     $("progressTitle").textContent = "Saving " + plural(total, "session", "sessions");
-    const stepNames = { photos: "reading the photos", "photos-save": "saving the photos", done: "done" };
+    const stepNames = { photos: "reading the photos", "photos-save": "saving the photos", lenticular: "interlacing the lenticular print", "lenticular-save": "saving the lenticular print", done: "done" };
     const step = stepNames[e.step] || (/^(MP4|MOV|GIF|WEBP|AVIF)$/.test(e.step) ? "making the " + e.step : "converting to " + String(e.step).toUpperCase());
     $("progressStep").textContent = sessionLabel(e.session).date + " · " + step;
     const pct = Math.round(((e.index + Math.min(1, e.fraction || 0)) / total) * 100);
@@ -2275,15 +2324,10 @@
     }
     // Janela de salvar aberta: voltar para ela ou apagar e fechar
     const exportOpen = !$("exportOverlay").classList.contains("hidden");
-    const modeOpen = !$("modeOverlay").classList.contains("hidden");
-    if (exportOpen || modeOpen) {
+    if (exportOpen) {
       $("exportOverlay").classList.add("hidden");
-      $("modeOverlay").classList.add("hidden");
       stopPreview();
-      const back = () => {
-        if (exportOpen) { $("exportOverlay").classList.remove("hidden"); renderExportSettings(); }
-        else $("modeOverlay").classList.remove("hidden");
-      };
+      const back = () => { $("exportOverlay").classList.remove("hidden"); renderExportSettings(); };
       dialog("Save your sessions before closing?",
         plural(count, "session is", "sessions are") + " not saved yet. If you close without saving, the photos are deleted.", [
         { label: "Delete and close", danger: true, onClick: () => window.exitApp(true) },
@@ -3948,7 +3992,6 @@
     promptOverlay: () => $("promptCancel").click(),
     projectOverlay: () => closeProjectWindow(),
     projectPickOverlay: () => $("projectPickOverlay").classList.add("hidden"),
-    modeOverlay: () => $("modeOverlay").classList.add("hidden"),
     exportOverlay: () => { if (!exp.waiting) closeExport(); },
     settingsOverlay: () => $("settingsOverlay").classList.add("hidden"),
     aboutOverlay: () => $("aboutOverlay").classList.add("hidden"),
@@ -3969,7 +4012,7 @@
   // Settings / About, que é registrado antes e pararia o evento: devolve true se tratou.
   function overlayKeydown(e) {
     if (e.overlayHandled || openMenu) return false;
-    const open = ["promptOverlay", "dialogOverlay", "modeOverlay", "projectPickOverlay", "projectOverlay", "exportOverlay", "orderOverlay"]
+    const open = ["promptOverlay", "dialogOverlay", "projectPickOverlay", "projectOverlay", "exportOverlay", "orderOverlay"]
       .find((id) => !$(id).classList.contains("hidden"));
     if (!open) return false;
     if (e.key === "Escape") {
@@ -4646,8 +4689,7 @@
     if (!names.length) return;
     closeProjectWindow();
     exp.exitAfter = false;
-    const mode = project.exportDefaults && project.exportDefaults.mode === "photos" ? "photos" : "sequence";
-    openExport(mode, names);
+    openExport(names);
   });
 
   // =================== Ações ===================

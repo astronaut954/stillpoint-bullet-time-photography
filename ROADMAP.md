@@ -611,8 +611,12 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    (medido no navegador: 849 px em 920; 926 em 1000). Conferido no navegador com câmera
    simulada; **pendente** o teste com SL3/T7/T5 (teste-manual 16).
 4. **Etapa 19 — Exportação para impressão lenticular** (ver "Futuro"; precisa do Project).
-   **Entrega 1 feita em 2026-10-30 (branch `etapa-19-lenticular`, versão 2.14.0).** Terceira opção
-   "Lenticular" no Save sessions / Export: lâmina (40/50/60/75/100 LPI; 3D 20/30/40; "Other"),
+   **Entrega 1 feita em 2026-10-30 (branch `etapa-19-lenticular`, versão 2.14.0).** Janela de salvar
+   reorganizada (decisão do dono, opção A de 3 protótipos — fila de renderização e receitas ficaram
+   de fora): Photos, Sequence e Lenticular são **saídas combináveis** (seções com caixa de marcar,
+   recolhidas quando desmarcadas), um só Save grava tudo numa pasta por sessão com `Photos/`,
+   `Sequence/` e `Lenticular/` quando há mais de uma; a escolha de modo ao abrir saiu; o antigo "Also
+   save the photos" da sequência virou a seção Photos. Lenticular: lâmina (40/50/60/75/100 LPI; 3D 20/30/40; "Other"),
    pitch medido (opcional), impressora (600/720/1200/1440 dpi; "Other" — o app não depende de
    impressora: é só um número de dpi), tamanho em cm/pol com presets, efeito Animation (lentes
    deitadas, faixas em linhas) ou 3D (lentes em pé, faixas em colunas), ordem invertida; leitura

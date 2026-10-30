@@ -756,8 +756,16 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) e depois com câmeras. Desenho em `do
 
 Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) serve para tudo, menos para a impressão.
 
-- [ ] **Save sessions** → terceira opção **Lenticular**; a janela "Save for lenticular print" com a aba
-      Lenticular acesa (as abas Photos / Sequence continuam funcionando e lembram a escolha).
+- [ ] **Save sessions** abre direto a janela (sem a escolha Photos/Sequence de antes) com três seções:
+      **Photos**, **Sequence** e **Lenticular**, cada uma com uma caixa de marcar. Marcada = abre as
+      configurações; desmarcada = só o cabeçalho, "Off". Clicar no cabeçalho de uma desmarcada liga e
+      leva a prévia para ela; numa marcada, só leva a prévia (a seção em foco tem borda verde; as outras
+      marcadas mostram "PREVIEW"). Nenhuma marcada: "Tick at least one output…" e o Save fica apagado.
+      Quem usava Sequence com "Also save the photos" abre com Photos (Original) + Sequence marcadas.
+- [ ] **Várias saídas:** Photos + Sequence + Lenticular marcadas → Save: na pasta da sessão, `Photos/`,
+      `Sequence/` e `Lenticular/`; só uma marcada → os arquivos direto na pasta da sessão. Na lista à
+      esquerda: "→ Original + MP4 + Lenticular 60/720". Export… da janela Project faz o mesmo em
+      `Exports/`.
 - [ ] **Prévia:** arrastar para a esquerda/direita na foto grande troca a foto ("Tilt preview · photo n
       of 9"); "Reverse order" inverte o sentido. Botão **Interlaced** (canto da prévia): mostra um
       recorte 1:1 do centro do arquivo final, com as faixas no tamanho real em pixels ("12 px per

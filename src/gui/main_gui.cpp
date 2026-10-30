@@ -2887,12 +2887,13 @@ namespace
                     for (const auto& [group, file] : byCamera)
                         perCamera.push_back(file);
 
-                    // Subpastas só quando há fotos e sequência juntas: Photos/ e Sequence/
+                    // Subpastas quando há mais de uma saída: Photos/, Sequence/ e Lenticular/
                     const bool savePhotos = !job.photoFormat.empty();
-                    const bool split = savePhotos && job.sequence && !job.options.formats.empty();
+                    const bool saveSequence = job.sequence && !job.options.formats.empty();
+                    const bool split = (savePhotos ? 1 : 0) + (saveSequence ? 1 : 0) + (job.lenticular ? 1 : 0) > 1;
                     const fs::path photosDir = split ? target / "Photos" : target;
 
-                    if (job.sequence)
+                    if (saveSequence)
                     {
                         std::vector<fs::path> photos;
                         for (const auto& f : perCamera)
@@ -2918,7 +2919,9 @@ namespace
                         // Nome com os parâmetros, para saber que lâmina/impressora o arquivo serve
                         char tag[96];
                         std::snprintf(tag, sizeof(tag), " lenticular %.4glpi %ddpi %s", job.lent.lpi, job.lent.dpi, job.lent.horizontalLenses ? "flip" : "3d");
-                        if (!Export::WriteLenticular(photos, target / (job.folderName + tag), job.lent, report, &exportCancel, error))
+                        const fs::path lentDir = split ? target / "Lenticular" : target;
+                        fs::create_directories(lentDir, ec);
+                        if (!Export::WriteLenticular(photos, lentDir / (job.folderName + tag), job.lent, report, &exportCancel, error))
                             break;
                     }
 
@@ -3048,7 +3051,37 @@ namespace
                 Naming naming{ f[1], f[2], f[3] == "1", f[4] == "before" };
                 job.sequence = f[5] == "sequence";
                 job.lenticular = f[5] == "lenticular";
-                if (job.lenticular)
+                if (f[5] == "outputs")
+                {
+                    // 2.14 (opção A): as três saídas numa linha —
+                    // 6 fotos formato ("" = não) | 7 qualidade | 8 formatos da sequência ("" = não) |
+                    // 9 fps | 10 loops | 11 reverse | 12 altura | 13 qualidade | 14 lenticular 1/0 |
+                    // 15 lpi | 16 dpi | 17 largura pol | 18 altura pol | 19 flip/3d | 20 reverse
+                    auto at = [&](size_t k) { return k < f.size() ? f[k] : std::string(); };
+                    job.photoFormat = at(6);
+                    job.photoQuality = Export::ParseQuality(at(7));
+                    std::stringstream formats(at(8));
+                    for (std::string x; std::getline(formats, x, ',');)
+                        if (!x.empty()) job.options.formats.push_back(x);
+                    job.sequence = !job.options.formats.empty();
+                    try
+                    {
+                        if (!at(9).empty()) job.options.fps = std::stod(at(9));
+                        if (!at(10).empty()) job.options.loops = std::stoi(at(10));
+                        if (!at(12).empty()) job.options.height = std::stoi(at(12));
+                        if (!at(15).empty()) job.lent.lpi = std::stod(at(15));
+                        if (!at(16).empty()) job.lent.dpi = std::stoi(at(16));
+                        if (!at(17).empty()) job.lent.widthInches = std::stod(at(17));
+                        if (!at(18).empty()) job.lent.heightInches = std::stod(at(18));
+                    }
+                    catch (...) {}
+                    job.options.reverse = at(11) != "0";
+                    job.options.quality = Export::ParseQuality(at(13));
+                    job.lenticular = at(14) == "1";
+                    job.lent.horizontalLenses = at(19) != "3d";
+                    job.lent.reverse = at(20) == "1";
+                }
+                else if (job.lenticular)
                 {
                     // lpi | dpi | largura pol | altura pol | flip|3d | reverse
                     try

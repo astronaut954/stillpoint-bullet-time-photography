@@ -697,6 +697,32 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
 .preview-play { position: absolute; right: 10px; bottom: 10px; }
 /* Rola para o lado; fica fora de .export-rows: uma área que rola dentro de outra que rola
    fazia o WebKit do Mac pintar as miniaturas deslocadas da caixa */
+/* Janela de salvar com três saídas (opção A): cada saída é uma seção com interruptor;
+   desmarcada fica recolhida (só o cabeçalho), marcada abre as configurações */
+.exp-sec { border: 1px solid var(--noct-border); background: var(--noct-surface-inner); flex: 0 0 auto; }
+.exp-sec.on { border-color: var(--noct-border-strong); }
+.exp-sec.focus { border-color: var(--noct-primary); }
+.exp-sec-head { display: flex; align-items: center; gap: 10px; padding: 9px 12px; cursor: pointer; user-select: none; -webkit-user-select: none; }
+.exp-sec-head:hover .exp-sec-title { color: var(--noct-primary); }
+/* A mesma caixa de marcar da lista de sessões; o input nativo fica escondido */
+.exp-sec .exp-sec-check { display: block; position: relative; width: 16px; height: 16px; flex: 0 0 auto; cursor: pointer; }
+.exp-sec-check input[type=checkbox] { position: absolute; opacity: 0; pointer-events: none; }
+.exp-sec-check .save-check { margin-top: 0; display: block; }
+.exp-sec-check input:checked + .save-check { background: var(--noct-primary); border-color: var(--noct-primary); box-shadow: var(--noct-glow-primary-soft); }
+.exp-sec-check input:checked + .save-check::after {
+  content: ""; position: absolute; left: 5px; top: 1px; width: 4px; height: 9px;
+  border: solid var(--noct-on-primary); border-width: 0 2px 2px 0; transform: rotate(45deg);
+}
+.exp-sec-check input:focus-visible + .save-check { outline: 2px solid var(--noct-primary); outline-offset: 2px; }
+.exp-sec-title { font: 700 15px var(--noct-font-sans); color: var(--noct-text); }
+.exp-sec:not(.on) .exp-sec-title { color: var(--noct-text-muted); }
+.exp-sec-sub { color: var(--noct-text-dim); font-size: 13px; }
+.exp-sec-sum { margin-left: auto; font: 500 11px var(--noct-font-mono); letter-spacing: .04em; color: var(--noct-text-muted); text-align: right; }
+.exp-sec:not(.on) .exp-sec-sum { color: var(--noct-text-dim); }
+.exp-sec-hint { font: 700 9px var(--noct-font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--noct-text-dim); border: 1px solid var(--noct-border); padding: 2px 6px; }
+.exp-sec-head:hover .exp-sec-hint { color: var(--noct-primary); border-color: var(--noct-primary); }
+.exp-sec-body { padding: 4px 12px 12px; border-top: 1px solid var(--noct-border); display: flex; flex-direction: column; gap: 12px; padding-top: 12px; }
+.exp-none { color: var(--noct-pending); }
 /* Lenticular (etapa 19) */
 .lent-num { box-sizing: border-box; height: 28px; padding: 0 8px; border: 1px solid var(--noct-border); background: var(--noct-surface); color: var(--noct-text); font: 12px var(--noct-font-mono); text-align: right; }
 .lent-num:focus { outline: none; border-color: var(--noct-primary); box-shadow: var(--noct-focus-ring); }
