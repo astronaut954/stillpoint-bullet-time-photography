@@ -201,7 +201,7 @@ button { font: inherit; }
   border: 1px solid var(--noct-border-strong); background: var(--noct-elevated); color: var(--noct-text-muted);
   font: 700 11px var(--noct-font-mono); text-transform: uppercase; letter-spacing: var(--noct-tracking-mono-cap);
 }
-.status { height: 26px; padding: 0 10px; }
+.status { height: 28px; padding: 0 12px; box-sizing: border-box; }  /* mesma altura dos botões da barra (btn-small) */
 .status-ok { color: var(--noct-success); border-color: var(--noct-success); background: rgba(var(--noct-success-rgb), .06); }
 .status-busy { color: var(--noct-pending); border-color: var(--noct-pending); background: rgba(var(--noct-pending-rgb), .06); }
 .status-error { color: var(--noct-danger); border-color: var(--noct-danger); background: rgba(var(--noct-danger-rgb), .06); }
@@ -720,9 +720,8 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
 .export-preview .lent-views button.on { background: var(--noct-primary); color: var(--noct-on-primary); }
 .export-preview .lent-loupe { position: absolute; pointer-events: none; border: 1px solid var(--noct-primary); box-shadow: 0 0 0 1px #000, 0 6px 20px rgba(0,0,0,.6); image-rendering: pixelated; z-index: 2; }
 .export-preview .lent-loupe-tag { position: absolute; pointer-events: none; font: 700 9px var(--noct-font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--noct-primary); background: #000; padding: 2px 5px; z-index: 2; }
-/* Só o ícone, sem moldura, do tamanho que a moldura tinha (30 px) */
-.export-preview .lent-theater-btn { position: absolute; left: 10px; top: 10px; width: 30px; height: 30px; padding: 0; border: 0; background: transparent; color: var(--noct-text-muted); box-shadow: none; }
-.export-preview .lent-theater-btn:hover, .export-preview .lent-theater-btn.on { color: var(--noct-primary); background: transparent; border: 0; }
+/* Mesmo botão do "Project window" (btn-secondary btn-small btn-icon), só com as setas dentro */
+.export-preview .lent-theater-btn { position: absolute; left: 10px; top: 10px; }
 /* Modo teatro: a prévia toma a coluna e as configurações somem */
 .export-settings.theater .export-rows, .export-settings.theater .export-scope { display: none; }
 .export-settings.theater .export-preview { height: auto; flex: 1 1 auto; min-height: 0; }
