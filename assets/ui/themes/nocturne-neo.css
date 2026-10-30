@@ -725,6 +725,9 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
 /* Modo teatro: a prévia toma a coluna e as configurações somem */
 .export-settings.theater .export-rows, .export-settings.theater .export-scope { display: none; }
 .export-settings.theater .export-preview { height: auto; flex: 1 1 auto; min-height: 0; }
+/* No teatro a foto (e o canvas) preenchem a área, não o tamanho natural do arquivo de prévia */
+.export-settings.theater .export-preview img, .export-settings.theater .export-preview .lent-canvas { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; object-fit: contain; }
+.export-settings.theater .export-preview .lent-canvas { border: 0; }
 .lent-presets { margin-left: 8px; }
 .export-strip-scroll { overflow-x: auto; overflow-y: hidden; flex: 0 0 auto; padding-bottom: 4px; }
 .export-strip { list-style: none; margin: 0; padding: 0; border: 0; display: flex; gap: 6px; width: max-content; min-width: 100%; }

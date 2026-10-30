@@ -129,7 +129,8 @@
     minus: '<path d="M3 7h8"/>',
     plus: '<path d="M3 7h8M7 3v8"/>',
     swap: '<path d="M2.5 5h8l-2.5-2.5M11.5 9h-8l2.5 2.5"/>',
-    theater: '<rect x="1.5" y="3" width="11" height="8"/><path d="M4 5.5h6M4 8.5h6" opacity=".6"/>',
+    expand: '<path d="M8.5 2h3.5v3.5M5.5 12H2V8.5M12 2L8 6M2 12l4-4"/>',
+    collapse: '<path d="M11.5 5.5H8V2M2.5 8.5H6V12M8 6l4-4M6 8l-4 4"/>',
     up: '<path d="M3 9l4-4 4 4"/>',
     down: '<path d="M3 5l4 4 4-4"/>',
     left: '<path d="M9 3L5 7l4 4"/>',
@@ -1832,7 +1833,10 @@
       showFrame(frameAt);
       items.forEach((item) => sessionPhoto(session.name, item.file, 1600));
       let drag = null;
-      preview.addEventListener("pointerdown", (e) => { if (exp.lentView === "interlaced") return; drag = { x: e.clientX, start: frameAt }; preview.setPointerCapture(e.pointerId); e.preventDefault(); });
+      preview.addEventListener("pointerdown", (e) => {
+        if (exp.lentView === "interlaced" || e.target.closest("button")) return;  // botões (teatro, vistas) não começam arrasto
+        drag = { x: e.clientX, start: frameAt }; preview.setPointerCapture(e.pointerId); e.preventDefault();
+      });
       preview.addEventListener("pointermove", (e) => {
         if (!drag) return;
         const step = Math.max(24, preview.clientWidth / Math.max(2, n) / 2);  // metade da largura por foto
@@ -1872,12 +1876,14 @@
       views.addEventListener("pointerdown", (e) => e.stopPropagation());
       preview.appendChild(views);
       // Modo teatro: a prévia ocupa a coluna toda e as configurações somem; o botão de novo volta
-      const theater = button("", () => { exp.lentTheater = !exp.lentTheater; applyTheater(); }, { icon: "theater", title: "Theater mode: larger preview, settings hidden", kind: "btn-overlay" });
+      const theater = button("", () => { exp.lentTheater = !exp.lentTheater; applyTheater(); }, { icon: "expand", title: "Theater mode: larger preview, settings hidden", kind: "btn-overlay" });
       theater.classList.add("lent-theater-btn");
+      theater.addEventListener("pointerdown", (e) => e.stopPropagation());
       preview.appendChild(theater);
       const applyTheater = () => {
         outer.classList.toggle("theater", !!exp.lentTheater);
         theater.classList.toggle("on", !!exp.lentTheater);
+        theater.innerHTML = icon(exp.lentTheater ? "collapse" : "expand");  // setas para fora = entrar; para dentro = sair
         theater.title = exp.lentTheater ? "Leave theater mode" : "Theater mode: larger preview, settings hidden";
         if (exp.lentView === "interlaced") requestAnimationFrame(fitCanvas);
       };
@@ -1934,8 +1940,11 @@
       // Lupa: segue o mouse; mostra o ponto em pixels reais ampliados 2×
       preview.addEventListener("pointermove", (e) => {
         if (exp.lentView !== "interlaced" || !full) return;
-        const r = canvas.getBoundingClientRect();
-        const inside = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+        // Área desenhada de fato (no teatro o canvas ocupa a caixa toda com object-fit: contain)
+        const box = canvas.getBoundingClientRect();
+        const sc = Math.min(box.width / canvas.width, box.height / canvas.height);
+        const r = { left: box.left + (box.width - canvas.width * sc) / 2, top: box.top + (box.height - canvas.height * sc) / 2, width: canvas.width * sc, height: canvas.height * sc };
+        const inside = e.clientX >= r.left && e.clientX <= r.left + r.width && e.clientY >= r.top && e.clientY <= r.top + r.height;
         loupe.classList.toggle("hidden", !inside); loupeTag.classList.toggle("hidden", !inside);
         if (!inside) return;
         const fx = (e.clientX - r.left) / r.width * full.width, fy = (e.clientY - r.top) / r.height * full.height;
