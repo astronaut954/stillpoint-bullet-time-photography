@@ -1982,6 +1982,7 @@ namespace
                 o.horizontalLenses = args[3] != "3d";
                 o.center = std::stod(args[4]);
                 o.step = std::stod(args[5]);
+                if (args.size() > 7 && !args[7].empty()) o.count = std::max(3, std::min(41, std::stoi(args[7])));
             }
             catch (...) { return Json("pitchTest").Add("ok", false).Add("error", "Check the lens, printer and size values.").Str(); }
             namespace fs = std::filesystem;

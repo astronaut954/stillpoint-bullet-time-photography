@@ -840,14 +840,20 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) serve para tudo, menos para a impress
 ### 24b. Lenticular, entrega 2 (folha de teste e marcas) — câmeras simuladas
 
 - [ ] Ícone da lâmina na barra de cima (ao lado do som): abre **Pitch test** com Effect, Lens sheet,
-      Printer, Paper size (as mesmas opções da exportação; começa em A4) e "11 strips · 59.5 to 60.5
-      LPI, every 0.1". "Finer steps" mostra 0.1 / 0.05 / 0.02 e a faixa muda (0.02 → 59.90 to 60.10).
+      Printer e Paper size (as mesmas opções da exportação; começa em A4).
 - [ ] Save pitch test: aviso "Making the pitch test sheet…", depois "Pitch test saved" e o Finder abre
       com o arquivo selecionado em `Imagens/Stillpoint/Exports` (ou `<Projeto>/Exports`). Abrir o TIFF:
       11 faixas listradas com o número em cima de cada uma (3D: faixas uma embaixo da outra, número à
       esquerda). Esc fecha só a janela do teste.
-- [ ] Mudar qualquer opção da janela do teste: a janela não pisca. "Finer steps" passa para 0.05
-      (e mostra 0.05 / 0.02); "Normal steps" volta para 0.1. A nota lista os 11 valores das faixas.
+- [ ] Mudar qualquer opção da janela do teste: a janela não pisca. "21 strips · 59.50 to 60.50 LPI,
+      every 0.05" (sem "Finer steps"). No arquivo: 21 faixas, números em pé em cima de cada uma
+      (Animation) ou à esquerda (3D).
+- [ ] Papel menor que A4 (ex.: 10 × 15): aviso amarelo e "Save pitch test" apagado. Com a impressão
+      de 20 × 30 e o teste em A4: aviso amarelo de que as faixas (25,9 cm) são mais curtas que a
+      impressão (30 cm); com 30 × 40 o aviso some.
+- [ ] Janela de salvar: os textos explicativos viraram "?" ao lado do nome de cada opção (Effect, Lens
+      sheet, Printer, Print size, Marks, Originals, Converted, Quality, Size, Speed, Name). Passar o
+      mouse mostra a explicação por cima, sem ser cortada.
 - [ ] A prévia da folha fica sempre à direita (sem botão), sem rolagem lateral, deitada ou em pé.
       Com o mouse em cima, a lupa mostra as listras no tamanho real; a roda do mouse aproxima e afasta
       (1× a 8×, a etiqueta mostra o zoom). O mesmo na lupa da prévia Interlaced do Lenticular.

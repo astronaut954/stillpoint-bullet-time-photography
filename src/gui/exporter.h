@@ -98,8 +98,8 @@ namespace Export
         int dpi = 720;
         double widthInches = 8.27, heightInches = 11.69;  // A4
         bool horizontalLenses = true;                     // animação: listras deitadas
-        double center = 60, step = 0.1;
-        int count = 11;
+        double center = 60, step = 0.05;   // opção A (decisão do dono, 2026-10-31): 21 faixas de 0,05
+        int count = 21;
     };
     bool WritePitchTest(const PitchTestOptions& options, const std::filesystem::path& file, std::string& error);
 }

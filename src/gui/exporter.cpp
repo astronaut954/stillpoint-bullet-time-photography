@@ -668,6 +668,22 @@ namespace
                     }
         }
     }
+    // O mesmo texto girado 90° no sentido horário (lido de cima para baixo): `col` é a coluna da
+    // fonte ao longo do texto (0 .. 6 × letras); a linha da folha recebe os pontos daquela coluna
+    void DrawTextColumn(std::vector<unsigned char>& line, int width, const std::string& t, int x0, int col, int scale)
+    {
+        const int i = col / 6, gx = col % 6;
+        if (i < 0 || i >= static_cast<int>(t.size()) || gx > 4) return;
+        const unsigned char* g = Glyph(t[static_cast<size_t>(i)]);
+        if (!g) return;
+        for (int gy = 0; gy < 7; ++gy)
+            if (g[gy] & (0x10 >> gx))
+                for (int s = 0; s < scale; ++s)
+                {
+                    const int x = x0 + (6 - gy) * scale + s;   // a base da letra fica à esquerda
+                    if (x >= 0 && x < width) line[static_cast<size_t>(x)] = 0;
+                }
+    }
     // TIFF em tons de cinza, gravado linha a linha (a folha de teste pode ter centenas de megapixels)
     bool WriteGrayTiff(const fs::path& file, int W, int H, int dpi,
                        const std::function<void(int, std::vector<unsigned char>&)>& rowAt, std::string& error)
@@ -949,9 +965,10 @@ namespace Export
         const int digitScale = std::max(1, static_cast<int>(std::lround(0.16 * o.dpi / 7)));
         const int decimals = o.step < 0.0999 ? 2 : 1;
         // Área do número: em cima de cada faixa (animação) ou à esquerda (3D, cabe o número inteiro)
+        // Área do número: na animação as faixas são colunas estreitas, então o número vai em pé (de
+        // cima para baixo) e a área tem a altura do texto; no 3D, deitado à esquerda
         int label = static_cast<int>(std::lround(0.45 * o.dpi));
-        if (!o.horizontalLenses)
-            label = std::max(label, TextWidth(decimals == 2 ? "000.00" : "000.0") * digitScale + static_cast<int>(std::lround(0.2 * o.dpi)));
+        label = std::max(label, TextWidth(decimals == 2 ? "000.00" : "000.0") * digitScale + static_cast<int>(std::lround(0.2 * o.dpi)));
         const int bandSize = std::max(1, (along - 2 * edge - gap * (o.count - 1)) / o.count);
         const double first = o.center - o.step * (o.count - 1) / 2.0;
         std::vector<double> lpis(static_cast<size_t>(o.count));
@@ -994,9 +1011,15 @@ namespace Export
                 const int tw = TextWidth(t) * digitScale, th = 7 * digitScale;
                 const int bandStart = edge + b * (bandSize + gap);
                 // No eixo das faixas o texto fica centrado na faixa; no outro, no meio da etiqueta
-                int tx, ty;
-                if (o.horizontalLenses) { tx = bandStart + (bandSize - tw) / 2; ty = edge + (label - th) / 2; }
-                else { tx = edge + (label - tw) / 2; ty = bandStart + (bandSize - th) / 2; }
+                if (o.horizontalLenses)
+                {
+                    // Em pé: o texto corre de cima para baixo (girado 90° no sentido horário)
+                    const int tx = bandStart + (bandSize - th) / 2, ty = edge + (label - tw) / 2;
+                    if (y < ty || y >= ty + tw) continue;
+                    DrawTextColumn(line, W, t, tx, (y - ty) / digitScale, digitScale);
+                    continue;
+                }
+                const int tx = edge + (label - tw) / 2, ty = bandStart + (bandSize - th) / 2;
                 if (y < ty || y >= ty + th) continue;
                 DrawTextRow(line, W, t, tx, (y - ty) / digitScale, digitScale);
             }

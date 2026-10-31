@@ -22,6 +22,7 @@ int main(int argc, char** argv)
         o.widthInches = std::atof(argv[6]);
         o.heightInches = std::atof(argv[7]);
         o.horizontalLenses = !(argc > 8 && std::strcmp(argv[8], "3d") == 0);
+        if (argc > 9) o.count = std::atoi(argv[9]);
         std::string error;
         const bool ok = Export::WritePitchTest(o, argv[2], error);
         std::printf("pitch: %s %s\n", ok ? "ok" : "FAILED", error.c_str());

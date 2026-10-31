@@ -1802,6 +1802,33 @@
     if (label) r.appendChild(el("span", "export-label", label));
     return r;
   }
+  // Explicação de uma opção num "?" ao lado do nome dela (como no Camera settings), em vez de
+  // texto solto embaixo. label: o nome da linha (sem: a última linha de box)
+  function addTip(box, text, label) {
+    const rows = [...box.querySelectorAll(":scope > .export-row")];
+    const r = label ? rows.find((x) => { const lab = x.querySelector(".export-label"); return lab && lab.textContent === label; }) : rows[rows.length - 1];
+    if (!r) { box.appendChild(el("div", "export-note", text)); return; }
+    const tip = el("span", "info-tip float", "?");
+    tip.tabIndex = 0;
+    tip.setAttribute("aria-label", text);
+    tip.appendChild(el("span", "info-tip-text", text));
+    const lab = r.querySelector(".export-label");
+    if (lab) { lab.classList.add("with-tip"); lab.appendChild(tip); } else r.prepend(tip);
+  }
+  // A caixa do "?" fica por cima de tudo (fixa na tela), sem ser cortada por áreas que rolam
+  function placeTip(tip) {
+    const box = tip.querySelector(".info-tip-text");
+    if (!box) return;
+    const r = tip.getBoundingClientRect();
+    box.style.left = "0px"; box.style.top = "0px";
+    const w = box.offsetWidth || 340, h = box.offsetHeight || 80;
+    let x = r.right + 8, y = r.top - 8;
+    if (x + w > window.innerWidth - 8) x = Math.max(8, r.left - w - 8);
+    if (y + h > window.innerHeight - 8) y = Math.max(8, window.innerHeight - h - 8);
+    box.style.left = x + "px"; box.style.top = y + "px";
+  }
+  document.addEventListener("mouseover", (e) => { const t = e.target.closest && e.target.closest(".info-tip.float"); if (t) placeTip(t); });
+  document.addEventListener("focusin", (e) => { const t = e.target.closest && e.target.closest(".info-tip.float"); if (t) placeTip(t); });
   function segmented(options, current, onPick, disabledReason) {
     const box = el("span", "segmented");
     options.forEach(([value, label]) => {
@@ -1912,26 +1939,28 @@
   // ---- Folha de teste de pitch (entrega 2) ----
   // Abre de três lugares: "Print pitch test…" na seção Lenticular, o botão no rodapé da janela de
   // salvar e o ícone da tela principal. 11 faixas, cada uma desenhada para um LPI um pouco
-  // diferente, em volta do LPI da lâmina (ou do pitch já medido): de 0,1 em 0,1 por padrão;
-  // "Finer steps" (discreto) para 0,05 ou 0,02 numa segunda folha, mais precisa.
+  // diferente, em volta do LPI da lâmina (ou do pitch já medido).
   // A janela é montada uma vez; ao mudar uma opção só o conteúdo é refeito (sem piscar).
-  const pitchState = { l: null, step: 0.1, fine: false, zoom: 2 };
-  const PITCH_STRIPS = 11;
+  // Opção A (decisão do dono, 2026-10-31): 21 faixas de 0,05 numa folha só (cobre ±0,5 com o
+  // dobro de precisão); sem "Finer steps". Papel mínimo A4.
+  const pitchState = { l: null, step: 0.05, zoom: 2, print: null };
+  const PITCH_STRIPS = 21;
   function openPitchTest(from) {
     const base = from || (exportPrefs && exportPrefs.settings && exportPrefs.settings.lent) || defaultSettings().lent;
     // Cópia: mexer aqui não muda a impressão; o papel começa em A4 (ou Letter em polegadas)
     const l = JSON.parse(JSON.stringify(base));
+    // A impressão de referência (para avisar se ela for mais comprida que as faixas do teste)
+    const print = { widthCm: base.widthCm, heightCm: base.heightCm };
     l.widthCm = l.unit === "in" ? 8.5 * CM_PER_IN : 21; l.heightCm = l.unit === "in" ? 11 * CM_PER_IN : 29.7;
-    Object.assign(pitchState, { l, step: 0.1, fine: false });
+    Object.assign(pitchState, { l, step: 0.05, print });
     let ov = $("pitchOverlay");
     if (!ov) {
       ov = el("div", "overlay pitch-overlay hidden"); ov.id = "pitchOverlay";
       ov.addEventListener("click", (e) => { if (e.target === ov) closePitchTest(); });
       const d = el("div", "dialog pitch-dialog");
       d.appendChild(el("h3", "", "Pitch test"));
-      d.appendChild(el("p", "pitch-sub", "Measures the real LPI of your lens sheet with your printer. Print the sheet at 100%, lay the lens sheet on top " +
-        "(strips in the same direction) and tilt it slowly: the strip that turns black or white all at once, with no bands moving across it, is your real pitch. " +
-        "Type its number in \"Measured pitch\" in the Lenticular settings."));
+      d.appendChild(el("p", "pitch-sub", "Finds the real LPI of your lens sheet on the printer you will use. Print it at 100% on that printer, lay the lens sheet on top, " +
+        "and type the number of the strip that stays the same from end to end in \"Measured pitch\"."));
       const main = el("div", "pitch-main");
       main.append(el("div", "pitch-body"), el("div", "pitch-preview"));
       d.appendChild(main);
@@ -1957,8 +1986,7 @@
     const horizontal = l.effect !== "3d", center = l.pitch > 0 ? l.pitch : l.lpi;
     const edge = Math.round(0.25 * dpi), gap = Math.max(2, Math.round(0.08 * dpi));
     const digitScale = Math.max(1, Math.round(0.16 * dpi / 7)), decimals = step < 0.0999 ? 2 : 1;
-    let label = Math.round(0.45 * dpi);
-    if (!horizontal) label = Math.max(label, ((decimals === 2 ? 6 : 5) * 6 - 1) * digitScale + Math.round(0.2 * dpi));
+    const label = Math.max(Math.round(0.45 * dpi), ((decimals === 2 ? 6 : 5) * 6 - 1) * digitScale + Math.round(0.2 * dpi));
     const along = horizontal ? W : H, across = horizontal ? H : W;
     const band = Math.max(1, Math.floor((along - 2 * edge - gap * (PITCH_STRIPS - 1)) / PITCH_STRIPS));
     const first = center - step * (PITCH_STRIPS - 1) / 2;
@@ -1971,7 +1999,9 @@
       const pos = (a - edge - label + 0.5) * lpis[b] / dpi;
       return pos - Math.floor(pos) < 0.5 ? 0 : 255;
     };
-    return { W, H, horizontal, center, edge, gap, label, band, lpis, decimals, digitScale, at, across };
+    // Comprimento útil de cada faixa (no sentido em que o erro se acumula), em cm
+    const stripCm = (across - 2 * edge - label) / dpi * CM_PER_IN;
+    return { W, H, horizontal, center, edge, gap, label, band, lpis, decimals, digitScale, at, across, stripCm };
   }
   function renderPitchTest() {
     const ov = $("pitchOverlay"), l = pitchState.l;
@@ -1987,19 +2017,24 @@
     const step = pitchState.step, P = pitchLayout(l, step);
     const lo = P.lpis[0].toFixed(P.decimals), hi = P.lpis[PITCH_STRIPS - 1].toFixed(P.decimals);
     const strips = row("Strips");
-    strips.appendChild(el("span", "pitch-range", PITCH_STRIPS + " strips · " + lo + " to " + hi + " LPI"));
-    if (!pitchState.fine) strips.appendChild(button("Finer steps", () => { pitchState.fine = true; pitchState.step = 0.05; rerender(); }, { kind: "btn-link", title: "Smaller steps, for a second and more precise test" }));
-    else {
-      strips.appendChild(segmented([["0.05", "every 0.05"], ["0.02", "every 0.02"]], String(step), (v) => { pitchState.step = Number(v); rerender(); }));
-      strips.appendChild(button("Normal steps", () => { pitchState.fine = false; pitchState.step = 0.1; rerender(); }, { kind: "btn-link" }));
-    }
+    strips.appendChild(el("span", "pitch-range", PITCH_STRIPS + " strips · " + lo + " to " + hi + " LPI, every " + step));
     body.appendChild(strips);
-    body.appendChild(el("div", "export-note", "Each strip is printed for a slightly different LPI: " + P.lpis.map((v) => v.toFixed(P.decimals)).join(", ") + ". " +
-      (pitchState.fine ? "Finer steps: for a second sheet, after the first one showed roughly where your value is."
-        : "Start with this sheet (steps of 0.1). If two neighbouring strips look equally smooth, type the better one in \"Measured pitch\" and print again with finer steps around it.") +
-      (l.pitch > 0 ? " Centered on your measured pitch (" + l.pitch + ")." : "")));
+    addTip(body, "Each strip is printed for a slightly different LPI, " + lo + " to " + hi + (l.pitch > 0 ? ", around your measured pitch (" + l.pitch + ")" : "") +
+      ". With the lens sheet on top, the right strip turns black and then white all at once, the same from end to end; the wrong ones show a dark area moving along them.", "Strips");
+    // Papel mínimo A4; e as faixas pelo menos do comprimento da impressão (o erro se acumula ao longo dela)
+    const shortCm = Math.min(l.widthCm, l.heightCm), longCm = Math.max(l.widthCm, l.heightCm);
+    const small = shortCm < 20.9 || longCm < 27.8;
+    const printLen = pitchState.print ? (l.effect === "3d" ? pitchState.print.widthCm : pitchState.print.heightCm) : 0;
+    const short = !small && printLen > P.stripCm + 0.05;
+    if (small) body.appendChild(el("div", "export-note exp-none", "Use A4 / Letter or bigger: on smaller paper the 21 strips get too narrow to read."));
+    else if (short) body.appendChild(el("div", "export-note exp-none", "Your print is " + cmText(printLen) + " cm " + (l.effect === "3d" ? "wide" : "tall") +
+      ", but the strips on this sheet are " + cmText(P.stripCm) + " cm long. A small error can show only past that length: use a paper at least that long in this direction" +
+      (l.effect === "3d" ? " (turn it sideways or choose a bigger one)." : " (choose a bigger one).")));
+    pitchState.blocked = small;
     body.appendChild(el("div", "export-note", P.W + " × " + P.H + " px, black and white TIFF · saved in " + (exp.destDefault || "the Exports folder") + " and shown in the " + (upd.info && upd.info.os === "windows" ? "Explorer" : "Finder") + "."));
     body.scrollTop = scroll;
+    const save = $("pitchOverlay").querySelector(".pitch-save");
+    if (save) save.disabled = !!pitchState.blocked;
     drawPitchPreview(P);
   }
   // Prévia da folha: a página inteira reduzida (as listras aparecem maiores do que são, só para mostrar
@@ -2026,8 +2061,9 @@
       const fontPx = 7 * P.digitScale;
       g.font = "600 " + fontPx + "px 'JetBrains Mono', monospace"; g.textBaseline = "middle"; g.textAlign = "center";
       const t = P.lpis[b].toFixed(P.decimals);
-      if (P.horizontal) g.fillText(t, p0 + P.band / 2, P.edge + P.label / 2);
-      else g.fillText(t, P.edge + P.label / 2, p0 + P.band / 2);
+      if (P.horizontal) {
+        g.save(); g.translate(p0 + P.band / 2, P.edge + P.label / 2); g.rotate(Math.PI / 2); g.fillText(t, 0, 0); g.restore();
+      } else g.fillText(t, P.edge + P.label / 2, p0 + P.band / 2);
     }
     const wrap = el("div", "pitch-canvas-wrap");
     wrap.appendChild(c);
@@ -2036,7 +2072,7 @@
     tag.title = "Scroll to zoom in and out";
     wrap.append(loupe, tag);
     pane.appendChild(wrap);
-    pane.appendChild(el("div", "export-note", "Whole sheet, reduced: the stripes are drawn bigger than they print, only to show where they go. Move the mouse over it to see them at their real size; scroll to zoom in and out."));
+    pane.appendChild(el("div", "export-note", "Move the mouse over the sheet for a close-up; scroll to zoom. The reduced sheet shows the stripes bigger than they print."));
     let last = null;
     const move = (e) => {
       last = { clientX: e.clientX, clientY: e.clientY };
@@ -2073,7 +2109,8 @@
     const l = pitchState.l, P = pitchLayout(l, pitchState.step);
     if (typeof window.lenticularPitchTest !== "function") { toast("This build cannot do that yet. Build the app again.", 8000); return; }
     if (!(P.center > 0 && l.dpi > 0 && l.widthCm > 0 && l.heightCm > 0)) { toast("Check the lens, printer and size values.", 6000, { warn: true }); return; }
-    window.lenticularPitchTest(String(l.dpi), (l.widthCm / CM_PER_IN).toFixed(4), (l.heightCm / CM_PER_IN).toFixed(4), l.effect, String(P.center), String(pitchState.step), "");
+    if (pitchState.blocked) { toast("Use A4 / Letter or bigger for the pitch test.", 6000, { warn: true }); return; }
+    window.lenticularPitchTest(String(l.dpi), (l.widthCm / CM_PER_IN).toFixed(4), (l.heightCm / CM_PER_IN).toFixed(4), l.effect, String(P.center), String(pitchState.step), "", String(PITCH_STRIPS));
     toast("Making the pitch test sheet…");
     closePitchTest();
   }
@@ -2090,9 +2127,10 @@
       }));
       if (!(arguments[3] && arguments[3].noReverse)) effect.appendChild(checkOption("Reverse order", l.reverse, (v) => { l.reverse = v; rerender(); }));
       box.appendChild(effect);
-      box.appendChild(el("div", "export-note", l.effect === "3d"
+      addTip(box, (l.effect === "3d"
         ? "3D needs photos taken side by side along a straight line (left to right). A bullet-time arc only works partly. Lens strips stand vertical."
-        : "Animation shows one photo after another as the print tilts up and down: the bullet-time turn. Lens strips lie horizontal."));
+        : "Animation shows one photo after another as the print tilts up and down: the bullet-time turn. Lens strips lie horizontal.") +
+        " Reverse order: the photos change in the opposite direction when you tilt.", "Effect");
   }
   function lentLensRows(l, box, rerender, opts) {
       const lens = row("Lens sheet");
@@ -2107,8 +2145,8 @@
         lens.appendChild(numField(l.pitch, (v) => { l.pitch = v; rerender(); }, { placeholder: String(l.lpi), width: "72px", allowEmpty: true }));
       }
       box.appendChild(lens);
-      box.appendChild(el("div", "export-note", "LPI = lenses per inch, printed on the sheet's package. 40–75 LPI for photo-size animation; 20–40 for 3D and posters." +
-        (opts && opts.measured ? " \"Measured pitch\": the number of the smoothest strip on the pitch test (Print pitch test, below), empty = use the LPI above." : "")));
+      addTip(box, "LPI = lenses per inch, printed on the sheet's package. 40–75 LPI for photo-size animation; 20–40 for 3D and posters." +
+        (opts && opts.measured ? " Measured pitch: the number of the strip that stays even from end to end on the pitch test (Print pitch test, at the bottom). Empty = use the LPI of the package." : ""), "Lens sheet");
   }
   function lentPrinterRows(l, box, rerender) {
       const printer = row("Printer");
@@ -2116,7 +2154,7 @@
       printer.appendChild(segmented(dpiOpts, l.dpiOther ? "other" : l.dpi, (v) => { if (v === "other") { l.dpiOther = true; } else { l.dpiOther = false; l.dpi = v; } rerender(); }));
       if (l.dpiOther) printer.appendChild(numField(l.dpi, (v) => { l.dpi = Math.round(v); rerender(); }, { placeholder: "dpi", width: "64px" }));
       box.appendChild(printer);
-      box.appendChild(el("div", "export-note", PRINTER_HELP));
+      addTip(box, PRINTER_HELP, "Printer");
   }
   function lentSizeRow(l, box, rerender, label) {
       const size = row(label || "Print size");
@@ -2329,15 +2367,13 @@
         box.appendChild(q);
         const max = { jpg: "JPG at the highest quality, with full color detail.", webp: "Lossless: every pixel is kept.",
                       heic: "HEIC at the highest quality." };
-        box.appendChild(el("div", "export-note", s.quality === "standard" ? "Smaller files, good for sharing online."
-          : s.quality === "high" ? "Very close to the original photos, with smaller files. Good for most uses."
-          : max[s.format] + " Largest files."));
+        addTip(box, "Standard: smaller files, good for sharing online. High: very close to the original photos, with smaller files; good for most uses. " +
+          "Maximum: " + max[s.format] + " Largest files.", "Quality");
       } else if (s.convert && (s.format === "png" || s.format === "tiff")) {
-        box.appendChild(el("div", "export-note", s.format.toUpperCase() + " keeps every pixel: no quality is lost in the conversion."));
+        addTip(box, s.format.toUpperCase() + " keeps every pixel: no quality is lost in the conversion.", "Converted");
       }
-      box.appendChild(el("div", "export-note",
-        "The originals are the highest quality. A converted copy makes one file per camera; RAW photos are converted from the " +
-        "full-size image the camera keeps inside them, and when a camera saved RAW + JPG, the JPG is used."));
+      addTip(box, "The originals are the highest quality: each file exactly as the camera saved it. A converted copy makes one file per camera; RAW photos are converted from the " +
+        "full-size image the camera keeps inside them, and when a camera saved RAW + JPG, the JPG is used.", "Originals");
       } else if (kind === "lenticular") {
       const l = st.lent;
       const n = items.length;
@@ -2561,10 +2597,10 @@
       marks.appendChild(el("span", "export-label lent-sub", "Bleed"));
       marks.appendChild(segmented([["0", "None"], ["3", "3 mm"]], String(l.bleedMm || 0), (v) => { l.bleedMm = Number(v); rerender(); }));
       box.appendChild(marks);
-      box.appendChild(el("div", "export-note", "Crop marks: short lines in the margin showing where to cut. Alignment marks: crosses on each side to place the lens sheet. " +
-        "Bleed: the picture goes a little past the cut line, so a cut slightly off leaves no white edge. With marks, the file has a white margin around the print."));
-      box.appendChild(el("div", "export-note", "The photos are scaled to cover this size exactly (cropped at the edges if the shape differs). " +
-        "Print at 100% / actual size, never \"fit to page\": the file already has the right dpi and size."));
+      addTip(box, "Crop marks: short lines in the margin showing where to cut. Alignment marks: crosses on each side to place the lens sheet. " +
+        "Bleed: the picture goes a little past the cut line, so a cut slightly off leaves no white edge. With marks, the file has a white margin around the print.", "Marks");
+      addTip(box, "The photos are scaled to cover this size exactly (cropped at the edges if the shape differs). " +
+        "Print at 100% / actual size, never \"fit to page\": the file already has the right dpi and size.", "Print size");
       } else {
       const s = st.seq;
       const order = cycleOrder(items.length, s.reverse);
@@ -2618,16 +2654,15 @@
 
       const size = row("Size");
       size.appendChild(segmented(SIZES, s.height, (v) => { s.height = v; rerender(); }));
-      size.appendChild(el("span", "export-note", "4K only for MP4 and MOV. GIF, WEBP and AVIF go up to 1080p."));
       box.appendChild(size);
+      addTip(box, "4K only for MP4 and MOV. GIF, WEBP and AVIF go up to 1080p.", "Size");
 
       const quality = row("Quality");
       quality.appendChild(segmented(QUALITIES, s.quality, (v) => { s.quality = v; rerender(); }));
       box.appendChild(quality);
-      box.appendChild(el("div", "export-note", (s.quality === "standard" ? "Smaller files, good for sharing online."
-        : s.quality === "high" ? "Very close to the photos, with smaller files. Good for most uses."
-        : "As close to the photos as each format allows: WEBP keeps every pixel, MP4, MOV and AVIF get much more detail. " +
-          "Large files, and AVIF takes longer.") + (s.formats.includes("gif") ? " GIF always has 256 colors, at any quality." : "")));
+      addTip(box, "Standard: smaller files, good for sharing online. High: very close to the photos, with smaller files; good for most uses. " +
+        "Maximum: as close to the photos as each format allows (WEBP keeps every pixel; MP4, MOV and AVIF get much more detail); large files, and AVIF takes longer. " +
+        "GIF always has 256 colors, at any quality.", "Quality");
 
       const t = seqTotal(session, s);
       const total = el("div", "export-total");
@@ -2638,7 +2673,7 @@
       sum.appendChild(el("b", "", seconds(t.seconds)));
       total.appendChild(sum);
       box.appendChild(total);
-      box.appendChild(el("div", "export-note", "MP4 and MOV have the loops inside the video. GIF, WEBP and AVIF repeat without stopping."));
+      addTip(box, "MP4 and MOV have the loops inside the video. GIF, WEBP and AVIF repeat without stopping. Reverse loop: plays forward and back (1 → 9 → 2) instead of starting over.", "Speed");
           }
     };
 
@@ -2719,10 +2754,8 @@
     }
     const folderLine = el("div", "export-note", "Folder: " + folderName(session));
     rows.appendChild(folderLine);
-    if (n.kind === "number" || (n.kind === "custom" && !n.date))
-      rows.appendChild(el("div", "export-note", n.kind === "number"
-        ? "Numbers continue from the ones already in the destination folder."
-        : "Sessions with the same name get numbers (01, 02…), continuing from the destination folder."));
+    addTip(rows, "Date + time: each session folder is named after when it was shot. Number: 01, 02… continuing from the ones already in the destination folder. " +
+      "Custom: a name you type; sessions with the same name get numbers (01, 02…).", "Name");
     // Onde salva: com Project aberto, <Project>/Exports; sem, <pasta do Stillpoint>/Exports.
     // "Choose another folder…" vale só para este salvamento (como no New project)
     const dest = row("Save to");

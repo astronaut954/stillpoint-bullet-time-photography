@@ -628,8 +628,10 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    dpi no TIFF; reverse; eixo 3D). **Não validado no papel:** o dono não tem impressora nem lâmina;
    registrar o resultado da primeira impressão (gráfica + kit de lâminas) antes de dar por
    concluída. **Entrega 2 (2026-10-30, mesmo branch e versão; decisões do dono no mesmo dia):**
-   folha de pitch test — 11 faixas preto/branco ao redor do LPI (ou do pitch já medido), de 0,1 em
-   0,1, com "Finer steps" discreto para 0,05 ou 0,02; números impressos com uma fonte de bloco
+   folha de pitch test — 21 faixas preto/branco de 0,05 em 0,05 ao redor do LPI (ou do pitch já
+   medido), cobrindo ±0,5 numa folha só (opção A, decisão do dono em 2026-10-31, pensando em quem
+   imprime em gráfica: cada rodada de teste é uma ida); papel mínimo A4; aviso quando a impressão é
+   mais comprida que as faixas (o erro se acumula ao longo dela); números impressos com uma fonte de bloco
    própria; papel com as mesmas opções de tamanho da exportação (começa em A4/Letter); TIFF em tons de
    cinza gravado linha a linha (`Export::WritePitchTest`), salvo na pasta padrão do Save e mostrado
    no Finder; abre pelo "Print pitch test…" da seção Lenticular e por um ícone na tela principal.

@@ -1257,3 +1257,8 @@ html.drag-ns, html.drag-ns * { cursor: ns-resize !important; }
 .pitch-body { overflow: auto; display: flex; flex-direction: column; gap: 12px; padding: 4px 22px 14px; min-height: 0; }
 .pitch-range { font: 12px var(--noct-font-mono); color: var(--noct-text); }
 .splash[data-off] { display: none !important; }
+/* "?" das opções da janela de salvar e da folha de teste: a caixa fica fixa na tela (não é cortada) */
+.export-label.with-tip { display: inline-flex; align-items: center; gap: 8px; }
+.info-tip.float { width: 16px; height: 16px; font-size: 10px; flex: none; }
+.info-tip.float .info-tip-text { position: fixed; left: 0; top: 0; z-index: 95; width: 320px; font-weight: 400; text-transform: none; letter-spacing: 0; }
+.export-note.exp-none { color: var(--noct-pending); }  /* avisos que pedem ação: amarelo */
