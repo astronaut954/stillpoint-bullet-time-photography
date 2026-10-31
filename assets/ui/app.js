@@ -1925,7 +1925,9 @@
 
   // Zoom das lupas (prévia Interlaced e folha de teste): 1×, 1,5×, 2×, 3×, 4×, 6×, 8×
   // Mira no centro da lupa: um "+" fino, com 80% do tamanho do quadrado
+  let loupePressed = false;  // botão esquerdo apertado sobre a lupa: sem a mira (para ver o ponto limpo)
   function drawLoupeCross(canvas) {
+    if (loupePressed) return;
     const g = canvas.getContext("2d"), w = canvas.width, h = canvas.height, cx = Math.floor(w / 2) + 0.5, cy = Math.floor(h / 2) + 0.5;
     g.save();
     g.lineWidth = 1;
@@ -2186,8 +2188,9 @@
     };
     c.addEventListener("pointermove", move);
     // Clique: sem arrastar a imagem nem selecionar (no Mac isso tirava a mira); redesenha a lupa
-    c.addEventListener("pointerdown", (e) => { e.preventDefault(); move(e); });
-    c.addEventListener("pointerup", move);
+    c.addEventListener("pointerdown", (e) => { if (e.button !== 0) return; e.preventDefault(); loupePressed = true; move(e); });
+    c.addEventListener("pointerup", (e) => { loupePressed = false; move(e); });
+    c.addEventListener("pointerleave", () => { loupePressed = false; });
     c.addEventListener("dragstart", (e) => e.preventDefault());
     c.addEventListener("wheel", (e) => {
       e.preventDefault();
@@ -2500,6 +2503,7 @@
         // Interlaced: o clique não arrasta a imagem nem seleciona (no Mac isso tirava a mira da lupa)
         if (exp.lentView === "interlaced" && !e.target.closest("button")) {
           e.preventDefault();
+          if (e.button === 0) loupePressed = true;  // segurando: a lupa sem a mira
           requestAnimationFrame(() => preview.dispatchEvent(new PointerEvent("pointermove", { clientX: e.clientX, clientY: e.clientY })));
           return;
         }
@@ -2515,6 +2519,14 @@
         showFrame(drag.start + Math.round(((vertical ? e.clientY - drag.y : e.clientX - drag.x)) / step));
       });
       const endDrag = () => { drag = null; document.documentElement.classList.remove("drag-ns", "drag-ew"); };
+      // Soltou (ou saiu): a mira volta
+      const releaseLoupe = (e) => {
+        if (!loupePressed) return;
+        loupePressed = false;
+        if (exp.lentView === "interlaced" && e && e.clientX !== undefined) preview.dispatchEvent(new PointerEvent("pointermove", { clientX: e.clientX, clientY: e.clientY }));
+      };
+      preview.addEventListener("pointerup", releaseLoupe);
+      preview.addEventListener("pointerleave", () => { loupePressed = false; });
       preview.addEventListener("pointerup", endDrag); preview.addEventListener("pointercancel", endDrag);
 
       // Segunda vista: o arquivo entrelaçado em si — a imagem inteira como vai sair impressa (reduzida
