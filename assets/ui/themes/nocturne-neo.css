@@ -1268,3 +1268,12 @@ html.drag-ns, html.drag-ns * { cursor: ns-resize !important; }
 /* Alerta nos resumos (combinação que a impressora não separa bem): ícone amarelo */
 .warn-icon { display: inline-flex; vertical-align: -3px; margin-left: 6px; color: var(--noct-pending); filter: drop-shadow(0 0 4px rgba(var(--noct-pending-rgb), .45)); }
 .warn-icon svg { width: 15px; height: 15px; stroke-width: 1.8; }
+/* O alerta não muda a altura do cabeçalho (antes a linha crescia uns pixels e tudo pulava) */
+.exp-sec-sum { display: inline-flex; align-items: center; height: 18px; line-height: 18px; }
+.exp-sec-sum .warn-icon { vertical-align: 0; margin-top: 0; }
+.export-summary .warn-icon { vertical-align: -2px; line-height: 0; }
+.export-summary .warn-icon svg { width: 13px; height: 13px; }
+/* Resumo comprido (com o alerta) não quebra o nome em duas linhas: a descrição curta encolhe */
+.exp-sec-name { min-width: 0; flex: 0 1 auto; overflow: hidden; white-space: nowrap; }
+.exp-sec-name .exp-sec-sub { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.exp-sec-sum { flex: 0 0 auto; white-space: nowrap; }
