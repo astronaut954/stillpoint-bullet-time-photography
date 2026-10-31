@@ -5202,7 +5202,8 @@
     // Botão extra à esquerda (ex.: "Choose another folder…" no New project): fecha a caixa e age
     extra.classList.toggle("hidden", !opts.extra);
     extra.textContent = opts.extra ? opts.extra.label : "";
-    const close = () => { $("promptOverlay").classList.add("hidden"); $("promptOk").onclick = $("promptCancel").onclick = extra.onclick = input.onkeydown = null; };
+    $("promptReset").classList.add("hidden");  // "Reset to default" só aparece quando quem abriu a caixa pede
+    const close = () => { $("promptOverlay").classList.add("hidden"); $("promptOk").onclick = $("promptCancel").onclick = extra.onclick = $("promptReset").onclick = input.onkeydown = null; };
     extra.onclick = opts.extra ? () => { if (!opts.extra.keepOpen) close(); opts.extra.onClick(); } : null;
     let checking = false;
     const ok = () => {
@@ -5364,9 +5365,17 @@
         if (typeof window.projectChooseParent !== "function") { callProject("projectNew", "").then(projectResult); return; }  // app antigo
         Promise.resolve(window.projectChooseParent(base || projectsFolder)).then((r) => {
           if (r && r.folder) { base = r.folder; $("promptText").textContent = where(); $("promptError").classList.add("hidden"); }
+          $("promptReset").classList.toggle("hidden", !base);
           $("promptInput").focus();
         });
       } } });
+    // Voltar para a pasta padrão (aparece depois de escolher outra)
+    $("promptReset").onclick = () => {
+      base = "";
+      $("promptText").textContent = where(); $("promptError").classList.add("hidden");
+      $("promptReset").classList.add("hidden");
+      $("promptInput").focus();
+    };
   }
   function clearRecentProjects(all) {
     const keep = all.filter((f) => project.open && f === project.folder);

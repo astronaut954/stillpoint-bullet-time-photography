@@ -188,7 +188,9 @@ button { font: inherit; }
 .settings-row .btn.settings-link { padding-left: 0; padding-right: 0; margin-top: 4px; margin-right: 16px; }
 .settings-folder { display: flex; align-items: center; gap: 10px; min-height: 30px; }
 .settings-folder-path { font: 500 11px var(--noct-font-mono); letter-spacing: .04em; color: var(--noct-text); word-break: break-all; }
-.dialog-actions .prompt-extra { margin-right: auto; }  /* botão com borda, como os outros (o texto ficava fora do centro do destaque) */
+.dialog-actions .prompt-extra { margin-right: 0; }
+.dialog-actions .prompt-extra:not(.hidden) + .prompt-reset:not(.hidden) { margin-right: auto; }
+.dialog-actions .prompt-extra:not(.hidden) + .prompt-reset.hidden + #promptCancel { margin-left: auto; }  /* botão com borda, como os outros (o texto ficava fora do centro do destaque) */
 .settings-restart {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   padding: 10px 12px; border-left: 3px solid var(--noct-pending); background: var(--noct-surface-inner);
@@ -1285,3 +1287,4 @@ html.drag-ns, html.drag-ns * { cursor: ns-resize !important; }
 .chip.on .info-tip.float { color: var(--noct-primary); border-color: var(--noct-primary); }  /* selecionado: verde neon */
 .fine-chip .info-tip-text, .info-tip.float .info-tip-text { text-align: left; }
 .pitch-canvas, .lent-canvas, .pitch-loupe, .lent-loupe { -webkit-user-select: none; user-select: none; -webkit-user-drag: none; }
+#promptOverlay .dialog { width: min(700px, 94%); }  /* cabe Choose another folder + Reset + Cancel + Create numa linha */

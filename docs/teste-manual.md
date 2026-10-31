@@ -879,7 +879,8 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) serve para tudo, menos para a impress
       embaixo da prévia da folha de teste e na legenda da vista Interlaced.
 - [ ] New project → "CHOOSE ANOTHER FOLDER…": a caixa continua aberta; escolhida a pasta, o texto muda
       para "…will be created in <pasta escolhida>"; digitar o nome e "CREATE" cria o projeto lá. Nome já
-      usado nessa pasta: aviso na caixa.
+      usado nessa pasta: aviso na caixa. Depois de escolher outra pasta aparece "RESET TO DEFAULT", que volta
+      o texto para a pasta padrão e some.
 - [ ] Rodapé da janela de salvar: **Print pitch test** entre Cancel e Save, apagado sem Lenticular e
       ativo com ele. Salvar com Lenticular sem "Measured pitch": pergunta "Print a pitch test first?"
       (Print pitch test / Save anyway / Don't ask again). Com "Measured pitch" preenchido, não pergunta.
