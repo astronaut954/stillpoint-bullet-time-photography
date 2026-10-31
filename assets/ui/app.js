@@ -1919,15 +1919,16 @@
   }
 
   // Zoom das lupas (prévia Interlaced e folha de teste): 1×, 1,5×, 2×, 3×, 4×, 6×, 8×
-  // Mira no centro da lupa: um "+" fino, de largura total igual à metade do quadrado
+  // Mira no centro da lupa: um "+" fino, com 80% do tamanho do quadrado
   function drawLoupeCross(canvas) {
     const g = canvas.getContext("2d"), w = canvas.width, h = canvas.height, cx = Math.floor(w / 2) + 0.5, cy = Math.floor(h / 2) + 0.5;
     g.save();
     g.lineWidth = 1;
     g.strokeStyle = "rgba(0, 0, 0, .55)";  // contorno escuro: aparece no branco e no preto
-    g.beginPath(); g.moveTo(cx - w / 4, cy + 1); g.lineTo(cx + w / 4, cy + 1); g.moveTo(cx + 1, cy - h / 4); g.lineTo(cx + 1, cy + h / 4); g.stroke();
+    const ax = w * 0.4, ay = h * 0.4;  // braços maiores: o "+" ocupa 80% do quadrado
+    g.beginPath(); g.moveTo(cx - ax, cy + 1); g.lineTo(cx + ax, cy + 1); g.moveTo(cx + 1, cy - ay); g.lineTo(cx + 1, cy + ay); g.stroke();
     g.strokeStyle = "#00ff41";
-    g.beginPath(); g.moveTo(cx - w / 4, cy); g.lineTo(cx + w / 4, cy); g.moveTo(cx, cy - h / 4); g.lineTo(cx, cy + h / 4); g.stroke();
+    g.beginPath(); g.moveTo(cx - ax, cy); g.lineTo(cx + ax, cy); g.moveTo(cx, cy - ay); g.lineTo(cx, cy + ay); g.stroke();
     g.restore();
   }
   // Contínuo: cada movimento da roda muda um pouco (o trackpad manda dezenas de passos por gesto)

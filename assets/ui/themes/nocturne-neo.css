@@ -1282,5 +1282,5 @@ html.drag-ns, html.drag-ns * { cursor: ns-resize !important; }
 /* "?" dentro da caixa de cada passo fino */
 .fine-chip { display: inline-flex; align-items: center; gap: 8px; }
 .fine-chip .info-tip.float { width: 15px; height: 15px; font-size: 9px; }
-.chip.on .info-tip.float { color: var(--noct-on-primary); border-color: var(--noct-on-primary); }
+.chip.on .info-tip.float { color: var(--noct-primary); border-color: var(--noct-primary); }  /* selecionado: verde neon */
 .fine-chip .info-tip-text, .info-tip.float .info-tip-text { text-align: left; }
