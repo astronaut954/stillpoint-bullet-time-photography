@@ -1919,6 +1919,17 @@
   }
 
   // Zoom das lupas (prévia Interlaced e folha de teste): 1×, 1,5×, 2×, 3×, 4×, 6×, 8×
+  // Mira no centro da lupa: um "+" fino, de largura total igual à metade do quadrado
+  function drawLoupeCross(canvas) {
+    const g = canvas.getContext("2d"), w = canvas.width, h = canvas.height, cx = Math.floor(w / 2) + 0.5, cy = Math.floor(h / 2) + 0.5;
+    g.save();
+    g.lineWidth = 1;
+    g.strokeStyle = "rgba(0, 0, 0, .55)";  // contorno escuro: aparece no branco e no preto
+    g.beginPath(); g.moveTo(cx - w / 4, cy + 1); g.lineTo(cx + w / 4, cy + 1); g.moveTo(cx + 1, cy - h / 4); g.lineTo(cx + 1, cy + h / 4); g.stroke();
+    g.strokeStyle = "#00ff41";
+    g.beginPath(); g.moveTo(cx - w / 4, cy); g.lineTo(cx + w / 4, cy); g.moveTo(cx, cy - h / 4); g.lineTo(cx, cy + h / 4); g.stroke();
+    g.restore();
+  }
   // Contínuo: cada movimento da roda muda um pouco (o trackpad manda dezenas de passos por gesto)
   function loupeZoomStep(z, deltaY, deltaMode) {
     const d = deltaMode === 1 ? deltaY * 16 : deltaY;  // linhas → pixels
@@ -2073,11 +2084,12 @@
       const opts = el("span", "fine-steps");
       [0.04, 0.03, 0.025, 0.02, 0.01].forEach((v) => {
         const item = el("span", "fine-step");
-        const b = el("button", "chip" + (Math.abs(step - v) < 1e-9 ? " on" : ""), "every " + v);
+        const b = el("button", "chip fine-chip" + (Math.abs(step - v) < 1e-9 ? " on" : ""), "every " + v);
         b.type = "button";
-        b.addEventListener("click", () => { pitchState.step = v; rerender(); });
+        b.addEventListener("click", (e) => { if (e.target.closest(".info-tip")) return; pitchState.step = v; rerender(); });
         const half = Math.round(v * 10 * 1000) / 1000, upTo = Math.round(2.54 / v);
-        item.append(b, makeTip("Every " + v + ": the 21 strips cover " + half + " below to " + half + " above " + ref + ". " +
+        item.append(b);
+        b.appendChild(makeTip("Every " + v + ": the 21 strips cover " + half + " below to " + half + " above " + ref + ". " +
           "Enough for prints up to about " + (upTo >= 100 ? (upTo / 100).toFixed(upTo % 100 ? 1 : 0).replace(".", ",") + " m" : upTo + " cm") + " " + dir + ". " +
           (v <= 0.01 ? "Only for very large pieces, and only around a value you already measured: the range is narrow." :
            v <= 0.02 ? "For large posters, around a value you already measured." :
@@ -2156,6 +2168,7 @@
           img.data[k] = img.data[k + 1] = img.data[k + 2] = v; img.data[k + 3] = 255;
         }
       loupe.getContext("2d").putImageData(img, 0, 0);
+      drawLoupeCross(loupe);
       const wr = wrap.getBoundingClientRect();
       let lx = e.clientX - wr.left + 14, ly = e.clientY - wr.top + 14;
       if (lx + loupe.width > wr.width) lx = e.clientX - wr.left - loupe.width - 14;
@@ -2634,6 +2647,7 @@
         lctx.imageSmoothingEnabled = false;
         lctx.fillStyle = "#000"; lctx.fillRect(0, 0, loupe.width, loupe.height);
         lctx.drawImage(full, fx - half, fy - half, half * 2, half * 2, 0, 0, loupe.width, loupe.height);
+        drawLoupeCross(loupe);
         let lx = e.clientX - pr.left + 18, ly = e.clientY - pr.top + 18;
         if (lx + size > pr.width - 8) lx = e.clientX - pr.left - size - 18;
         if (ly + size > pr.height - 8) ly = e.clientY - pr.top - size - 18;
@@ -2846,8 +2860,8 @@
     dest.appendChild(button("Choose another folder…", () => {
       if (typeof window.chooseExportFolder !== "function") { toast("This build cannot do that yet. Build the app again.", 8000); return; }
       Promise.resolve(window.chooseExportFolder(where)).then((r) => { if (r && r.folder) { exp.dest = r.folder; rerender(); } });
-    }, { kind: "btn-link" }));
-    if (exp.dest) dest.appendChild(button("Use " + (exp.destProject ? "the project's Exports" : "the default"), () => { exp.dest = null; rerender(); }, { kind: "btn-link" }));
+    }, { kind: "btn-secondary" }));
+    if (exp.dest) dest.appendChild(button("Use " + (exp.destProject ? "the project's Exports" : "the default"), () => { exp.dest = null; rerender(); }, { kind: "btn-secondary" }));
     rows.appendChild(dest);
 
     if (!exp.sameForAll && sessions.length > 1) {

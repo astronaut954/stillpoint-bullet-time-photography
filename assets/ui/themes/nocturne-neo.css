@@ -1279,3 +1279,8 @@ html.drag-ns, html.drag-ns * { cursor: ns-resize !important; }
 .exp-sec-sum { flex: 0 0 auto; white-space: nowrap; }
 .fine-steps { display: inline-flex; flex-wrap: wrap; gap: 8px 14px; }
 .fine-step { display: inline-flex; align-items: center; gap: 6px; }
+/* "?" dentro da caixa de cada passo fino */
+.fine-chip { display: inline-flex; align-items: center; gap: 8px; }
+.fine-chip .info-tip.float { width: 15px; height: 15px; font-size: 9px; }
+.chip.on .info-tip.float { color: var(--noct-on-primary); border-color: var(--noct-on-primary); }
+.fine-chip .info-tip-text, .info-tip.float .info-tip-text { text-align: left; }
