@@ -1845,7 +1845,7 @@
   document.addEventListener("focusin", (e) => { const t = e.target.closest && e.target.closest(".info-tip.float"); if (t) placeTip(t); });
   // Clicar no "?" deixava a explicação aberta (o clique dá foco); ao tirar o mouse, ela fecha
   document.addEventListener("mouseout", (e) => {
-    const t = e.target.closest && e.target.closest(".info-tip.float");
+    const t = e.target.closest && e.target.closest(".info-tip");  // todos os "?" (também o do Camera settings)
     if (t && !t.contains(e.relatedTarget) && document.activeElement === t) t.blur();
   });
   function segmented(options, current, onPick, disabledReason) {
