@@ -1943,7 +1943,9 @@
   // A janela é montada uma vez; ao mudar uma opção só o conteúdo é refeito (sem piscar).
   // Opção A (decisão do dono, 2026-10-31): 21 faixas de 0,05 numa folha só (cobre ±0,5 com o
   // dobro de precisão); sem "Finer steps". Papel mínimo A4.
-  const pitchState = { l: null, step: 0.05, zoom: 2, print: null };
+  // "Finer steps" (mantido, decisão do dono em 2026-10-31): 21 faixas de 0,02 (±0,2) em volta do
+  // pitch já medido, para uma segunda folha; só com o "Measured pitch" preenchido
+  const pitchState = { l: null, step: 0.05, zoom: 2, print: null, fine: false };
   const PITCH_STRIPS = 21;
   function openPitchTest(from) {
     const base = from || (exportPrefs && exportPrefs.settings && exportPrefs.settings.lent) || defaultSettings().lent;
@@ -1952,7 +1954,7 @@
     // A impressão de referência (para avisar se ela for mais comprida que as faixas do teste)
     const print = { widthCm: base.widthCm, heightCm: base.heightCm };
     l.widthCm = l.unit === "in" ? 8.5 * CM_PER_IN : 21; l.heightCm = l.unit === "in" ? 11 * CM_PER_IN : 29.7;
-    Object.assign(pitchState, { l, step: 0.05, print });
+    Object.assign(pitchState, { l, step: 0.05, print, fine: false });
     let ov = $("pitchOverlay");
     if (!ov) {
       ov = el("div", "overlay pitch-overlay hidden"); ov.id = "pitchOverlay";
@@ -2018,9 +2020,16 @@
     const lo = P.lpis[0].toFixed(P.decimals), hi = P.lpis[PITCH_STRIPS - 1].toFixed(P.decimals);
     const strips = row("Strips");
     strips.appendChild(el("span", "pitch-range", PITCH_STRIPS + " strips · " + lo + " to " + hi + " LPI, every " + step));
+    if (!pitchState.fine) {
+      const fineBtn = button("Finer steps", () => { pitchState.fine = true; pitchState.step = 0.02; rerender(); }, { kind: "btn-link",
+        title: l.pitch > 0 ? "A second sheet, every 0.02 around your measured pitch (" + l.pitch + ")" : "Type the result of the first sheet in \"Measured pitch\" first: the finer sheet goes around it" });
+      fineBtn.disabled = !(l.pitch > 0);
+      strips.appendChild(fineBtn);
+    } else strips.appendChild(button("Normal steps", () => { pitchState.fine = false; pitchState.step = 0.05; rerender(); }, { kind: "btn-link" }));
     body.appendChild(strips);
     addTip(body, "Each strip is printed for a slightly different LPI, " + lo + " to " + hi + (l.pitch > 0 ? ", around your measured pitch (" + l.pitch + ")" : "") +
-      ". With the lens sheet on top, the right strip turns black and then white all at once, the same from end to end; the wrong ones show a dark area moving along them.", "Strips");
+      ". With the lens sheet on top, the right strip turns black and then white all at once, the same from end to end; the wrong ones show a dark area moving along them. " +
+      "Finer steps (after the first sheet, with \"Measured pitch\" filled): a second sheet every 0.02 around that value, only needed for very large prints (over about 50 cm).", "Strips");
     // Papel mínimo A4; e as faixas pelo menos do comprimento da impressão (o erro se acumula ao longo dela)
     const shortCm = Math.min(l.widthCm, l.heightCm), longCm = Math.max(l.widthCm, l.heightCm);
     const small = shortCm < 20.9 || longCm < 27.8;

@@ -631,7 +631,8 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    folha de pitch test — 21 faixas preto/branco de 0,05 em 0,05 ao redor do LPI (ou do pitch já
    medido), cobrindo ±0,5 numa folha só (opção A, decisão do dono em 2026-10-31, pensando em quem
    imprime em gráfica: cada rodada de teste é uma ida); papel mínimo A4; aviso quando a impressão é
-   mais comprida que as faixas (o erro se acumula ao longo dela); números impressos com uma fonte de bloco
+   mais comprida que as faixas (o erro se acumula ao longo dela); "Finer steps" mantido (decisão do
+   dono, 2026-10-31): segunda folha de 0,02 em volta do pitch medido, só com ele preenchido; números impressos com uma fonte de bloco
    própria; papel com as mesmas opções de tamanho da exportação (começa em A4/Letter); TIFF em tons de
    cinza gravado linha a linha (`Export::WritePitchTest`), salvo na pasta padrão do Save e mostrado
    no Finder; abre pelo "Print pitch test…" da seção Lenticular e por um ícone na tela principal.
