@@ -1284,3 +1284,4 @@ html.drag-ns, html.drag-ns * { cursor: ns-resize !important; }
 .fine-chip .info-tip.float { width: 15px; height: 15px; font-size: 9px; }
 .chip.on .info-tip.float { color: var(--noct-primary); border-color: var(--noct-primary); }  /* selecionado: verde neon */
 .fine-chip .info-tip-text, .info-tip.float .info-tip-text { text-align: left; }
+.pitch-canvas, .lent-canvas, .pitch-loupe, .lent-loupe { -webkit-user-select: none; user-select: none; -webkit-user-drag: none; }

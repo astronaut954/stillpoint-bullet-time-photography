@@ -1843,6 +1843,11 @@
   }
   document.addEventListener("mouseover", (e) => { const t = e.target.closest && e.target.closest(".info-tip.float"); if (t) placeTip(t); });
   document.addEventListener("focusin", (e) => { const t = e.target.closest && e.target.closest(".info-tip.float"); if (t) placeTip(t); });
+  // Clicar no "?" deixava a explicação aberta (o clique dá foco); ao tirar o mouse, ela fecha
+  document.addEventListener("mouseout", (e) => {
+    const t = e.target.closest && e.target.closest(".info-tip.float");
+    if (t && !t.contains(e.relatedTarget) && document.activeElement === t) t.blur();
+  });
   function segmented(options, current, onPick, disabledReason) {
     const box = el("span", "segmented");
     options.forEach(([value, label]) => {
@@ -2180,6 +2185,10 @@
       loupe.classList.remove("hidden"); tag.classList.remove("hidden");
     };
     c.addEventListener("pointermove", move);
+    // Clique: sem arrastar a imagem nem selecionar (no Mac isso tirava a mira); redesenha a lupa
+    c.addEventListener("pointerdown", (e) => { e.preventDefault(); move(e); });
+    c.addEventListener("pointerup", move);
+    c.addEventListener("dragstart", (e) => e.preventDefault());
     c.addEventListener("wheel", (e) => {
       e.preventDefault();
       pitchState.zoom = loupeZoomStep(pitchState.zoom, e.deltaY, e.deltaMode);
@@ -2488,6 +2497,12 @@
       items.forEach((item) => sessionPhoto(session.name, item.file, 1600));
       let drag = null;
       preview.addEventListener("pointerdown", (e) => {
+        // Interlaced: o clique não arrasta a imagem nem seleciona (no Mac isso tirava a mira da lupa)
+        if (exp.lentView === "interlaced" && !e.target.closest("button")) {
+          e.preventDefault();
+          requestAnimationFrame(() => preview.dispatchEvent(new PointerEvent("pointermove", { clientX: e.clientX, clientY: e.clientY })));
+          return;
+        }
         if (exp.lentView === "interlaced" || e.target.closest("button")) return;  // botões (teatro, vistas) não começam arrasto
         drag = { x: e.clientX, y: e.clientY, start: frameAt }; preview.setPointerCapture(e.pointerId); e.preventDefault();
         document.documentElement.classList.add(vertical ? "drag-ns" : "drag-ew");
