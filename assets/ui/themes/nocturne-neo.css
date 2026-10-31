@@ -1262,3 +1262,4 @@ html.drag-ns, html.drag-ns * { cursor: ns-resize !important; }
 .info-tip.float { width: 16px; height: 16px; font-size: 10px; flex: none; }
 .info-tip.float .info-tip-text { position: fixed; left: 0; top: 0; z-index: 95; width: 320px; font-weight: 400; text-transform: none; letter-spacing: 0; }
 .export-note.exp-none { color: var(--noct-pending); }  /* avisos que pedem ação: amarelo */
+.lent-pair { display: inline-flex; align-items: center; gap: 10px; white-space: nowrap; }

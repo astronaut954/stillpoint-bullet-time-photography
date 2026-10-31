@@ -1944,7 +1944,7 @@
   // Opção A (decisão do dono, 2026-10-31): 21 faixas de 0,05 numa folha só (cobre ±0,5 com o
   // dobro de precisão); sem "Finer steps". Papel mínimo A4.
   // "Finer steps" (mantido, decisão do dono em 2026-10-31): 21 faixas de 0,02 (±0,2) em volta do
-  // pitch já medido, para uma segunda folha; só com o "Measured pitch" preenchido
+  // pitch medido (ou do LPI da embalagem, sem ele); sempre disponível
   const pitchState = { l: null, step: 0.05, zoom: 2, print: null, fine: false };
   const PITCH_STRIPS = 21;
   function openPitchTest(from) {
@@ -2021,15 +2021,13 @@
     const strips = row("Strips");
     strips.appendChild(el("span", "pitch-range", PITCH_STRIPS + " strips · " + lo + " to " + hi + " LPI, every " + step));
     if (!pitchState.fine) {
-      const fineBtn = button("Finer steps", () => { pitchState.fine = true; pitchState.step = 0.02; rerender(); }, { kind: "btn-link",
-        title: l.pitch > 0 ? "A second sheet, every 0.02 around your measured pitch (" + l.pitch + ")" : "Type the result of the first sheet in \"Measured pitch\" first: the finer sheet goes around it" });
-      fineBtn.disabled = !(l.pitch > 0);
-      strips.appendChild(fineBtn);
+      strips.appendChild(button("Finer steps", () => { pitchState.fine = true; pitchState.step = 0.02; rerender(); }, { kind: "btn-link",
+        title: "Every 0.02, around " + (l.pitch > 0 ? "your measured pitch (" + l.pitch + ")" : "the LPI of the package (" + l.lpi + ")") }));
     } else strips.appendChild(button("Normal steps", () => { pitchState.fine = false; pitchState.step = 0.05; rerender(); }, { kind: "btn-link" }));
     body.appendChild(strips);
     addTip(body, "Each strip is printed for a slightly different LPI, " + lo + " to " + hi + (l.pitch > 0 ? ", around your measured pitch (" + l.pitch + ")" : "") +
       ". With the lens sheet on top, the right strip turns black and then white all at once, the same from end to end; the wrong ones show a dark area moving along them. " +
-      "Finer steps (after the first sheet, with \"Measured pitch\" filled): a second sheet every 0.02 around that value, only needed for very large prints (over about 50 cm).", "Strips");
+      "Finer steps: every 0.02, covering ±0.2 around the measured pitch (or the package LPI when there is none); useful mainly for very large prints (over about 50 cm).", "Strips");
     // Papel mínimo A4; e as faixas pelo menos do comprimento da impressão (o erro se acumula ao longo dela)
     const shortCm = Math.min(l.widthCm, l.heightCm), longCm = Math.max(l.widthCm, l.heightCm);
     const small = shortCm < 20.9 || longCm < 27.8;
@@ -2149,9 +2147,11 @@
       lens.appendChild(segmented(lensOpts, lensCurrent, (v) => { if (v === "other") { l.lpiOther = true; } else { l.lpiOther = false; l.lpi = v; } rerender(); }));
       if (l.lpiOther) lens.appendChild(numField(l.lpi, (v) => { l.lpi = v; rerender(); }, { placeholder: "LPI", width: "64px" }));
       if (opts && opts.measured) {
-        const pitchLabel = el("span", "export-label lent-sub", "Measured pitch");
-        lens.appendChild(pitchLabel);
-        lens.appendChild(numField(l.pitch, (v) => { l.pitch = v; rerender(); }, { placeholder: String(l.lpi), width: "72px", allowEmpty: true }));
+        // Nome e campo juntos: se a linha quebrar, os dois descem juntos
+        const pair = el("span", "lent-pair");
+        pair.append(el("span", "export-label lent-sub", "Measured pitch"),
+                    numField(l.pitch, (v) => { l.pitch = v; rerender(); }, { placeholder: String(l.lpi), width: "72px", allowEmpty: true }));
+        lens.appendChild(pair);
       }
       box.appendChild(lens);
       addTip(box, "LPI = lenses per inch, printed on the sheet's package. 40–75 LPI for photo-size animation; 20–40 for 3D and posters." +
