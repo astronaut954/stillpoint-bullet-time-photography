@@ -1878,11 +1878,13 @@
   }
 
   // Zoom das lupas (prévia Interlaced e folha de teste): 1×, 1,5×, 2×, 3×, 4×, 6×, 8×
-  const LOUPE_ZOOMS = [1, 1.5, 2, 3, 4, 6, 8];
-  function loupeZoomStep(z, deltaY) {
-    const i = LOUPE_ZOOMS.indexOf(z) >= 0 ? LOUPE_ZOOMS.indexOf(z) : 2;
-    return LOUPE_ZOOMS[Math.max(0, Math.min(LOUPE_ZOOMS.length - 1, i + (deltaY < 0 ? 1 : -1)))];
+  // Contínuo: cada movimento da roda muda um pouco (o trackpad manda dezenas de passos por gesto)
+  function loupeZoomStep(z, deltaY, deltaMode) {
+    const d = deltaMode === 1 ? deltaY * 16 : deltaY;  // linhas → pixels
+    const next = z * Math.exp(-Math.max(-60, Math.min(60, d)) * 0.0025);
+    return Math.round(Math.max(1, Math.min(8, next)) * 100) / 100;
   }
+  const zoomText = (z) => (Math.round(z * 10) / 10).toFixed(1).replace(/\.0$/, "") + "×";
   // Marcas de corte e de alinhamento no canvas da prévia, com as mesmas medidas do programa
   // (Export: DrawPrintMarks); f = escala da prévia em relação ao arquivo
   function drawPrintMarks(g, l, f, d) {
@@ -2030,7 +2032,7 @@
     const wrap = el("div", "pitch-canvas-wrap");
     wrap.appendChild(c);
     const loupe = document.createElement("canvas"); loupe.width = 160; loupe.height = 160; loupe.className = "pitch-loupe hidden";
-    const tag = el("span", "pitch-loupe-tag hidden", pitchState.zoom + "× · real stripes");
+    const tag = el("span", "pitch-loupe-tag hidden", zoomText(pitchState.zoom) + " · real stripes");
     tag.title = "Scroll to zoom in and out";
     wrap.append(loupe, tag);
     pane.appendChild(wrap);
@@ -2061,8 +2063,8 @@
     c.addEventListener("pointermove", move);
     c.addEventListener("wheel", (e) => {
       e.preventDefault();
-      pitchState.zoom = loupeZoomStep(pitchState.zoom, e.deltaY);
-      tag.textContent = pitchState.zoom + "× · real stripes";
+      pitchState.zoom = loupeZoomStep(pitchState.zoom, e.deltaY, e.deltaMode);
+      tag.textContent = zoomText(pitchState.zoom) + " · real stripes";
       if (last) move(last);
     }, { passive: false });
     c.addEventListener("pointerleave", () => { loupe.classList.add("hidden"); tag.classList.add("hidden"); });
@@ -2431,6 +2433,10 @@
         const ctx = canvas.getContext("2d");
         ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
         ctx.drawImage(full, 0, 0, canvas.width, canvas.height);
+        // Marcas de novo, na escala da tela (no arquivo elas têm ~0,1 mm e somem ao reduzir)
+        const ds = canvas.width / plan.fileW;
+        const bleedPx = Math.round((l.bleedMm || 0) / 25.4 * l.dpi), marginPx = l.cropMarks || l.alignMarks ? Math.round(0.4 * l.dpi) : 0;
+        drawPrintMarks(ctx, l, ds, { fw: canvas.width, fh: canvas.height, margin: marginPx * ds, bleed: bleedPx * ds, w: plan.w * ds, h: plan.h * ds });
       };
       const drawInterlaced = () => {
         const horizontal = l.effect !== "3d";
@@ -2484,13 +2490,13 @@
       let lentBuiltAt = 1, lastMove = null;
       const setLoupeTag = () => {
         const z = exp.loupeZoom || 2;
-        loupeTag.textContent = lentBuiltAt < 1 ? z + "× · built at " + Math.round(lentBuiltAt * 100) + "%" : z + "× · real pixels";
+        loupeTag.textContent = lentBuiltAt < 1 ? zoomText(z) + " · built at " + Math.round(lentBuiltAt * 100) + "%" : zoomText(z) + " · real pixels";
         loupeTag.title = (lentBuiltAt < 1 ? "The preview of the file was built at " + Math.round(lentBuiltAt * 100) + "% of the real size. " : "") + "Scroll to zoom in and out";
       };
       preview.addEventListener("wheel", (e) => {
         if (exp.lentView !== "interlaced" || !full || loupe.classList.contains("hidden")) return;
         e.preventDefault();
-        exp.loupeZoom = loupeZoomStep(exp.loupeZoom || 2, e.deltaY);
+        exp.loupeZoom = loupeZoomStep(exp.loupeZoom || 2, e.deltaY, e.deltaMode);
         setLoupeTag();
         if (lastMove) preview.dispatchEvent(new PointerEvent("pointermove", { clientX: lastMove.x, clientY: lastMove.y }));
       }, { passive: false });

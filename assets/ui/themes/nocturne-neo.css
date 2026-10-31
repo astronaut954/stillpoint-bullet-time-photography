@@ -853,7 +853,7 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
 /* ---------- Câmeras: cabeçalho fixo, lista rola; arrastar para reordenar ---------- */
 .cameras-panel { display: flex; flex-direction: column; overflow: hidden; }
 .cameras-panel .panel-head { flex: none; }
-.cameras-panel .camera-list { position: relative; flex: 1 1 auto; min-height: 0; overflow: auto; padding-right: 2px; }
+.cameras-panel .camera-list { position: relative; flex: 1 1 auto; min-height: 0; overflow: auto; padding-right: 0; }
 /* Com rolagem: respiro entre a barra e as câmeras */
 .cameras-panel .camera-list.scrolling { padding-right: 12px; }
 .cameras-panel > .empty { flex: 1 1 auto; min-height: 0; overflow: auto; }
