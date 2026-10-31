@@ -852,6 +852,10 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) serve para tudo, menos para a impress
 - [ ] Papel menor que A4 (ex.: 10 × 15): aviso amarelo e "Save pitch test" apagado. Com a impressão
       de 20 × 30 e o teste em A4: aviso amarelo de que as faixas (25,9 cm) são mais curtas que a
       impressão (30 cm); com 30 × 40 o aviso some.
+- [ ] Janela de salvar, linha de cima, à direita: "HIDE PREVIEW" esconde a foto grande e as miniaturas
+      (deslizando) e vira "SHOW PREVIEW"; a escolha fica para a próxima vez.
+- [ ] Combinação que a impressora não separa bem (ex.: 100 LPI a 720 dpi): no resumo da sessão (lista à
+      esquerda) e no cabeçalho do Lenticular aparece um triângulo amarelo de alerta.
 - [ ] Janela de salvar: os textos explicativos viraram "?" ao lado do nome de cada opção (Effect, Lens
       sheet, Printer, Print size, Marks, Originals, Converted, Quality, Size, Speed, Name). Passar o
       mouse mostra a explicação por cima, sem ser cortada.

@@ -128,6 +128,7 @@
 
   // =================== Ícones ===================
   const ICONS = {
+    alert: '<path d="M7 1.8L13 12.2H1L7 1.8z"/><path d="M7 5.6v3"/><path d="M7 10.4v.1"/>',
     minus: '<path d="M3 7h8"/>',
     plus: '<path d="M3 7h8M7 3v8"/>',
     swap: '<path d="M2.5 5h8l-2.5-2.5M11.5 9h-8l2.5 2.5"/>',
@@ -1573,7 +1574,7 @@
   let exportPrefsTimer = null;
   function rememberExportPrefs() {
     if (!exp.active || typeof window.savePref !== "function") return;
-    exportPrefs = { mode: exp.mode, sameForAll: exp.sameForAll, collapsed: exp.collapsed || {}, settings: JSON.parse(JSON.stringify(settingsFor(exp.active))) };
+    exportPrefs = { mode: exp.mode, sameForAll: exp.sameForAll, collapsed: exp.collapsed || {}, previewHidden: !!exp.previewHidden, settings: JSON.parse(JSON.stringify(settingsFor(exp.active))) };
     clearTimeout(exportPrefsTimer);
     exportPrefsTimer = setTimeout(() => window.savePref("export", JSON.stringify(exportPrefs)), 300);
   }
@@ -1620,6 +1621,14 @@
     const cycle = cycleOrder(sessionItems(session).length, s.reverse).length;
     return { cycle: cycle, frames: cycle * s.loops, seconds: cycle * s.loops / s.fps };
   }
+  // Texto com "⚠" → o mesmo texto com o ícone de alerta amarelo no lugar
+  function setWarnText(node, text) {
+    node.textContent = "";
+    String(text).split("⚠").forEach((part, i) => {
+      if (i > 0) { const w = el("span", "warn-icon"); w.innerHTML = icon("alert", 14); w.title = "Check the lenticular settings: the printer cannot separate the photos well"; node.appendChild(w); }
+      if (part) node.appendChild(document.createTextNode(part));
+    });
+  }
   function summaryText(session) {
     return folderName(session) + " · " + settingsText(session);
   }
@@ -1649,7 +1658,7 @@
     }
     if (kind === "lenticular") {
       const l = st.lent, plan = lentPlan(l, sessionItems(session).filter((i) => i.previewable).length);
-      return lentPitch(l) + " LPI · " + l.dpi + " dpi · " + lentSizeText(l) + " · " + (l.effect === "3d" ? "3D" : "Animation") + (plan.warn ? " · ⚠" : "");
+      return lentPitch(l) + " LPI · " + l.dpi + " dpi · " + lentSizeText(l) + " · " + (l.effect === "3d" ? "3D" : "Animation") + (plan.warn ? " ⚠" : "");
     }
     const s = st.seq;
     if (!s.formats.length) return "No format chosen";
@@ -1666,6 +1675,7 @@
   function openExport(projectNames) {
     if (exportPrefs && OUTPUT_KINDS.includes(exportPrefs.mode)) exp.mode = exportPrefs.mode;
     if (exportPrefs && exportPrefs.collapsed) exp.collapsed = Object.assign({}, exportPrefs.collapsed);
+    if (exportPrefs && typeof exportPrefs.previewHidden === "boolean") exp.previewHidden = exportPrefs.previewHidden;
     exp.project = Array.isArray(projectNames);
     const all = exportable();
     // Salvando para fechar: só as que ainda não foram salvas (as já salvas ficam marcadas fora)
@@ -1742,7 +1752,7 @@
       if (s.missing > 0) li.querySelector(".folder-meta").after(missingTag(s.missing));
       if (s.inProject && s.edited > 0) li.querySelector(".folder-meta").after(projectTag(s));  // "Edited n / m" também aqui
       if (s.saved) li.querySelector(".folder-meta").after(savedTag());
-      li.querySelector(".export-summary").textContent = summaryText(s);
+      setWarnText(li.querySelector(".export-summary"), summaryText(s));
       li.classList.toggle("different", !exp.sameForAll && s.name !== exp.active && !sameAsActive(s.name));
       const first = sessionItems(s).find((i) => i.previewable);
       if (first) sessionPhoto(s.name, first.file, 320).then((url) => { if (url) li.querySelector(".export-thumb").style.backgroundImage = "url(" + url + ")"; });
@@ -1785,7 +1795,7 @@
   function refreshSummaries() {
     [...$("exportList").children].forEach((li, i) => {
       if (!sessions[i]) return;
-      li.querySelector(".export-summary").textContent = summaryText(sessions[i]);
+      setWarnText(li.querySelector(".export-summary"), summaryText(sessions[i]));
       li.classList.toggle("different", !exp.sameForAll && sessions[i].name !== exp.active && !sameAsActive(sessions[i].name));
     });
     updateExportCount();
@@ -2293,12 +2303,19 @@
     const label = sessionLabel(session.name).date;
     const rerender = () => { syncAll(); renderExportSettings(); if (renderExportSettings.restoreScroll) renderExportSettings.restoreScroll(); refreshSummaries(); rememberExportPrefs(); };
 
-    // Mesma configuração para todas (padrão) ou uma por sessão
-    if (sessions.length > 1) {
-      const scope = checkOption("Same settings for all sessions", exp.sameForAll, (v) => { exp.sameForAll = v; rerender(); });
-      scope.classList.add("export-scope");
-      outer.insertBefore(scope, rows);
-    }
+    // Barra de cima: mesma configuração para todas (padrão) ou uma por sessão, e mostrar/esconder
+    // a prévia (foto grande e miniaturas), para sobrar espaço para as configurações
+    const top = el("div", "export-scope");
+    if (sessions.length > 1) top.appendChild(checkOption("Same settings for all sessions", exp.sameForAll, (v) => { exp.sameForAll = v; rerender(); }));
+    top.appendChild(el("span", "spacer"));
+    const pv = button(exp.previewHidden ? "Show preview" : "Hide preview", () => {
+      exp.previewHidden = !exp.previewHidden;
+      if (exp.previewHidden) { exp.lentTheater = false; }
+      rerender();
+    }, { kind: "btn-link", icon: exp.previewHidden ? "down" : "up", title: exp.previewHidden ? "Show the photo and the thumbnails" : "Hide the photo and the thumbnails: more room for the settings" });
+    pv.classList.add("export-preview-toggle");
+    top.appendChild(pv);
+    outer.insertBefore(top, rows);
     // Foco da prévia: a seção clicada por último, se marcada; senão a primeira marcada
     if (!st.outputs[exp.mode]) exp.mode = OUTPUTS.map(([k]) => k).find((k) => st.outputs[k]) || "photos";
     if (exp.mode !== "lenticular") { exp.lentTheater = false; outer.classList.remove("theater"); }
@@ -2310,7 +2327,7 @@
       img.alt = "";
       const caption = el("div", "stage-caption");
       preview.append(img, caption);
-      if (focused) outer.insertBefore(preview, rows);
+      if (focused && !exp.previewHidden) outer.insertBefore(preview, rows);
       const show = (i, text, file) => {
         const item = items[i];
         if (!item) return;
@@ -2347,7 +2364,7 @@
         li.addEventListener("click", () => { exp.photo = k; showPhoto(); });
         strip.appendChild(li);
       });
-      if (focused) {
+      if (focused && !exp.previewHidden) {
         const slot = el("div", "export-strip-slot");
         slot.appendChild(stripScroll);
         outer.insertBefore(slot, rows);
@@ -2709,7 +2726,8 @@
       name.append(el("b", "exp-sec-title", title), el("span", "exp-sec-sub", sub));
       if (!on) { head.classList.add("pick"); head.title = "Turn on " + title; head.addEventListener("click", pick); }
       head.append(check, name);
-      const sum = el("span", "exp-sec-sum", on ? outputText(session, kind) : "Off");
+      const sum = el("span", "exp-sec-sum");
+      setWarnText(sum, on ? outputText(session, kind) : "Off");
       head.appendChild(sum);
       if (on) {
         // Fica nas seções ligadas; na que está na prévia, aceso

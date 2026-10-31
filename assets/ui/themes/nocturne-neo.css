@@ -848,7 +848,9 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
   color: var(--noct-pending); font: 600 10px var(--noct-font-mono); text-transform: uppercase; letter-spacing: .08em; }
 .export-item.different .export-diff { display: block; }
 .export-item.different { border-color: rgba(var(--noct-pending-rgb), .6); }
-.export-scope { padding-bottom: 10px; border-bottom: 1px solid var(--noct-border); }
+.export-scope { padding-bottom: 10px; border-bottom: 1px solid var(--noct-border); display: flex; align-items: center; gap: 12px; min-height: 30px; }
+.export-scope .spacer { flex: 1; }
+.export-preview-toggle svg { width: 11px; height: 11px; }
 
 /* ---------- Câmeras: cabeçalho fixo, lista rola; arrastar para reordenar ---------- */
 .cameras-panel { display: flex; flex-direction: column; overflow: hidden; }
@@ -1263,3 +1265,6 @@ html.drag-ns, html.drag-ns * { cursor: ns-resize !important; }
 .info-tip.float .info-tip-text { position: fixed; left: 0; top: 0; z-index: 95; width: 320px; font-weight: 400; text-transform: none; letter-spacing: 0; }
 .export-note.exp-none { color: var(--noct-pending); }  /* avisos que pedem ação: amarelo */
 .lent-pair { display: inline-flex; align-items: center; gap: 10px; white-space: nowrap; }
+/* Alerta nos resumos (combinação que a impressora não separa bem): ícone amarelo */
+.warn-icon { display: inline-flex; vertical-align: -3px; margin-left: 6px; color: var(--noct-pending); filter: drop-shadow(0 0 4px rgba(var(--noct-pending-rgb), .45)); }
+.warn-icon svg { width: 15px; height: 15px; stroke-width: 1.8; }
