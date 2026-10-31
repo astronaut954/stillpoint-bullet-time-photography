@@ -2184,7 +2184,7 @@
       lx = Math.max(0, lx); ly = Math.max(0, ly);
       loupe.style.left = lx + "px"; loupe.style.top = ly + "px";
       tag.style.left = (lx + 4) + "px"; tag.style.top = (ly + 4) + "px";
-      loupe.classList.remove("hidden"); tag.classList.remove("hidden");
+      loupe.classList.remove("hidden"); tag.classList.toggle("hidden", loupePressed);
     };
     c.addEventListener("pointermove", move);
     // Clique: sem arrastar a imagem nem selecionar (no Mac isso tirava a mira); redesenha a lupa
@@ -2663,7 +2663,7 @@
         const sc = Math.min(box.width / canvas.width, box.height / canvas.height);
         const r = { left: box.left + (box.width - canvas.width * sc) / 2, top: box.top + (box.height - canvas.height * sc) / 2, width: canvas.width * sc, height: canvas.height * sc };
         const inside = e.clientX >= r.left && e.clientX <= r.left + r.width && e.clientY >= r.top && e.clientY <= r.top + r.height;
-        loupe.classList.toggle("hidden", !inside); loupeTag.classList.toggle("hidden", !inside);
+        loupe.classList.toggle("hidden", !inside); loupeTag.classList.toggle("hidden", !inside || loupePressed);
         if (!inside) return;
         const fx = (e.clientX - r.left) / r.width * full.width, fy = (e.clientY - r.top) / r.height * full.height;
         // Tamanho conforme a prévia (fora do teatro ela tem 200 px de altura): sempre cabe
@@ -2889,7 +2889,8 @@
       if (typeof window.chooseExportFolder !== "function") { toast("This build cannot do that yet. Build the app again.", 8000); return; }
       Promise.resolve(window.chooseExportFolder(where)).then((r) => { if (r && r.folder) { exp.dest = r.folder; rerender(); } });
     }, { kind: "btn-secondary" }));
-    if (exp.dest) dest.appendChild(button("Use " + (exp.destProject ? "the project's Exports" : "the default"), () => { exp.dest = null; rerender(); }, { kind: "btn-secondary" }));
+    if (exp.dest) dest.appendChild(button("Reset to default", () => { exp.dest = null; rerender(); },
+      { kind: "btn-secondary", title: "Back to " + (exp.destProject ? "the project's Exports folder" : "the default folder") + ": " + (exp.destDefault || "") }));
     rows.appendChild(dest);
 
     if (!exp.sameForAll && sessions.length > 1) {
@@ -3698,6 +3699,7 @@
     if (!prefs.theme) { prefs.theme = upd.info.theme; prefs.language = upd.info.language; prefs.debug = !!upd.info.debug; }
     renderSettings();
     refreshDebugSize();
+    refreshProjectsFolder();
     $("settingsOverlay").classList.remove("hidden");
   }
   function renderSettings() {
@@ -5365,15 +5367,37 @@
       recordAction({ label: "Clear recent projects", undo: () => apply(all), redo: () => apply(keep) });
     });
   }
+  let projectsFolderCustom = false;  // escolhida em Settings (senão a padrão)
   function renderProjectsFolder() {
     const el_ = $("settingsProjectsFolder");
     if (el_) el_.textContent = shortPath(projectsFolder) || "—";
+    $("settingsProjectsFolderReset").classList.toggle("hidden", !projectsFolderCustom);
   }
+  function refreshProjectsFolder() {
+    if (typeof window.projectsFolderInfo !== "function") return;
+    Promise.resolve(window.projectsFolderInfo()).then((r) => {
+      if (!r) return;
+      projectsFolder = r.folder || projectsFolder; projectsFolderCustom = !!r.custom;
+      renderProjectsFolder();
+    });
+  }
+  // Volta para a pasta padrão (Imagens/Stillpoint); a pasta de salvar sem projeto vai junto (…/Exports)
+  $("settingsProjectsFolderReset").addEventListener("click", () => {
+    Promise.resolve(window.projectsFolderChange("reset")).then((r) => {
+      if (!r) return;
+      projectsFolder = r.folder || projectsFolder; projectsFolderCustom = false;
+      exp.destDefault = null;
+      renderProjectsFolder();
+      toast("New projects folder: " + shortPath(projectsFolder) + " (default)");
+    });
+  });
   $("settingsProjectsFolderChange").addEventListener("click", () => {
     if (typeof window.projectsFolderChange !== "function") { toast("This build cannot change the projects folder yet. Build the app again.", 8000); return; }
     Promise.resolve(window.projectsFolderChange()).then((r) => {
       if (!r || r.cancelled) return;
       projectsFolder = r.folder || projectsFolder;
+      projectsFolderCustom = r.custom !== false;
+      exp.destDefault = null;
       renderProjectsFolder();
       toast("New projects folder: " + shortPath(projectsFolder));
     });

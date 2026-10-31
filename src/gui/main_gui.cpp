@@ -1805,12 +1805,28 @@ namespace
         });
         // projectsFolderInfo() / projectsFolderChange(): a pasta onde os projetos novos são criados
         // (settings.txt, projectsFolder=; padrão <Imagens>/Stillpoint). Change abre o seletor.
+        // custom: a pessoa escolheu outra (senão é a padrão <Imagens>/Stillpoint)
+        auto projectsFolderCustom = [&]()
+        {
+            const auto settings = LoadSettings();
+            return settings.count("projectsFolder") && !settings.at("projectsFolder").empty();
+        };
         window.bind("projectsFolderInfo", [&](const std::string&) -> std::string
         {
-            return Json("projectsFolder").Add("folder", projectsFolder().string()).Str();
+            return Json("projectsFolder").Add("folder", projectsFolder().string()).Add("custom", projectsFolderCustom()).Str();
         });
-        window.bind("projectsFolderChange", [&](const std::string&) -> std::string
+        // projectsFolderChange("reset"): volta para a padrão; sem argumento abre o seletor
+        window.bind("projectsFolderChange", [&](const std::string& request) -> std::string
         {
+            const auto args = ParseStringArgs(request);
+            if (!args.empty() && args[0] == "reset")
+            {
+                auto settings = LoadSettings();
+                settings.erase("projectsFolder");
+                SaveSettings(settings);
+                Log("New projects folder back to the default: " + projectsFolder().string());
+                return Json("projectsFolder").Add("folder", projectsFolder().string()).Add("custom", false).Add("cancelled", false).Str();
+            }
             const std::string folder = NativeWindow::ChooseFolder("Choose the folder where new projects are created", projectsFolder().string());
             if (!folder.empty())
             {
@@ -1819,7 +1835,7 @@ namespace
                 SaveSettings(settings);
                 Log("New projects folder: " + folder);
             }
-            return Json("projectsFolder").Add("folder", projectsFolder().string()).Add("cancelled", folder.empty()).Str();
+            return Json("projectsFolder").Add("folder", projectsFolder().string()).Add("custom", projectsFolderCustom()).Add("cancelled", folder.empty()).Str();
         });
         // projectOpen(pasta opcional): abre um Project (pergunta a pasta se não vier)
         window.bind("projectOpen", [&](const std::string& request) -> std::string

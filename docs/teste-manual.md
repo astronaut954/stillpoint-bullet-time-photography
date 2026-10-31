@@ -871,6 +871,11 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) serve para tudo, menos para a impress
       tamanho, efeito, ordem e lista das fotos, marcas, sangria e "print at 100%". O mesmo texto vai
       dentro do TIFF (Finder → Obter Informações, ou Photoshop → Arquivo → Informações do arquivo).
 - [ ] Lista de câmeras com rolagem: um respiro entre a barra e as câmeras.
+- [ ] Settings → New projects: depois de "Change…" para outra pasta, aparece "RESET TO DEFAULT"; ele volta
+      para `Imagens/Stillpoint` e some. A linha "Save to" da janela de salvar (sem projeto) acompanha
+      (`…/Stillpoint/Exports`). Na janela de salvar, depois de "Choose another folder…", "RESET TO DEFAULT"
+      volta para a pasta padrão.
+- [ ] Lupas: segurando o botão esquerdo somem a mira "+" e a legenda do zoom; ao soltar, voltam.
 - [ ] Rodapé da janela de salvar: **Print pitch test** entre Cancel e Save, apagado sem Lenticular e
       ativo com ele. Salvar com Lenticular sem "Measured pitch": pergunta "Print a pitch test first?"
       (Print pitch test / Save anyway / Don't ask again). Com "Measured pitch" preenchido, não pergunta.
