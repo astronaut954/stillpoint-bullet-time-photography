@@ -1719,7 +1719,8 @@ namespace
             {
                 if (name.find_first_of("/\\:*?\"<>|") != std::string::npos || name.front() == '.' || name.back() == ' ')
                     return Json("project").Add("error", "That name cannot be used for a folder (no / \\ : * ? \" < > | and it cannot start with a dot).").Str();
-                const std::filesystem::path base = projectsFolder();
+                // args[1]: outra pasta escolhida na caixa New project (só para este projeto)
+                const std::filesystem::path base = args.size() > 1 && !args[1].empty() ? std::filesystem::path(args[1]) : projectsFolder();
                 std::error_code ec;
                 std::filesystem::create_directories(base, ec);
                 if (!std::filesystem::is_directory(base, ec))
@@ -1749,11 +1750,21 @@ namespace
         {
             const auto args = ParseStringArgs(request);
             const std::string name = !args.empty() ? args[0] : std::string();
+            const std::filesystem::path base = args.size() > 1 && !args[1].empty() ? std::filesystem::path(args[1]) : projectsFolder();
             std::error_code ec;
-            const std::filesystem::path target = projectsFolder() / name;
+            const std::filesystem::path target = base / name;
             const bool exists = !name.empty() && std::filesystem::exists(target, ec);
             return Json("name").Add("free", !exists).Add("project", exists && Project::IsProject(target))
-                .Add("folder", projectsFolder().string()).Str();
+                .Add("folder", base.string()).Str();
+        });
+        // projectChooseParent(começo): a caixa New project continua aberta; escolhe onde criar
+        // ("" = cancelou) e a pessoa dá o nome depois
+        window.bind("projectChooseParent", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            const std::string start = !args.empty() && !args[0].empty() ? args[0] : projectsFolder().string();
+            const std::string folder = NativeWindow::ChooseFolder("Choose where to create the new project", start);
+            return Json("folder").Add("folder", folder).Str();
         });
         // =================== Uso do computador (rodapé do Activity, 2.12.4) ===================
         // systemStats(): a página chama a cada 2 s só com o Activity aberto. Lê os contadores na

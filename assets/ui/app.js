@@ -2161,7 +2161,7 @@
     tag.title = "Scroll to zoom in and out";
     wrap.append(loupe, tag);
     pane.appendChild(wrap);
-    pane.appendChild(el("div", "export-note", "Move the mouse over the sheet for a close-up; scroll to zoom. The reduced sheet shows the stripes bigger than they print."));
+    pane.appendChild(el("div", "export-note", "Move the mouse over the sheet for a close-up; scroll to zoom; hold the left button to hide the crosshair. The reduced sheet shows the stripes bigger than they print."));
     let last = null;
     const move = (e) => {
       last = { clientX: e.clientX, clientY: e.clientY };
@@ -2615,7 +2615,7 @@
         setLoupeTag();
         caption.innerHTML = "";
         caption.append(el("b", "", "Interlaced"), document.createTextNode(" the whole file as it prints · " + plan.fileW + " × " + plan.fileH + " px · " + lentSizeText(l) + " · " +
-          (plan.cols ? plan.cols.toFixed(2).replace(/\.?0+$/, "") : "—") + " px per lens · strips " + (horizontal ? "horizontal" : "vertical") + " · move the mouse for a close-up"));
+          (plan.cols ? plan.cols.toFixed(2).replace(/\.?0+$/, "") : "—") + " px per lens · strips " + (horizontal ? "horizontal" : "vertical") + " · move the mouse for a close-up, scroll to zoom, hold the left button to hide the crosshair"));
         fitCanvas();
         // Faixas de cada foto: desenha a foto (cobrindo o papel) só nas linhas/colunas dela
         const lines = horizontal ? H : W;
@@ -5203,7 +5203,7 @@
     extra.classList.toggle("hidden", !opts.extra);
     extra.textContent = opts.extra ? opts.extra.label : "";
     const close = () => { $("promptOverlay").classList.add("hidden"); $("promptOk").onclick = $("promptCancel").onclick = extra.onclick = input.onkeydown = null; };
-    extra.onclick = opts.extra ? () => { close(); opts.extra.onClick(); } : null;
+    extra.onclick = opts.extra ? () => { if (!opts.extra.keepOpen) close(); opts.extra.onClick(); } : null;
     let checking = false;
     const ok = () => {
       if (checking) return;
@@ -5347,17 +5347,26 @@
     log("New project…", "tech");
     if (typeof window.projectsFolderInfo !== "function") { callProject("projectNew").then(projectResult); return; }  // app antigo
     $("promptInput").dataset.folderName = "1";
-    promptDialog("New project", "A folder with this name will be created in " + shortPath(projectsFolder) + ".", "", "Create",
+    // Outra pasta (só para este projeto): a caixa continua aberta; depois de escolher, a pessoa dá o nome
+    let base = "";
+    const where = () => "A folder with this name will be created in " + shortPath(base || projectsFolder) + ".";
+    promptDialog("New project", where(), "", "Create",
       (v) => {
         if (!v) return "Type a name for the project.";
         if (v[0] === ".") return "The name cannot start with a dot.";
         if (typeof window.projectNameFree !== "function") return "";
-        return Promise.resolve(window.projectNameFree(v)).then((r) => !r || r.free ? ""
+        return Promise.resolve(window.projectNameFree(v, base)).then((r) => !r || r.free ? ""
           : (r.project ? "There is already a project named \"" + v + "\" in " + shortPath(r.folder) + ". Open it from Recent or choose another name."
                        : "There is already a folder named \"" + v + "\" in " + shortPath(r.folder) + ". Choose another name."));
       },
-      (v) => callProject("projectNew", v).then(projectResult),
-      { extra: { label: "Choose another folder…", onClick: () => callProject("projectNew", "").then(projectResult) } });
+      (v) => callProject("projectNew", v, base).then(projectResult),
+      { extra: { label: "Choose another folder…", keepOpen: typeof window.projectChooseParent === "function", onClick: () => {
+        if (typeof window.projectChooseParent !== "function") { callProject("projectNew", "").then(projectResult); return; }  // app antigo
+        Promise.resolve(window.projectChooseParent(base || projectsFolder)).then((r) => {
+          if (r && r.folder) { base = r.folder; $("promptText").textContent = where(); $("promptError").classList.add("hidden"); }
+          $("promptInput").focus();
+        });
+      } } });
   }
   function clearRecentProjects(all) {
     const keep = all.filter((f) => project.open && f === project.folder);

@@ -875,7 +875,11 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) serve para tudo, menos para a impress
       para `Imagens/Stillpoint` e some. A linha "Save to" da janela de salvar (sem projeto) acompanha
       (`…/Stillpoint/Exports`). Na janela de salvar, depois de "Choose another folder…", "RESET TO DEFAULT"
       volta para a pasta padrão.
-- [ ] Lupas: segurando o botão esquerdo somem a mira "+" e a legenda do zoom; ao soltar, voltam.
+- [ ] Lupas: segurando o botão esquerdo somem a mira "+" e a legenda do zoom; ao soltar, voltam. A instrução aparece
+      embaixo da prévia da folha de teste e na legenda da vista Interlaced.
+- [ ] New project → "CHOOSE ANOTHER FOLDER…": a caixa continua aberta; escolhida a pasta, o texto muda
+      para "…will be created in <pasta escolhida>"; digitar o nome e "CREATE" cria o projeto lá. Nome já
+      usado nessa pasta: aviso na caixa.
 - [ ] Rodapé da janela de salvar: **Print pitch test** entre Cancel e Save, apagado sem Lenticular e
       ativo com ele. Salvar com Lenticular sem "Measured pitch": pergunta "Print a pitch test first?"
       (Print pitch test / Save anyway / Don't ask again). Com "Measured pitch" preenchido, não pergunta.
