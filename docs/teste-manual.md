@@ -846,8 +846,10 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) serve para tudo, menos para a impress
       11 faixas listradas com o número em cima de cada uma (3D: faixas uma embaixo da outra, número à
       esquerda). Esc fecha só a janela do teste.
 - [ ] Mudar qualquer opção da janela do teste: a janela não pisca. "21 strips · 59.50 to 60.50 LPI,
-      every 0.05". "Finer steps" passa para 0.02 em volta do "Measured pitch" (ex.: 59.8 → 59.60 to
-      60.00) ou do LPI da embalagem sem ele (59.80 to 60.20); "Normal steps" volta. No arquivo: 21 faixas, números em pé em cima de cada uma
+      every 0.05". "Finer steps" mostra a linha "FINER" com every 0.04 / 0.03 / 0.025 / 0.02 / 0.01, cada
+      um com o seu "?" (quanto cobre e até que tamanho de impressão serve), em volta do "Measured pitch"
+      ou do LPI da embalagem sem ele; 0.025 mostra 3 casas (59.750 to 60.250). "Normal steps" volta.
+      Na lupa da prévia os números aparecem; a roda do mouse afasta até 0,5×. No arquivo: 21 faixas, números em pé em cima de cada uma
       (Animation) ou à esquerda (3D).
 - [ ] Papel menor que A4 (ex.: 10 × 15): aviso amarelo e "Save pitch test" apagado. Com a impressão
       de 20 × 30 e o teste em A4: aviso amarelo de que as faixas (25,9 cm) são mais curtas que a

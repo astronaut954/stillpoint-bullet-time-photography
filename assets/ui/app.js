@@ -1818,12 +1818,16 @@
     const rows = [...box.querySelectorAll(":scope > .export-row")];
     const r = label ? rows.find((x) => { const lab = x.querySelector(".export-label"); return lab && lab.textContent === label; }) : rows[rows.length - 1];
     if (!r) { box.appendChild(el("div", "export-note", text)); return; }
+    const tip = makeTip(text);
+    const lab = r.querySelector(".export-label");
+    if (lab) { lab.classList.add("with-tip"); lab.appendChild(tip); } else r.prepend(tip);
+  }
+  function makeTip(text) {
     const tip = el("span", "info-tip float", "?");
     tip.tabIndex = 0;
     tip.setAttribute("aria-label", text);
     tip.appendChild(el("span", "info-tip-text", text));
-    const lab = r.querySelector(".export-label");
-    if (lab) { lab.classList.add("with-tip"); lab.appendChild(tip); } else r.prepend(tip);
+    return tip;
   }
   // A caixa do "?" fica por cima de tudo (fixa na tela), sem ser cortada por áreas que rolam
   function placeTip(tip) {
@@ -1919,7 +1923,7 @@
   function loupeZoomStep(z, deltaY, deltaMode) {
     const d = deltaMode === 1 ? deltaY * 16 : deltaY;  // linhas → pixels
     const next = z * Math.exp(-Math.max(-60, Math.min(60, d)) * 0.0025);
-    return Math.round(Math.max(1, Math.min(8, next)) * 100) / 100;
+    return Math.round(Math.max(0.5, Math.min(8, next)) * 100) / 100;  // 0,5× afasta (números inteiros na lupa)
   }
   const zoomText = (z) => (Math.round(z * 10) / 10).toFixed(1).replace(/\.0$/, "") + "×";
   // Marcas de corte e de alinhamento no canvas da prévia, com as mesmas medidas do programa
@@ -1992,22 +1996,49 @@
     ov.classList.remove("hidden");
   }
   function closePitchTest() { const ov = $("pitchOverlay"); if (ov) ov.classList.add("hidden"); }
+  // Fonte 5×7 do programa (Export: Glyph), para os números na lupa
+  const PITCH_GLYPHS = { "0": [0x0E, 0x11, 0x13, 0x15, 0x19, 0x11, 0x0E], "1": [0x04, 0x0C, 0x04, 0x04, 0x04, 0x04, 0x0E],
+    "2": [0x0E, 0x11, 0x01, 0x02, 0x04, 0x08, 0x1F], "3": [0x1F, 0x02, 0x04, 0x02, 0x01, 0x11, 0x0E], "4": [0x02, 0x06, 0x0A, 0x12, 0x1F, 0x02, 0x02],
+    "5": [0x1F, 0x10, 0x1E, 0x01, 0x01, 0x11, 0x0E], "6": [0x06, 0x08, 0x10, 0x1E, 0x11, 0x11, 0x0E], "7": [0x1F, 0x01, 0x02, 0x04, 0x08, 0x08, 0x08],
+    "8": [0x0E, 0x11, 0x11, 0x0E, 0x11, 0x11, 0x0E], "9": [0x0E, 0x11, 0x11, 0x0F, 0x01, 0x02, 0x0C], ".": [0, 0, 0, 0, 0, 0x0C, 0x0C] };
   // Mesmas contas do programa (Export::WritePitchTest): margens, faixas, área do número
   function pitchLayout(l, step) {
     const dpi = l.dpi, W = Math.round(l.widthCm / CM_PER_IN * dpi), H = Math.round(l.heightCm / CM_PER_IN * dpi);
     const horizontal = l.effect !== "3d", center = l.pitch > 0 ? l.pitch : l.lpi;
     const edge = Math.round(0.25 * dpi), gap = Math.max(2, Math.round(0.08 * dpi));
-    const digitScale = Math.max(1, Math.round(0.16 * dpi / 7)), decimals = step < 0.0999 ? 2 : 1;
-    const label = Math.max(Math.round(0.45 * dpi), ((decimals === 2 ? 6 : 5) * 6 - 1) * digitScale + Math.round(0.2 * dpi));
+    const digitScale = Math.max(1, Math.round(0.16 * dpi / 7));
+    const decimals = Math.abs(step * 100 - Math.round(step * 100)) > 1e-6 ? 3 : step < 0.0999 ? 2 : 1;
+    const label = Math.max(Math.round(0.45 * dpi), ((decimals + 4) * 6 - 1) * digitScale + Math.round(0.2 * dpi));
     const along = horizontal ? W : H, across = horizontal ? H : W;
     const band = Math.max(1, Math.floor((along - 2 * edge - gap * (PITCH_STRIPS - 1)) / PITCH_STRIPS));
     const first = center - step * (PITCH_STRIPS - 1) / 2;
     const lpis = Array.from({ length: PITCH_STRIPS }, (_, b) => first + step * b);
     const bandAt = (p) => { const q = p - edge; if (q < 0) return -1; const b = Math.floor(q / (band + gap)); return b >= PITCH_STRIPS || q - b * (band + gap) >= band ? -1 : b; };
-    // 0 = preto, 255 = branco (sem os números)
+    // 0 = preto, 255 = branco; os números com a mesma fonte e as mesmas posições do programa
+    const texts = lpis.map((v) => v.toFixed(decimals));
+    const th = 7 * digitScale;
+    const digitAt = (x, y, b) => {
+      const t = texts[b], tw = (t.length * 6 - 1) * digitScale, bandStart = edge + b * (band + gap);
+      let gx, gy, i;
+      if (horizontal) {  // em pé: o texto corre de cima para baixo
+        const tx = bandStart + Math.floor((band - th) / 2), ty = edge + Math.floor((label - tw) / 2);
+        if (y < ty || y >= ty + tw || x < tx || x >= tx + th) return false;
+        const col = Math.floor((y - ty) / digitScale); i = Math.floor(col / 6); gx = col % 6;
+        gy = 6 - Math.floor((x - tx) / digitScale);
+      } else {
+        const tx = edge + Math.floor((label - tw) / 2), ty = bandStart + Math.floor((band - th) / 2);
+        if (y < ty || y >= ty + th || x < tx || x >= tx + tw) return false;
+        const col = Math.floor((x - tx) / digitScale); i = Math.floor(col / 6); gx = col % 6;
+        gy = Math.floor((y - ty) / digitScale);
+      }
+      if (gx > 4 || gy < 0 || gy > 6) return false;
+      const g = PITCH_GLYPHS[t[i]];
+      return !!(g && (g[gy] & (0x10 >> gx)));
+    };
     const at = (x, y) => {
       const p = horizontal ? x : y, a = horizontal ? y : x, b = bandAt(p);
-      if (b < 0 || a < edge + label || a >= across - edge) return 255;
+      if (b < 0 || a < edge || a >= across - edge) return 255;
+      if (a < edge + label) return digitAt(x, y, b) ? 0 : 255;
       const pos = (a - edge - label + 0.5) * lpis[b] / dpi;
       return pos - Math.floor(pos) < 0.5 ? 0 : 255;
     };
@@ -2030,14 +2061,35 @@
     const lo = P.lpis[0].toFixed(P.decimals), hi = P.lpis[PITCH_STRIPS - 1].toFixed(P.decimals);
     const strips = row("Strips");
     strips.appendChild(el("span", "pitch-range", PITCH_STRIPS + " strips · " + lo + " to " + hi + " LPI, every " + step));
-    if (!pitchState.fine) {
-      strips.appendChild(button("Finer steps", () => { pitchState.fine = true; pitchState.step = 0.02; rerender(); }, { kind: "btn-link",
-        title: "Every 0.02, around " + (l.pitch > 0 ? "your measured pitch (" + l.pitch + ")" : "the LPI of the package (" + l.lpi + ")") }));
-    } else strips.appendChild(button("Normal steps", () => { pitchState.fine = false; pitchState.step = 0.05; rerender(); }, { kind: "btn-link" }));
+    if (!pitchState.fine) strips.appendChild(button("Finer steps", () => { pitchState.fine = true; pitchState.step = 0.025; rerender(); }, { kind: "btn-link" }));
+    else strips.appendChild(button("Normal steps", () => { pitchState.fine = false; pitchState.step = 0.05; rerender(); }, { kind: "btn-link" }));
     body.appendChild(strips);
+    if (pitchState.fine) {
+      // Cada passo com o seu "?": quanto cobre em volta do valor e até que tamanho de impressão serve
+      // (erro máximo = metade do passo; serve até ~1 ÷ passo polegadas no sentido em que o erro se acumula)
+      const ref = l.pitch > 0 ? "your measured pitch (" + l.pitch + ")" : "the LPI of the package (" + l.lpi + "; there is no measured pitch yet)";
+      const dir = l.effect === "3d" ? "wide (side to side)" : "tall (top to bottom)";
+      const fine = row("Finer");
+      const opts = el("span", "fine-steps");
+      [0.04, 0.03, 0.025, 0.02, 0.01].forEach((v) => {
+        const item = el("span", "fine-step");
+        const b = el("button", "chip" + (Math.abs(step - v) < 1e-9 ? " on" : ""), "every " + v);
+        b.type = "button";
+        b.addEventListener("click", () => { pitchState.step = v; rerender(); });
+        const half = Math.round(v * 10 * 1000) / 1000, upTo = Math.round(2.54 / v);
+        item.append(b, makeTip("Every " + v + ": the 21 strips cover " + half + " below to " + half + " above " + ref + ". " +
+          "Enough for prints up to about " + (upTo >= 100 ? (upTo / 100).toFixed(upTo % 100 ? 1 : 0).replace(".", ",") + " m" : upTo + " cm") + " " + dir + ". " +
+          (v <= 0.01 ? "Only for very large pieces, and only around a value you already measured: the range is narrow." :
+           v <= 0.02 ? "For large posters, around a value you already measured." :
+           "A second, more precise sheet after the normal one, or for posters.")));
+        opts.appendChild(item);
+      });
+      fine.appendChild(opts);
+      body.appendChild(fine);
+    }
     addTip(body, "Each strip is printed for a slightly different LPI, " + lo + " to " + hi + (l.pitch > 0 ? ", around your measured pitch (" + l.pitch + ")" : "") +
       ". With the lens sheet on top, the right strip turns black and then white all at once, the same from end to end; the wrong ones show a dark area moving along them. " +
-      "Finer steps: every 0.02, covering ±0.2 around the measured pitch (or the package LPI when there is none); useful mainly for very large prints (over about 50 cm).", "Strips");
+      "The normal sheet (every 0.05) covers ±0.5 and is enough for prints up to about 50 cm. Finer steps: smaller steps for bigger prints; each one has its own ? with when to use it.", "Strips");
     // Papel mínimo A4; e as faixas pelo menos do comprimento da impressão (o erro se acumula ao longo dela)
     const shortCm = Math.min(l.widthCm, l.heightCm), longCm = Math.max(l.widthCm, l.heightCm);
     const small = shortCm < 20.9 || longCm < 27.8;

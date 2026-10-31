@@ -963,12 +963,13 @@ namespace Export
         const int edge = static_cast<int>(std::lround(0.25 * o.dpi));     // margem da folha
         const int gap = std::max(2, static_cast<int>(std::lround(0.08 * o.dpi)));  // espaço entre faixas
         const int digitScale = std::max(1, static_cast<int>(std::lround(0.16 * o.dpi / 7)));
-        const int decimals = o.step < 0.0999 ? 2 : 1;
+        // Casas decimais do passo: 0,1 → 1; 0,05 → 2; 0,025 → 3
+        const int decimals = std::fabs(o.step * 100 - std::round(o.step * 100)) > 1e-6 ? 3 : o.step < 0.0999 ? 2 : 1;
         // Área do número: em cima de cada faixa (animação) ou à esquerda (3D, cabe o número inteiro)
         // Área do número: na animação as faixas são colunas estreitas, então o número vai em pé (de
         // cima para baixo) e a área tem a altura do texto; no 3D, deitado à esquerda
         int label = static_cast<int>(std::lround(0.45 * o.dpi));
-        label = std::max(label, TextWidth(decimals == 2 ? "000.00" : "000.0") * digitScale + static_cast<int>(std::lround(0.2 * o.dpi)));
+        label = std::max(label, TextWidth(decimals == 3 ? "000.000" : decimals == 2 ? "000.00" : "000.0") * digitScale + static_cast<int>(std::lround(0.2 * o.dpi)));
         const int bandSize = std::max(1, (along - 2 * edge - gap * (o.count - 1)) / o.count);
         const double first = o.center - o.step * (o.count - 1) / 2.0;
         std::vector<double> lpis(static_cast<size_t>(o.count));

@@ -1990,7 +1990,7 @@ namespace
             const fs::path folder = args.size() > 6 && !args[6].empty() ? fs::path(args[6]) : defaultExportFolder();
             fs::create_directories(folder, ec);
             char name[160];
-            const int decimals = o.step < 0.0999 ? 2 : 1;
+            const int decimals = std::fabs(o.step * 100 - std::round(o.step * 100)) > 1e-6 ? 3 : o.step < 0.0999 ? 2 : 1;
             const double half = o.step * (o.count - 1) / 2.0;
             std::snprintf(name, sizeof(name), "Pitch test %.*f-%.*f LPI %ddpi %s", decimals, o.center - half, decimals, o.center + half,
                           o.dpi, o.horizontalLenses ? "animation" : "3d");

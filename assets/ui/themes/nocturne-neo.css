@@ -1266,8 +1266,8 @@ html.drag-ns, html.drag-ns * { cursor: ns-resize !important; }
 .export-note.exp-none { color: var(--noct-pending); }  /* avisos que pedem ação: amarelo */
 .lent-pair { display: inline-flex; align-items: center; gap: 10px; white-space: nowrap; }
 /* Alerta nos resumos (combinação que a impressora não separa bem): ícone amarelo */
-.warn-icon { display: inline-flex; vertical-align: -3px; margin-left: 6px; color: var(--noct-pending); filter: drop-shadow(0 0 4px rgba(var(--noct-pending-rgb), .45)); }
-.warn-icon svg { width: 15px; height: 15px; stroke-width: 1.8; }
+.warn-icon { display: inline-flex; flex: none; width: 16px; height: 16px; align-items: center; justify-content: center; vertical-align: -3px; margin-left: 6px; color: var(--noct-pending); }
+.warn-icon svg { display: block; width: 15px; height: 15px; stroke-width: 1.8; }
 /* O alerta não muda a altura do cabeçalho (antes a linha crescia uns pixels e tudo pulava) */
 .exp-sec-sum { display: inline-flex; align-items: center; height: 18px; line-height: 18px; }
 .exp-sec-sum .warn-icon { vertical-align: 0; margin-top: 0; }
@@ -1277,3 +1277,5 @@ html.drag-ns, html.drag-ns * { cursor: ns-resize !important; }
 .exp-sec-name { min-width: 0; flex: 0 1 auto; overflow: hidden; white-space: nowrap; }
 .exp-sec-name .exp-sec-sub { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .exp-sec-sum { flex: 0 0 auto; white-space: nowrap; }
+.fine-steps { display: inline-flex; flex-wrap: wrap; gap: 8px 14px; }
+.fine-step { display: inline-flex; align-items: center; gap: 6px; }
