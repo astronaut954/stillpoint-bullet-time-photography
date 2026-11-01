@@ -1341,3 +1341,5 @@ html.kbd-focus input:focus + .save-check { outline: 2px solid var(--noct-primary
 .carousel .frame.multi { opacity: 1; }
 .full-trash-bar { margin-left: 0; }
 .full-trash-bar span:empty { display: none; }
+.gallery-title-row { display: flex; align-items: center; gap: 14px; }
+.sessions-panel:not(.fullscreen) .full-trash-bar { display: none; }

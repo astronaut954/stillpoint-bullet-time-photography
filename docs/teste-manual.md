@@ -1071,7 +1071,7 @@ projeto num HD externo.
 - [ ] Apagar uma sessão (fora ou dentro da tela cheia) ou fotos: as cópias voam até o ícone da lixeira da barra de
       cima, que aumenta e volta ao tamanho no fim.
 - [ ] Apagar a sessão na tela cheia e Cmd+Z: a sessão volta aberta, na tela cheia.
-- [ ] Tela cheia: ao lado de Delete session, o mesmo botão da lixeira da barra de cima (ícone, número e GB); abre a
+- [ ] Tela cheia: à direita do nome da sessão, o mesmo botão da lixeira da barra de cima (ícone, número e GB); abre a
       Trash por cima da tela cheia. Apagar a sessão ou fotos na tela cheia: a animação vai até esse botão.
 - [ ] Trash: a etiqueta "✓ Restored" aparece inteira (sem a linha de cima cortada).
 

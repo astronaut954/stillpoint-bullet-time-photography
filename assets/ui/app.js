@@ -1136,9 +1136,15 @@
     reverseLoopOption,
     button("Reorder", startReorder, { title: "Change the order of the photos in this session" }),
     fullTrashBtn,
-    fullTrashOpenBtn,
     exitFullBtn,
   ];
+  // O botão da lixeira da tela cheia fica à direita do nome da sessão (aparece só na tela cheia)
+  {
+    const title = ui.sessionGallery.querySelector(".gallery-title");
+    const row = el("div", "gallery-title-row");
+    title.replaceWith(row);
+    row.append(title, fullTrashOpenBtn);
+  }
   const editActions = [
     button("", () => sessionGallery.moveSelected(-1), { icon: "left", title: "Move the selected photo earlier" }),
     button("", () => sessionGallery.moveSelected(1), { icon: "right", title: "Move the selected photo later" }),
