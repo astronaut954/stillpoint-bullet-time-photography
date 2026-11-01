@@ -4161,6 +4161,34 @@
     };
     setTimeout(fix, 0); setTimeout(fix, 150); setTimeout(fix, 400);
   }, true);
+  // Rede de segurança (teclado): se a tela for redesenhada a qualquer momento (não só logo depois do
+  // Enter — no Mac, alguns redesenhos chegam depois) e o foco cair no nada, volta para o mesmo
+  // controle redesenhado, na mesma janela
+  let lastFocus = null;
+  const focusKind = (x) => x.tagName + "|" + (x.type || "") + "|" + [...x.classList].filter((c) => c !== "on" && c !== "current").sort().join(".");
+  document.addEventListener("focusin", (e) => {
+    const x = e.target;
+    if (!x || x === document.body || !x.tagName) return;
+    const scope = tabScope(), list = focusables(scope);
+    const at = list.indexOf(x);
+    if (at < 0) return;
+    const sig = focusSig(x);
+    lastFocus = { el: x, scope, at, sig, nth: list.filter((y) => focusSig(y) === sig).indexOf(x), kind: focusKind(x) };
+  });
+  setInterval(() => {
+    if (!lastFocus || !document.documentElement.classList.contains("kbd-focus")) return;
+    const now = document.activeElement;
+    if (now && now !== document.body) return;
+    const f = lastFocus;
+    if (tabScope() !== f.scope || !f.scope.isConnected) { lastFocus = null; return; }  // outra janela por cima / janela fechada
+    const list = focusables(f.scope);
+    if (f.el.isConnected && list.includes(f.el)) { f.el.focus({ preventScroll: true }); return; }
+    const same = list.filter((x) => focusSig(x) === f.sig);
+    const alike = list.filter((x) => focusKind(x) === f.kind);
+    const near = alike.length ? alike.reduce((b, x) => Math.abs(list.indexOf(x) - f.at) < Math.abs(list.indexOf(b) - f.at) ? x : b) : null;
+    const t = same[f.nth] || same[0] || near || list[Math.min(f.at, list.length - 1)];
+    if (t) t.focus({ preventScroll: true });
+  }, 200);
   // Enter numa caixa de marcar: marca/desmarca (o Mac só faz isso com o Espaço)
   document.addEventListener("keydown", (e) => {
     const t = e.target;
