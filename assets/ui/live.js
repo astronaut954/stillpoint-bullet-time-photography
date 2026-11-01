@@ -649,7 +649,17 @@ window.Live = (function () {
     setOpts(Object.assign({}, DEFAULTS, parsed), true);
   }
   // Quantas janelas Live estão abertas (aviso do app ao abrir/fechar uma)
-  function setLives(n) { S.lives = n || 0; if (el) renderOpts(); }
+  // e o número desta janela entre as abertas (1 = "Live", 2 = "Live 2")
+  function setLives(n, rank) {
+    S.lives = n || 0;
+    if (rank) {
+      const name = rank === 1 ? "Stillpoint · Live" : "Stillpoint · Live " + rank;
+      document.title = name;
+      const b = $("liveTop") && $("liveTop").querySelector("b");
+      if (b) b.textContent = name;
+    }
+    if (el) renderOpts();
+  }
   function setSoundState(sound) { Object.assign(S.sound, sound || {}); renderOpts(); }
   function setScreens(screens) {
     S.screens = Array.isArray(screens) ? screens : [];

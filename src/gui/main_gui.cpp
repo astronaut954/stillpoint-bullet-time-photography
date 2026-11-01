@@ -2287,9 +2287,11 @@ namespace
         {
             int index = 0;
             bool shown = false;  // à mostra (fechar só esconde)
+            long openedAt = 0;   // ordem em que foi aberta (a primeira à mostra se chama "Live", a outra "Live 2")
             std::unique_ptr<webview::webview> view;
         };
         std::vector<std::unique_ptr<LiveWindow>> lives;
+        long liveOpenCounter = 0;
         // Quantas Live estão abertas: as páginas desligam "Another window" com duas
         auto livesOpen = [&]
         {
@@ -2298,7 +2300,30 @@ namespace
                 n += live->shown ? 1 : 0;
             return n;
         };
-        auto emitLives = [&] { listener.Emit(Json("liveWindows").Add("open", livesOpen())); };
+        // Posição de uma janela entre as abertas (1 = a mais antiga, "Live"; 2 = "Live 2"); 0 = fechada
+        auto liveRank = [&](const LiveWindow& w)
+        {
+            if (!w.shown)
+                return 0;
+            int rank = 1;
+            for (const auto& other : lives)
+                if (other.get() != &w && other->shown && other->openedAt < w.openedAt)
+                    ++rank;
+            return rank;
+        };
+        // Avisa as páginas (quantas abertas e o número de cada uma) e acerta o título das janelas
+        auto emitLives = [&]
+        {
+            std::string ranks = "{";
+            for (const auto& live : lives)
+            {
+                const int rank = liveRank(*live);
+                ranks += (ranks.size() > 1 ? "," : "") + std::string("\"") + std::to_string(live->index) + "\":" + std::to_string(rank);
+                if (rank > 0)
+                    live->view->set_title(rank == 1 ? "Stillpoint · Live" : "Stillpoint · Live " + std::to_string(rank));
+            }
+            listener.Emit(Json("liveWindows").Add("open", livesOpen()).Raw("ranks", ranks + "}"));
+        };
 
         // Som do disparo: {"sound":…,"sounds":…} guardado em settings.txt (live=)
         auto soundSettings = [&]
@@ -2362,6 +2387,8 @@ namespace
                 {
                     if (auto native = live->view->window(); native.ok())
                         NativeWindow::Show(native.value());
+                    if (!live->shown)
+                        live->openedAt = ++liveOpenCounter;
                     live->shown = true;
                     emitLives();
                     return;
@@ -2371,7 +2398,7 @@ namespace
             live->view = std::make_unique<webview::webview>(false, nullptr);
             webview::webview& v = *live->view;
             const std::string key = "live" + std::to_string(index);
-            v.set_title(index == 1 ? "Stillpoint · Live" : "Stillpoint · Live " + std::to_string(index));
+            v.set_title(livesOpen() == 0 ? "Stillpoint · Live" : "Stillpoint · Live 2");
             v.set_size(960, 560, WEBVIEW_HINT_NONE);
             v.set_size(480, 300, WEBVIEW_HINT_MIN);
 
@@ -2386,6 +2413,7 @@ namespace
                     .Raw("sound", Json("sound").Add("sound", sound).Add("sounds", sounds).Str())
                     .Raw("screens", screensJson())
                     .Add("lives", livesOpen())
+                    .Add("rank", [&] { for (const auto& l : lives) if (l->index == index) return liveRank(*l); return livesOpen() + 1; }())
                     .Raw("cameraEvent", cameras.empty() ? "null" : cameras).Str();
             });
             // O disparo e o cancelamento passam pela página principal (o plano do Timing é dela)
@@ -2435,14 +2463,15 @@ namespace
                 emitLives();
                 return "null";
             });
-            // "Another window": abre (ou traz de volta) a Live 2 um pouco à direita e abaixo
-            // desta, para ficar claro que é outra janela
-            v.bind("liveAnother", [&, self](const std::string&) -> std::string
+            // "Another window" (nas duas): abre (ou traz de volta) a outra janela Live um pouco à
+            // direita e abaixo desta, para ficar claro que é outra janela
+            v.bind("liveAnother", [&, self, index](const std::string&) -> std::string
             {
-                openLive(2);
-                for (auto& other : lives)
-                    if (other->index == 2)
-                        if (auto a = other->view->window(), b = self->window(); a.ok() && b.ok())
+                const int other = index == 1 ? 2 : 1;
+                openLive(other);
+                for (auto& w : lives)
+                    if (w->index == other)
+                        if (auto a = w->view->window(), b = self->window(); a.ok() && b.ok())
                             NativeWindow::PlaceNear(a.value(), b.value(), 40, 40);
                 return "null";
             });
@@ -2471,6 +2500,7 @@ namespace
             v.set_html(LoadPage("live.html", theme));
             listener.AddWindow(&v);
             live->shown = true;
+            live->openedAt = ++liveOpenCounter;
             lives.push_back(std::move(live));
             emitLives();
         };
@@ -2480,6 +2510,10 @@ namespace
             const auto numbers = ParseIntArgs(request);
             const auto args = ParseStringArgs(request);
             int index = !numbers.empty() ? numbers[0] : (!args.empty() ? std::atoi(args[0].c_str()) : 1);
+            // Já tem uma aberta (ex.: só a que nasceu do "Another window"): traz a mais antiga
+            for (const auto& live : lives)
+                if (live->shown && liveRank(*live) == 1)
+                    index = live->index;
             openLive(std::clamp(index, 1, 2));
             return "null";
         });

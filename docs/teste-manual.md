@@ -915,7 +915,9 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) serve para tudo, menos para a impress
 - [ ] Save sessions: ← → trocam a foto da prévia em Photos e a foto do Tilt em Lenticular.
 - [ ] Lenticular: o botão do modo teatro (à esquerda, em cima da prévia) vem antes de Tilt / Interlaced no Tab.
 - [ ] Live: "Another window" abre a Live 2 um pouco à direita e abaixo da primeira (fora de tela cheia).
-- [ ] Live: com duas janelas Live abertas, "Another window" fica desligado; ao fechar a Live 2, volta a funcionar.
+- [ ] Live: as duas janelas têm "Another window"; com as duas abertas, fica desligado nas duas. Fechando a
+      original, a outra passa a se chamar "Live" (título da janela e do alto) e o botão volta a funcionar; ele
+      abre a outra de novo, como "Live 2", deslocada. "Live view" na janela principal traz a Live que está aberta.
 - [ ] Activity: ligar/desligar "Show technical details" não faz a lista pular — a linha que estava no alto
       continua no mesmo lugar (no fim da lista, continua no fim); as linhas técnicas aparecem devagar.
 - [ ] Confirmações (ex.: "Calibrate with chart"): Enter aperta o botão que está com o contorno verde
