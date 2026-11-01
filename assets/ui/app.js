@@ -3887,6 +3887,32 @@
     appSelect(sel);
     return sel;
   }
+  // ---- Teclado: Tab passa por todos os controles (no Mac o WebKit só passa pelos campos de texto,
+  // a não ser que a navegação por teclado esteja ligada no sistema) e fica dentro da janela aberta
+  function focusables(scope) {
+    return [...scope.querySelectorAll("a[href], button, input, select, textarea, [tabindex]")].filter((x) =>
+      !x.disabled && x.tabIndex >= 0 && x.getClientRects().length > 0 && getComputedStyle(x).visibility !== "hidden" && !x.closest(".hidden"));
+  }
+  function tabScope() {
+    if (openMenu) return openMenu;
+    const open = [...document.querySelectorAll(".overlay:not(.hidden)")].filter((o) => o.getClientRects().length > 0);
+    if (!open.length) return document.body;
+    return open.reduce((top, o) => ((parseInt(getComputedStyle(o).zIndex, 10) || 0) >= (parseInt(getComputedStyle(top).zIndex, 10) || 0) ? o : top));
+  }
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Tab" || e.metaKey || e.ctrlKey || e.altKey || e.defaultPrevented || selectMenu) return;
+    const scope = tabScope();
+    const list = focusables(scope);
+    if (!list.length) return;
+    e.preventDefault();
+    document.documentElement.classList.add("kbd-focus");
+    const i = list.indexOf(document.activeElement);
+    const next = i < 0 ? (e.shiftKey ? list[list.length - 1] : list[0]) : list[(i + (e.shiftKey ? -1 : 1) + list.length) % list.length];
+    next.focus();
+  }, true);
+  // Mouse de volta: some o contorno de foco do teclado
+  document.addEventListener("mousedown", () => document.documentElement.classList.remove("kbd-focus"), true);
+
   // Lista de opções do app no lugar da do sistema (que no Mac e no Windows tem outra cara).
   // O <select> continua por baixo: valor, "change" e teclado de foco funcionam como antes.
   let selectMenu = null;
@@ -3946,10 +3972,18 @@
       sel.focus();
       open();
     });
-    sel.addEventListener("keydown", (e) => {
-      if (e.key === " " || e.key === "Enter" || e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); open(); }
-    });
+    sel.appMenu = open;  // as teclas são tratadas na captura (antes do Mac abrir a lista dele)
   }
+  // Setas, Espaço e Enter numa lista do app abrem a lista do app; na captura e sem deixar seguir,
+  // para o WebKit do Mac não abrir a lista dele
+  ["keydown", "keypress"].forEach((type) => document.addEventListener(type, (e) => {
+    const sel = e.target;
+    if (!sel || sel.tagName !== "SELECT" || !sel.appMenu || selectMenu) return;
+    if (e.key === " " || e.key === "Enter" || e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Down" || e.key === "Up") {
+      e.preventDefault(); e.stopPropagation();
+      if (type === "keydown") sel.appMenu();
+    }
+  }, true));
   // Fora da lista: fecha (no próprio menu de escolha, marca para o mesmo clique não reabrir)
   document.addEventListener("pointerdown", (e) => {
     if (!selectMenu || selectMenu.contains(e.target)) return;
@@ -4248,6 +4282,9 @@
   function renderCamSettings() {
     const body = $("csBody");
     const scroll = body.scrollTop;
+    // O foco (teclado) estava na tabela: volta para o mesmo lugar depois de redesenhar
+    const was = document.activeElement && body.contains(document.activeElement) ? focusables(body).indexOf(document.activeElement) : -1;
+    if (was >= 0) setTimeout(() => { const list = focusables(body); const t = list[Math.min(was, list.length - 1)]; if (t && !body.contains(document.activeElement)) t.focus({ preventScroll: true }); }, 0);
     body.innerHTML = "";
     const copy = $("csCopy");
     copy.innerHTML = "";

@@ -875,6 +875,14 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) serve para tudo, menos para a impress
       para `Imagens/Stillpoint` e some. A linha "Save to" da janela de salvar (sem projeto) acompanha
       (`…/Stillpoint/Exports`). Na janela de salvar, depois de "Choose another folder…", "RESET TO DEFAULT"
       volta para a pasta padrão.
+- [ ] **Teclado (Tab):** na tela principal o Tab passa por todos os botões e campos (topo, câmeras, Bullet
+      time, sessões), com contorno verde. Com uma janela aberta (Camera settings, Save sessions, avisos),
+      o Tab fica só dentro dela e passa por tudo dela (Camera settings: listas, ±, Test shot, Match
+      automatically, Use gray card, Read again, Calibrate with chart, Copy from camera, Done). Shift+Tab volta.
+- [ ] Camera settings pelo teclado: numa lista, as setas do teclado abrem a lista escura do app (nunca a do
+      Mac); depois de mudar um valor, o foco continua no mesmo lugar (o próximo Tab segue dali).
+- [ ] "?" com o Tab: a explicação aparece enquanto o "?" tem o foco e some no próximo Tab, sem precisar
+      mexer o mouse.
 - [ ] Lupas: segurando o botão esquerdo somem a mira "+" e a legenda do zoom; ao soltar, voltam. A instrução aparece
       embaixo da prévia da folha de teste e na legenda da vista Interlaced.
 - [ ] New project → "CHOOSE ANOTHER FOLDER…": a caixa continua aberta; escolhida a pasta, o texto muda

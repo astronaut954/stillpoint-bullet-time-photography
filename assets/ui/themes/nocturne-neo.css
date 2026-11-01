@@ -1288,3 +1288,8 @@ html.drag-ns, html.drag-ns * { cursor: ns-resize !important; }
 .fine-chip .info-tip-text, .info-tip.float .info-tip-text { text-align: left; }
 .pitch-canvas, .lent-canvas, .pitch-loupe, .lent-loupe { -webkit-user-select: none; user-select: none; -webkit-user-drag: none; }
 #promptOverlay .dialog { width: min(700px, 94%); }  /* cabe Choose another folder + Reset + Cancel + Create numa linha */
+/* "?" aberto não prende: a caixa da explicação não conta como "mouse em cima" (no Mac ela aparecia
+   embaixo do ponteiro parado e ficava aberta até mexer o mouse) */
+.info-tip-text { pointer-events: none; }
+/* Navegando pelo teclado: contorno verde em qualquer controle com foco */
+html.kbd-focus :focus { outline: 2px solid var(--noct-primary); outline-offset: 2px; }
