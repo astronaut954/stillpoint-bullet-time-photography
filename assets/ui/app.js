@@ -2100,8 +2100,18 @@
       if (editing.on) stopReorder(false);
       else if (isFullscreen()) setFullscreen(false);
     }
-    if ((e.key === "f" || e.key === "F") && !editing.on) toggleFullscreen();
+    // preventDefault: no Mac, uma tecla que a página não marca como usada faz o sistema dar o som de erro
+    if ((e.key === "f" || e.key === "F") && !e.metaKey && !e.ctrlKey && !e.altKey && !editing.on) { e.preventDefault(); toggleFullscreen(); }
     if ((e.key === "Delete" || e.key === "Backspace") && !editing.on && (isFullscreen() || photoKeys)) { e.preventDefault(); deleteCurrentPhoto(); }
+  });
+
+  // Mac: letra solta fora de um campo de texto, que nenhum atalho usou, não faz o som de erro do sistema
+  // (o espaço fica de fora: ele aperta botões e caixas de marcar)
+  document.addEventListener("keydown", (e) => {
+    if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey || e.key.length !== 1 || e.key === " ") return;
+    const t = e.target;
+    if (t && (t.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName))) return;
+    e.preventDefault();
   });
 
   // =================== Salvar / sair ===================

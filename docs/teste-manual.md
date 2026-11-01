@@ -1112,6 +1112,8 @@ projeto num HD externo.
       botão do projeto.
 - [ ] Timing fora de "At once": a etiqueta "TIMING" fica verde; amarela só quando o plano tem um problema (ex.: no
       Custom, uma câmera fora de todos os passos).
+- [ ] Mac: apertar F para entrar e sair da tela cheia não faz o som de erro do sistema; letras soltas fora de um
+      campo de texto também não.
 - [ ] Activity aberto (barra de baixo): Esc fecha. Com uma janela aberta por cima (ex.: Export sessions), o
       primeiro Esc fecha a janela e o segundo, o Activity.
 - [ ] Janela Project: marcar sessões e clicar em "Delete n sessions…" (ao lado de Remove from project): o mesmo
