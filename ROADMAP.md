@@ -652,6 +652,17 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    projeto), data, fotos, tamanho, há quanto tempo e quantos dias faltam; Restore, Delete now e Empty
    trash. O Desfazer de apagar continua (traz o item mais recente da sessão). Sessões já salvas que o
    app apaga ao fechar, e as descartadas no fechamento, saem de vez (não ocupam a lixeira), como antes.
+   **Proporção da foto (entre a lixeira e a 20; branch `proporcao`, versão 2.16.0, iniciada em
+   2026-11-01).** Decisões do dono: (a) Camera settings lê e muda a proporção da câmera (3:2, 4:3,
+   16:9, 1:1) dentro do painel do botão de estilo, renomeado "Style, Quality & Ratio", logo abaixo de
+   Quality; entra na comparação entre câmeras e no "Settings differ"; câmeras que não aceitam pelo USB
+   mostram a linha desabilitada com a explicação. (b) A sessão avisa quando as fotos têm tamanhos ou
+   proporções diferentes. (c) Export sessions ganha a linha "Aspect ratio" (As shot, 3:2, 4:3, 16:9,
+   1:1) para Photos e Sequence, recorte centralizado com prévia; "As shot" com proporções misturadas
+   na sessão avisa. Lenticular não usa a linha: o tamanho do papel já define a proporção e o app
+   recorta para preencher. (d) O app lê a marca de recorte que a câmera grava no RAW quando a
+   proporção não é 3:2, para mostrar e exportar o mesmo quadro que o Lightroom. Depois dela vem a 20
+   (Lightroom Classic), como 2.17.0.
 5. **Etapa 20 — Edit in Lightroom Classic / Photoshop.** Ida e volta: o app abre os originais
    do Project no Lightroom Classic (o dono do projeto usa o Classic); um plugin do Stillpoint
    (SDK Lua do Classic) agrupa cada sessão como coleção e tem "Export to Stillpoint", que
