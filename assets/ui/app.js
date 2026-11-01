@@ -5618,6 +5618,7 @@
       items.push({ label: project.open ? "Switch project…" : "Open project…", onClick: pickProject });  // a mesma janela de recentes do "Switch…"
       items.push({ label: "New project…", onClick: newProject });
       if (project.open) items.push({ label: "Close project", onClick: closeProjectUndoable });
+      if (project.open) items.push({ label: "Delete project…", danger: true, onClick: deleteProjectAsk });
       popupMenu(anchor, items, align);
     });
   }
@@ -5874,7 +5875,7 @@
       const items = r.items || [];
       trashProjectName = r.project || "";
       const total = items.reduce((t, i) => t + (+i.bytes || 0), 0);
-      ov.querySelector(".trash-sub").textContent = "Deleted sessions and photos stay here for " + r.days + " days, then are deleted for good. " +
+      ov.querySelector(".trash-sub").textContent = "Deleted projects, sessions and photos stay here for " + r.days + " days, then are deleted for good. " +
         (items.length ? plural(items.length, "item", "items") + " · " + fmtBytes(total) + "." : "");
       const focusWas = trashRoving.where(document.activeElement);
       list.innerHTML = "";
@@ -5904,32 +5905,38 @@
           const sessionAfter = !item.whole && items.find((o) => o.whole && o.session === item.session && o.inProject === item.inProject && trashLater(o, item));
           if (sessionAfter) li.classList.add("blocked");
           const kindIcon = el("span", "trash-kind");
-          kindIcon.innerHTML = icon(item.whole ? "session" : "photo", 16);
-          kindIcon.title = item.whole ? "A whole session" : "Photos from a session";
+          kindIcon.innerHTML = icon(item.isProject ? "folder" : item.whole ? "session" : "photo", 16);
+          kindIcon.title = item.isProject ? "A whole project" : item.whole ? "A whole session" : "Photos from a session";
           li.appendChild(kindIcon);
+          const offDisk = item.isProject && !item.reachable;
+          if (offDisk) li.classList.add("offdisk");
           const main = el("div", "trash-main");
-          main.appendChild(el("b", "", label.date + (label.detail ? " · " + label.detail : "")));
+          main.appendChild(el("b", "", item.isProject ? item.session : label.date + (label.detail ? " · " + label.detail : "")));
           const left = Math.max(0, Math.ceil((item.deletedAt + r.days * 86400 - now) / 86400));
-          const meta = el("small", "", (item.whole ? "Session · " + plural(item.photos, "photo", "photos") : plural(item.photos, "photo", "photos") + " from this session") +
-            " · " + fmtBytes(+item.bytes) + " · deleted " + agoText(now - item.deletedAt) + " · ");
+          const meta = el("small", "", (item.isProject ? "Project · " + plural(item.sessions, "session", "sessions")
+            : item.whole ? "Session · " + plural(item.photos, "photo", "photos") : plural(item.photos, "photo", "photos") + " from this session") +
+            (+item.bytes ? " · " + fmtBytes(+item.bytes) : "") + " · deleted " + agoText(now - item.deletedAt) + " · ");
           meta.appendChild(el("span", left <= 2 ? "soon" : "", left <= 1 ? "deleted for good within a day" : "deleted for good in " + left + " days"));
           main.appendChild(meta);
+          if (offDisk) main.appendChild(el("small", "trash-note", "The disk with this project is not connected. Connect it to restore or delete the project."));
           if (sessionAfter) main.appendChild(el("small", "trash-note", item.photos === 1
             ? "The whole session was deleted after this photo. Restore the session first to bring it back."
             : "The whole session was deleted after these photos. Restore the session first to bring them back."));
           li.appendChild(main);
           const restore = button("Restore", () => restoreTrashItem(item, label), { title: item.whole ? "Put the session back in the list" : "Put the photos back in their session" });
           if (sessionAfter) { restore.disabled = true; restore.title = "Restore the session first"; }
+          if (offDisk) { restore.disabled = true; restore.title = "Connect the disk with this project first"; }
           li.appendChild(restore);
           // Apagar de vez uma sessão leva junto as fotos dela apagadas antes (que dependiam dela)
           const linked = item.whole ? items.filter((o) => !o.whole && o.session === item.session && o.inProject === item.inProject && trashLater(item, o)) : [];
           li.appendChild(button("Delete permanently", () => {
-            dialog("Delete permanently?", (item.whole ? "The session " : item.photos === 1 ? "This photo of " : "These photos of ") + label.date + " will be deleted for good" +
+            dialog("Delete permanently?", (item.isProject ? "The project " + item.session + " and everything in its folder" : (item.whole ? "The session " : item.photos === 1 ? "This photo of " : "These photos of ") + label.date) + " will be deleted for good" +
               (linked.length ? ", together with " + plural(linked.reduce((t, o) => t + o.photos, 0), "photo", "photos") + " of it deleted before" : "") + ". This cannot be undone.", [
               { label: "Cancel" },
               { label: "Delete permanently", danger: true, onClick: () => Promise.all([item, ...linked].map((o) => window.trashDelete(o.id))).then(() => { log("Deleted permanently from the trash: " + label.date, "tech"); renderTrash(); }) },
             ]);
           }, { kind: "btn-link", title: "Delete this item for good" }));
+          if (offDisk) li.lastChild.disabled = true;
           list.appendChild(li);
         });
       });
@@ -5949,6 +5956,16 @@
   function restoreTrashItem(item, label) {
     Promise.resolve(window.trashRestore(item.id)).then((r) => {
       if (!r || !r.ok) { toast((r && r.error) || "Could not restore this item.", 8000, { warn: true }); return; }
+      if (item.isProject) {
+        const t = "Project restored: " + item.session + ". Open it from the project menu (Recent).";
+        toast(t, 6000); log(t, "ok"); renderTrash();
+        // Desfazer: a pasta volta para a lixeira (o projeto estava fechado); refazer restaura de novo
+        let current = item.id;
+        recordAction({ label: "Restore project " + item.session,
+          undo: () => Promise.resolve(window.projectDelete(r.folder)).then((x) => { if (x && x.ok) { current = x.id; return true; } toast((x && x.error) || "Could not move the project back to the trash.", 8000, { warn: true }); return false; }),
+          redo: () => Promise.resolve(window.trashRestore(current)).then((x) => !!(x && x.ok)) });
+        return;
+      }
       const text = (item.whole ? "Session restored: " : plural(item.photos, "photo", "photos") + " restored to ") + label.date;
       toast(text); log(text, "ok");
       renderTrash();
@@ -5972,7 +5989,7 @@
         if (k >= ordered.length) return Promise.resolve();
         const item = ordered[k];
         return Promise.resolve(window.trashRestore(item.id)).then((x) => {
-          if (x && x.ok) done.push({ session: item.session, whole: item.whole, files: x.files || [] }); else failed++;
+          if (x && x.ok) done.push({ session: item.session, whole: item.whole, files: x.files || [], project: item.isProject ? x.folder : "" }); else failed++;
           return step(k + 1);
         });
       };
@@ -5981,14 +5998,20 @@
         const text = "Restored from the trash: " + plural(done.length, "item", "items") + (failed ? " (" + failed + " could not be restored)" : "");
         toast(text, failed ? 8000 : undefined, failed ? { warn: true } : undefined); log(text, failed ? "warn" : "ok");
         if (!done.length) return;
-        const wholeSessions = [...new Set(done.filter((d) => d.whole).map((d) => d.session))];
-        const photoOnly = done.filter((d) => !d.whole && !wholeSessions.includes(d.session));
-        const sessionsBack = [...new Set(done.map((d) => d.session))];
+        const projects = done.filter((d) => d.project);
+        const plain = done.filter((d) => !d.project);
+        const wholeSessions = [...new Set(plain.filter((d) => d.whole).map((d) => d.session))];
+        const photoOnly = plain.filter((d) => !d.whole && !wholeSessions.includes(d.session));
+        const sessionsBack = [...new Set(plain.map((d) => d.session))];
+        const projectIds = {};
         recordAction({ label: "Restore everything (" + plural(done.length, "item", "items") + ")",
           // Desfazer: as sessões que voltaram inteiras voltam para a lixeira inteiras; as fotos que
           // voltaram para sessões que estavam na lista, só elas
-          undo: () => { wholeSessions.forEach((s) => window.deleteSession(s)); photoOnly.forEach((d) => d.files.length && window.deletePhotos(d.session, ...d.files)); },
-          redo: () => Promise.all(sessionsBack.map((s) => restoreSession(s))) });
+          undo: () => {
+            wholeSessions.forEach((s) => window.deleteSession(s)); photoOnly.forEach((d) => d.files.length && window.deletePhotos(d.session, ...d.files));
+            return Promise.all(projects.map((d) => Promise.resolve(window.projectDelete(d.project)).then((x) => { if (x && x.ok) projectIds[d.project] = x.id; })));
+          },
+          redo: () => Promise.all(sessionsBack.map((s) => restoreSession(s)).concat(projects.map((d) => projectIds[d.project] ? window.trashRestore(projectIds[d.project]) : null))) });
       });
     });
   }
@@ -6149,6 +6172,36 @@
       $("promptReset").classList.add("hidden");
       $("promptInput").focus();
     };
+  }
+  // Apagar o projeto: a pasta inteira vai para a lixeira (no mesmo disco, 15 dias); Cmd+Z traz de volta e abre
+  function deleteProjectAsk() {
+    if (!project.open) return;
+    const name = project.name, folder = project.folder;
+    dialog("Delete the project " + name + "?",
+      "The whole project folder (" + plural(project.sessions || 0, "session", "sessions") + (project.bytes ? ", " + fmtBytes(project.bytes) : "") + ") goes to the Trash, where it stays for " + trash.days +
+      " days. It stays on the same disk, in a hidden folder next to it, so nothing is copied. The project closes.", [
+      { label: "Cancel" },
+      { label: "Delete project", danger: true, onClick: () => {
+        closeProjectWindow();
+        const del = () => Promise.resolve(window.projectDelete()).then((r) => {
+          if (!r || !r.ok) { const msg = (r && r.error) || "Could not delete the project."; toast(msg, 8000, { warn: true }); log(msg, "error"); return null; }
+          if (r.project) setProject(r.project);
+          refreshSessions();
+          toast("Project moved to the Trash: " + name); log("Project moved to the Trash: " + name, "ok");
+          return r.id;
+        });
+        del().then((id) => {
+          if (!id) return;
+          let current = id;
+          recordAction({ label: "Delete project " + name,
+            undo: () => Promise.resolve(window.trashRestore(current)).then((x) => {
+              if (!x || !x.ok) { toast((x && x.error) || "Could not restore the project.", 8000, { warn: true }); return false; }
+              return Promise.resolve(window.projectOpen(folder)).then((o) => { projectResult(o); return true; });
+            }),
+            redo: () => del().then((nid) => { if (nid) current = nid; return !!nid; }) });
+        });
+      } },
+    ]);
   }
   // Fechar o projeto com desfazer (Ctrl/Cmd+Z abre de novo; refazer fecha outra vez)
   function closeProjectUndoable() {
@@ -6326,6 +6379,7 @@
   $("projectCloseBtn").addEventListener("click", closeProjectWindow);
   $("projectFolderBtn").addEventListener("click", () => window.projectOpenFolder());
   $("projectSwitchBtn").addEventListener("click", () => pickProject());  // a janela Project fica aberta por baixo
+  $("projectDeleteProjectBtn").addEventListener("click", deleteProjectAsk);
   $("projectCloseProjectBtn").addEventListener("click", () => {
     dialog("Close the project?", "The project's sessions leave the list (they stay in " + project.folder + "; nothing is deleted). New sessions go back to staying in the app until you export them. You can open the project again any time.", [
       { label: "Cancel" },

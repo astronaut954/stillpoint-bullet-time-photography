@@ -1043,6 +1043,19 @@ projeto num HD externo.
 - [ ] Teclado: Tab chega no botão da lixeira; Enter abre; o Tab para numa linha só e ↑ ↓ trocam de linha
       (Restore / Delete now); Esc fecha e volta ao botão.
 
+## 28. Apagar um projeto (2.15.0)
+
+- [ ] Menu do projeto → "Delete project…" (e "Delete project…" na janela Project, ao lado de Close project): o aviso
+      diz quantas sessões e o tamanho; Delete project fecha o projeto e a barra mostra "No project".
+- [ ] No Finder (Cmd+Shift+. mostra pastas escondidas): a pasta do projeto saiu do lugar e está em
+      `<pasta de cima>/.stillpoint-trash/`, no mesmo disco (num HD externo, instantâneo).
+- [ ] O projeto sai dos recentes; na Trash aparece com o ícone de pasta, "Project · n sessions · tamanho".
+- [ ] Cmd+Z logo depois de apagar: o projeto volta e abre.
+- [ ] Restore na Trash: a pasta volta para o lugar e para os recentes (não abre sozinho); Cmd+Z manda de novo para a Trash.
+- [ ] Projeto num HD desligado: na Trash aparece apagado, com "The disk with this project is not connected…", e
+      Restore / Delete permanently desligados. Empty trash não mexe nele (fica até o disco voltar).
+- [ ] Delete permanently num projeto: apaga a pasta escondida de vez.
+
 ## 27. Apagar várias sessões e o nome Export sessions (2.15.0)
 
 - [ ] O botão do rodapé e a janela se chamam "Export sessions"; o botão de confirmar diz "Export n sessions";

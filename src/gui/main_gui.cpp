@@ -1936,6 +1936,68 @@ namespace
             Log("New project undone: " + folder.string() + " removed");
             return Json("discard").Add("ok", true).Str();
         });
+        // Recentes: tira ou põe uma pasta (apagar / restaurar um projeto pela lixeira)
+        auto setRecent = [&](const std::string& folder, bool add)
+        {
+            auto settings = LoadSettings();
+            std::vector<std::string> recent = recentProjects();
+            recent.erase(std::remove(recent.begin(), recent.end(), folder), recent.end());
+            if (add)
+                recent.insert(recent.begin(), folder);
+            if (recent.size() > 10)
+                recent.resize(10);
+            std::string joined;
+            for (const auto& r : recent)
+                joined += (joined.empty() ? "" : "|") + r;
+            settings["recentProjects"] = joined;
+            SaveSettings(settings);
+        };
+        // projectDelete(): fecha o projeto aberto e manda a pasta inteira para a lixeira (fica no mesmo
+        // disco, 15 dias). Devolve {ok, id, folder, name} ou {ok:false, error}.
+        window.bind("projectDelete", [&](const std::string& request) -> std::string
+        {
+            // projectDelete("pasta"): um projeto fechado (o Desfazer do Restore pela lixeira)
+            const auto args = ParseStringArgs(request);
+            std::error_code fec;
+            if (!args.empty() && !args[0].empty() && !(project.IsOpen() && std::filesystem::equivalent(project.Root(), args[0], fec)))
+            {
+                const std::filesystem::path folder(args[0]);
+                if (!Project::IsProject(folder))
+                    return Json("delete").Add("ok", false).Add("error", "This folder is not a project.").Str();
+                int sessions = 0;
+                for (const auto& d : std::filesystem::directory_iterator(folder / "Originals", fec))
+                    sessions += d.is_directory(fec) && d.path().filename().string().rfind('.', 0) != 0 ? 1 : 0;
+                std::string error;
+                const std::string id = store.TrashProject(folder, folder.filename().string(), sessions, error);
+                if (id.empty())
+                    return Json("delete").Add("ok", false).Add("error", error).Str();
+                setRecent(folder.string(), false);
+                emitSessions();
+                return Json("delete").Add("ok", true).Add("id", id).Add("folder", folder.string()).Add("name", folder.filename().string()).Str();
+            }
+            if (!project.IsOpen())
+                return Json("delete").Add("ok", false).Add("error", "No project is open.").Str();
+            const std::filesystem::path folder = project.Root();
+            const std::string name = project.Name();
+            int sessions = 0;
+            for (const auto& s : store.ListSessions())
+                sessions += s.inProject ? 1 : 0;
+            project.Close();
+            rememberProject("");
+            applyProject();
+            std::string error;
+            const std::string id = store.TrashProject(folder, name, sessions, error);
+            if (id.empty())
+            {
+                emitSessions();
+                return Json("delete").Add("ok", false).Add("error", error).Add("folder", folder.string()).Str();
+            }
+            setRecent(folder.string(), false);
+            Log("Project moved to the trash: " + folder.string());
+            emitSessions();
+            return Json("delete").Add("ok", true).Add("id", id).Add("folder", folder.string()).Add("name", name)
+                .Raw("project", projectJson()).Str();
+        });
         // projectClose(): fecha o Project (as sessões dele saem da lista; nada é apagado)
         window.bind("projectClose", [&](const std::string&) -> std::string
         {
@@ -3602,7 +3664,8 @@ namespace
                 list += std::string(list.size() > 1 ? "," : "") + Json("item").Add("id", item.id).Add("session", item.session)
                     .Add("whole", item.wholeSession).Add("photos", item.photos).Raw("bytes", std::to_string(item.bytes))
                     .Raw("deletedAt", std::to_string(item.deletedAt)).Add("order", std::to_string(item.order))
-                    .Add("inProject", item.inProject).Str();
+                    .Add("inProject", item.inProject).Add("isProject", item.isProject).Add("reachable", item.reachable)
+                    .Add("sessions", item.sessions).Str();
             return Json("trash").Raw("items", list + "]").Add("days", kTrashDays)
                 .Add("project", project.IsOpen() ? project.Name() : std::string()).Str();
         });
@@ -3612,7 +3675,22 @@ namespace
             const auto args = ParseStringArgs(request);
             std::string error;
             std::vector<std::string> files;
+            // Um projeto que volta da lixeira volta também para os recentes
+            std::string projectFolder;
+            if (!args.empty() && args[0].rfind("app/project-", 0) == 0)
+            {
+                // a origem fica no .trashinfo; ListTrash não a expõe: lê direto
+                std::ifstream in(store.Root() / ".trash" / args[0].substr(4) / ".trashinfo");
+                std::string line;
+                while (std::getline(in, line))
+                    if (line.rfind("origin=", 0) == 0)
+                        projectFolder = line.substr(7);
+            }
             const bool ok = !args.empty() && store.RestoreTrashItem(args[0], error, &files);
+            if (ok && !projectFolder.empty())
+                setRecent(projectFolder, true);
+            if (ok && !projectFolder.empty())
+                return Json("restore").Add("ok", true).Add("error", "").Add("folder", projectFolder).Str();
             if (!ok && error.empty())
                 error = "Could not restore this item.";
             emitSessions();

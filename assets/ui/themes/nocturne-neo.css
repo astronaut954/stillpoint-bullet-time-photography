@@ -1329,3 +1329,4 @@ html.kbd-focus input:focus + .save-check { outline: 2px solid var(--noct-primary
 
 /* Várias sessões selecionadas (Cmd/Shift+clique ou o modo Select) */
 .folder.multi { background: var(--noct-elevated); box-shadow: inset 0 0 0 1px var(--noct-info); }
+.trash-row.offdisk .trash-main b, .trash-row.offdisk .trash-kind { opacity: .45; }

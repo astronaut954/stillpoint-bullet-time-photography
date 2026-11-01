@@ -1014,8 +1014,19 @@ std::vector<TrashItem> PhotoStore::ListTrash() const
         t.id = std::string(e.inProject ? "project/" : "app/") + e.path.filename().string();
         t.session = e.info["session"];
         t.wholeSession = e.info["kind"] != "photos";
-        t.photos = CountTrashPhotos(e.path);
-        t.bytes = FolderBytes(e.path);
+        if (e.info["kind"] == "project")
+        {
+            std::error_code pec;
+            t.isProject = true;
+            t.reachable = fs::is_directory(fs::path(e.info["location"]), pec);
+            try { t.bytes = std::stoull(e.info["bytes"]); } catch (...) { t.bytes = 0; }
+            try { t.sessions = std::stoi(e.info["sessions"]); } catch (...) { t.sessions = 0; }
+        }
+        else
+        {
+            t.photos = CountTrashPhotos(e.path);
+            t.bytes = FolderBytes(e.path);
+        }
         t.deletedAt = e.deletedAt;
         t.order = e.order;
         t.inProject = e.inProject;
@@ -1029,6 +1040,30 @@ bool PhotoStore::RestoreEntry(const fs::path& trash, std::string& errorMessage, 
 {
     std::error_code ec;
     auto info = ReadTrashInfo(trash);
+    if (info["kind"] == "project")
+    {
+        // Projeto: a pasta volta para onde estava (no mesmo disco)
+        const fs::path from(info["location"]), to(info["origin"]);
+        if (!fs::is_directory(from, ec))
+        {
+            errorMessage = "The disk with this project is not connected.";
+            return false;
+        }
+        if (fs::exists(to, ec))
+        {
+            errorMessage = "There is already a folder named \"" + to.filename().string() + "\" in " + to.parent_path().string() + ".";
+            return false;
+        }
+        fs::rename(from, to, ec);
+        if (ec)
+        {
+            errorMessage = "Could not restore the project: " + ec.message();
+            return false;
+        }
+        fs::remove(from.parent_path(), ec);  // a lixeira daquela pasta, se ficou vazia
+        fs::remove_all(trash, ec);
+        return true;
+    }
     const std::string session = info["session"].empty() ? trash.filename().string() : info["session"];
     std::string origin = info["origin"];
     if (origin.empty())
@@ -1115,6 +1150,25 @@ bool PhotoStore::RestoreTrashItem(const std::string& id, std::string& errorMessa
     return RestoreEntry(entry, errorMessage, restored);
 }
 
+// Apaga de vez um item; um projeto só com o disco dele ligado (senão o item fica, para depois)
+static bool RemoveTrashEntry(const fs::path& entry)
+{
+    std::error_code ec;
+    auto info = ReadTrashInfo(entry);
+    if (info["kind"] == "project")
+    {
+        const fs::path location(info["location"]);
+        if (!fs::is_directory(location, ec))
+            return false;
+        fs::remove_all(location, ec);
+        if (ec)
+            return false;
+        fs::remove(location.parent_path(), ec);  // a lixeira daquela pasta, se ficou vazia
+    }
+    fs::remove_all(entry, ec);
+    return !ec;
+}
+
 bool PhotoStore::DeleteTrashItem(const std::string& id) const
 {
     const fs::path projectTrash = projectRoot.empty() ? fs::path() : projectRoot.parent_path() / kProjectTrash;
@@ -1122,8 +1176,45 @@ bool PhotoStore::DeleteTrashItem(const std::string& id) const
     std::error_code ec;
     if (entry.empty() || !fs::is_directory(entry, ec))
         return false;
-    fs::remove_all(entry, ec);
-    return !ec;
+    return RemoveTrashEntry(entry);
+}
+
+std::string PhotoStore::TrashProject(const fs::path& folder, const std::string& name, int sessions,
+                                     std::string& errorMessage) const
+{
+    std::error_code ec;
+    if (!fs::is_directory(folder, ec))
+    {
+        errorMessage = "The project folder is not reachable.";
+        return {};
+    }
+    const unsigned long long bytes = FolderBytes(folder);
+    // Na mesma pasta de cima (mesmo disco): mover é instantâneo e não ocupa espaço no computador
+    const fs::path base = folder.parent_path() / kProjectTrash;
+    fs::create_directories(base, ec);
+    const std::string stem = std::to_string(NowSeconds()) + "-" + folder.filename().string();
+    fs::path location = base / stem;
+    for (int n = 2; fs::exists(location, ec); ++n)
+        location = base / (stem + "-" + std::to_string(n));
+    fs::rename(folder, location, ec);
+    if (ec)
+    {
+        errorMessage = "Could not move the project to the trash: " + ec.message();
+        fs::remove(base, ec);
+        return {};
+    }
+    // Na lixeira do app, só o lugar (para listar, restaurar e apagar depois)
+    fs::create_directories(root / kTrashFolder, ec);
+    fs::path pointer = root / kTrashFolder / ("project-" + stem);
+    for (int n = 2; fs::exists(pointer, ec); ++n)
+        pointer = root / kTrashFolder / ("project-" + stem + "-" + std::to_string(n));
+    fs::create_directories(pointer, ec);
+    WriteTrashInfo(pointer, name, true, folder, NowSeconds());
+    {
+        std::ofstream out(pointer / kTrashInfo, std::ios::binary | std::ios::app);
+        out << "kind=project\n" << "location=" << location.string() << "\n" << "bytes=" << bytes << "\n" << "sessions=" << sessions << "\n";
+    }
+    return "app/" + pointer.filename().string();
 }
 
 void PhotoStore::PurgeTrash(int days) const
@@ -1133,13 +1224,16 @@ void PhotoStore::PurgeTrash(int days) const
     std::error_code ec;
     for (const auto& e : TrashEntries(root / kTrashFolder, projectTrash))
         if (e.deletedAt < limit)
-            fs::remove_all(e.path, ec);
+            RemoveTrashEntry(e.path);  // projeto com o disco desligado: fica para quando ele voltar
+    (void)ec;
 }
 
 void PhotoStore::EmptyTrash() const
 {
     std::error_code ec;
-    fs::remove_all(root / kTrashFolder, ec);
+    for (const auto& d : fs::directory_iterator(root / kTrashFolder, ec))
+        if (d.is_directory(ec))
+            RemoveTrashEntry(d.path());  // projeto com o disco desligado: fica
     if (!projectRoot.empty())
         fs::remove_all(projectRoot.parent_path() / kProjectTrash, ec);
 }

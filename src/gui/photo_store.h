@@ -29,6 +29,11 @@ struct TrashItem
     long long deletedAt = 0; // segundos desde 1970
     long long order = 0;     // ordem exata em que foi apagado (mais recente = maior)
     bool inProject = false;
+    // Um projeto inteiro (a pasta foi para "<pasta de cima>/.stillpoint-trash", no mesmo disco; a lixeira
+    // do app guarda só onde ela está). reachable = o disco está ligado (dá para restaurar ou apagar)
+    bool isProject = false;
+    bool reachable = true;
+    int sessions = 0;
 };
 
 struct StoredSession
@@ -119,6 +124,10 @@ public:
     bool RestoreTrashItem(const std::string& id, std::string& errorMessage,
                           std::vector<std::string>* restored = nullptr) const;
     bool DeleteTrashItem(const std::string& id) const;
+    // Manda um projeto inteiro para a lixeira (a pasta é movida no mesmo disco). Devolve o id do item
+    // ("" se não deu, com a mensagem em errorMessage). O projeto já deve estar fechado.
+    std::string TrashProject(const std::filesystem::path& folder, const std::string& name, int sessions,
+                             std::string& errorMessage) const;
     // Apaga uma sessão de vez, sem passar pela lixeira (ex.: já salva em outro lugar ao fechar)
     bool DeleteSessionNow(const std::string& session) const;
     bool DeletePhotos(const std::string& session, const std::vector<std::string>& groups,
