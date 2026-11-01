@@ -1107,8 +1107,8 @@ projeto num HD externo.
 - [ ] Apertar o botão do mouse com Cmd e soltar o Cmd antes de soltar o botão: conta como Cmd+clique.
 - [ ] Shift+clique nas miniaturas: os números não ficam marcados como texto.
 - [ ] Barra de cima: diminuir a janela aos poucos; nenhum texto quebra linha e, conforme falta espaço, somem nesta
-      ordem: o tamanho da lixeira, os números do projeto, a versão do app e o texto do "Update" (fica o quadrado
-      verde). Números grandes aparecem curtos ("1.3k", "38.5k", "1.3 TB"); o número inteiro fica na legenda do
+      ordem: o tamanho da lixeira, os números do projeto, a versão do app, o texto do "Update" (fica o quadrado
+      verde) e, por último, "30 cameras ready" vira só "30" (o texto inteiro na legenda). Números grandes aparecem curtos ("1.3k", "38.5k", "1.3 TB"); o número inteiro fica na legenda do
       botão do projeto.
 - [ ] Timing fora de "At once": a etiqueta "TIMING" fica verde; amarela só quando o plano tem um problema (ex.: no
       Custom, uma câmera fora de todos os passos).

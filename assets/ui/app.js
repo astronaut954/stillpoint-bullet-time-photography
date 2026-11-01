@@ -161,8 +161,12 @@
   }
 
   // =================== Utilitários ===================
-  function setStatus(text, kind) {
-    ui.status.textContent = text;
+  // short: a versão curta (só os números), usada quando falta espaço na barra de cima
+  function setStatus(text, kind, short) {
+    ui.status.textContent = "";
+    ui.status.append(el("span", "st-full", text));
+    if (short) ui.status.append(el("span", "st-short", short));
+    ui.status.title = short ? text : "";
     ui.status.className = "status status-" + (kind || "idle");
   }
 
@@ -204,8 +208,8 @@
     if (busy) return;
     const ready = cameras.filter((c) => c.connected).length;
     const connecting = cameras.filter((c) => c.state === "connecting").length;
-    if (ready && connecting) setStatus(ready + " ready, " + connecting + " connecting", "ok");
-    else if (ready) setStatus(plural(ready, "camera ready", "cameras ready"), "ok");
+    if (ready && connecting) setStatus(ready + " ready, " + connecting + " connecting", "ok", ready + " + " + connecting);
+    else if (ready) setStatus(plural(ready, "camera ready", "cameras ready"), "ok", String(ready));
     else if (connecting) setStatus("Connecting", "busy");
     else if (stillSearching()) setStatus("Looking for cameras", "busy");
     else setStatus("No cameras", "idle");
@@ -7360,9 +7364,10 @@
     ui.logToggle.focus();
   });
   // Barra de cima: o texto não quebra; quando falta espaço, some primeiro o que importa menos
-  // (1 tamanho da lixeira, 2 números do projeto, 3 versão do app, 4 texto do "Update")
+  // (1 tamanho da lixeira, 2 números do projeto, 3 versão do app, 4 texto do "Update", 5 só o número
+  // de câmeras)
   const topbar = document.querySelector(".topbar");
-  const FIT_STEPS = 4;
+  const FIT_STEPS = 5;  // 5: "30 cameras ready" vira só "30"
   let fitting = false, fitQueued = false;
   function fitTopbar() {
     fitQueued = false;

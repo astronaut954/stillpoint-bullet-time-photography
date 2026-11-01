@@ -1416,4 +1416,8 @@ body.mod-keys .folder-add { cursor: default; }
 .topbar.fit-1 #trashSize,
 .topbar.fit-2 #projectBarMeta,
 .topbar.fit-3 #brandVersion,
-.topbar.fit-4 #updateChipText { display: none !important; }
+.topbar.fit-4 #updateChipText,
+.topbar.fit-5 .status .st-full:has(+ .st-short),
+.status .st-short { display: none !important; }
+.topbar.fit-5 .status .st-short { display: inline !important; }
+.topbar-right { padding-left: 12px; }  /* janela estreita: a lixeira não encosta no status das câmeras */
