@@ -1076,12 +1076,12 @@
   // na tela cheia, junto com a data da sessão.
   const fullBtn = button("", () => setFullscreen(true), { icon: "expand", title: "Full screen (F)" });
   const compactActions = [
-    button("", deleteCurrentSession, { icon: "trash", title: "Delete this session" }),
+    button("Delete session", deleteCurrentSession, { title: "Delete this session (it goes to the Trash for 15 days)" }),
     fullBtn,
   ];
   const exitFullBtn = button("", () => setFullscreen(false), { icon: "shrink", title: "Exit full screen (Esc)" });
   // Na tela cheia a lixeira apaga a sessão (como fora dela); uma foto: botão direito ou a tecla Delete
-  const fullTrashBtn = button("", deleteCurrentSession, { icon: "trash", title: "Delete this session (a photo: right-click it, or the Delete key)" });
+  const fullTrashBtn = button("Delete session", deleteCurrentSession, { title: "Delete this session (a photo: right-click it, or the Delete key)" });
   // "Reverse loop" (ligado por padrão): o play vai e volta (1, 2, 3, 2, 1...);
   // desligado, recomeça do início (1, 2, 3, 1, 2, 3...)
   const reverseLoopOption = document.createElement("label");
