@@ -7328,6 +7328,15 @@
     ui.logList.scrollTop = ui.logList.scrollHeight;
     statsWatch(ui.log.classList.contains("expanded"));
   });
+  // Esc com o Activity aberto fecha ele (se nada estiver por cima: janela, menu, aviso ou tela cheia)
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape" || e.defaultPrevented || !ui.log.classList.contains("expanded")) return;
+    if ([...document.querySelectorAll(".overlay:not(.hidden)")].some((o) => o.getClientRects().length > 0)) return;
+    if (selectMenu || document.querySelector("body > .project-menu") || isFullscreen()) return;
+    e.preventDefault();
+    ui.logToggle.click();
+    ui.logToggle.focus();
+  });
   ui.restartAppBtn.addEventListener("click", restartApp);
   // Show technical details: as linhas técnicas entram e saem sem a lista "pular". A linha comum que
   // estava no alto da área visível fica no mesmo lugar (se a lista estava no fim, continua no fim);

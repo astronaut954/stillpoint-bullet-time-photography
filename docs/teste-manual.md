@@ -1106,6 +1106,8 @@ projeto num HD externo.
       clicada; desmarcar a aberta abre outra das marcadas; sobrando uma só, ela fica aberta e sem marca.
 - [ ] Apertar o botão do mouse com Cmd e soltar o Cmd antes de soltar o botão: conta como Cmd+clique.
 - [ ] Shift+clique nas miniaturas: os números não ficam marcados como texto.
+- [ ] Activity aberto (barra de baixo): Esc fecha. Com uma janela aberta por cima (ex.: Export sessions), o
+      primeiro Esc fecha a janela e o segundo, o Activity.
 - [ ] Janela Project: marcar sessões e clicar em "Delete n sessions…" (ao lado de Remove from project): o mesmo
       aviso; vão para a lixeira do projeto.
 - [ ] Arrastar várias: marcar duas sessões de "Not in project", segurar uma delas e arrastar até o botão do projeto
