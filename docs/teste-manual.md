@@ -896,6 +896,12 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) serve para tudo, menos para a impress
       Enter escolhe, Esc fecha e volta ao botão; o Tab fecha o menu e vai para o próximo botão.
 - [ ] Lista de câmeras: o Tab passa só pelos botões de uma câmera (Identify, setas de mover); ↑ ↓ vão para
       o mesmo botão na câmera de cima/de baixo. Depois de mover uma câmera com Enter, o foco acompanha a câmera.
+- [ ] Bullet time: trocar o modo de disparo (At once, Sweep, Groups…) com Tab + Enter mantém o contorno no modo
+      escolhido; o próximo Tab segue dali.
+- [ ] Janela Project: o Tab passa só pelos controles de uma sessão (caixa de marcar, Label, Show); ↑ ↓ vão
+      para o mesmo controle na sessão de cima/de baixo.
+- [ ] Switch… (Open a project): o Tab para num projeto só; ↑ ↓ andam pelos projetos da lista (sem rolar a
+      janela); Enter abre.
 - [ ] Confirmações (ex.: "Calibrate with chart"): Enter aperta o botão que está com o contorno verde
       (Cancel, Open chart ou Start), não sempre o principal.
 - [ ] Pitch test: Enter numa opção muda a opção e o foco continua nela; o próximo Tab segue dali.

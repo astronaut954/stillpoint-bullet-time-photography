@@ -4022,6 +4022,74 @@
     } else next = e.shiftKey ? list[list.length - 1] : list[0];
     next.focus();
   }, true);
+  // Enter/Espaço num botão que redesenha a tela (ex.: modos de disparo): se o botão sumiu e o foco
+  // caiu no nada, volta para o item que ficou no mesmo lugar da ordem do Tab
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    const a = document.activeElement;
+    if (!a || a === document.body) return;
+    const at = focusables(tabScope()).indexOf(a);
+    if (at < 0) return;
+    const fix = () => {
+      if (a.isConnected) return;
+      const now = document.activeElement;
+      if (now && now !== document.body) return;
+      const list = focusables(tabScope());
+      const t = list[Math.min(at, list.length - 1)];
+      if (t) t.focus({ preventScroll: true });
+    };
+    setTimeout(fix, 0); setTimeout(fix, 150); setTimeout(fix, 400);
+  }, true);
+  // Listas com linhas (janela Project, Switch project…): o Tab entra numa linha só; ↑ ↓ vão para o
+  // mesmo controle na linha de cima/de baixo
+  const ROVING = [];
+  function makeRoving(cfg) {
+    cfg.cur = "";
+    cfg.controls = cfg.controls || ((row) => [...row.querySelectorAll("input, button, select, textarea")]);
+    const live = (row) => cfg.controls(row).filter((x) => !x.disabled);
+    const rows = () => { const r = cfg.root(); return r ? cfg.rows(r).filter((row) => live(row).length) : []; };
+    cfg.where = (node) => {
+      const r = cfg.root();
+      if (!node || !r || !r.contains(node)) return null;
+      const row = rows().find((x) => x === node || x.contains(node));
+      return row ? { id: cfg.id(row), i: cfg.controls(row).indexOf(node) } : null;
+    };
+    cfg.apply = () => {
+      const all = rows();
+      const tabRow = all.find((x) => cfg.id(x) === cfg.cur) || all[0];
+      all.forEach((x) => cfg.controls(x).forEach((c) => { c.tabIndex = x === tabRow ? 0 : -1; }));
+    };
+    cfg.focusAt = (id, i) => {
+      const row = rows().find((x) => cfg.id(x) === id);
+      if (!row) return false;
+      const list = cfg.controls(row), ok = live(row);
+      let t = list[i] && !list[i].disabled ? list[i] : ok.reduce((b, c) => Math.abs(list.indexOf(c) - i) < Math.abs(list.indexOf(b) - i) ? c : b, ok[0]);
+      cfg.cur = id; cfg.apply();
+      t.focus();
+      t.scrollIntoView({ block: "nearest" });
+      return true;
+    };
+    cfg.move = (pos, step) => {
+      const all = rows();
+      for (let k = all.findIndex((x) => cfg.id(x) === pos.id) + step; k >= 0 && k < all.length; k += step)
+        if (cfg.focusAt(cfg.id(all[k]), pos.i)) return;
+    };
+    ROVING.push(cfg);
+    return cfg;
+  }
+  document.addEventListener("keydown", (e) => {
+    if ((e.key !== "ArrowDown" && e.key !== "ArrowUp") || selectMenu || openMenu || document.querySelector("body > .suggest")) return;
+    for (const cfg of ROVING) {
+      const pos = cfg.where(document.activeElement);
+      if (!pos) continue;
+      e.preventDefault(); e.stopImmediatePropagation();
+      cfg.move(pos, e.key === "ArrowDown" ? 1 : -1);
+      return;
+    }
+  }, true);
+  document.addEventListener("focusin", (e) => {
+    for (const cfg of ROVING) { const pos = cfg.where(e.target); if (pos && pos.id !== cfg.cur) { cfg.cur = pos.id; cfg.apply(); } }
+  });
   // Enter numa caixa de marcar: marca/desmarca (o Mac só faz isso com o Espaço)
   document.addEventListener("keydown", (e) => {
     const t = e.target;
@@ -5729,6 +5797,7 @@
   });
   function browseProject() { callProject("projectOpen", "").then(projectResult); }
   // Escolher um Project: recentes + "Choose folder…" + "New project…"
+  const pickRoving = makeRoving({ root: () => $("projectRecentList"), rows: (r) => [...r.querySelectorAll(".project-recent-item")], controls: (row) => [row], id: (row) => row.dataset.folder });
   function pickProject() {
     const list = $("projectRecentList"); list.innerHTML = "";
     Promise.resolve(window.projectRecent()).then((r) => {
@@ -5742,8 +5811,11 @@
         b.querySelector("b").textContent = p.name + (p.available ? "" : "  ·  not reachable");
         b.querySelector("small").textContent = p.folder;
         b.addEventListener("click", () => { $("projectPickOverlay").classList.add("hidden"); Promise.resolve(window.projectOpen(p.folder)).then(projectResult); });
+        b.dataset.folder = p.folder;
         list.appendChild(b);
       });
+      pickRoving.cur = "";
+      pickRoving.apply();
     });
     $("projectPickOverlay").classList.remove("hidden");
   }
@@ -5780,12 +5852,15 @@
   window.addEventListener("focus", () => refreshProject());
   document.addEventListener("visibilitychange", () => { if (!document.hidden) refreshProject(); });
   function closeProjectWindow() { $("projectOverlay").classList.add("hidden"); }
+  const projectRoving = makeRoving({ root: () => $("projectList"), rows: (r) => [...r.querySelectorAll("li.project-row")], id: (row) => row.dataset.name });
   function renderProjectWindow() {
     const list = projectSessions();
     const nameInput = $("projectNameInput");
     if (document.activeElement !== nameInput) { nameInput.value = project.name || ""; nameInput.classList.remove("invalid"); }
     $("projectSub").textContent = [project.folder, plural(project.sessions || 0, "session", "sessions"), plural(project.photos || 0, "photo", "photos"), fmtBytes(project.bytes)].filter(Boolean).join(" · ");
-    const ul = $("projectList"); ul.innerHTML = "";
+    const ul = $("projectList");
+    const focusWas = projectRoving.where(document.activeElement);
+    ul.innerHTML = "";
     $("projectEmpty").classList.toggle("hidden", list.length > 0);
     [...projectSel].forEach((n) => { if (!list.some((s) => s.name === n)) projectSel.delete(n); });
     list.forEach((s) => {
@@ -5814,9 +5889,12 @@
       const first = s.photos.find((p) => p.previewable);
       if (first) sessionPhoto(s.name, first.file, 320).then((url) => { if (url) li.querySelector(".export-thumb").style.backgroundImage = "url(" + url + ")"; });
       li.querySelector(".project-row-play").addEventListener("click", () => { closeProjectWindow(); showSession(s); });
+      li.dataset.name = s.name;
       ul.appendChild(li);
     });
     updateProjectCount();
+    projectRoving.apply();
+    if (focusWas) projectRoving.focusAt(focusWas.id, focusWas.i);
   }
   function updateProjectCount() {
     const list = projectSessions();
