@@ -909,6 +909,11 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) serve para tudo, menos para a impress
       botão / marca a caixa e o foco continua nele.
 - [ ] Save sessions: o Tab para numa sessão só da lista; ↑ ↓ trocam de sessão (mostrando as opções dela).
       Enter em qualquer opção (formatos, Preview, Unselect all…) mantém o foco nela ou no lugar dela.
+- [ ] Save sessions: Cmd+Z desfaz cada mudança (formatos, saídas, nome, sessões marcadas); Cmd+Shift+Z refaz.
+      Ao fechar a janela, essas mudanças saem do desfazer.
+- [ ] Save sessions: ← → trocam a foto da prévia em Photos e a foto do Tilt em Lenticular.
+- [ ] Lenticular: o botão do modo teatro (à esquerda, em cima da prévia) vem antes de Tilt / Interlaced no Tab.
+- [ ] Live: "Another window" abre a Live 2 um pouco à direita e abaixo da primeira (fora de tela cheia).
 - [ ] Confirmações (ex.: "Calibrate with chart"): Enter aperta o botão que está com o contorno verde
       (Cancel, Open chart ou Start), não sempre o principal.
 - [ ] Pitch test: Enter numa opção muda a opção e o foco continua nela; o próximo Tab segue dali.

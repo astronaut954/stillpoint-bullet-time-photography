@@ -2366,9 +2366,15 @@ namespace
                     NativeWindow::Hide(native.value());
                 return "null";
             });
-            v.bind("liveAnother", [&](const std::string&) -> std::string
+            // "Another window": abre (ou traz de volta) a Live 2 um pouco à direita e abaixo
+            // desta, para ficar claro que é outra janela
+            v.bind("liveAnother", [&, self](const std::string&) -> std::string
             {
                 openLive(2);
+                for (auto& other : lives)
+                    if (other->index == 2)
+                        if (auto a = other->view->window(), b = self->window(); a.ok() && b.ok())
+                            NativeWindow::PlaceNear(a.value(), b.value(), 40, 40);
                 return "null";
             });
             // "Identify displays": número grande em cada monitor por 3 s

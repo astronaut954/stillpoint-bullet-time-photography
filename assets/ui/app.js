@@ -400,7 +400,8 @@
   document.addEventListener("keydown", (e) => {
     if (!(e.metaKey || e.ctrlKey) || e.altKey || (e.key !== "z" && e.key !== "Z" && e.key !== "y")) return;
     const tag = e.target.tagName;
-    if (tag === "INPUT" || tag === "TEXTAREA") return;  // dentro de um campo, o desfazer é o do texto
+    // Dentro de um campo de texto, o desfazer é o do texto (caixas de marcar e botões não)
+    if (tag === "TEXTAREA" || (tag === "INPUT" && !["checkbox", "radio", "button", "range"].includes(e.target.type))) return;
     e.preventDefault(); e.stopImmediatePropagation();
     if (e.key === "y" || e.shiftKey) doRedo(); else doUndo();
   }, true);
@@ -1818,6 +1819,7 @@
     }
     exp.photo = 0;
     exp.dest = null;  // outra pasta escolhida vale só para uma vez
+    expSnap = null;
     if (typeof window.exportDestination === "function")
       Promise.resolve(window.exportDestination()).then((d) => {
         if (!d) return;
@@ -1832,10 +1834,45 @@
     $("exportOverlay").classList.remove("hidden");
   }
 
+  // ← → no Save sessions: trocam a foto da prévia (Photos) e a do Tilt (Lenticular)
+  document.addEventListener("keydown", (e) => {
+    if ((e.key !== "ArrowLeft" && e.key !== "ArrowRight") || selectMenu || openMenu || !exp.keyNav) return;
+    if ($("exportOverlay").classList.contains("hidden") || tabScope() !== $("exportOverlay")) return;
+    const t = e.target;
+    if (t && (t.tagName === "TEXTAREA" || t.tagName === "SELECT" || (t.tagName === "INPUT" && !["checkbox", "radio", "button"].includes(t.type)))) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    exp.keyNav(e.key === "ArrowRight" ? 1 : -1);
+  }, true);
   function closeExport() {
     stopPreview();
     $("exportOverlay").classList.add("hidden");
     exp.project = false;
+    // As mudanças da janela só valem com ela aberta: saem do desfazer ao fechar
+    history.undo = history.undo.filter((a) => !a.exportWin);
+    history.redo = history.redo.filter((a) => !a.exportWin);
+  }
+  // Desfazer no Save sessions: cada mudança (saídas, formatos, nome, seleção, pasta) vira um passo
+  let expSnap = null;
+  function expSnapshot() {
+    return JSON.stringify({ s: exportable().map((x) => [x.name, settingsFor(x.name)]), same: exp.sameForAll,
+      sel: [...exp.selected].sort(), dest: exp.dest || null, edited: $("exportEdited").checked });
+  }
+  function expTrack() {
+    if ($("exportOverlay").classList.contains("hidden")) return;
+    const now = expSnapshot();
+    if (expSnap !== null && now !== expSnap) {
+      const before = expSnap;
+      recordAction({ label: "Save sessions settings", exportWin: true, undo: () => expApply(before), redo: () => expApply(now) });
+    }
+    expSnap = now;
+  }
+  function expApply(snap) {
+    if ($("exportOverlay").classList.contains("hidden")) return false;
+    const o = JSON.parse(snap);
+    o.s.forEach(([name, st]) => { exp.settings[name] = st; });
+    exp.sameForAll = o.same; exp.selected = new Set(o.sel); exp.dest = o.dest; $("exportEdited").checked = o.edited;
+    expSnap = snap;
+    renderExport();
   }
 
   function renderExport() {
@@ -1925,6 +1962,7 @@
     $("exportSelectAll").disabled = chosen === all.length;
     $("exportUnselectAll").disabled = chosen === 0;
     $("exportEditedLabel").classList.toggle("hidden", !exp.project);
+    setTimeout(expTrack, 0);  // depois de a mudança terminar (pode haver mais de um redesenho)
   }
   function sessionTitle(s) { const l = sessionLabel(s.name); return s.label ? s.label + " · " + l.date : l.date; }
 
@@ -2560,6 +2598,7 @@
     if (exp.mode !== "lenticular") { exp.lentTheater = false; outer.classList.remove("theater"); }
 
     // Monta a prévia (só a da seção em foco entra na tela) e as configurações de uma saída
+    exp.keyNav = null;
     const buildKind = (kind, box, focused) => {
       const preview = el("div", "export-preview");
       const img = document.createElement("img");
@@ -2603,6 +2642,7 @@
         li.addEventListener("click", () => { exp.photo = k; showPhoto(); });
         strip.appendChild(li);
       });
+      if (focused) exp.keyNav = (d) => { const k = Math.max(0, Math.min(items.length - 1, exp.photo + d)); if (k === exp.photo) return; exp.photo = k; showPhoto(); const li = strip.children[k]; if (li) li.scrollIntoView({ block: "nearest", inline: "nearest" }); };
       if (focused && !exp.previewHidden) {
         const slot = el("div", "export-strip-slot");
         slot.appendChild(stripScroll);
@@ -2658,6 +2698,7 @@
         show(i, ["Tilt preview", " " + label + " · photo " + (i + 1) + " of " + n + (vertical ? " · drag up and down" : " · drag left and right")]);
       };
       if (focused) showFrame(frameAt);
+      if (focused) exp.keyNav = (d) => { if (exp.lentView !== "interlaced") showFrame(frameAt + d); };
       items.forEach((item) => sessionPhoto(session.name, item.file, 1600));
       let drag = null;
       preview.addEventListener("pointerdown", (e) => {
@@ -2731,7 +2772,7 @@
       }, { icon: "theaterIn", title: "Theater mode: larger preview, settings hidden", kind: "btn-secondary" });
       theater.classList.add("lent-theater-btn");
       theater.addEventListener("pointerdown", (e) => e.stopPropagation());
-      preview.appendChild(theater);
+      preview.insertBefore(theater, views);  // à esquerda na tela: vem antes de Tilt / Interlaced no Tab
       const applyTheater = () => {
         outer.classList.toggle("theater", !!exp.lentTheater);
         theater.classList.toggle("on", !!exp.lentTheater);

@@ -452,4 +452,15 @@ namespace NativeWindow
         Send<void>(list[static_cast<size_t>(next)], "makeKeyAndOrderFront:", nullptr);
         Send<void>(app, "activateIgnoringOtherApps:", YES);
     }
+
+    void PlaceNear(void* nativeWindow, void* reference, int dx, int dy)
+    {
+        id window = static_cast<id>(nativeWindow), ref = static_cast<id>(reference);
+        if (!window || !ref || IsNativeFullScreen(ref) || IsNativeFullScreen(window))
+            return;
+        // Coordenadas do Mac: y cresce para cima; o canto de cima à esquerda da outra, deslocado
+        const CGRect r = Send<CGRect>(ref, "frame");
+        const CGPoint topLeft = CGPointMake(r.origin.x + dx, r.origin.y + r.size.height - dy);
+        Send<void>(window, "setFrameTopLeftPoint:", topLeft);
+    }
 }
