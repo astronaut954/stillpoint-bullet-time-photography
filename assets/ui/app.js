@@ -145,6 +145,8 @@
     play: '<path d="M4 2.5v9l7.5-4.5z" fill="currentColor" stroke="none"/>',
     pause: '<path d="M4 3v8M10 3v8"/>',
     folder: '<path d="M1.5 4.5v7h13v-8.5h-6.5l-1.5-1.5h-5v3z"/>',
+    // Sessão: várias fotos empilhadas (a pasta fica só para o projeto)
+    session: '<path d="M4.5 2h8v7.5"/><rect x="1.5" y="4.5" width="8.5" height="8" rx=".8"/><path d="M1.5 10.5l2.4-2.4 1.8 1.8 1.3-1.3 3 3"/>',
     expand: '<path d="M2 5V2h3M9 2h3v3M12 9v3H9M5 12H2V9"/>',
     shrink: '<path d="M5 2v3H2M12 5H9V2M9 12V9h3M2 9h3v3"/>',
     trash: '<path d="M2.5 4h9M5.5 4V2.5h3V4M3.5 4l.6 7.5h5.8l.6-7.5"/>',
@@ -1198,7 +1200,7 @@
     if (projectOpen && !sessions.some((x) => x.inProject)) {
       // Projeto sem sessões: um espaço de verdade para soltar (senão a área do projeto some)
       const ph = el("li", "folder-placeholder");
-      ph.innerHTML = '<span>' + icon("folder", 16) + '</span><span>' + (project.available === false
+      ph.innerHTML = '<span>' + icon("session", 16) + '</span><span>' + (project.available === false
         ? "The project folder is not reachable.<br>Sessions you shoot now stay in the app."
         : "No sessions in the project yet.<br>Drag one here or shoot.") + '</span>';
       ui.sessionList.appendChild(ph);
@@ -1211,7 +1213,7 @@
       li.className = "folder" + (currentSession && currentSession.name === s.name ? " active" : "");
       li.dataset.name = s.name;
       if (projectOpen && !s.inProject && !notInProjectOpen) li.classList.add("hidden");
-      li.innerHTML = icon("folder", 16) + '<div><div class="folder-date"></div><div class="folder-meta"></div></div>';
+      li.innerHTML = icon("session", 16) + '<div><div class="folder-date"></div><div class="folder-meta"></div></div>';
       li.querySelector(".folder-date").textContent = s.label ? s.label + " · " + label.date : label.date;
       li.querySelector(".folder-meta").textContent = [plural(count, "photo", "photos"), label.detail].filter(Boolean).join(" · ");
       if (s.missing > 0) li.querySelector(".folder-meta").after(missingTag(s.missing));
@@ -5799,7 +5801,7 @@
           const sessionAfter = !item.whole && items.find((o) => o.whole && o.session === item.session && o.inProject === item.inProject && trashLater(o, item));
           if (sessionAfter) li.classList.add("blocked");
           const kindIcon = el("span", "trash-kind");
-          kindIcon.innerHTML = icon(item.whole ? "folder" : "photo", 16);
+          kindIcon.innerHTML = icon(item.whole ? "session" : "photo", 16);
           kindIcon.title = item.whole ? "A whole session" : "Photos from a session";
           li.appendChild(kindIcon);
           const main = el("div", "trash-main");
