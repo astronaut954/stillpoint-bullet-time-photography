@@ -8,6 +8,7 @@
 #include "json_lite.h"
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <cctype>
 #include <fstream>
@@ -34,8 +35,70 @@ namespace
 {
     const char* const kPreviewFolder = ".previews";
     const char* const kSavedMark = ".saved";  // sessão salva e mantida no app
-    const char* const kTrashFolder = ".trash";   // lixeira do app (Desfazer de apagar); esvaziada ao abrir
-    const char* const kTrashOrigin = ".from";    // dentro da lixeira: de que pasta a sessão veio
+    const char* const kTrashFolder = ".trash";   // lixeira do app (na pasta de dados)
+    const char* const kProjectTrash = ".stillpoint-trash";  // lixeira do Project (na pasta do Project)
+    const char* const kTrashOrigin = ".from";    // (2.14 e antes) dentro da lixeira: de que pasta a sessão veio
+    const char* const kTrashInfo = ".trashinfo"; // dentro de cada item: sessão, inteira ou não, origem, quando
+
+    long long NowSeconds()
+    {
+        return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    }
+    // .trashinfo: linhas "chave=valor"
+    std::map<std::string, std::string> ReadTrashInfo(const fs::path& entry)
+    {
+        std::map<std::string, std::string> info;
+        std::ifstream in(entry / kTrashInfo, std::ios::binary);
+        std::string line;
+        while (std::getline(in, line))
+        {
+            if (!line.empty() && line.back() == '\r') line.pop_back();
+            const auto eq = line.find('=');
+            if (eq != std::string::npos)
+                info[line.substr(0, eq)] = line.substr(eq + 1);
+        }
+        return info;
+    }
+    void WriteTrashInfo(const fs::path& entry, const std::string& session, bool wholeSession,
+                        const fs::path& origin, long long deletedAt)
+    {
+        std::ofstream out(entry / kTrashInfo, std::ios::binary | std::ios::trunc);
+        out << "session=" << session << "\n" << "kind=" << (wholeSession ? "session" : "photos") << "\n"
+            << "origin=" << origin.string() << "\n" << "deleted=" << deletedAt << "\n"
+            // ordem exata (o Desfazer pega o item mais recente, mesmo com dois no mesmo segundo)
+            << "order=" << std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count() << "\n";
+    }
+    // Fotos num item (o RAW e o JPG da mesma câmera contam como uma)
+    int CountTrashPhotos(const fs::path& entry)
+    {
+        static const std::regex photoName(R"(^(\d+_[^_]+_\d+)_.+$)");
+        std::vector<std::string> groups;
+        std::error_code ec;
+        for (const auto& f : fs::directory_iterator(entry, ec))
+        {
+            const std::string name = f.path().filename().string();
+            if (!f.is_regular_file(ec) || name.rfind('.', 0) == 0 || name == "session.json")
+                continue;
+            std::smatch m;
+            const std::string g = std::regex_match(name, m, photoName) ? m[1].str() : name;
+            if (std::find(groups.begin(), groups.end(), g) == groups.end())
+                groups.push_back(g);
+        }
+        return static_cast<int>(groups.size());
+    }
+    unsigned long long FolderBytes(const fs::path& dir)
+    {
+        unsigned long long total = 0;
+        std::error_code ec;
+        for (auto it = fs::recursive_directory_iterator(dir, ec); !ec && it != fs::recursive_directory_iterator(); it.increment(ec))
+            if (it->is_regular_file(ec))
+            {
+                const auto size = it->file_size(ec);
+                if (!ec) total += size;
+                ec.clear();
+            }
+        return total;
+    }
 
     std::string ReadFile(const fs::path& path)
     {
@@ -486,6 +549,21 @@ bool PhotoStore::WriteSessionInfo(const std::string& session, const std::string&
     return WriteSessionInfoFile(dir, info);
 }
 
+namespace
+{
+    // Pasta que só tem arquivos e pastas do app (começam com ".", como ".previews"): nenhuma foto
+    bool OnlyAppLeftovers(const fs::path& dir)
+    {
+        std::error_code ec;
+        if (!fs::is_directory(dir, ec))
+            return false;
+        for (const auto& entry : fs::directory_iterator(dir, ec))
+            if (entry.path().filename().string().rfind('.', 0) != 0)
+                return false;
+        return !ec;
+    }
+}
+
 bool PhotoStore::MoveSession(const std::string& session, bool toProject, std::string& errorMessage) const
 {
     if (projectRoot.empty())
@@ -505,6 +583,9 @@ bool PhotoStore::MoveSession(const std::string& session, bool toProject, std::st
     fs::path to = destRoot / session;
     if (fs::equivalent(from.parent_path(), destRoot, ec))
         return true;  // já está lá
+    if (fs::exists(to, ec) && OnlyAppLeftovers(to))
+        fs::remove_all(to, ec);  // sobra sem fotos (ex.: só a pasta de prévias): não é uma sessão
+    ec.clear();
     if (fs::exists(to, ec))
     {
         errorMessage = "A session with this name already exists there: " + session;
@@ -671,8 +752,13 @@ std::string PhotoStore::Preview(const std::string& session, const std::string& f
     std::string jpeg;
     stbi_write_jpg_to_func(AppendToString, &jpeg, tw, th, 3, resized.data(), 85);
 
-    fs::create_directories(cache.parent_path(), ec);
-    std::ofstream(cache, std::ios::binary) << jpeg;
+    // A sessão pode ter mudado de lugar (ou ido para a lixeira) enquanto a prévia era feita:
+    // gravar no caminho antigo recriaria uma pasta vazia com o nome dela
+    if (fs::exists(dir / file, ec))
+    {
+        fs::create_directories(cache.parent_path(), ec);
+        std::ofstream(cache, std::ios::binary) << jpeg;
+    }
     return jpeg;
 }
 
@@ -782,8 +868,36 @@ bool PhotoStore::ReorderSession(const std::string& session, const std::vector<st
         }
     }
 
-    // As prévias guardadas usam os nomes antigos
-    fs::remove_all(dir / kPreviewFolder, ec);
+    // As prévias guardadas ("<tamanho>_<arquivo>") passam para os nomes novos: assim não precisam ser
+    // refeitas (com RAW isso demora). Se algo falhar, apaga todas (são refeitas quando pedidas)
+    std::map<std::string, std::string> oldToNew;
+    for (const auto& r : renames)
+        oldToNew[r.from.filename().string()] = r.to.filename().string();
+    const fs::path previews = dir / kPreviewFolder;
+    std::vector<Rename> previewRenames;
+    if (!oldToNew.empty() && fs::is_directory(previews, ec))
+    {
+        for (const auto& entry : fs::directory_iterator(previews, ec))
+        {
+            const std::string name = entry.path().filename().string();
+            const size_t cut = name.find('_');
+            if (cut == std::string::npos)
+                continue;
+            auto it = oldToNew.find(name.substr(cut + 1));
+            if (it != oldToNew.end())
+                previewRenames.push_back({ entry.path(), previews / (name + ".reorder-tmp"), previews / (name.substr(0, cut + 1) + it->second) });
+        }
+    }
+    bool previewsOk = !ec;
+    for (const auto& r : previewRenames)
+        if (previewsOk) { fs::rename(r.from, r.temp, ec); previewsOk = !ec; }
+    for (const auto& r : previewRenames)
+        if (previewsOk) { fs::rename(r.temp, r.to, ec); previewsOk = !ec; }
+    if (!previewsOk)
+    {
+        ec.clear();
+        fs::remove_all(previews, ec);
+    }
     return true;
 }
 
@@ -816,10 +930,10 @@ bool PhotoStore::DeletePhotos(const std::string& session, const std::vector<std:
             anyLeft = true;
     }
 
-    // Para a lixeira (Desfazer), guardando de onde vieram
-    const fs::path trash = root / kTrashFolder / session;
+    // Para a lixeira, num item próprio, guardando de onde vieram e quando
+    const fs::path trash = NewTrashEntry(dir, session, false);
     fs::create_directories(trash, ec);
-    WriteTextFile(trash / kTrashOrigin, dir.string());
+    WriteTrashInfo(trash, session, false, dir, NowSeconds());
     for (const auto& path : toDelete)
     {
         MoveFile(path, trash / path.filename(), ec);
@@ -832,12 +946,34 @@ bool PhotoStore::DeletePhotos(const std::string& session, const std::vector<std:
 
     if (!anyLeft)
     {
-        // Sobrou só o que é do app (.previews, .missing, session.json): vai junto, para o Restore
+        // Sobrou só o que é do app (.missing, session.json): vai junto, para o Restore; as prévias não
+        fs::remove_all(dir / kPreviewFolder, ec);
         for (const auto& entry : fs::directory_iterator(dir, ec))
             MoveFile(entry.path(), trash / entry.path().filename(), ec);
         fs::remove_all(dir, ec);
+        WriteTrashInfo(trash, session, true, dir, NowSeconds());  // a sessão inteira saiu
     }
     return true;
+}
+
+fs::path PhotoStore::TrashRootFor(const fs::path& dir) const
+{
+    if (!projectRoot.empty() && dir.parent_path() == projectRoot)
+        return projectRoot.parent_path() / kProjectTrash;  // no mesmo disco do Project
+    return root / kTrashFolder;
+}
+
+// Um nome livre para um item novo da lixeira: "<segundos>-<sessão>" (com -2, -3... se repetir)
+fs::path PhotoStore::NewTrashEntry(const fs::path& dir, const std::string& session, bool) const
+{
+    const fs::path base = TrashRootFor(dir);
+    std::error_code ec;
+    fs::create_directories(base, ec);
+    const std::string stem = std::to_string(NowSeconds()) + "-" + session;
+    fs::path entry = base / stem;
+    for (int n = 2; fs::exists(entry, ec); ++n)
+        entry = base / (stem + "-" + std::to_string(n));
+    return entry;
 }
 
 bool PhotoStore::DeleteSession(const std::string& session) const
@@ -846,34 +982,233 @@ bool PhotoStore::DeleteSession(const std::string& session) const
     std::error_code ec;
     if (dir.empty() || !fs::is_directory(dir, ec))
         return false;
-    const fs::path trash = root / kTrashFolder / session;
-    fs::remove_all(trash, ec);
-    fs::create_directories(root / kTrashFolder, ec);
+    fs::remove_all(dir / kPreviewFolder, ec);  // as prévias são refeitas; não vale guardar
+    // Um "restaurado" antigo desta sessão dá lugar ao item novo (as fotos de antes passam a depender dele)
+    for (const auto& d : fs::directory_iterator(TrashRootFor(dir), ec))
+    {
+        auto o = ReadTrashInfo(d.path());
+        if (o["restored"] == "1" && o["session"] == session && o["kind"] != "project")
+            fs::remove_all(d.path(), ec);
+    }
+    ec.clear();
+    const fs::path trash = NewTrashEntry(dir, session, true);
     ec.clear();
     fs::rename(dir, trash, ec);
     if (ec)
     {
-        // Outro disco (Project num HD externo): copia e apaga
+        // Outro disco (não deveria acontecer: cada lixeira fica no disco das suas sessões)
         ec.clear();
         fs::copy(dir, trash, fs::copy_options::recursive, ec);
         if (ec) return false;
         fs::remove_all(dir, ec);
     }
-    WriteTextFile(trash / kTrashOrigin, dir.string());
+    WriteTrashInfo(trash, session, true, dir, NowSeconds());
     return true;
 }
 
-bool PhotoStore::Restore(const std::string& session, std::string& errorMessage) const
+bool PhotoStore::DeleteSessionNow(const std::string& session) const
+{
+    const fs::path dir = SessionPath(session);
+    std::error_code ec;
+    if (dir.empty() || !fs::is_directory(dir, ec))
+        return false;
+    fs::remove_all(dir, ec);
+    return !ec;
+}
+
+namespace
+{
+    // As lixeiras (a do app e, com Project, a dele) e os itens de cada uma
+    struct TrashEntry
+    {
+        fs::path path;
+        bool inProject = false;
+        std::map<std::string, std::string> info;
+        long long deletedAt = 0;
+        long long order = 0;
+    };
+}
+
+static std::vector<TrashEntry> TrashEntries(const fs::path& appTrash, const fs::path& projectTrash)
+{
+    std::vector<TrashEntry> out;
+    std::error_code ec;
+    for (int k = 0; k < 2; ++k)
+    {
+        const fs::path& base = k == 0 ? appTrash : projectTrash;
+        if (base.empty() || !fs::is_directory(base, ec))
+            continue;
+        for (const auto& d : fs::directory_iterator(base, ec))
+        {
+            if (!d.is_directory(ec))
+                continue;
+            TrashEntry e;
+            e.path = d.path();
+            e.inProject = k == 1;
+            e.info = ReadTrashInfo(e.path);
+            if (e.info.empty())
+            {
+                // Item da 2.14 (pasta com o nome da sessão e ".from"): passa a ter os 15 dias a partir de agora
+                std::string origin = ReadTextFile(e.path / kTrashOrigin);
+                while (!origin.empty() && (origin.back() == '\n' || origin.back() == '\r')) origin.pop_back();
+                const bool whole = origin.empty() || !fs::is_directory(fs::path(origin), ec);
+                WriteTrashInfo(e.path, e.path.filename().string(), whole, fs::path(origin), NowSeconds());
+                e.info = ReadTrashInfo(e.path);
+            }
+            try { e.deletedAt = std::stoll(e.info["deleted"]); } catch (...) { e.deletedAt = NowSeconds(); }
+            try { e.order = std::stoll(e.info["order"]); } catch (...) { e.order = e.deletedAt * 1000000000LL; }
+            out.push_back(std::move(e));
+        }
+    }
+    return out;
+}
+
+std::vector<TrashItem> PhotoStore::ListTrash() const
+{
+    const fs::path projectTrash = projectRoot.empty() ? fs::path() : projectRoot.parent_path() / kProjectTrash;
+    const fs::path openProject = projectRoot.empty() ? fs::path() : projectRoot.parent_path();
+    std::vector<TrashItem> items;
+    auto all = TrashEntries(root / kTrashFolder, projectTrash);
+    std::string reparent;  // projeto restaurado e aberto: a lixeira dele aparece abaixo da linha dele
+    for (auto& e : all)
+    {
+        const bool restored = e.info["restored"] == "1";
+        TrashItem t;
+        t.id = std::string(e.inProject ? "project/" : "app/") + e.path.filename().string();
+        t.session = e.info["session"];
+        t.wholeSession = e.info["kind"] != "photos";
+        t.restored = restored;
+        std::error_code pec;
+        if (e.info["kind"] == "project")
+        {
+            t.isProject = true;
+            const fs::path location(e.info["location"]);
+            t.reachable = fs::is_directory(location, pec);
+            if (!restored) { try { t.bytes = std::stoull(e.info["bytes"]); } catch (...) { t.bytes = 0; } }
+            try { t.sessions = std::stoi(e.info["sessions"]); } catch (...) { t.sessions = 0; }
+            // O que estava na lixeira de dentro do projeto (foi junto com a pasta)
+            std::vector<TrashEntry> inner;
+            if (t.reachable)
+                inner = TrashEntries(location / kProjectTrash, fs::path());
+            bool pending = false;
+            for (auto& n : inner)
+                pending = pending || n.info["restored"] != "1";
+            if (restored && !pending && t.reachable)
+            {
+                for (auto& n : inner)
+                    fs::remove_all(n.path, pec);  // só "restaurados" que sobraram lá dentro
+                fs::remove_all(e.path, pec);      // nada mais depende dele
+                continue;
+            }
+            if (restored && !openProject.empty() && fs::equivalent(location, openProject, pec))
+                reparent = t.id;  // os itens aparecem pela lixeira do projeto aberto, abaixo dele
+            else
+                for (auto& n : inner)
+                {
+                    TrashItem in;
+                    in.id = "nested/" + e.path.filename().string() + "/" + n.path.filename().string();
+                    in.session = n.info["session"];
+                    in.wholeSession = n.info["kind"] != "photos";
+                    in.restored = n.info["restored"] == "1";
+                    in.photos = in.restored ? 0 : CountTrashPhotos(n.path);
+                    in.bytes = in.restored ? 0 : FolderBytes(n.path);
+                    in.deletedAt = n.deletedAt;
+                    in.order = n.order;
+                    in.inProject = true;
+                    in.parent = t.id;
+                    items.push_back(in);
+                }
+        }
+        else if (restored)
+        {
+            // Sessão restaurada: fica enquanto houver fotos dela apagadas antes
+            bool dependents = false;
+            for (auto& o : all)
+                if (o.path.parent_path() == e.path.parent_path() && o.info["session"] == t.session && o.info["kind"] == "photos"
+                    && o.info["restored"] != "1" && o.order < e.order)
+                    dependents = true;
+            if (!dependents)
+            {
+                fs::remove_all(e.path, pec);
+                continue;
+            }
+        }
+        else
+        {
+            t.photos = CountTrashPhotos(e.path);
+            t.bytes = FolderBytes(e.path);
+        }
+        t.deletedAt = e.deletedAt;
+        t.order = e.order;
+        t.inProject = e.inProject;
+        items.push_back(t);
+    }
+    if (!reparent.empty())
+        for (auto& t : items)
+            if (t.id.rfind("project/", 0) == 0)
+                t.parent = reparent;
+    std::sort(items.begin(), items.end(), [](const TrashItem& a, const TrashItem& b) { return a.order > b.order; });
+    return items;
+}
+
+bool PhotoStore::RestoreEntry(const fs::path& trash, std::string& errorMessage, std::vector<std::string>* restored) const
 {
     std::error_code ec;
-    const fs::path trash = root / kTrashFolder / session;
-    if (session.empty() || session.find_first_of("/\\") != std::string::npos || !fs::is_directory(trash, ec))
+    auto info = ReadTrashInfo(trash);
+    if (info["restored"] == "1")
     {
-        errorMessage = "Nothing to restore for this session.";
+        errorMessage = "This item was already restored.";
         return false;
     }
-    std::string origin = ReadTextFile(trash / kTrashOrigin);
-    while (!origin.empty() && (origin.back() == '\n' || origin.back() == '\r')) origin.pop_back();
+    // Fica como "restaurado" (só o .trashinfo) enquanto houver itens apagados antes que dependem dele
+    auto keepAsRestored = [&](const fs::path& location)
+    {
+        for (const auto& f : fs::directory_iterator(trash, ec))
+            if (f.path().filename() != kTrashInfo)
+                fs::remove_all(f.path(), ec);
+        std::ofstream out(trash / kTrashInfo, std::ios::binary | std::ios::app);
+        out << "restored=1\n";
+        if (!location.empty())
+            out << "location=" << location.string() << "\n";
+    };
+    if (info["kind"] == "project")
+    {
+        // Projeto: a pasta volta para onde estava (no mesmo disco)
+        const fs::path from(info["location"]), to(info["origin"]);
+        if (!fs::is_directory(from, ec))
+        {
+            errorMessage = "The disk with this project is not connected.";
+            return false;
+        }
+        if (fs::exists(to, ec))
+        {
+            errorMessage = "There is already a folder named \"" + to.filename().string() + "\" in " + to.parent_path().string() + ".";
+            return false;
+        }
+        fs::rename(from, to, ec);
+        if (ec)
+        {
+            errorMessage = "Could not restore the project: " + ec.message();
+            return false;
+        }
+        fs::remove(from.parent_path(), ec);  // a lixeira daquela pasta, se ficou vazia
+        // Com itens na lixeira de dentro dele: fica na lista como restaurado até eles acabarem
+        bool inner = false;
+        for (const auto& d : fs::directory_iterator(to / kProjectTrash, ec))
+            inner = inner || d.is_directory(ec);
+        if (inner)
+            keepAsRestored(to);
+        else
+            fs::remove_all(trash, ec);
+        return true;
+    }
+    const std::string session = info["session"].empty() ? trash.filename().string() : info["session"];
+    std::string origin = info["origin"];
+    if (origin.empty())
+    {
+        origin = ReadTextFile(trash / kTrashOrigin);
+        while (!origin.empty() && (origin.back() == '\n' || origin.back() == '\r')) origin.pop_back();
+    }
     fs::path target = origin.empty() ? root / session : fs::path(origin);
     // A pasta de origem sumiu (Project fechado ou HD desligado): volta para a pasta de dados do app
     if (!fs::is_directory(target.parent_path(), ec))
@@ -881,11 +1216,12 @@ bool PhotoStore::Restore(const std::string& session, std::string& errorMessage) 
     fs::create_directories(target, ec);
     for (const auto& entry : fs::directory_iterator(trash, ec))
     {
-        if (entry.path().filename() == kTrashOrigin)
+        const std::string name = entry.path().filename().string();
+        if (name == kTrashOrigin || name == kTrashInfo)
             continue;
         const fs::path to = target / entry.path().filename();
         if (fs::exists(to, ec))
-            continue;  // já existe na sessão (ex.: .previews): fica o de lá
+            continue;  // já existe na sessão (ex.: session.json): fica o de lá
         std::error_code mec;
         if (entry.is_directory())
         {
@@ -896,19 +1232,200 @@ bool PhotoStore::Restore(const std::string& session, std::string& errorMessage) 
             MoveFile(entry.path(), to, mec);
         if (mec)
         {
-            errorMessage = "Could not restore " + entry.path().filename().string() + ": " + mec.message();
+            errorMessage = "Could not restore " + name + ": " + mec.message();
+            return false;
+        }
+        if (restored && !entry.is_directory(ec) && name.rfind('.', 0) != 0 && name != "session.json")
+            restored->push_back(name);
+    }
+    // Sessão inteira com fotos dela apagadas antes, ainda na lixeira: fica como restaurada até elas acabarem
+    bool dependents = false;
+    if (info["kind"] != "photos")
+    {
+        long long myOrder = 0;
+        try { myOrder = std::stoll(info["order"]); } catch (...) {}
+        for (const auto& d : fs::directory_iterator(trash.parent_path(), ec))
+        {
+            if (d.path() == trash || !d.is_directory(ec))
+                continue;
+            auto o = ReadTrashInfo(d.path());
+            long long order = 0;
+            try { order = std::stoll(o["order"]); } catch (...) {}
+            if (o["session"] == session && o["kind"] == "photos" && o["restored"] != "1" && order < myOrder)
+                dependents = true;
+        }
+    }
+    if (dependents)
+        keepAsRestored(fs::path());
+    else
+        fs::remove_all(trash, ec);
+    fs::remove_all(target / kPreviewFolder, ec);  // prévias podem estar com nomes antigos
+    return true;
+}
+
+bool PhotoStore::Restore(const std::string& session, std::string& errorMessage) const
+{
+    // O Desfazer: o item mais recente desta sessão (nas duas lixeiras)
+    const fs::path projectTrash = projectRoot.empty() ? fs::path() : projectRoot.parent_path() / kProjectTrash;
+    const TrashEntry* best = nullptr;
+    auto all = TrashEntries(root / kTrashFolder, projectTrash);
+    for (auto& e : all)
+        if (e.info["session"] == session && e.info["restored"] != "1" && (!best || e.order > best->order))
+            best = &e;
+    if (session.empty() || !best)
+    {
+        errorMessage = "Nothing to restore for this session.";
+        return false;
+    }
+    return RestoreEntry(best->path, errorMessage);
+}
+
+static fs::path TrashPathFromId(const std::string& id, const fs::path& appTrash, const fs::path& projectTrash)
+{
+    const auto slash = id.find('/');
+    if (slash == std::string::npos)
+        return {};
+    const std::string where = id.substr(0, slash), name = id.substr(slash + 1);
+    if (name.empty() || (where != "nested" && name.find_first_of("/\\") != std::string::npos) || name == "." || name == "..")
+        return {};
+    if (where == "nested")
+    {
+        // "nested/<item do projeto>/<item de dentro>": dentro da lixeira da pasta do projeto apagado
+        const auto slash2 = name.find('/');
+        if (slash2 == std::string::npos)
+            return {};
+        const std::string pointer = name.substr(0, slash2), inner = name.substr(slash2 + 1);
+        if (pointer.empty() || inner.empty() || inner.find_first_of("/\\") != std::string::npos || pointer == ".." || inner == "..")
+            return {};
+        auto info = ReadTrashInfo(appTrash / pointer);
+        if (info["kind"] != "project")
+            return {};
+        return fs::path(info["location"]) / kProjectTrash / inner;
+    }
+    if (where == "app")
+        return appTrash / name;
+    if (where == "project" && !projectTrash.empty())
+        return projectTrash / name;
+    return {};
+}
+
+bool PhotoStore::RestoreTrashItem(const std::string& id, std::string& errorMessage, std::vector<std::string>* restored) const
+{
+    if (id.rfind("nested/", 0) == 0)
+    {
+        const auto a = id.find('/', 7);
+        const std::string pointer = a == std::string::npos ? std::string() : id.substr(7, a - 7);
+        if (pointer.empty() || ReadTrashInfo(root / kTrashFolder / pointer)["restored"] != "1")
+        {
+            errorMessage = "This item is inside a deleted project. Restore the project first.";
             return false;
         }
     }
-    fs::remove_all(trash, ec);
-    fs::remove_all(target / kPreviewFolder, ec);  // prévias podem estar com nomes antigos
-    return true;
+    const fs::path projectTrash = projectRoot.empty() ? fs::path() : projectRoot.parent_path() / kProjectTrash;
+    const fs::path entry = TrashPathFromId(id, root / kTrashFolder, projectTrash);
+    std::error_code ec;
+    if (entry.empty() || !fs::is_directory(entry, ec))
+    {
+        errorMessage = "This item is no longer in the trash.";
+        return false;
+    }
+    return RestoreEntry(entry, errorMessage, restored);
+}
+
+// Apaga de vez um item; um projeto só com o disco dele ligado (senão o item fica, para depois)
+static bool RemoveTrashEntry(const fs::path& entry)
+{
+    std::error_code ec;
+    auto info = ReadTrashInfo(entry);
+    if (info["kind"] == "project" && info["restored"] != "1")  // restaurado: a pasta é o projeto de volta, nunca apagar
+    {
+        const fs::path location(info["location"]);
+        if (!fs::is_directory(location, ec))
+            return false;
+        fs::remove_all(location, ec);
+        if (ec)
+            return false;
+        fs::remove(location.parent_path(), ec);  // a lixeira daquela pasta, se ficou vazia
+    }
+    fs::remove_all(entry, ec);
+    return !ec;
+}
+
+bool PhotoStore::DeleteTrashItem(const std::string& id) const
+{
+    const fs::path projectTrash = projectRoot.empty() ? fs::path() : projectRoot.parent_path() / kProjectTrash;
+    const fs::path entry = TrashPathFromId(id, root / kTrashFolder, projectTrash);
+    std::error_code ec;
+    if (entry.empty() || !fs::is_directory(entry, ec))
+        return false;
+    return RemoveTrashEntry(entry);
+}
+
+std::string PhotoStore::TrashProject(const fs::path& folder, const std::string& name, int sessions,
+                                     std::string& errorMessage) const
+{
+    std::error_code ec;
+    if (!fs::is_directory(folder, ec))
+    {
+        errorMessage = "The project folder is not reachable.";
+        return {};
+    }
+    const unsigned long long bytes = FolderBytes(folder);
+    // Um "restaurado" antigo deste projeto dá lugar ao item novo
+    for (const auto& d : fs::directory_iterator(root / kTrashFolder, ec))
+    {
+        auto o = ReadTrashInfo(d.path());
+        if (o["restored"] == "1" && o["kind"] == "project" && fs::path(o["origin"]) == folder)
+            fs::remove_all(d.path(), ec);
+    }
+    ec.clear();
+    // Na mesma pasta de cima (mesmo disco): mover é instantâneo e não ocupa espaço no computador
+    const fs::path base = folder.parent_path() / kProjectTrash;
+    fs::create_directories(base, ec);
+    const std::string stem = std::to_string(NowSeconds()) + "-" + folder.filename().string();
+    fs::path location = base / stem;
+    for (int n = 2; fs::exists(location, ec); ++n)
+        location = base / (stem + "-" + std::to_string(n));
+    fs::rename(folder, location, ec);
+    if (ec)
+    {
+        errorMessage = "Could not move the project to the trash: " + ec.message();
+        fs::remove(base, ec);
+        return {};
+    }
+    // Na lixeira do app, só o lugar (para listar, restaurar e apagar depois)
+    fs::create_directories(root / kTrashFolder, ec);
+    fs::path pointer = root / kTrashFolder / ("project-" + stem);
+    for (int n = 2; fs::exists(pointer, ec); ++n)
+        pointer = root / kTrashFolder / ("project-" + stem + "-" + std::to_string(n));
+    fs::create_directories(pointer, ec);
+    WriteTrashInfo(pointer, name, true, folder, NowSeconds());
+    {
+        std::ofstream out(pointer / kTrashInfo, std::ios::binary | std::ios::app);
+        out << "kind=project\n" << "location=" << location.string() << "\n" << "bytes=" << bytes << "\n" << "sessions=" << sessions << "\n";
+    }
+    return "app/" + pointer.filename().string();
+}
+
+void PhotoStore::PurgeTrash(int days) const
+{
+    const fs::path projectTrash = projectRoot.empty() ? fs::path() : projectRoot.parent_path() / kProjectTrash;
+    const long long limit = NowSeconds() - static_cast<long long>(days) * 24 * 3600;
+    std::error_code ec;
+    for (const auto& e : TrashEntries(root / kTrashFolder, projectTrash))
+        if (e.deletedAt < limit)
+            RemoveTrashEntry(e.path);  // projeto com o disco desligado: fica para quando ele voltar
+    (void)ec;
 }
 
 void PhotoStore::EmptyTrash() const
 {
     std::error_code ec;
-    fs::remove_all(root / kTrashFolder, ec);
+    for (const auto& d : fs::directory_iterator(root / kTrashFolder, ec))
+        if (d.is_directory(ec))
+            RemoveTrashEntry(d.path());  // projeto com o disco desligado: fica
+    if (!projectRoot.empty())
+        fs::remove_all(projectRoot.parent_path() / kProjectTrash, ec);
 }
 
 // As limpezas automáticas só mexem na pasta de dados; o Project é da pessoa

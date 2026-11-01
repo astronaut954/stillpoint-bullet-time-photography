@@ -112,12 +112,12 @@ xattr -dr com.apple.quarantine path/to/stillpoint-vX.Y.Z
 3. Open `Stillpoint` (the terminal app is optional: `Terminal App` folder)
 4. In the window app, the cameras connect by themselves; press "It's bullet time".
    In the terminal app, follow the instructions on screen
-5. Click **Save sessions** and choose **Photos** (original files, or converted to JPG, PNG, WEBP,
+5. Click **Export sessions** and choose **Photos** (original files, or converted to JPG, PNG, WEBP,
    TIFF or HEIC) or **Sequence** (MP4, MOV, GIF, WEBP or AVIF, with the speed, loops and size you
    choose), and the quality: Standard, High or Maximum. Each session can have its own settings.
 6. Enter the Matrix
 
-<p align="center"><img src="docs/images/screen-save-sessions.png" alt="Save sessions: each session as a video or animated image, with format, speed, loops, size and quality" width="820"></p>
+<p align="center"><img src="docs/images/screen-save-sessions.png" alt="Export sessions: each session as a video or animated image, with format, speed, loops, size and quality" width="820"></p>
 
 ### Timing: how the cameras fire (window app)
 
@@ -284,7 +284,7 @@ The window app keeps every session in its own folder until you choose where to s
 * Windows: `%LOCALAPPDATA%\Stillpoint\Photos`
 * macOS: `~/Library/Application Support/Stillpoint/Photos`
 
-**Save sessions** moves them to the folder you choose. Closing the window with unsaved
+**Export sessions** moves them to the folder you choose. Closing the window with unsaved
 sessions asks whether to save or delete them; if the app closes unexpectedly, the photos
 stay in that folder and the app offers to save them the next time it opens.
 Sessions kept by the old version (folder `Canon Bullet Time`) move to the new folder the

@@ -310,7 +310,46 @@ button { font: inherit; }
   border: 0; background: var(--noct-bg);
   grid-template-columns: minmax(0, 1fr);
 }
-.sessions-panel.fullscreen .session-folders { display: none; }
+/* Na tela cheia, as sessões ficam numa barra à esquerda: estreita, só com ícones; o botão de cima
+   abre a barra larga, com os nomes */
+.sessions-panel.fullscreen { overflow: hidden; }
+.sessions-panel.fullscreen .session-folders {
+  position: absolute; left: 0; top: 0; bottom: 0; z-index: 6; box-sizing: border-box;
+  background: var(--noct-surface); border-right: 1px solid var(--noct-border);
+  transition: width 180ms var(--noct-ease);
+}
+.sessions-panel.fullscreen .session-viewer { margin-left: 60px; transition: margin-left 180ms var(--noct-ease); }
+.sessions-panel.fullscreen.side-wide .session-viewer { margin-left: 300px; }
+.sessions-panel.fullscreen.side-wide .session-folders { width: 300px; }
+.sessions-panel.fullscreen.side-wide .sessions-head h2 { margin-right: auto; }
+/* O botão de cima abre e fecha os nomes; só existe na tela cheia */
+.side-wide-btn { display: none; }
+.sessions-panel.fullscreen .side-wide-btn { display: inline-flex; }
+.sessions-panel.fullscreen.side-wide .side-wide-btn { color: var(--noct-primary); border-color: var(--noct-primary); }
+/* Só ícones: coluna de 60 px; tudo no mesmo eixo, no centro; o nome aparece ao parar o ponteiro */
+.sessions-panel.fullscreen:not(.side-wide) .session-folders { width: 60px; padding: 14px 0; overflow-x: hidden; scrollbar-width: none; }
+.sessions-panel.fullscreen:not(.side-wide) .session-folders::-webkit-scrollbar { display: none; }
+.sessions-panel.fullscreen:not(.side-wide) .sessions-head { justify-content: center; margin: 0 0 14px; }
+.sessions-panel.fullscreen:not(.side-wide) .sessions-head h2,
+.sessions-panel.fullscreen:not(.side-wide) #projectWindowBtn,
+.sessions-panel.fullscreen:not(.side-wide) #noSessions,
+.sessions-panel.fullscreen:not(.side-wide) .folder > div,
+.sessions-panel.fullscreen:not(.side-wide) .folder-divider > span:not(.chev),
+.sessions-panel.fullscreen:not(.side-wide) .session-drop-zone span { display: none; }
+.sessions-panel.fullscreen:not(.side-wide) .folder-list { align-items: center; gap: 4px; }
+.sessions-panel.fullscreen:not(.side-wide) .folder {
+  display: flex; align-items: center; justify-content: center; box-sizing: border-box;
+  width: 40px; height: 40px; padding: 0; border-left: 0; box-shadow: none;
+}
+.sessions-panel.fullscreen:not(.side-wide) .folder svg { margin: 0; }
+.sessions-panel.fullscreen:not(.side-wide) .folder.active { box-shadow: inset 0 0 0 1px var(--noct-info); }
+.sessions-panel.fullscreen:not(.side-wide) .folder.multi { box-shadow: inset 0 0 0 1px var(--noct-info); }
+/* Divisor "Not in project": uma linha curta com a seta embaixo, centralizadas */
+.sessions-panel.fullscreen:not(.side-wide) .folder-divider {
+  flex-direction: column; justify-content: center; gap: 4px; width: 40px; margin: 8px 0 2px; padding: 8px 0 2px;
+  border-top: 1px solid var(--noct-border); box-sizing: border-box;
+}
+.sessions-panel.fullscreen:not(.side-wide) .session-drop-zone { left: 6px !important; right: 6px !important; }
 .sessions-panel.fullscreen .session-viewer { padding: 16px 22px 20px; }
 
 /* Fora da tela cheia: sem título; os botões ficam na linha das miniaturas */
@@ -1009,7 +1048,8 @@ table.cs tr.has-note td { border-bottom-color: transparent; }
 .timing-summary { display: flex; align-items: center; gap: 10px; margin: -6px 0 8px; font: 11px var(--noct-font-mono); text-transform: uppercase; letter-spacing: .08em; color: var(--noct-text-muted); }
 .timing-summary b { color: var(--noct-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .timing-summary .btn { margin-left: auto; flex: none; }
-.timing-tag { display: inline-block; padding: 2px 8px; border: 1px solid var(--noct-pending); color: var(--noct-pending); font: 600 10px var(--noct-font-mono); }
+.timing-tag { display: inline-block; padding: 2px 8px; border: 1px solid var(--noct-primary); color: var(--noct-primary); font: 600 10px var(--noct-font-mono); }
+.timing-tag.warn { border-color: var(--noct-pending); color: var(--noct-pending); }  /* amarelo só com problema no plano */
 .timing-tag + .timing-label { display: none; }
 .timing-mini { border: 1px solid var(--noct-border); background: var(--noct-surface-inner); padding: 1px 8px; margin: -2px 0 8px; }
 .timing-adv { border-top: 1px dashed var(--noct-border); padding-top: 12px; margin-bottom: 12px; }
@@ -1126,11 +1166,13 @@ body.timing-open .app { --controls-h: clamp(320px, 64vh, 720px); }
 /* Fantasma da sessão arrastada */
 .session-ghost { position: fixed; z-index: 70; pointer-events: none; opacity: .85; background: var(--noct-elevated); border-left-color: var(--noct-info); box-shadow: 0 12px 32px rgba(0, 0, 0, .55); margin: 0; }
 .session-ghost .folder-add { display: none; }
+.session-ghost.stack { box-shadow: 4px 4px 0 -1px var(--noct-elevated), 4px 4px 0 0 var(--noct-border-strong), 8px 8px 0 -1px var(--noct-elevated), 8px 8px 0 0 var(--noct-border-strong), 0 12px 32px rgba(0, 0, 0, .55); }
+.session-ghost-count { position: absolute; bottom: 8px; right: 10px; padding: 3px 8px; background: var(--noct-primary); color: var(--noct-bg, #000); font: 700 10px var(--noct-font-mono); text-transform: uppercase; letter-spacing: .1em; white-space: nowrap; }
 body.session-drag { cursor: grabbing; user-select: none; -webkit-user-select: none; }
 /* Área do projeto na lista enquanto se arrasta uma sessão de fora */
 .session-folders { position: relative; }
 .session-drop-zone { position: absolute; z-index: 1; pointer-events: none; box-sizing: border-box; border: 1px dashed var(--noct-border-strong); background: rgba(var(--noct-primary-rgb), .04); display: flex; align-items: flex-end; justify-content: center; padding: 6px; }
-.session-drop-zone span { white-space: nowrap; font: 700 10px var(--noct-font-mono); text-transform: uppercase; letter-spacing: .1em; color: var(--noct-text-dim); background: var(--noct-surface); padding: 2px 6px; }
+.session-drop-zone span { white-space: normal; text-align: center; max-width: 100%; box-sizing: border-box; font: 700 10px var(--noct-font-mono); text-transform: uppercase; letter-spacing: .1em; color: var(--noct-text-dim); background: var(--noct-surface); padding: 2px 6px; }
 .session-drop-zone.out { border-color: var(--noct-border); align-items: flex-start; padding-top: 30px; }  /* etiqueta no alto, logo abaixo do divisor: a zona pode passar do fim visível da coluna */
 .session-drop-zone.drop-ok { border-color: var(--noct-primary); background: rgba(var(--noct-primary-rgb), .1); box-shadow: var(--noct-glow-primary-soft); }
 .session-drop-zone.drop-ok span { color: var(--noct-primary); }
@@ -1138,7 +1180,7 @@ body.session-drag { cursor: grabbing; user-select: none; -webkit-user-select: no
 .folder-divider.empty .chev { visibility: hidden; }
 body.session-drag * { user-select: none !important; -webkit-user-select: none !important; }
 .folder-list .folder { -webkit-user-select: none; user-select: none; }
-body.session-drag.from-app #projectBarBtn { outline: 1px dashed var(--noct-border-strong); outline-offset: 4px; }
+body.session-drag.from-app #projectBarBtn { outline: 1px dashed var(--noct-border-strong); outline-offset: 1px; }  /* colado ao botão: não encosta no da lixeira */
 /* Pergunta com campo de texto */
 /* O .dialog não tem margem interna (cada filho tem a sua): o campo fica dentro de um bloco com a mesma margem dos textos */
 .prompt-field { padding: 0 18px 18px; }
@@ -1297,3 +1339,85 @@ html.kbd-focus :focus { outline: 2px solid var(--noct-primary); outline-offset: 
 html.kbd-focus input:focus + .save-check { outline: 2px solid var(--noct-primary); outline-offset: 2px; }
 /* Opção marcada pelo teclado na lista do app */
 .select-menu button.kbd { background: var(--noct-elevated); color: var(--noct-primary); outline: 1px solid var(--noct-primary); outline-offset: -1px; }
+
+/* Lixeira (etapa 20): botão ao lado do projeto e a janela Trash */
+.trash-bar {
+  display: inline-flex; align-items: center; gap: 6px; height: 30px; margin-left: 6px; padding: 0 9px;
+  border: 1px solid var(--noct-border); background: var(--noct-surface-inner); color: var(--noct-text-dim); cursor: pointer;
+  font: 600 11px var(--noct-font-mono); transition: border-color 150ms var(--noct-ease), color 150ms var(--noct-ease);
+}
+.trash-bar:hover { border-color: var(--noct-primary); color: var(--noct-primary); }
+.trash-bar.has { color: var(--noct-text-muted); }
+.trash-bar span:empty { display: none; }
+.trash-dialog { width: 720px; max-width: calc(100vw - 40px); }
+.trash-sub { margin: 4px 0 12px; color: var(--noct-text-muted); font-size: 13px; }
+.trash-list { list-style: none; margin: 0; padding: 0 18px 8px; max-height: min(52vh, 460px); overflow: auto; }
+.trash-group { margin: 14px 0 4px; font: 700 10px var(--noct-font-mono); text-transform: uppercase; letter-spacing: .1em; color: var(--noct-text-dim); }
+.trash-row { display: flex; align-items: center; gap: 10px; padding: 9px 2px; border-bottom: 1px solid var(--noct-border); }
+.trash-row .trash-main { flex: 1; min-width: 0; }
+.trash-row b { display: block; font: 600 14px var(--noct-font-sans); color: var(--noct-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.trash-row small { display: block; margin-top: 2px; font: 11px var(--noct-font-mono); color: var(--noct-text-dim); }
+.trash-row small .soon { color: var(--noct-pending); }
+.trash-empty { padding: 26px 0; text-align: center; color: var(--noct-text-dim); }
+.trash-dialog .dialog-actions .spacer { flex: 1; }
+.trash-kind { display: inline-flex; width: 28px; height: 28px; align-items: center; justify-content: center; flex: none; border: 1px solid var(--noct-border); color: var(--noct-text-muted); }
+.trash-row.is-photos .trash-kind { color: var(--noct-text-dim); }
+.trash-row.blocked .trash-main b, .trash-row.blocked .trash-kind { opacity: .45; }
+.trash-row small.trash-note { color: var(--noct-pending); }
+.trash-bar .trash-size { color: var(--noct-text-dim); font-weight: 500; }
+.trash-bar .trash-size:empty { display: none; }
+.trash-bar .trash-size::before { content: "· "; }
+
+/* Várias sessões selecionadas (Cmd/Shift+clique ou o modo Select) */
+.folder.multi { background: var(--noct-elevated); box-shadow: inset 0 0 0 1px var(--noct-info); }
+.trash-row.offdisk .trash-main b, .trash-row.offdisk .trash-kind { opacity: .45; }
+/* Árvore da lixeira: projeto → sessões → fotos */
+.trash-row.lvl1 { padding-left: 26px; }
+.trash-row.lvl2 { padding-left: 52px; }
+.trash-restored { display: inline-block; margin-left: 10px; font: 700 10px/12px var(--noct-font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--noct-primary); border: 1px solid var(--noct-primary); padding: 1px 5px; vertical-align: middle; }
+.trash-row b { padding: 2px 0; }
+.trash-row.blocked .trash-main b .trash-restored { opacity: 1; }
+.trash-row small.trash-note.done { color: var(--noct-text-muted); }
+/* Várias fotos marcadas (Shift+← → ou Shift+clique) */
+.carousel .frame.multi .frame-img { outline: 2px solid var(--noct-info); outline-offset: -2px; }
+.carousel .frame.multi { opacity: 1; }
+.full-trash-bar { margin-left: 0; }
+.full-trash-bar span:empty { display: none; }
+.gallery-title-row { display: flex; align-items: center; gap: 14px; }
+.sessions-panel:not(.fullscreen) .full-trash-bar { display: none; }
+
+/* Arrastar sessões e fotos até a lixeira */
+.trash-bar.drop-here { outline: 1px dashed var(--noct-border-strong); outline-offset: 1px; }
+.trash-bar.drop-ok { border-color: var(--noct-danger); color: var(--noct-danger); background: rgba(var(--noct-danger-rgb), .12); outline-color: var(--noct-danger); }
+.frame-ghost { position: fixed; z-index: 70; margin: 0; pointer-events: none; list-style: none; box-sizing: border-box; opacity: .9; box-shadow: 0 12px 32px rgba(0, 0, 0, .55); }
+.frame-ghost.stack { box-shadow: 4px 4px 0 -1px var(--noct-elevated), 4px 4px 0 0 var(--noct-border-strong), 8px 8px 0 -1px var(--noct-elevated), 8px 8px 0 0 var(--noct-border-strong), 0 12px 32px rgba(0, 0, 0, .55); }
+.frame-ghost-count { position: absolute; bottom: 6px; right: 6px; padding: 3px 7px; background: var(--noct-primary); color: var(--noct-bg); font: 700 10px var(--noct-font-mono); text-transform: uppercase; letter-spacing: .1em; white-space: nowrap; }
+body.photo-drag, body.photo-drag * { cursor: grabbing !important; user-select: none !important; -webkit-user-select: none !important; }
+/* Com Cmd/Ctrl/Shift apertado o clique em "Add to project" só marca a sessão: o botão não reage ao ponteiro */
+body.mod-keys .folder-add:hover:not(:disabled) { background: none; border-color: transparent; }
+body.mod-keys .folder-add { cursor: default; }
+/* Legenda da barra só de ícones (tela cheia): aparece na hora, ao lado do ícone */
+.rail-tip {
+  position: fixed; z-index: 95; transform: translateY(-50%); pointer-events: none; white-space: nowrap;
+  padding: 6px 10px; background: var(--noct-surface); border: 1px solid var(--noct-border-strong);
+  color: var(--noct-text); font: 700 10px var(--noct-font-mono); text-transform: uppercase; letter-spacing: .1em;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .5);
+}
+/* Nome na exportação: os botões e, no Custom, o campo + "Add date + time" + Before/After embaixo deles */
+.export-name-col { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; min-width: 0; }
+.export-name-custom { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
+.export-row:has(> .export-name-col) { align-items: flex-start; }
+.export-row:has(> .export-name-col) > .export-label { padding-top: 9px; }
+/* Shift+clique nas miniaturas: sem seleção de texto (os números não ficam marcados) */
+.carousel, .carousel .frame { -webkit-user-select: none; user-select: none; }
+/* Barra de cima: nada quebra linha; sem espaço, some primeiro o que importa menos (fitTopbar) */
+.topbar, .topbar button, .topbar .status { white-space: nowrap; }
+.topbar > *, .topbar-right > * { flex-shrink: 0; }
+.topbar.fit-1 #trashSize,
+.topbar.fit-2 #projectBarMeta,
+.topbar.fit-3 #brandVersion,
+.topbar.fit-4 #updateChipText,
+.topbar.fit-5 .status .st-full:has(+ .st-short),
+.status .st-short { display: none !important; }
+.topbar.fit-5 .status .st-short { display: inline !important; }
+.topbar-right { padding-left: 12px; }  /* janela estreita: a lixeira não encosta no status das câmeras */

@@ -32,13 +32,15 @@
       <span id="projectReload" class="project-reload hidden" role="button" tabindex="0" title="Check the project folder again" aria-label="Check the project folder again"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9"/><path d="M13.6 1.8v3.2h-3.2"/></svg></span>
       <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M2 3.5l3 3 3-3"/></svg>
     </button>
+    <!-- Lixeira (etapa 20): o que foi apagado fica 15 dias; o número de itens ao lado do ícone -->
+    <button id="trashBtn" class="trash-bar" title="Trash" aria-label="Trash"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 4h9M5.5 4V2.5h3V4M3.5 4l.6 7.5h5.8l.6-7.5"/></svg><span id="trashCount"></span><span id="trashSize" class="trash-size"></span></button>
     <div class="topbar-right">
       <div id="status" class="status">Starting</div>
       <button id="updateChip" class="update-chip hidden" title="A new version of Stillpoint is available"><span class="pulse" aria-hidden="true"></span><span id="updateChipText">Update</span></button>
       <button id="soundBtn" class="btn btn-secondary btn-small btn-icon sound-btn" title="Sound of the countdown and the shots: on" aria-label="Sound"><svg width='16' height='16' viewBox='0 0 24 24' fill='currentColor' aria-hidden='true'><path class='spk' d='M3 9v6h4l5 4V5L7 9H3z'/><path class='w1' d='M16.5 12a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4z'/><path class='w2' d='M14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z'/><path class='x' d='M15.2 9.2l5.6 5.6M20.8 9.2l-5.6 5.6' stroke='currentColor' stroke-width='2.2' fill='none' stroke-linecap='round'/></svg></button>
       <button id="pitchBtn" class="btn btn-secondary btn-small btn-icon" title="Lenticular pitch test: a sheet to measure the real LPI of your lens sheet with your printer" aria-label="Lenticular pitch test"></button>
       <button id="liveBtn" class="btn btn-secondary btn-small" title="Big view of the shoot for a second monitor: countdown, cameras firing and the sequence at the end">Live view</button>
-      <button id="saveBtn" class="btn btn-primary btn-small" disabled>Save sessions</button>
+      <button id="saveBtn" class="btn btn-primary btn-small" disabled>Export sessions</button>
       <!-- Menu do app no Windows (no Mac ele fica na barra de cima do sistema) -->
       <div class="app-menu-wrap">
         <button id="menuBtn" class="btn btn-small btn-secondary btn-icon hidden" title="Menu" aria-label="Menu" aria-haspopup="menu" aria-expanded="false"></button>
@@ -63,6 +65,7 @@
     <section class="panel sessions-panel">
       <aside class="session-folders">
         <div class="sessions-head">
+          <button id="sideWideBtn" class="btn btn-secondary btn-small btn-icon side-wide-btn" title="Show the session names" aria-label="Show the session names" aria-pressed="false"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><rect x="1.5" y="2.5" width="11" height="9"/><path d="M5 2.5v9"/></svg></button>
           <h2>Sessions <span id="sessionCount" class="count hidden">0</span></h2>
           <button id="projectWindowBtn" class="btn btn-secondary btn-small btn-icon hidden" title="Project window" aria-label="Project window"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1.5" y="2.5" width="11" height="9"/><path d="M1.5 5.5h11M4 8h2.5M4 10h4"/></svg></button>
         </div>
@@ -180,7 +183,7 @@
       <div class="sheet-head">
         <div>
           <h3>Reorder by photo</h3>
-          <p id="orderHelp">Drag the photos into the order the cameras are set up. The first photo becomes camera 01.</p>
+          <p id="orderHelp">Drag the photos into the order the cameras are set up (Shift+click or Cmd/Ctrl+click selects several to move together). The first photo becomes camera 01.</p>
         </div>
       </div>
       <div id="orderGallery" class="gallery"></div>
@@ -364,7 +367,7 @@
         <label id="exportEditedLabel" class="log-option hidden" title="When a session has edited photos in the project's Edited folder, use them instead of the originals"><input id="exportEdited" type="checkbox" checked> Use edited photos when available</label>
         <button id="exportCancel" class="btn btn-secondary">Cancel</button>
         <button id="exportPitch" class="btn btn-secondary" title="A sheet to measure the real LPI of your lens sheet with your printer (Lenticular)">Print pitch test</button>
-        <button id="exportConfirm" class="btn btn-primary">Save</button>
+        <button id="exportConfirm" class="btn btn-primary">Export</button>
       </div>
     </div>
   </div>
@@ -380,6 +383,7 @@
           <button id="projectFolderBtn" class="btn btn-secondary btn-small">Open folder</button>
           <button id="projectSwitchBtn" class="btn btn-secondary btn-small">Switch…</button>
           <button id="projectCloseProjectBtn" class="btn btn-secondary btn-small" title="Close the project (nothing is deleted; the sessions stay in the folder)">Close project</button>
+          <button id="projectDeleteProjectBtn" class="btn btn-link btn-small" title="Move the whole project folder to the Trash (15 days)">Delete project…</button>
         </div>
       </div>
       <div class="project-body">
@@ -396,6 +400,7 @@
       <div class="export-foot">
         <span id="projectHint" class="save-count"></span><span class="spacer"></span>
         <button id="projectRemoveBtn" class="btn btn-secondary">Remove from project</button>
+        <button id="projectDeleteBtn" class="btn btn-danger">Delete…</button>
         <button id="projectCloseBtn" class="btn btn-secondary">Close</button>
         <button id="projectExportBtn" class="btn btn-primary">Export…</button>
       </div>
@@ -418,7 +423,7 @@
   <!-- Salvar: andamento -->
   <div id="progressOverlay" class="overlay hidden">
     <div class="dialog export-progress-dialog">
-      <h3 id="progressTitle">Saving</h3>
+      <h3 id="progressTitle">Exporting</h3>
       <div class="export-progress-body">
         <div id="progressStep" class="export-note"></div>
         <div class="update-bar"><div id="progressBar"></div></div>

@@ -1011,6 +1011,158 @@ podem ficar só em JPG).
 - [ ] Lenticular com a sessão real: prévia Tilt (arrastar ↕) e Interlaced com a lupa; o TIFF sai com
       o tamanho certo (abrir no Pré-visualização → Ferramentas → Mostrar Inspetor: dpi e tamanho).
 
+## 26. Lixeira do app (2.15.0)
+
+Pode ser com câmeras simuladas (`STILLPOINT_FAKE_CAMERAS=9`), mas o item do HD externo precisa de um
+projeto num HD externo.
+
+- [ ] Barra de cima: ao lado do botão do projeto, o botão da lixeira (ícone) com o número de itens e o espaço em GB ("3 · 1.6 GB"); parando
+      o mouse, "Trash: n items · tamanho · kept 15 days" (vazia: "Trash: empty…").
+- [ ] Nome de projeto comprido: aparece cortado com "…" (até 24 caracteres); parando o mouse, o nome inteiro.
+- [ ] Apagar uma sessão (fora de projeto): o aviso diz que vai para a Trash por 15 dias; o número do botão sobe.
+      Abrir a Trash: a sessão aparece em "In the app" com fotos, tamanho, "deleted just now" e "deleted for
+      good in 15 days".
+- [ ] Apagar uma foto (botão direito → Delete photo…): aparece como "1 photo from this session".
+- [ ] Restore numa linha: a sessão (ou a foto) volta para a lista; a linha sai da Trash.
+- [ ] Cmd+Z depois do Restore: a sessão (ou a foto) volta para a Trash; Cmd+Shift+Z restaura de novo.
+- [ ] Cada linha tem um ícone: pasta = sessão inteira; imagem = fotos de uma sessão.
+- [ ] Delete permanently: pergunta "Delete permanently?"; apaga só aquele item.
+- [ ] Apagar uma foto e depois a sessão inteira dela: a linha da foto fica logo abaixo da sessão, apagada, com
+      Restore desligado e o aviso "The whole session was deleted after this photo. Restore the session first…".
+      Restaurar a sessão: a linha da foto volta a funcionar. Delete permanently na sessão: o aviso diz que leva
+      junto a foto apagada antes, e as duas linhas saem.
+- [ ] Restore everything: tudo volta (as sessões inteiras primeiro; fotos apagadas antes da sessão voltam para
+      dentro dela); Cmd+Z manda tudo de volta para a Trash; Cmd+Shift+Z restaura de novo.
+- [ ] Empty trash: pergunta; apaga tudo; a janela mostra "The trash is empty." e o número some do botão.
+- [ ] Cmd+Z depois de apagar uma sessão continua trazendo de volta (e ela sai da Trash).
+- [ ] Fechar e abrir o app: os itens continuam na Trash (antes eram apagados ao abrir).
+- [ ] Projeto aberto: apagar uma sessão do projeto → aparece em "In the project <nome>"; no Finder, a pasta
+      `<Projeto>/.stillpoint-trash` (pasta escondida: Cmd+Shift+. mostra) tem a sessão. Fechando o projeto,
+      esses itens somem da Trash; abrindo de novo, voltam.
+- [ ] Projeto em HD externo: apagar uma sessão é instantâneo (não copia para o computador).
+- [ ] Teclado: Tab chega no botão da lixeira; Enter abre; o Tab para numa linha só e ↑ ↓ trocam de linha
+      (Restore / Delete now); Esc fecha e volta ao botão.
+
+## 28. Apagar um projeto (2.15.0)
+
+- [ ] Menu do projeto → "Delete project…" (e "Delete project…" na janela Project, ao lado de Close project): o aviso
+      diz quantas sessões e o tamanho; Delete project fecha o projeto e a barra mostra "No project".
+- [ ] No Finder (Cmd+Shift+. mostra pastas escondidas): a pasta do projeto saiu do lugar e está em
+      `<pasta de cima>/.stillpoint-trash/`, no mesmo disco (num HD externo, instantâneo).
+- [ ] O projeto sai dos recentes; na Trash aparece com o ícone de pasta, "Project · n sessions · tamanho".
+- [ ] Cmd+Z logo depois de apagar: o projeto volta e abre.
+- [ ] Restore na Trash (ou Restore everything): a pasta volta para o lugar e para os recentes; sem projeto aberto, ele já abre. Cmd+Z manda de novo para a Trash (e fecha); Cmd+Shift+Z restaura e abre de novo.
+- [ ] Projeto num HD desligado: na Trash aparece apagado, com "The disk with this project is not connected…", e
+      Restore / Delete permanently desligados. Empty trash não mexe nele (fica até o disco voltar).
+- [ ] Sessão apagada de um projeto e depois o projeto inteiro: na Trash, a sessão aparece logo abaixo do projeto,
+      apagada, com "follows the project", Restore desligado e o aviso "This session was in the trash of the project
+      …, which was deleted after. Restore the project first." Restaurando o projeto (e abrindo-o), ela volta para
+      "In the project <nome>".
+- [ ] Delete permanently num projeto: o aviso diz que leva junto os itens da lixeira dele; apaga a pasta escondida de vez.
+
+## 30. Várias fotos e o Delete (2.15.0)
+
+- [ ] Com uma sessão aberta, ← → trocam a foto; Shift+← → marcam várias (borda azul); Shift+clique numa miniatura
+      também marca o intervalo; um clique simples desmarca.
+- [ ] Depois de usar ← → (ou clicar numa miniatura), a tecla Delete apaga a(s) foto(s): "Delete 3 photos?"; um
+      Cmd+Z traz todas de volta. Voltando às sessões (↑ ↓ ou clique numa sessão), o Delete volta a apagar a sessão.
+- [ ] Botão direito numa das fotos marcadas: "n photos selected" e "Delete n photos…".
+- [ ] Tela cheia da sessão: o Tab circula só pelos botões da tela cheia (não vai para a tela de trás).
+- [ ] Apagar uma sessão (fora ou dentro da tela cheia) ou fotos: as cópias voam até o ícone da lixeira da barra de
+      cima, que aumenta e volta ao tamanho no fim.
+- [ ] Apagar a sessão na tela cheia e Cmd+Z: a sessão volta aberta, na tela cheia.
+- [ ] Tela cheia: à direita do nome da sessão, o mesmo botão da lixeira da barra de cima (ícone, número e GB); abre a
+      Trash por cima da tela cheia. Apagar a sessão ou fotos na tela cheia: a animação vai até esse botão.
+- [ ] Trash: a etiqueta "✓ Restored" aparece inteira (sem a linha de cima cortada).
+
+## 29. Lixeira em árvore e "Restored" (2.15.0)
+
+- [ ] Projeto apagado com sessões/fotos na lixeira dele, e sessão apagada depois de fotos dela: na Trash fica em
+      árvore (projeto → sessões → fotos), recuado, com linhas-guia.
+- [ ] Restore na sessão que tem fotos apagadas antes: a sessão volta para a lista, mas a linha dela fica na Trash
+      apagada, com "✓ Restored" e "Restored. It stays here until the photos deleted before it below are restored or
+      deleted."; o Restore das fotos abaixo fica liberado. Restaurando (ou apagando) as fotos, a linha da sessão some.
+- [ ] O mesmo com o projeto: Restore no projeto → linha com "✓ Restored"; as sessões e fotos da lixeira dele ficam
+      liberadas; quando acabarem, a linha do projeto some.
+- [ ] Restore everything traz tudo, em rodadas (primeiro projetos/sessões, depois o que dependia deles).
+
+## 27. Apagar várias sessões e o nome Export sessions (2.15.0)
+
+- [ ] O botão do rodapé e a janela se chamam "Export sessions"; o botão de confirmar diz "Export n sessions";
+      o andamento, "Exporting n sessions"; a etiqueta das sessões já exportadas, "✓ Exported"; o aviso ao
+      fechar, "Export your sessions before closing?" com "Export and close".
+- [ ] Export sessions, Name = "Custom": o campo do nome, "Add date + time" e Before/After ficam numa linha embaixo
+      dos botões Date + time / Number / Custom, começando no mesmo ponto que eles.
+
+- [ ] Cmd+clique (Ctrl no Windows) numa sessão: ela e a aberta ficam marcadas (borda azul).
+- [ ] Shift+clique marca o intervalo; Shift+↑ ↓ com o contorno numa sessão faz o mesmo pelo teclado.
+- [ ] Botão direito numa sessão marcada: "n sessions selected", Add n to project, Remove n from project,
+      Delete n sessions….
+- [ ] Delete n sessions…: o aviso diz quantas fotos e de quais sessões (e quantas são do projeto); as linhas voam
+      para a lixeira; aparecem na Trash; Cmd+Z traz todas de volta (um passo só).
+- [ ] Tecla Delete (ou Backspace) com o contorno na lista: apaga a seleção (ou só a sessão do contorno).
+- [ ] Esc desfaz a seleção; um clique simples numa sessão também (e abre a sessão).
+- [ ] Cmd+clique seguido em várias sessões, desmarcando algumas: nunca aparece marcada uma sessão que não foi
+      clicada; desmarcar a aberta abre outra das marcadas; sobrando uma só, ela fica aberta e sem marca.
+- [ ] Apertar o botão do mouse com Cmd e soltar o Cmd antes de soltar o botão: conta como Cmd+clique.
+- [ ] Shift+clique nas miniaturas: os números não ficam marcados como texto.
+- [ ] Barra de cima: diminuir a janela aos poucos; nenhum texto quebra linha e, conforme falta espaço, somem nesta
+      ordem: o tamanho da lixeira, os números do projeto, a versão do app, o texto do "Update" (fica o quadrado
+      verde) e, por último, "30 cameras ready" vira só "30" (o texto inteiro na legenda). Números grandes aparecem curtos ("1.3k", "38.5k", "1.3 TB"); o número inteiro fica na legenda do
+      botão do projeto.
+- [ ] Timing fora de "At once": a etiqueta "TIMING" fica verde; amarela só quando o plano tem um problema (ex.: no
+      Custom, uma câmera fora de todos os passos).
+- [ ] Mac: apertar F para entrar e sair da tela cheia não faz o som de erro do sistema; letras soltas fora de um
+      campo de texto também não.
+- [ ] Activity aberto (barra de baixo): Esc fecha. Com uma janela aberta por cima (ex.: Export sessions), o
+      primeiro Esc fecha a janela e o segundo, o Activity.
+- [ ] Janela Project: marcar sessões e clicar em "Delete n sessions…" (ao lado de Remove from project): o mesmo
+      aviso; vão para a lixeira do projeto.
+- [ ] Arrastar várias: marcar duas sessões de "Not in project", segurar uma delas e arrastar até o botão do projeto
+      (barra de cima): o fantasma mostra "2 sessions", a zona tracejada diz "Drop to add 2 sessions to project";
+      soltar coloca as duas no projeto; Cmd+Z tira as duas (um passo só).
+- [ ] O mesmo com duas do projeto arrastadas para "Not in project": "Drop to remove 2 sessions from project".
+- [ ] Seleção misturada (do projeto e de fora): vão só as do mesmo lado da sessão segurada.
+- [ ] Clicar sem arrastar numa das marcadas desfaz a seleção e abre essa sessão.
+- [ ] Cmd+clique (ou Shift+clique) em cima de "Add to project ↑": só marca a sessão; ela não entra no projeto.
+- [ ] Tirar uma sessão de RAW do projeto logo depois de abri-la e pôr de volta: entra sem o aviso
+      "A session with this name already exists there".
+
+## 31. Arrastar para a lixeira, mudar a ordem arrastando e a barra da tela cheia (2.15.0)
+
+- [ ] Segurar Cmd (Ctrl no Windows) e passar o ponteiro em "Add to project ↑": o botão não muda de aparência.
+- [ ] Arrastar uma miniatura de foto para o lado e soltar entre outras duas: a ordem muda na hora (sem o botão
+      "Reorder"), os números se refazem; Cmd+Z volta a ordem anterior.
+- [ ] Arrastar uma miniatura até o botão da lixeira (barra de cima, ao lado do projeto): ao chegar, o botão fica
+      vermelho; soltar apaga a foto sem perguntar; Cmd+Z traz de volta.
+- [ ] Marcar várias fotos (Shift+clique, ou Cmd/Ctrl+clique em fotos soltas) e arrastar uma delas: a cópia
+      mostra "3 photos"; soltar entre outras duas leva todas juntas para lá (na ordem em que estavam); soltar na
+      lixeira apaga todas. Cmd+Z volta.
+- [ ] O mesmo no modo "Reorder" (tela cheia) e na janela "Reorder by photo": marcar várias e arrastar juntas; as
+      setas "Move earlier" / "Move later" levam o grupo marcado uma casa.
+- [ ] "Reorder by photo": cada mudança de ordem (arrastar ou setas) volta com Cmd+Z antes de clicar em Save, com
+      as fotos deslizando; Cmd+Shift+Z refaz. Depois de fechar a janela, esses passos não ficam no Desfazer.
+- [ ] Tela principal e tela cheia: depois de mudar fotos de lugar arrastando (uma ou várias), as miniaturas não
+      piscam nem recarregam; Cmd+Z volta a ordem com as fotos deslizando até o lugar antigo.
+- [ ] Arrastar uma sessão da lista até o botão da lixeira: apaga sem perguntar; Cmd+Z traz de volta. Funciona
+      também sem projeto aberto e com várias sessões marcadas.
+- [ ] Ao soltar uma miniatura em outro lugar, as outras deslizam até a posição nova (como nas câmeras).
+- [ ] Tela cheia: a barra das sessões fica sempre à esquerda, só com ícones, todos no mesmo eixo; o divisor
+      "Not in project" é uma linha curta com a seta embaixo.
+- [ ] Na barra só de ícones, passar o ponteiro num ícone mostra na hora uma legenda no visual do app (nome da
+      sessão; "Not in project · n" no divisor; "Show the session names" no botão de cima). Fora dela, as legendas
+      continuam as do sistema.
+- [ ] O botão de cima da barra ("Show the session names") abre a barra larga, com os nomes, "Sessions" e o botão
+      da janela Project; ela fica aberta até clicar no mesmo botão ("Hide the session names").
+- [ ] O título da sessão na tela cheia mostra a hora uma vez só (ex.: "Oct 31, 23:53:22").
+- [ ] Na barra: clicar numa sessão abre essa sessão na tela cheia; Cmd+clique, Shift+clique, botão direito e
+      arrastar funcionam como na lista normal.
+- [ ] Tela cheia: arrastar uma sessão da barra, ou uma miniatura, até o botão da lixeira à direita do nome da
+      sessão: apaga; Cmd+Z traz de volta.
+- [ ] Tela cheia: Tab chega na barra e segue para os botões da tela cheia.
+- [ ] Arrastando uma sessão de "Not in project": os pontilhados do botão do projeto e da lixeira ficam colados em
+      cada botão, sem encostar um no outro.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |
