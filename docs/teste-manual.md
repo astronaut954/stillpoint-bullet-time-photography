@@ -1051,7 +1051,7 @@ projeto num HD externo.
       `<pasta de cima>/.stillpoint-trash/`, no mesmo disco (num HD externo, instantâneo).
 - [ ] O projeto sai dos recentes; na Trash aparece com o ícone de pasta, "Project · n sessions · tamanho".
 - [ ] Cmd+Z logo depois de apagar: o projeto volta e abre.
-- [ ] Restore na Trash: a pasta volta para o lugar e para os recentes (não abre sozinho); Cmd+Z manda de novo para a Trash.
+- [ ] Restore na Trash (ou Restore everything): a pasta volta para o lugar e para os recentes; sem projeto aberto, ele já abre. Cmd+Z manda de novo para a Trash.
 - [ ] Projeto num HD desligado: na Trash aparece apagado, com "The disk with this project is not connected…", e
       Restore / Delete permanently desligados. Empty trash não mexe nele (fica até o disco voltar).
 - [ ] Sessão apagada de um projeto e depois o projeto inteiro: na Trash, a sessão aparece logo abaixo do projeto,

@@ -5967,8 +5967,11 @@
     Promise.resolve(window.trashRestore(item.id)).then((r) => {
       if (!r || !r.ok) { toast((r && r.error) || "Could not restore this item.", 8000, { warn: true }); return; }
       if (item.isProject) {
-        const t = "Project restored: " + item.session + ". Open it from the project menu (Recent).";
+        // Sem projeto aberto, o restaurado já abre (senão parecia que tinha sumido); com outro aberto, fica nos recentes
+        const opens = !project.open && r.folder;
+        const t = "Project restored: " + item.session + (opens ? "" : ". Open it from the project menu (Recent).");
         toast(t, 6000); log(t, "ok"); renderTrash();
+        if (opens) Promise.resolve(window.projectOpen(r.folder)).then(projectResult);
         // Desfazer: a pasta volta para a lixeira (o projeto estava fechado); refazer restaura de novo
         let current = item.id;
         recordAction({ label: "Restore project " + item.session,
@@ -6009,6 +6012,9 @@
         toast(text, failed ? 8000 : undefined, failed ? { warn: true } : undefined); log(text, failed ? "warn" : "ok");
         if (!done.length) return;
         const projects = done.filter((d) => d.project);
+        // Sem projeto aberto: abre o projeto que voltou (o primeiro, se forem vários); os outros ficam nos recentes
+        if (projects.length && !project.open) Promise.resolve(window.projectOpen(projects[0].project)).then(projectResult);
+        if (projects.length) toast(text + " · " + (projects.length === 1 ? "the project " + projects[0].session + (project.open ? " is in Recent" : " is open again") : plural(projects.length, "project", "projects") + " back in Recent"), 6000);
         const plain = done.filter((d) => !d.project);
         const wholeSessions = [...new Set(plain.filter((d) => d.whole).map((d) => d.session))];
         const photoOnly = plain.filter((d) => !d.whole && !wholeSessions.includes(d.session));
