@@ -1112,6 +1112,25 @@ projeto num HD externo.
 - [ ] Tirar uma sessão de RAW do projeto logo depois de abri-la e pôr de volta: entra sem o aviso
       "A session with this name already exists there".
 
+## 31. Arrastar para a lixeira, mudar a ordem arrastando e a barra da tela cheia (2.15.0)
+
+- [ ] Segurar Cmd (Ctrl no Windows) e passar o ponteiro em "Add to project ↑": o botão não muda de aparência.
+- [ ] Arrastar uma miniatura de foto para o lado e soltar entre outras duas: a ordem muda na hora (sem o botão
+      "Reorder"), os números se refazem; Cmd+Z volta a ordem anterior.
+- [ ] Arrastar uma miniatura até o botão da lixeira (barra de cima, ao lado do projeto): ao chegar, o botão fica
+      vermelho; soltar apaga a foto sem perguntar; Cmd+Z traz de volta.
+- [ ] Marcar várias fotos (Shift+clique) e arrastar uma delas: a cópia mostra "3 photos"; só a lixeira aceita
+      (para mudar a ordem, uma foto por vez).
+- [ ] Arrastar uma sessão da lista até o botão da lixeira: apaga sem perguntar; Cmd+Z traz de volta. Funciona
+      também sem projeto aberto e com várias sessões marcadas.
+- [ ] Tela cheia: uma linha fina na borda esquerda; levar o ponteiro até a borda abre a barra das sessões
+      (do projeto e "Not in project"), e a foto anda para o lado; tirar o ponteiro da barra fecha.
+- [ ] Na barra: clicar numa sessão abre essa sessão na tela cheia; Cmd+clique, Shift+clique, botão direito e
+      arrastar funcionam como na lista normal.
+- [ ] Tela cheia: arrastar uma sessão da barra, ou uma miniatura, até o botão da lixeira à direita do nome da
+      sessão: apaga; Cmd+Z traz de volta.
+- [ ] Tela cheia: Tab chega na barra (ela abre enquanto o foco está nela) e segue para os botões da tela cheia.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |

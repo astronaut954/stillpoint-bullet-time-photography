@@ -525,7 +525,12 @@
       if (draggable) {
         li.addEventListener("pointerdown", (e) => onPointerDown(e, li, i));
       } else {
-        li.addEventListener("click", (e) => { if (e.shiftKey && opts.multi) extendTo(i); else select(i); if (opts.onPick) opts.onPick(); });
+        li.addEventListener("click", (e) => {
+          if (suppressClick) { suppressClick = false; return; }  // o clique que fecha um arraste não seleciona
+          if (e.shiftKey && opts.multi) extendTo(i); else select(i);
+          if (opts.onPick) opts.onPick();
+        });
+        if (opts.freeDrag) li.addEventListener("pointerdown", (e) => onFreeDown(e, li, i));
       }
       if (opts.onContext) li.addEventListener("contextmenu", (e) => {
         e.preventDefault();
@@ -665,15 +670,92 @@
       move(d.i, target);
     }
 
-    function move(from, to) {
+    function move(from, to, free) {
       if (to < 0 || to >= items.length || from === to) { select(from); return; }
       const [item] = items.splice(from, 1);
       items.splice(to, 0, item);
       index = to;
+      multi = new Set(); anchor = index;
+      // Arraste fora do modo Reorder: a ordem nova vale na hora (os números das miniaturas também)
+      if (free) items.forEach((it, k) => { it.order = k + 1; });
       render();
       showLarge();
       markSelected(true);
-      if (opts.onReorder) opts.onReorder(items);
+      if (free) { if (opts.onFreeReorder) opts.onFreeReorder(items); }
+      else if (opts.onReorder) opts.onReorder(items);
+    }
+
+    // ----- Arrastar sem o modo Reorder: para o lado (muda a ordem) ou para um alvo de fora (a lixeira) -----
+    // Uma cópia da miniatura segue o ponteiro; com várias marcadas, vão todas (só para o alvo de fora)
+    let free = null, suppressClick = false;
+    function onFreeDown(e, li, i) {
+      if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || (opts.canDrag && !opts.canDrag())) return;
+      if (free) endFree(true);
+      const picks = multi.size > 1 && multi.has(i) ? [...multi].sort((a, b) => a - b) : [i];
+      free = { li, i, picks, x: e.clientX, y: e.clientY, moved: false, ghost: null, over: null, slot: null };
+      li.setPointerCapture(e.pointerId);
+      li.onpointermove = onFreeMove;
+      li.onpointerup = () => endFree(false);
+      li.onpointercancel = () => endFree(true);
+      li.onlostpointercapture = () => { if (free && free.li === li && !free.ending) endFree(true); };
+    }
+    function onFreeMove(e) {
+      const d = free;
+      if (!d) return;
+      const dx = e.clientX - d.x, dy = e.clientY - d.y;
+      if (!d.moved && Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+      if (!d.moved) {
+        d.moved = true;
+        const frames = [...el.carousel.children];
+        d.nodes = d.picks.map((k) => frames[k]).filter(Boolean);
+        d.nodes.forEach((n) => n.classList.add("dragging"));
+        const r = d.li.getBoundingClientRect();
+        d.ghost = d.li.cloneNode(true);
+        d.ghost.className = "frame frame-ghost" + (d.picks.length > 1 ? " stack" : "");
+        Object.assign(d.ghost.style, { left: r.left + "px", top: r.top + "px", width: r.width + "px", height: r.height + "px" });
+        if (d.picks.length > 1) d.ghost.appendChild(Object.assign(document.createElement("span"), { className: "frame-ghost-count", textContent: d.picks.length + " photos" }));
+        document.body.appendChild(d.ghost);
+        document.body.classList.add("photo-drag");
+        if (opts.onDragStart) opts.onDragStart();
+      }
+      d.ghost.style.transform = "translate(" + dx + "px," + dy + "px)";
+      const t = opts.dropTarget ? opts.dropTarget(e.clientX, e.clientY) : null;
+      if (d.over !== t) {
+        if (d.over) d.over.classList.remove("drop-ok");
+        if (t) t.classList.add("drop-ok");
+        d.over = t;
+      }
+      // Mudar a ordem: só uma foto, de uma câmera, com o ponteiro na altura das miniaturas
+      const cr = el.carousel.getBoundingClientRect();
+      const item = items[d.i];
+      if (!t && d.picks.length === 1 && item && item.movable !== false && e.clientY > cr.top - 50 && e.clientY < cr.bottom + 50) {
+        if (e.clientX < cr.left + 40) el.carousel.scrollLeft -= 12;
+        if (e.clientX > cr.right - 40) el.carousel.scrollLeft += 12;
+        d.slot = insertionIndex(e.clientX);
+        showMarker(d.slot);
+      } else {
+        d.slot = null;
+        el.marker.classList.add("hidden");
+      }
+    }
+    function endFree(cancel) {
+      const d = free;
+      if (!d) return;
+      d.ending = true;
+      free = null;
+      d.li.onpointermove = d.li.onpointerup = d.li.onpointercancel = d.li.onlostpointercapture = null;
+      if (d.nodes) d.nodes.forEach((n) => n.classList.remove("dragging"));
+      if (d.ghost) d.ghost.remove();
+      if (d.over) d.over.classList.remove("drop-ok");
+      el.marker.classList.add("hidden");
+      document.body.classList.remove("photo-drag");
+      if (opts.onDragEnd) opts.onDragEnd();
+      if (!d.moved) return;  // clique: quem trata é o "click"
+      suppressClick = true;
+      setTimeout(() => { suppressClick = false; }, 0);
+      if (cancel) return;
+      if (d.over && opts.onDropOut) { opts.onDropOut(d.over, d.picks); return; }
+      if (d.slot !== null) move(d.i, d.slot, true);
     }
 
     return {
@@ -705,6 +787,7 @@
       prev() { select(index - 1); },
       extendTo,
       get selection() { return multi.size > 1 ? [...multi].sort((a, b) => a - b) : [index]; },
+      get dragging() { return !!free; },
       moveSelected(delta) { move(index, index + delta); },
       get items() { return items; },
       get index() { return index; },
@@ -1039,6 +1122,14 @@
   const sessionGallery = Gallery(ui.sessionGallery, {
     multi: true,
     onPick: () => { photoKeys = true; },
+    // Arrastar uma miniatura: para o lado muda a ordem; até o botão da lixeira apaga
+    freeDrag: true,
+    canDrag: () => !editing.on && !busy && !!currentSession,
+    onDragStart: () => { stopPlay(); photoKeys = true; const t = trashTarget(); if (t) t.classList.add("drop-here"); },
+    onDragEnd: () => document.querySelectorAll(".drop-here").forEach((x) => x.classList.remove("drop-here")),
+    dropTarget: (x, y) => { const t = trashTarget(); return t && overNode(x, y, t) ? t : null; },
+    onDropOut: (node, picks) => deletePhotosNow(picks, true),
+    onFreeReorder: () => saveOrder(currentSession),
     load: (item, size) => sessionPhoto(item.session, item.file, size),
     // Botão direito numa foto (miniatura ou foto grande): apagar
     onContext: (e) => {
@@ -1339,17 +1430,18 @@
           add.addEventListener("click", (e) => { if (e.metaKey || e.ctrlKey || e.shiftKey) return; e.stopPropagation(); moveToProject(s.name, true); });
           li.querySelector("div").appendChild(add);
         }
-        // Segurar e arrastar: para o botão do projeto (barra de cima) = entra; para "Not in project" = sai
-        li.addEventListener("pointerdown", (e) => {
-          if (e.metaKey || e.ctrlKey || e.shiftKey) return;
-          photoKeys = false;
-          // Clique simples desfaz a seleção já aqui: o sessPointerDown redesenha a lista e o "click" nem chega à linha
-          // Exceção: segurar uma das várias marcadas guarda a seleção para arrastar todas (se não arrastar, o soltar desfaz)
-          const keep = e.button === 0 && sessSel.size > 1 && sessSel.has(s.name);
-          if (e.button === 0 && sessSel.size && !keep) sessSel.clear();
-          sessPointerDown(e, li, s, keep);
-        });
       }
+      // Segurar e arrastar: para o botão do projeto (barra de cima) = entra; para "Not in project" = sai;
+      // para o botão da lixeira = apaga (este vale também sem projeto aberto)
+      li.addEventListener("pointerdown", (e) => {
+        if (e.metaKey || e.ctrlKey || e.shiftKey) return;
+        photoKeys = false;
+        // Clique simples desfaz a seleção já aqui: o sessPointerDown redesenha a lista e o "click" nem chega à linha
+        // Exceção: segurar uma das várias marcadas guarda a seleção para arrastar todas (se não arrastar, o soltar desfaz)
+        const keep = e.button === 0 && sessSel.size > 1 && sessSel.has(s.name);
+        if (e.button === 0 && sessSel.size && !keep) sessSel.clear();
+        sessPointerDown(e, li, s, keep);
+      });
       li.addEventListener("contextmenu", (e) => {
         e.preventDefault();
         // Várias selecionadas e o clique numa delas: o menu age em todas
@@ -1503,23 +1595,27 @@
     // Números novos já na tela, enquanto os arquivos são renomeados
     if (save && changed) sessionGallery.items.forEach((item, i) => { item.order = i + 1; });
     setEditing(false);
-    if (save && changed) {
-      // As prévias guardadas usam os nomes antigos dos arquivos
-      const before = sessionItems(session).filter((i) => i.movable).map((i) => i.group);
-      const clearCache = () => Object.keys(photoCache).filter((k) => k.startsWith("sessions/" + session.name + "/")).forEach((k) => delete photoCache[k]);
-      clearCache();
-      window.reorderSession(session.name, ...groups);
-      log("Photo order changed in the session from " + sessionLabel(session.name).date, "ok");
-      // Desfazer: a ordem anterior, pelos nomes de grupo que os arquivos têm depois de renumerados
-      // (o grupo é "NN_câmera"; depois do rename o número muda, então refaz pelo nome da câmera)
-      const camOf = (g) => g.replace(/^\d+_/, "");
-      const currentGroupsFor = (camOrder) => { const now = sessionItems(sessions.find((x) => x.name === session.name) || session).filter((i) => i.movable); return camOrder.map((c) => (now.find((i) => camOf(i.group) === c) || {}).group).filter(Boolean); };
-      recordAction({ label: "Photo order in " + sessionLabel(session.name).date,
-        undo: () => { clearCache(); window.reorderSession(session.name, ...currentGroupsFor(before.map(camOf))); },
-        redo: () => { clearCache(); window.reorderSession(session.name, ...currentGroupsFor(groups.map(camOf))); } });
-    } else {
-      showSession(session, true);
-    }
+    if (save && changed) saveOrder(session);
+    else showSession(session, true);
+  }
+  // Grava a ordem que está na galeria (modo Reorder ou arraste direto); um passo no Desfazer
+  function saveOrder(session) {
+    if (!session) return;
+    const groups = sessionGallery.items.filter((i) => i.movable).map((i) => i.group);
+    // As prévias guardadas usam os nomes antigos dos arquivos
+    const before = sessionItems(session).filter((i) => i.movable).map((i) => i.group);
+    if (before.join("|") === groups.join("|")) return;
+    const clearCache = () => Object.keys(photoCache).filter((k) => k.startsWith("sessions/" + session.name + "/")).forEach((k) => delete photoCache[k]);
+    clearCache();
+    window.reorderSession(session.name, ...groups);
+    log("Photo order changed in the session from " + sessionLabel(session.name).date, "ok");
+    // Desfazer: a ordem anterior, pelos nomes de grupo que os arquivos têm depois de renumerados
+    // (o grupo é "NN_câmera"; depois do rename o número muda, então refaz pelo nome da câmera)
+    const camOf = (g) => g.replace(/^\d+_/, "");
+    const currentGroupsFor = (camOrder) => { const now = sessionItems(sessions.find((x) => x.name === session.name) || session).filter((i) => i.movable); return camOrder.map((c) => (now.find((i) => camOf(i.group) === c) || {}).group).filter(Boolean); };
+    recordAction({ label: "Photo order in " + sessionLabel(session.name).date,
+      undo: () => { clearCache(); window.reorderSession(session.name, ...currentGroupsFor(before.map(camOf))); },
+      redo: () => { clearCache(); window.reorderSession(session.name, ...currentGroupsFor(groups.map(camOf))); } });
   }
 
   // ----- Tela cheia -----
@@ -1531,11 +1627,29 @@
       if (editing.on) stopReorder(false);
     }
     sessionsPanel.classList.toggle("fullscreen", on);
+    if (!on) sessionsPanel.classList.remove("side-open");
     sessionGallery.setActions(currentActions());
   }
   function isFullscreen() {
     return sessionsPanel.classList.contains("fullscreen");
   }
+  // Barra das sessões na tela cheia: abre com o ponteiro na borda esquerda; fecha quando ele sai dela
+  // (fica aberta enquanto uma sessão é arrastada ou um menu dela está aberto)
+  const sideAside = ui.sessionList.parentElement;
+  function setSideOpen(on) { sessionsPanel.classList.toggle("side-open", !!on && isFullscreen()); }
+  document.addEventListener("mousemove", (e) => {
+    if (!isFullscreen()) return;
+    const open = sessionsPanel.classList.contains("side-open");
+    if (!open && e.clientX <= 14) setSideOpen(true);
+    else if (open && !sessDrag && !document.querySelector("body > .project-menu") && e.clientX > sideAside.getBoundingClientRect().right + 24) setSideOpen(false);
+  });
+  document.addEventListener("mouseleave", () => { if (!sessDrag) setSideOpen(false); });
+  // Teclas de seleção apertadas: o botão "Add to project" não reage ao ponteiro (o clique só marca)
+  const modKeys = (e) => document.body.classList.toggle("mod-keys", e.metaKey || e.ctrlKey || e.shiftKey);
+  document.addEventListener("keydown", modKeys, true);
+  document.addEventListener("keyup", modKeys, true);
+  window.addEventListener("blur", () => document.body.classList.remove("mod-keys"));
+  document.addEventListener("mousemove", (e) => { if (document.body.classList.contains("mod-keys") !== (e.metaKey || e.ctrlKey || e.shiftKey)) modKeys(e); });
   function toggleFullscreen() {
     setFullscreen(!isFullscreen());
   }
@@ -1554,27 +1668,39 @@
     dialog(one ? "Delete photo " + pad(item.order || sessionGallery.index + 1) + "?" : "Delete " + picked.length + " photos?",
       what + (one ? (item.files.length > 1 ? "Its RAW and JPEG files go" : "The file goes") : plural(files, "file goes", "files go")) + " to the Trash (top bar), where " + (files > 1 ? "they stay" : "it stays") + " for " + trash.days + " days.", [
         { label: "Cancel" },
-        { label: "Delete", danger: true, onClick: () => {
-          // As miniaturas encolhem e somem, a foto grande se apaga; só então os arquivos vão embora
-          const frames = [...ui.sessionGallery.querySelectorAll(".carousel .frame")];
-          const thumbs = sessionGallery.selection.map((k) => frames[k]).filter(Boolean);
-          const big = ui.sessionGallery.querySelector(".stage img");
-          flyNodesToTrash(thumbs);  // as miniaturas voam até o ícone da lixeira
-          thumbs.forEach((t) => t.animate && t.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, easing: "ease-in", fill: "forwards" }));
-          if (big && big.animate && big.getAttribute("src")) big.animate([{ opacity: 1, transform: "scale(1)" }, { opacity: 0, transform: "scale(.85)" }], { duration: 260, easing: "ease-in", fill: "forwards" });
-          // A foto grande volta a aparecer quando a próxima carregar (ou, se nada mudar, em 1,5 s)
-          const reveal = () => { if (big) big.getAnimations().forEach((a) => a.cancel()); thumbs.forEach((t) => t.isConnected && t.getAnimations().forEach((a) => a.cancel())); };
-          setTimeout(() => {
-            window.deletePhotos(session, ...groups);
-            if (big) big.addEventListener("load", reveal, { once: true });
-            setTimeout(reveal, 1500);
-          }, 270);
-          const label = one ? "Photo " + pad(item.order || 0) : plural(picked.length, "photo", "photos");
-          toast(label + " deleted from the session of " + sessionLabel(session).date);
-          recordAction({ label: "Delete " + (one ? "photo " + pad(item.order || 0) : plural(picked.length, "photo", "photos")) + " from " + sessionLabel(session).date,
-            undo: () => restoreSession(session), redo: () => window.deletePhotos(session, ...groups) });
-        } },
+        { label: "Delete", danger: true, onClick: () => deletePhotosNow(sessionGallery.selection, false) },
       ]);
+  }
+  // Apaga as fotos (posições na galeria). dropped: soltas em cima da lixeira (a cópia já está lá)
+  function deletePhotosNow(indices, dropped) {
+    if (!currentSession || editing.on) return;
+    const picked = indices.map((k) => sessionGallery.items[k]).filter(Boolean);
+    if (!picked.length) return;
+    stopPlay();
+    const session = currentSession.name;
+    const one = picked.length === 1, item = picked[0];
+    const groups = picked.map((x) => x.group);
+    // As miniaturas encolhem e somem, a foto grande se apaga; só então os arquivos vão embora
+    const frames = [...ui.sessionGallery.querySelectorAll(".carousel .frame")];
+    const thumbs = indices.map((k) => frames[k]).filter(Boolean);
+    const big = ui.sessionGallery.querySelector(".stage img");
+    if (dropped) {
+      const t = trashTarget();
+      if (t && t.animate) t.animate([{ transform: "scale(1)" }, { transform: "scale(1.25)" }, { transform: "scale(1)" }], { duration: 240, easing: "ease-out" });
+    } else flyNodesToTrash(thumbs);  // as miniaturas voam até o ícone da lixeira
+    thumbs.forEach((t) => t.animate && t.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, easing: "ease-in", fill: "forwards" }));
+    if (big && big.animate && big.getAttribute("src")) big.animate([{ opacity: 1, transform: "scale(1)" }, { opacity: 0, transform: "scale(.85)" }], { duration: 260, easing: "ease-in", fill: "forwards" });
+    // A foto grande volta a aparecer quando a próxima carregar (ou, se nada mudar, em 1,5 s)
+    const reveal = () => { if (big) big.getAnimations().forEach((a) => a.cancel()); thumbs.forEach((t) => t.isConnected && t.getAnimations().forEach((a) => a.cancel())); };
+    setTimeout(() => {
+      window.deletePhotos(session, ...groups);
+      if (big) big.addEventListener("load", reveal, { once: true });
+      setTimeout(reveal, 1500);
+    }, 270);
+    const label = one ? "Photo " + pad(item.order || 0) : plural(picked.length, "photo", "photos");
+    toast(label + " deleted from the session of " + sessionLabel(session).date);
+    recordAction({ label: "Delete " + (one ? "photo " + pad(item.order || 0) : plural(picked.length, "photo", "photos")) + " from " + sessionLabel(session).date,
+      undo: () => restoreSession(session), redo: () => window.deletePhotos(session, ...groups) });
   }
 
   // Mostra uma sessão que acabou de voltar (relê a lista antes, para ela já estar lá)
@@ -1659,6 +1785,26 @@
     }
     setTimeout(() => { if (to && trash.animate) trash.animate([{ transform: "scale(1)" }, { transform: "scale(1.25)" }, { transform: "scale(1)" }], { duration: 240, easing: "ease-out" }); }, 470);
     setTimeout(() => { ghost.remove(); done(); }, 540);
+  }
+  // Soltar no botão da lixeira já é a confirmação: apaga sem perguntar (Cmd+Z ou a Trash trazem de volta)
+  function deleteSessionsNow(names) {
+    const list = names.map((n) => sessions.find((x) => x.name === n)).filter(Boolean);
+    if (!list.length || busy) return;
+    const ns = list.map((x) => x.name);
+    const wasFull = isFullscreen() && currentSession && ns.includes(currentSession.name);
+    const openName = currentSession && currentSession.name;
+    sessSel.clear();
+    toast(ns.length === 1 ? "Session deleted: " + sessionLabel(ns[0]).date + (list[0].inProject ? " (from the project folder)" : "") : plural(ns.length, "session", "sessions") + " deleted");
+    log("Deleted " + (ns.length === 1 ? "session " + sessionLabel(ns[0]).date : plural(ns.length, "session", "sessions") + ": " + ns.map((n) => sessionLabel(n).date).join(", ")), "ok");
+    ns.forEach((n) => flyToTrash(n, () => window.deleteSession(n)));
+    recordAction({ label: "Delete " + (ns.length === 1 ? "session " + sessionLabel(ns[0]).date : plural(ns.length, "session", "sessions")),
+      undo: () => Promise.all(ns.map((n) => restoreSession(n))).then((r) => {
+        const ok = r.some(Boolean);
+        // A que estava aberta volta aberta (na tela cheia, se foi apagada nela)
+        if (ok && ns.includes(openName)) reopenSession(openName, wasFull);
+        return ok;
+      }),
+      redo: () => { ns.forEach((n) => window.deleteSession(n)); } });
   }
   function deleteSessionAsk(s) {
     const label = sessionLabel(s.name);
@@ -5767,11 +5913,19 @@
     const top = Math.max(rawTop, box.top), bottom = Math.min(rawBottom, box.bottom - 2);
     return { left: box.left + 6, top, width: aside.clientWidth - 12, height: Math.max(0, bottom - top), rawTop, rawBottom };
   }
+  // Em cima de um botão (com uma folga em volta, para facilitar soltar em botões pequenos)
+  function overNode(x, y, node, pad) {
+    const r = node.getBoundingClientRect(), p = pad === undefined ? 8 : pad;
+    return r.width > 0 && x >= r.left - p && x <= r.right + p && y >= r.top - p && y <= r.bottom + p;
+  }
   function inRect(x, y, r) { return r && x >= r.left && x <= r.left + r.width && y >= r.top && y <= r.top + r.height; }
   function sessDropTarget(x, y) {
     const d = sessDrag;
     const under = document.elementFromPoint(x, y);
     if (!under) return null;
+    const trashBtn = trashTarget();
+    if (trashBtn && overNode(x, y, trashBtn)) return { el: trashBtn, trash: true };
+    if (!project.open) return null;
     if (!d.s.inProject) {
       if (under.closest("#projectBarBtn")) return { el: $("projectBarBtn"), toProject: true };
       if (d.zone && inRect(x, y, projectGroupRect())) return { el: d.zone, toProject: true };
@@ -5785,22 +5939,24 @@
     if (sessDrag) sessEndDrag(null);
     e.preventDefault();  // sem seleção de texto pelo caminho do arraste (o clique continua valendo)
     // Várias marcadas: vão juntas as do mesmo lado da segurada (todas do projeto, ou todas de fora)
-    let names = null;
+    let names = null, all = null;
     if (multi) {
-      names = sessions.filter((x) => sessSel.has(x.name) && !!x.inProject === !!s.inProject).map((x) => x.name);
+      all = sessions.filter((x) => sessSel.has(x.name)).map((x) => x.name);
+      names = all.filter((n) => !!sessions.find((x) => x.name === n).inProject === !!s.inProject);
       if (names.length < 2) names = null;
+      if (all.length < 2) all = null;
     }
     // A sessão segurada passa a ser a selecionada (a lista é redesenhada: pega a linha nova)
-    if (!names && (!currentSession || currentSession.name !== s.name)) {
+    if (!all && (!currentSession || currentSession.name !== s.name)) {
       showSession(s);
       li = ui.sessionList.querySelector('li.folder[data-name="' + CSS.escape(s.name) + '"]') || li;
     }
-    sessDrag = { li, s, names, x: e.clientX, y: e.clientY, moved: false, ghost: null, over: null };
+    sessDrag = { li, s, names, all, x: e.clientX, y: e.clientY, moved: false, ghost: null, over: null };
     li.setPointerCapture(e.pointerId);
     li.onpointermove = sessPointerMove;
     li.onpointerup = (ev) => {
       const d = sessDrag;
-      if (d && !d.moved && d.names) {
+      if (d && !d.moved && d.all) {
         // Clique simples (sem arrastar) numa das marcadas: desfaz a seleção e abre essa sessão
         sessEndDrag(null);
         sessSel.clear();
@@ -5821,7 +5977,7 @@
     if (!d.moved) {
       d.moved = true;
       d.li.classList.add("dragging");
-      if (d.names) ui.sessionList.querySelectorAll("li.folder.multi").forEach((x) => { if (d.names.includes(x.dataset.name)) x.classList.add("dragging"); });
+      if (d.all) ui.sessionList.querySelectorAll("li.folder.multi").forEach((x) => x.classList.add("dragging"));
       document.body.classList.add("session-drag", d.s.inProject ? "from-project" : "from-app");
       // Fantasma: cópia da linha que segue o ponteiro
       const r = d.li.getBoundingClientRect();
@@ -5829,19 +5985,21 @@
       d.ghost.className = "folder session-ghost";
       d.ghost.style.width = r.width + "px";
       d.ghost.style.left = r.left + "px"; d.ghost.style.top = r.top + "px";
-      if (d.names) {
+      if (d.all) {
         // Várias: o fantasma vira uma pilha com a contagem
         d.ghost.classList.add("stack");
-        d.ghost.appendChild(el("span", "session-ghost-count", plural(d.names.length, "session", "sessions")));
+        d.ghost.appendChild(el("span", "session-ghost-count", plural(d.all.length, "session", "sessions")));
       }
       document.body.appendChild(d.ghost);
       // Zona tracejada: a área do projeto (sessão de fora) ou a área "Not in project" (sessão do projeto)
-      d.zone = el("div", "session-drop-zone" + (d.s.inProject ? " out" : ""));
+      if (project.open) d.zone = el("div", "session-drop-zone" + (d.s.inProject ? " out" : ""));
       const what = d.names ? plural(d.names.length, "session", "sessions") + " " : "";
-      d.zone.innerHTML = '<span>' + (d.s.inProject ? "Drop to remove " + what + "from project" : "Drop to add " + what + "to project") + '</span>';
-      ui.sessionList.parentElement.appendChild(d.zone);
+      if (d.zone) d.zone.innerHTML = '<span>' + (d.s.inProject ? "Drop to remove " + what + "from project" : "Drop to add " + what + "to project") + '</span>';
+      if (d.zone) ui.sessionList.parentElement.appendChild(d.zone);
+      const t = trashTarget();
+      if (t) t.classList.add("drop-here");
     }
-    placeDropZone(d.zone, !d.s.inProject);
+    if (d.zone) placeDropZone(d.zone, !d.s.inProject);
     d.ghost.style.transform = "translate(" + dx + "px," + dy + "px)";
     const t = sessDropTarget(e.clientX, e.clientY);
     const el2 = t ? t.el : null;
@@ -5863,7 +6021,9 @@
     if (d.zone) d.zone.remove();
     if (d.over) d.over.classList.remove("drop-ok");
     document.body.classList.remove("session-drag", "from-project", "from-app");
+    document.querySelectorAll(".drop-here").forEach((x) => x.classList.remove("drop-here"));
     if (!target || busy) return;
+    if (target.trash) { deleteSessionsNow(d.all || [d.s.name]); return; }
     if (d.names) moveMany(d.names, target.toProject);
     else moveToProject(d.s.name, target.toProject);
   }

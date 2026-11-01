@@ -310,7 +310,24 @@ button { font: inherit; }
   border: 0; background: var(--noct-bg);
   grid-template-columns: minmax(0, 1fr);
 }
-.sessions-panel.fullscreen .session-folders { display: none; }
+/* Na tela cheia, as sessões viram uma barra à esquerda, escondida: aparece com o ponteiro na borda
+   esquerda da janela ou quando o Tab chega nela */
+.sessions-panel.fullscreen { overflow: hidden; }
+.sessions-panel.fullscreen .session-folders {
+  position: absolute; left: 0; top: 0; bottom: 0; z-index: 6; width: 300px; box-sizing: border-box;
+  background: var(--noct-surface); border-right: 1px solid var(--noct-border-strong);
+  box-shadow: 12px 0 40px rgba(0, 0, 0, .55);
+  transform: translateX(-100%); transition: transform 180ms var(--noct-ease), box-shadow 180ms var(--noct-ease);
+}
+.sessions-panel.fullscreen:not(.side-open) .session-folders:not(:focus-within) { box-shadow: none; }
+.sessions-panel.fullscreen.side-open .session-folders,
+.sessions-panel.fullscreen .session-folders:focus-within { transform: none; }
+/* Barra aberta: a foto e os botões andam para o lado (nada fica escondido embaixo dela, como a lixeira) */
+.sessions-panel.fullscreen .session-viewer { transition: margin-left 180ms var(--noct-ease); }
+.sessions-panel.fullscreen.side-open .session-viewer,
+.sessions-panel.fullscreen:has(.session-folders:focus-within) .session-viewer { margin-left: 300px; }
+/* A borda esquerda da tela cheia mostra uma linha fina: ali a barra abre */
+.sessions-panel.fullscreen::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; z-index: 5; background: var(--noct-border); pointer-events: none; }
 .sessions-panel.fullscreen .session-viewer { padding: 16px 22px 20px; }
 
 /* Fora da tela cheia: sem título; os botões ficam na linha das miniaturas */
@@ -1345,3 +1362,14 @@ html.kbd-focus input:focus + .save-check { outline: 2px solid var(--noct-primary
 .full-trash-bar span:empty { display: none; }
 .gallery-title-row { display: flex; align-items: center; gap: 14px; }
 .sessions-panel:not(.fullscreen) .full-trash-bar { display: none; }
+
+/* Arrastar sessões e fotos até a lixeira */
+.trash-bar.drop-here { outline: 1px dashed var(--noct-border-strong); outline-offset: 4px; }
+.trash-bar.drop-ok { border-color: var(--noct-danger); color: var(--noct-danger); background: rgba(var(--noct-danger-rgb), .12); outline-color: var(--noct-danger); }
+.frame-ghost { position: fixed; z-index: 70; margin: 0; pointer-events: none; list-style: none; box-sizing: border-box; opacity: .9; box-shadow: 0 12px 32px rgba(0, 0, 0, .55); }
+.frame-ghost.stack { box-shadow: 4px 4px 0 -1px var(--noct-elevated), 4px 4px 0 0 var(--noct-border-strong), 8px 8px 0 -1px var(--noct-elevated), 8px 8px 0 0 var(--noct-border-strong), 0 12px 32px rgba(0, 0, 0, .55); }
+.frame-ghost-count { position: absolute; bottom: 6px; right: 6px; padding: 3px 7px; background: var(--noct-primary); color: var(--noct-bg); font: 700 10px var(--noct-font-mono); text-transform: uppercase; letter-spacing: .1em; white-space: nowrap; }
+body.photo-drag, body.photo-drag * { cursor: grabbing !important; user-select: none !important; -webkit-user-select: none !important; }
+/* Com Cmd/Ctrl/Shift apertado o clique em "Add to project" só marca a sessão: o botão não reage ao ponteiro */
+body.mod-keys .folder-add:hover:not(:disabled) { background: none; border-color: transparent; }
+body.mod-keys .folder-add { cursor: default; }
