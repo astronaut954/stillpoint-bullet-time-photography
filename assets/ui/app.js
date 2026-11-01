@@ -819,7 +819,10 @@
   function smallButton(b, locked, usesCamera) {
     b.dataset.locked = locked ? "1" : "0";
     b.dataset.sdk = usesCamera ? "1" : "0";
-    b.disabled = busy || !!locked;
+    // Já nasce no estado certo: a lista é redesenhada a cada segundo enquanto uma câmera conecta, e o
+    // botão que usa a câmera (Identify) nascia ativo e era desativado logo depois (piscava)
+    const sdkBusy = usesCamera && cameras.some((c) => c.state === "connecting" && !c.starting);
+    b.disabled = busy || !!locked || sdkBusy;
     return b;
   }
 
