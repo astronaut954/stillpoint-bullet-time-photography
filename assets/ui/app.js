@@ -670,8 +670,13 @@
       move(d.i, target);
     }
 
-    function move(from, to, free) {
+    function move(from, to, free, dropRect) {
       if (to < 0 || to >= items.length || from === to) { select(from); return; }
+      // Onde cada miniatura estava: depois de redesenhar, as que mudaram de lugar deslizam até o novo
+      // (como nas câmeras); a arrastada sai de onde foi solta
+      const was = new Map();
+      [...el.carousel.children].forEach((li, k) => { if (items[k]) was.set(items[k], li.getBoundingClientRect()); });
+      if (dropRect) was.set(items[from], dropRect);
       const [item] = items.splice(from, 1);
       items.splice(to, 0, item);
       index = to;
@@ -679,6 +684,13 @@
       // Arraste fora do modo Reorder: a ordem nova vale na hora (os números das miniaturas também)
       if (free) items.forEach((it, k) => { it.order = k + 1; });
       render();
+      [...el.carousel.children].forEach((li, k) => {
+        const r0 = was.get(items[k]);
+        if (!r0 || !li.animate) return;
+        const r1 = li.getBoundingClientRect();
+        const dx = r0.left - r1.left, dy = r0.top - r1.top;
+        if (Math.abs(dx) > 1 || Math.abs(dy) > 1) li.animate([{ transform: "translate(" + dx + "px," + dy + "px)" }, { transform: "none" }], { duration: 220, easing: "ease-out" });
+      });
       showLarge();
       markSelected(true);
       if (free) { if (opts.onFreeReorder) opts.onFreeReorder(items); }
@@ -745,6 +757,7 @@
       free = null;
       d.li.onpointermove = d.li.onpointerup = d.li.onpointercancel = d.li.onlostpointercapture = null;
       if (d.nodes) d.nodes.forEach((n) => n.classList.remove("dragging"));
+      const ghostRect = d.ghost ? d.ghost.getBoundingClientRect() : null;
       if (d.ghost) d.ghost.remove();
       if (d.over) d.over.classList.remove("drop-ok");
       el.marker.classList.add("hidden");
@@ -755,7 +768,7 @@
       setTimeout(() => { suppressClick = false; }, 0);
       if (cancel) return;
       if (d.over && opts.onDropOut) { opts.onDropOut(d.over, d.picks); return; }
-      if (d.slot !== null) move(d.i, d.slot, true);
+      if (d.slot !== null) move(d.i, d.slot, true, ghostRect);
     }
 
     return {
@@ -1415,6 +1428,7 @@
       const li = document.createElement("li");
       li.className = "folder" + (currentSession && currentSession.name === s.name ? " active" : "");
       li.dataset.name = s.name;
+      li.title = (s.label ? s.label + " · " : "") + label.date;  // na barra só de ícones da tela cheia, o nome aparece aqui
       if (projectOpen && !s.inProject && !notInProjectOpen) li.classList.add("hidden");
       li.innerHTML = icon("session", 16) + '<div><div class="folder-date"></div><div class="folder-meta"></div></div>';
       if (sessSel.has(s.name) && selectionActive()) li.classList.add("multi");
@@ -1542,7 +1556,7 @@
 
   function sessionHead(session) {
     const label = sessionLabel(session.name);
-    sessionGallery.setHead(label.date + (label.time ? label.time.slice(5) : ""),
+    sessionGallery.setHead(label.date,  // a data já tem os segundos
       editing.on ? "Drag the photos, or select one and use the arrows. Then save the order."
                  : label.detail);
   }
@@ -1627,7 +1641,7 @@
       if (editing.on) stopReorder(false);
     }
     sessionsPanel.classList.toggle("fullscreen", on);
-    if (!on) sessionsPanel.classList.remove("side-open");
+    if (!on) { sessionsPanel.classList.remove("side-open"); setSideWide(false); }
     sessionGallery.setActions(currentActions());
   }
   function isFullscreen() {
@@ -1641,9 +1655,19 @@
     if (!isFullscreen()) return;
     const open = sessionsPanel.classList.contains("side-open");
     if (!open && e.clientX <= 14) setSideOpen(true);
-    else if (open && !sessDrag && !document.querySelector("body > .project-menu") && e.clientX > sideAside.getBoundingClientRect().right + 24) setSideOpen(false);
+    else if (open && !sessionsPanel.classList.contains("side-wide") && !sessDrag && !document.querySelector("body > .project-menu") && e.clientX > sideAside.getBoundingClientRect().right + 24) setSideOpen(false);
   });
-  document.addEventListener("mouseleave", () => { if (!sessDrag) setSideOpen(false); });
+  document.addEventListener("mouseleave", () => { if (!sessDrag && !sessionsPanel.classList.contains("side-wide")) setSideOpen(false); });
+  // Botão de cima da barra: mostra os nomes (barra larga, fica aberta) ou volta aos ícones
+  function setSideWide(on) {
+    sessionsPanel.classList.toggle("side-wide", !!on && isFullscreen());
+    const b = $("sideWideBtn"), wide = sessionsPanel.classList.contains("side-wide");
+    b.title = wide ? "Hide the session names" : "Show the session names";
+    b.setAttribute("aria-label", b.title);
+    b.setAttribute("aria-pressed", wide ? "true" : "false");
+    if (!wide) setSideOpen(sideAside.matches(":hover"));
+  }
+  $("sideWideBtn").addEventListener("click", () => setSideWide(!sessionsPanel.classList.contains("side-wide")));
   // Teclas de seleção apertadas: o botão "Add to project" não reage ao ponteiro (o clique só marca)
   const modKeys = (e) => document.body.classList.toggle("mod-keys", e.metaKey || e.ctrlKey || e.shiftKey);
   document.addEventListener("keydown", modKeys, true);
@@ -5983,7 +6007,7 @@
       const r = d.li.getBoundingClientRect();
       d.ghost = d.li.cloneNode(true);
       d.ghost.className = "folder session-ghost";
-      d.ghost.style.width = r.width + "px";
+      d.ghost.style.width = Math.max(r.width, 260) + "px";
       d.ghost.style.left = r.left + "px"; d.ghost.style.top = r.top + "px";
       if (d.all) {
         // Várias: o fantasma vira uma pilha com a contagem

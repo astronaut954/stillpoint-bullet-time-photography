@@ -1123,8 +1123,12 @@ projeto num HD externo.
       (para mudar a ordem, uma foto por vez).
 - [ ] Arrastar uma sessão da lista até o botão da lixeira: apaga sem perguntar; Cmd+Z traz de volta. Funciona
       também sem projeto aberto e com várias sessões marcadas.
-- [ ] Tela cheia: uma linha fina na borda esquerda; levar o ponteiro até a borda abre a barra das sessões
-      (do projeto e "Not in project"), e a foto anda para o lado; tirar o ponteiro da barra fecha.
+- [ ] Ao soltar uma miniatura em outro lugar, as outras deslizam até a posição nova (como nas câmeras).
+- [ ] Tela cheia: uma linha fina na borda esquerda; levar o ponteiro até a borda abre a barra das sessões só com
+      ícones (o nome aparece ao parar o ponteiro num deles), e a foto anda para o lado; tirar o ponteiro fecha.
+- [ ] O botão de cima da barra ("Show the session names") abre a barra larga, com os nomes, "Sessions" e o botão
+      da janela Project; ela fica aberta até clicar no mesmo botão ("Hide the session names").
+- [ ] O título da sessão na tela cheia mostra a hora uma vez só (ex.: "Oct 31, 23:53:22").
 - [ ] Na barra: clicar numa sessão abre essa sessão na tela cheia; Cmd+clique, Shift+clique, botão direito e
       arrastar funcionam como na lista normal.
 - [ ] Tela cheia: arrastar uma sessão da barra, ou uma miniatura, até o botão da lixeira à direita do nome da

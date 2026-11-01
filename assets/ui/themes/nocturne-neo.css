@@ -325,7 +325,26 @@ button { font: inherit; }
 /* Barra aberta: a foto e os botões andam para o lado (nada fica escondido embaixo dela, como a lixeira) */
 .sessions-panel.fullscreen .session-viewer { transition: margin-left 180ms var(--noct-ease); }
 .sessions-panel.fullscreen.side-open .session-viewer,
-.sessions-panel.fullscreen:has(.session-folders:focus-within) .session-viewer { margin-left: 300px; }
+.sessions-panel.fullscreen:has(.session-folders:focus-within) .session-viewer { margin-left: 60px; }
+.sessions-panel.fullscreen.side-wide .session-viewer { margin-left: 300px; }
+.sessions-panel.fullscreen.side-wide .session-folders { transform: none; box-shadow: 12px 0 40px rgba(0, 0, 0, .55); }
+/* O botão de cima abre e fecha os nomes; só existe na tela cheia */
+.side-wide-btn { display: none; }
+.sessions-panel.fullscreen .side-wide-btn { display: inline-flex; }
+.sessions-panel.fullscreen.side-wide .side-wide-btn { color: var(--noct-primary); border-color: var(--noct-primary); }
+/* Fechada (só ícones): uma coluna estreita, um ícone por sessão; o nome aparece ao parar o ponteiro */
+.sessions-panel.fullscreen:not(.side-wide) .session-folders { width: 60px; padding: 12px 8px; overflow-x: hidden; }
+.sessions-panel.fullscreen:not(.side-wide) .sessions-head { justify-content: center; }
+.sessions-panel.fullscreen:not(.side-wide) .sessions-head h2,
+.sessions-panel.fullscreen:not(.side-wide) #projectWindowBtn,
+.sessions-panel.fullscreen:not(.side-wide) #noSessions,
+.sessions-panel.fullscreen:not(.side-wide) .folder > div,
+.sessions-panel.fullscreen:not(.side-wide) .folder-divider > span:not(.chev):not(.line),
+.sessions-panel.fullscreen:not(.side-wide) .session-drop-zone span { display: none; }
+.sessions-panel.fullscreen:not(.side-wide) .folder { justify-content: center; padding: 9px 0; }
+.sessions-panel.fullscreen:not(.side-wide) .folder svg { margin: 0; }
+.sessions-panel.fullscreen:not(.side-wide) .folder-divider { gap: 2px; padding: 4px 0; margin: 10px 0 2px; }
+.sessions-panel.fullscreen:not(.side-wide) .session-drop-zone { left: 2px !important; right: 2px !important; }
 /* A borda esquerda da tela cheia mostra uma linha fina: ali a barra abre */
 .sessions-panel.fullscreen::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; z-index: 5; background: var(--noct-border); pointer-events: none; }
 .sessions-panel.fullscreen .session-viewer { padding: 16px 22px 20px; }
@@ -1373,3 +1392,4 @@ body.photo-drag, body.photo-drag * { cursor: grabbing !important; user-select: n
 /* Com Cmd/Ctrl/Shift apertado o clique em "Add to project" só marca a sessão: o botão não reage ao ponteiro */
 body.mod-keys .folder-add:hover:not(:disabled) { background: none; border-color: transparent; }
 body.mod-keys .folder-add { cursor: default; }
+.sessions-panel.fullscreen.side-wide .sessions-head h2 { margin-right: auto; }
