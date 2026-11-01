@@ -915,6 +915,9 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) serve para tudo, menos para a impress
 - [ ] Save sessions: ← → trocam a foto da prévia em Photos e a foto do Tilt em Lenticular.
 - [ ] Lenticular: o botão do modo teatro (à esquerda, em cima da prévia) vem antes de Tilt / Interlaced no Tab.
 - [ ] Live: "Another window" abre a Live 2 um pouco à direita e abaixo da primeira (fora de tela cheia).
+- [ ] Live: com duas janelas Live abertas, "Another window" fica desligado; ao fechar a Live 2, volta a funcionar.
+- [ ] Activity: ligar/desligar "Show technical details" não faz a lista pular — a linha que estava no alto
+      continua no mesmo lugar (no fim da lista, continua no fim); as linhas técnicas aparecem devagar.
 - [ ] Confirmações (ex.: "Calibrate with chart"): Enter aperta o botão que está com o contorno verde
       (Cancel, Open chart ou Start), não sempre o principal.
 - [ ] Pitch test: Enter numa opção muda a opção e o foco continua nela; o próximo Tab segue dali.
@@ -1012,6 +1015,7 @@ podem ficar só em JPG).
 | --- | --- | --- | --- | --- | --- |
 | 2026-10 | Windows | v1.3.0 | Canon SL3 + Canon T7 | sim | Teste de referência, antes da migração |
 | 2026-10-29 | Mac (M5, macOS 26) | etapa-17-project (2.12.0) | 9 simuladas | sim | Roteiro 23 com câmeras simuladas aprovado pelo dono do projeto (projeto, arrastar, botão direito, rótulos, rename, undo/redo, avisos, Activity). Windows: compila; sem teste de uso. Câmeras reais: pendente |
+| 2026-11-01 | Mac (M5, macOS 26) | etapa-19-lenticular (2.14.0) | câmeras reais | sim | Seção 25 inteira aprovada pelo dono do projeto (Camera settings, ordem das câmeras, fotos reais, Save sessions com projeto/Exports/Originals+JPG/Lenticular TIFF) |
 | 2026-10-29 | Mac (M5, macOS 26) | v2.12.0 | Canon T7 + SL3 + T5 | sim | Câmeras reais: sessão em `Originals/` com `session.json`; `.xmp` renomeado junto no Reorder + Cmd+Z; Camera settings com undo/redo (um por segundo, sem travar; valores batem com o LCD; disparo depois OK); Copy from camera + undo; apagar foto/sessão + Cmd+Z com RAW (`Photos/.trash`, vazia ao reabrir); projeto em HD externo (apagar + undo copiando entre discos; reabrir pelos recentes); ordem das câmeras (^ v e Reorder by photo) + undo; foto recusada (Sweep 0,3 s, 1→3→1: "1 MISSING" sobrevive ao reabrir). **Bug:** HD ejetado com o app fechado → ao abrir, "No project" em vez de âmbar "not reachable" (corrigido na 2.12.1). |
 | 2026-10-10 | Windows | etapa-1-cmake (CMake + EDSDK 13.20.10) | Canon SL3 + Canon T7 | sim | Checklist completa |
 | 2026-10-10 | Windows | etapa-2-plataforma (camada de plataforma) | Canon SL3 + Canon T7 | sim | Teste reduzido: detecção, pasta Downloads, áudio, 2 sessões, desconexão |

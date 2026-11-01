@@ -6494,7 +6494,27 @@
     statsWatch(ui.log.classList.contains("expanded"));
   });
   ui.restartAppBtn.addEventListener("click", restartApp);
-  ui.techToggle.addEventListener("change", () => { ui.logList.classList.toggle("show-tech", ui.techToggle.checked); ui.log.classList.toggle("show-tech", ui.techToggle.checked); });
+  // Show technical details: as linhas técnicas entram e saem sem a lista "pular". A linha comum que
+  // estava no alto da área visível fica no mesmo lugar (se a lista estava no fim, continua no fim);
+  // as linhas técnicas que aparecem surgem devagar.
+  ui.techToggle.addEventListener("change", () => {
+    const list = ui.logList, on = ui.techToggle.checked;
+    const atEnd = list.scrollHeight - list.scrollTop - list.clientHeight < 4;
+    const top = list.getBoundingClientRect().top;
+    const anchor = [...list.children].find((li) => !li.classList.contains("tech") && li.getBoundingClientRect().bottom > top + 1);
+    const before = anchor ? anchor.getBoundingClientRect().top - top : 0;
+    list.classList.toggle("show-tech", on);
+    ui.log.classList.toggle("show-tech", on);
+    if (atEnd) list.scrollTop = list.scrollHeight;
+    else if (anchor) list.scrollTop += (anchor.getBoundingClientRect().top - top) - before;
+    if (on) {
+      const box = list.getBoundingClientRect();
+      [...list.querySelectorAll("li.tech")].forEach((li) => {
+        const r = li.getBoundingClientRect();
+        if (r.bottom >= box.top && r.top <= box.bottom && li.animate) li.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 260, easing: "ease-out" });
+      });
+    }
+  });
 
   // ----- Uso do computador no rodapé do Activity (2.12.4) -----
   // Mede só com o painel aberto (a cada 2 s); fechado, custo zero. A primeira amostra só dá a

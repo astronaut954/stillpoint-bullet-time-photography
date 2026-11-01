@@ -2286,9 +2286,19 @@ namespace
         struct LiveWindow
         {
             int index = 0;
+            bool shown = false;  // à mostra (fechar só esconde)
             std::unique_ptr<webview::webview> view;
         };
         std::vector<std::unique_ptr<LiveWindow>> lives;
+        // Quantas Live estão abertas: as páginas desligam "Another window" com duas
+        auto livesOpen = [&]
+        {
+            int n = 0;
+            for (const auto& live : lives)
+                n += live->shown ? 1 : 0;
+            return n;
+        };
+        auto emitLives = [&] { listener.Emit(Json("liveWindows").Add("open", livesOpen())); };
 
         // Som do disparo: {"sound":…,"sounds":…} guardado em settings.txt (live=)
         auto soundSettings = [&]
@@ -2352,6 +2362,8 @@ namespace
                 {
                     if (auto native = live->view->window(); native.ok())
                         NativeWindow::Show(native.value());
+                    live->shown = true;
+                    emitLives();
                     return;
                 }
             auto live = std::make_unique<LiveWindow>();
@@ -2373,6 +2385,7 @@ namespace
                     .Add("opts", current.count(key) ? current.at(key) : std::string())
                     .Raw("sound", Json("sound").Add("sound", sound).Add("sounds", sounds).Str())
                     .Raw("screens", screensJson())
+                    .Add("lives", livesOpen())
                     .Raw("cameraEvent", cameras.empty() ? "null" : cameras).Str();
             });
             // O disparo e o cancelamento passam pela página principal (o plano do Timing é dela)
@@ -2413,10 +2426,13 @@ namespace
                     NativeWindow::SetWindowed(native.value(), args[3] == "1");
                 return "null";
             });
-            v.bind("liveClose", [self](const std::string&) -> std::string
+            LiveWindow* me = live.get();
+            v.bind("liveClose", [&, self, me](const std::string&) -> std::string
             {
                 if (auto native = self->window(); native.ok())
                     NativeWindow::Hide(native.value());
+                me->shown = false;
+                emitLives();
                 return "null";
             });
             // "Another window": abre (ou traz de volta) a Live 2 um pouco à direita e abaixo
@@ -2444,15 +2460,19 @@ namespace
             if (auto native = v.window(); native.ok())
             {
                 void* handle = native.value();
-                NativeWindow::InstallCloseGuard(handle, [handle]
+                NativeWindow::InstallCloseGuard(handle, [&, handle, me]
                 {
                     NativeWindow::Hide(handle);
+                    me->shown = false;
+                    emitLives();
                     return false;
                 });
             }
             v.set_html(LoadPage("live.html", theme));
             listener.AddWindow(&v);
+            live->shown = true;
             lives.push_back(std::move(live));
+            emitLives();
         };
         // openLive(índice): abre (ou traz de volta) a janela Live 1 ou 2
         window.bind("openLive", [&](const std::string& request) -> std::string

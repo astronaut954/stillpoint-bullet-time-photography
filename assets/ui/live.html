@@ -79,6 +79,7 @@
       if (event.type === "cameras") { cameras = event.cameras || []; Live.setCameras(cameras); return; }
       if (event.type === "soundChanged") { Live.setSound({ sound: !!event.sound, sounds: !!event.sounds }); return; }
       if (event.type === "screens") { Live.setScreens(event.screens || []); return; }
+      if (event.type === "liveWindows") { Live.setLives(event.open); return; }
       if (event.type === "sessions") {
         const list = event.sessions || [];
         const newest = list[0];
@@ -101,6 +102,7 @@
         another: info.index === 1 ? () => window.liveAnother() : null,
       }, info.opts || "", info.sound || null, info.screens || []);
       ready = true;
+      Live.setLives(info.lives || 1);
       cameras = (info.cameraEvent && info.cameraEvent.cameras) || [];
       Live.setCameras(cameras);
       Live.open();

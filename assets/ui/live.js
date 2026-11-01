@@ -253,6 +253,10 @@ window.Live = (function () {
     el.onTopLabel.classList.toggle("hidden", S.opts.display === "full");
     el.changeDisplay.classList.toggle("hidden", !(S.opts.display === "full" && S.screens.length > 1));
     el.another.classList.toggle("hidden", !cb.another);
+    // Duas Live já abertas: desligado até uma fechar
+    el.another.disabled = S.lives >= 2;
+    el.another.title = S.lives >= 2 ? "Two Live windows are open. Close one to open another."
+      : "A second Live window, for example Operator here and Audience on the TV";
     el.sounds.checked = S.sound.sounds;
   }
 
@@ -644,6 +648,8 @@ window.Live = (function () {
     if (sound) Object.assign(S.sound, sound);
     setOpts(Object.assign({}, DEFAULTS, parsed), true);
   }
+  // Quantas janelas Live estão abertas (aviso do app ao abrir/fechar uma)
+  function setLives(n) { S.lives = n || 0; if (el) renderOpts(); }
   function setSoundState(sound) { Object.assign(S.sound, sound || {}); renderOpts(); }
   function setScreens(screens) {
     S.screens = Array.isArray(screens) ? screens : [];
@@ -682,5 +688,5 @@ window.Live = (function () {
   function isOpen() { return S.open; }
   function options() { return Object.assign({}, S.opts); }
 
-  return { init, setCameras, open, close, isOpen, handle, playback, options, setOptions: setOpts, setSound: setSoundState, setScreens };
+  return { init, setCameras, open, close, isOpen, handle, playback, options, setOptions: setOpts, setSound: setSoundState, setScreens, setLives };
 })();
