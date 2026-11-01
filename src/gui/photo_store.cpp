@@ -1021,6 +1021,22 @@ std::vector<TrashItem> PhotoStore::ListTrash() const
             t.reachable = fs::is_directory(fs::path(e.info["location"]), pec);
             try { t.bytes = std::stoull(e.info["bytes"]); } catch (...) { t.bytes = 0; }
             try { t.sessions = std::stoi(e.info["sessions"]); } catch (...) { t.sessions = 0; }
+            // O que estava na lixeira de dentro do projeto (foi junto com a pasta)
+            if (t.reachable)
+                for (auto& n : TrashEntries(fs::path(e.info["location"]) / kProjectTrash, fs::path()))
+                {
+                    TrashItem inner;
+                    inner.id = "nested/" + e.path.filename().string() + "/" + n.path.filename().string();
+                    inner.session = n.info["session"];
+                    inner.wholeSession = n.info["kind"] != "photos";
+                    inner.photos = CountTrashPhotos(n.path);
+                    inner.bytes = FolderBytes(n.path);
+                    inner.deletedAt = n.deletedAt;
+                    inner.order = n.order;
+                    inner.inProject = true;
+                    inner.parent = t.id;
+                    items.push_back(inner);
+                }
         }
         else
         {
@@ -1128,8 +1144,22 @@ static fs::path TrashPathFromId(const std::string& id, const fs::path& appTrash,
     if (slash == std::string::npos)
         return {};
     const std::string where = id.substr(0, slash), name = id.substr(slash + 1);
-    if (name.empty() || name.find_first_of("/\\") != std::string::npos || name == "." || name == "..")
+    if (name.empty() || (where != "nested" && name.find_first_of("/\\") != std::string::npos) || name == "." || name == "..")
         return {};
+    if (where == "nested")
+    {
+        // "nested/<item do projeto>/<item de dentro>": dentro da lixeira da pasta do projeto apagado
+        const auto slash2 = name.find('/');
+        if (slash2 == std::string::npos)
+            return {};
+        const std::string pointer = name.substr(0, slash2), inner = name.substr(slash2 + 1);
+        if (pointer.empty() || inner.empty() || inner.find_first_of("/\\") != std::string::npos || pointer == ".." || inner == "..")
+            return {};
+        auto info = ReadTrashInfo(appTrash / pointer);
+        if (info["kind"] != "project")
+            return {};
+        return fs::path(info["location"]) / kProjectTrash / inner;
+    }
     if (where == "app")
         return appTrash / name;
     if (where == "project" && !projectTrash.empty())
@@ -1139,6 +1169,11 @@ static fs::path TrashPathFromId(const std::string& id, const fs::path& appTrash,
 
 bool PhotoStore::RestoreTrashItem(const std::string& id, std::string& errorMessage, std::vector<std::string>* restored) const
 {
+    if (id.rfind("nested/", 0) == 0)
+    {
+        errorMessage = "This item is inside a deleted project. Restore the project first.";
+        return false;
+    }
     const fs::path projectTrash = projectRoot.empty() ? fs::path() : projectRoot.parent_path() / kProjectTrash;
     const fs::path entry = TrashPathFromId(id, root / kTrashFolder, projectTrash);
     std::error_code ec;

@@ -1124,9 +1124,14 @@ namespace
         {
             const auto items = store.ListTrash();
             unsigned long long bytes = 0;
+            int count = 0;
             for (const auto& item : items)
-                bytes += item.bytes;
-            listener.Emit(Json("trash").Add("count", static_cast<int>(items.size())).Raw("bytes", std::to_string(bytes)).Add("days", kTrashDays));
+                if (item.parent.empty())  // o de dentro de um projeto apagado já conta no projeto
+                {
+                    bytes += item.bytes;
+                    ++count;
+                }
+            listener.Emit(Json("trash").Add("count", count).Raw("bytes", std::to_string(bytes)).Add("days", kTrashDays));
         };
         auto emitSessions = [&]
         {
@@ -3665,7 +3670,7 @@ namespace
                     .Add("whole", item.wholeSession).Add("photos", item.photos).Raw("bytes", std::to_string(item.bytes))
                     .Raw("deletedAt", std::to_string(item.deletedAt)).Add("order", std::to_string(item.order))
                     .Add("inProject", item.inProject).Add("isProject", item.isProject).Add("reachable", item.reachable)
-                    .Add("sessions", item.sessions).Str();
+                    .Add("sessions", item.sessions).Add("parent", item.parent).Str();
             return Json("trash").Raw("items", list + "]").Add("days", kTrashDays)
                 .Add("project", project.IsOpen() ? project.Name() : std::string()).Str();
         });

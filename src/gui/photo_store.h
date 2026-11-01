@@ -34,6 +34,9 @@ struct TrashItem
     bool isProject = false;
     bool reachable = true;
     int sessions = 0;
+    // Item da lixeira de dentro de um projeto apagado: o id do projeto (vazio nos outros). Volta junto
+    // com o projeto; o tamanho já conta no do projeto.
+    std::string parent;
 };
 
 struct StoredSession

@@ -1054,7 +1054,11 @@ projeto num HD externo.
 - [ ] Restore na Trash: a pasta volta para o lugar e para os recentes (não abre sozinho); Cmd+Z manda de novo para a Trash.
 - [ ] Projeto num HD desligado: na Trash aparece apagado, com "The disk with this project is not connected…", e
       Restore / Delete permanently desligados. Empty trash não mexe nele (fica até o disco voltar).
-- [ ] Delete permanently num projeto: apaga a pasta escondida de vez.
+- [ ] Sessão apagada de um projeto e depois o projeto inteiro: na Trash, a sessão aparece logo abaixo do projeto,
+      apagada, com "follows the project", Restore desligado e o aviso "This session was in the trash of the project
+      …, which was deleted after. Restore the project first." Restaurando o projeto (e abrindo-o), ela volta para
+      "In the project <nome>".
+- [ ] Delete permanently num projeto: o aviso diz que leva junto os itens da lixeira dele; apaga a pasta escondida de vez.
 
 ## 27. Apagar várias sessões e o nome Export sessions (2.15.0)
 
