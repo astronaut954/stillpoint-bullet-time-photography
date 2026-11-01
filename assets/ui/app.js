@@ -5976,7 +5976,13 @@
         let current = item.id;
         recordAction({ label: "Restore project " + item.session,
           undo: () => Promise.resolve(window.projectDelete(r.folder)).then((x) => { if (x && x.ok) { current = x.id; return true; } toast((x && x.error) || "Could not move the project back to the trash.", 8000, { warn: true }); return false; }),
-          redo: () => Promise.resolve(window.trashRestore(current)).then((x) => !!(x && x.ok)) });
+          // Refazer: restaura de novo e, como no Restore, abre se não houver projeto aberto
+          redo: () => Promise.resolve(window.trashRestore(current)).then((x) => {
+            if (!x || !x.ok) return false;
+            if (!project.open && x.folder) return Promise.resolve(window.projectOpen(x.folder)).then((o) => { projectResult(o); return true; });
+            refreshSessions();
+            return true;
+          }) });
         return;
       }
       const text = (item.whole ? "Session restored: " : plural(item.photos, "photo", "photos") + " restored to ") + label.date;
@@ -6027,7 +6033,10 @@
             wholeSessions.forEach((s) => window.deleteSession(s)); photoOnly.forEach((d) => d.files.length && window.deletePhotos(d.session, ...d.files));
             return Promise.all(projects.map((d) => Promise.resolve(window.projectDelete(d.project)).then((x) => { if (x && x.ok) projectIds[d.project] = x.id; })));
           },
-          redo: () => Promise.all(sessionsBack.map((s) => restoreSession(s)).concat(projects.map((d) => projectIds[d.project] ? window.trashRestore(projectIds[d.project]) : null))) });
+          redo: () => Promise.all(sessionsBack.map((s) => restoreSession(s)).concat(projects.map((d) => projectIds[d.project] ? window.trashRestore(projectIds[d.project]) : null))).then(() => {
+            if (projects.length && !project.open) return Promise.resolve(window.projectOpen(projects[0].project)).then((o) => { projectResult(o); return true; });
+            return true;
+          }) });
       });
     });
   }
