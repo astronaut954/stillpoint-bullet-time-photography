@@ -1016,7 +1016,7 @@ podem ficar só em JPG).
 Pode ser com câmeras simuladas (`STILLPOINT_FAKE_CAMERAS=9`), mas o item do HD externo precisa de um
 projeto num HD externo.
 
-- [ ] Barra de cima: ao lado do botão do projeto, o botão da lixeira (ícone) com o número de itens; parando
+- [ ] Barra de cima: ao lado do botão do projeto, o botão da lixeira (ícone) com o número de itens e o espaço em GB ("3 · 1.6 GB"); parando
       o mouse, "Trash: n items · tamanho · kept 15 days" (vazia: "Trash: empty…").
 - [ ] Nome de projeto comprido: aparece cortado com "…" (até 24 caracteres); parando o mouse, o nome inteiro.
 - [ ] Apagar uma sessão (fora de projeto): o aviso diz que vai para a Trash por 15 dias; o número do botão sobe.
@@ -1031,6 +1031,8 @@ projeto num HD externo.
       Restore desligado e o aviso "The whole session was deleted after this photo. Restore the session first…".
       Restaurar a sessão: a linha da foto volta a funcionar. Delete permanently na sessão: o aviso diz que leva
       junto a foto apagada antes, e as duas linhas saem.
+- [ ] Restore everything: tudo volta (as sessões inteiras primeiro; fotos apagadas antes da sessão voltam para
+      dentro dela); Cmd+Z manda tudo de volta para a Trash; Cmd+Shift+Z restaura de novo.
 - [ ] Empty trash: pergunta; apaga tudo; a janela mostra "The trash is empty." e o número some do botão.
 - [ ] Cmd+Z depois de apagar uma sessão continua trazendo de volta (e ela sai da Trash).
 - [ ] Fechar e abrir o app: os itens continuam na Trash (antes eram apagados ao abrir).

@@ -1323,3 +1323,6 @@ html.kbd-focus input:focus + .save-check { outline: 2px solid var(--noct-primary
 .trash-row.blocked .trash-main b, .trash-row.blocked .trash-kind { opacity: .45; }
 .trash-row small.trash-note { color: var(--noct-pending); }
 .trash-row.blocked { padding-left: 22px; }
+.trash-bar .trash-size { color: var(--noct-text-dim); font-weight: 500; }
+.trash-bar .trash-size:empty { display: none; }
+.trash-bar .trash-size::before { content: "· "; }

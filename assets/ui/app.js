@@ -5714,6 +5714,9 @@
     const b = $("trashBtn");
     b.classList.toggle("has", trash.count > 0);
     $("trashCount").textContent = trash.count ? String(trash.count) : "";
+    // Espaço ocupado, sempre em GB (com mais casas quando é pouco)
+    const gb = trash.bytes / 1e9;
+    $("trashSize").textContent = trash.count ? (gb >= 10 ? gb.toFixed(0) : gb >= 0.1 ? gb.toFixed(1) : gb >= 0.01 ? gb.toFixed(2) : "<0.01") + " GB" : "";
     b.title = trash.count ? "Trash: " + plural(trash.count, "item", "items") + " · " + fmtBytes(trash.bytes) + " · kept " + trash.days + " days"
                           : "Trash: empty. Deleted sessions and photos stay here for " + trash.days + " days.";
     b.setAttribute("aria-label", b.title);
@@ -5746,7 +5749,9 @@
         ]);
       }, { kind: "btn-danger" });
       empty.classList.add("trash-empty-btn");
-      actions.append(empty, el("span", "spacer"), button("Close", closeTrash));
+      const all = button("Restore everything", restoreEverything, { title: "Put every session and photo in the trash back where it was" });
+      all.classList.add("trash-restore-all");
+      actions.append(empty, el("span", "spacer"), all, button("Close", closeTrash));
       d.appendChild(actions);
       ov.appendChild(d);
       document.body.appendChild(ov);
@@ -5769,6 +5774,7 @@
       const focusWas = trashRoving.where(document.activeElement);
       list.innerHTML = "";
       ov.querySelector(".trash-empty-btn").disabled = !items.length;
+      ov.querySelector(".trash-restore-all").disabled = !items.length;
       if (!items.length) { list.appendChild(el("li", "trash-empty", "The trash is empty.")); return; }
       const now = Date.now() / 1000;
       [false, true].forEach((inProject) => {
@@ -5846,6 +5852,39 @@
       recordAction({ label: item.whole ? "Restore session " + label.date : "Restore " + plural(item.photos, "photo", "photos") + " to " + label.date,
         undo: () => item.whole ? window.deleteSession(item.session) : (files.length ? window.deletePhotos(item.session, ...files) : false),
         redo: () => restoreSession(item.session) });
+    });
+  }
+  // Restore everything: primeiro as sessões inteiras, depois as fotos (as que dependiam de uma sessão
+  // apagada depois delas voltam para dentro dela). Um passo só no Desfazer.
+  function restoreEverything() {
+    Promise.resolve(window.trashList()).then((r) => {
+      const items = ((r && r.items) || []).slice();
+      if (!items.length) return;
+      const ordered = items.filter((i) => i.whole).concat(items.filter((i) => !i.whole));
+      const done = [];
+      let failed = 0;
+      const step = (k) => {
+        if (k >= ordered.length) return Promise.resolve();
+        const item = ordered[k];
+        return Promise.resolve(window.trashRestore(item.id)).then((x) => {
+          if (x && x.ok) done.push({ session: item.session, whole: item.whole, files: x.files || [] }); else failed++;
+          return step(k + 1);
+        });
+      };
+      step(0).then(() => {
+        renderTrash();
+        const text = "Restored from the trash: " + plural(done.length, "item", "items") + (failed ? " (" + failed + " could not be restored)" : "");
+        toast(text, failed ? 8000 : undefined, failed ? { warn: true } : undefined); log(text, failed ? "warn" : "ok");
+        if (!done.length) return;
+        const wholeSessions = [...new Set(done.filter((d) => d.whole).map((d) => d.session))];
+        const photoOnly = done.filter((d) => !d.whole && !wholeSessions.includes(d.session));
+        const sessionsBack = [...new Set(done.map((d) => d.session))];
+        recordAction({ label: "Restore everything (" + plural(done.length, "item", "items") + ")",
+          // Desfazer: as sessões que voltaram inteiras voltam para a lixeira inteiras; as fotos que
+          // voltaram para sessões que estavam na lista, só elas
+          undo: () => { wholeSessions.forEach((s) => window.deleteSession(s)); photoOnly.forEach((d) => d.files.length && window.deletePhotos(d.session, ...d.files)); },
+          redo: () => Promise.all(sessionsBack.map((s) => restoreSession(s))) });
+      });
     });
   }
   $("trashBtn").addEventListener("click", openTrash);
