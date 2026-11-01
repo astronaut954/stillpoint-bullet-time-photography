@@ -1048,7 +1048,8 @@ table.cs tr.has-note td { border-bottom-color: transparent; }
 .timing-summary { display: flex; align-items: center; gap: 10px; margin: -6px 0 8px; font: 11px var(--noct-font-mono); text-transform: uppercase; letter-spacing: .08em; color: var(--noct-text-muted); }
 .timing-summary b { color: var(--noct-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .timing-summary .btn { margin-left: auto; flex: none; }
-.timing-tag { display: inline-block; padding: 2px 8px; border: 1px solid var(--noct-pending); color: var(--noct-pending); font: 600 10px var(--noct-font-mono); }
+.timing-tag { display: inline-block; padding: 2px 8px; border: 1px solid var(--noct-primary); color: var(--noct-primary); font: 600 10px var(--noct-font-mono); }
+.timing-tag.warn { border-color: var(--noct-pending); color: var(--noct-pending); }  /* amarelo só com problema no plano */
 .timing-tag + .timing-label { display: none; }
 .timing-mini { border: 1px solid var(--noct-border); background: var(--noct-surface-inner); padding: 1px 8px; margin: -2px 0 8px; }
 .timing-adv { border-top: 1px dashed var(--noct-border); padding-top: 12px; margin-bottom: 12px; }
@@ -1409,3 +1410,10 @@ body.mod-keys .folder-add { cursor: default; }
 .export-row:has(> .export-name-col) > .export-label { padding-top: 9px; }
 /* Shift+clique nas miniaturas: sem seleção de texto (os números não ficam marcados) */
 .carousel, .carousel .frame { -webkit-user-select: none; user-select: none; }
+/* Barra de cima: nada quebra linha; sem espaço, some primeiro o que importa menos (fitTopbar) */
+.topbar, .topbar button, .topbar .status { white-space: nowrap; }
+.topbar > *, .topbar-right > * { flex-shrink: 0; }
+.topbar.fit-1 #trashSize,
+.topbar.fit-2 #projectBarMeta,
+.topbar.fit-3 #brandVersion,
+.topbar.fit-4 #updateChipText { display: none !important; }

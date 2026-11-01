@@ -1106,6 +1106,12 @@ projeto num HD externo.
       clicada; desmarcar a aberta abre outra das marcadas; sobrando uma só, ela fica aberta e sem marca.
 - [ ] Apertar o botão do mouse com Cmd e soltar o Cmd antes de soltar o botão: conta como Cmd+clique.
 - [ ] Shift+clique nas miniaturas: os números não ficam marcados como texto.
+- [ ] Barra de cima: diminuir a janela aos poucos; nenhum texto quebra linha e, conforme falta espaço, somem nesta
+      ordem: o tamanho da lixeira, os números do projeto, a versão do app e o texto do "Update" (fica o quadrado
+      verde). Números grandes aparecem curtos ("1.3k", "38.5k", "1.3 TB"); o número inteiro fica na legenda do
+      botão do projeto.
+- [ ] Timing fora de "At once": a etiqueta "TIMING" fica verde; amarela só quando o plano tem um problema (ex.: no
+      Custom, uma câmera fora de todos os passos).
 - [ ] Activity aberto (barra de baixo): Esc fecha. Com uma janela aberta por cima (ex.: Export sessions), o
       primeiro Esc fecha a janela e o segundo, o Activity.
 - [ ] Janela Project: marcar sessões e clicar em "Delete n sessions…" (ao lado de Remove from project): o mesmo

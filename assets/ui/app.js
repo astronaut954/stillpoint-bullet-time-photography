@@ -174,6 +174,14 @@
     return n + " " + (n === 1 ? one : many);
   }
 
+  // Números curtos para a barra de cima: 1284 -> "1.3k", 38520 -> "38.5k", 128400 -> "128k"
+  function shortNum(n) {
+    n = +n || 0;
+    const one = (v, unit) => (v < 100 ? String(Math.round(v * 10) / 10) : String(Math.round(v))) + unit;
+    if (n < 1000) return String(n);
+    if (n < 999500) return one(n / 1000, "k");
+    return one(n / 1e6, "M");
+  }
   function pad(n) {
     return String(n).padStart(2, "0");
   }
@@ -6230,11 +6238,12 @@
     trash.count = e.count || 0; trash.bytes = +e.bytes || 0; trash.days = e.days || 15;
     const b = $("trashBtn");
     b.classList.toggle("has", trash.count > 0);
-    $("trashCount").textContent = trash.count ? String(trash.count) : "";
-    fullTrashOpenBtn.querySelector(".trash-count-full").textContent = trash.count ? String(trash.count) : "";
+    $("trashCount").textContent = trash.count ? shortNum(trash.count) : "";
+    fullTrashOpenBtn.querySelector(".trash-count-full").textContent = trash.count ? shortNum(trash.count) : "";
     // Espaço ocupado, sempre em GB (com mais casas quando é pouco)
     const gb = trash.bytes / 1e9;
-    $("trashSize").textContent = trash.count ? (gb >= 10 ? gb.toFixed(0) : gb >= 0.1 ? gb.toFixed(1) : gb >= 0.01 ? gb.toFixed(2) : "<0.01") + " GB" : "";
+    $("trashSize").textContent = !trash.count ? "" : gb >= 999.5 ? (gb / 1000 >= 100 ? (gb / 1000).toFixed(0) : (Math.round(gb / 100) / 10).toString()) + " TB"
+      : (gb >= 10 ? gb.toFixed(0) : gb >= 0.1 ? gb.toFixed(1) : gb >= 0.01 ? gb.toFixed(2) : "<0.01") + " GB";
     fullTrashOpenBtn.querySelector(".trash-size-full").textContent = $("trashSize").textContent;
     fullTrashOpenBtn.classList.toggle("has", trash.count > 0);
     b.title = trash.count ? "Trash: " + plural(trash.count, "item", "items") + " · " + fmtBytes(trash.bytes) + " · kept " + trash.days + " days"
@@ -6505,8 +6514,8 @@
     const PROJECT_NAME_MAX = 24;
     const name = open ? project.name || "" : "No project";
     $("projectBarName").textContent = name.length > PROJECT_NAME_MAX ? name.slice(0, PROJECT_NAME_MAX - 1).trimEnd() + "…" : name;
-    $("projectBarMeta").textContent = open ? (project.available === false ? "not reachable" : [project.sessions || 0, project.photos || 0, project.edited ? project.edited + " edited" : ""].filter((x) => x !== "").join(" · ")) : "";
-    b.title = open ? project.name + "\n" + project.folder : "Open or create a project (a folder of yours that keeps the sessions)";
+    $("projectBarMeta").textContent = open ? (project.available === false ? "not reachable" : [shortNum(project.sessions || 0), shortNum(project.photos || 0), project.edited ? shortNum(project.edited) + " edited" : ""].filter((x) => x !== "").join(" · ")) : "";
+    b.title = open ? project.name + "\n" + project.folder + (project.available === false ? "" : "\n" + plural(project.sessions || 0, "session", "sessions") + " · " + plural(project.photos || 0, "photo", "photos") + (project.edited ? " · " + project.edited + " edited" : "")) : "Open or create a project (a folder of yours that keeps the sessions)";
     $("projectReload").classList.toggle("hidden", !(open && project.available === false));
     $("projectWindowBtn").classList.toggle("hidden", !open);
   }
@@ -7168,6 +7177,9 @@
     const custom = timing.mode !== "all";
     $("timingText").textContent = timingSummaryText(plan) + (plan.total ? " · " + plan.total : "");
     $("timingTag").classList.toggle("hidden", !custom);
+    // Verde: só avisa que o disparo não é simultâneo; amarelo quando o plano tem um problema
+    $("timingTag").classList.toggle("warn", !!plan.warn);
+    $("timingTag").title = plan.warn || "The cameras do not all fire at once (" + timingSummaryText(plan) + ")";
     $("timingToggle").textContent = timingOpen ? "Hide" : "Advanced";
     $("timingAdv").classList.toggle("hidden", !timingOpen);
     $("timingMini").classList.toggle("hidden", timingOpen || !custom || !plan.shots.length);
@@ -7337,6 +7349,27 @@
     ui.logToggle.click();
     ui.logToggle.focus();
   });
+  // Barra de cima: o texto não quebra; quando falta espaço, some primeiro o que importa menos
+  // (1 tamanho da lixeira, 2 números do projeto, 3 versão do app, 4 texto do "Update")
+  const topbar = document.querySelector(".topbar");
+  const FIT_STEPS = 4;
+  let fitting = false, fitQueued = false;
+  function fitTopbar() {
+    fitQueued = false;
+    if (!topbar || fitting) return;
+    fitting = true;
+    for (let k = 1; k <= FIT_STEPS; k++) topbar.classList.remove("fit-" + k);
+    for (let k = 1; k <= FIT_STEPS && topbar.scrollWidth > topbar.clientWidth + 1; k++) topbar.classList.add("fit-" + k);
+    fitting = false;
+  }
+  function queueFit() { if (!fitQueued) { fitQueued = true; requestAnimationFrame(fitTopbar); } }
+  if (topbar) {
+    window.addEventListener("resize", queueFit);
+    // Textos da barra mudando (projeto, lixeira, câmeras, atualização): confere de novo
+    new MutationObserver((list) => { if (list.some((m) => m.target !== topbar)) queueFit(); })
+      .observe(topbar, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ["class"] });
+    queueFit();
+  }
   ui.restartAppBtn.addEventListener("click", restartApp);
   // Show technical details: as linhas técnicas entram e saem sem a lista "pular". A linha comum que
   // estava no alto da área visível fica no mesmo lugar (se a lista estava no fim, continua no fim);
