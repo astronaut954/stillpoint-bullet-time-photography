@@ -36,6 +36,7 @@
       <div id="status" class="status">Starting</div>
       <button id="updateChip" class="update-chip hidden" title="A new version of Stillpoint is available"><span class="pulse" aria-hidden="true"></span><span id="updateChipText">Update</span></button>
       <button id="soundBtn" class="btn btn-secondary btn-small btn-icon sound-btn" title="Sound of the countdown and the shots: on" aria-label="Sound"><svg width='16' height='16' viewBox='0 0 24 24' fill='currentColor' aria-hidden='true'><path class='spk' d='M3 9v6h4l5 4V5L7 9H3z'/><path class='w1' d='M16.5 12a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4z'/><path class='w2' d='M14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z'/><path class='x' d='M15.2 9.2l5.6 5.6M20.8 9.2l-5.6 5.6' stroke='currentColor' stroke-width='2.2' fill='none' stroke-linecap='round'/></svg></button>
+      <button id="pitchBtn" class="btn btn-secondary btn-small btn-icon" title="Lenticular pitch test: a sheet to measure the real LPI of your lens sheet with your printer" aria-label="Lenticular pitch test"></button>
       <button id="liveBtn" class="btn btn-secondary btn-small" title="Big view of the shoot for a second monitor: countdown, cameras firing and the sequence at the end">Live view</button>
       <button id="saveBtn" class="btn btn-primary btn-small" disabled>Save sessions</button>
       <!-- Menu do app no Windows (no Mac ele fica na barra de cima do sistema) -->
@@ -201,7 +202,7 @@
         <input id="promptInput" type="text" class="prompt-input" maxlength="120" spellcheck="false" autocomplete="off">
         <p id="promptError" class="prompt-error hidden"></p>
       </div>
-      <div class="dialog-actions"><button id="promptExtra" class="btn btn-link btn-small prompt-extra hidden"></button><button id="promptCancel" class="btn btn-secondary">Cancel</button><button id="promptOk" class="btn btn-primary">OK</button></div>
+      <div class="dialog-actions"><button id="promptExtra" class="btn btn-secondary prompt-extra hidden"></button><button id="promptReset" class="btn btn-secondary prompt-reset hidden">Reset to default</button><button id="promptCancel" class="btn btn-secondary">Cancel</button><button id="promptOk" class="btn btn-primary">OK</button></div>
     </div>
   </div>
 
@@ -293,9 +294,13 @@
           <div><div id="settingsLanguages"></div><div class="export-note">More languages will appear here.</div></div>
         </div>
         <div class="settings-row">
+          <span class="export-label">Opening</span>
+          <div><div id="settingsSplash"></div><div class="export-note">The Stillpoint logo with the falling code when the app opens. Off: the app opens straight to the main screen (from the next time it opens).</div></div>
+        </div>
+        <div class="settings-row">
           <span class="export-label">New projects</span>
           <div>
-            <div class="settings-folder"><span id="settingsProjectsFolder" class="settings-folder-path"></span><button id="settingsProjectsFolderChange" class="btn btn-secondary btn-small">Change…</button></div>
+            <div class="settings-folder"><span id="settingsProjectsFolder" class="settings-folder-path"></span><button id="settingsProjectsFolderChange" class="btn btn-secondary btn-small">Change…</button><button id="settingsProjectsFolderReset" class="btn btn-secondary btn-small hidden" title="Back to the default folder (Pictures/Stillpoint)">Reset to default</button></div>
             <div class="export-note">"New project…" creates each project as a folder inside this one. You can still pick another place for a single project from the New project window.</div>
           </div>
         </div>
@@ -339,32 +344,10 @@
   </div>
 
   <!-- Salvar: escolher Fotos ou Sequência -->
-  <div id="modeOverlay" class="overlay hidden">
-    <div class="dialog mode-dialog">
-      <h3>Save sessions</h3>
-      <p id="modeText" style="padding-bottom:0"></p>
-      <div class="mode-choices">
-        <button id="modePhotos" class="mode-card">
-          <svg width="34" height="34" viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="3" y="9" width="20" height="16"/><rect x="8" y="6" width="20" height="16" opacity=".6"/><rect x="13" y="3" width="18" height="14" opacity=".35"/><path d="M5 22l5-6 4 4 3-3 5 5"/></svg>
-          <b>Photos</b><span>One file per camera. Keep the format the camera saved, or convert.</span>
-          <em>Original · JPG · PNG · WEBP · TIFF · HEIC</em>
-        </button>
-        <button id="modeSequence" class="mode-card">
-          <svg width="34" height="34" viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="3" y="7" width="28" height="20"/><path d="M3 11h28M3 23h28M8 7v4M14 7v4M20 7v4M26 7v4M8 23v4M14 23v4M20 23v4M26 23v4"/><path d="M15 14l5 3-5 3z" fill="currentColor"/></svg>
-          <b>Sequence</b><span>A video or animated image of each session, with the speed and loops you choose.</span>
-          <em>MP4 · MOV · GIF · WEBP · AVIF</em>
-        </button>
-      </div>
-      <div class="dialog-actions"><button id="modeCancel" class="btn btn-secondary">Cancel</button></div>
-    </div>
-  </div>
-
-  <!-- Salvar: sessões e configuração de cada uma -->
   <div id="exportOverlay" class="overlay hidden">
     <div class="sheet export-sheet">
       <div class="export-head">
         <h3><span id="exportTitle"></span><small id="exportSub"></small></h3>
-        <div class="segmented export-modes"><button id="exportModePhotos"><svg width="16" height="16" viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><rect x="3" y="9" width="20" height="16"/><rect x="8" y="6" width="20" height="16" opacity=".6"/><rect x="13" y="3" width="18" height="14" opacity=".35"/><path d="M5 22l5-6 4 4 3-3 5 5"/></svg>Photos</button><button id="exportModeSequence"><svg width="16" height="16" viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><rect x="3" y="7" width="28" height="20"/><path d="M3 11h28M3 23h28M8 7v4M14 7v4M20 7v4M26 7v4M8 23v4M14 23v4M20 23v4M26 23v4"/><path d="M15 14l5 3-5 3z" fill="currentColor"/></svg>Sequence</button></div>
       </div>
       <div class="export-body">
         <div class="export-sessions">
@@ -380,6 +363,7 @@
         <span id="exportCount" class="save-count"></span><span class="spacer"></span>
         <label id="exportEditedLabel" class="log-option hidden" title="When a session has edited photos in the project's Edited folder, use them instead of the originals"><input id="exportEdited" type="checkbox" checked> Use edited photos when available</label>
         <button id="exportCancel" class="btn btn-secondary">Cancel</button>
+        <button id="exportPitch" class="btn btn-secondary" title="A sheet to measure the real LPI of your lens sheet with your printer (Lenticular)">Print pitch test</button>
         <button id="exportConfirm" class="btn btn-primary">Save</button>
       </div>
     </div>

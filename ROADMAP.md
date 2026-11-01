@@ -611,6 +611,36 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    (medido no navegador: 849 px em 920; 926 em 1000). Conferido no navegador com câmera
    simulada; **pendente** o teste com SL3/T7/T5 (teste-manual 16).
 4. **Etapa 19 — Exportação para impressão lenticular** (ver "Futuro"; precisa do Project).
+   **Entrega 1 feita em 2026-10-30 (branch `etapa-19-lenticular`, versão 2.14.0).** Janela de salvar
+   reorganizada (decisão do dono, opção A de 3 protótipos — fila de renderização e receitas ficaram
+   de fora): Photos, Sequence e Lenticular são **saídas combináveis** (seções com caixa de marcar,
+   recolhidas quando desmarcadas), um só Save grava tudo numa pasta por sessão com `Photos/`,
+   `Sequence/` e `Lenticular/` quando há mais de uma; a escolha de modo ao abrir saiu; o antigo "Also
+   save the photos" da sequência virou a seção Photos. Lenticular: lâmina (40/50/60/75/100 LPI; 3D 20/30/40; "Other"),
+   pitch medido (opcional), impressora (600/720/1200/1440 dpi; "Other" — o app não depende de
+   impressora: é só um número de dpi), tamanho em cm/pol com presets, efeito Animation (lentes
+   deitadas, faixas em linhas) ou 3D (lentes em pé, faixas em colunas), ordem invertida; leitura
+   "colunas por lente / pontos por foto" com avisos (< 1 ponto por foto = não separa; < 2 =
+   transição desigual); prévia por arrasto. Saída: TIFF sem compressão com o dpi gravado, em
+   `Exports/` (nome com lpi/dpi/efeito). `Export::WriteLenticular` (fração contínua de lente por
+   linha/coluna — o pitch medido entra direto; cada foto redimensionada para cobrir o tamanho).
+   Verificado no Linux com fotos de cor sólida (padrão `RRGGGBBYYY` a 10 px por lente e 4 fotos;
+   dpi no TIFF; reverse; eixo 3D). **Não validado no papel:** o dono não tem impressora nem lâmina;
+   registrar o resultado da primeira impressão (gráfica + kit de lâminas) antes de dar por
+   concluída. **Entrega 2 (2026-10-30, mesmo branch e versão; decisões do dono no mesmo dia):**
+   folha de pitch test — 21 faixas preto/branco de 0,05 em 0,05 ao redor do LPI (ou do pitch já
+   medido), cobrindo ±0,5 numa folha só (opção A, decisão do dono em 2026-10-31, pensando em quem
+   imprime em gráfica: cada rodada de teste é uma ida); papel mínimo A4; aviso quando a impressão é
+   mais comprida que as faixas (o erro se acumula ao longo dela); "Finer steps" mantido (decisão do
+   dono, 2026-10-31): passos 0,04 / 0,03 / 0,025 / 0,02 / 0,01, cada um com um "?" de quando usar, em volta do pitch medido (ou do LPI da embalagem, sem ele); números impressos com uma fonte de bloco
+   própria; papel com as mesmas opções de tamanho da exportação (começa em A4/Letter); TIFF em tons de
+   cinza gravado linha a linha (`Export::WritePitchTest`), salvo na pasta padrão do Save e mostrado
+   no Finder; abre pelo "Print pitch test…" da seção Lenticular e por um ícone na tela principal.
+   Marcas: corte e alinhamento ligados e sangria de 3 mm por padrão (podem desligar); margem branca de
+   0,4 pol em volta; as lentes contam a partir da linha de corte. O pitch medido fica guardado com as
+   últimas configurações de exportação (não por combinação lâmina + impressora).
+   Decisões do dono (2026-10-30): listas de fábrica acima; cm como padrão; prévia na tela; aba
+   dentro do Export.
 5. **Etapa 20 — Edit in Lightroom Classic / Photoshop.** Ida e volta: o app abre os originais
    do Project no Lightroom Classic (o dono do projeto usa o Classic); um plugin do Stillpoint
    (SDK Lua do Classic) agrupa cada sessão como coleção e tem "Export to Stillpoint", que
@@ -705,6 +735,12 @@ Junto com essas etapas (sem etapa própria):
   saída em TIFF/PNG sem perda na resolução nativa da impressora. Pré-requisito: o Project (as
   sessões precisam ficar guardadas para reimprimir). Decisões pendentes: quais lentes/impressoras
   cadastrar de fábrica, e se a prévia do efeito aparece no app.
+- **Lixeira do app (pedido em 2026-10-30).** Um lugar que guarda as fotos e sessões apagadas, de onde
+  dá para recuperar uma por uma (ou várias) ou esvaziar de vez. Hoje o apagado vai para uma lixeira
+  interna (`Photos/.trash`) que só o Desfazer usa e que é esvaziada ao abrir o app. Decisões
+  pendentes: por quanto tempo guardar (até esvaziar à mão, ou N dias), onde fica o acesso (menu,
+  botão na lista de sessões), se mostra o espaço ocupado, e o que acontece com as do Project
+  (lixeira dentro da pasta do projeto ou uma só do app).
 - **Licença (decidido em 2026-10-22, implementação pendente).** Hoje é MIT (qualquer um, inclusive
   empresa grande, usa de graça). Decisão do dono do projeto: trocar, numa versão futura, para o
   modelo de **licença dupla**: grátis para pessoas e empresas pequenas (quem está começando na

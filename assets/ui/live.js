@@ -111,16 +111,55 @@ window.Live = (function () {
     el.root.addEventListener("mousemove", showTools);
     el.root.addEventListener("mousedown", showTools);
     // Um botão clicado não fica com o foco: Space continua sendo "disparar", não o botão
-    el.root.addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) b.blur(); });
+    // (só com o mouse: pelo teclado, Enter, o foco fica no botão para o Tab seguir dali)
+    el.root.addEventListener("click", (e) => { const b = e.target.closest("button"); if (b && e.detail > 0) b.blur(); });
     window.addEventListener("resize", () => { if (S.open) layoutRig(); });
     document.addEventListener("keydown", onKey, true);
+    // Teclado: o Tab passa pelas opções (que aparecem e ficam à mostra enquanto o foco estiver
+    // nelas), com contorno verde; Enter aperta o botão e marca/desmarca as caixas.
+    document.addEventListener("keydown", onTab, true);
+    // Cmd+` (Mac): volta para a janela principal / a outra Live; com Shift, a anterior
+    document.addEventListener("keydown", (e) => {
+      if (!e.metaKey || e.ctrlKey || e.altKey || e.code !== "Backquote" || typeof window.cycleWindows !== "function") return;
+      e.preventDefault(); e.stopImmediatePropagation();
+      window.cycleWindows(e.shiftKey ? "1" : "0");
+    }, true);
+    document.addEventListener("mousedown", () => document.documentElement.classList.remove("kbd-focus"), true);
+    document.addEventListener("focusin", () => { if (document.documentElement.classList.contains("kbd-focus")) showTools(); });
+  }
+  function focusables(scope) {
+    return [...scope.querySelectorAll("button, input, select, a[href], [tabindex]")].filter((x) =>
+      !x.disabled && x.tabIndex >= 0 && x.getClientRects().length > 0 && !x.closest(".hidden"));
+  }
+  function onTab(e) {
+    if (!S.open) return;
+    if (e.key === "Enter" && e.target.tagName === "INPUT" && e.target.type === "checkbox") {
+      e.preventDefault(); e.stopImmediatePropagation();
+      e.target.click();
+      return;
+    }
+    if (e.key !== "Tab" || e.metaKey || e.ctrlKey || e.altKey) return;
+    const scope = el.screens.classList.contains("hidden") ? el.root : el.screens;
+    const list = focusables(scope);
+    if (!list.length) return;
+    e.preventDefault();
+    document.documentElement.classList.add("kbd-focus");
+    showTools();
+    const i = list.indexOf(document.activeElement);
+    const next = i < 0 ? (e.shiftKey ? list[list.length - 1] : list[0]) : list[(i + (e.shiftKey ? -1 : 1) + list.length) % list.length];
+    next.focus();
   }
 
   function showTools() {
     if (!el) return;
     el.root.classList.add("tools-visible");
     clearTimeout(S.hideTimer);
-    S.hideTimer = setTimeout(() => el.root.classList.remove("tools-visible"), 2500);
+    S.hideTimer = setTimeout(function hide() {
+      // Com o foco do teclado numa opção, continua à mostra
+      const a = document.activeElement;
+      if (document.documentElement.classList.contains("kbd-focus") && a && a !== document.body && el.root.contains(a)) { S.hideTimer = setTimeout(hide, 2500); return; }
+      el.root.classList.remove("tools-visible");
+    }, 2500);
   }
 
   function onKey(e) {
@@ -214,6 +253,10 @@ window.Live = (function () {
     el.onTopLabel.classList.toggle("hidden", S.opts.display === "full");
     el.changeDisplay.classList.toggle("hidden", !(S.opts.display === "full" && S.screens.length > 1));
     el.another.classList.toggle("hidden", !cb.another);
+    // Duas Live já abertas: desligado até uma fechar
+    el.another.disabled = S.lives >= 2;
+    el.another.title = S.lives >= 2 ? "Two Live windows are open. Close one to open another."
+      : "A second Live window, for example Operator here and Audience on the TV";
     el.sounds.checked = S.sound.sounds;
   }
 
@@ -605,6 +648,18 @@ window.Live = (function () {
     if (sound) Object.assign(S.sound, sound);
     setOpts(Object.assign({}, DEFAULTS, parsed), true);
   }
+  // Quantas janelas Live estão abertas (aviso do app ao abrir/fechar uma)
+  // e o número desta janela entre as abertas (1 = "Live", 2 = "Live 2")
+  function setLives(n, rank) {
+    S.lives = n || 0;
+    if (rank) {
+      const name = rank === 1 ? "Stillpoint · Live" : "Stillpoint · Live " + rank;
+      document.title = name;
+      const b = $("liveTop") && $("liveTop").querySelector("b");
+      if (b) b.textContent = name;
+    }
+    if (el) renderOpts();
+  }
   function setSoundState(sound) { Object.assign(S.sound, sound || {}); renderOpts(); }
   function setScreens(screens) {
     S.screens = Array.isArray(screens) ? screens : [];
@@ -643,5 +698,5 @@ window.Live = (function () {
   function isOpen() { return S.open; }
   function options() { return Object.assign({}, S.opts); }
 
-  return { init, setCameras, open, close, isOpen, handle, playback, options, setOptions: setOpts, setSound: setSoundState, setScreens };
+  return { init, setCameras, open, close, isOpen, handle, playback, options, setOptions: setOpts, setSound: setSoundState, setScreens, setLives };
 })();

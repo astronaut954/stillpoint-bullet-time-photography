@@ -49,6 +49,7 @@
 #include <atomic>
 #include <chrono>
 #include <cmath>
+#include <ctime>
 #include <condition_variable>
 #include <cstdlib>
 #include <map>
@@ -1010,6 +1011,15 @@ namespace
                 return std::filesystem::path(settings.at("projectsFolder"));
             return Platform::PicturesFolder() / "Stillpoint";
         };
+        // Para onde a janela de salvar manda (2.14, decisão do dono em 2026-10-30): com Project
+        // aberto, <Project>/Exports; sem, <pasta do Stillpoint>/Exports (a mesma base dos projetos
+        // novos: <Imagens>/Stillpoint, ou a que a pessoa escolheu em Settings)
+        auto defaultExportFolder = [&]() -> std::filesystem::path
+        {
+            if (project.Available())
+                return project.Exports();
+            return projectsFolder() / "Exports";
+        };
         // Pastas recentes de Project (settings.txt, recentProjects=, separadas por "|")
         auto recentProjects = [&]() -> std::vector<std::string>
         {
@@ -1709,7 +1719,8 @@ namespace
             {
                 if (name.find_first_of("/\\:*?\"<>|") != std::string::npos || name.front() == '.' || name.back() == ' ')
                     return Json("project").Add("error", "That name cannot be used for a folder (no / \\ : * ? \" < > | and it cannot start with a dot).").Str();
-                const std::filesystem::path base = projectsFolder();
+                // args[1]: outra pasta escolhida na caixa New project (só para este projeto)
+                const std::filesystem::path base = args.size() > 1 && !args[1].empty() ? std::filesystem::path(args[1]) : projectsFolder();
                 std::error_code ec;
                 std::filesystem::create_directories(base, ec);
                 if (!std::filesystem::is_directory(base, ec))
@@ -1739,11 +1750,21 @@ namespace
         {
             const auto args = ParseStringArgs(request);
             const std::string name = !args.empty() ? args[0] : std::string();
+            const std::filesystem::path base = args.size() > 1 && !args[1].empty() ? std::filesystem::path(args[1]) : projectsFolder();
             std::error_code ec;
-            const std::filesystem::path target = projectsFolder() / name;
+            const std::filesystem::path target = base / name;
             const bool exists = !name.empty() && std::filesystem::exists(target, ec);
             return Json("name").Add("free", !exists).Add("project", exists && Project::IsProject(target))
-                .Add("folder", projectsFolder().string()).Str();
+                .Add("folder", base.string()).Str();
+        });
+        // projectChooseParent(começo): a caixa New project continua aberta; escolhe onde criar
+        // ("" = cancelou) e a pessoa dá o nome depois
+        window.bind("projectChooseParent", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            const std::string start = !args.empty() && !args[0].empty() ? args[0] : projectsFolder().string();
+            const std::string folder = NativeWindow::ChooseFolder("Choose where to create the new project", start);
+            return Json("folder").Add("folder", folder).Str();
         });
         // =================== Uso do computador (rodapé do Activity, 2.12.4) ===================
         // systemStats(): a página chama a cada 2 s só com o Activity aberto. Lê os contadores na
@@ -1795,12 +1816,28 @@ namespace
         });
         // projectsFolderInfo() / projectsFolderChange(): a pasta onde os projetos novos são criados
         // (settings.txt, projectsFolder=; padrão <Imagens>/Stillpoint). Change abre o seletor.
+        // custom: a pessoa escolheu outra (senão é a padrão <Imagens>/Stillpoint)
+        auto projectsFolderCustom = [&]()
+        {
+            const auto settings = LoadSettings();
+            return settings.count("projectsFolder") && !settings.at("projectsFolder").empty();
+        };
         window.bind("projectsFolderInfo", [&](const std::string&) -> std::string
         {
-            return Json("projectsFolder").Add("folder", projectsFolder().string()).Str();
+            return Json("projectsFolder").Add("folder", projectsFolder().string()).Add("custom", projectsFolderCustom()).Str();
         });
-        window.bind("projectsFolderChange", [&](const std::string&) -> std::string
+        // projectsFolderChange("reset"): volta para a padrão; sem argumento abre o seletor
+        window.bind("projectsFolderChange", [&](const std::string& request) -> std::string
         {
+            const auto args = ParseStringArgs(request);
+            if (!args.empty() && args[0] == "reset")
+            {
+                auto settings = LoadSettings();
+                settings.erase("projectsFolder");
+                SaveSettings(settings);
+                Log("New projects folder back to the default: " + projectsFolder().string());
+                return Json("projectsFolder").Add("folder", projectsFolder().string()).Add("custom", false).Add("cancelled", false).Str();
+            }
             const std::string folder = NativeWindow::ChooseFolder("Choose the folder where new projects are created", projectsFolder().string());
             if (!folder.empty())
             {
@@ -1809,7 +1846,7 @@ namespace
                 SaveSettings(settings);
                 Log("New projects folder: " + folder);
             }
-            return Json("projectsFolder").Add("folder", projectsFolder().string()).Add("cancelled", folder.empty()).Str();
+            return Json("projectsFolder").Add("folder", projectsFolder().string()).Add("custom", projectsFolderCustom()).Add("cancelled", folder.empty()).Str();
         });
         // projectOpen(pasta opcional): abre um Project (pergunta a pasta se não vier)
         window.bind("projectOpen", [&](const std::string& request) -> std::string
@@ -1831,6 +1868,59 @@ namespace
             const auto args = ParseStringArgs(request);
             const std::string error = args.empty() ? std::string("No folder.") : createOrOpenProject(args[0]);
             return Json("project").Add("error", error).Raw("project", projectJson()).Str();
+        });
+        // projectDiscardNew(pasta): Desfazer do "New project…" — apaga a pasta do projeto recém-criado
+        // só se ela ainda estiver como foi criada (o índice e Originals/, Edited/, Exports/ vazias;
+        // arquivos do sistema como .DS_Store não contam) e não for o projeto aberto. Sai dos recentes.
+        // Devolve {ok:true} ou {ok:false, reason:"notEmpty"|"open"|"missing"}.
+        window.bind("projectDiscardNew", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            if (args.empty() || args[0].empty())
+                return Json("discard").Add("ok", false).Add("reason", "missing").Str();
+            const std::filesystem::path folder(args[0]);
+            std::error_code ec;
+            if (!Project::IsProject(folder))
+                return Json("discard").Add("ok", false).Add("reason", "missing").Str();
+            if (project.IsOpen() && std::filesystem::equivalent(project.Root(), folder, ec))
+                return Json("discard").Add("ok", false).Add("reason", "open").Str();
+            auto systemFile = [](const std::string& n) { return n == ".DS_Store" || n == "Thumbs.db" || n == "desktop.ini" || n.rfind("._", 0) == 0; };
+            bool clean = true;
+            for (const auto& entry : std::filesystem::directory_iterator(folder, ec))
+            {
+                const std::string n = entry.path().filename().string();
+                if (systemFile(n) || n == Project::kIndexFile)
+                    continue;
+                if ((n == "Originals" || n == "Edited" || n == "Exports") && entry.is_directory(ec))
+                {
+                    for (const auto& inner : std::filesystem::recursive_directory_iterator(entry.path(), ec))
+                        if (!systemFile(inner.path().filename().string()) && !inner.is_directory(ec))
+                        {
+                            clean = false;
+                            break;
+                        }
+                    if (!clean)
+                        break;
+                    continue;
+                }
+                clean = false;
+                break;
+            }
+            if (ec || !clean)
+                return Json("discard").Add("ok", false).Add("reason", "notEmpty").Str();
+            std::filesystem::remove_all(folder, ec);
+            if (ec)
+                return Json("discard").Add("ok", false).Add("reason", "notEmpty").Str();
+            auto settings = LoadSettings();
+            std::vector<std::string> recent = recentProjects();
+            recent.erase(std::remove(recent.begin(), recent.end(), folder.string()), recent.end());
+            std::string joined;
+            for (const auto& r : recent)
+                joined += (joined.empty() ? "" : "|") + r;
+            settings["recentProjects"] = joined;
+            SaveSettings(settings);
+            Log("New project undone: " + folder.string() + " removed");
+            return Json("discard").Add("ok", true).Str();
         });
         // projectClose(): fecha o Project (as sessões dele saem da lista; nada é apagado)
         window.bind("projectClose", [&](const std::string&) -> std::string
@@ -1942,6 +2032,82 @@ namespace
                     Platform::OpenInFileManager(dir);
             }
             return "null";
+        });
+        // exportDestination(): a pasta padrão da janela de salvar (para mostrar)
+        window.bind("exportDestination", [&](const std::string&) -> std::string
+        {
+            return Json("exportDestination").Add("folder", defaultExportFolder().string()).Add("project", project.Available()).Str();
+        });
+        // chooseExportFolder(começo): outra pasta, só para este salvamento ("" = cancelou)
+        window.bind("chooseExportFolder", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            const std::string start = args.empty() ? std::string() : args[0];
+            const std::string folder = NativeWindow::ChooseFolder("Choose where to save your bullet time sessions", start);
+            return Json("exportFolder").Add("folder", folder).Str();
+        });
+        // lenticularPitchTest(dpi, largura pol, altura pol, "flip"|"3d", centro, passo, pasta):
+        // grava a folha de teste de pitch (na pasta dada ou na padrão de salvar) e mostra no Finder
+        window.bind("lenticularPitchTest", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            if (args.size() < 6)
+                return Json("pitchTest").Add("ok", false).Add("error", "Missing values.").Str();
+            Export::PitchTestOptions o;
+            try
+            {
+                o.dpi = std::stoi(args[0]);
+                o.widthInches = std::stod(args[1]);
+                o.heightInches = std::stod(args[2]);
+                o.horizontalLenses = args[3] != "3d";
+                o.center = std::stod(args[4]);
+                o.step = std::stod(args[5]);
+                if (args.size() > 7 && !args[7].empty()) o.count = std::max(3, std::min(41, std::stoi(args[7])));
+            }
+            catch (...) { return Json("pitchTest").Add("ok", false).Add("error", "Check the lens, printer and size values.").Str(); }
+            namespace fs = std::filesystem;
+            std::error_code ec;
+            const fs::path folder = args.size() > 6 && !args[6].empty() ? fs::path(args[6]) : defaultExportFolder();
+            fs::create_directories(folder, ec);
+            char name[160];
+            const int decimals = std::fabs(o.step * 100 - std::round(o.step * 100)) > 1e-6 ? 3 : o.step < 0.0999 ? 2 : 1;
+            const double half = o.step * (o.count - 1) / 2.0;
+            std::snprintf(name, sizeof(name), "Pitch test %.*f-%.*f LPI %ddpi %s", decimals, o.center - half, decimals, o.center + half,
+                          o.dpi, o.horizontalLenses ? "animation" : "3d");
+            fs::path file = folder / (std::string(name) + ".tiff");
+            for (int n = 2; fs::exists(file, ec); ++n)
+                file = folder / (std::string(name) + " (" + std::to_string(n) + ").tiff");
+            // Em segundo plano (a folha pode ter centenas de megapixels); avisa no fim
+            previews.Post([&, o, file]
+            {
+                std::string error;
+                const bool ok = Export::WritePitchTest(o, file, error);
+                if (ok)
+                {
+                    Log("Pitch test saved: " + file.string());
+                    Platform::RevealInFileManager(file);
+                }
+                listener.Emit(Json("pitchTestDone").Add("ok", ok).Add("file", file.string()).Add("error", error));
+            });
+            return Json("pitchTest").Add("ok", true).Add("file", file.string()).Str();
+        });
+        // photoFile(sessão, arquivo, "reveal" | "open"): mostra a foto selecionada no Finder/Explorer
+        // ou abre no programa padrão (botão direito numa foto)
+        window.bind("photoFile", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            if (args.size() < 3 || args[1].empty() || args[1].find_first_of("/\\") != std::string::npos || args[1].find("..") != std::string::npos)
+                return Json("photoFile").Add("ok", false).Str();
+            const auto dir = store.SessionDir(args[0]);
+            std::error_code ec;
+            const auto file = dir / args[1];
+            if (dir.empty() || !std::filesystem::exists(file, ec))
+                return Json("photoFile").Add("ok", false).Add("error", "The file is no longer there.").Str();
+            if (args[2] == "open")
+                Platform::OpenWithDefaultApp(file);
+            else
+                Platform::RevealInFileManager(file);
+            return Json("photoFile").Add("ok", true).Str();
         });
         // projectOpenFolder(): mostra a pasta do Project no Finder/Explorer
         window.bind("projectOpenFolder", [&](const std::string&) -> std::string
@@ -2120,9 +2286,44 @@ namespace
         struct LiveWindow
         {
             int index = 0;
+            bool shown = false;  // à mostra (fechar só esconde)
+            long openedAt = 0;   // ordem em que foi aberta (a primeira à mostra se chama "Live", a outra "Live 2")
             std::unique_ptr<webview::webview> view;
         };
         std::vector<std::unique_ptr<LiveWindow>> lives;
+        long liveOpenCounter = 0;
+        // Quantas Live estão abertas: as páginas desligam "Another window" com duas
+        auto livesOpen = [&]
+        {
+            int n = 0;
+            for (const auto& live : lives)
+                n += live->shown ? 1 : 0;
+            return n;
+        };
+        // Posição de uma janela entre as abertas (1 = a mais antiga, "Live"; 2 = "Live 2"); 0 = fechada
+        auto liveRank = [&](const LiveWindow& w)
+        {
+            if (!w.shown)
+                return 0;
+            int rank = 1;
+            for (const auto& other : lives)
+                if (other.get() != &w && other->shown && other->openedAt < w.openedAt)
+                    ++rank;
+            return rank;
+        };
+        // Avisa as páginas (quantas abertas e o número de cada uma) e acerta o título das janelas
+        auto emitLives = [&]
+        {
+            std::string ranks = "{";
+            for (const auto& live : lives)
+            {
+                const int rank = liveRank(*live);
+                ranks += (ranks.size() > 1 ? "," : "") + std::string("\"") + std::to_string(live->index) + "\":" + std::to_string(rank);
+                if (rank > 0)
+                    live->view->set_title(rank == 1 ? "Stillpoint · Live" : "Stillpoint · Live " + std::to_string(rank));
+            }
+            listener.Emit(Json("liveWindows").Add("open", livesOpen()).Raw("ranks", ranks + "}"));
+        };
 
         // Som do disparo: {"sound":…,"sounds":…} guardado em settings.txt (live=)
         auto soundSettings = [&]
@@ -2154,6 +2355,18 @@ namespace
             });
         };
         bindSetSound(window);
+        // cycleWindows("1" = ao contrário): Cmd+` / Cmd+Shift+` vindo das páginas (tecla física,
+        // vale em qualquer teclado); passa entre a janela principal e as Live
+        auto bindCycle = [&](webview::webview& target)
+        {
+            target.bind("cycleWindows", [](const std::string& request) -> std::string
+            {
+                const auto args = ParseStringArgs(request);
+                NativeWindow::CycleWindows(!args.empty() && args[0] == "1");
+                return "null";
+            });
+        };
+        bindCycle(window);
 
         auto screensJson = []
         {
@@ -2174,6 +2387,10 @@ namespace
                 {
                     if (auto native = live->view->window(); native.ok())
                         NativeWindow::Show(native.value());
+                    if (!live->shown)
+                        live->openedAt = ++liveOpenCounter;
+                    live->shown = true;
+                    emitLives();
                     return;
                 }
             auto live = std::make_unique<LiveWindow>();
@@ -2181,7 +2398,7 @@ namespace
             live->view = std::make_unique<webview::webview>(false, nullptr);
             webview::webview& v = *live->view;
             const std::string key = "live" + std::to_string(index);
-            v.set_title(index == 1 ? "Stillpoint · Live" : "Stillpoint · Live " + std::to_string(index));
+            v.set_title(livesOpen() == 0 ? "Stillpoint · Live" : "Stillpoint · Live 2");
             v.set_size(960, 560, WEBVIEW_HINT_NONE);
             v.set_size(480, 300, WEBVIEW_HINT_MIN);
 
@@ -2195,6 +2412,8 @@ namespace
                     .Add("opts", current.count(key) ? current.at(key) : std::string())
                     .Raw("sound", Json("sound").Add("sound", sound).Add("sounds", sounds).Str())
                     .Raw("screens", screensJson())
+                    .Add("lives", livesOpen())
+                    .Add("rank", [&] { for (const auto& l : lives) if (l->index == index) return liveRank(*l); return livesOpen() + 1; }())
                     .Raw("cameraEvent", cameras.empty() ? "null" : cameras).Str();
             });
             // O disparo e o cancelamento passam pela página principal (o plano do Timing é dela)
@@ -2235,15 +2454,25 @@ namespace
                     NativeWindow::SetWindowed(native.value(), args[3] == "1");
                 return "null";
             });
-            v.bind("liveClose", [self](const std::string&) -> std::string
+            LiveWindow* me = live.get();
+            v.bind("liveClose", [&, self, me](const std::string&) -> std::string
             {
                 if (auto native = self->window(); native.ok())
                     NativeWindow::Hide(native.value());
+                me->shown = false;
+                emitLives();
                 return "null";
             });
-            v.bind("liveAnother", [&](const std::string&) -> std::string
+            // "Another window" (nas duas): abre (ou traz de volta) a outra janela Live um pouco à
+            // direita e abaixo desta, para ficar claro que é outra janela
+            v.bind("liveAnother", [&, self, index](const std::string&) -> std::string
             {
-                openLive(2);
+                const int other = index == 1 ? 2 : 1;
+                openLive(other);
+                for (auto& w : lives)
+                    if (w->index == other)
+                        if (auto a = w->view->window(), b = self->window(); a.ok() && b.ok())
+                            NativeWindow::PlaceNear(a.value(), b.value(), 40, 40);
                 return "null";
             });
             // "Identify displays": número grande em cada monitor por 3 s
@@ -2253,21 +2482,27 @@ namespace
                 return "null";
             });
             bindSetSound(v);
+            bindCycle(v);
             bindPhotos(v, "getPhoto", store);
 
             // O botão de fechar só esconde a janela (ela volta com Live view)
             if (auto native = v.window(); native.ok())
             {
                 void* handle = native.value();
-                NativeWindow::InstallCloseGuard(handle, [handle]
+                NativeWindow::InstallCloseGuard(handle, [&, handle, me]
                 {
                     NativeWindow::Hide(handle);
+                    me->shown = false;
+                    emitLives();
                     return false;
                 });
             }
             v.set_html(LoadPage("live.html", theme));
             listener.AddWindow(&v);
+            live->shown = true;
+            live->openedAt = ++liveOpenCounter;
             lives.push_back(std::move(live));
+            emitLives();
         };
         // openLive(índice): abre (ou traz de volta) a janela Live 1 ou 2
         window.bind("openLive", [&](const std::string& request) -> std::string
@@ -2275,6 +2510,10 @@ namespace
             const auto numbers = ParseIntArgs(request);
             const auto args = ParseStringArgs(request);
             int index = !numbers.empty() ? numbers[0] : (!args.empty() ? std::atoi(args[0].c_str()) : 1);
+            // Já tem uma aberta (ex.: só a que nasceu do "Another window"): traz a mais antiga
+            for (const auto& live : lives)
+                if (live->shown && liveRank(*live) == 1)
+                    index = live->index;
             openLive(std::clamp(index, 1, 2));
             return "null";
         });
@@ -2786,6 +3025,9 @@ namespace
             std::string folderName;           // nome final (data, número ou nome dado)
             bool useEdited = false;           // Project: usar a versão editada quando houver
             bool sequence = false;
+            bool lenticular = false;          // etapa 19: imagem entrelaçada para lâmina lenticular (TIFF)
+            Export::LenticularOptions lent;
+            double lentNominal = 0;           // LPI da embalagem (lent.lpi é o usado: o medido, se houver)
             std::string photoFormat;          // "original", "jpg"... ("" = não salvar fotos)
             Export::Quality photoQuality = Export::Quality::High;
             Export::SequenceOptions options;
@@ -2885,12 +3127,13 @@ namespace
                     for (const auto& [group, file] : byCamera)
                         perCamera.push_back(file);
 
-                    // Subpastas só quando há fotos e sequência juntas: Photos/ e Sequence/
+                    // Subpastas quando há mais de uma saída: Photos/, Sequence/ e Lenticular/
                     const bool savePhotos = !job.photoFormat.empty();
-                    const bool split = savePhotos && job.sequence && !job.options.formats.empty();
+                    const bool saveSequence = job.sequence && !job.options.formats.empty();
+                    const bool split = (savePhotos ? 1 : 0) + (saveSequence ? 1 : 0) + (job.lenticular ? 1 : 0) > 1;
                     const fs::path photosDir = split ? target / "Photos" : target;
 
-                    if (job.sequence)
+                    if (saveSequence)
                     {
                         std::vector<fs::path> photos;
                         for (const auto& f : perCamera)
@@ -2908,9 +3151,74 @@ namespace
                             break;
                     }
 
+                    if (job.lenticular)
+                    {
+                        std::vector<fs::path> photos;
+                        for (const auto& f : perCamera)
+                            photos.push_back(photoPath(f));
+                        // Nome com os parâmetros, para saber que lâmina/impressora o arquivo serve
+                        char tag[96];
+                        std::snprintf(tag, sizeof(tag), " lenticular %.4glpi %ddpi %s", job.lent.lpi, job.lent.dpi, job.lent.horizontalLenses ? "flip" : "3d");
+                        const fs::path lentDir = split ? target / "Lenticular" : target;
+                        fs::create_directories(lentDir, ec);
+                        // Configurações em texto (dentro do TIFF e num .txt ao lado): para reimprimir
+                        // ou conferir depois, mesmo sem o app
+                        Export::LenticularOptions lent = job.lent;
+                        {
+                            const Export::LenticularInfo info = Export::LenticularPlan(lent, static_cast<int>(photos.size()));
+                            const double nominal = job.lentNominal > 0 ? job.lentNominal : lent.lpi;
+                            const bool measured = std::fabs(nominal - lent.lpi) > 1e-6;
+                            const std::time_t now = std::time(nullptr);
+                            char when[32];
+                            std::strftime(when, sizeof(when), "%Y-%m-%d %H:%M", std::localtime(&now));
+                            char line[512];
+                            std::string t = "Stillpoint lenticular print\n";
+                            t += "Session: " + job.folderName + " (" + job.session + ")\n";
+                            t += std::string("Saved: ") + when + " with Stillpoint " + AppVersion() + "\n\n";
+                            std::snprintf(line, sizeof(line), "Lens sheet: %.4g LPI on the package%s\n", nominal,
+                                          measured ? "" : " (no measured pitch: the package value was used)");
+                            t += line;
+                            if (measured) { std::snprintf(line, sizeof(line), "Measured pitch (used): %.4g LPI\n", lent.lpi); t += line; }
+                            std::snprintf(line, sizeof(line), "Printer: %d dpi\n", lent.dpi); t += line;
+                            std::snprintf(line, sizeof(line), "Print size: %.4g x %.4g cm (%.3g x %.3g in), %d x %d px\n",
+                                          lent.widthInches * 2.54, lent.heightInches * 2.54, lent.widthInches, lent.heightInches, info.width, info.height);
+                            t += line;
+                            t += std::string("Effect: ") + (lent.horizontalLenses ? "Animation (tilt up and down; lens strips horizontal)" : "3D (left and right; lens strips vertical)") + "\n";
+                            std::snprintf(line, sizeof(line), "Photos: %d, %s order\n", static_cast<int>(photos.size()), lent.reverse ? "reversed" : "normal");
+                            t += line;
+                            for (size_t i = 0; i < photos.size(); ++i)
+                                t += "  " + std::to_string(i + 1) + ". " + photos[i].filename().string() + "\n";
+                            std::snprintf(line, sizeof(line), "Columns per lens: %.3f; printer dots per photo: %.2f\n", info.columnsPerLens, info.pixelsPerPhoto);
+                            t += line;
+                            std::string marks;
+                            if (lent.cropMarks) marks += "crop marks";
+                            if (lent.alignMarks) marks += std::string(marks.empty() ? "" : ", ") + "alignment marks";
+                            std::snprintf(line, sizeof(line), "Marks: %s; bleed %.3g mm; file %d x %d px\n", marks.empty() ? "none" : marks.c_str(),
+                                          lent.bleedInches * 25.4, info.fileWidth, info.fileHeight);
+                            t += line;
+                            t += "\nPrint at 100% (actual size), never \"fit to page\": the file already has the right size and dpi.\n";
+                            lent.description = t;
+                        }
+                        if (!Export::WriteLenticular(photos, lentDir / (job.folderName + tag), lent, report, &exportCancel, error))
+                            break;
+                    }
+
                     if (savePhotos)
                     {
-                        fs::create_directories(photosDir, ec);
+                        // photoFormat pode ser uma lista (2.14): "original", "jpg" ou "original,jpg" —
+                        // os originais e/ou uma cópia convertida; com os dois, cada um na sua subpasta
+                        // (Photos/Originals/ e Photos/JPG/)
+                        std::vector<std::string> photoFormats;
+                        std::stringstream formatList(job.photoFormat);
+                        for (std::string x; std::getline(formatList, x, ',');)
+                            if (!x.empty()) photoFormats.push_back(x);
+                        for (const std::string& photoFormat : photoFormats)
+                        {
+                        const bool original = photoFormat == "original";
+                        std::string upper = photoFormat;
+                        for (char& c : upper) c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+                        const fs::path formatDir = photoFormats.size() > 1 ? photosDir / (original ? std::string("Originals") : upper) : photosDir;
+                        fs::create_directories(formatDir, ec);
                         // Nome curto: "01_SL3_1_IMG_4821.JPG" -> "01_SL3_1.JPG" (repetido: "-2")
                         std::map<std::string, int> used;
                         auto shortStem = [&](const std::string& file, const std::string& ext)
@@ -2923,7 +3231,6 @@ namespace
                             const int n = ++used[key];
                             return n == 1 ? base : base + "-" + std::to_string(n);
                         };
-                        const bool original = job.photoFormat == "original";
                         std::vector<std::string> files;
                         if (original)
                         {
@@ -2935,12 +3242,12 @@ namespace
                         for (size_t i = 0; i < files.size() && error.empty(); ++i)
                         {
                             if (exportCancel) { error = "cancelled"; break; }
-                            report(static_cast<double>(i) / files.size(), original ? "photos-save" : job.photoFormat);
+                            report(static_cast<double>(i) / files.size(), original ? "photos-save" : photoFormat);
                             const fs::path from = photoPath(files[i]);
                             if (original)
                             {
                                 const std::string ext = from.extension().string();
-                                const fs::path to = photosDir / (shortStem(files[i], ext) + ext);
+                                const fs::path to = formatDir / (shortStem(files[i], ext) + ext);
                                 std::error_code moveError;
                                 fs::remove(to, moveError);
                                 moveError.clear();
@@ -2949,8 +3256,11 @@ namespace
                                     error = "Could not save " + to.filename().string() + ": " + moveError.message();
                             }
                             else
-                                Export::ConvertPhoto(from, photosDir / shortStem(files[i], "." + job.photoFormat), job.photoFormat,
+                                Export::ConvertPhoto(from, formatDir / shortStem(files[i], "." + photoFormat), photoFormat,
                                                      job.photoQuality, error);
+                        }
+                        if (!error.empty())
+                            break;
                         }
                         if (!error.empty())
                             break;
@@ -3018,10 +3328,13 @@ namespace
             // args[1]: "delete" (apaga as sessões não salvas que ficaram) e/ou "edited" (usar as editadas)
             const bool deleteRest = args.size() > 1 && args[1].find("delete") != std::string::npos;
             const bool useEdited = args.size() > 1 && args[1].find("edited") != std::string::npos;
+            // "dest" (2.14): args[2] é a pasta escolhida ("" = a padrão) e as sessões vêm depois
+            const bool withDest = args.size() > 1 && args[1].find("dest") != std::string::npos;
+            const std::string destArg = withDest && args.size() > 2 ? args[2] : std::string();
             struct Naming { std::string kind, text; bool date = true; bool before = false; };
             std::vector<ExportJob> jobs;
             std::vector<Naming> namings;
-            for (size_t i = 2; i < args.size(); ++i)
+            for (size_t i = withDest ? 3 : 2; i < args.size(); ++i)
             {
                 std::vector<std::string> f;
                 std::stringstream text(args[i]);
@@ -3033,7 +3346,57 @@ namespace
                 job.session = f[0];
                 Naming naming{ f[1], f[2], f[3] == "1", f[4] == "before" };
                 job.sequence = f[5] == "sequence";
-                if (job.sequence)
+                job.lenticular = f[5] == "lenticular";
+                if (f[5] == "outputs")
+                {
+                    // 2.14 (opção A): as três saídas numa linha —
+                    // 6 fotos formato ("" = não) | 7 qualidade | 8 formatos da sequência ("" = não) |
+                    // 9 fps | 10 loops | 11 reverse | 12 altura | 13 qualidade | 14 lenticular 1/0 |
+                    // 15 lpi | 16 dpi | 17 largura pol | 18 altura pol | 19 flip/3d | 20 reverse
+                    auto at = [&](size_t k) { return k < f.size() ? f[k] : std::string(); };
+                    job.photoFormat = at(6);
+                    job.photoQuality = Export::ParseQuality(at(7));
+                    std::stringstream formats(at(8));
+                    for (std::string x; std::getline(formats, x, ',');)
+                        if (!x.empty()) job.options.formats.push_back(x);
+                    job.sequence = !job.options.formats.empty();
+                    try
+                    {
+                        if (!at(9).empty()) job.options.fps = std::stod(at(9));
+                        if (!at(10).empty()) job.options.loops = std::stoi(at(10));
+                        if (!at(12).empty()) job.options.height = std::stoi(at(12));
+                        if (!at(15).empty()) job.lent.lpi = std::stod(at(15));
+                        if (!at(16).empty()) job.lent.dpi = std::stoi(at(16));
+                        if (!at(17).empty()) job.lent.widthInches = std::stod(at(17));
+                        if (!at(18).empty()) job.lent.heightInches = std::stod(at(18));
+                    }
+                    catch (...) {}
+                    job.options.reverse = at(11) != "0";
+                    job.options.quality = Export::ParseQuality(at(13));
+                    job.lenticular = at(14) == "1";
+                    job.lent.horizontalLenses = at(19) != "3d";
+                    job.lent.reverse = at(20) == "1";
+                    // Entrega 2: 21 marcas de corte 1/0 | 22 marcas de alinhamento 1/0 | 23 sangria em mm
+                    job.lentNominal = at(24).empty() ? 0 : std::atof(at(24).c_str());
+                    job.lent.cropMarks = at(21) == "1";
+                    job.lent.alignMarks = at(22) == "1";
+                    try { if (!at(23).empty()) job.lent.bleedInches = std::max(0.0, std::stod(at(23))) / 25.4; } catch (...) {}
+                }
+                else if (job.lenticular)
+                {
+                    // lpi | dpi | largura pol | altura pol | flip|3d | reverse
+                    try
+                    {
+                        job.lent.lpi = std::stod(f[6]);
+                        job.lent.dpi = f.size() > 7 ? std::stoi(f[7]) : 720;
+                        job.lent.widthInches = f.size() > 8 ? std::stod(f[8]) : 6;
+                        job.lent.heightInches = f.size() > 9 ? std::stod(f[9]) : 4;
+                    }
+                    catch (...) {}
+                    job.lent.horizontalLenses = !(f.size() > 10 && f[10] == "3d");
+                    job.lent.reverse = f.size() > 11 && f[11] == "1";
+                }
+                else if (job.sequence)
                 {
                     std::stringstream formats(f[6]);
                     for (std::string x; std::getline(formats, x, ',');)
@@ -3061,7 +3424,22 @@ namespace
             if (jobs.empty())
                 return "null";
             std::string folder;
-            if (toProjectExports)
+            if (withDest)
+            {
+                // Sem perguntar: a pasta escolhida na janela ou a padrão (criada se preciso)
+                std::error_code ec;
+                const fs::path target = destArg.empty() ? defaultExportFolder() : fs::path(destArg);
+                fs::create_directories(target, ec);
+                if (fs::is_directory(target, ec))
+                    folder = target.string();
+                else
+                {
+                    listener.Emit(Json("exportFolderError").Add("error", "Could not use the folder " + target.string() + ". Choose another folder."));
+                    listener.Emit(Json("saveCancelled"));
+                    return "null";
+                }
+            }
+            else if (toProjectExports)
             {
                 std::error_code ec;
                 fs::create_directories(project.Exports(), ec);
@@ -3379,7 +3757,19 @@ namespace
             });
         }
 
-        window.set_html(LoadPage("index.html", theme));
+        {
+            // Abertura desligada em Settings (pref.splash=off): a página já vem sem ela
+            std::string page = LoadPage("index.html", theme);
+            const auto opening = LoadSettings();
+            if (opening.count("pref.splash") && opening.at("pref.splash") == "off")
+            {
+                const std::string marker = "id=\"splash\"";
+                const auto pos = page.find(marker);
+                if (pos != std::string::npos)
+                    page.insert(pos + marker.size(), " data-off=\"1\"");
+            }
+            window.set_html(page);
+        }
 
         // Vigia de monitores: a cada 2 s, se a lista mudou (TV ligada/desligada), avisa as
         // janelas Live (evento "screens"); a página em tela cheia num monitor que sumiu

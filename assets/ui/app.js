@@ -19,6 +19,8 @@
     const root = $("splash");
     const canvas = $("splashRain");
     if (!root || !canvas) return;
+    // Desligada em Settings (o programa marca a página com data-off ao montar)
+    if (root.dataset.off === "1") { root.remove(); return; }
     const reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const LOGO_AT = reduced ? 0 : 2300;   // ms até o logo aparecer
     const LEAVE_AT = reduced ? 1200 : 4600; // ms até a abertura começar a sumir
@@ -126,8 +128,16 @@
 
   // =================== Ícones ===================
   const ICONS = {
+    alert: '<path d="M7 1.8L13 12.2H1L7 1.8z"/><path d="M7 5.6v3"/><path d="M7 10.4v.1"/>',
     minus: '<path d="M3 7h8"/>',
     plus: '<path d="M3 7h8M7 3v8"/>',
+    swap: '<path d="M2.5 5h8l-2.5-2.5M11.5 9h-8l2.5 2.5"/>',
+    lens: '<rect x="1.5" y="2.5" width="11" height="9"/><path d="M1.5 5.5c1.4-1.6 2.3-1.6 3.7 0s2.3 1.6 3.7 0 2.3-1.6 3.6 0M4.5 8.5h5"/>',
+    // Modo teatro, como no YouTube: tela com barra embaixo e dois ângulos dentro
+    // (para fora = entrar; para dentro = sair)
+    // Modo teatro: só as setas (para fora = entrar; para dentro = sair), no botão igual ao da janela Project
+    theaterIn: '<path d="M4.5 4L1.5 7l3 3M9.5 4l3 3-3 3"/>',
+    theaterOut: '<path d="M1.5 4l3 3-3 3M12.5 4l-3 3 3 3"/>',
     up: '<path d="M3 9l4-4 4 4"/>',
     down: '<path d="M3 5l4 4 4-4"/>',
     left: '<path d="M9 3L5 7l4 4"/>',
@@ -293,6 +303,56 @@
   ui.toast.addEventListener("mouseenter", () => { clearTimeout(toast.timer); clearTimeout(toast.fadeTimer); ui.toast.classList.remove("fading"); });
   ui.toast.addEventListener("mouseleave", () => { if (!ui.toast.classList.contains("hidden")) armToast(); });
 
+  // Listas com linhas (janela Project, Switch project…): o Tab entra numa linha só; ↑ ↓ vão para o
+  // mesmo controle na linha de cima/de baixo
+  const ROVING = [];
+  function makeRoving(cfg) {
+    cfg.cur = "";
+    cfg.controls = cfg.controls || ((row) => [...row.querySelectorAll("input, button, select, textarea")]);
+    const live = (row) => cfg.controls(row).filter((x) => !x.disabled);
+    const rows = () => { const r = cfg.root(); return r ? cfg.rows(r).filter((row) => live(row).length) : []; };
+    cfg.where = (node) => {
+      const r = cfg.root();
+      if (!node || !r || !r.contains(node)) return null;
+      const row = rows().find((x) => x === node || x.contains(node));
+      return row ? { id: cfg.id(row), i: cfg.controls(row).indexOf(node) } : null;
+    };
+    cfg.apply = () => {
+      const all = rows();
+      const tabRow = all.find((x) => cfg.id(x) === cfg.cur) || all[0];
+      all.forEach((x) => cfg.controls(x).forEach((c) => { c.tabIndex = x === tabRow ? 0 : -1; }));
+    };
+    cfg.focusAt = (id, i) => {
+      const row = rows().find((x) => cfg.id(x) === id);
+      if (!row) return false;
+      const list = cfg.controls(row), ok = live(row);
+      let t = list[i] && !list[i].disabled ? list[i] : ok.reduce((b, c) => Math.abs(list.indexOf(c) - i) < Math.abs(list.indexOf(b) - i) ? c : b, ok[0]);
+      cfg.cur = id; cfg.apply();
+      t.focus();
+      t.scrollIntoView({ block: "nearest" });
+      return true;
+    };
+    cfg.move = (pos, step) => {
+      const all = rows();
+      for (let k = all.findIndex((x) => cfg.id(x) === pos.id) + step; k >= 0 && k < all.length; k += step)
+        if (cfg.focusAt(cfg.id(all[k]), pos.i)) { if (cfg.onMove) cfg.onMove(cfg.id(all[k]), pos.i); return; }
+    };
+    ROVING.push(cfg);
+    return cfg;
+  }
+  document.addEventListener("keydown", (e) => {
+    if ((e.key !== "ArrowDown" && e.key !== "ArrowUp") || selectMenu || openMenu || document.querySelector("body > .suggest")) return;
+    for (const cfg of ROVING) {
+      const pos = cfg.where(document.activeElement);
+      if (!pos) continue;
+      e.preventDefault(); e.stopImmediatePropagation();
+      cfg.move(pos, e.key === "ArrowDown" ? 1 : -1);
+      return;
+    }
+  }, true);
+  document.addEventListener("focusin", (e) => {
+    for (const cfg of ROVING) { const pos = cfg.where(e.target); if (pos && pos.id !== cfg.cur) { cfg.cur = pos.id; cfg.apply(); } }
+  });
   // ---- Desfazer / refazer (Ctrl+Z, Ctrl+Shift+Z; no Mac também com Cmd) ----
   // Cada ação registrada tem um texto e as duas funções (podem devolver uma Promise; false = não deu).
   const history = { undo: [], redo: [] };
@@ -330,10 +390,18 @@
       toast("Redo: " + a.label, TOAST_MS, { kind: "redo" });
     });
   }
+  // Cmd+` (Mac): próxima janela do app (principal ↔ Live); com Shift, a anterior. Pela tecla física
+  // (e.code), para funcionar também nos teclados em que o ` é tecla de acento
+  document.addEventListener("keydown", (e) => {
+    if (!e.metaKey || e.ctrlKey || e.altKey || e.code !== "Backquote" || typeof window.cycleWindows !== "function") return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    window.cycleWindows(e.shiftKey ? "1" : "0");
+  }, true);
   document.addEventListener("keydown", (e) => {
     if (!(e.metaKey || e.ctrlKey) || e.altKey || (e.key !== "z" && e.key !== "Z" && e.key !== "y")) return;
     const tag = e.target.tagName;
-    if (tag === "INPUT" || tag === "TEXTAREA") return;  // dentro de um campo, o desfazer é o do texto
+    // Dentro de um campo de texto, o desfazer é o do texto (caixas de marcar e botões não)
+    if (tag === "TEXTAREA" || (tag === "INPUT" && !["checkbox", "radio", "button", "range"].includes(e.target.type))) return;
     e.preventDefault(); e.stopImmediatePropagation();
     if (e.key === "y" || e.shiftKey) doRedo(); else doUndo();
   }, true);
@@ -454,6 +522,7 @@
       } else {
         li.addEventListener("click", () => select(i));
       }
+      if (opts.onContext) li.addEventListener("contextmenu", (e) => { e.preventDefault(); select(i); opts.onContext(e); });
       return li;
     }
 
@@ -500,6 +569,7 @@
       }
     }
 
+    if (opts.onContext) root.querySelector(".stage img").addEventListener("contextmenu", (e) => { if (items[index]) { e.preventDefault(); opts.onContext(e); } });
     function select(i) {
       if (!items.length) return;
       index = (i + items.length) % items.length;
@@ -634,8 +704,58 @@
     return cameras.filter((c) => c.order > 0);
   }
 
+  // ---- Teclado na lista de câmeras (a mesma lógica do Camera settings) ----
+  // O Tab passa só pelos botões de uma linha (a última usada, ou a primeira); ↑ ↓ vão para o mesmo
+  // botão na câmera de cima/de baixo.
+  let camTabRow = "";
+  const camBtnKey = (b) => b.title || b.getAttribute("aria-label") || b.textContent.trim();
+  function camRowButtons(li) { return [...li.querySelectorAll(".camera-actions button")]; }
+  function camKeyOf(node) {
+    const li = node && node.closest && node.closest("#" + ui.cameraList.id + " li[data-name]");
+    if (!li || node.tagName !== "BUTTON") return null;
+    return { name: li.dataset.name, key: camBtnKey(node), index: camRowButtons(li).indexOf(node) };
+  }
+  function camRows() { return [...ui.cameraList.querySelectorAll("li[data-name]")].filter((li) => camRowButtons(li).length); }
+  function camRoving() {
+    const rows = camRows();
+    const row = rows.find((li) => li.dataset.name === camTabRow) || rows[0];
+    rows.forEach((li) => camRowButtons(li).forEach((b) => { b.tabIndex = li === row ? 0 : -1; }));
+  }
+  function camFocus(name, key, index) {
+    const li = camRows().find((x) => x.dataset.name === name);
+    if (!li) return false;
+    const list = camRowButtons(li), live = list.filter((b) => !b.disabled);
+    if (!live.length) return false;
+    // O mesmo botão; se estiver desligado (ex.: Move up na primeira), o mais próximo
+    let t = list.find((b) => camBtnKey(b) === key && !b.disabled);
+    if (!t) t = live.reduce((best, b) => Math.abs(list.indexOf(b) - index) < Math.abs(list.indexOf(best) - index) ? b : best, live[0]);
+    camTabRow = name;
+    camRoving();
+    t.focus({ preventScroll: false });
+    return true;
+  }
+  document.addEventListener("focusin", (e) => {
+    const k = camKeyOf(e.target);
+    if (k && k.name !== camTabRow) { camTabRow = k.name; camRoving(); }
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+    const k = camKeyOf(document.activeElement);
+    if (!k) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    const rows = camRows();
+    const step = e.key === "ArrowDown" ? 1 : -1;
+    for (let i = rows.findIndex((li) => li.dataset.name === k.name) + step; i >= 0 && i < rows.length; i += step)
+      if (camFocus(rows[i].dataset.name, k.key, k.index)) return;
+  }, true);
+
   function renderCameras() {
     if (typeof renderTiming === "function") setTimeout(renderTiming, 0);
+    // Onde cada linha estava: depois de redesenhar, as que mudaram de lugar deslizam até o novo
+    const was = {};
+    ui.cameraList.querySelectorAll("li[data-name]").forEach((li) => { if (li.dataset.name) was[li.dataset.name] = li.getBoundingClientRect().top; });
+    // Foco do teclado numa linha: volta para o mesmo botão da mesma câmera depois de redesenhar
+    const focusWas = camKeyOf(document.activeElement);
     ui.cameraList.innerHTML = "";
     const placed = placedCameras();
     const empty = cameras.length === 0;
@@ -644,11 +764,26 @@
 
     placed.forEach((cam, index) => ui.cameraList.appendChild(cameraRow(cam, index, placed.length)));
     cameras.filter((c) => c.order === 0).forEach((cam) => ui.cameraList.appendChild(cameraRow(cam, -1, placed.length)));
+    camRoving();
+    if (focusWas) camFocus(focusWas.name, focusWas.key, focusWas.index);
     $("cameraCount").textContent = cameras.length;
     $("cameraCount").classList.toggle("hidden", cameras.length === 0);
+    fitCameraList();
+    ui.cameraList.querySelectorAll("li[data-name]").forEach((li) => {
+      const top = was[li.dataset.name];
+      if (top === undefined || !li.animate) return;
+      const d = top - li.getBoundingClientRect().top;
+      if (Math.abs(d) > 1) li.animate([{ transform: "translateY(" + d + "px)" }, { transform: "none" }], { duration: 220, easing: "ease-out" });
+    });
     updateButtons();
   }
 
+  // Lista que rola: espaço entre a barra de rolagem e as câmeras
+  function fitCameraList() {
+    const list = ui.cameraList;
+    list.classList.toggle("scrolling", list.scrollHeight > list.clientHeight + 1);
+  }
+  if (window.ResizeObserver) new ResizeObserver(() => fitCameraList()).observe(ui.cameraList);
   function cameraRow(cam, index, placedCount) {
     const state = cam.state || (cam.connected ? "connected" : "disconnected");
 
@@ -776,6 +911,8 @@
     const before = cameraOrderNames();
     if (names.join("|") === before.join("|")) return;
     window.setOrder(...names);
+    log(what || "Camera order changed", "ok");
+    log("Camera order: " + names.map((n, i) => (i + 1) + " " + n).join(", "), "tech");
     recordAction({ label: what || "Camera order", undo: () => window.setOrder(...before), redo: () => window.setOrder(...names) });
   }
   function moveCamera(cam, delta) {
@@ -789,7 +926,10 @@
   function smallButton(b, locked, usesCamera) {
     b.dataset.locked = locked ? "1" : "0";
     b.dataset.sdk = usesCamera ? "1" : "0";
-    b.disabled = busy || !!locked;
+    // Já nasce no estado certo: a lista é redesenhada a cada segundo enquanto uma câmera conecta, e o
+    // botão que usa a câmera (Identify) nascia ativo e era desativado logo depois (piscava)
+    const sdkBusy = usesCamera && cameras.some((c) => c.state === "connecting" && !c.starting);
+    b.disabled = busy || !!locked || sdkBusy;
     return b;
   }
 
@@ -873,6 +1013,26 @@
   // =================== Sessões ===================
   const sessionGallery = Gallery(ui.sessionGallery, {
     load: (item, size) => sessionPhoto(item.session, item.file, size),
+    // Botão direito numa foto (miniatura ou foto grande): apagar
+    onContext: (e) => {
+      if (editing.on || !currentSession) return;
+      const item = sessionGallery.items[sessionGallery.index];
+      if (!item) return;
+      const win = upd.info && upd.info.os === "windows";
+      const fileAction = (what) => {
+        if (typeof window.photoFile !== "function") { toast("This build cannot do that yet. Build the app again.", 8000); return; }
+        Promise.resolve(window.photoFile(item.session || currentSession.name, item.file, what)).then((r) => {
+          if (r && r.ok === false) toast(r.error || "Could not open " + item.file + ".", 8000);
+        });
+      };
+      const hasFile = !!item.file;
+      popupMenuAt(e.clientX, e.clientY, [
+        { label: win ? "Show in Explorer" : "Show in Finder", disabled: !hasFile, dim: !hasFile, onClick: () => fileAction("reveal") },
+        { label: "Open in default app", disabled: !hasFile, dim: !hasFile, onClick: () => fileAction("open") },
+        "-",
+        { label: "Delete photo " + pad(item.order || sessionGallery.index + 1) + "…", danger: true, onClick: deleteCurrentPhoto },
+      ]);
+    },
   });
   const editing = { on: false };  // reordenando as fotos da sessão aberta
   const playBtn = button("", togglePlay, { icon: "play", title: "Play the sequence (space)" });
@@ -885,6 +1045,8 @@
     fullBtn,
   ];
   const exitFullBtn = button("", () => setFullscreen(false), { icon: "shrink", title: "Exit full screen (Esc)" });
+  // Na tela cheia a lixeira apaga a sessão (como fora dela); uma foto: botão direito ou a tecla Delete
+  const fullTrashBtn = button("", deleteCurrentSession, { icon: "trash", title: "Delete this session (a photo: right-click it, or the Delete key)" });
   // "Reverse loop" (ligado por padrão): o play vai e volta (1, 2, 3, 2, 1...);
   // desligado, recomeça do início (1, 2, 3, 1, 2, 3...)
   const reverseLoopOption = document.createElement("label");
@@ -932,8 +1094,7 @@
     speedGroup,
     reverseLoopOption,
     button("Reorder", startReorder, { title: "Change the order of the photos in this session" }),
-    button("", deleteCurrentPhoto, { icon: "trash", title: "Delete this photo (Delete key)" }),
-    button("Delete session", deleteCurrentSession, { kind: "btn-link", title: "Delete this session" }),
+    fullTrashBtn,
     exitFullBtn,
   ];
   const editActions = [
@@ -1078,9 +1239,27 @@
         li.title = "Already saved. It leaves the app when you close Stillpoint (the saved copy stays where you saved it).";
       }
       li.addEventListener("click", () => showSession(s));
+      // Teclado: o Tab passa só por uma sessão (a aberta, ou a primeira); ↑ ↓ trocam de sessão
+      li.tabIndex = -1;
+      li.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); showSession(s); return; }
+        if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+        e.preventDefault(); e.stopPropagation();
+        const rows = [...ui.sessionList.querySelectorAll("li.folder")].filter((x) => x.getClientRects().length > 0);
+        const next = rows[rows.indexOf(li) + (e.key === "ArrowDown" ? 1 : -1)];
+        if (!next) return;
+        const target = sessions.find((z) => z.name === next.dataset.name);
+        if (target) showSession(target);
+        const again = [...ui.sessionList.querySelectorAll("li.folder")].find((x) => x.dataset.name === next.dataset.name);
+        if (again) { again.tabIndex = 0; again.focus(); }
+      });
       ui.sessionList.appendChild(li);
     });
     if (projectOpen) addDivider();  // também sem sessões fora: é o alvo para tirar do projeto arrastando
+    // Uma sessão só no Tab: a aberta (ou a primeira visível)
+    const rowsNow = [...ui.sessionList.querySelectorAll("li.folder")].filter((x) => !x.classList.contains("hidden"));
+    const tabRow = rowsNow.find((x) => x.classList.contains("active")) || rowsNow[0];
+    if (tabRow) tabRow.tabIndex = 0;
   }
 
   // Uma foto por câmera: o RAW e o JPEG da mesma câmera ficam juntos (a prévia
@@ -1216,7 +1395,18 @@
       what + ". " + (item.files.length > 1 ? "Its RAW and JPEG files are" : "The file is") + " deleted permanently.", [
         { label: "Cancel" },
         { label: "Delete", danger: true, onClick: () => {
-          window.deletePhotos(session, item.group);
+          // A miniatura encolhe e some, a foto grande se apaga; só então o arquivo vai embora
+          const thumb = ui.sessionGallery.querySelector(".carousel .frame.selected");
+          const big = ui.sessionGallery.querySelector(".stage img");
+          if (thumb && thumb.animate) thumb.animate([{ opacity: 1, transform: "scale(1)" }, { opacity: 0, transform: "scale(.4) translateY(30%)" }], { duration: 260, easing: "ease-in", fill: "forwards" });
+          if (big && big.animate && big.getAttribute("src")) big.animate([{ opacity: 1, transform: "scale(1)" }, { opacity: 0, transform: "scale(.85)" }], { duration: 260, easing: "ease-in", fill: "forwards" });
+          // A foto grande volta a aparecer quando a próxima carregar (ou, se nada mudar, em 1,5 s)
+          const reveal = () => { if (big) big.getAnimations().forEach((a) => a.cancel()); if (thumb && thumb.isConnected) thumb.getAnimations().forEach((a) => a.cancel()); };
+          setTimeout(() => {
+            window.deletePhotos(session, item.group);
+            if (big) big.addEventListener("load", reveal, { once: true });
+            setTimeout(reveal, 1500);
+          }, 270);
           toast("Photo " + pad(item.order || 0) + " deleted from the session of " + sessionLabel(session).date);
           recordAction({ label: "Delete photo " + pad(item.order || 0) + " from " + sessionLabel(session).date,
             undo: () => restoreSession(session), redo: () => window.deletePhotos(session, item.group) });
@@ -1234,6 +1424,39 @@
       return false;
     });
   }
+  // Apagar sessão: uma cópia da linha voa até o botão da lixeira (encolhendo e sumindo), a linha
+  // fecha no lugar e a lixeira dá um pulo; só então a sessão é apagada
+  function flyToTrash(name, done) {
+    const full = isFullscreen() && currentSession && currentSession.name === name;
+    // Tela cheia: a área da foto (miniaturas + foto grande) vai até o ícone da lixeira da tela cheia
+    const li = full ? ui.sessionGallery.querySelector(".stage")
+      : [...ui.sessionList.querySelectorAll("li.folder")].find((x) => x.dataset.name === name);
+    const trash = full ? fullTrashBtn : compactActions[0];
+    const from = li && !li.classList.contains("hidden") ? li.getBoundingClientRect() : null;
+    const to = trash && trash.offsetParent ? trash.getBoundingClientRect() : null;
+    if (!from || !from.width || !li.animate) { done(); return; }
+    const ghost = li.cloneNode(true);
+    if (full) ghost.classList.add("stage-ghost");
+    ghost.classList.add("trash-ghost");
+    Object.assign(ghost.style, { left: from.left + "px", top: from.top + "px", width: from.width + "px", height: from.height + "px" });
+    document.body.appendChild(ghost);
+    const dx = to ? to.left + to.width / 2 - (from.left + from.width / 2) : 0;
+    const dy = to ? to.top + to.height / 2 - (from.top + from.height / 2) : 40;
+    ghost.animate([{ transform: "translate(0, 0) scale(1)", opacity: 1 },
+                   { transform: "translate(" + dx * 0.5 + "px, " + (dy * 0.5 - 30) + "px) scale(.55)", opacity: .9, offset: .5 },
+                   { transform: "translate(" + dx + "px, " + dy + "px) scale(.08)", opacity: 0 }],
+                  { duration: 520, easing: "cubic-bezier(.5, 0, .7, 1)", fill: "forwards" });
+    if (full) {
+      // Na tela cheia a foto e as miniaturas se apagam no lugar enquanto a cópia voa
+      [li, ui.sessionGallery.querySelector(".carousel-wrap")].forEach((n) => n && n.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 260, easing: "ease", fill: "forwards" }));
+      setTimeout(() => [li, ui.sessionGallery.querySelector(".carousel-wrap")].forEach((n) => n && n.getAnimations().forEach((a) => a.cancel())), 900);
+    } else {
+      li.animate([{ height: from.height + "px", opacity: 1 }, { height: "0px", opacity: 0, marginTop: "0px", marginBottom: "0px", paddingTop: "0px", paddingBottom: "0px" }],
+                 { duration: 360, delay: 120, easing: "ease", fill: "forwards" });
+    }
+    setTimeout(() => { if (to && trash.animate) trash.animate([{ transform: "scale(1)" }, { transform: "scale(1.25)" }, { transform: "scale(1)" }], { duration: 240, easing: "ease-out" }); }, 470);
+    setTimeout(() => { ghost.remove(); done(); }, 540);
+  }
   function deleteSessionAsk(s) {
     const label = sessionLabel(s.name);
     dialog("Delete this session?", "The photos from " + label.date + " will be deleted permanently" +
@@ -1241,7 +1464,7 @@
       { label: "Cancel" },
       { label: "Delete", danger: true, onClick: () => {
         toast("Session deleted: " + label.date + (s.inProject ? " (from the project folder)" : ""));
-        window.deleteSession(s.name);
+        flyToTrash(s.name, () => window.deleteSession(s.name));
         recordAction({ label: "Delete session " + label.date, undo: () => restoreSession(s.name), redo: () => window.deleteSession(s.name) });
       } },
     ]);
@@ -1298,8 +1521,19 @@
     $("csTestBox").classList.toggle("zoom", csZoom);
   }
   function csSetCollapsed(on) {
+    const wrap = $("csTestBox").querySelector(".carousel-wrap");
+    if (on && !csCollapsed && wrap && !wrap.classList.contains("hidden") && wrap.offsetHeight) {
+      // Recolhe deslizando; no fim esconde de fato
+      csCollapsed = true;
+      csHideBtn.textContent = "Show photos";
+      csSetZoom(false);
+      slideClosed(wrap, () => { if (csCollapsed) $("csTestBox").classList.add("collapsed"); });
+      return;
+    }
+    const opening = !on && csCollapsed;
     csCollapsed = !!on;
     $("csTestBox").classList.toggle("collapsed", csCollapsed);
+    if (opening && wrap) slideOpen(wrap);
     csHideBtn.textContent = csCollapsed ? "Show photos" : "Hide photos";
     if (csCollapsed) csSetZoom(false);
   }
@@ -1400,15 +1634,25 @@
   const SIZES = [[720, "720p"], [1080, "1080p"], [2160, "4K"]];
   const QUALITIES = [["standard", "Standard"], ["high", "High"], ["maximum", "Maximum"]];
   const LOSSY_PHOTOS = ["jpg", "webp", "heic"];  // PNG e TIFF são sempre sem perda
+  // Lenticular (etapa 19): lâminas e saídas de fábrica (decisão do dono, 2026-10-30); "Other" = digitar
+  const LENSES = [[40, "40 LPI"], [50, "50 LPI"], [60, "60 LPI"], [75, "75 LPI"], [100, "100 LPI"]];
+  const LENSES_3D = [[20, "20 LPI"], [30, "30 LPI"], [40, "40 LPI"]];
+  const PRINTERS = [[600, "600 dpi"], [720, "720 dpi"], [1200, "1200 dpi"], [1440, "1440 dpi"]];
+  const PRINTER_HELP = "Use the printer's native resolution, not the maximum: Epson photo printers work at 720 or 1440 dpi; HP and Canon at 600 or 1200. For a print shop, ask them.";
+  const CM_PER_IN = 2.54;
   function qualityLabel(q) { return QUALITIES.find((x) => x[0] === q)[1]; }
+  // As três saídas de uma sessão (seções da janela de salvar); a chave de configuração de cada uma
+  const OUTPUTS = [["photos", "Photos", "one file per camera"], ["sequence", "Sequence", "video or animated image"],
+                   ["lenticular", "Lenticular", "interlaced TIFF for a lens sheet"]];
+  const OUTPUT_KINDS = OUTPUTS.map(([k]) => k);
+  const OUTPUT_KEYS = ["outputs", "photos", "seq", "lent", "naming"];
   const exp = { mode: "photos", exitAfter: false, selected: new Set(), active: "", settings: {}, heic: { ok: true, reason: "" },
                 timer: null, frame: 0, photo: 0, sameForAll: true, project: false };
 
-  // Configuração da sessão aberta igual nas outras (só a parte do modo atual e o nome)
-  function settingsKey() { return exp.mode === "photos" ? "photos" : "seq"; }
+  // Configuração da sessão aberta igual nas outras (saídas ligadas, as três configurações e o nome)
   function sameAsActive(name) {
-    const a = settingsFor(exp.active), o = settingsFor(name), k = settingsKey();
-    return JSON.stringify(a[k]) === JSON.stringify(o[k]) && JSON.stringify(a.naming) === JSON.stringify(o.naming);
+    const a = settingsFor(exp.active), o = settingsFor(name);
+    return OUTPUT_KEYS.every((k) => JSON.stringify(a[k]) === JSON.stringify(o[k]));
   }
   // "Same settings for all sessions" ligado: o que muda na sessão aberta vale para todas
   function syncAll() {
@@ -1417,9 +1661,7 @@
     sessions.forEach((o) => {
       if (o.name === exp.active) return;
       const t = settingsFor(o.name);
-      t.photos = JSON.parse(JSON.stringify(st.photos));
-      t.seq = JSON.parse(JSON.stringify(st.seq));
-      t.naming = JSON.parse(JSON.stringify(st.naming));
+      OUTPUT_KEYS.forEach((k) => { t[k] = JSON.parse(JSON.stringify(st[k])); });
     });
   }
 
@@ -1428,23 +1670,49 @@
   let exportPrefs = null;
   function defaultSettings() {
     const base = { naming: { kind: "date", text: "", date: true, position: "after" },
-                   photos: { format: "original", quality: "high" },
-                   seq: { formats: ["mp4"], fps: 6, loops: 3, reverse: true, height: 1080, alsoPhotos: true, quality: "high" } };
+                   outputs: { photos: true, sequence: false, lenticular: false },
+                   // original: copiar como a câmera salvou; convert + format: uma cópia convertida (os dois podem)
+                   photos: { original: true, convert: false, format: "jpg", quality: "high" },
+                   seq: { formats: ["mp4"], fps: 6, loops: 3, reverse: true, height: 1080, alsoPhotos: true, quality: "high" },
+                   // lpi: lâmina; pitch: medido na folha de teste (0 = usar o nominal); dpi: impressora;
+                   // tamanho em cm (unit "cm"|"in" só muda a exibição); effect "flip" (animação) | "3d"
+                   lent: { lpi: 60, pitch: 0, dpi: 720, widthCm: 15, heightCm: 10, unit: "cm", effect: "flip", reverse: false,
+                           // marcas (entrega 2, decisão do dono em 2026-10-30): corte e alinhamento ligados, sangria 3 mm
+                           cropMarks: true, alignMarks: true, bleedMm: 3 } };
     const p = exportPrefs && exportPrefs.settings;
-    if (p) ["naming", "photos", "seq"].forEach((k) => { if (p[k] && typeof p[k] === "object") Object.assign(base[k], JSON.parse(JSON.stringify(p[k]))); });
+    if (p) ["naming", "outputs", "photos", "seq", "lent"].forEach((k) => { if (p[k] && typeof p[k] === "object") Object.assign(base[k], JSON.parse(JSON.stringify(p[k]))); });
+    // Preferências de antes da 2.14 (um modo só): o modo vira a saída ligada; Sequence com
+    // "Also save the photos" liga Photos (Original) também
+    if (p && !p.outputs && exportPrefs.mode) {
+      const m = exportPrefs.mode;
+      base.outputs = { photos: m === "photos" || (m === "sequence" && p.seq && p.seq.alsoPhotos !== false), sequence: m === "sequence", lenticular: m === "lenticular" };
+      if (m === "sequence" && base.outputs.photos) base.photos.format = "original";
+    }
+    delete base.seq.alsoPhotos;
+    // Fotos de antes da 2.14 (um formato só, "original" ou outro)
+    const oldPhotos = p && (!p.photos || p.photos.original === undefined);
+    if (oldPhotos && (p.photos || base.photos.format === "original")) {
+      const f = base.photos.format;
+      base.photos.original = f === "original";
+      base.photos.convert = f !== "original";
+    }
+    if (base.photos.format === "original") base.photos.format = "jpg";
     return base;
   }
   let exportPrefsTimer = null;
   function rememberExportPrefs() {
     if (!exp.active || typeof window.savePref !== "function") return;
-    exportPrefs = { mode: exp.mode, sameForAll: exp.sameForAll, settings: JSON.parse(JSON.stringify(settingsFor(exp.active))) };
+    exportPrefs = { mode: exp.mode, sameForAll: exp.sameForAll, collapsed: exp.collapsed || {}, previewHidden: !!exp.previewHidden, settings: JSON.parse(JSON.stringify(settingsFor(exp.active))) };
     clearTimeout(exportPrefsTimer);
     exportPrefsTimer = setTimeout(() => window.savePref("export", JSON.stringify(exportPrefs)), 300);
   }
+  const startPrefs = { splash: true };  // abertura (logo + chuva de código) ao abrir o app
   function loadPrefs(info) {
     const prefs = (info && info.prefs) || {};
     try { exportPrefs = prefs.export ? JSON.parse(prefs.export) : null; } catch (e) { exportPrefs = null; }
     if (exportPrefs && typeof exportPrefs.sameForAll === "boolean") exp.sameForAll = exportPrefs.sameForAll;
+    pitchAsk = prefs.pitchAsk !== "off";
+    startPrefs.splash = prefs.splash !== "off";
   }
   function settingsFor(name) {
     if (!exp.settings[name]) exp.settings[name] = defaultSettings();
@@ -1481,30 +1749,61 @@
     const cycle = cycleOrder(sessionItems(session).length, s.reverse).length;
     return { cycle: cycle, frames: cycle * s.loops, seconds: cycle * s.loops / s.fps };
   }
+  // Texto com "⚠" → o mesmo texto com o ícone de alerta amarelo no lugar
+  function setWarnText(node, text) {
+    node.textContent = "";
+    String(text).split("⚠").forEach((part, i) => {
+      if (i > 0) { const w = el("span", "warn-icon"); w.innerHTML = icon("alert", 14); w.title = "Check the lenticular settings: the printer cannot separate the photos well"; node.appendChild(w); }
+      if (part) node.appendChild(document.createTextNode(part));
+    });
+  }
   function summaryText(session) {
     return folderName(session) + " · " + settingsText(session);
   }
+  // Lista de sessões: as saídas ligadas, curtas ("Original + MP4 + Lenticular 60/720")
   function settingsText(session) {
     const st = settingsFor(session.name);
-    if (exp.mode === "photos")
-      return "→ " + PHOTO_FORMATS.find((f) => f[0] === st.photos.format)[1] +
-        (LOSSY_PHOTOS.includes(st.photos.format) ? " · " + qualityLabel(st.photos.quality) : "");
+    const parts = [];
+    if (st.outputs.photos) parts.push(photosText(st.photos) || "no photos");
+    if (st.outputs.sequence) parts.push(st.seq.formats.length ? st.seq.formats.map((f) => f.toUpperCase()).join(" · ") : "no sequence format");
+    if (st.outputs.lenticular) {
+      const l = st.lent, plan = lentPlan(l, sessionItems(session).filter((i) => i.previewable).length);
+      parts.push("Lenticular " + lentPitch(l) + "/" + l.dpi + (plan.warn ? " ⚠" : ""));
+    }
+    return parts.length ? "→ " + parts.join(" + ") : "Nothing to save";
+  }
+  // "Originals + JPG", "Originals", "JPG" ("" = nada escolhido)
+  function photosText(p) {
+    return [p.original ? "Originals" : "", p.convert ? PHOTO_FORMATS.find((f) => f[0] === p.format)[1] : ""].filter(Boolean).join(" + ");
+  }
+  // Cabeçalho de cada seção: o resumo daquela saída
+  function outputText(session, kind) {
+    const st = settingsFor(session.name);
+    if (kind === "photos") {
+      const p = st.photos;
+      if (!p.original && !p.convert) return "Choose originals or a format";
+      return photosText(p) + (p.convert && LOSSY_PHOTOS.includes(p.format) ? " · " + qualityLabel(p.quality) : "");
+    }
+    if (kind === "lenticular") {
+      const l = st.lent, plan = lentPlan(l, sessionItems(session).filter((i) => i.previewable).length);
+      return lentPitch(l) + " LPI · " + l.dpi + " dpi · " + lentSizeText(l) + " · " + (l.effect === "3d" ? "3D" : "Animation") + (plan.warn ? " ⚠" : "");
+    }
     const s = st.seq;
     if (!s.formats.length) return "No format chosen";
-    return s.formats.map((f) => f.toUpperCase()).join(" · ") + " · " + s.fps + " fps · " + plural(s.loops, "loop", "loops") +
-      " · " + seconds(seqTotal(session, s).seconds) + " · " + qualityLabel(s.quality);
+    return s.formats.map((f) => f.toUpperCase()).join(" · ") + " · " + s.fps + " fps · " + plural(s.loops, "loop", "loops") + " · " + seconds(seqTotal(session, s).seconds);
   }
 
+  // Save sessions abre direto a janela com as três saídas (a escolha de modo saiu na 2.14)
   function startSave(exitAfter) {
     if (!sessions.length) return;
     exp.exitAfter = exitAfter;
-    $("modeText").textContent = "How do you want to save " + (sessions.length === 1 ? "the session" : "the " + sessions.length + " sessions") + "?";
-    $("modeOverlay").classList.remove("hidden");
+    openExport();
   }
 
-  function openExport(mode, projectNames) {
-    $("modeOverlay").classList.add("hidden");
-    exp.mode = mode;
+  function openExport(projectNames) {
+    if (exportPrefs && OUTPUT_KINDS.includes(exportPrefs.mode)) exp.mode = exportPrefs.mode;
+    if (exportPrefs && exportPrefs.collapsed) exp.collapsed = Object.assign({}, exportPrefs.collapsed);
+    if (exportPrefs && typeof exportPrefs.previewHidden === "boolean") exp.previewHidden = exportPrefs.previewHidden;
     exp.project = Array.isArray(projectNames);
     const all = exportable();
     // Salvando para fechar: só as que ainda não foram salvas (as já salvas ficam marcadas fora)
@@ -1519,6 +1818,14 @@
       $("exportEdited").checked = project.exportDefaults.useEdited !== false;
     }
     exp.photo = 0;
+    exp.dest = null;  // outra pasta escolhida vale só para uma vez
+    expSnap = null;
+    if (typeof window.exportDestination === "function")
+      Promise.resolve(window.exportDestination()).then((d) => {
+        if (!d) return;
+        exp.destDefault = d.folder; exp.destProject = !!d.project;
+        if (!$("exportOverlay").classList.contains("hidden")) { renderExportSettings(); if (renderExportSettings.restoreScroll) renderExportSettings.restoreScroll(); }
+      });
     Promise.resolve(window.exportFormats && window.exportFormats()).then((f) => {
       if (f) exp.heic = { ok: f.heic, reason: f.heicReason || "" };
       renderExport();
@@ -1527,19 +1834,50 @@
     $("exportOverlay").classList.remove("hidden");
   }
 
+  // ← → no Save sessions: trocam a foto da prévia (Photos) e a do Tilt (Lenticular)
+  document.addEventListener("keydown", (e) => {
+    if ((e.key !== "ArrowLeft" && e.key !== "ArrowRight") || selectMenu || openMenu || !exp.keyNav) return;
+    if ($("exportOverlay").classList.contains("hidden") || tabScope() !== $("exportOverlay")) return;
+    const t = e.target;
+    if (t && (t.tagName === "TEXTAREA" || t.tagName === "SELECT" || (t.tagName === "INPUT" && !["checkbox", "radio", "button"].includes(t.type)))) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    exp.keyNav(e.key === "ArrowRight" ? 1 : -1);
+  }, true);
   function closeExport() {
     stopPreview();
     $("exportOverlay").classList.add("hidden");
     exp.project = false;
+    // As mudanças da janela só valem com ela aberta: saem do desfazer ao fechar
+    history.undo = history.undo.filter((a) => !a.exportWin);
+    history.redo = history.redo.filter((a) => !a.exportWin);
+  }
+  // Desfazer no Save sessions: cada mudança (saídas, formatos, nome, seleção, pasta) vira um passo
+  let expSnap = null;
+  function expSnapshot() {
+    return JSON.stringify({ s: exportable().map((x) => [x.name, settingsFor(x.name)]), same: exp.sameForAll,
+      sel: [...exp.selected].sort(), dest: exp.dest || null, edited: $("exportEdited").checked });
+  }
+  function expTrack() {
+    if ($("exportOverlay").classList.contains("hidden")) return;
+    const now = expSnapshot();
+    if (expSnap !== null && now !== expSnap) {
+      const before = expSnap;
+      recordAction({ label: "Save sessions settings", exportWin: true, undo: () => expApply(before), redo: () => expApply(now) });
+    }
+    expSnap = now;
+  }
+  function expApply(snap) {
+    if ($("exportOverlay").classList.contains("hidden")) return false;
+    const o = JSON.parse(snap);
+    o.s.forEach(([name, st]) => { exp.settings[name] = st; });
+    exp.sameForAll = o.same; exp.selected = new Set(o.sel); exp.dest = o.dest; $("exportEdited").checked = o.edited;
+    expSnap = snap;
+    renderExport();
   }
 
   function renderExport() {
-    const seq = exp.mode === "sequence";
-    $("exportTitle").textContent = seq ? "Save as sequence" : "Save as photos";
-    $("exportSub").textContent = seq ? "Each session becomes a video or animated image. Click a session to see and change its settings."
-                                     : "Click a session to see its photos and change its format.";
-    $("exportModePhotos").classList.toggle("on", !seq);
-    $("exportModeSequence").classList.toggle("on", seq);
+    $("exportTitle").textContent = exp.project ? "Export sessions" : "Save sessions";
+    $("exportSub").textContent = "Tick what each session should become: photos, a sequence, a lenticular print, or several. Each session is saved in one folder.";
     renderExportList();
     renderExportSettings();
     if (renderExportSettings.restoreScroll) renderExportSettings.restoreScroll();  // já com o conteúdo montado
@@ -1555,8 +1893,13 @@
 
   // Sessões que a janela de salvar mostra: todas, ou só as do Project (Export… da janela Project)
   function exportable() { return exp.project ? sessions.filter((s) => s.inProject) : sessions; }
+  // Teclado: o Tab para numa sessão só; ↑ ↓ trocam de sessão (e mostram as opções dela, como o clique)
+  const exportRoving = makeRoving({ root: () => $("exportList"), rows: (r) => [...r.querySelectorAll("li.export-item")],
+    controls: (row) => [row.querySelector("input")], id: (row) => row.dataset.name,
+    onMove: (name, i) => { if (exp.active === name) return; exp.active = name; exp.photo = 0; renderExportList(); renderExportSettings(); exportRoving.focusAt(name, i); } });
   function renderExportList() {
     const list = $("exportList");
+    const focusWas = exportRoving.where(document.activeElement);
     list.innerHTML = "";
     exportable().forEach((s) => {
       const label = sessionLabel(s.name);
@@ -1578,7 +1921,7 @@
       if (s.missing > 0) li.querySelector(".folder-meta").after(missingTag(s.missing));
       if (s.inProject && s.edited > 0) li.querySelector(".folder-meta").after(projectTag(s));  // "Edited n / m" também aqui
       if (s.saved) li.querySelector(".folder-meta").after(savedTag());
-      li.querySelector(".export-summary").textContent = summaryText(s);
+      setWarnText(li.querySelector(".export-summary"), summaryText(s));
       li.classList.toggle("different", !exp.sameForAll && s.name !== exp.active && !sameAsActive(s.name));
       const first = sessionItems(s).find((i) => i.previewable);
       if (first) sessionPhoto(s.name, first.file, 320).then((url) => { if (url) li.querySelector(".export-thumb").style.backgroundImage = "url(" + url + ")"; });
@@ -1588,33 +1931,45 @@
         renderExportList();
         renderExportSettings();
       });
+      li.dataset.name = s.name;
       list.appendChild(li);
     });
+    exportRoving.cur = exp.active;
+    exportRoving.apply();
+    if (focusWas) exportRoving.focusAt(focusWas.id, focusWas.i);
   }
 
   function updateExportCount() {
     const all = exportable();
     const chosen = exp.selected.size;
-    const seqEmpty = exp.mode === "sequence" && all.some((s) => exp.selected.has(s.name) && !settingsFor(s.name).seq.formats.length);
+    const chosenSt = all.filter((s) => exp.selected.has(s.name)).map((s) => settingsFor(s.name));
+    const noOutput = chosenSt.some((st) => !OUTPUT_KINDS.some((k) => st.outputs[k]));
+    const seqEmpty = chosenSt.some((st) => st.outputs.sequence && !st.seq.formats.length);
+    const lentBad = chosenSt.some((st) => st.outputs.lenticular && !lentValid(st.lent));
+    const photosEmpty = chosenSt.some((st) => st.outputs.photos && !st.photos.original && !st.photos.convert);
     // Project: sessão com só parte das fotos editadas misturaria editadas e originais
     const partial = exp.project && $("exportEdited").checked
       ? all.filter((s) => exp.selected.has(s.name) && s.edited > 0 && s.edited < s.photos.length) : [];
-    $("exportCount").textContent = seqEmpty ? "Choose at least one format for each selected session"
+    $("exportCount").textContent = noOutput ? "Tick at least one output for each selected session" : photosEmpty ? "Photos: choose the originals, a format, or both" : lentBad ? "Check the lens, printer and size values" : seqEmpty ? "Choose at least one sequence format for each selected session"
       : partial.length ? (partial.length === 1 ? sessionTitle(partial[0]) + " has" : partial.length + " sessions have") + " only some photos edited: edited and original frames would be mixed."
       : chosen + " of " + plural(all.length, "session", "sessions") + " selected";
-    $("exportCount").classList.toggle("warn", partial.length > 0);
-    $("exportConfirm").disabled = chosen === 0 || seqEmpty;
+    // Aviso que impede salvar (ou que pede atenção): em amarelo
+    $("exportCount").classList.toggle("warn", partial.length > 0 || noOutput || photosEmpty || lentBad || seqEmpty);
+    $("exportConfirm").disabled = chosen === 0 || noOutput || seqEmpty || lentBad || photosEmpty;
+    // Folha de teste: só com o Lenticular marcado em alguma sessão escolhida
+    $("exportPitch").disabled = !lentSession();
     $("exportConfirm").textContent = chosen ? (exp.project ? "Export " : "Save ") + plural(chosen, "session", "sessions") : (exp.project ? "Export" : "Save");
     $("exportSelectAll").disabled = chosen === all.length;
     $("exportUnselectAll").disabled = chosen === 0;
     $("exportEditedLabel").classList.toggle("hidden", !exp.project);
+    setTimeout(expTrack, 0);  // depois de a mudança terminar (pode haver mais de um redesenho)
   }
   function sessionTitle(s) { const l = sessionLabel(s.name); return s.label ? s.label + " · " + l.date : l.date; }
 
   function refreshSummaries() {
     [...$("exportList").children].forEach((li, i) => {
       if (!sessions[i]) return;
-      li.querySelector(".export-summary").textContent = summaryText(sessions[i]);
+      setWarnText(li.querySelector(".export-summary"), summaryText(sessions[i]));
       li.classList.toggle("different", !exp.sameForAll && sessions[i].name !== exp.active && !sameAsActive(sessions[i].name));
     });
     updateExportCount();
@@ -1631,6 +1986,42 @@
     if (label) r.appendChild(el("span", "export-label", label));
     return r;
   }
+  // Explicação de uma opção num "?" ao lado do nome dela (como no Camera settings), em vez de
+  // texto solto embaixo. label: o nome da linha (sem: a última linha de box)
+  function addTip(box, text, label) {
+    const rows = [...box.querySelectorAll(":scope > .export-row")];
+    const r = label ? rows.find((x) => { const lab = x.querySelector(".export-label"); return lab && lab.textContent === label; }) : rows[rows.length - 1];
+    if (!r) { box.appendChild(el("div", "export-note", text)); return; }
+    const tip = makeTip(text);
+    const lab = r.querySelector(".export-label");
+    if (lab) { lab.classList.add("with-tip"); lab.appendChild(tip); } else r.prepend(tip);
+  }
+  function makeTip(text) {
+    const tip = el("span", "info-tip float", "?");
+    tip.tabIndex = 0;
+    tip.setAttribute("aria-label", text);
+    tip.appendChild(el("span", "info-tip-text", text));
+    return tip;
+  }
+  // A caixa do "?" fica por cima de tudo (fixa na tela), sem ser cortada por áreas que rolam
+  function placeTip(tip) {
+    const box = tip.querySelector(".info-tip-text");
+    if (!box) return;
+    const r = tip.getBoundingClientRect();
+    box.style.left = "0px"; box.style.top = "0px";
+    const w = box.offsetWidth || 340, h = box.offsetHeight || 80;
+    let x = r.right + 8, y = r.top - 8;
+    if (x + w > window.innerWidth - 8) x = Math.max(8, r.left - w - 8);
+    if (y + h > window.innerHeight - 8) y = Math.max(8, window.innerHeight - h - 8);
+    box.style.left = x + "px"; box.style.top = y + "px";
+  }
+  document.addEventListener("mouseover", (e) => { const t = e.target.closest && e.target.closest(".info-tip.float"); if (t) placeTip(t); });
+  document.addEventListener("focusin", (e) => { const t = e.target.closest && e.target.closest(".info-tip.float"); if (t) placeTip(t); });
+  // Clicar no "?" deixava a explicação aberta (o clique dá foco); ao tirar o mouse, ela fecha
+  document.addEventListener("mouseout", (e) => {
+    const t = e.target.closest && e.target.closest(".info-tip");  // todos os "?" (também o do Camera settings)
+    if (t && !t.contains(e.relatedTarget) && document.activeElement === t) t.blur();
+  });
   function segmented(options, current, onPick, disabledReason) {
     const box = el("span", "segmented");
     options.forEach(([value, label]) => {
@@ -1668,18 +2059,520 @@
     exp.timer = null;
   }
 
+  // ---- Lenticular: contas e textos ----
+  const lentPitch = (l) => (l.pitch > 0 ? l.pitch : l.lpi);  // pitch medido na folha de teste, senão o nominal
+  const lentValid = (l) => lentPitch(l) > 0 && l.dpi > 0 && l.widthCm > 0 && l.heightCm > 0;
+  function lentPlan(l, photos) {
+    const pitch = lentPitch(l), cols = pitch > 0 ? l.dpi / pitch : 0;
+    const w = Math.round(l.widthCm / CM_PER_IN * l.dpi), h = Math.round(l.heightCm / CM_PER_IN * l.dpi);
+    const per = photos > 0 ? cols / photos : 0;
+    const lenses = Math.round((l.effect === "3d" ? l.widthCm : l.heightCm) / CM_PER_IN * pitch);
+    // < 1 ponto por foto: a impressora não consegue separar as faixas; < 2: funciona, mas umas fotos
+    // ficam com 1 ponto e outras com 2 (transição menos uniforme)
+    const warn = photos > 0 && per < 1 ? "bad" : photos > 0 && per < 2 ? "tight" : "";
+    // Arquivo: impressão + sangria em volta + margem de 0,4 pol para as marcas (como o programa faz)
+    const bleed = Math.round((l.bleedMm || 0) / 25.4 * l.dpi), margin = l.cropMarks || l.alignMarks ? Math.round(0.4 * l.dpi) : 0;
+    return { cols, w, h, per, lenses, warn, fileW: w + 2 * (bleed + margin), fileH: h + 2 * (bleed + margin) };
+  }
+  const cmText = (v) => (Math.round(v * 10) / 10).toString();
+  const inText = (v) => (Math.round(v / CM_PER_IN * 100) / 100).toString();
+  const lentSizeText = (l) => (l.unit === "in" ? inText(l.widthCm) + " × " + inText(l.heightCm) + " in" : cmText(l.widthCm) + " × " + cmText(l.heightCm) + " cm");
+  // Campo numérico pequeno (aceita vírgula); onChange só com valor válido
+  function numField(value, onChange, opts) {
+    opts = opts || {};
+    const i = document.createElement("input");
+    i.type = "text"; i.inputMode = "decimal"; i.className = "lent-num" + (opts.cls ? " " + opts.cls : "");
+    i.value = value === 0 || value === "" ? "" : String(value);
+    if (opts.placeholder) i.placeholder = opts.placeholder;
+    if (opts.width) i.style.width = opts.width;
+    const commit = () => {
+      const t = i.value.trim().replace(",", ".");
+      if (t === "" && opts.allowEmpty) { onChange(0); return; }
+      const v = parseFloat(t);
+      if (!isFinite(v) || v <= 0) { i.classList.add("invalid"); return; }
+      i.classList.remove("invalid"); onChange(v);
+    };
+    i.addEventListener("change", commit);
+    i.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); commit(); i.blur(); } });
+    return i;
+  }
+
+  // Zoom das lupas (prévia Interlaced e folha de teste): 1×, 1,5×, 2×, 3×, 4×, 6×, 8×
+  // Mira no centro da lupa: um "+" fino, com 80% do tamanho do quadrado
+  let loupePressed = false;  // botão esquerdo apertado sobre a lupa: sem a mira (para ver o ponto limpo)
+  function drawLoupeCross(canvas) {
+    if (loupePressed) return;
+    const g = canvas.getContext("2d"), w = canvas.width, h = canvas.height, cx = Math.floor(w / 2) + 0.5, cy = Math.floor(h / 2) + 0.5;
+    g.save();
+    g.lineWidth = 1;
+    g.strokeStyle = "rgba(0, 0, 0, .55)";  // contorno escuro: aparece no branco e no preto
+    const ax = w * 0.4, ay = h * 0.4;  // braços maiores: o "+" ocupa 80% do quadrado
+    g.beginPath(); g.moveTo(cx - ax, cy + 1); g.lineTo(cx + ax, cy + 1); g.moveTo(cx + 1, cy - ay); g.lineTo(cx + 1, cy + ay); g.stroke();
+    g.strokeStyle = "#00ff41";
+    g.beginPath(); g.moveTo(cx - ax, cy); g.lineTo(cx + ax, cy); g.moveTo(cx, cy - ay); g.lineTo(cx, cy + ay); g.stroke();
+    g.restore();
+  }
+  // Contínuo: cada movimento da roda muda um pouco (o trackpad manda dezenas de passos por gesto)
+  function loupeZoomStep(z, deltaY, deltaMode) {
+    const d = deltaMode === 1 ? deltaY * 16 : deltaY;  // linhas → pixels
+    const next = z * Math.exp(-Math.max(-60, Math.min(60, d)) * 0.0025);
+    return Math.round(Math.max(0.5, Math.min(8, next)) * 100) / 100;  // 0,5× afasta (números inteiros na lupa)
+  }
+  const zoomText = (z) => (Math.round(z * 10) / 10).toFixed(1).replace(/\.0$/, "") + "×";
+  // Marcas de corte e de alinhamento no canvas da prévia, com as mesmas medidas do programa
+  // (Export: DrawPrintMarks); f = escala da prévia em relação ao arquivo
+  function drawPrintMarks(g, l, f, d) {
+    const M = d.margin, B = d.bleed;
+    if (!M) return;
+    const t = Math.max(1, Math.round(l.dpi * 0.004 * f)), gap = l.dpi * 0.06 * f, start = M * 0.15;
+    const left = M + B, right = M + B + d.w, top = M + B, bottom = M + B + d.h;
+    g.fillStyle = "#000"; g.strokeStyle = "#000"; g.lineWidth = t;
+    if (l.cropMarks) {
+      [top, bottom].forEach((y) => { g.fillRect(start, y - t / 2, M - gap - start, t); g.fillRect(d.fw - M + gap, y - t / 2, M - gap - start, t); });
+      [left, right].forEach((x) => { g.fillRect(x - t / 2, start, t, M - gap - start); g.fillRect(x - t / 2, d.fh - M + gap, t, M - gap - start); });
+    }
+    if (l.alignMarks) {
+      const r = M * 0.28;
+      const cross = (cx, cy) => {
+        g.fillRect(cx - r - r / 3, cy - t / 2, 2 * (r + r / 3), t);
+        g.fillRect(cx - t / 2, cy - r - r / 3, t, 2 * (r + r / 3));
+        g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.stroke();
+      };
+      cross((left + right) / 2, M / 2); cross((left + right) / 2, d.fh - M / 2);
+      cross(M / 2, (top + bottom) / 2); cross(d.fw - M / 2, (top + bottom) / 2);
+    }
+  }
+
+  // ---- Folha de teste de pitch (entrega 2) ----
+  // Abre de três lugares: "Print pitch test…" na seção Lenticular, o botão no rodapé da janela de
+  // salvar e o ícone da tela principal. 11 faixas, cada uma desenhada para um LPI um pouco
+  // diferente, em volta do LPI da lâmina (ou do pitch já medido).
+  // A janela é montada uma vez; ao mudar uma opção só o conteúdo é refeito (sem piscar).
+  // Opção A (decisão do dono, 2026-10-31): 21 faixas de 0,05 numa folha só (cobre ±0,5 com o
+  // dobro de precisão); sem "Finer steps". Papel mínimo A4.
+  // "Finer steps" (mantido, decisão do dono em 2026-10-31): 21 faixas de 0,02 (±0,2) em volta do
+  // pitch medido (ou do LPI da embalagem, sem ele); sempre disponível
+  const pitchState = { l: null, step: 0.05, zoom: 2, print: null, fine: false };
+  const PITCH_STRIPS = 21;
+  function openPitchTest(from) {
+    const base = from || (exportPrefs && exportPrefs.settings && exportPrefs.settings.lent) || defaultSettings().lent;
+    // Cópia: mexer aqui não muda a impressão; o papel começa em A4 (ou Letter em polegadas)
+    const l = JSON.parse(JSON.stringify(base));
+    // A impressão de referência (para avisar se ela for mais comprida que as faixas do teste)
+    const print = { widthCm: base.widthCm, heightCm: base.heightCm };
+    l.widthCm = l.unit === "in" ? 8.5 * CM_PER_IN : 21; l.heightCm = l.unit === "in" ? 11 * CM_PER_IN : 29.7;
+    Object.assign(pitchState, { l, step: 0.05, print, fine: false });
+    pitchSnap = null;
+    let ov = $("pitchOverlay");
+    if (!ov) {
+      ov = el("div", "overlay pitch-overlay hidden"); ov.id = "pitchOverlay";
+      ov.addEventListener("click", (e) => { if (e.target === ov) closePitchTest(); });
+      const d = el("div", "dialog pitch-dialog");
+      d.appendChild(el("h3", "", "Pitch test"));
+      d.appendChild(el("p", "pitch-sub", "Finds the real LPI of your lens sheet on the printer you will use. Print it at 100% on that printer, lay the lens sheet on top, " +
+        "and type the number of the strip that stays the same from end to end in \"Measured pitch\"."));
+      const main = el("div", "pitch-main");
+      main.append(el("div", "pitch-body"), el("div", "pitch-preview"));
+      d.appendChild(main);
+      const actions = el("div", "dialog-actions");
+      actions.appendChild(el("span", "spacer"));
+      actions.appendChild(button("Cancel", closePitchTest));
+      const ok = button("Save pitch test", savePitchTest, { kind: "btn-primary" });
+      ok.classList.add("pitch-save");
+      actions.appendChild(ok);
+      d.appendChild(actions);
+      ov.appendChild(d);
+      document.body.appendChild(ov);
+    }
+    if (typeof window.exportDestination === "function" && !exp.destDefault)
+      Promise.resolve(window.exportDestination()).then((r) => { if (r) { exp.destDefault = r.folder; renderPitchTest(); } });
+    renderPitchTest();
+    ov.classList.remove("hidden");
+  }
+  function closePitchTest() {
+    const ov = $("pitchOverlay"); if (ov) ov.classList.add("hidden");
+    // As mudanças do Pitch test só valem com a janela aberta: saem do desfazer ao fechar
+    history.undo = history.undo.filter((a) => !a.pitch);
+    history.redo = history.redo.filter((a) => !a.pitch);
+  }
+  // Desfazer no Pitch test: cada mudança vira um passo (estado inteiro antes/depois)
+  let pitchSnap = null;
+  const pitchSnapshot = () => JSON.stringify({ l: pitchState.l, step: pitchState.step, fine: pitchState.fine });
+  function pitchApply(s) {
+    if (!$("pitchOverlay") || $("pitchOverlay").classList.contains("hidden")) return false;
+    const o = JSON.parse(s);
+    pitchState.l = o.l; pitchState.step = o.step; pitchState.fine = o.fine;
+    pitchSnap = s;
+    renderPitchTest();
+  }
+  // Fonte 5×7 do programa (Export: Glyph), para os números na lupa
+  const PITCH_GLYPHS = { "0": [0x0E, 0x11, 0x13, 0x15, 0x19, 0x11, 0x0E], "1": [0x04, 0x0C, 0x04, 0x04, 0x04, 0x04, 0x0E],
+    "2": [0x0E, 0x11, 0x01, 0x02, 0x04, 0x08, 0x1F], "3": [0x1F, 0x02, 0x04, 0x02, 0x01, 0x11, 0x0E], "4": [0x02, 0x06, 0x0A, 0x12, 0x1F, 0x02, 0x02],
+    "5": [0x1F, 0x10, 0x1E, 0x01, 0x01, 0x11, 0x0E], "6": [0x06, 0x08, 0x10, 0x1E, 0x11, 0x11, 0x0E], "7": [0x1F, 0x01, 0x02, 0x04, 0x08, 0x08, 0x08],
+    "8": [0x0E, 0x11, 0x11, 0x0E, 0x11, 0x11, 0x0E], "9": [0x0E, 0x11, 0x11, 0x0F, 0x01, 0x02, 0x0C], ".": [0, 0, 0, 0, 0, 0x0C, 0x0C] };
+  // Mesmas contas do programa (Export::WritePitchTest): margens, faixas, área do número
+  function pitchLayout(l, step) {
+    const dpi = l.dpi, W = Math.round(l.widthCm / CM_PER_IN * dpi), H = Math.round(l.heightCm / CM_PER_IN * dpi);
+    const horizontal = l.effect !== "3d", center = l.pitch > 0 ? l.pitch : l.lpi;
+    const edge = Math.round(0.25 * dpi), gap = Math.max(2, Math.round(0.08 * dpi));
+    const digitScale = Math.max(1, Math.round(0.16 * dpi / 7));
+    const decimals = Math.abs(step * 100 - Math.round(step * 100)) > 1e-6 ? 3 : step < 0.0999 ? 2 : 1;
+    const label = Math.max(Math.round(0.45 * dpi), ((decimals + 4) * 6 - 1) * digitScale + Math.round(0.2 * dpi));
+    const along = horizontal ? W : H, across = horizontal ? H : W;
+    const band = Math.max(1, Math.floor((along - 2 * edge - gap * (PITCH_STRIPS - 1)) / PITCH_STRIPS));
+    const first = center - step * (PITCH_STRIPS - 1) / 2;
+    const lpis = Array.from({ length: PITCH_STRIPS }, (_, b) => first + step * b);
+    const bandAt = (p) => { const q = p - edge; if (q < 0) return -1; const b = Math.floor(q / (band + gap)); return b >= PITCH_STRIPS || q - b * (band + gap) >= band ? -1 : b; };
+    // 0 = preto, 255 = branco; os números com a mesma fonte e as mesmas posições do programa
+    const texts = lpis.map((v) => v.toFixed(decimals));
+    const th = 7 * digitScale;
+    const digitAt = (x, y, b) => {
+      const t = texts[b], tw = (t.length * 6 - 1) * digitScale, bandStart = edge + b * (band + gap);
+      let gx, gy, i;
+      if (horizontal) {  // em pé: o texto corre de cima para baixo
+        const tx = bandStart + Math.floor((band - th) / 2), ty = edge + Math.floor((label - tw) / 2);
+        if (y < ty || y >= ty + tw || x < tx || x >= tx + th) return false;
+        const col = Math.floor((y - ty) / digitScale); i = Math.floor(col / 6); gx = col % 6;
+        gy = 6 - Math.floor((x - tx) / digitScale);
+      } else {
+        const tx = edge + Math.floor((label - tw) / 2), ty = bandStart + Math.floor((band - th) / 2);
+        if (y < ty || y >= ty + th || x < tx || x >= tx + tw) return false;
+        const col = Math.floor((x - tx) / digitScale); i = Math.floor(col / 6); gx = col % 6;
+        gy = Math.floor((y - ty) / digitScale);
+      }
+      if (gx > 4 || gy < 0 || gy > 6) return false;
+      const g = PITCH_GLYPHS[t[i]];
+      return !!(g && (g[gy] & (0x10 >> gx)));
+    };
+    const at = (x, y) => {
+      const p = horizontal ? x : y, a = horizontal ? y : x, b = bandAt(p);
+      if (b < 0 || a < edge || a >= across - edge) return 255;
+      if (a < edge + label) return digitAt(x, y, b) ? 0 : 255;
+      const pos = (a - edge - label + 0.5) * lpis[b] / dpi;
+      return pos - Math.floor(pos) < 0.5 ? 0 : 255;
+    };
+    // Comprimento útil de cada faixa (no sentido em que o erro se acumula), em cm
+    const stripCm = (across - 2 * edge - label) / dpi * CM_PER_IN;
+    return { W, H, horizontal, center, edge, gap, label, band, lpis, decimals, digitScale, at, across, stripCm };
+  }
+  function renderPitchTest() {
+    const ov = $("pitchOverlay");
+    if (!ov || !pitchState.l) return;
+    const now = pitchSnapshot();
+    if (pitchSnap !== null && now !== pitchSnap) {
+      const before = pitchSnap;
+      recordAction({ label: "Pitch test settings", pitch: true, undo: () => pitchApply(before), redo: () => pitchApply(now) });
+    }
+    const l = pitchState.l;
+    const body = ov.querySelector(".pitch-body");
+    const scroll = body.scrollTop;
+    const wasAt = body.contains(document.activeElement) ? focusables(body).indexOf(document.activeElement) : -1;
+    if (wasAt >= 0) setTimeout(() => { if (body.contains(document.activeElement)) return; const l = focusables(body); const t = l[Math.min(wasAt, l.length - 1)]; if (t) t.focus({ preventScroll: true }); }, 0);
+    body.innerHTML = "";
+    const rerender = () => renderPitchTest();
+    lentEffectRows(l, body, rerender, { noReverse: true });
+    lentLensRows(l, body, rerender);
+    lentPrinterRows(l, body, rerender);
+    lentSizeRow(l, body, rerender, "Paper size");
+    const step = pitchState.step, P = pitchLayout(l, step);
+    const lo = P.lpis[0].toFixed(P.decimals), hi = P.lpis[PITCH_STRIPS - 1].toFixed(P.decimals);
+    const strips = row("Strips");
+    strips.appendChild(el("span", "pitch-range", PITCH_STRIPS + " strips · " + lo + " to " + hi + " LPI, every " + step));
+    if (!pitchState.fine) strips.appendChild(button("Finer steps", () => { pitchState.fine = true; pitchState.step = 0.025; rerender(); }, { kind: "btn-link" }));
+    else strips.appendChild(button("Normal steps", () => { pitchState.fine = false; pitchState.step = 0.05; rerender(); }, { kind: "btn-link" }));
+    body.appendChild(strips);
+    if (pitchState.fine) {
+      // Cada passo com o seu "?": quanto cobre em volta do valor e até que tamanho de impressão serve
+      // (erro máximo = metade do passo; serve até ~1 ÷ passo polegadas no sentido em que o erro se acumula)
+      const ref = l.pitch > 0 ? "your measured pitch (" + l.pitch + ")" : "the LPI of the package (" + l.lpi + "; there is no measured pitch yet)";
+      const dir = l.effect === "3d" ? "wide (side to side)" : "tall (top to bottom)";
+      const fine = row("Finer");
+      const opts = el("span", "fine-steps");
+      [0.04, 0.03, 0.025, 0.02, 0.01].forEach((v) => {
+        const item = el("span", "fine-step");
+        const b = el("button", "chip fine-chip" + (Math.abs(step - v) < 1e-9 ? " on" : ""), "every " + v);
+        b.type = "button";
+        b.addEventListener("click", (e) => { if (e.target.closest(".info-tip")) return; pitchState.step = v; rerender(); });
+        const half = Math.round(v * 10 * 1000) / 1000, upTo = Math.round(2.54 / v);
+        item.append(b);
+        b.appendChild(makeTip("Every " + v + ": the 21 strips cover " + half + " below to " + half + " above " + ref + ". " +
+          "Enough for prints up to about " + (upTo >= 100 ? (upTo / 100).toFixed(upTo % 100 ? 1 : 0).replace(".", ",") + " m" : upTo + " cm") + " " + dir + ". " +
+          (v <= 0.01 ? "Only for very large pieces, and only around a value you already measured: the range is narrow." :
+           v <= 0.02 ? "For large posters, around a value you already measured." :
+           "A second, more precise sheet after the normal one, or for posters.")));
+        opts.appendChild(item);
+      });
+      fine.appendChild(opts);
+      body.appendChild(fine);
+    }
+    addTip(body, "Each strip is printed for a slightly different LPI, " + lo + " to " + hi + (l.pitch > 0 ? ", around your measured pitch (" + l.pitch + ")" : "") +
+      ". With the lens sheet on top, the right strip turns black and then white all at once, the same from end to end; the wrong ones show a dark area moving along them. " +
+      "The normal sheet (every 0.05) covers ±0.5 and is enough for prints up to about 50 cm. Finer steps: smaller steps for bigger prints; each one has its own ? with when to use it.", "Strips");
+    // Papel mínimo A4; e as faixas pelo menos do comprimento da impressão (o erro se acumula ao longo dela)
+    const shortCm = Math.min(l.widthCm, l.heightCm), longCm = Math.max(l.widthCm, l.heightCm);
+    const small = shortCm < 20.9 || longCm < 27.8;
+    const printLen = pitchState.print ? (l.effect === "3d" ? pitchState.print.widthCm : pitchState.print.heightCm) : 0;
+    const short = !small && printLen > P.stripCm + 0.05;
+    if (small) body.appendChild(el("div", "export-note exp-none", "Use A4 / Letter or bigger: on smaller paper the 21 strips get too narrow to read."));
+    else if (short) body.appendChild(el("div", "export-note exp-none", "Your print is " + cmText(printLen) + " cm " + (l.effect === "3d" ? "wide" : "tall") +
+      ", but the strips on this sheet are " + cmText(P.stripCm) + " cm long. A small error can show only past that length: use a paper at least that long in this direction" +
+      (l.effect === "3d" ? " (turn it sideways or choose a bigger one)." : " (choose a bigger one).")));
+    pitchState.blocked = small;
+    body.appendChild(el("div", "export-note", P.W + " × " + P.H + " px, black and white TIFF · saved in " + (exp.destDefault || "the Exports folder") + " and shown in the " + (upd.info && upd.info.os === "windows" ? "Explorer" : "Finder") + "."));
+    body.scrollTop = scroll;
+    const save = $("pitchOverlay").querySelector(".pitch-save");
+    if (save) save.disabled = !!pitchState.blocked;
+    pitchSnap = pitchSnapshot();
+    drawPitchPreview(P);
+  }
+  // Prévia da folha: a página inteira reduzida (as listras aparecem maiores do que são, só para mostrar
+  // a direção) e, com o mouse em cima, uma lupa com as listras de verdade (2×)
+  function drawPitchPreview(P) {
+    const pane = $("pitchOverlay").querySelector(".pitch-preview");
+    pane.innerHTML = "";
+    // Cabe na coluna (deitado ou em pé), sem rolagem
+    const maxW = 290, maxH = 400, sc = Math.min(maxW / P.W, maxH / P.H);
+    const cw = Math.max(1, Math.round(P.W * sc)), ch = Math.max(1, Math.round(P.H * sc));
+    const c = document.createElement("canvas"); c.width = cw * 2; c.height = ch * 2; c.style.width = cw + "px"; c.style.height = ch + "px";
+    c.className = "pitch-canvas";
+    const g = c.getContext("2d"); g.scale(2 * sc, 2 * sc);
+    g.fillStyle = "#fff"; g.fillRect(0, 0, P.W, P.H);
+    const s = 1 / sc;  // um pixel da prévia, em pixels da folha
+    for (let b = 0; b < PITCH_STRIPS; b++) {
+      const p0 = P.edge + b * (P.band + P.gap), a0 = P.edge + P.label, a1 = P.across - P.edge;
+      // listras de 3 px da prévia (bem maiores que as reais): só a direção e a área
+      g.fillStyle = "#000";
+      for (let a = a0; a < a1; a += 6 * s) {
+        if (P.horizontal) g.fillRect(p0, a, P.band, 3 * s); else g.fillRect(a, p0, 3 * s, P.band);
+      }
+      g.fillStyle = "#000";
+      const fontPx = 7 * P.digitScale;
+      g.font = "600 " + fontPx + "px 'JetBrains Mono', monospace"; g.textBaseline = "middle"; g.textAlign = "center";
+      const t = P.lpis[b].toFixed(P.decimals);
+      if (P.horizontal) {
+        g.save(); g.translate(p0 + P.band / 2, P.edge + P.label / 2); g.rotate(Math.PI / 2); g.fillText(t, 0, 0); g.restore();
+      } else g.fillText(t, P.edge + P.label / 2, p0 + P.band / 2);
+    }
+    const wrap = el("div", "pitch-canvas-wrap");
+    wrap.appendChild(c);
+    const loupe = document.createElement("canvas"); loupe.width = 160; loupe.height = 160; loupe.className = "pitch-loupe hidden";
+    const tag = el("span", "pitch-loupe-tag hidden", zoomText(pitchState.zoom) + " · real stripes");
+    tag.title = "Scroll to zoom in and out";
+    wrap.append(loupe, tag);
+    pane.appendChild(wrap);
+    pane.appendChild(el("div", "export-note", "Move the mouse over the sheet for a close-up; scroll to zoom; hold the left button to hide the crosshair. The reduced sheet shows the stripes bigger than they print."));
+    let last = null;
+    const move = (e) => {
+      last = { clientX: e.clientX, clientY: e.clientY };
+      const z = pitchState.zoom;
+      const r = c.getBoundingClientRect();
+      const fx = Math.round((e.clientX - r.left) / r.width * P.W), fy = Math.round((e.clientY - r.top) / r.height * P.H);
+      const n = loupe.width / z;  // pixels da folha dentro da lupa
+      const img = loupe.getContext("2d").createImageData(loupe.width, loupe.height);
+      for (let y = 0; y < loupe.height; y++)
+        for (let x = 0; x < loupe.width; x++) {
+          const v = P.at(Math.floor(fx - n / 2 + x / z), Math.floor(fy - n / 2 + y / z)), k = (y * loupe.width + x) * 4;
+          img.data[k] = img.data[k + 1] = img.data[k + 2] = v; img.data[k + 3] = 255;
+        }
+      loupe.getContext("2d").putImageData(img, 0, 0);
+      drawLoupeCross(loupe);
+      const wr = wrap.getBoundingClientRect();
+      let lx = e.clientX - wr.left + 14, ly = e.clientY - wr.top + 14;
+      if (lx + loupe.width > wr.width) lx = e.clientX - wr.left - loupe.width - 14;
+      if (ly + loupe.height > wr.height) ly = e.clientY - wr.top - loupe.height - 14;
+      lx = Math.max(0, lx); ly = Math.max(0, ly);
+      loupe.style.left = lx + "px"; loupe.style.top = ly + "px";
+      tag.style.left = (lx + 4) + "px"; tag.style.top = (ly + 4) + "px";
+      loupe.classList.remove("hidden"); tag.classList.toggle("hidden", loupePressed);
+    };
+    c.addEventListener("pointermove", move);
+    // Clique: sem arrastar a imagem nem selecionar (no Mac isso tirava a mira); redesenha a lupa
+    c.addEventListener("pointerdown", (e) => { if (e.button !== 0) return; e.preventDefault(); loupePressed = true; move(e); });
+    c.addEventListener("pointerup", (e) => { loupePressed = false; move(e); });
+    c.addEventListener("pointerleave", () => { loupePressed = false; });
+    c.addEventListener("dragstart", (e) => e.preventDefault());
+    c.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      pitchState.zoom = loupeZoomStep(pitchState.zoom, e.deltaY, e.deltaMode);
+      tag.textContent = zoomText(pitchState.zoom) + " · real stripes";
+      if (last) move(last);
+    }, { passive: false });
+    c.addEventListener("pointerleave", () => { loupe.classList.add("hidden"); tag.classList.add("hidden"); });
+  }
+  function savePitchTest() {
+    const l = pitchState.l, P = pitchLayout(l, pitchState.step);
+    if (typeof window.lenticularPitchTest !== "function") { toast("This build cannot do that yet. Build the app again.", 8000); return; }
+    if (!(P.center > 0 && l.dpi > 0 && l.widthCm > 0 && l.heightCm > 0)) { toast("Check the lens, printer and size values.", 6000, { warn: true }); return; }
+    if (pitchState.blocked) { toast("Use A4 / Letter or bigger for the pitch test.", 6000, { warn: true }); return; }
+    window.lenticularPitchTest(String(l.dpi), (l.widthCm / CM_PER_IN).toFixed(4), (l.heightCm / CM_PER_IN).toFixed(4), l.effect, String(P.center), String(pitchState.step), "", String(PITCH_STRIPS));
+    toast("Making the pitch test sheet…");
+    closePitchTest();
+  }
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && $("pitchOverlay") && !$("pitchOverlay").classList.contains("hidden") && !selectMenu) { e.stopImmediatePropagation(); closePitchTest(); } }, true);
+
+  // ---- Lenticular: controles usados na janela de salvar e na folha de teste ----
+  function lentEffectRows(l, box, rerender) {
+      const effect = row("Effect");
+      effect.appendChild(segmented([["flip", "Animation (tilt up/down)"], ["3d", "3D (left/right)"]], l.effect, (v) => {
+        l.effect = v;
+        const list = v === "3d" ? LENSES_3D : LENSES;
+        if (!list.some(([x]) => x === l.lpi) && !l.lpiOther) l.lpi = list[list.length - 1][0];
+        rerender();
+      }));
+      if (!(arguments[3] && arguments[3].noReverse)) effect.appendChild(checkOption("Reverse order", l.reverse, (v) => { l.reverse = v; rerender(); }));
+      box.appendChild(effect);
+      addTip(box, (l.effect === "3d"
+        ? "3D needs photos taken side by side along a straight line (left to right). A bullet-time arc only works partly. Lens strips stand vertical."
+        : "Animation shows one photo after another as the print tilts up and down: the bullet-time turn. Lens strips lie horizontal.") +
+        " Reverse order: the photos change in the opposite direction when you tilt.", "Effect");
+  }
+  function lentLensRows(l, box, rerender, opts) {
+      const lens = row("Lens sheet");
+      const lensList = l.effect === "3d" ? LENSES_3D : LENSES;
+      const lensOpts = lensList.concat([["other", "Other"]]);
+      const lensCurrent = l.lpiOther ? "other" : l.lpi;
+      lens.appendChild(segmented(lensOpts, lensCurrent, (v) => { if (v === "other") { l.lpiOther = true; } else { l.lpiOther = false; l.lpi = v; } rerender(); }));
+      if (l.lpiOther) lens.appendChild(numField(l.lpi, (v) => { l.lpi = v; rerender(); }, { placeholder: "LPI", width: "64px" }));
+      if (opts && opts.measured) {
+        // Nome e campo juntos: se a linha quebrar, os dois descem juntos
+        const pair = el("span", "lent-pair");
+        pair.append(el("span", "export-label lent-sub", "Measured pitch"),
+                    numField(l.pitch, (v) => { l.pitch = v; rerender(); }, { placeholder: String(l.lpi), width: "72px", allowEmpty: true }));
+        lens.appendChild(pair);
+      }
+      box.appendChild(lens);
+      addTip(box, "LPI = lenses per inch, printed on the sheet's package. 40–75 LPI for photo-size animation; 20–40 for 3D and posters." +
+        (opts && opts.measured ? " Measured pitch: the number of the strip that stays even from end to end on the pitch test (Print pitch test, at the bottom). Empty = use the LPI of the package." : ""), "Lens sheet");
+  }
+  function lentPrinterRows(l, box, rerender) {
+      const printer = row("Printer");
+      const dpiOpts = PRINTERS.concat([["other", "Other"]]);
+      printer.appendChild(segmented(dpiOpts, l.dpiOther ? "other" : l.dpi, (v) => { if (v === "other") { l.dpiOther = true; } else { l.dpiOther = false; l.dpi = v; } rerender(); }));
+      if (l.dpiOther) printer.appendChild(numField(l.dpi, (v) => { l.dpi = Math.round(v); rerender(); }, { placeholder: "dpi", width: "64px" }));
+      box.appendChild(printer);
+      addTip(box, PRINTER_HELP, "Printer");
+  }
+  function lentSizeRow(l, box, rerender, label) {
+      const size = row(label || "Print size");
+      const unitIn = l.unit === "in";
+      const wField = numField(unitIn ? inText(l.widthCm) : cmText(l.widthCm), (v) => { l.widthCm = unitIn ? v * CM_PER_IN : v; rerender(); }, { width: "64px" });
+      const hField = numField(unitIn ? inText(l.heightCm) : cmText(l.heightCm), (v) => { l.heightCm = unitIn ? v * CM_PER_IN : v; rerender(); }, { width: "64px" });
+      size.append(wField, el("span", "lent-x", "×"), hField);
+      size.appendChild(segmented([["cm", "cm"], ["in", "in"]], l.unit, (v) => { l.unit = v; rerender(); }));
+      const swap = button("", () => { const w = l.widthCm; l.widthCm = l.heightCm; l.heightCm = w; rerender(); }, { icon: "swap", title: "Swap width and height" });
+      swap.classList.add("btn-small");
+      size.appendChild(swap);
+      const presets = el("span", "chips lent-presets");
+      // Em cm: tamanhos de foto métricos; em polegadas: os americanos (4 × 6, 5 × 7, 8 × 10, Letter)
+      const presetList = unitIn
+        ? [["4 × 6", 4 * CM_PER_IN, 6 * CM_PER_IN], ["6 × 4", 6 * CM_PER_IN, 4 * CM_PER_IN], ["5 × 7", 5 * CM_PER_IN, 7 * CM_PER_IN], ["8 × 10", 8 * CM_PER_IN, 10 * CM_PER_IN], ["Letter", 8.5 * CM_PER_IN, 11 * CM_PER_IN]]
+        : [["10 × 15", 10, 15], ["15 × 10", 15, 10], ["20 × 30", 20, 30], ["30 × 20", 30, 20], ["A4", 21, 29.7]];
+      presetList.forEach(([t, w, h]) => {
+        const c = el("button", "chip" + (Math.abs(l.widthCm - w) < 0.05 && Math.abs(l.heightCm - h) < 0.05 ? " on" : ""), t);
+        c.addEventListener("click", () => { l.widthCm = w; l.heightCm = h; rerender(); });
+        presets.appendChild(c);
+      });
+      size.appendChild(presets);
+      box.appendChild(size);
+  }
+
+  // Deslizar a altura de um bloco de "antes" para a altura de agora (o conteúdo novo já está lá).
+  // Com fade: o conteúdo novo aparece aos poucos.
+  const EASE_MS = 220;
+  function slideHeight(node, from, opts) {
+    if (!node || !node.animate || node.classList.contains("hidden")) return;
+    const to = node.offsetHeight;
+    if (Math.abs(to - from) < 2) return;
+    // flex-grow 0 durante a animação: um bloco que estica (a prévia no teatro) seguiria a altura
+    node.animate([{ height: from + "px", overflow: "hidden", flexGrow: 0, flexShrink: 0 }, { height: to + "px", overflow: "hidden", flexGrow: 0, flexShrink: 0 }], { duration: EASE_MS, easing: "ease" });
+    if (opts && opts.fade) node.animate([{ opacity: 0 }, { opacity: 1 }], { duration: EASE_MS, easing: "ease" });
+  }
+  // Fechar deslizando até 0 e então esconder (done: o que fazer no fim)
+  function slideClosed(node, done) {
+    if (!node || !node.animate || node.classList.contains("hidden")) { if (done) done(); return; }
+    const a = node.animate([{ height: node.offsetHeight + "px", opacity: 1, overflow: "hidden" }, { height: "0px", opacity: 0, overflow: "hidden" }],
+      { duration: EASE_MS, easing: "ease", fill: "forwards" });
+    a.onfinish = () => { if (done) done(); a.cancel(); };
+  }
+  // Abrir deslizando de 0 (o bloco já visível)
+  function slideOpen(node) {
+    if (!node || !node.animate) return;
+    node.animate([{ height: "0px", opacity: 0, overflow: "hidden" }, { height: node.offsetHeight + "px", opacity: 1, overflow: "hidden" }], { duration: EASE_MS, easing: "ease" });
+  }
+
+  // Prévia grande e fileira de miniaturas: abrem e fecham deslizando em vez de aparecer e sumir
+  // de uma vez (a coluna é redesenhada a cada mudança; o que sai volta por um instante e fecha).
+  // A fileira anima por uma caixa em volta dela (.export-strip-slot): a área que rola fica
+  // intacta, com a barra de rolagem, e não muda de altura no fim. Depois, um empurrão na
+  // rolagem: o WebKit do Mac às vezes desenha a fileira cortada até ela rolar.
+  const SLIDE_MS = 240;
+  function slideBlocks(outer, before, rows) {
+    const nudge = (s) => { if (s) { s.scrollLeft += 1; s.scrollLeft -= 1; } };
+    [".export-preview", ".export-strip-slot"].forEach((sel) => {
+      const now = outer.querySelector(sel + ":not(.leaving)");
+      const old = before[sel];
+      // Entrando, ou redesenhada no meio da entrada (continua de onde a anterior estava)
+      const midway = now && old.el && old.el.classList.contains("slide") && old.h < now.offsetHeight;
+      if (now && (!old.el || midway)) {
+        // Fecha sem transição, e só então liga a transição e abre (com a transição já ligada,
+        // fechar também animaria, de 200 para 0, e a abertura não sairia do lugar)
+        const h = now.offsetHeight;
+        if (midway) now.style.height = old.h + "px"; else now.classList.add("slide-closed");
+        void now.offsetHeight;
+        now.classList.add("slide");
+        now.classList.remove("slide-closed");
+        now.style.height = h + "px";
+        setTimeout(() => { now.classList.remove("slide"); now.style.height = ""; nudge(now.querySelector(".export-strip-scroll")); }, SLIDE_MS + 30);
+      } else if (!now && old.el) {
+        old.el.classList.add("leaving", "slide");
+        old.el.style.height = old.h + "px";
+        outer.insertBefore(old.el, rows);
+        void old.el.offsetHeight;
+        old.el.style.height = "";
+        old.el.classList.add("slide-closed");
+        setTimeout(() => old.el.remove(), SLIDE_MS + 30);
+      }
+    });
+    const strip = outer.querySelector(".export-strip-slot:not(.leaving) .export-strip-scroll");
+    if (strip) {
+      setTimeout(() => nudge(strip), 50);
+      strip.querySelectorAll("img").forEach((i) => i.addEventListener("load", () => nudge(strip), { once: true }));
+    }
+  }
+
   function renderExportSettings() {
     stopPreview();
-    // outer: foto grande e fileira de miniaturas (não rola); box: o resto, que rola se faltar
+    // Uma janela, três saídas (decisão do dono, 2026-10-30, opção A): Photos, Sequence e
+    // Lenticular são seções com interruptor; as marcadas abrem as configurações, as
+    // desmarcadas ficam recolhidas. A prévia de cima é a da seção em foco (exp.mode).
+    // outer: prévia e fileira de miniaturas (não rolam); rows: o resto, que rola se faltar
     // altura. A fileira rola para o lado e não pode ficar dentro de outra área que rola
     // (o WebKit do Mac pinta as miniaturas deslocadas nesse caso).
     const outer = $("exportSettings");
+    // O que está na tela agora, medido antes de sair (para a animação)
+    const before = {};
+    [".export-preview", ".export-strip-slot"].forEach((sel) => {
+      const e = outer.querySelector(sel + ":not(.leaving)");
+      before[sel] = { el: e, h: e ? e.offsetHeight : 0 };
+    });
     const prevRows = outer.querySelector(".export-rows");
     const keepScroll = prevRows ? prevRows.scrollTop : 0;  // a coluna é redesenhada a cada mudança: mantém a rolagem
     outer.innerHTML = "";
-    const box = el("div", "export-rows");
-    outer.appendChild(box);
-    renderExportSettings.restoreScroll = () => { if (keepScroll) box.scrollTop = keepScroll; };
+    const rows = el("div", "export-rows");
+    outer.appendChild(rows);
+    renderExportSettings.restoreScroll = () => { if (keepScroll) rows.scrollTop = keepScroll; };
+    // As caixas terminam no mesmo ponto que a prévia: o espaço da direita (18 px) é dividido
+    // entre a barra de rolagem, quando ela existe e ocupa lugar, e um respiro até as caixas
+    const fitRows = () => {
+      const bar = rows.offsetWidth - rows.clientWidth - (parseFloat(getComputedStyle(rows).borderLeftWidth) || 0) - (parseFloat(getComputedStyle(rows).borderRightWidth) || 0);
+      rows.style.paddingRight = Math.max(0, 18 - Math.max(0, bar)) + "px";
+    };
+    if (exp.rowsObserver) exp.rowsObserver.disconnect();
+    if (window.ResizeObserver) {
+      exp.rowsObserver = new ResizeObserver(() => fitRows());
+      exp.rowsObserver.observe(rows);
+      requestAnimationFrame(() => { [...rows.children].forEach((c) => exp.rowsObserver && exp.rowsObserver.observe(c)); fitRows(); });
+    }
     const session = sessions.find((s) => s.name === exp.active);
     if (!session) return;
     const items = sessionItems(session).filter((i) => i.previewable);
@@ -1687,29 +2580,41 @@
     const label = sessionLabel(session.name).date;
     const rerender = () => { syncAll(); renderExportSettings(); if (renderExportSettings.restoreScroll) renderExportSettings.restoreScroll(); refreshSummaries(); rememberExportPrefs(); };
 
-    // Mesma configuração para todas (padrão) ou uma por sessão
-    if (sessions.length > 1) {
-      const scope = checkOption("Same settings for all sessions", exp.sameForAll, (v) => { exp.sameForAll = v; rerender(); });
-      scope.classList.add("export-scope");
-      outer.insertBefore(scope, box);
-    }
+    // Barra de cima: mesma configuração para todas (padrão) ou uma por sessão, e mostrar/esconder
+    // a prévia (foto grande e miniaturas), para sobrar espaço para as configurações
+    const top = el("div", "export-scope");
+    if (sessions.length > 1) top.appendChild(checkOption("Same settings for all sessions", exp.sameForAll, (v) => { exp.sameForAll = v; rerender(); }));
+    top.appendChild(el("span", "spacer"));
+    const pv = button(exp.previewHidden ? "Show preview" : "Hide preview", () => {
+      exp.previewHidden = !exp.previewHidden;
+      if (exp.previewHidden) { exp.lentTheater = false; }
+      rerender();
+    }, { kind: "btn-link", icon: exp.previewHidden ? "down" : "up", title: exp.previewHidden ? "Show the photo and the thumbnails" : "Hide the photo and the thumbnails: more room for the settings" });
+    pv.classList.add("export-preview-toggle");
+    top.appendChild(pv);
+    outer.insertBefore(top, rows);
+    // Foco da prévia: a seção clicada por último, se marcada; senão a primeira marcada
+    if (!st.outputs[exp.mode]) exp.mode = OUTPUTS.map(([k]) => k).find((k) => st.outputs[k]) || "photos";
+    if (exp.mode !== "lenticular") { exp.lentTheater = false; outer.classList.remove("theater"); }
 
-    const preview = el("div", "export-preview");
-    const img = document.createElement("img");
-    img.alt = "";
-    const caption = el("div", "stage-caption");
-    preview.append(img, caption);
-    outer.insertBefore(preview, box);
-    const show = (i, text, file) => {
-      const item = items[i];
-      if (!item) return;
-      sessionPhoto(session.name, item.file, 1600).then((url) => { if (url && exp.active === session.name) img.src = url; });
-      caption.innerHTML = "";
-      caption.append(el("b", "", text[0]), document.createTextNode(text[1]));
-      if (file) caption.appendChild(el("span", "caption-file", file));
-    };
-
-    if (exp.mode === "photos") {
+    // Monta a prévia (só a da seção em foco entra na tela) e as configurações de uma saída
+    exp.keyNav = null;
+    const buildKind = (kind, box, focused) => {
+      const preview = el("div", "export-preview");
+      const img = document.createElement("img");
+      img.alt = "";
+      const caption = el("div", "stage-caption");
+      preview.append(img, caption);
+      if (focused && !exp.previewHidden) outer.insertBefore(preview, rows);
+      const show = (i, text, file) => {
+        const item = items[i];
+        if (!item) return;
+        sessionPhoto(session.name, item.file, 1600).then((url) => { if (url && exp.active === session.name) img.src = url; });
+        caption.innerHTML = "";
+        caption.append(el("b", "", text[0]), document.createTextNode(text[1]));
+        if (file) caption.appendChild(el("span", "caption-file", file));
+      };
+      if (kind === "photos") {
       const s = st.photos;
       // A fileira (ul) fica dentro de uma caixa que rola (div): o WebKit do Mac pintava os
       // filhos diretos da área de rolagem deslocados (sem a borda e o espaço interno deles)
@@ -1720,7 +2625,7 @@
         const item = items[exp.photo];
         if (!item) return;
         const stem = item.file.replace(/\.[^.]+$/, "");
-        const target = s.format === "original" ? "" : " → " + stem + "." + s.format;
+        const target = s.convert ? " → " + stem + "." + s.format : "";
         show(exp.photo, [pad(item.order), item.title + (item.subtitle ? " · " + item.subtitle : "")], item.file + target);
         [...strip.children].forEach((li, k) => li.classList.toggle("selected", k === exp.photo));
       };
@@ -1737,29 +2642,288 @@
         li.addEventListener("click", () => { exp.photo = k; showPhoto(); });
         strip.appendChild(li);
       });
-      outer.insertBefore(stripScroll, box);
-      showPhoto();
-      const r = row("Format");
-      r.appendChild(segmented(PHOTO_FORMATS, s.format, (v) => { s.format = v; rerender(); },
-        (v) => (v === "heic" && !exp.heic.ok ? exp.heic.reason || "Not available on this computer" : "")));
+      if (focused) exp.keyNav = (d) => { const k = Math.max(0, Math.min(items.length - 1, exp.photo + d)); if (k === exp.photo) return; exp.photo = k; showPhoto(); const li = strip.children[k]; if (li) li.scrollIntoView({ block: "nearest", inline: "nearest" }); };
+      if (focused && !exp.previewHidden) {
+        const slot = el("div", "export-strip-slot");
+        slot.appendChild(stripScroll);
+        outer.insertBefore(slot, rows);
+        showPhoto();
+      }
+      // Originais e/ou uma cópia convertida, independentes; com os dois, Photos/Originals/ e Photos/<FORMATO>/
+      const ro = row("Originals");
+      ro.appendChild(checkOption("Keep the originals, exactly as each camera saved them (JPG and RAW)", s.original, (v) => { s.original = v; rerender(); }));
+      box.appendChild(ro);
+      const r = row("Converted");
+      r.appendChild(checkOption("", s.convert, (v) => { s.convert = v; rerender(); }));
+      const fmts = segmented(PHOTO_FORMATS.filter(([f]) => f !== "original"), s.format, (v) => { s.format = v; s.convert = true; rerender(); },
+        (v) => (v === "heic" && !exp.heic.ok ? exp.heic.reason || "Not available on this computer" : ""));
+      if (!s.convert) fmts.classList.add("dimmed");
+      r.appendChild(fmts);
       box.appendChild(r);
-      if (LOSSY_PHOTOS.includes(s.format)) {
+      if (s.original && s.convert) {
+        const o = settingsFor(session.name).outputs;
+        const pre = o.sequence || o.lenticular ? "Photos/" : "";
+        box.appendChild(el("div", "export-note", "Both are saved, each in its own folder: " + pre + "Originals/ and " + pre + s.format.toUpperCase() + "/."));
+      }
+      if (!s.original && !s.convert) box.appendChild(el("div", "export-note exp-none", "Choose the originals, a format, or both."));
+      if (s.convert && LOSSY_PHOTOS.includes(s.format)) {
         const q = row("Quality");
         q.appendChild(segmented(QUALITIES, s.quality, (v) => { s.quality = v; rerender(); }));
         box.appendChild(q);
         const max = { jpg: "JPG at the highest quality, with full color detail.", webp: "Lossless: every pixel is kept.",
                       heic: "HEIC at the highest quality." };
-        box.appendChild(el("div", "export-note", s.quality === "standard" ? "Smaller files, good for sharing online."
-          : s.quality === "high" ? "Very close to the original photos, with smaller files. Good for most uses."
-          : max[s.format] + " Largest files."));
-      } else if (s.format === "png" || s.format === "tiff") {
-        box.appendChild(el("div", "export-note", s.format.toUpperCase() + " keeps every pixel: no quality is lost in the conversion."));
+        addTip(box, "Standard: smaller files, good for sharing online. High: very close to the original photos, with smaller files; good for most uses. " +
+          "Maximum: " + max[s.format] + " Largest files.", "Quality");
+      } else if (s.convert && (s.format === "png" || s.format === "tiff")) {
+        addTip(box, s.format.toUpperCase() + " keeps every pixel: no quality is lost in the conversion.", "Converted");
       }
-      box.appendChild(el("div", "export-note",
-        "Original keeps each file exactly as the camera saved it (JPG and RAW): the highest quality. The other formats convert " +
-        "every photo; RAW photos are converted from the full-size image the camera keeps inside them, and when a camera " +
-        "saved RAW + JPG, the JPG is used."));
-    } else {
+      addTip(box, "The originals are the highest quality: each file exactly as the camera saved it. A converted copy makes one file per camera; RAW photos are converted from the " +
+        "full-size image the camera keeps inside them, and when a camera saved RAW + JPG, the JPG is used.", "Originals");
+      } else if (kind === "lenticular") {
+      const l = st.lent;
+      const n = items.length;
+      const plan = lentPlan(l, n);
+      // Prévia do efeito: arrastar para os lados troca a foto, como inclinar a lâmina
+      preview.classList.add("lent-preview");
+      // Animação: as lentes ficam deitadas e o efeito aparece inclinando a folha para cima e para
+      // baixo; 3D: lentes em pé, girando para os lados
+      const vertical = l.effect !== "3d";
+      preview.classList.toggle("tilt-vertical", vertical);
+      const order = l.reverse ? items.map((_, i) => n - 1 - i) : items.map((_, i) => i);
+      let frameAt = Math.min(exp.frame >= 0 ? exp.frame : 0, Math.max(0, n - 1));
+      const showFrame = (k) => {
+        frameAt = Math.max(0, Math.min(n - 1, k));
+        exp.frame = frameAt;
+        const i = order[frameAt];
+        show(i, ["Tilt preview", " " + label + " · photo " + (i + 1) + " of " + n + (vertical ? " · drag up and down" : " · drag left and right")]);
+      };
+      if (focused) showFrame(frameAt);
+      if (focused) exp.keyNav = (d) => { if (exp.lentView !== "interlaced") showFrame(frameAt + d); };
+      items.forEach((item) => sessionPhoto(session.name, item.file, 1600));
+      let drag = null;
+      preview.addEventListener("pointerdown", (e) => {
+        // Interlaced: o clique não arrasta a imagem nem seleciona (no Mac isso tirava a mira da lupa)
+        if (exp.lentView === "interlaced" && !e.target.closest("button")) {
+          e.preventDefault();
+          if (e.button === 0) loupePressed = true;  // segurando: a lupa sem a mira
+          requestAnimationFrame(() => preview.dispatchEvent(new PointerEvent("pointermove", { clientX: e.clientX, clientY: e.clientY })));
+          return;
+        }
+        if (exp.lentView === "interlaced" || e.target.closest("button")) return;  // botões (teatro, vistas) não começam arrasto
+        drag = { x: e.clientX, y: e.clientY, start: frameAt }; preview.setPointerCapture(e.pointerId); e.preventDefault();
+        document.documentElement.classList.add(vertical ? "drag-ns" : "drag-ew");
+      });
+      preview.addEventListener("pointermove", (e) => {
+        if (!drag) return;
+        // Metade do tamanho da prévia por foto (no sentido do arrasto)
+        const span = vertical ? preview.clientHeight : preview.clientWidth;
+        const step = Math.max(vertical ? 12 : 24, span / Math.max(2, n) / 2);
+        showFrame(drag.start + Math.round(((vertical ? e.clientY - drag.y : e.clientX - drag.x)) / step));
+      });
+      const endDrag = () => { drag = null; document.documentElement.classList.remove("drag-ns", "drag-ew"); };
+      // Soltou (ou saiu): a mira volta
+      const releaseLoupe = (e) => {
+        if (!loupePressed) return;
+        loupePressed = false;
+        if (exp.lentView === "interlaced" && e && e.clientX !== undefined) preview.dispatchEvent(new PointerEvent("pointermove", { clientX: e.clientX, clientY: e.clientY }));
+      };
+      preview.addEventListener("pointerup", releaseLoupe);
+      preview.addEventListener("pointerleave", () => { loupePressed = false; });
+      preview.addEventListener("pointerup", endDrag); preview.addEventListener("pointercancel", endDrag);
+
+      // Segunda vista: o arquivo entrelaçado em si — a imagem inteira como vai sair impressa (reduzida
+      // para caber; a olho nu as faixas se misturam, como no papel sem a lâmina) e uma lupa que mostra
+      // o ponto sob o mouse em pixels reais. Montada na página com as mesmas contas do app.
+      const canvas = document.createElement("canvas");
+      canvas.className = "lent-canvas hidden";
+      preview.insertBefore(canvas, caption);
+      const loupe = document.createElement("canvas");
+      loupe.className = "lent-loupe hidden"; loupe.width = 180; loupe.height = 180;
+      preview.appendChild(loupe);
+      const loupeTag = el("span", "lent-loupe-tag hidden", "2×");
+      preview.appendChild(loupeTag);
+      const views = el("div", "segmented lent-views");
+      let full = null;  // canvas com a imagem entrelaçada inteira (ou reduzida, se for grande demais)
+      const setView = (v) => {
+        exp.lentView = v;
+        [...views.children].forEach((b) => b.classList.toggle("on", b.dataset.view === v));
+        const inter = v === "interlaced";
+        img.classList.toggle("hidden", inter);
+        canvas.classList.toggle("hidden", !inter);
+        if (!inter) { loupe.classList.add("hidden"); loupeTag.classList.add("hidden"); }
+        preview.classList.toggle("interlaced", inter);
+        if (inter) drawInterlaced(); else showFrame(frameAt);
+      };
+      [["tilt", "Tilt"], ["interlaced", "Interlaced"]].forEach(([v, t]) => {
+        const b = el("button", "", t); b.dataset.view = v; b.title = v === "tilt" ? "Drag to see the photos change, as when tilting the print" : "The whole interlaced file, as it prints; move the mouse over it for a close-up";
+        b.addEventListener("click", (e) => { e.stopPropagation(); setView(v); });
+        views.appendChild(b);
+      });
+      views.addEventListener("pointerdown", (e) => e.stopPropagation());
+      preview.appendChild(views);
+      // Modo teatro: a prévia ocupa a coluna toda e as configurações somem; o botão de novo volta
+      const theater = button("", () => {
+        const from = preview.offsetHeight;
+        exp.lentTheater = !exp.lentTheater;
+        applyTheater();
+        slideHeight(preview, from);
+        if (!exp.lentTheater) [outer.querySelector(".export-rows"), outer.querySelector(".export-scope")].forEach((n) => n && n.animate && n.animate([{ opacity: 0 }, { opacity: 1 }], { duration: EASE_MS, easing: "ease" }));
+        if (exp.lentView === "interlaced") setTimeout(() => requestAnimationFrame(fitCanvas), EASE_MS + 20);
+      }, { icon: "theaterIn", title: "Theater mode: larger preview, settings hidden", kind: "btn-secondary" });
+      theater.classList.add("lent-theater-btn");
+      theater.addEventListener("pointerdown", (e) => e.stopPropagation());
+      preview.insertBefore(theater, views);  // à esquerda na tela: vem antes de Tilt / Interlaced no Tab
+      const applyTheater = () => {
+        outer.classList.toggle("theater", !!exp.lentTheater);
+        theater.classList.toggle("on", !!exp.lentTheater);
+        theater.innerHTML = icon(exp.lentTheater ? "theaterOut" : "theaterIn");  // ângulos para fora = entrar; para dentro = sair
+        theater.title = exp.lentTheater ? "Leave theater mode" : "Theater mode: larger preview, settings hidden";
+        if (exp.lentView === "interlaced") requestAnimationFrame(fitCanvas);
+      };
+      const fitCanvas = () => {
+        if (!full) return;
+        // Cabe na prévia mantendo a proporção do arquivo (com margem e marcas); o navegador reduz
+        // (as faixas se misturam, como a olho nu)
+        const pw = Math.max(50, preview.clientWidth - 2), ph = Math.max(50, preview.clientHeight - 2);
+        const scale = Math.min(pw / plan.fileW, ph / plan.fileH);
+        canvas.width = Math.max(1, Math.round(plan.fileW * scale)); canvas.height = Math.max(1, Math.round(plan.fileH * scale));
+        const ctx = canvas.getContext("2d");
+        ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(full, 0, 0, canvas.width, canvas.height);
+        // Marcas de novo, na escala da tela (no arquivo elas têm ~0,1 mm e somem ao reduzir)
+        const ds = canvas.width / plan.fileW;
+        const bleedPx = Math.round((l.bleedMm || 0) / 25.4 * l.dpi), marginPx = l.cropMarks || l.alignMarks ? Math.round(0.4 * l.dpi) : 0;
+        drawPrintMarks(ctx, l, ds, { fw: canvas.width, fh: canvas.height, margin: marginPx * ds, bleed: bleedPx * ds, w: plan.w * ds, h: plan.h * ds });
+      };
+      const drawInterlaced = () => {
+        const horizontal = l.effect !== "3d";
+        // Imagem inteira em pixels reais; acima de ~24 Mpx monta reduzida (a lupa avisa)
+        const limit = 24e6;
+        const f = plan.fileW * plan.fileH > limit ? Math.sqrt(limit / (plan.fileW * plan.fileH)) : 1;
+        // O arquivo inteiro: margem branca com as marcas e, no meio, a imagem com a sangria
+        const bleed = Math.round((l.bleedMm || 0) / 25.4 * l.dpi), margin = l.cropMarks || l.alignMarks ? Math.round(0.4 * l.dpi) : 0;
+        const FW = Math.max(1, Math.round(plan.fileW * f)), FH = Math.max(1, Math.round(plan.fileH * f));
+        const off = Math.round(margin * f), b = bleed * f;
+        const W = Math.max(1, Math.round((plan.w + 2 * bleed) * f)), H = Math.max(1, Math.round((plan.h + 2 * bleed) * f));
+        const perLens = plan.cols * f;
+        const ownerOf = (i) => { const pos = (i - b + 0.5) / perLens, frac = pos - Math.floor(pos); let k = Math.min(n - 1, Math.floor(frac * n)); return l.reverse ? n - 1 - k : k; };
+        const token = (drawInterlaced.token = (drawInterlaced.token || 0) + 1);
+        full = document.createElement("canvas"); full.width = FW; full.height = FH;
+        const fctx = full.getContext("2d");
+        fctx.fillStyle = "#fff"; fctx.fillRect(0, 0, FW, FH);
+        fctx.fillStyle = "#000"; fctx.fillRect(off, off, W, H);
+        drawPrintMarks(fctx, l, f, { fw: FW, fh: FH, margin: margin * f, bleed: b, w: plan.w * f, h: plan.h * f });
+        lentBuiltAt = f;
+        setLoupeTag();
+        caption.innerHTML = "";
+        caption.append(el("b", "", "Interlaced"), document.createTextNode(" the whole file as it prints · " + plan.fileW + " × " + plan.fileH + " px · " + lentSizeText(l) + " · " +
+          (plan.cols ? plan.cols.toFixed(2).replace(/\.?0+$/, "") : "—") + " px per lens · strips " + (horizontal ? "horizontal" : "vertical") + " · move the mouse for a close-up, scroll to zoom, hold the left button to hide the crosshair"));
+        fitCanvas();
+        // Faixas de cada foto: desenha a foto (cobrindo o papel) só nas linhas/colunas dela
+        const lines = horizontal ? H : W;
+        const runs = [];  // [início, comprimento, foto]
+        for (let i = 0; i < lines;) { const k = ownerOf(i); let j = i + 1; while (j < lines && ownerOf(j) === k) j++; runs.push([i, j - i, k]); i = j; }
+        let loaded = 0;
+        items.forEach((item, k) => {
+          sessionPhoto(session.name, item.file, 1600).then((url) => new Promise((res) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = url || ""; })).then((im) => {
+            if (token !== drawInterlaced.token) return;
+            if (im) {
+              const s = Math.max(W / im.naturalWidth, H / im.naturalHeight);
+              const fw = im.naturalWidth * s, fh = im.naturalHeight * s;
+              const ox = (fw - W) / 2, oy = (fh - H) / 2;
+              fctx.imageSmoothingEnabled = true;
+              runs.forEach(([start, len, owner]) => {
+                if (owner !== k) return;
+                if (horizontal) fctx.drawImage(im, ox / s, (oy + start) / s, W / s, len / s, off, off + start, W, len);
+                else fctx.drawImage(im, (ox + start) / s, oy / s, len / s, H / s, off + start, off, len, H);
+              });
+            }
+            if (++loaded === n) fitCanvas();
+          });
+        });
+      };
+      // Lupa: segue o mouse; mostra o ponto em pixels reais ampliados (2× de início; a roda do
+      // mouse aproxima e afasta, de 1× a 8×)
+      let lentBuiltAt = 1, lastMove = null;
+      const setLoupeTag = () => {
+        const z = exp.loupeZoom || 2;
+        loupeTag.textContent = lentBuiltAt < 1 ? zoomText(z) + " · built at " + Math.round(lentBuiltAt * 100) + "%" : zoomText(z) + " · real pixels";
+        loupeTag.title = (lentBuiltAt < 1 ? "The preview of the file was built at " + Math.round(lentBuiltAt * 100) + "% of the real size. " : "") + "Scroll to zoom in and out";
+      };
+      preview.addEventListener("wheel", (e) => {
+        if (exp.lentView !== "interlaced" || !full || loupe.classList.contains("hidden")) return;
+        e.preventDefault();
+        exp.loupeZoom = loupeZoomStep(exp.loupeZoom || 2, e.deltaY, e.deltaMode);
+        setLoupeTag();
+        if (lastMove) preview.dispatchEvent(new PointerEvent("pointermove", { clientX: lastMove.x, clientY: lastMove.y }));
+      }, { passive: false });
+      preview.addEventListener("pointermove", (e) => {
+        if (exp.lentView !== "interlaced" || !full) return;
+        lastMove = { x: e.clientX, y: e.clientY };
+        // Área desenhada de fato (no teatro o canvas ocupa a caixa toda com object-fit: contain)
+        const box = canvas.getBoundingClientRect();
+        const sc = Math.min(box.width / canvas.width, box.height / canvas.height);
+        const r = { left: box.left + (box.width - canvas.width * sc) / 2, top: box.top + (box.height - canvas.height * sc) / 2, width: canvas.width * sc, height: canvas.height * sc };
+        const inside = e.clientX >= r.left && e.clientX <= r.left + r.width && e.clientY >= r.top && e.clientY <= r.top + r.height;
+        loupe.classList.toggle("hidden", !inside); loupeTag.classList.toggle("hidden", !inside || loupePressed);
+        if (!inside) return;
+        const fx = (e.clientX - r.left) / r.width * full.width, fy = (e.clientY - r.top) / r.height * full.height;
+        // Tamanho conforme a prévia (fora do teatro ela tem 200 px de altura): sempre cabe
+        const pr = preview.getBoundingClientRect();
+        const size = Math.round(Math.max(80, Math.min(180, pr.height - 40, pr.width / 3)));
+        if (loupe.width !== size) { loupe.width = size; loupe.height = size; }
+        const half = loupe.width / 2 / (exp.loupeZoom || 2);  // zoom: cada pixel real vira z na tela
+        const lctx = loupe.getContext("2d");
+        lctx.imageSmoothingEnabled = false;
+        lctx.fillStyle = "#000"; lctx.fillRect(0, 0, loupe.width, loupe.height);
+        lctx.drawImage(full, fx - half, fy - half, half * 2, half * 2, 0, 0, loupe.width, loupe.height);
+        drawLoupeCross(loupe);
+        let lx = e.clientX - pr.left + 18, ly = e.clientY - pr.top + 18;
+        if (lx + size > pr.width - 8) lx = e.clientX - pr.left - size - 18;
+        if (ly + size > pr.height - 8) ly = e.clientY - pr.top - size - 18;
+        lx = Math.max(8, Math.min(lx, pr.width - size - 8)); ly = Math.max(8, Math.min(ly, pr.height - size - 8));
+        loupe.style.left = lx + "px"; loupe.style.top = ly + "px";
+        // A etiqueta vai dentro da lupa, no canto de cima (embaixo ela saía da prévia)
+        loupeTag.style.left = (lx + 4) + "px"; loupeTag.style.top = (ly + 4) + "px";
+      });
+      preview.addEventListener("pointerleave", () => { loupe.classList.add("hidden"); loupeTag.classList.add("hidden"); });
+      if (focused) {
+        applyTheater();
+        setView(exp.lentView === "interlaced" ? "interlaced" : "tilt");
+      }
+
+      // Leitura: o que a combinação lâmina + impressora dá para esta sessão
+      const read = el("div", "lent-readout" + (plan.warn ? " " + plan.warn : ""));
+      const cols = el("div", "lent-cols");
+      cols.append(el("b", "", plan.cols ? plan.cols.toFixed(2).replace(/\.?0+$/, "") : "—"), el("span", "", " columns per lens"),
+                  el("span", "lent-dim", " (" + l.dpi + " dpi ÷ " + lentPitch(l) + " LPI)"));
+      read.appendChild(cols);
+      const perText = plan.per ? plan.per.toFixed(2).replace(/\.?0+$/, "") : "—";
+      read.appendChild(el("div", "", plural(n, "photo", "photos") + " → " + perText + " printer " + (plan.per === 1 ? "dot" : "dots") + " per photo in each lens"));
+      read.appendChild(el("div", "lent-dim", plan.w + " × " + plan.h + " px · " + plural(plan.lenses, "lens", "lenses") + " across the print · TIFF, no compression" +
+        (plan.fileW !== plan.w ? " · file " + plan.fileW + " × " + plan.fileH + " px with " + [l.bleedMm ? l.bleedMm + " mm bleed" : "", l.cropMarks || l.alignMarks ? "marks" : ""].filter(Boolean).join(" and ") : "")));
+      if (plan.warn === "bad") read.appendChild(el("div", "lent-warn", "Less than one printer dot per photo: the printer cannot separate the strips. Use a higher dpi, a coarser lens (fewer LPI), or a session with fewer photos."));
+      else if (plan.warn === "tight") read.appendChild(el("div", "lent-warn", "Under 2 dots per photo: it works, but some photos get 1 dot and others 2, so the change between them is less even. A higher dpi (1440 instead of 720), a coarser lens or fewer photos gives a cleaner result."));
+      if (!l.pitch) read.appendChild(el("div", "lent-note", "Using the nominal LPI. Real sheets differ a little (59.8 instead of 60, say): print a pitch test to measure yours and type it in \"Measured pitch\"."));
+      box.appendChild(read);
+
+      // Efeito, lâmina, impressora e tamanho: os mesmos controles da folha de teste de pitch
+      lentEffectRows(l, box, rerender);
+      lentLensRows(l, box, rerender, { measured: true });
+      lentPrinterRows(l, box, rerender);
+      lentSizeRow(l, box, rerender);
+      // Marcas de impressão (entrega 2)
+      const marks = row("Marks");
+      marks.appendChild(checkOption("Crop marks", !!l.cropMarks, (v) => { l.cropMarks = v; rerender(); }));
+      marks.appendChild(checkOption("Alignment marks", !!l.alignMarks, (v) => { l.alignMarks = v; rerender(); }));
+      marks.appendChild(el("span", "export-label lent-sub", "Bleed"));
+      marks.appendChild(segmented([["0", "None"], ["3", "3 mm"]], String(l.bleedMm || 0), (v) => { l.bleedMm = Number(v); rerender(); }));
+      box.appendChild(marks);
+      addTip(box, "Crop marks: short lines in the margin showing where to cut. Alignment marks: crosses on each side to place the lens sheet. " +
+        "Bleed: the picture goes a little past the cut line, so a cut slightly off leaves no white edge. With marks, the file has a white margin around the print.", "Marks");
+      addTip(box, "The photos are scaled to cover this size exactly (cropped at the edges if the shape differs). " +
+        "Print at 100% / actual size, never \"fit to page\": the file already has the right dpi and size.", "Print size");
+      } else {
       const s = st.seq;
       const order = cycleOrder(items.length, s.reverse);
       const play = button("", () => { if (exp.timer) stopPreview(); else startPreview(); setPlayIcon(); }, { icon: "pause", title: "Play / pause", kind: "btn-overlay" });
@@ -1773,10 +2937,12 @@
         show(i, ["Preview", " " + label + " · photo " + (i + 1) + " of " + items.length + " · " + s.fps + " fps"]);
       };
       const startPreview = () => { stopPreview(); exp.timer = setInterval(step, 1000 / s.fps); };
-      exp.frame = -1;
-      step();
-      startPreview();
-      setPlayIcon();
+      if (focused) {
+        exp.frame = -1;
+        step();
+        startPreview();
+        setPlayIcon();
+      }
       // Carrega todas as prévias antes, para tocar sem falhas
       items.forEach((item) => sessionPhoto(session.name, item.file, 1600));
 
@@ -1810,16 +2976,15 @@
 
       const size = row("Size");
       size.appendChild(segmented(SIZES, s.height, (v) => { s.height = v; rerender(); }));
-      size.appendChild(el("span", "export-note", "4K only for MP4 and MOV. GIF, WEBP and AVIF go up to 1080p."));
       box.appendChild(size);
+      addTip(box, "4K only for MP4 and MOV. GIF, WEBP and AVIF go up to 1080p.", "Size");
 
       const quality = row("Quality");
       quality.appendChild(segmented(QUALITIES, s.quality, (v) => { s.quality = v; rerender(); }));
       box.appendChild(quality);
-      box.appendChild(el("div", "export-note", (s.quality === "standard" ? "Smaller files, good for sharing online."
-        : s.quality === "high" ? "Very close to the photos, with smaller files. Good for most uses."
-        : "As close to the photos as each format allows: WEBP keeps every pixel, MP4, MOV and AVIF get much more detail. " +
-          "Large files, and AVIF takes longer.") + (s.formats.includes("gif") ? " GIF always has 256 colors, at any quality." : "")));
+      addTip(box, "Standard: smaller files, good for sharing online. High: very close to the photos, with smaller files; good for most uses. " +
+        "Maximum: as close to the photos as each format allows (WEBP keeps every pixel; MP4, MOV and AVIF get much more detail); large files, and AVIF takes longer. " +
+        "GIF always has 256 colors, at any quality.", "Quality");
 
       const t = seqTotal(session, s);
       const total = el("div", "export-total");
@@ -1830,16 +2995,72 @@
       sum.appendChild(el("b", "", seconds(t.seconds)));
       total.appendChild(sum);
       box.appendChild(total);
-      box.appendChild(el("div", "export-note", "MP4 and MOV have the loops inside the video. GIF, WEBP and AVIF repeat without stopping."));
-      box.appendChild(checkOption("Also save the photos (original format)", s.alsoPhotos, (v) => { s.alsoPhotos = v; syncAll(); refreshSummaries(); rememberExportPrefs(); }));
-    }
+      addTip(box, "MP4 and MOV have the loops inside the video. GIF, WEBP and AVIF repeat without stopping. Reverse loop: plays forward and back (1 → 9 → 2) instead of starting over.", "Speed");
+          }
+    };
+
+    OUTPUTS.forEach(([kind, title, sub]) => {
+      const on = !!st.outputs[kind];
+      const focused = on && kind === exp.mode;
+      const sec = el("section", "exp-sec" + (on ? " on" : "") + (focused ? " focus" : ""));
+      const head = el("div", "exp-sec-head");
+      const check = el("label", "export-check exp-sec-check");
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.checked = on;
+      input.setAttribute("aria-label", title);
+      check.append(input, el("span", "save-check"));
+      check.addEventListener("click", (e) => e.stopPropagation());
+      input.addEventListener("change", () => {
+        st.outputs[kind] = input.checked;
+        if (input.checked) exp.mode = kind;  // a que acabou de ligar vira a prévia
+        rerender();
+      });
+      // Ligar (se desligada) e levar a prévia para esta saída
+      const pick = (e) => { e.stopPropagation(); st.outputs[kind] = true; exp.mode = kind; rerender(); };
+      const name = el("span", "exp-sec-name");
+      name.append(el("b", "exp-sec-title", title), el("span", "exp-sec-sub", sub));
+      if (!on) { head.classList.add("pick"); head.title = "Turn on " + title; head.addEventListener("click", pick); }
+      head.append(check, name);
+      const sum = el("span", "exp-sec-sum");
+      setWarnText(sum, on ? outputText(session, kind) : "Off");
+      head.appendChild(sum);
+      if (on) {
+        // Fica nas seções ligadas; na que está na prévia, aceso
+        const hint = el("button", "exp-sec-hint" + (focused ? " on" : ""), "Preview");
+        hint.type = "button";
+        hint.title = focused ? "This output is in the preview" : "Show the " + title + " preview";
+        hint.setAttribute("aria-pressed", focused ? "true" : "false");
+        hint.addEventListener("click", (e) => { e.stopPropagation(); if (!focused) pick(e); });
+        head.appendChild(hint);
+      }
+      // Recolher / abrir as configurações (a saída continua ligada); vale para todas as sessões
+      exp.collapsed = exp.collapsed || {};
+      const folded = on && !!exp.collapsed[kind];
+      if (on) {
+        const fold = button("", (e) => { e.stopPropagation(); exp.collapsed[kind] = !folded; rerender(); },
+          { icon: folded ? "down" : "up", title: folded ? "Show the " + title + " settings" : "Hide the " + title + " settings" });
+        fold.classList.add("exp-sec-fold");
+        head.appendChild(fold);
+      }
+      if (folded) sec.classList.add("folded");
+      sec.appendChild(head);
+      if (on) {
+        const body = el("div", "exp-sec-body" + (folded ? " hidden" : ""));
+        sec.appendChild(body);
+        buildKind(kind, body, focused);
+      }
+      rows.appendChild(sec);
+    });
+    if (!OUTPUT_KINDS.some((k) => st.outputs[k])) rows.appendChild(el("div", "export-note exp-none", "Tick at least one output: Photos, Sequence or Lenticular."));
+    slideBlocks(outer, before, rows);
 
     // Nome da pasta e dos arquivos
     const n = st.naming;
     const nameRow = row("Name");
     nameRow.appendChild(segmented([["date", "Date + time"], ["number", "Number"], ["custom", "Custom"]], n.kind,
       (v) => { n.kind = v; rerender(); }));
-    box.appendChild(nameRow);
+    rows.appendChild(nameRow);
     if (n.kind === "custom") {
       const custom = row("");
       custom.style.paddingLeft = "84px";
@@ -1852,38 +3073,45 @@
       custom.appendChild(input);
       custom.appendChild(checkOption("Add date + time", n.date, (v) => { n.date = v; rerender(); }));
       if (n.date) custom.appendChild(segmented([["before", "Before"], ["after", "After"]], n.position, (v) => { n.position = v; rerender(); }));
-      box.appendChild(custom);
+      rows.appendChild(custom);
     }
     const folderLine = el("div", "export-note", "Folder: " + folderName(session));
-    box.appendChild(folderLine);
-    if (n.kind === "number" || (n.kind === "custom" && !n.date))
-      box.appendChild(el("div", "export-note", n.kind === "number"
-        ? "Numbers continue from the ones already in the folder you choose."
-        : "Sessions with the same name get numbers (01, 02…), continuing from the folder you choose."));
+    rows.appendChild(folderLine);
+    addTip(rows, "Date + time: each session folder is named after when it was shot. Number: 01, 02… continuing from the ones already in the destination folder. " +
+      "Custom: a name you type; sessions with the same name get numbers (01, 02…).", "Name");
+    // Onde salva: com Project aberto, <Project>/Exports; sem, <pasta do Stillpoint>/Exports.
+    // "Choose another folder…" vale só para este salvamento (como no New project)
+    const dest = row("Save to");
+    const where = exp.dest || exp.destDefault || "";
+    // Marcas de direção: o corte é no começo (rtl), mas o caminho continua lido da esquerda para a direita
+    const path = el("span", "export-dest", where ? "\u200E" + where + "\u200E" : "…");
+    path.title = where;
+    dest.appendChild(path);
+    dest.appendChild(button("Choose another folder…", () => {
+      if (typeof window.chooseExportFolder !== "function") { toast("This build cannot do that yet. Build the app again.", 8000); return; }
+      Promise.resolve(window.chooseExportFolder(where)).then((r) => { if (r && r.folder) { exp.dest = r.folder; rerender(); } });
+    }, { kind: "btn-secondary" }));
+    if (exp.dest) dest.appendChild(button("Reset to default", () => { exp.dest = null; rerender(); },
+      { kind: "btn-secondary", title: "Back to " + (exp.destProject ? "the project's Exports folder" : "the default folder") + ": " + (exp.destDefault || "") }));
+    rows.appendChild(dest);
 
     if (!exp.sameForAll && sessions.length > 1) {
       const apply = el("div", "export-apply");
-      const key = exp.mode === "photos" ? "photos" : "seq";
-      const same = sessions.length > 1 && sessions.every((o) => JSON.stringify(settingsFor(o.name)[key]) === JSON.stringify(st[key]) &&
-        JSON.stringify(settingsFor(o.name).naming) === JSON.stringify(st.naming));
+      const same = sessions.length > 1 && sessions.every((o) => sameAsActive(o.name));
       const note = el("span", "export-note", sessions.length === 1 ? "" : same
-        ? (exp.mode === "photos" ? "All sessions use this format." : "All sessions use these settings.")
-        : (exp.mode === "photos" ? "This format is" : "These settings are") + " only for " + label + ".");
+        ? "All sessions use these settings." : "These settings are only for " + label + ".");
       apply.appendChild(note);
       apply.appendChild(button("Apply to all sessions", () => {
-        const source = JSON.stringify(st[key]);
-        const naming = JSON.stringify(st.naming);
         sessions.forEach((other) => {
           if (other.name === session.name) return;
-          settingsFor(other.name)[key] = JSON.parse(source);
-          settingsFor(other.name).naming = JSON.parse(naming);
+          OUTPUT_KEYS.forEach((k) => { settingsFor(other.name)[k] = JSON.parse(JSON.stringify(st[k])); });
         });
         rerender();
         toast("Applied to all " + plural(sessions.length, "session", "sessions"));
       }));
-      box.appendChild(apply);
+      rows.appendChild(apply);
     } else if (sessions.length > 1) {
-      box.appendChild(el("div", "export-note export-apply", "Changes apply to all sessions. Turn off \"Same settings for all sessions\" to set each one."));
+      rows.appendChild(el("div", "export-note export-apply", "Changes apply to all sessions. Turn off \"Same settings for all sessions\" to set each one."));
     }
   }
 
@@ -1891,18 +3119,24 @@
     const st = settingsFor(name);
     const n = st.naming;
     const head = [name, n.kind, (n.text || "").replace(/\|/g, ""), n.date ? 1 : 0, n.position];
-    if (exp.mode === "photos") return [...head, "photos", st.photos.format, st.photos.quality].join("|");
-    const s = st.seq;
-    return [...head, "sequence", s.formats.join(","), s.fps, s.loops, s.reverse ? 1 : 0, s.height, s.alsoPhotos ? 1 : 0, s.quality].join("|");
+    // "outputs": fotos (formato|qualidade; formato vazio = não), sequência (formatos vazios = não)
+    // e lenticular (1|0 e os valores), tudo numa linha por sessão
+    const o = st.outputs, s = st.seq, l = st.lent;
+    return [...head, "outputs",
+      o.photos ? [st.photos.original ? "original" : "", st.photos.convert ? st.photos.format : ""].filter(Boolean).join(",") : "", st.photos.quality,
+      o.sequence ? s.formats.join(",") : "", s.fps, s.loops, s.reverse ? 1 : 0, s.height, s.quality,
+      o.lenticular ? 1 : 0, lentPitch(l), l.dpi, (l.widthCm / CM_PER_IN).toFixed(4), (l.heightCm / CM_PER_IN).toFixed(4), l.effect, l.reverse ? 1 : 0,
+      l.cropMarks ? 1 : 0, l.alignMarks ? 1 : 0, l.bleedMm || 0, l.lpi].join("|");
   }
 
   function runExport(deleteRest) {
     const names = exportable().filter((s) => exp.selected.has(s.name)).map((s) => s.name);
     exp.waiting = true;  // a janela fica aberta até salvar de fato
     // Project: "project" = direto para <Project>/Exports; "edited" = usar as editadas quando houver
-    const flags = [deleteRest ? "delete" : "", exp.project && $("exportEdited").checked ? "edited" : ""].filter(Boolean).join(",");
+    // "dest": o 3º argumento é a pasta (vazio = a padrão), sem perguntar
+    const flags = [deleteRest ? "delete" : "", exp.project && $("exportEdited").checked ? "edited" : "", "dest"].filter(Boolean).join(",");
     if (exp.project) window.projectExportDefaults(JSON.stringify({ mode: exp.mode, useEdited: $("exportEdited").checked }));
-    window.exportSessions(exp.project ? "project" : exp.exitAfter ? "exit" : "", flags, ...names.map(exportSpec));
+    window.exportSessions(exp.project ? "project" : exp.exitAfter ? "exit" : "", flags, exp.dest || "", ...names.map(exportSpec));
   }
   $("exportEdited").addEventListener("change", updateExportCount);
 
@@ -1911,7 +3145,7 @@
   const RAW_RE = /\.(cr2|cr3|crw|nef|nrw|arw|srf|sr2|dng|raf|orf|rw2|pef|raw)$/i;
   function mixedFormats() {
     const raw = new Set(), jpeg = new Set();
-    sessions.filter((s) => exp.selected.has(s.name) && exp.mode === "photos" && settingsFor(s.name).photos.format === "original").forEach((s) => {
+    sessions.filter((s) => exp.selected.has(s.name) && settingsFor(s.name).outputs.photos && settingsFor(s.name).photos.original).forEach((s) => {
       const byCam = {};
       s.photos.forEach((p) => { if (!p.camera) return; byCam[p.camera] = byCam[p.camera] || { raw: false }; if (RAW_RE.test(p.file)) byCam[p.camera].raw = true; });
       Object.keys(byCam).forEach((cam) => (byCam[cam].raw ? raw : jpeg).add(cam));
@@ -1919,9 +3153,28 @@
     jpeg.forEach((c) => { if (raw.has(c)) jpeg.delete(c); });
     return raw.size && jpeg.size ? { raw: [...raw].sort(), jpeg: [...jpeg].sort() } : null;
   }
+  // Sessão escolhida com o Lenticular marcado (a aberta, se for o caso)
+  function lentSession() {
+    const names = [exp.active].concat([...exp.selected]).filter((n) => exp.selected.has(n));
+    return names.find((n) => settingsFor(n).outputs.lenticular) || null;
+  }
+  let pitchAsk = true;  // "Don't ask again" (pref.pitchAsk = "off")
   function confirmExport() {
     const chosen = exp.selected.size;
     if (!chosen) return;
+    // Lenticular com o LPI de fábrica (sem pitch medido): sugere a folha de teste antes
+    const lentName = lentSession();
+    if (lentName && pitchAsk && !exp.pitchChecked && !(settingsFor(lentName).lent.pitch > 0)) {
+      const l = settingsFor(lentName).lent;
+      dialog("Print a pitch test first?",
+        "The lenticular print uses the LPI on the lens package (" + l.lpi + "). Real lens sheets differ a little with each printer, and a small " +
+        "difference makes the effect blurry or striped. A pitch test (one sheet) shows the real value: type it in \"Measured pitch\" and then save.", [
+        { label: "Don't ask again", link: true, onClick: () => { pitchAsk = false; window.savePref("pitchAsk", "off"); exp.pitchChecked = true; confirmExport(); exp.pitchChecked = false; } },
+        { label: "Print pitch test", onClick: () => openPitchTest(l) },
+        { label: "Save anyway", primary: true, onClick: () => { exp.pitchChecked = true; confirmExport(); exp.pitchChecked = false; } },
+      ]);
+      return;
+    }
     const mixed = mixedFormats();
     if (mixed && !exp.formatsChecked) {
       dialog("Not every camera sent RAW",
@@ -1944,15 +3197,11 @@
   }
 
   ui.saveBtn.addEventListener("click", () => startSave(false));
-  $("modePhotos").addEventListener("click", () => openExport("photos"));
-  $("modeSequence").addEventListener("click", () => openExport("sequence"));
-  $("modeCancel").addEventListener("click", () => $("modeOverlay").classList.add("hidden"));
-  $("exportModePhotos").addEventListener("click", () => { exp.mode = "photos"; renderExport(); rememberExportPrefs(); });
-  $("exportModeSequence").addEventListener("click", () => { exp.mode = "sequence"; renderExport(); rememberExportPrefs(); });
   $("exportSelectAll").addEventListener("click", () => { exp.selectedTouched = true; exp.selected = new Set(exportable().map((s) => s.name)); renderExportList(); updateExportCount(); });
   $("exportUnselectAll").addEventListener("click", () => { exp.selectedTouched = true; exp.selected.clear(); renderExportList(); updateExportCount(); });
   $("exportCancel").addEventListener("click", closeExport);
   $("exportConfirm").addEventListener("click", confirmExport);
+  $("exportPitch").addEventListener("click", () => { const n = lentSession(); if (n) openPitchTest(settingsFor(n).lent); });
   $("progressCancel").addEventListener("click", () => {
     $("progressCancel").disabled = true;
     $("progressStep").textContent = "Cancelling…";
@@ -1967,7 +3216,7 @@
     }
     const total = e.total || 1;
     $("progressTitle").textContent = "Saving " + plural(total, "session", "sessions");
-    const stepNames = { photos: "reading the photos", "photos-save": "saving the photos", done: "done" };
+    const stepNames = { photos: "reading the photos", "photos-save": "saving the photos", lenticular: "interlacing the lenticular print", "lenticular-save": "saving the lenticular print", done: "done" };
     const step = stepNames[e.step] || (/^(MP4|MOV|GIF|WEBP|AVIF)$/.test(e.step) ? "making the " + e.step : "converting to " + String(e.step).toUpperCase());
     $("progressStep").textContent = sessionLabel(e.session).date + " · " + step;
     const pct = Math.round(((e.index + Math.min(1, e.fraction || 0)) / total) * 100);
@@ -1988,15 +3237,10 @@
     }
     // Janela de salvar aberta: voltar para ela ou apagar e fechar
     const exportOpen = !$("exportOverlay").classList.contains("hidden");
-    const modeOpen = !$("modeOverlay").classList.contains("hidden");
-    if (exportOpen || modeOpen) {
+    if (exportOpen) {
       $("exportOverlay").classList.add("hidden");
-      $("modeOverlay").classList.add("hidden");
       stopPreview();
-      const back = () => {
-        if (exportOpen) { $("exportOverlay").classList.remove("hidden"); renderExportSettings(); }
-        else $("modeOverlay").classList.remove("hidden");
-      };
+      const back = () => { $("exportOverlay").classList.remove("hidden"); renderExportSettings(); };
       dialog("Save your sessions before closing?",
         plural(count, "session is", "sessions are") + " not saved yet. If you close without saving, the photos are deleted.", [
         { label: "Delete and close", danger: true, onClick: () => window.exitApp(true) },
@@ -2225,9 +3469,15 @@
       csGallery.message(e.stage);
     },
     // Cartão cinza: depois da primeira foto, conferir onde está o cartão
-    grayCardPick(e) { csCardShow(e.sessions, e.regions || []); },
+    grayCardPick(e) {
+      if ($("camSettingsOverlay").classList.contains("hidden")) { window.cancelTest(); return; }  // janela fechada: ninguém para conferir
+      csCardShow(e.sessions, e.regions || []);
+    },
     // Cartela de cores
-    chartPick(e) { csChartShow(e.sessions, e.quads || []); },
+    chartPick(e) {
+      if ($("camSettingsOverlay").classList.contains("hidden")) { window.cancelTest(); return; }
+      csChartShow(e.sessions, e.quads || []);
+    },
     chartProgress(e) {
       csGallery.setHead("Chart calibration", "Photo " + e.shot + " of " + e.shots + " · " + e.stage);
       csGallery.message(e.stage);
@@ -2277,6 +3527,15 @@
       const actions = [{ label: "OK", primary: true }];
       if (e.debugFolder) actions.unshift({ label: "Open debug folder", link: true, onClick: () => window.openDebugFolder() });
       dialog(title, parts.join("\n\n"), actions);
+      // Desfazer: as câmeras voltam ao que eram antes do Match; Refazer: ao resultado do Match
+      if (blocks.length && csTest.before) {
+        const before = csTest.before;
+        let after = null;
+        recordAction({ label: "Match automatically (" + plural(blocks.length, "camera", "cameras") + ")", camera: true,
+          undo: () => { after = csSnapshot(); return csRestore(before); },
+          redo: () => (after ? csRestore(after) : false) });
+      }
+      csTest.before = null;
       if (e.debugFolder) log("Debug data saved", "tech", e.debugFolder);
       log("Match automatically: " + (blocks.length ? plural(blocks.length, "camera", "cameras") + " changed" : "no change"), e.ok ? "ok" : "warn");
     },
@@ -2319,6 +3578,11 @@
     soundChanged(e) { sound = { sound: !!e.sound, sounds: !!e.sounds }; renderSoundBtn(); },
     saving() { activity.saving = true; renderActivity(); },
     exportProgress(e) { showProgress(e); },
+    exportFolderError(e) { toast(e.error, 8000, { warn: true }); },
+    pitchTestDone(e) {
+      if (e.ok) { toast("Pitch test saved: " + e.file.split(/[\\/]/).pop()); log("Pitch test saved", "ok", e.file); }
+      else { toast(e.error || "Could not make the pitch test.", 8000, { warn: true }); log("Pitch test failed", "warn", e.error); }
+    },
     saveCancelled() {
       if (exp.waiting) exp.waiting = false;  // a janela continua aberta como estava
       else toast("Save cancelled");
@@ -2404,7 +3668,7 @@
         toast(e.error || "A camera did not accept the change.", 8000);
         log("A camera setting was not changed.", "warn", e.error);
       }
-      if (!$("camSettingsOverlay").classList.contains("hidden")) renderCamSettings();
+      if (!$("camSettingsOverlay").classList.contains("hidden")) csRender();
     },
   };
 
@@ -2643,6 +3907,7 @@
     if (!prefs.theme) { prefs.theme = upd.info.theme; prefs.language = upd.info.language; prefs.debug = !!upd.info.debug; }
     renderSettings();
     refreshDebugSize();
+    refreshProjectsFolder();
     $("settingsOverlay").classList.remove("hidden");
   }
   function renderSettings() {
@@ -2655,6 +3920,13 @@
     $("settingsLanguages").innerHTML = "";
     $("settingsLanguages").appendChild(segmented(languages.map((l) => [l.id, l.name]), prefs.language, (v) => saveSettings(prefs.theme, v)));
     $("settingsRestart").classList.toggle("hidden", !prefs.restart);
+    // Abertura: vale da próxima vez que o app abrir
+    $("settingsSplash").innerHTML = "";
+    $("settingsSplash").appendChild(segmented([["on", "On"], ["off", "Off"]], startPrefs.splash ? "on" : "off", (v) => {
+      startPrefs.splash = v === "on";
+      Promise.resolve(window.savePref("splash", v)).then(() => log("Opening animation " + v, "tech"));
+      renderSettings();
+    }));
     // Modo debug: vale na hora
     $("settingsDebug").innerHTML = "";
     $("settingsDebug").appendChild(segmented([["off", "Off"], ["on", "On"]], prefs.debug ? "on" : "off", (v) => {
@@ -2817,8 +4089,225 @@
     });
     sel.value = current;
     sel.addEventListener("change", () => onPick(sel.value));
+    appSelect(sel);
     return sel;
   }
+  // ---- Teclado: Tab passa por todos os controles (no Mac o WebKit só passa pelos campos de texto,
+  // a não ser que a navegação por teclado esteja ligada no sistema) e fica dentro da janela aberta
+  function focusables(scope) {
+    return [...scope.querySelectorAll("a[href], button, input, select, textarea, [tabindex]")].filter((x) =>
+      !x.disabled && x.tabIndex >= 0 && x.getClientRects().length > 0 && getComputedStyle(x).visibility !== "hidden" && !x.closest(".hidden"));
+  }
+  function tabScope() {
+    const open = [...document.querySelectorAll(".overlay:not(.hidden)")].filter((o) => o.getClientRects().length > 0);
+    if (!open.length) return ui.log.classList.contains("expanded") ? ui.log : document.body;  // Activity aberto: só ele
+    return open.reduce((top, o) => ((parseInt(getComputedStyle(o).zIndex, 10) || 0) >= (parseInt(getComputedStyle(top).zIndex, 10) || 0) ? o : top));
+  }
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Tab" || e.metaKey || e.ctrlKey || e.altKey || e.defaultPrevented) return;
+    if (selectMenu) closeSelectMenu();  // lista aberta: fecha e segue para o próximo
+    // Menu aberto (ex.: o do projeto): o Tab fecha o menu e segue a partir do botão que o abriu
+    let fromMenu = null;
+    if (openMenu) { fromMenu = openMenu.anchor && openMenu.anchor.isConnected ? openMenu.anchor : null; closeMenu(); }
+    const scope = tabScope();
+    const list = focusables(scope);
+    if (!list.length) return;
+    e.preventDefault();
+    document.documentElement.classList.add("kbd-focus");
+    let a = fromMenu || document.activeElement;
+    // Dentro da caixa do ±: o Tab sai dela e segue a partir do botão ± (a caixa fecha)
+    const pop = $("csStylePop");
+    if (pop && pop.contains(a) && csStylePop) a = document.querySelector('.cs-more[data-style-cam="' + csStylePop.camera + '"]') || a;
+    let i = list.indexOf(a);
+    let next;
+    if (i >= 0) next = list[(i + (e.shiftKey ? -1 : 1) + list.length) % list.length];
+    else if (a && a !== document.body && scope.contains(a)) {
+      // Fora da ordem do Tab (ex.: linha de uma câmera): segue a partir dele, na ordem da tela
+      const after = list.filter((x) => a.compareDocumentPosition(x) & Node.DOCUMENT_POSITION_FOLLOWING);
+      const before = list.filter((x) => a.compareDocumentPosition(x) & Node.DOCUMENT_POSITION_PRECEDING);
+      next = e.shiftKey ? (before[before.length - 1] || list[list.length - 1]) : (after[0] || list[0]);
+    } else next = e.shiftKey ? list[list.length - 1] : list[0];
+    next.focus();
+  }, true);
+  // Enter/Espaço num controle que redesenha a tela (modos de disparo, formatos do Save sessions…)
+  // ou que fica desligado (ex.: Unselect all): o foco volta para o mesmo controle redesenhado (mesmo
+  // nome) ou, se ele não existir mais, para o que ficou no mesmo lugar da ordem do Tab
+  const focusSig = (x) => {
+    const lab = x.tagName === "INPUT" && x.closest("label");
+    return [x.tagName, x.type || "", x.getAttribute("aria-label") || "", x.title || "",
+            x.tagName === "INPUT" ? (lab ? lab.textContent.trim().slice(0, 60) : "") : (x.textContent || "").trim().slice(0, 60)].join("|");
+  };
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    const a = document.activeElement;
+    if (!a || a === document.body) return;
+    const before = focusables(tabScope());
+    const at = before.indexOf(a);
+    if (at < 0) return;
+    const sig = focusSig(a), nth = before.filter((x) => focusSig(x) === sig).indexOf(a);
+    const kindA = a.tagName + "|" + (a.type || "") + "|" + [...a.classList].filter((c) => c !== "on" && c !== "current").sort().join(".");
+    const fix = () => {
+      const now = document.activeElement;
+      if (now && now !== document.body && now !== a) return;            // o foco já foi para outro lugar de propósito
+      const list = focusables(tabScope());
+      if (now === a && list.includes(a)) return;                          // continua onde estava
+      const same = list.filter((x) => focusSig(x) === sig);
+      // Sem o mesmo nome (ex.: o título mudou com o estado): o do mesmo tipo mais perto do lugar de antes
+      const kind = (x) => x.tagName + "|" + (x.type || "") + "|" + [...x.classList].filter((c) => c !== "on" && c !== "current").sort().join(".");
+      const alike = list.filter((x) => kind(x) === kindA);
+      const near = alike.length ? alike.reduce((best, x) => Math.abs(list.indexOf(x) - at) < Math.abs(list.indexOf(best) - at) ? x : best) : null;
+      const t = same[nth] || near || list[Math.min(at, list.length - 1)];
+      if (t) t.focus({ preventScroll: true });
+    };
+    setTimeout(fix, 0); setTimeout(fix, 150); setTimeout(fix, 400);
+  }, true);
+  // Rede de segurança (teclado): se a tela for redesenhada a qualquer momento (não só logo depois do
+  // Enter — no Mac, alguns redesenhos chegam depois) e o foco cair no nada, volta para o mesmo
+  // controle redesenhado, na mesma janela
+  let lastFocus = null;
+  const focusKind = (x) => x.tagName + "|" + (x.type || "") + "|" + [...x.classList].filter((c) => c !== "on" && c !== "current").sort().join(".");
+  document.addEventListener("focusin", (e) => {
+    const x = e.target;
+    if (!x || x === document.body || !x.tagName) return;
+    const scope = tabScope(), list = focusables(scope);
+    const at = list.indexOf(x);
+    if (at < 0) return;
+    const sig = focusSig(x);
+    lastFocus = { el: x, scope, at, sig, nth: list.filter((y) => focusSig(y) === sig).indexOf(x), kind: focusKind(x) };
+  });
+  setInterval(() => {
+    if (!lastFocus || !document.documentElement.classList.contains("kbd-focus")) return;
+    const now = document.activeElement;
+    if (now && now !== document.body) return;
+    const f = lastFocus;
+    if (tabScope() !== f.scope || !f.scope.isConnected) { lastFocus = null; return; }  // outra janela por cima / janela fechada
+    const list = focusables(f.scope);
+    if (f.el.isConnected && list.includes(f.el)) { f.el.focus({ preventScroll: true }); return; }
+    const same = list.filter((x) => focusSig(x) === f.sig);
+    const alike = list.filter((x) => focusKind(x) === f.kind);
+    const near = alike.length ? alike.reduce((b, x) => Math.abs(list.indexOf(x) - f.at) < Math.abs(list.indexOf(b) - f.at) ? x : b) : null;
+    const t = same[f.nth] || same[0] || near || list[Math.min(f.at, list.length - 1)];
+    if (t) t.focus({ preventScroll: true });
+  }, 200);
+  // Enter numa caixa de marcar: marca/desmarca (o Mac só faz isso com o Espaço)
+  document.addEventListener("keydown", (e) => {
+    const t = e.target;
+    if (e.key !== "Enter" || !t || t.tagName !== "INPUT" || (t.type !== "checkbox" && t.type !== "radio")) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    t.click();
+  }, true);
+  // Mouse de volta: some o contorno de foco do teclado
+  document.addEventListener("mousedown", () => document.documentElement.classList.remove("kbd-focus"), true);
+
+  // Lista de opções do app no lugar da do sistema (que no Mac e no Windows tem outra cara).
+  // O <select> continua por baixo: valor, "change" e teclado de foco funcionam como antes.
+  let selectMenu = null;
+  function closeSelectMenu() {
+    if (!selectMenu) return;
+    const m = selectMenu; selectMenu = null;
+    m.sel.classList.remove("open");
+    m.remove();
+    if (csRenderLater) setTimeout(() => { if (csRenderLater && !$("camSettingsOverlay").classList.contains("hidden")) csRender(); }, 0);
+  }
+  function appSelect(sel) {
+    const open = () => {
+      closeMenu();
+      const opts = [...sel.options];
+      const m = el("div", "app-menu project-menu select-menu");
+      m.setAttribute("role", "listbox");
+      m.sel = sel;
+      m.inPop = !!sel.closest("#csStylePop");  // (a caixa do ± pode ser redesenhada antes do clique chegar ao documento)
+      const buttons = opts.map((o) => {
+        const b = el("button", o.value === sel.value ? "current" : "", o.textContent);
+        b.type = "button";
+        b.setAttribute("role", "option");
+        if (o.disabled) b.disabled = true;
+        b.addEventListener("click", () => {
+          closeSelectMenu();
+          sel.focus();
+          // Escolher costuma redesenhar a tela (a caixa é trocada por uma nova): o foco volta para a
+          // caixa que ficou no mesmo lugar, para o próximo Tab seguir dali
+          // (na caixa do ±, a posição é contada só entre as listas dela, que é redesenhada sozinha)
+          const inPop = !!sel.closest("#csStylePop");
+          const listNow = () => inPop ? ($("csStylePop") ? [...$("csStylePop").querySelectorAll("select")] : []) : focusables(tabScope());
+          const at = listNow().indexOf(sel);
+          if (sel.value !== o.value) { sel.value = o.value; sel.dispatchEvent(new Event("change", { bubbles: true })); }
+          const refocus = () => { if (!sel.isConnected && at >= 0) { const list = listNow(); const t = list[Math.min(at, list.length - 1)]; if (t) t.focus({ preventScroll: true }); } };
+          refocus(); setTimeout(refocus, 0); setTimeout(refocus, 120);
+        });
+        m.appendChild(b);
+        return b;
+      });
+      document.body.appendChild(m);
+      const r = sel.getBoundingClientRect();
+      m.style.minWidth = Math.round(r.width) + "px";
+      const below = window.innerHeight - r.bottom - 12, above = r.top - 12;
+      const down = below >= Math.min(m.offsetHeight, 240) || below >= above;
+      m.style.maxHeight = Math.max(120, Math.floor(down ? below : above) - 4) + "px";
+      m.style.left = Math.round(Math.max(8, Math.min(r.left, window.innerWidth - m.offsetWidth - 8))) + "px";
+      m.style.top = Math.round(down ? r.bottom + 4 : r.top - 4 - m.offsetHeight) + "px";
+      const cur = buttons.find((b) => b.classList.contains("current")) || buttons.find((b) => !b.disabled);
+      // Destaque do teclado: uma marca na opção (o foco fica na caixa; no Mac o foco nos botões da
+      // lista não funcionava e as setas iam para a lista do sistema)
+      m.buttons = buttons;
+      m.mark = (b) => { buttons.forEach((x) => x.classList.toggle("kbd", x === b)); m.active = b; if (b) b.scrollIntoView({ block: "nearest" }); };
+      if (cur) { cur.scrollIntoView({ block: "center" }); m.mark(cur); }
+      buttons.forEach((b) => b.addEventListener("mouseenter", () => { if (!b.disabled) m.mark(b); }));
+      sel.classList.add("open");
+      selectMenu = m;
+    };
+    sel.addEventListener("mousedown", (e) => {
+      if (e.button !== 0 || sel.disabled) return;
+      e.preventDefault();
+      if (sel.justClosed) return;  // o clique que fechou a lista não a abre de novo
+      sel.focus();
+      open();
+    });
+    sel.appMenu = open;  // as teclas são tratadas na captura (antes do Mac abrir a lista dele)
+  }
+  // Lista do app aberta: ↑ ↓ (e Home/End) andam, Enter ou Espaço escolhem; na captura, antes de
+  // qualquer outro tratador (o do Camera settings parava as teclas) e sem deixar a lista do Mac abrir
+  document.addEventListener("keydown", (e) => {
+    if (!selectMenu) return;
+    const m = selectMenu, live = m.buttons.filter((b) => !b.disabled);
+    const i = live.indexOf(m.active);
+    const nav = { ArrowDown: 1, Down: 1, ArrowUp: -1, Up: -1, PageDown: 8, PageUp: -8 };
+    if (e.key in nav || e.key === "Home" || e.key === "End") {
+      e.preventDefault(); e.stopImmediatePropagation();
+      const j = e.key === "Home" ? 0 : e.key === "End" ? live.length - 1 : Math.max(0, Math.min(live.length - 1, (i < 0 ? 0 : i + nav[e.key])));
+      m.mark(live[j]);
+    } else if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault(); e.stopImmediatePropagation();
+      if (m.active) m.active.click(); else closeSelectMenu();
+    }
+  }, true);
+  document.addEventListener("keypress", (e) => { if (selectMenu && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); e.stopImmediatePropagation(); } }, true);
+  // Setas, Espaço e Enter numa lista do app abrem a lista do app; na captura e sem deixar seguir,
+  // para o WebKit do Mac não abrir a lista dele
+  ["keydown", "keypress"].forEach((type) => document.addEventListener(type, (e) => {
+    const sel = e.target;
+    if (!sel || sel.tagName !== "SELECT" || !sel.appMenu || selectMenu) return;
+    const inTable = !!sel.closest("table.cs, #csStylePop");
+    const arrow = e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Down" || e.key === "Up";
+    if (arrow && inTable) { e.preventDefault(); return; }  // tabela do Camera settings: as setas trocam de câmera (outro tratador)
+    if (e.key === " " || e.key === "Enter" || arrow) {
+      e.preventDefault(); e.stopPropagation();
+      if (type === "keydown") sel.appMenu();
+    }
+  }, true));
+  // Fora da lista: fecha (no próprio menu de escolha, marca para o mesmo clique não reabrir)
+  document.addEventListener("pointerdown", (e) => {
+    if (!selectMenu || selectMenu.contains(e.target)) return;
+    const s = selectMenu.sel;
+    if (e.target === s) { s.justClosed = true; setTimeout(() => { s.justClosed = false; }, 0); }
+    closeSelectMenu();
+  }, true);
+  // Esc fecha só a lista (não a janela de baixo)
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && selectMenu) { e.preventDefault(); e.stopImmediatePropagation(); const s = selectMenu.sel; closeSelectMenu(); s.focus(); }
+  }, true);
+  window.addEventListener("resize", () => closeSelectMenu());
+  document.addEventListener("scroll", (e) => { if (selectMenu && !selectMenu.contains(e.target)) closeSelectMenu(); }, true);
   function csText(text, cls, title) {
     const v = el("span", "cs-val" + (cls ? " " + cls : ""), text);
     if (title) v.title = title;
@@ -2852,7 +4341,9 @@
       const target = camera === "*" ? "all cameras" : camera;
       const d = csDescribe(camera, key, value);
       recordAction({ label: d.name + " → " + d.text + " (" + target + ")", camera: true,
-        undo: () => { csRecord = false; try { csRestore(before); } finally { csRecord = true; } },
+        // Desfazer volta só este ajuste (e só nesta câmera): mudanças feitas depois, por outra
+        // ação ou pelo Match automatically, ficam como estão
+        undo: () => { csRecord = false; try { csRestore(before, { keys: csKeyGroup(key), camera }); } finally { csRecord = true; } },
         redo: () => { csRecord = false; try { csSet(camera, key, value); } finally { csRecord = true; } } });
       // Activity: o resumo com o valor; o código da Canon só em Show technical details
       if (!(log.lastText === "Camera settings changed (" + target + ")" && Date.now() - (log.lastAt || 0) < 2000))
@@ -2895,6 +4386,7 @@
       e.stopPropagation();
       csStylePop = csStylePop && csStylePop.camera === camera ? null : { camera };
       renderStylePop();
+      if (e.detail === 0 && csStylePop) { const first = $("csStylePop") && $("csStylePop").querySelector("select"); if (first) first.focus(); }  // pelo teclado
     });
     return b;
   }
@@ -2919,6 +4411,8 @@
     const styleCams = all ? camSettings.filter((c) => c.adjustable && c.styleDetail) : camSettings.filter((c) => c.camera === csStylePop.camera && c.styleDetail);
     const qualityCams = (all ? camSettings.filter((c) => c.adjustable) : camSettings.filter((c) => c.camera === csStylePop.camera)).filter(csHasQuality);
     const cams = styleCams;
+    const wasAt = pop.contains(document.activeElement) ? [...pop.querySelectorAll("select")].indexOf(document.activeElement) : -1;
+    if (wasAt >= 0) setTimeout(() => { const p = $("csStylePop"); if (!p || p.contains(document.activeElement)) return; const l = p.querySelectorAll("select"); const t = l[Math.min(wasAt, l.length - 1)]; if (t) t.focus({ preventScroll: true }); }, 0);
     pop.innerHTML = "";
     pop.appendChild(el("div", "cs-pop-title", (all ? "All cameras" : csStylePop.camera) + " · " + [styleCams.length ? "Picture Style" : "", qualityCams.length ? "Quality" : ""].filter(Boolean).join(" & ")));
     const range = [];
@@ -2957,7 +4451,13 @@
     pop.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, r.right - w)) + "px";
     pop.style.top = Math.min(window.innerHeight - 190, r.bottom + 6) + "px";
   }
-  document.addEventListener("click", () => { if (csStylePop) { csStylePop = null; renderStylePop(); } });
+  // Clique fora fecha a caixa; escolher numa lista dela (a lista fica fora da caixa) não fecha
+  document.addEventListener("click", (e) => {
+    if (!csStylePop) return;
+    const m = e.target.closest && e.target.closest(".select-menu");
+    if (m && m.inPop) return;
+    csStylePop = null; renderStylePop();
+  });
 
   // ab ou gm null: câmeras com valores diferentes ("—" na lista; qualquer valor, até 0, aplica)
   // flip: modelo que o app mediu com o sentido invertido (troca os rótulos daquele eixo)
@@ -3091,17 +4591,65 @@
 
   // Redesenha, mas não com uma lista aberta (a lista fecharia sozinha): espera sair dela
   function csRender() {
-    const a = document.activeElement;
-    const pop = $("csStylePop");
-    if (a && a.tagName === "SELECT" && ($("csBody").contains(a) || (pop && pop.contains(a)))) { csRenderLater = true; return; }
+    // Só espera com a lista do app aberta (redesenhar sumiria com ela). Com o foco numa caixa,
+    // redesenha já: o foco volta para o mesmo lugar (antes esperava o foco sair, e com o teclado
+    // o valor novo não aparecia até sair da caixa)
+    if (selectMenu) { csRenderLater = true; return; }
     csRenderLater = false;
     renderCamSettings();
   }
   $("csBody").addEventListener("focusout", () => { if (csRenderLater) setTimeout(csRender, 0); });
+  // Teclado: o foco saiu da caixa do ± (e do botão dela): fecha a caixa
+  document.addEventListener("focusin", (e) => {
+    if (!csStylePop) return;
+    const pop = $("csStylePop"), t = e.target;
+    if ((pop && pop.contains(t)) || (t.closest && t.closest(".cs-more")) || (selectMenu && selectMenu.contains(t))) return;
+    csStylePop = null; renderStylePop();
+  });
 
+  // Posição de um controle na tabela: linha (entre as linhas com controles), coluna e ordem na célula
+  function csControls(td) { return [...td.querySelectorAll("select, button, input")]; }
+  function csRows() { const t = $("csBody").querySelector("table.cs"); return t ? [...t.querySelectorAll("tr")].filter((tr) => tr.querySelector("select, button, input")) : []; }
+  function csPos(node) {
+    if (!node || !$("csBody").contains(node)) return null;
+    const td = node.closest("td"), tr = node.closest("tr");
+    if (!td || !tr) return null;
+    return { r: csRows().indexOf(tr), c: [...tr.children].indexOf(td), k: csControls(td).indexOf(node) };
+  }
+  function csAt(pos) {
+    const tr = csRows()[pos.r];
+    const td = tr && tr.children[pos.c];
+    if (!td) return null;
+    const list = csControls(td);
+    return list[Math.min(Math.max(0, pos.k), list.length - 1)] || null;
+  }
+  // ↑ ↓ num controle da tabela (com a lista fechada): a mesma coluna na câmera de cima/de baixo
+  document.addEventListener("keydown", (e) => {
+    if (selectMenu || (e.key !== "ArrowDown" && e.key !== "ArrowUp")) return;
+    const pop = $("csStylePop");
+    if (pop && pop.contains(document.activeElement)) {
+      // Caixa do ±: ↑ ↓ andam entre as listas dela (Enter abre a lista)
+      e.preventDefault(); e.stopImmediatePropagation();
+      const list = [...pop.querySelectorAll("select")].filter((x) => !x.disabled);
+      const t = list[list.indexOf(document.activeElement) + (e.key === "ArrowDown" ? 1 : -1)];
+      if (t) t.focus();
+      return;
+    }
+    const pos = csPos(document.activeElement);
+    if (!pos) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    const rows = csRows();
+    for (let r = pos.r + (e.key === "ArrowDown" ? 1 : -1); r >= 0 && r < rows.length; r += (e.key === "ArrowDown" ? 1 : -1)) {
+      const t = csAt({ r, c: pos.c, k: pos.k });
+      if (t && !t.disabled) { t.focus(); return; }
+    }
+  }, true);
   function renderCamSettings() {
     const body = $("csBody");
     const scroll = body.scrollTop;
+    // O foco (teclado) estava na tabela: volta para a mesma linha/coluna depois de redesenhar
+    const was = csPos(document.activeElement);
+    if (was) setTimeout(() => { const t = csAt(was); if (t && !body.contains(document.activeElement)) t.focus({ preventScroll: true }); }, 0);
     body.innerHTML = "";
     const copy = $("csCopy");
     copy.innerHTML = "";
@@ -3166,6 +4714,8 @@
         table.appendChild(note);
       }
     });
+    // Teclado: o Tab passa só pela linha "All cameras"; nas linhas das câmeras chega-se com ↑ ↓
+    table.querySelectorAll("tr:not(.all) select, tr:not(.all) button, tr:not(.all) input").forEach((x) => { x.tabIndex = -1; });
     body.appendChild(table);
     body.scrollTop = scroll;
     renderStylePop();
@@ -3179,7 +4729,7 @@
   // Deixa todas as câmeras iguais a uma escolhida
   // Retrato das configurações de cada câmera (para desfazer o "Copy from camera")
   function csSnapshot() {
-    const keys = ["iso", "tv", "av", "expcomp", "style", "quality", "wb"];
+    const keys = ["iso", "tv", "av", "expcomp", "metering", "style", "quality", "wb"];
     return camSettings.filter((c) => c.adjustable).map((c) => {
       const snap = { camera: c.camera, values: {} };
       keys.forEach((k) => { const st = c.settings[k]; if (st && st.available && st.choices.length) snap.values[k] = st.value; });
@@ -3189,24 +4739,34 @@
       return snap;
     });
   }
-  function csRestore(snapshot) {
+  // only: { keys, camera } — volta só esses ajustes (e só essa câmera); sem only, tudo o que mudou
+  function csRestore(snapshot, only) {
     const wasRecording = csRecord; csRecord = false;
-    try { csRestoreNow(snapshot); } finally { csRecord = wasRecording; }
+    try { csRestoreNow(snapshot, only); } finally { csRecord = wasRecording; }
     return true;
   }
-  function csRestoreNow(snapshot) {
+  function csRestoreNow(snapshot, only) {
     const live = csSnapshot();
     snapshot.forEach((snap) => {
+      if (only && only.camera && only.camera !== "*" && only.camera !== snap.camera) return;
       const now = live.find((x) => x.camera === snap.camera);
       if (!now) return;
       Object.keys(snap.values).forEach((k) => {
         if (k === "kelvin") return;
-        if (snap.values[k] === now.values[k]) return;
+        if (only && only.keys && !only.keys.includes(k)) return;
+        const kelvinOff = k === "wb" && snap.values.wb === 9 && now.values.kelvin !== snap.values.kelvin;
+        if (snap.values[k] === now.values[k] && !kelvinOff) return;
         if (k === "wb" && snap.values.wb === 9) csSet(snap.camera, "kelvin", snap.values.kelvin);
         else csSet(snap.camera, k, snap.values[k]);
       });
     });
     return true;
+  }
+  // Ajustes que andam juntos: o balanço de branco com a temperatura; o estilo com os seus ajustes
+  function csKeyGroup(key) {
+    if (key === "wb" || key === "kelvin") return ["wb", "kelvin"];
+    if (key === "style") return ["style", "contrast", "saturation", "colortone"];
+    return [key];
   }
   function copyFromCamera(name, silent) {
     const before = csSnapshot();
@@ -3296,6 +4856,7 @@
     csGallery.setItems([]);
     csGallery.setHead(match ? "Test shot · matching" : "Test shot", "");
     csGallery.message("Taking a photo with each camera");
+    csTest.before = match ? csSnapshot() : null;  // para desfazer o Match automatically de uma vez
     if (match) window.autoMatch(intValue(ui.downloadWait, 1, 10), $("csCard").checked ? 1 : 0);
     else window.takeOrderPhotos(intValue(ui.downloadWait, 1, 10));
   }
@@ -3588,6 +5149,9 @@
   function closeCamSettings() {
     // Fechar esperando o cartão cinza: cancela (senão o Match ficaria esperando)
     if (csCardOpen()) $("csCardCancel").click();
+    // Fechar no meio do Test shot, do Match ou da calibração: cancela também (as câmeras voltam
+    // como estavam; sem isso o programa ficava esperando a conferência numa janela fechada)
+    else if (csTest.capturing && !csTest.cancelling) csTakeTest();
     $("camSettingsOverlay").classList.add("hidden");
     csStylePop = null;
     renderStylePop();
@@ -3614,6 +5178,7 @@
   $("csDone").addEventListener("click", closeCamSettings);
   $("csRead").addEventListener("click", () => window.readCameraSettings());
   $("csCopy").addEventListener("change", (e) => { if (e.target.value) copyFromCamera(e.target.value); });
+  appSelect($("csCopy"));
 
   // Esc fecha o menu, o About e o Settings; com eles abertos, as teclas não
   // chegam à tela de trás. Windows: Ctrl+, abre o Settings.
@@ -3635,7 +5200,11 @@
     if (open) {
       if (e.key === "Escape") {
         if (open === "camSettingsOverlay" && csCardOpen()) $("csCardCancel").click();  // cartão cinza: Esc = Cancel
-        else if (open === "camSettingsOverlay" && csStylePop) { csStylePop = null; renderStylePop(); }
+        else if (open === "camSettingsOverlay" && csStylePop) {
+          const anchor = document.querySelector('.cs-more[data-style-cam="' + csStylePop.camera + '"]');
+          csStylePop = null; renderStylePop();
+          if (anchor) anchor.focus();
+        }
         else if (open === "camSettingsOverlay" && csZoom) csSetZoom(false);  // primeiro fecha a foto grande
         else if (open === "camSettingsOverlay") closeCamSettings();
         else $(open).classList.add("hidden");
@@ -3661,7 +5230,6 @@
     promptOverlay: () => $("promptCancel").click(),
     projectOverlay: () => closeProjectWindow(),
     projectPickOverlay: () => $("projectPickOverlay").classList.add("hidden"),
-    modeOverlay: () => $("modeOverlay").classList.add("hidden"),
     exportOverlay: () => { if (!exp.waiting) closeExport(); },
     settingsOverlay: () => $("settingsOverlay").classList.add("hidden"),
     aboutOverlay: () => $("aboutOverlay").classList.add("hidden"),
@@ -3682,7 +5250,7 @@
   // Settings / About, que é registrado antes e pararia o evento: devolve true se tratou.
   function overlayKeydown(e) {
     if (e.overlayHandled || openMenu) return false;
-    const open = ["promptOverlay", "dialogOverlay", "modeOverlay", "projectPickOverlay", "projectOverlay", "exportOverlay", "orderOverlay"]
+    const open = ["promptOverlay", "dialogOverlay", "projectPickOverlay", "projectOverlay", "exportOverlay", "orderOverlay"]
       .find((id) => !$(id).classList.contains("hidden"));
     if (!open) return false;
     if (e.key === "Escape") {
@@ -3690,6 +5258,12 @@
       e.overlayHandled = true;
       e.preventDefault(); e.stopImmediatePropagation();
       OVERLAY_CANCEL[open]();
+      return true;
+    }
+    if (e.key === "Enter" && open === "dialogOverlay" && e.target.tagName === "BUTTON" && ui.dialogActions.contains(e.target)) {
+      e.overlayHandled = true;
+      e.preventDefault(); e.stopImmediatePropagation();
+      e.target.click();  // o botão com o foco (Tab), não o principal
       return true;
     }
     if (e.key === "Enter" && open === "dialogOverlay" && e.target.tagName !== "INPUT" && e.target.tagName !== "TEXTAREA") {
@@ -3818,8 +5392,10 @@
     const left = Math.min(x + 2, window.innerWidth - m.offsetWidth - 8);
     const top = Math.min(y + 2, window.innerHeight - m.offsetHeight - 8);
     m.style.left = Math.max(8, left) + "px"; m.style.top = Math.max(8, top) + "px";
+    m.anchor = document.activeElement !== document.body ? document.activeElement : null;
     openMenu = m;
     armMenuClose(m);
+    menuKeyboardStart(m);
   }
   function buildMenu(items) {
     closeMenu();
@@ -3851,10 +5427,39 @@
     m.style.top = Math.round(r.bottom + 6) + "px";
     if (align === "right") m.style.right = Math.round(window.innerWidth - r.right) + "px";
     else m.style.left = Math.round(Math.min(r.left, window.innerWidth - m.offsetWidth - 12)) + "px";
+    m.anchor = anchor;
     openMenu = m;
     armMenuClose(m);
+    menuKeyboardStart(m);
   }
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && openMenu) closeMenu(); });
+  // Teclado nos menus do app: aberto pelo teclado, o foco vai para a primeira opção; ↑ ↓ (Home/End)
+  // andam pelas opções, Enter escolhe, Esc fecha e volta para o botão; o Tab fecha e segue (tratador do Tab)
+  function menuItems(m) { return [...m.querySelectorAll("button")].filter((b) => !b.disabled && b.getClientRects().length > 0); }
+  function menuKeyboardStart(m) {
+    if (!document.documentElement.classList.contains("kbd-focus")) return;
+    const first = menuItems(m).find((b) => !b.classList.contains("project-menu-clear")) || menuItems(m)[0];
+    if (first) first.focus();
+  }
+  document.addEventListener("keydown", (e) => {
+    if (!openMenu || selectMenu) return;
+    const m = openMenu;
+    if (e.key === "Escape") {
+      e.preventDefault(); e.stopImmediatePropagation();
+      const anc = m.anchor; closeMenu();
+      if (anc && anc.isConnected) anc.focus();
+      return;
+    }
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp" && e.key !== "Home" && e.key !== "End") return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    document.documentElement.classList.add("kbd-focus");
+    const list = menuItems(m);
+    if (!list.length) return;
+    const i = list.indexOf(document.activeElement);
+    const j = e.key === "Home" ? 0 : e.key === "End" ? list.length - 1
+      : i < 0 ? (e.key === "ArrowDown" ? 0 : list.length - 1)
+      : Math.max(0, Math.min(list.length - 1, i + (e.key === "ArrowDown" ? 1 : -1)));
+    list[j].focus();
+  }, true);
   function projectMenuItems(withCurrent) {
     const items = [];
     if (project.open) {
@@ -3904,7 +5509,7 @@
       }
       items.push({ label: project.open ? "Switch project…" : "Open project…", onClick: pickProject });  // a mesma janela de recentes do "Switch…"
       items.push({ label: "New project…", onClick: newProject });
-      if (project.open) items.push({ label: "Close project", onClick: () => { const name = project.name; Promise.resolve(window.projectClose()).then((r) => { toast("Project closed: " + name + " (the sessions stay in its folder)"); projectResult(r); }); } });
+      if (project.open) items.push({ label: "Close project", onClick: closeProjectUndoable });
       popupMenu(anchor, items, align);
     });
   }
@@ -4048,8 +5653,9 @@
     // Botão extra à esquerda (ex.: "Choose another folder…" no New project): fecha a caixa e age
     extra.classList.toggle("hidden", !opts.extra);
     extra.textContent = opts.extra ? opts.extra.label : "";
-    const close = () => { $("promptOverlay").classList.add("hidden"); $("promptOk").onclick = $("promptCancel").onclick = extra.onclick = input.onkeydown = null; };
-    extra.onclick = opts.extra ? () => { close(); opts.extra.onClick(); } : null;
+    $("promptReset").classList.add("hidden");  // "Reset to default" só aparece quando quem abriu a caixa pede
+    const close = () => { $("promptOverlay").classList.add("hidden"); $("promptOk").onclick = $("promptCancel").onclick = extra.onclick = $("promptReset").onclick = input.onkeydown = null; };
+    extra.onclick = opts.extra ? () => { if (!opts.extra.keepOpen) close(); opts.extra.onClick(); } : null;
     let checking = false;
     const ok = () => {
       if (checking) return;
@@ -4193,17 +5799,66 @@
     log("New project…", "tech");
     if (typeof window.projectsFolderInfo !== "function") { callProject("projectNew").then(projectResult); return; }  // app antigo
     $("promptInput").dataset.folderName = "1";
-    promptDialog("New project", "A folder with this name will be created in " + shortPath(projectsFolder) + ".", "", "Create",
+    // Outra pasta (só para este projeto): a caixa continua aberta; depois de escolher, a pessoa dá o nome
+    let base = "";
+    const where = () => "A folder with this name will be created in " + shortPath(base || projectsFolder) + ".";
+    promptDialog("New project", where(), "", "Create",
       (v) => {
         if (!v) return "Type a name for the project.";
         if (v[0] === ".") return "The name cannot start with a dot.";
         if (typeof window.projectNameFree !== "function") return "";
-        return Promise.resolve(window.projectNameFree(v)).then((r) => !r || r.free ? ""
+        return Promise.resolve(window.projectNameFree(v, base)).then((r) => !r || r.free ? ""
           : (r.project ? "There is already a project named \"" + v + "\" in " + shortPath(r.folder) + ". Open it from Recent or choose another name."
                        : "There is already a folder named \"" + v + "\" in " + shortPath(r.folder) + ". Choose another name."));
       },
-      (v) => callProject("projectNew", v).then(projectResult),
-      { extra: { label: "Choose another folder…", onClick: () => callProject("projectNew", "").then(projectResult) } });
+      (v) => {
+        const before = project.open ? project.folder : "";
+        return callProject("projectNew", v, base).then((r) => {
+          projectResult(r);
+          // Desfazer: volta ao projeto de antes (ou a nenhum) e apaga a pasta criada, se ela ainda
+          // estiver vazia (com algo dentro, fica no disco e o app avisa). Refazer cria de novo.
+          if (r && r.project && r.project.open && !r.error) {
+            const made = r.project.folder, name = r.project.name;
+            recordAction({ label: "New project " + name,
+              undo: () => (before ? Promise.resolve(window.projectOpen(before)) : Promise.resolve(window.projectClose())).then((x) => {
+                projectResult(x);
+                if (x && x.error) return false;
+                if (typeof window.projectDiscardNew !== "function") return true;
+                return Promise.resolve(window.projectDiscardNew(made)).then((d) => {
+                  if (d && !d.ok && d.reason === "notEmpty") toast("The folder " + shortPath(made) + " already has files, so it stays on the disk.", 6000, { warn: true });
+                  return true;
+                });
+              }),
+              redo: () => Promise.resolve(window.projectCreateAt ? window.projectCreateAt(made) : window.projectOpen(made)).then((x) => { projectResult(x); return !(x && x.error); }) });
+          }
+        });
+      },
+      { extra: { label: "Choose another folder…", keepOpen: typeof window.projectChooseParent === "function", onClick: () => {
+        if (typeof window.projectChooseParent !== "function") { callProject("projectNew", "").then(projectResult); return; }  // app antigo
+        Promise.resolve(window.projectChooseParent(base || projectsFolder)).then((r) => {
+          if (r && r.folder) { base = r.folder; $("promptText").textContent = where(); $("promptError").classList.add("hidden"); }
+          $("promptReset").classList.toggle("hidden", !base);
+          $("promptInput").focus();
+        });
+      } } });
+    // Voltar para a pasta padrão (aparece depois de escolher outra)
+    $("promptReset").onclick = () => {
+      base = "";
+      $("promptText").textContent = where(); $("promptError").classList.add("hidden");
+      $("promptReset").classList.add("hidden");
+      $("promptInput").focus();
+    };
+  }
+  // Fechar o projeto com desfazer (Ctrl/Cmd+Z abre de novo; refazer fecha outra vez)
+  function closeProjectUndoable() {
+    const name = project.name, folder = project.folder;
+    const close = () => Promise.resolve(window.projectClose()).then((r) => { toast("Project closed: " + name + " (the sessions stay in its folder)"); projectResult(r); return !(r && r.error); });
+    close().then((ok) => {
+      if (!ok) return;
+      recordAction({ label: "Close project " + name,
+        undo: () => Promise.resolve(window.projectOpen(folder)).then((r) => { projectResult(r); return !(r && (r.error || r.notProject)); }),
+        redo: close });
+    });
   }
   function clearRecentProjects(all) {
     const keep = all.filter((f) => project.open && f === project.folder);
@@ -4213,21 +5868,44 @@
       recordAction({ label: "Clear recent projects", undo: () => apply(all), redo: () => apply(keep) });
     });
   }
+  let projectsFolderCustom = false;  // escolhida em Settings (senão a padrão)
   function renderProjectsFolder() {
     const el_ = $("settingsProjectsFolder");
     if (el_) el_.textContent = shortPath(projectsFolder) || "—";
+    $("settingsProjectsFolderReset").classList.toggle("hidden", !projectsFolderCustom);
   }
+  function refreshProjectsFolder() {
+    if (typeof window.projectsFolderInfo !== "function") return;
+    Promise.resolve(window.projectsFolderInfo()).then((r) => {
+      if (!r) return;
+      projectsFolder = r.folder || projectsFolder; projectsFolderCustom = !!r.custom;
+      renderProjectsFolder();
+    });
+  }
+  // Volta para a pasta padrão (Imagens/Stillpoint); a pasta de salvar sem projeto vai junto (…/Exports)
+  $("settingsProjectsFolderReset").addEventListener("click", () => {
+    Promise.resolve(window.projectsFolderChange("reset")).then((r) => {
+      if (!r) return;
+      projectsFolder = r.folder || projectsFolder; projectsFolderCustom = false;
+      exp.destDefault = null;
+      renderProjectsFolder();
+      toast("New projects folder: " + shortPath(projectsFolder) + " (default)");
+    });
+  });
   $("settingsProjectsFolderChange").addEventListener("click", () => {
     if (typeof window.projectsFolderChange !== "function") { toast("This build cannot change the projects folder yet. Build the app again.", 8000); return; }
     Promise.resolve(window.projectsFolderChange()).then((r) => {
       if (!r || r.cancelled) return;
       projectsFolder = r.folder || projectsFolder;
+      projectsFolderCustom = r.custom !== false;
+      exp.destDefault = null;
       renderProjectsFolder();
       toast("New projects folder: " + shortPath(projectsFolder));
     });
   });
   function browseProject() { callProject("projectOpen", "").then(projectResult); }
   // Escolher um Project: recentes + "Choose folder…" + "New project…"
+  const pickRoving = makeRoving({ root: () => $("projectRecentList"), rows: (r) => [...r.querySelectorAll(".project-recent-item")], controls: (row) => [row], id: (row) => row.dataset.folder });
   function pickProject() {
     const list = $("projectRecentList"); list.innerHTML = "";
     Promise.resolve(window.projectRecent()).then((r) => {
@@ -4241,8 +5919,11 @@
         b.querySelector("b").textContent = p.name + (p.available ? "" : "  ·  not reachable");
         b.querySelector("small").textContent = p.folder;
         b.addEventListener("click", () => { $("projectPickOverlay").classList.add("hidden"); Promise.resolve(window.projectOpen(p.folder)).then(projectResult); });
+        b.dataset.folder = p.folder;
         list.appendChild(b);
       });
+      pickRoving.cur = "";
+      pickRoving.apply();
     });
     $("projectPickOverlay").classList.remove("hidden");
   }
@@ -4279,12 +5960,15 @@
   window.addEventListener("focus", () => refreshProject());
   document.addEventListener("visibilitychange", () => { if (!document.hidden) refreshProject(); });
   function closeProjectWindow() { $("projectOverlay").classList.add("hidden"); }
+  const projectRoving = makeRoving({ root: () => $("projectList"), rows: (r) => [...r.querySelectorAll("li.project-row")], id: (row) => row.dataset.name });
   function renderProjectWindow() {
     const list = projectSessions();
     const nameInput = $("projectNameInput");
     if (document.activeElement !== nameInput) { nameInput.value = project.name || ""; nameInput.classList.remove("invalid"); }
     $("projectSub").textContent = [project.folder, plural(project.sessions || 0, "session", "sessions"), plural(project.photos || 0, "photo", "photos"), fmtBytes(project.bytes)].filter(Boolean).join(" · ");
-    const ul = $("projectList"); ul.innerHTML = "";
+    const ul = $("projectList");
+    const focusWas = projectRoving.where(document.activeElement);
+    ul.innerHTML = "";
     $("projectEmpty").classList.toggle("hidden", list.length > 0);
     [...projectSel].forEach((n) => { if (!list.some((s) => s.name === n)) projectSel.delete(n); });
     list.forEach((s) => {
@@ -4313,9 +5997,12 @@
       const first = s.photos.find((p) => p.previewable);
       if (first) sessionPhoto(s.name, first.file, 320).then((url) => { if (url) li.querySelector(".export-thumb").style.backgroundImage = "url(" + url + ")"; });
       li.querySelector(".project-row-play").addEventListener("click", () => { closeProjectWindow(); showSession(s); });
+      li.dataset.name = s.name;
       ul.appendChild(li);
     });
     updateProjectCount();
+    projectRoving.apply();
+    if (focusWas) projectRoving.focusAt(focusWas.id, focusWas.i);
   }
   function updateProjectCount() {
     const list = projectSessions();
@@ -4339,7 +6026,7 @@
   $("projectCloseProjectBtn").addEventListener("click", () => {
     dialog("Close the project?", "The project's sessions leave the list (they stay in " + project.folder + "; nothing is deleted). New sessions go back to staying in the app until you save them. You can open the project again any time.", [
       { label: "Cancel" },
-      { label: "Close project", primary: true, onClick: () => { const name = project.name; closeProjectWindow(); Promise.resolve(window.projectClose()).then((r) => { toast("Project closed: " + name + " (the sessions stay in its folder)"); projectResult(r); }); } },
+      { label: "Close project", primary: true, onClick: () => { closeProjectWindow(); closeProjectUndoable(); } },
     ]);
   });
   $("projectRemoveBtn").addEventListener("click", () => {
@@ -4359,8 +6046,7 @@
     if (!names.length) return;
     closeProjectWindow();
     exp.exitAfter = false;
-    const mode = project.exportDefaults && project.exportDefaults.mode === "photos" ? "photos" : "sequence";
-    openExport(mode, names);
+    openExport(names);
   });
 
   // =================== Ações ===================
@@ -4407,6 +6093,9 @@
   // O botão abre (ou traz de volta) a janela Live 1; dentro dela dá para abrir a 2ª.
   // As janelas Live pedem o disparo e o cancelamento por aqui (o plano do Timing é desta página).
   $("liveBtn").addEventListener("click", () => { log("Live view opened", "tech"); window.openLive("1"); });
+  // Folha de teste do lenticular direto da tela principal (sem abrir a janela de salvar)
+  $("pitchBtn").innerHTML = icon("lens", 15);
+  $("pitchBtn").addEventListener("click", () => openPitchTest(null));
   window.liveShootRequest = () => { if (!ui.shootBtn.disabled && !(busy && busyAction === "shoot")) ui.shootBtn.click(); };
   window.liveCancelRequest = () => cancelShoot();
   // Som do disparo (contagem, "it's bullet time", bip dos grupos): ajuste do app, guardado em
@@ -4626,7 +6315,20 @@
     lab.appendChild(csSelect(options, current, (v) => { onChange(v); renderTiming(); }));
     return lab;
   }
-  function renderTiming() {
+  // Redesenha o Timing deslizando a altura (troca de modo, passos, campos). still: sem
+  // animação (mudança de tamanho da janela)
+  let timingMode = null;
+  function renderTiming(still) {
+    const adv = $("timingAdv"), fields = $("timingFields");
+    const was = timingOpen && !adv.classList.contains("hidden") ? adv.offsetHeight : null;
+    const modeChanged = timingMode !== null && timingMode !== timing.mode;
+    timingMode = timing.mode;
+    renderTimingNow();
+    if (still === true || was === null || !timingOpen) return;
+    slideHeight(adv, was);
+    if (modeChanged) [fields, $("timingCustom")].forEach((n) => n.animate && !n.classList.contains("hidden") && n.animate([{ opacity: 0 }, { opacity: 1 }], { duration: EASE_MS, easing: "ease" }));
+  }
+  function renderTimingNow() {
     const plan = timingPlan();
     const custom = timing.mode !== "all";
     $("timingText").textContent = timingSummaryText(plan) + (plan.total ? " · " + plan.total : "");
@@ -4758,10 +6460,17 @@
   }
   $("timingToggle").addEventListener("click", () => {
     timingOpen = !timingOpen;
-    document.body.classList.toggle("timing-open", timingOpen);  // o painel Bullet time cresce
-    renderTiming();
+    document.body.classList.toggle("timing-open", timingOpen);  // o painel Bullet time cresce (deslizando, no CSS)
+    if (timingOpen) {
+      renderTiming(true);
+      slideOpen($("timingAdv"));
+    } else {
+      // Fecha deslizando; só no fim some (e aparece o resumo pequeno)
+      $("timingToggle").textContent = "Advanced";
+      slideClosed($("timingAdv"), () => { renderTiming(true); const mini = $("timingMini"); if (!mini.classList.contains("hidden")) slideOpen(mini); });
+    }
   });
-  window.addEventListener("resize", () => renderTiming());
+  window.addEventListener("resize", () => renderTiming(true));
 
   // Cancelar o bullet time: botão na contagem, Esc na contagem ou o botão de disparo
   // (que vira "Cancel bullet time" enquanto roda). O que já foi disparado não volta.
@@ -4785,7 +6494,27 @@
     statsWatch(ui.log.classList.contains("expanded"));
   });
   ui.restartAppBtn.addEventListener("click", restartApp);
-  ui.techToggle.addEventListener("change", () => { ui.logList.classList.toggle("show-tech", ui.techToggle.checked); ui.log.classList.toggle("show-tech", ui.techToggle.checked); });
+  // Show technical details: as linhas técnicas entram e saem sem a lista "pular". A linha comum que
+  // estava no alto da área visível fica no mesmo lugar (se a lista estava no fim, continua no fim);
+  // as linhas técnicas que aparecem surgem devagar.
+  ui.techToggle.addEventListener("change", () => {
+    const list = ui.logList, on = ui.techToggle.checked;
+    const atEnd = list.scrollHeight - list.scrollTop - list.clientHeight < 4;
+    const top = list.getBoundingClientRect().top;
+    const anchor = [...list.children].find((li) => !li.classList.contains("tech") && li.getBoundingClientRect().bottom > top + 1);
+    const before = anchor ? anchor.getBoundingClientRect().top - top : 0;
+    list.classList.toggle("show-tech", on);
+    ui.log.classList.toggle("show-tech", on);
+    if (atEnd) list.scrollTop = list.scrollHeight;
+    else if (anchor) list.scrollTop += (anchor.getBoundingClientRect().top - top) - before;
+    if (on) {
+      const box = list.getBoundingClientRect();
+      [...list.querySelectorAll("li.tech")].forEach((li) => {
+        const r = li.getBoundingClientRect();
+        if (r.bottom >= box.top && r.top <= box.bottom && li.animate) li.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 260, easing: "ease-out" });
+      });
+    }
+  });
 
   // ----- Uso do computador no rodapé do Activity (2.12.4) -----
   // Mede só com o painel aberto (a cada 2 s); fechado, custo zero. A primeira amostra só dá a

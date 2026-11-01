@@ -48,4 +48,14 @@ namespace NativeWindow
     // "Identify": um número grande (1, 2, …, na ordem de Screens()) em cada monitor por
     // alguns segundos, como nas configurações de vídeo do sistema.
     void IdentifyScreens(int seconds);
+
+    // Cmd+` (Mac): passa para a próxima janela visível do app (principal, Live, Live 2),
+    // inclusive as que estão em tela cheia; backwards = na ordem contrária (Cmd+Shift+`).
+    // Windows: não faz nada.
+    void CycleWindows(bool backwards);
+
+    // Põe a janela um pouco para a direita e para baixo de outra (dx, dy em pontos), para ficar
+    // claro que é uma janela nova ("Another window" da Live). Não faz nada se a outra estiver em
+    // tela cheia.
+    void PlaceNear(void* nativeWindow, void* reference, int dx, int dy);
 }

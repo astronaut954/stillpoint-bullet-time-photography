@@ -74,11 +74,13 @@
     }
     let cameras = [];
     let ready = false;
+    let myIndex = 1;
     window.onCoreEvent = function (event) {
       if (!ready) return;
       if (event.type === "cameras") { cameras = event.cameras || []; Live.setCameras(cameras); return; }
       if (event.type === "soundChanged") { Live.setSound({ sound: !!event.sound, sounds: !!event.sounds }); return; }
       if (event.type === "screens") { Live.setScreens(event.screens || []); return; }
+      if (event.type === "liveWindows") { Live.setLives(event.open, event.ranks && event.ranks[String(myIndex)]); return; }
       if (event.type === "sessions") {
         const list = event.sessions || [];
         const newest = list[0];
@@ -90,6 +92,7 @@
     };
     Promise.resolve(window.liveReady()).then((info) => {
       info = info || {};
+      myIndex = info.index || 1;
       Live.init({
         shoot: () => window.liveShoot(),
         cancel: () => window.liveCancel(),
@@ -98,9 +101,10 @@
         setSound: (sound) => window.liveSetSound(sound.sound ? "1" : "0", sound.sounds ? "1" : "0"),
         close: () => window.liveClose(String(info.index || 1)),
         identify: () => window.liveIdentify(),
-        another: info.index === 1 ? () => window.liveAnother() : null,
+        another: () => window.liveAnother(),
       }, info.opts || "", info.sound || null, info.screens || []);
       ready = true;
+      Live.setLives(info.lives || 1, info.rank || 1);
       cameras = (info.cameraEvent && info.cameraEvent.cameras) || [];
       Live.setCameras(cameras);
       Live.open();

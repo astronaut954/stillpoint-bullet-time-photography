@@ -752,12 +752,272 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) e depois com câmeras. Desenho em `do
       app volta ao consumo de antes). "Copy log" inclui a linha "Usage: …". Disparar com o Activity
       aberto: a CPU sobe durante o download e volta. Sem projeto: "App disk".
 
+## 24. Lenticular (etapa 19, entrega 1)
+
+Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) serve para tudo, menos para a impressão.
+
+- [ ] **Save sessions** abre direto a janela (sem a escolha Photos/Sequence de antes) com três seções:
+      **Photos**, **Sequence** e **Lenticular**, cada uma com uma caixa de marcar. Marcada = abre as
+      configurações; desmarcada = só o cabeçalho, "Off". Clicar no cabeçalho de uma desmarcada liga e
+      leva a prévia para ela; numa marcada, só leva a prévia (a seção em foco tem borda verde; as outras
+      marcadas mostram "PREVIEW"). Nenhuma marcada: "Tick at least one output…" e o Save fica apagado.
+      Quem usava Sequence com "Also save the photos" abre com Photos (Original) + Sequence marcadas.
+- [ ] **Recolher:** cada seção marcada tem um botão de seta à direita do cabeçalho; ele esconde só as
+      configurações (a saída continua marcada, o resumo continua no cabeçalho). Fechar e reabrir a
+      janela (ou o app) mantém recolhida.
+- [ ] **Photos — Originals e Converted:** duas caixas independentes. Só Originals = os arquivos como a
+      câmera salvou; só Converted = um arquivo por câmera no formato escolhido (clicar num formato já
+      marca Converted); as duas = pastas `Originals/` e `JPG/` (ou o formato escolhido) — dentro de
+      `Photos/` se houver outra saída marcada. Nenhuma das duas: "Photos: choose the originals, a format,
+      or both" e o Save fica apagado. Quem salvou PNG na versão anterior abre com só Converted + PNG.
+- [ ] **Teatro:** ícone de entrar = duas pontas de seta para fora; de sair = para dentro, sem traço
+      horizontal e bem separadas (não pode parecer um X).
+- [ ] **Cabeçalho das seções:** desligada, o cabeçalho inteiro é um alvo só: o mouse em qualquer parte
+      acende caixa, nome e "Off" juntos, e o clique liga. Ligada, cada parte acende sozinha: a caixa
+      (desliga), o nome e o "PREVIEW" (levam a prévia) e a seta de recolher. Ligada, desligada ou
+      recolhida, o cabeçalho tem sempre a mesma altura.
+- [ ] **Animações:** marcar/desmarcar Photos (ou trocar a prévia para outra saída e voltar) faz a
+      fileira de miniaturas abrir e fechar deslizando, sem a fileira se reajustar no fim; desmarcar
+      todas as saídas fecha a prévia grande deslizando, e marcar uma abre. Na lista de câmeras, ^ e v
+      fazem as duas linhas trocarem de lugar deslizando.
+- [ ] **Caixas de marcar:** o sinal ✓ centralizado em todas (sessões, seções, Originals/Converted).
+- [ ] **Espaços estáveis:** o espaço entre a fileira de miniaturas e a seção Photos é sempre o mesmo
+      (abrir/recolher, trocar de prévia, com ou sem a barra de rolagem da fileira). Quando as seções
+      precisam rolar, a barra fica afastada das caixas, e as caixas não estreitam quando ela aparece.
+- [ ] **Nome da seção ligada:** clicar no nome ou na descrição não faz nada (só "PREVIEW" leva a prévia).
+- [ ] **Teatro:** entrar e sair do modo teatro faz a prévia crescer e encolher deslizando.
+- [ ] **Bullet time (animações):** Advanced e Hide deslizam a altura do painel; trocar o modo
+      (At once, Sweep…), Add step e o X de um passo deslizam em vez de pular.
+- [ ] **Listas de opções:** em Camera settings (e no Direction do Bullet time), abrir qualquer lista
+      mostra a lista com a cara do app (fundo escuro, verde na opção atual), não a do sistema. ↑ ↓ e
+      Enter escolhem; Esc fecha só a lista (a janela continua aberta); clicar de novo na caixa fecha.
+- [ ] **Camera settings:** Hide photos e Show photos recolhem e abrem a fileira deslizando.
+- [ ] **Lupa (Interlaced):** fora do teatro a lupa é menor e fica sempre dentro da prévia, com a
+      etiqueta "2× …" dentro dela; no teatro, maior.
+- [ ] **Tilt:** com Animation, arrastar para cima e para baixo troca a foto ("drag up and down",
+      cursor ↕); com 3D, para os lados.
+- [ ] **PREVIEW:** fica visível em todas as seções ligadas; na que está na prévia, aceso (verde).
+- [ ] **Alinhamento:** a borda direita das caixas Photos/Sequence/Lenticular alinha com a da prévia,
+      com e sem rolagem.
+- [ ] **Copy from camera (Camera settings):** a lista "Choose…" abre com a cara do app.
+- [ ] **Botão direito numa foto:** "Show in Finder" abre o Finder com a foto selecionada (no Windows,
+      "Show in Explorer"); "Open in default app" abre a foto no programa padrão (Pré-visualização,
+      Fotos…). Câmera que não mandou foto: as duas opções ficam apagadas.
+- [ ] **Apagar foto:** botão direito numa miniatura ou na foto grande (tela principal e tela cheia) →
+      "Delete photo 03…" → confirmar: a miniatura encolhe e some, a foto grande se apaga. Cmd+Z volta.
+- [ ] **Apagar sessão:** pela lixeira, pelo botão direito ou "Delete session": a linha da sessão voa
+      até o botão da lixeira (encolhendo), a lixeira dá um pulo e a linha fecha. Cmd+Z volta.
+- [ ] **Arrasto da prévia lenticular:** segurando e saindo da prévia, a seta (↕ ou ↔) continua até
+      soltar o botão.
+- [ ] **Tela cheia:** só o ícone da lixeira (sem "Delete session"); ele apaga a sessão, e a foto grande
+      voa até ele. Uma foto: botão direito nela, ou a tecla Delete.
+- [ ] **Câmeras reais:** os itens que precisam delas estão juntos na seção 25.
+- [ ] **Várias saídas:** Photos + Sequence + Lenticular marcadas → Save: na pasta da sessão, `Photos/`,
+      `Sequence/` e `Lenticular/`; só uma marcada → os arquivos direto na pasta da sessão. Na lista à
+      esquerda: "→ Originals + MP4 + Lenticular 60/720". Export… da janela Project faz o mesmo em
+      `Exports/`.
+- [ ] **Prévia:** arrastar para a esquerda/direita na foto grande troca a foto ("Tilt preview · photo n
+      of 9"); "Reverse order" inverte o sentido. Botão **Interlaced** (canto da prévia): mostra um
+      recorte 1:1 do centro do arquivo final, com as faixas no tamanho real em pixels ("12 px per
+      lens · strips horizontal"); em 3D as faixas ficam verticais; mudar LPI/dpi/tamanho redesenha.
+- [ ] **Leitura:** com 9 fotos, 60 LPI e 720 dpi: "12 columns per lens", "1.33 printer dots per photo"
+      em âmbar (menos de 2); 1440 dpi: 2.67, verde; 75 LPI a 600 dpi: 8 colunas, "Less than one printer
+      dot" em vermelho e o botão Save continua ativo (é aviso, não trava). "Other" no LPI e no dpi
+      abre um campo numérico (vírgula aceita; inválido fica âmbar e não grava).
+- [ ] **Tamanho:** 15 × 10 cm a 720 dpi = 4252 × 2835 px; trocar para "in" mostra 5.91 × 3.94; o botão ⇄
+      inverte; presets 10 × 15 / A4 etc.
+- [ ] **3D:** a lista de lâminas passa a 20/30/40 LPI; o texto explica que as faixas ficam em pé.
+- [ ] **Save:** em `Exports/<data>/` (projeto) ou na pasta escolhida: `<data> lenticular 60lpi 720dpi
+      flip.tiff`. Abrir no Preview/Visualizador: Inspector mostra 720 × 720 dpi e o tamanho em
+      polegadas igual ao pedido. Ampliando muito, faixas horizontais finas alternando as fotos
+      (Animation) ou verticais (3D).
+- [ ] **Resumo na lista:** "TIFF · 60 LPI · 720 dpi · 15 × 10 cm · Animation" (⚠ quando há aviso); a
+      configuração volta igual na próxima abertura (`pref.export`).
+- [ ] **Impressão (quando houver lâmina e impressora/gráfica):** imprimir a 100%, encostar a lâmina com
+      as lentes no sentido certo (deitadas para Animation) e inclinar: as fotos devem trocar. Anotar
+      aqui o resultado e a combinação usada.
+
+### 24b. Lenticular, entrega 2 (folha de teste e marcas) — câmeras simuladas
+
+- [ ] Ícone da lâmina na barra de cima (ao lado do som): abre **Pitch test** com Effect, Lens sheet,
+      Printer e Paper size (as mesmas opções da exportação; começa em A4).
+- [ ] Save pitch test: aviso "Making the pitch test sheet…", depois "Pitch test saved" e o Finder abre
+      com o arquivo selecionado em `Imagens/Stillpoint/Exports` (ou `<Projeto>/Exports`). Abrir o TIFF:
+      11 faixas listradas com o número em cima de cada uma (3D: faixas uma embaixo da outra, número à
+      esquerda). Esc fecha só a janela do teste.
+- [ ] Mudar qualquer opção da janela do teste: a janela não pisca. "21 strips · 59.50 to 60.50 LPI,
+      every 0.05". "Finer steps" mostra a linha "FINER" com every 0.04 / 0.03 / 0.025 / 0.02 / 0.01, cada
+      um com o seu "?" (quanto cobre e até que tamanho de impressão serve), em volta do "Measured pitch"
+      ou do LPI da embalagem sem ele; 0.025 mostra 3 casas (59.750 to 60.250). "Normal steps" volta.
+      Na lupa da prévia os números aparecem; a roda do mouse afasta até 0,5×. No arquivo: 21 faixas, números em pé em cima de cada uma
+      (Animation) ou à esquerda (3D).
+- [ ] Papel menor que A4 (ex.: 10 × 15): aviso amarelo e "Save pitch test" apagado. Com a impressão
+      de 20 × 30 e o teste em A4: aviso amarelo de que as faixas (25,9 cm) são mais curtas que a
+      impressão (30 cm); com 30 × 40 o aviso some.
+- [ ] Janela de salvar, linha de cima, à direita: "HIDE PREVIEW" esconde a foto grande e as miniaturas
+      (deslizando) e vira "SHOW PREVIEW"; a escolha fica para a próxima vez.
+- [ ] Combinação que a impressora não separa bem (ex.: 100 LPI a 720 dpi): no resumo da sessão (lista à
+      esquerda) e no cabeçalho do Lenticular aparece um triângulo amarelo de alerta.
+- [ ] Janela de salvar: os textos explicativos viraram "?" ao lado do nome de cada opção (Effect, Lens
+      sheet, Printer, Print size, Marks, Originals, Converted, Quality, Size, Speed, Name). Passar o
+      mouse mostra a explicação por cima, sem ser cortada.
+- [ ] A prévia da folha fica sempre à direita (sem botão), sem rolagem lateral, deitada ou em pé.
+      Com o mouse em cima, a lupa mostra as listras no tamanho real; a roda do mouse aproxima e afasta
+      (1× a 8×, a etiqueta mostra o zoom). O mesmo na lupa da prévia Interlaced do Lenticular.
+- [ ] Prévia Interlaced do Lenticular mostra a margem branca, as marcas de corte e as cruzes; desmarcar
+      "Crop marks" / "Alignment marks" ou mudar Bleed redesenha sem elas. A seção Lenticular não tem
+      mais o "Print pitch test…" (fica no rodapé e no ícone da tela principal).
+- [ ] Salvar o Lenticular: ao lado do TIFF, "… settings.txt" com lâmina (embalagem e medido), impressora,
+      tamanho, efeito, ordem e lista das fotos, marcas, sangria e "print at 100%". O mesmo texto vai
+      dentro do TIFF (Finder → Obter Informações, ou Photoshop → Arquivo → Informações do arquivo).
+- [ ] Lista de câmeras com rolagem: um respiro entre a barra e as câmeras.
+- [ ] Settings → New projects: depois de "Change…" para outra pasta, aparece "RESET TO DEFAULT"; ele volta
+      para `Imagens/Stillpoint` e some. A linha "Save to" da janela de salvar (sem projeto) acompanha
+      (`…/Stillpoint/Exports`). Na janela de salvar, depois de "Choose another folder…", "RESET TO DEFAULT"
+      volta para a pasta padrão.
+- [ ] **Teclado (Tab):** na tela principal o Tab passa pelos botões e campos (topo, câmeras, Bullet
+      time) e por uma sessão só (não passa pelas miniaturas das fotos), com contorno verde. Com uma janela
+      aberta (Camera settings, Save sessions, avisos), o Tab fica só dentro dela. Shift+Tab volta.
+- [ ] Camera settings pelo teclado: o Tab passa só pela linha "All cameras" (listas e "±") e depois
+      pelos botões de baixo (Test shot, Match automatically, Use gray card, Read again, Calibrate with
+      chart, Copy from camera, Done). Numa lista, ↑ ↓ vão para a mesma coluna da câmera de cima/de baixo
+      (a lista não abre). Enter ou Espaço abre a lista escura do app; com ela aberta, ↑ ↓ andam pelas
+      opções, Enter escolhe, Esc fecha. Depois de escolher, o foco continua na mesma caixa.
+- [ ] Caixa do "±" (PICTURE STYLE & QUALITY): Enter no "±" abre a caixa com o foco na primeira lista;
+      ↑ ↓ andam entre as listas dela; Enter abre a lista e ↑ ↓ passam a andar pelas opções. Depois de
+      escolher, a caixa continua aberta e o foco fica na mesma lista. Tab sai da caixa (ela fecha) e segue
+      para o próximo item depois do "±". Esc fecha e o foco volta para o "±".
+- [ ] Caixa do "±": depois de escolher um valor com o teclado, o valor novo aparece assim que a câmera
+      confirma (não volta para o anterior) e o foco continua na mesma lista.
+- [ ] Caixas de marcar do Save sessions e da janela Project: com o Tab, o quadrado ganha o contorno verde.
+- [ ] Ctrl/Cmd+Z depois de "Close project" abre o projeto de novo (refazer fecha). Depois de "New project…",
+      desfazer volta ao projeto de antes (ou a nenhum) e apaga a pasta criada, se ainda estiver vazia (com
+      fotos ou outros arquivos, ela fica e aparece um aviso); refazer cria o projeto de novo.
+- [ ] Menu do projeto (botão do projeto, no alto à esquerda): aberto com Enter, ↑ ↓ andam pelas opções,
+      Enter escolhe, Esc fecha e volta ao botão; o Tab fecha o menu e vai para o próximo botão.
+- [ ] Lista de câmeras: o Tab passa só pelos botões de uma câmera (Identify, setas de mover); ↑ ↓ vão para
+      o mesmo botão na câmera de cima/de baixo. Depois de mover uma câmera com Enter, o foco acompanha a câmera.
+- [ ] Bullet time: trocar o modo de disparo (At once, Sweep, Groups…) com Tab + Enter mantém o contorno no modo
+      escolhido; o próximo Tab segue dali.
+- [ ] Janela Project: o Tab passa só pelos controles de uma sessão (caixa de marcar, Label, Show); ↑ ↓ vão
+      para o mesmo controle na sessão de cima/de baixo.
+- [ ] Switch… (Open a project): o Tab para num projeto só; ↑ ↓ andam pelos projetos da lista (sem rolar a
+      janela); Enter abre.
+- [ ] Mac: Cmd+` passa da janela principal para a Live (e para a Live 2), inclusive em tela cheia; Cmd+Shift+`
+      volta na ordem contrária. Também no menu Window → Cycle Through Windows.
+- [ ] Janela Live: o Tab passa pelas opções (Speed, Reverse loop, Mode, Layout, Group sounds, Display, Always on
+      top, Close…) com contorno verde; as opções ficam à mostra enquanto o foco estiver nelas; Enter aperta o
+      botão / marca a caixa e o foco continua nele.
+- [ ] Save sessions: o Tab para numa sessão só da lista; ↑ ↓ trocam de sessão (mostrando as opções dela).
+      Enter em qualquer opção (formatos, Preview, Unselect all…) mantém o foco nela ou no lugar dela.
+- [ ] Save sessions: Cmd+Z desfaz cada mudança (formatos, saídas, nome, sessões marcadas); Cmd+Shift+Z refaz.
+      Ao fechar a janela, essas mudanças saem do desfazer.
+- [ ] Save sessions: ← → trocam a foto da prévia em Photos e a foto do Tilt em Lenticular.
+- [ ] Lenticular: o botão do modo teatro (à esquerda, em cima da prévia) vem antes de Tilt / Interlaced no Tab.
+- [ ] Live: "Another window" abre a Live 2 um pouco à direita e abaixo da primeira (fora de tela cheia).
+- [ ] Live: as duas janelas têm "Another window"; com as duas abertas, fica desligado nas duas. Fechando a
+      original, a outra passa a se chamar "Live" (título da janela e do alto) e o botão volta a funcionar; ele
+      abre a outra de novo, como "Live 2", deslocada. "Live view" na janela principal traz a Live que está aberta.
+- [ ] Activity: ligar/desligar "Show technical details" não faz a lista pular — a linha que estava no alto
+      continua no mesmo lugar (no fim da lista, continua no fim); as linhas técnicas aparecem devagar.
+- [ ] Confirmações (ex.: "Calibrate with chart"): Enter aperta o botão que está com o contorno verde
+      (Cancel, Open chart ou Start), não sempre o principal.
+- [ ] Pitch test: Enter numa opção muda a opção e o foco continua nela; o próximo Tab segue dali.
+- [ ] Pitch test: mudar qualquer opção (Lens sheet, Paper size, Finer steps, o passo) e apertar Ctrl+Z
+      (Cmd+Z no Mac) volta a opção anterior; Ctrl+Shift+Z refaz. Ao fechar a janela, essas mudanças saem do
+      desfazer.
+- [ ] Camera settings: apertar Esc (ou Done) no meio do Test shot, do Match automatically ou do Calibrate
+      with chart cancela o que estava em andamento; o Activity não fica preso em "Receiving photos" e as
+      câmeras voltam como estavam.
+- [ ] Enter marca/desmarca caixas de marcar (ex.: "Match automatically"), como o Espaço.
+- [ ] Activity aberto: o Tab circula só dentro dele (Show technical details, Copy log, botões); fechado,
+      volta ao normal.
+- [ ] Sessões pelo teclado: o Tab para só na sessão aberta (ou na primeira); ↑ ↓ trocam de sessão;
+      ← → trocam de foto.
+- [ ] "?" com o Tab: a explicação aparece enquanto o "?" tem o foco e some no próximo Tab, sem precisar
+      mexer o mouse.
+- [ ] Lupas: segurando o botão esquerdo somem a mira "+" e a legenda do zoom; ao soltar, voltam. A instrução aparece
+      embaixo da prévia da folha de teste e na legenda da vista Interlaced.
+- [ ] New project → "CHOOSE ANOTHER FOLDER…": a caixa continua aberta; escolhida a pasta, o texto muda
+      para "…will be created in <pasta escolhida>"; digitar o nome e "CREATE" cria o projeto lá. Nome já
+      usado nessa pasta: aviso na caixa. Depois de escolher outra pasta aparece "RESET TO DEFAULT", que volta
+      o texto para a pasta padrão e some.
+- [ ] Rodapé da janela de salvar: **Print pitch test** entre Cancel e Save, apagado sem Lenticular e
+      ativo com ele. Salvar com Lenticular sem "Measured pitch": pergunta "Print a pitch test first?"
+      (Print pitch test / Save anyway / Don't ask again). Com "Measured pitch" preenchido, não pergunta.
+- [ ] Settings → **Opening** Off → fechar e abrir o app: abre direto na tela principal, sem o logo e a
+      chuva de código. On volta.
+- [ ] Save sessions → Lenticular → Lens sheet: "Print pitch test…" abre a mesma janela com a lâmina e a
+      impressora escolhidas ali. Com "Measured pitch" preenchido (ex.: 59.8), as faixas ficam em volta
+      dele (59.3 to 60.3).
+- [ ] Marks: "Crop marks" e "Alignment marks" marcadas e Bleed "3 mm" por padrão; a leitura mostra
+      "file … px with 3 mm bleed and marks". Salvar: o TIFF tem margem branca, risquinhos nos 4 cantos
+      e uma cruz com círculo no meio de cada lado. Desmarcar tudo e Bleed "None": o TIFF volta a ter só a
+      imagem, no tamanho exato.
+
+## 25. Rodada única com câmeras reais (2.14.0)
+
+Tudo o que só dá para conferir com as câmeras de verdade, numa vez só. Abrir **sem** as câmeras
+simuladas (Mac):
+
+```
+cd ~/Developer/stillpoint
+unset STILLPOINT_FAKE_CAMERAS
+./build/macos-arm64/Stillpoint
+```
+
+Câmeras ligadas e conectadas antes de abrir. Uma das câmeras com Quality em RAW + JPG (as outras
+podem ficar só em JPG).
+
+**A. Camera settings**
+- [ ] Abrir Camera settings: todas as listas (ISO, Shutter, Aperture, Exp. comp., Metering, White
+      balance, Picture Style, os ajustes do ±) abrem com a cara do app, não a do Mac. ↑ ↓ e Enter
+      escolhem; Esc fecha só a lista; clicar de novo na caixa fecha. O valor escolhido chega à câmera
+      (conferir no LCD).
+- [ ] **Copy from camera → "Choose…"**: a lista também com a cara do app; escolher uma câmera copia
+      as configurações dela para as outras; Cmd+Z volta.
+- [ ] **Metering + Desfazer:** mudar o Metering de uma câmera → Cmd+Z volta (conferir no LCD) →
+      Cmd+Shift+Z refaz. Mudar o Metering em All cameras → Cmd+Z volta todas.
+- [ ] **Metering diferente antes do Match:** deixar uma câmera com outro Metering, marcar Match
+      automatically e clicar Test shot: aparece "Metering modes differ". "Set all to …" iguala e segue;
+      "Keep as they are" segue sem mudar.
+- [ ] **Match automatically + Desfazer:** mudar o ISO em All cameras; rodar Test shot com Match
+      automatically até ele mudar alguma câmera. Cmd+Z → "Undo: Match automatically (n cameras)": as
+      câmeras voltam ao que eram antes do Match (o ISO novo fica). Cmd+Z de novo → só o ISO volta.
+      Cmd+Shift+Z duas vezes → ISO e Match de volta.
+- [ ] **Hide photos / Show photos** (depois de um Test shot): a fileira de fotos recolhe e abre
+      deslizando.
+
+**B. Ordem das câmeras**
+- [ ] ^ e v numa câmera: as duas linhas trocam de lugar deslizando; a Activity mostra "Move … up/down".
+- [ ] Arrastar uma câmera: Activity "Camera order (dragged)". Reorder by photo → Save order:
+      Activity "Camera order from photos". Em Show technical details, a ordem completa.
+
+**C. Fotos de verdade (disparar 1 sessão)**
+- [ ] Botão direito numa foto (miniatura e foto grande; também na tela cheia): **Show in Finder**
+      abre o Finder com o arquivo selecionado; **Open in default app** abre a foto (a da câmera RAW +
+      JPG abre o JPG).
+- [ ] **Delete photo…** pelo botão direito na foto da câmera RAW + JPG: animação, os dois arquivos
+      saem; Cmd+Z traz os dois de volta.
+- [ ] Apagar a sessão (lixeira, fora e dentro da tela cheia): a animação até a lixeira; Cmd+Z volta.
+
+**D. Save sessions com a sessão real**
+- [ ] Sem projeto aberto: a linha **Save to** mostra `Imagens/Stillpoint/Exports` (ou a pasta de
+      projetos escolhida em Settings + `/Exports`); Save grava lá sem abrir a janela do Mac.
+- [ ] Com projeto aberto: **Save to** mostra `<Projeto>/Exports`. "Choose another folder…" troca só
+      para este salvamento (ao reabrir a janela, volta ao padrão); "Reset to default" volta ao padrão.
+- [ ] Photos com **Originals + JPG**: pastas `Originals/` (com o RAW e o JPG da câmera RAW + JPG) e
+      `JPG/` (um JPG por câmera). Com Sequence também marcada, as duas dentro de `Photos/`.
+- [ ] Lenticular com a sessão real: prévia Tilt (arrastar ↕) e Interlaced com a lupa; o TIFF sai com
+      o tamanho certo (abrir no Pré-visualização → Ferramentas → Mostrar Inspetor: dpi e tamanho).
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |
 | --- | --- | --- | --- | --- | --- |
 | 2026-10 | Windows | v1.3.0 | Canon SL3 + Canon T7 | sim | Teste de referência, antes da migração |
 | 2026-10-29 | Mac (M5, macOS 26) | etapa-17-project (2.12.0) | 9 simuladas | sim | Roteiro 23 com câmeras simuladas aprovado pelo dono do projeto (projeto, arrastar, botão direito, rótulos, rename, undo/redo, avisos, Activity). Windows: compila; sem teste de uso. Câmeras reais: pendente |
+| 2026-11-01 | Mac (M5, macOS 26) | etapa-19-lenticular (2.14.0) | câmeras reais | sim | Seção 25 inteira aprovada pelo dono do projeto (Camera settings, ordem das câmeras, fotos reais, Save sessions com projeto/Exports/Originals+JPG/Lenticular TIFF) |
 | 2026-10-29 | Mac (M5, macOS 26) | v2.12.0 | Canon T7 + SL3 + T5 | sim | Câmeras reais: sessão em `Originals/` com `session.json`; `.xmp` renomeado junto no Reorder + Cmd+Z; Camera settings com undo/redo (um por segundo, sem travar; valores batem com o LCD; disparo depois OK); Copy from camera + undo; apagar foto/sessão + Cmd+Z com RAW (`Photos/.trash`, vazia ao reabrir); projeto em HD externo (apagar + undo copiando entre discos; reabrir pelos recentes); ordem das câmeras (^ v e Reorder by photo) + undo; foto recusada (Sweep 0,3 s, 1→3→1: "1 MISSING" sobrevive ao reabrir). **Bug:** HD ejetado com o app fechado → ao abrir, "No project" em vez de âmbar "not reachable" (corrigido na 2.12.1). |
 | 2026-10-10 | Windows | etapa-1-cmake (CMake + EDSDK 13.20.10) | Canon SL3 + Canon T7 | sim | Checklist completa |
 | 2026-10-10 | Windows | etapa-2-plataforma (camada de plataforma) | Canon SL3 + Canon T7 | sim | Teste reduzido: detecção, pasta Downloads, áudio, 2 sessões, desconexão |

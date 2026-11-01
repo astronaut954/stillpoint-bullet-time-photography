@@ -18,6 +18,7 @@
 #include <cstdint>
 #include <cstring>
 #include <fstream>
+#include <functional>
 #include <thread>
 
 #include "stb_image_resize2.h"
@@ -506,14 +507,21 @@ namespace
     }
 
     // TIFF simples (sem compressão), como a maioria dos programas de foto grava
-    bool WriteTiff(const RgbFrame& image, const fs::path& file)
+    // dpi > 0: grava a resolução (XResolution/YResolution em polegadas), para a impressora
+    // abrir no tamanho exato (lenticular)
+    bool WriteTiff(const RgbFrame& image, const fs::path& file, int dpi = 0, const std::string& description = "")
     {
         std::vector<unsigned char> out;
         auto u16 = [&](uint32_t v) { out.push_back(v & 0xFF); out.push_back((v >> 8) & 0xFF); };
         auto u32 = [&](uint32_t v) { for (int k = 0; k < 4; ++k) out.push_back((v >> (8 * k)) & 0xFF); };
         const uint32_t dataSize = static_cast<uint32_t>(image.pixels.size());
-        const int entries = 10;
-        const uint32_t ifd = 8, bpsOffset = ifd + 2 + entries * 12 + 4, dataOffset = bpsOffset + 6;
+        const bool described = !description.empty();
+        const int entries = (dpi > 0 ? 13 : 10) + (described ? 1 : 0);
+        const uint32_t ifd = 8, bpsOffset = ifd + 2 + entries * 12 + 4;
+        const uint32_t resOffset = bpsOffset + 6;                       // 2 RATIONAL (8 bytes cada)
+        const uint32_t textOffset = dpi > 0 ? resOffset + 16 : bpsOffset + 6;
+        const uint32_t textSize = described ? static_cast<uint32_t>(description.size() + 1) : 0;  // com o 0 do fim
+        const uint32_t dataOffset = textOffset + textSize + (textSize & 1);  // começo par
         out.insert(out.end(), { 'I', 'I', 42, 0 });
         u32(ifd);
         u16(entries);
@@ -528,15 +536,199 @@ namespace
         entry(258, 3, 3, bpsOffset);  // 8, 8, 8
         entry(259, 3, 1, 1);          // sem compressão
         entry(262, 3, 1, 2);          // RGB
+        if (described)
+            entry(270, 2, textSize, textSize <= 4 ? 0 : textOffset);  // ImageDescription
         entry(273, 4, 1, dataOffset);
         entry(277, 3, 1, 3);
         entry(278, 4, 1, static_cast<uint32_t>(image.height));
         entry(279, 4, 1, dataSize);
+        if (dpi > 0)
+        {
+            entry(282, 5, 1, resOffset);      // XResolution
+            entry(283, 5, 1, resOffset + 8);  // YResolution
+        }
         entry(284, 3, 1, 1);
+        if (dpi > 0)
+            entry(296, 3, 1, 2);              // ResolutionUnit: polegada
         u32(0);
         u16(8); u16(8); u16(8);
+        if (dpi > 0)
+        {
+            u32(static_cast<uint32_t>(dpi)); u32(1);
+            u32(static_cast<uint32_t>(dpi)); u32(1);
+        }
+        if (described)
+        {
+            out.insert(out.end(), description.begin(), description.end());
+            out.push_back(0);
+            if (textSize & 1) out.push_back(0);
+        }
         out.insert(out.end(), image.pixels.begin(), image.pixels.end());
         return WriteBytes(file, out.data(), out.size());
+    }
+
+    // Redimensiona cobrindo w×h inteiro (corta o que sobra, centrado) — para a impressão
+    // lenticular, onde a imagem precisa ter exatamente o tamanho do papel
+    std::vector<unsigned char> Cover(const RgbFrame& src, int w, int h)
+    {
+        const double scale = std::max(static_cast<double>(w) / src.width, static_cast<double>(h) / src.height);
+        const int fw = std::max(w, static_cast<int>(std::lround(src.width * scale)));
+        const int fh = std::max(h, static_cast<int>(std::lround(src.height * scale)));
+        std::vector<unsigned char> resized(static_cast<size_t>(fw) * fh * 3);
+        stbir_resize_uint8_srgb(src.pixels.data(), src.width, src.height, 0, resized.data(), fw, fh, 0, STBIR_RGB);
+        std::vector<unsigned char> out(static_cast<size_t>(w) * h * 3);
+        const int ox = (fw - w) / 2, oy = (fh - h) / 2;
+        for (int y = 0; y < h; ++y)
+            std::memcpy(&out[static_cast<size_t>(y) * w * 3], &resized[(static_cast<size_t>(y + oy) * fw + ox) * 3], static_cast<size_t>(w) * 3);
+        return out;
+    }
+
+    // ---- Lenticular, entrega 2: marcas de impressão e folha de teste ----
+    // Retângulo preto (cortado nas bordas da folha)
+    void FillBlack(RgbFrame& img, int x0, int y0, int x1, int y1)
+    {
+        x0 = std::max(0, x0); y0 = std::max(0, y0); x1 = std::min(img.width, x1); y1 = std::min(img.height, y1);
+        for (int y = y0; y < y1; ++y)
+            std::memset(&img.pixels[(static_cast<size_t>(y) * img.width + x0) * 3], 0, static_cast<size_t>(std::max(0, x1 - x0)) * 3);
+    }
+    // Marcas de corte (nos 4 cantos, na margem, apontando para a linha de corte) e de alinhamento
+    // (cruz com círculo no meio de cada lado da margem)
+    void DrawPrintMarks(RgbFrame& img, const Export::LenticularInfo& info, const Export::LenticularOptions& o)
+    {
+        const int M = info.margin, B = info.bleed;
+        const int t = std::max(1, static_cast<int>(std::lround(o.dpi * 0.004)));  // ~0,1 mm
+        const int gap = static_cast<int>(std::lround(o.dpi * 0.06));             // folga até a sangria (~1,5 mm)
+        const int start = static_cast<int>(std::lround(M * 0.15));
+        const int left = M + B, right = M + B + info.width, top = M + B, bottom = M + B + info.height;  // linha de corte
+        if (o.cropMarks)
+        {
+            const int inEnd = M - gap, outStart = img.width - M + gap;  // horizontais: só na margem
+            const int inEndY = M - gap, outStartY = img.height - M + gap;
+            for (int yLine : { top, bottom })
+            {
+                FillBlack(img, start, yLine - t / 2, inEnd, yLine - t / 2 + t);
+                FillBlack(img, outStart, yLine - t / 2, img.width - start, yLine - t / 2 + t);
+            }
+            for (int xLine : { left, right })
+            {
+                FillBlack(img, xLine - t / 2, start, xLine - t / 2 + t, inEndY);
+                FillBlack(img, xLine - t / 2, outStartY, xLine - t / 2 + t, img.height - start);
+            }
+        }
+        if (o.alignMarks)
+        {
+            const int r = static_cast<int>(std::lround(M * 0.28));
+            auto cross = [&](int cx, int cy)
+            {
+                FillBlack(img, cx - r - r / 3, cy - t / 2, cx + r + r / 3, cy - t / 2 + t);
+                FillBlack(img, cx - t / 2, cy - r - r / 3, cx - t / 2 + t, cy + r + r / 3);
+                for (int y = cy - r - t; y <= cy + r + t; ++y)
+                    for (int x = cx - r - t; x <= cx + r + t; ++x)
+                    {
+                        const double d = std::hypot(x - cx, y - cy);
+                        if (std::fabs(d - r) <= t / 2.0 + 0.5 && x >= 0 && y >= 0 && x < img.width && y < img.height)
+                            std::memset(&img.pixels[(static_cast<size_t>(y) * img.width + x) * 3], 0, 3);
+                    }
+            };
+            cross((left + right) / 2, M / 2);
+            cross((left + right) / 2, img.height - M / 2);
+            cross(M / 2, (top + bottom) / 2);
+            cross(img.width - M / 2, (top + bottom) / 2);
+        }
+    }
+
+    // Números da folha de teste: fonte 5×7 de bloco (0–9 e ponto), sem depender de fontes do sistema
+    const unsigned char* Glyph(char c)
+    {
+        static const unsigned char digits[10][7] = {
+            { 0x0E, 0x11, 0x13, 0x15, 0x19, 0x11, 0x0E }, { 0x04, 0x0C, 0x04, 0x04, 0x04, 0x04, 0x0E },
+            { 0x0E, 0x11, 0x01, 0x02, 0x04, 0x08, 0x1F }, { 0x1F, 0x02, 0x04, 0x02, 0x01, 0x11, 0x0E },
+            { 0x02, 0x06, 0x0A, 0x12, 0x1F, 0x02, 0x02 }, { 0x1F, 0x10, 0x1E, 0x01, 0x01, 0x11, 0x0E },
+            { 0x06, 0x08, 0x10, 0x1E, 0x11, 0x11, 0x0E }, { 0x1F, 0x01, 0x02, 0x04, 0x08, 0x08, 0x08 },
+            { 0x0E, 0x11, 0x11, 0x0E, 0x11, 0x11, 0x0E }, { 0x0E, 0x11, 0x11, 0x0F, 0x01, 0x02, 0x0C } };
+        static const unsigned char dot[7] = { 0, 0, 0, 0, 0, 0x0C, 0x0C };
+        if (c >= '0' && c <= '9') return digits[c - '0'];
+        return c == '.' ? dot : nullptr;
+    }
+    int TextWidth(const std::string& t) { return static_cast<int>(t.size()) * 6 - 1; }  // 5 + 1 de espaço
+    // Uma linha (gy = 0..6 da fonte) do texto, em preto, numa linha da folha
+    void DrawTextRow(std::vector<unsigned char>& line, int width, const std::string& t, int x0, int gy, int scale)
+    {
+        if (gy < 0 || gy > 6) return;
+        for (size_t i = 0; i < t.size(); ++i)
+        {
+            const unsigned char* g = Glyph(t[i]);
+            if (!g) continue;
+            for (int gx = 0; gx < 5; ++gx)
+                if (g[gy] & (0x10 >> gx))
+                    for (int s = 0; s < scale; ++s)
+                    {
+                        const int x = x0 + (static_cast<int>(i) * 6 + gx) * scale + s;
+                        if (x >= 0 && x < width) line[static_cast<size_t>(x)] = 0;
+                    }
+        }
+    }
+    // O mesmo texto girado 90° no sentido horário (lido de cima para baixo): `col` é a coluna da
+    // fonte ao longo do texto (0 .. 6 × letras); a linha da folha recebe os pontos daquela coluna
+    void DrawTextColumn(std::vector<unsigned char>& line, int width, const std::string& t, int x0, int col, int scale)
+    {
+        const int i = col / 6, gx = col % 6;
+        if (i < 0 || i >= static_cast<int>(t.size()) || gx > 4) return;
+        const unsigned char* g = Glyph(t[static_cast<size_t>(i)]);
+        if (!g) return;
+        for (int gy = 0; gy < 7; ++gy)
+            if (g[gy] & (0x10 >> gx))
+                for (int s = 0; s < scale; ++s)
+                {
+                    const int x = x0 + (6 - gy) * scale + s;   // a base da letra fica à esquerda
+                    if (x >= 0 && x < width) line[static_cast<size_t>(x)] = 0;
+                }
+    }
+    // TIFF em tons de cinza, gravado linha a linha (a folha de teste pode ter centenas de megapixels)
+    bool WriteGrayTiff(const fs::path& file, int W, int H, int dpi,
+                       const std::function<void(int, std::vector<unsigned char>&)>& rowAt, std::string& error)
+    {
+        std::ofstream f(file, std::ios::binary);
+        if (!f) { error = "Could not save " + file.filename().string(); return false; }
+        std::vector<unsigned char> head;
+        auto u16 = [&](uint32_t v) { head.push_back(v & 0xFF); head.push_back((v >> 8) & 0xFF); };
+        auto u32 = [&](uint32_t v) { for (int k = 0; k < 4; ++k) head.push_back((v >> (8 * k)) & 0xFF); };
+        const int entries = 13;
+        const uint32_t ifd = 8, resOffset = ifd + 2 + entries * 12 + 4, dataOffset = resOffset + 16;
+        head.insert(head.end(), { 'I', 'I', 42, 0 });
+        u32(ifd);
+        u16(entries);
+        auto entry = [&](uint16_t tag, uint16_t type, uint32_t count, uint32_t value)
+        {
+            u16(tag); u16(type); u32(count);
+            if (type == 3 && count == 1) { u16(value); u16(0); }
+            else u32(value);
+        };
+        entry(256, 4, 1, static_cast<uint32_t>(W));
+        entry(257, 4, 1, static_cast<uint32_t>(H));
+        entry(258, 3, 1, 8);
+        entry(259, 3, 1, 1);          // sem compressão
+        entry(262, 3, 1, 1);          // tons de cinza, 0 = preto
+        entry(273, 4, 1, dataOffset);
+        entry(277, 3, 1, 1);
+        entry(278, 4, 1, static_cast<uint32_t>(H));
+        entry(279, 4, 1, static_cast<uint32_t>(static_cast<uint64_t>(W) * H));
+        entry(282, 5, 1, resOffset);
+        entry(283, 5, 1, resOffset + 8);
+        entry(284, 3, 1, 1);
+        entry(296, 3, 1, 2);          // polegada
+        u32(0);
+        u32(static_cast<uint32_t>(dpi)); u32(1);
+        u32(static_cast<uint32_t>(dpi)); u32(1);
+        f.write(reinterpret_cast<const char*>(head.data()), static_cast<std::streamsize>(head.size()));
+        std::vector<unsigned char> line(static_cast<size_t>(W));
+        for (int y = 0; y < H; ++y)
+        {
+            rowAt(y, line);
+            f.write(reinterpret_cast<const char*>(line.data()), W);
+        }
+        if (!f) { error = "Could not save " + file.filename().string(); return false; }
+        return true;
     }
 }
 
@@ -661,6 +853,178 @@ namespace Export
             }
         }
         return true;
+    }
+
+    LenticularInfo LenticularPlan(const LenticularOptions& o, int photos)
+    {
+        LenticularInfo info;
+        info.width = std::max(1, static_cast<int>(std::lround(o.widthInches * o.dpi)));
+        info.height = std::max(1, static_cast<int>(std::lround(o.heightInches * o.dpi)));
+        info.columnsPerLens = o.lpi > 0 ? o.dpi / o.lpi : 0;
+        info.pixelsPerPhoto = photos > 0 ? info.columnsPerLens / photos : 0;
+        const double inches = o.horizontalLenses ? o.heightInches : o.widthInches;
+        info.lenses = static_cast<int>(std::lround(inches * o.lpi));
+        info.bleed = std::max(0, static_cast<int>(std::lround(o.bleedInches * o.dpi)));
+        // Margem das marcas: 0,4 pol (~10 mm) fora da sangria
+        info.margin = (o.cropMarks || o.alignMarks) ? static_cast<int>(std::lround(0.4 * o.dpi)) : 0;
+        info.fileWidth = info.width + 2 * (info.bleed + info.margin);
+        info.fileHeight = info.height + 2 * (info.bleed + info.margin);
+        return info;
+    }
+
+    // Para cada linha (lentes deitadas) ou coluna (lentes em pé) da imagem final: em qual lente
+    // ela cai, em que fração da lente, e portanto de qual foto vem. Fração de lente contínua
+    // (dpi ÷ lpi não precisa ser inteiro): é assim que o pitch medido entra no cálculo.
+    bool WriteLenticular(const std::vector<fs::path>& photos, const fs::path& dest, const LenticularOptions& o,
+                         const Progress& progress, const std::atomic<bool>* cancel, std::string& error)
+    {
+        const int n = static_cast<int>(photos.size());
+        if (n < 2) { error = "A lenticular print needs at least 2 photos."; return false; }
+        if (o.lpi <= 0 || o.dpi <= 0 || o.widthInches <= 0 || o.heightInches <= 0) { error = "Check the lens, printer and size values."; return false; }
+        const LenticularInfo info = LenticularPlan(o, n);
+        if (static_cast<double>(info.fileWidth) * info.fileHeight > 400e6) { error = "The print would be too large to build in memory (over 400 megapixels). Reduce the size or the DPI."; return false; }
+        // Área entrelaçada = impressão + sangria; as lentes contam a partir da linha de corte
+        const int W = info.width + 2 * info.bleed, H = info.height + 2 * info.bleed;
+        const double perLens = info.columnsPerLens;
+        const int lines = o.horizontalLenses ? H : W;
+        // Foto de cada linha/coluna
+        std::vector<int> owner(static_cast<size_t>(lines));
+        for (int i = 0; i < lines; ++i)
+        {
+            const double pos = (i - info.bleed + 0.5) / perLens;  // centro do pixel, em lentes (0 = linha de corte)
+            const double frac = pos - std::floor(pos);     // 0..1 dentro da lente
+            int k = std::min(n - 1, static_cast<int>(frac * n));
+            if (o.reverse) k = n - 1 - k;
+            owner[static_cast<size_t>(i)] = k;
+        }
+        RgbFrame out;
+        out.width = W; out.height = H;
+        out.pixels.assign(static_cast<size_t>(W) * H * 3, 0);
+        for (int k = 0; k < n; ++k)
+        {
+            if (cancel && *cancel) { error = "cancelled"; return false; }
+            if (progress) progress(static_cast<double>(k) / (n + 1), "lenticular");
+            RgbFrame frame;
+            if (!LoadPhotoRgb(photos[static_cast<size_t>(k)], frame)) { error = "Could not read " + photos[static_cast<size_t>(k)].filename().string(); return false; }
+            const std::vector<unsigned char> fitted = Cover(frame, W, H);
+            if (o.horizontalLenses)
+            {
+                for (int y = 0; y < H; ++y)
+                    if (owner[static_cast<size_t>(y)] == k)
+                        std::memcpy(&out.pixels[static_cast<size_t>(y) * W * 3], &fitted[static_cast<size_t>(y) * W * 3], static_cast<size_t>(W) * 3);
+            }
+            else
+            {
+                for (int y = 0; y < H; ++y)
+                {
+                    const size_t rowAt = static_cast<size_t>(y) * W * 3;
+                    for (int x = 0; x < W; ++x)
+                        if (owner[static_cast<size_t>(x)] == k)
+                            std::memcpy(&out.pixels[rowAt + static_cast<size_t>(x) * 3], &fitted[rowAt + static_cast<size_t>(x) * 3], 3);
+                }
+            }
+        }
+        if (progress) progress(static_cast<double>(n) / (n + 1), "lenticular-save");
+        const fs::path file = fs::path(dest).concat(".tiff");
+        if (info.margin > 0)
+        {
+            // Folha com margem branca e as marcas; a imagem (com sangria) no meio
+            RgbFrame sheet;
+            sheet.width = info.fileWidth; sheet.height = info.fileHeight;
+            sheet.pixels.assign(static_cast<size_t>(sheet.width) * sheet.height * 3, 255);
+            for (int y = 0; y < H; ++y)
+                std::memcpy(&sheet.pixels[(static_cast<size_t>(y + info.margin) * sheet.width + info.margin) * 3],
+                            &out.pixels[static_cast<size_t>(y) * W * 3], static_cast<size_t>(W) * 3);
+            out = RgbFrame();
+            DrawPrintMarks(sheet, info, o);
+            if (!WriteTiff(sheet, file, o.dpi, o.description)) { error = "Could not save " + file.filename().string(); return false; }
+        }
+        else if (!WriteTiff(out, file, o.dpi, o.description)) { error = "Could not save " + file.filename().string(); return false; }
+        // As mesmas configurações num .txt ao lado (para a pessoa e para a gráfica)
+        if (!o.description.empty())
+        {
+            const fs::path notes = fs::path(dest).concat(" settings.txt");
+            std::ofstream txt(notes, std::ios::binary);
+            txt << o.description << "\n";
+        }
+        return true;
+    }
+
+    bool WritePitchTest(const PitchTestOptions& o, const fs::path& file, std::string& error)
+    {
+        if (o.dpi <= 0 || o.widthInches <= 0 || o.heightInches <= 0 || o.center <= 0 || o.step <= 0 || o.count < 1)
+        { error = "Check the lens, printer and size values."; return false; }
+        const int W = std::max(1, static_cast<int>(std::lround(o.widthInches * o.dpi)));
+        const int H = std::max(1, static_cast<int>(std::lround(o.heightInches * o.dpi)));
+        if (static_cast<double>(W) * H > 1.2e9) { error = "The sheet would be too large. Reduce the size or the DPI."; return false; }
+        // Faixas lado a lado (animação: listras deitadas, faixas em colunas) ou uma embaixo da
+        // outra (3D: listras em pé). Em cada faixa: etiqueta com o número e as listras.
+        const int along = o.horizontalLenses ? W : H;           // eixo em que as faixas se sucedem
+        const int edge = static_cast<int>(std::lround(0.25 * o.dpi));     // margem da folha
+        const int gap = std::max(2, static_cast<int>(std::lround(0.08 * o.dpi)));  // espaço entre faixas
+        const int digitScale = std::max(1, static_cast<int>(std::lround(0.16 * o.dpi / 7)));
+        // Casas decimais do passo: 0,1 → 1; 0,05 → 2; 0,025 → 3
+        const int decimals = std::fabs(o.step * 100 - std::round(o.step * 100)) > 1e-6 ? 3 : o.step < 0.0999 ? 2 : 1;
+        // Área do número: em cima de cada faixa (animação) ou à esquerda (3D, cabe o número inteiro)
+        // Área do número: na animação as faixas são colunas estreitas, então o número vai em pé (de
+        // cima para baixo) e a área tem a altura do texto; no 3D, deitado à esquerda
+        int label = static_cast<int>(std::lround(0.45 * o.dpi));
+        label = std::max(label, TextWidth(decimals == 3 ? "000.000" : decimals == 2 ? "000.00" : "000.0") * digitScale + static_cast<int>(std::lround(0.2 * o.dpi)));
+        const int bandSize = std::max(1, (along - 2 * edge - gap * (o.count - 1)) / o.count);
+        const double first = o.center - o.step * (o.count - 1) / 2.0;
+        std::vector<double> lpis(static_cast<size_t>(o.count));
+        std::vector<std::string> texts(static_cast<size_t>(o.count));
+        for (int b = 0; b < o.count; ++b)
+        {
+            lpis[static_cast<size_t>(b)] = first + o.step * b;
+            char t[32]; std::snprintf(t, sizeof(t), "%.*f", decimals, lpis[static_cast<size_t>(b)]);
+            texts[static_cast<size_t>(b)] = t;
+        }
+        // Qual faixa (−1 = fora) em cada posição do eixo das faixas
+        auto bandAt = [&](int p) -> int
+        {
+            const int q = p - edge;
+            if (q < 0) return -1;
+            const int b = q / (bandSize + gap);
+            if (b >= o.count || q - b * (bandSize + gap) >= bandSize) return -1;
+            return b;
+        };
+        const int across = o.horizontalLenses ? H : W;          // eixo das listras
+        // Cada linha do arquivo é montada e gravada na hora (folha grande, pouca memória)
+        return WriteGrayTiff(file, W, H, o.dpi, [&](int y, std::vector<unsigned char>& line)
+        {
+            std::fill(line.begin(), line.end(), 255);
+            for (int x = 0; x < W; ++x)
+            {
+                const int p = o.horizontalLenses ? x : y;       // posição no eixo das faixas
+                const int a = o.horizontalLenses ? y : x;       // posição no eixo das listras
+                const int b = bandAt(p);
+                if (b < 0 || a < edge || a >= across - edge) continue;
+                if (a < edge + label) continue;                  // área do número (desenhado abaixo)
+                // Listras: metade da lente preta, metade branca, contadas do início da área listrada
+                const double pos = (a - edge - label + 0.5) * lpis[static_cast<size_t>(b)] / o.dpi;
+                line[static_cast<size_t>(x)] = (pos - std::floor(pos)) < 0.5 ? 0 : 255;
+            }
+            // Números: em cada faixa, centrados na área da etiqueta
+            for (int b = 0; b < o.count; ++b)
+            {
+                const std::string& t = texts[static_cast<size_t>(b)];
+                const int tw = TextWidth(t) * digitScale, th = 7 * digitScale;
+                const int bandStart = edge + b * (bandSize + gap);
+                // No eixo das faixas o texto fica centrado na faixa; no outro, no meio da etiqueta
+                if (o.horizontalLenses)
+                {
+                    // Em pé: o texto corre de cima para baixo (girado 90° no sentido horário)
+                    const int tx = bandStart + (bandSize - th) / 2, ty = edge + (label - tw) / 2;
+                    if (y < ty || y >= ty + tw) continue;
+                    DrawTextColumn(line, W, t, tx, (y - ty) / digitScale, digitScale);
+                    continue;
+                }
+                const int tx = edge + (label - tw) / 2, ty = bandStart + (bandSize - th) / 2;
+                if (y < ty || y >= ty + th) continue;
+                DrawTextRow(line, W, t, tx, (y - ty) / digitScale, digitScale);
+            }
+        }, error);
     }
 
     bool ConvertPhoto(const fs::path& photo, const fs::path& dest, const std::string& format, Quality quality,

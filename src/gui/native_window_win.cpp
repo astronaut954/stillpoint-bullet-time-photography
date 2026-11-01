@@ -250,4 +250,18 @@ namespace NativeWindow
 
     // No Windows o menu fica num botão dentro da página (assets/ui)
     void InstallAppMenu(void*, std::function<void(const std::string&)>) {}
+
+    // Cmd+` é do Mac; no Windows o sistema já troca de janela com Alt+Tab
+    void CycleWindows(bool) {}
+
+    void PlaceNear(void* nativeWindow, void* reference, int dx, int dy)
+    {
+        HWND hwnd = static_cast<HWND>(nativeWindow), ref = static_cast<HWND>(reference);
+        if (!hwnd || !ref || !(GetWindowLongPtrW(ref, GWL_STYLE) & WS_CAPTION))
+            return;  // a outra está em tela cheia (sem borda): fica onde o sistema pôs
+        RECT r{};
+        if (!GetWindowRect(ref, &r))
+            return;
+        SetWindowPos(hwnd, nullptr, r.left + dx, r.top + dy, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+    }
 }
