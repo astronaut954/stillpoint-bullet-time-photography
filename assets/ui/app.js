@@ -5815,12 +5815,21 @@
         const before = project.open ? project.folder : "";
         return callProject("projectNew", v, base).then((r) => {
           projectResult(r);
-          // Desfazer: volta ao projeto de antes (ou a nenhum); a pasta criada fica no disco
+          // Desfazer: volta ao projeto de antes (ou a nenhum) e apaga a pasta criada, se ela ainda
+          // estiver vazia (com algo dentro, fica no disco e o app avisa). Refazer cria de novo.
           if (r && r.project && r.project.open && !r.error) {
             const made = r.project.folder, name = r.project.name;
             recordAction({ label: "New project " + name,
-              undo: () => (before ? Promise.resolve(window.projectOpen(before)) : Promise.resolve(window.projectClose())).then((x) => { projectResult(x); return !(x && x.error); }),
-              redo: () => Promise.resolve(window.projectOpen(made)).then((x) => { projectResult(x); return !(x && x.error); }) });
+              undo: () => (before ? Promise.resolve(window.projectOpen(before)) : Promise.resolve(window.projectClose())).then((x) => {
+                projectResult(x);
+                if (x && x.error) return false;
+                if (typeof window.projectDiscardNew !== "function") return true;
+                return Promise.resolve(window.projectDiscardNew(made)).then((d) => {
+                  if (d && !d.ok && d.reason === "notEmpty") toast("The folder " + shortPath(made) + " already has files, so it stays on the disk.", 6000, { warn: true });
+                  return true;
+                });
+              }),
+              redo: () => Promise.resolve(window.projectCreateAt ? window.projectCreateAt(made) : window.projectOpen(made)).then((x) => { projectResult(x); return !(x && x.error); }) });
           }
         });
       },

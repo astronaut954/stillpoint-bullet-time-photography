@@ -891,7 +891,8 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) serve para tudo, menos para a impress
       confirma (não volta para o anterior) e o foco continua na mesma lista.
 - [ ] Caixas de marcar do Save sessions e da janela Project: com o Tab, o quadrado ganha o contorno verde.
 - [ ] Ctrl/Cmd+Z depois de "Close project" abre o projeto de novo (refazer fecha). Depois de "New project…",
-      desfazer volta ao projeto de antes (ou a nenhum); a pasta criada continua no disco.
+      desfazer volta ao projeto de antes (ou a nenhum) e apaga a pasta criada, se ainda estiver vazia (com
+      fotos ou outros arquivos, ela fica e aparece um aviso); refazer cria o projeto de novo.
 - [ ] Menu do projeto (botão do projeto, no alto à esquerda): aberto com Enter, ↑ ↓ andam pelas opções,
       Enter escolhe, Esc fecha e volta ao botão; o Tab fecha o menu e vai para o próximo botão.
 - [ ] Lista de câmeras: o Tab passa só pelos botões de uma câmera (Identify, setas de mover); ↑ ↓ vão para
@@ -999,7 +1000,7 @@ podem ficar só em JPG).
 - [ ] Sem projeto aberto: a linha **Save to** mostra `Imagens/Stillpoint/Exports` (ou a pasta de
       projetos escolhida em Settings + `/Exports`); Save grava lá sem abrir a janela do Mac.
 - [ ] Com projeto aberto: **Save to** mostra `<Projeto>/Exports`. "Choose another folder…" troca só
-      para este salvamento (ao reabrir a janela, volta ao padrão); "Use the project's Exports" desfaz.
+      para este salvamento (ao reabrir a janela, volta ao padrão); "Reset to default" volta ao padrão.
 - [ ] Photos com **Originals + JPG**: pastas `Originals/` (com o RAW e o JPG da câmera RAW + JPG) e
       `JPG/` (um JPG por câmera). Com Sequence também marcada, as duas dentro de `Photos/`.
 - [ ] Lenticular com a sessão real: prévia Tilt (arrastar ↕) e Interlaced com a lupa; o TIFF sai com

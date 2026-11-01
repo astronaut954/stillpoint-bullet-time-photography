@@ -1869,6 +1869,59 @@ namespace
             const std::string error = args.empty() ? std::string("No folder.") : createOrOpenProject(args[0]);
             return Json("project").Add("error", error).Raw("project", projectJson()).Str();
         });
+        // projectDiscardNew(pasta): Desfazer do "New project…" — apaga a pasta do projeto recém-criado
+        // só se ela ainda estiver como foi criada (o índice e Originals/, Edited/, Exports/ vazias;
+        // arquivos do sistema como .DS_Store não contam) e não for o projeto aberto. Sai dos recentes.
+        // Devolve {ok:true} ou {ok:false, reason:"notEmpty"|"open"|"missing"}.
+        window.bind("projectDiscardNew", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            if (args.empty() || args[0].empty())
+                return Json("discard").Add("ok", false).Add("reason", "missing").Str();
+            const std::filesystem::path folder(args[0]);
+            std::error_code ec;
+            if (!Project::IsProject(folder))
+                return Json("discard").Add("ok", false).Add("reason", "missing").Str();
+            if (project.IsOpen() && std::filesystem::equivalent(project.Root(), folder, ec))
+                return Json("discard").Add("ok", false).Add("reason", "open").Str();
+            auto systemFile = [](const std::string& n) { return n == ".DS_Store" || n == "Thumbs.db" || n == "desktop.ini" || n.rfind("._", 0) == 0; };
+            bool clean = true;
+            for (const auto& entry : std::filesystem::directory_iterator(folder, ec))
+            {
+                const std::string n = entry.path().filename().string();
+                if (systemFile(n) || n == Project::kIndexFile)
+                    continue;
+                if ((n == "Originals" || n == "Edited" || n == "Exports") && entry.is_directory(ec))
+                {
+                    for (const auto& inner : std::filesystem::recursive_directory_iterator(entry.path(), ec))
+                        if (!systemFile(inner.path().filename().string()) && !inner.is_directory(ec))
+                        {
+                            clean = false;
+                            break;
+                        }
+                    if (!clean)
+                        break;
+                    continue;
+                }
+                clean = false;
+                break;
+            }
+            if (ec || !clean)
+                return Json("discard").Add("ok", false).Add("reason", "notEmpty").Str();
+            std::filesystem::remove_all(folder, ec);
+            if (ec)
+                return Json("discard").Add("ok", false).Add("reason", "notEmpty").Str();
+            auto settings = LoadSettings();
+            std::vector<std::string> recent = recentProjects();
+            recent.erase(std::remove(recent.begin(), recent.end(), folder.string()), recent.end());
+            std::string joined;
+            for (const auto& r : recent)
+                joined += (joined.empty() ? "" : "|") + r;
+            settings["recentProjects"] = joined;
+            SaveSettings(settings);
+            Log("New project undone: " + folder.string() + " removed");
+            return Json("discard").Add("ok", true).Str();
+        });
         // projectClose(): fecha o Project (as sessões dele saem da lista; nada é apagado)
         window.bind("projectClose", [&](const std::string&) -> std::string
         {
