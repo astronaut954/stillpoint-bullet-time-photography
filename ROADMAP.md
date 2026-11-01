@@ -663,6 +663,30 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    recorta para preencher. (d) O app lê a marca de recorte que a câmera grava no RAW quando a
    proporção não é 3:2, para mostrar e exportar o mesmo quadro que o Lightroom. Depois dela vem a 20
    (Lightroom Classic), como 2.17.0.
+   Desenho fechado com o dono em 2026-11-01 (protótipo "Match automatically — protótipos"):
+   - **Match automatically vira uma janela em três passos** (um botão só): 1 Choose (o que igualar:
+     shutter/aperture/exp. comp., ISO, brightness, white balance, color, Picture Style, Quality,
+     Aspect ratio, gray card; lembrado), 2 Test shot (até 5 fotos; nada muda nas câmeras),
+     3 Review (tabela por câmera com antes riscado → depois em verde e caixa para aceitar cada câmera,
+     ao lado a comparação de fotos: Split/Side by side/Flip, play com velocidade e Reverse loop,
+     fileiras de miniaturas antes/depois). Só o "Apply to n cameras" mexe nas câmeras; um ⌘Z desfaz tudo.
+     Para o "depois" existir, o Match tira uma foto extra no fim, já com as mudanças.
+   - **Aspect ratio no Match:** iguala as que aceitam mudar às que não aceitam ("fixed"); o Test shot mede
+     a proporção real de cada foto e marca em amarelo a que saiu diferente do informado.
+   - **Aviso na sessão (primeiro disparo):** etiqueta "Mixed ratios" e aviso uma vez por sessão,
+     "Cameras 02 and 04 shot 16:9; the others 3:2", com "Open Camera settings" e "Crop on export to
+     16:9 (keeps 94%)": a sugestão é a proporção presente que perde menos pixels; as outras (3:2, 4:3,
+     16:9, 1:1) ao lado, cada uma com quanto mantém. Miniaturas com proporção diferente ganham marca
+     amarela. Nas sessões seguintes só a etiqueta.
+   - **Export sessions:** linha "Aspect ratio" (As shot, 3:2, 4:3, 16:9, 1:1) para Photos e Sequence;
+     "As shot" com proporções misturadas avisa. Recorte único por sessão (a sequência não pode pular),
+     prévia arrastável no Fill, nove posições rápidas. Photos: opção "Same size for all photos"
+     (desligada por padrão) para igualar ao tamanho da menor quando os sensores diferem.
+   - **Lenticular:** "Placement" Fill (cobre e corta; arrastar para escolher a parte) ou Fit (foto
+     inteira, faixa preta ou branca); nove posições; sem zoom intermediário; prévia com sangria e marcas
+     de corte; um enquadramento por sessão.
+   - **Futuro (anotado a pedido do dono):** alinhamento por foto com transparência entre as câmeras e
+     recorte final comum, para rigs tortos.
 5. **Etapa 20 — Edit in Lightroom Classic / Photoshop.** Ida e volta: o app abre os originais
    do Project no Lightroom Classic (o dono do projeto usa o Classic); um plugin do Stillpoint
    (SDK Lua do Classic) agrupa cada sessão como coleção e tem "Export to Stillpoint", que
