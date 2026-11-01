@@ -485,6 +485,8 @@
     let items = [];
     let index = 0;
     let drag = null;
+    // Várias fotos (Shift+← → ou Shift+clique): um intervalo a partir da âncora
+    let multi = new Set(), anchor = 0;
 
     function badge(item, i) {
       return pad(draggable ? i + 1 : item.order || i + 1);
@@ -523,14 +525,19 @@
       if (draggable) {
         li.addEventListener("pointerdown", (e) => onPointerDown(e, li, i));
       } else {
-        li.addEventListener("click", () => select(i));
+        li.addEventListener("click", (e) => { if (e.shiftKey && opts.multi) extendTo(i); else select(i); if (opts.onPick) opts.onPick(); });
       }
-      if (opts.onContext) li.addEventListener("contextmenu", (e) => { e.preventDefault(); select(i); opts.onContext(e); });
+      if (opts.onContext) li.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        // Clique numa das fotos marcadas: o menu age em todas (a marcação fica)
+        if (multi.size > 1 && multi.has(i)) { index = i; markSelected(false); showLarge(); } else select(i);
+        opts.onContext(e);
+      });
       return li;
     }
 
     function markSelected(scroll) {
-      [...el.carousel.children].forEach((li, i) => li.classList.toggle("selected", i === index));
+      [...el.carousel.children].forEach((li, i) => { li.classList.toggle("selected", i === index); li.classList.toggle("multi", multi.size > 1 && multi.has(i)); });
       const active = el.carousel.children[index];
       if (scroll && active) active.scrollIntoView({ block: "nearest", inline: "nearest" });
     }
@@ -576,6 +583,16 @@
     function select(i) {
       if (!items.length) return;
       index = (i + items.length) % items.length;
+      multi = new Set(); anchor = index;
+      markSelected(true);
+      showLarge();
+    }
+    function extendTo(i) {
+      if (!items.length) return;
+      if (!multi.size) { multi = new Set([index]); anchor = index; }
+      index = Math.max(0, Math.min(items.length - 1, i));  // sem dar a volta
+      multi = new Set();
+      for (let k = Math.min(anchor, index); k <= Math.max(anchor, index); k++) multi.add(k);
       markSelected(true);
       showLarge();
     }
@@ -675,6 +692,7 @@
       },
       setItems(list, selectIndex) {
         items = list.slice();
+        multi = new Set();
         index = Math.min(selectIndex || 0, Math.max(0, items.length - 1));
         el.img.removeAttribute("src");
         render();
@@ -685,6 +703,8 @@
       select,
       next() { select(index + 1); },
       prev() { select(index - 1); },
+      extendTo,
+      get selection() { return multi.size > 1 ? [...multi].sort((a, b) => a - b) : [index]; },
       moveSelected(delta) { move(index, index + delta); },
       get items() { return items; },
       get index() { return index; },
@@ -1014,7 +1034,11 @@
   }
 
   // =================== Sessões ===================
+  // O teclado está nas fotos (depois de ← → ou de clicar numa miniatura): a tecla Delete apaga fotos, não a sessão
+  let photoKeys = false;
   const sessionGallery = Gallery(ui.sessionGallery, {
+    multi: true,
+    onPick: () => { photoKeys = true; },
     load: (item, size) => sessionPhoto(item.session, item.file, size),
     // Botão direito numa foto (miniatura ou foto grande): apagar
     onContext: (e) => {
@@ -1029,6 +1053,14 @@
         });
       };
       const hasFile = !!item.file;
+      const sel = sessionGallery.selection;
+      if (sel.length > 1) {
+        popupMenuAt(e.clientX, e.clientY, [
+          { html: el("div", "project-menu-label", plural(sel.length, "photo", "photos") + " selected") },
+          { label: "Delete " + sel.length + " photos…", danger: true, onClick: deleteCurrentPhoto },
+        ]);
+        return;
+      }
       popupMenuAt(e.clientX, e.clientY, [
         { label: win ? "Show in Explorer" : "Show in Finder", disabled: !hasFile, dim: !hasFile, onClick: () => fileAction("reveal") },
         { label: "Open in default app", disabled: !hasFile, dim: !hasFile, onClick: () => fileAction("open") },
@@ -1296,6 +1328,7 @@
         // Segurar e arrastar: para o botão do projeto (barra de cima) = entra; para "Not in project" = sai
         li.addEventListener("pointerdown", (e) => {
           if (e.metaKey || e.ctrlKey || e.shiftKey) return;
+          photoKeys = false;
           // Clique simples desfaz a seleção já aqui: o sessPointerDown redesenha a lista e o "click" nem chega à linha
           if (e.button === 0 && sessSel.size) sessSel.clear();
           sessPointerDown(e, li, s);
@@ -1325,7 +1358,7 @@
           toggle(); renderSessionList(); return;
         }
         if (e.shiftKey) { selectRange(selAnchor || (currentSession && currentSession.name) || s.name, s.name); renderSessionList(); return; }
-        sessSel.clear(); selAnchor = s.name;
+        sessSel.clear(); selAnchor = s.name; photoKeys = false;
         showSession(s);
       });
       // Teclado: o Tab passa só por uma sessão (a aberta, ou a primeira); ↑ ↓ trocam de sessão;
@@ -1338,6 +1371,7 @@
           return;
         }
         if (e.key === "Delete" || e.key === "Backspace") {
+          if (photoKeys && sessSel.size < 2) return;  // o teclado está nas fotos: o Delete é delas (tratador geral)
           e.preventDefault(); e.stopPropagation();
           if (sessSel.size > 1) deleteMany([...sessSel]); else deleteSessionAsk(s);
           return;
@@ -1345,6 +1379,7 @@
         if (e.key === "Escape" && selectionActive()) { e.preventDefault(); e.stopPropagation(); clearSelection(); focusRow(s.name); return; }
         if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
         e.preventDefault(); e.stopPropagation();
+        photoKeys = false;  // de volta às sessões
         const rows = [...ui.sessionList.querySelectorAll("li.folder")].filter((x) => x.getClientRects().length > 0);
         const next = rows[rows.indexOf(li) + (e.key === "ArrowDown" ? 1 : -1)];
         if (!next) return;
@@ -1492,30 +1527,35 @@
   // ----- Apagar uma foto -----
   function deleteCurrentPhoto() {
     if (!currentSession || editing.on) return;
-    const item = sessionGallery.items[sessionGallery.index];
-    if (!item) return;
+    const picked = sessionGallery.selection.map((k) => sessionGallery.items[k]).filter(Boolean);
+    if (!picked.length) return;
     stopPlay();
     const session = currentSession.name;
-    const what = item.title + (item.subtitle ? " (" + item.subtitle + ")" : "");
-    dialog("Delete photo " + pad(item.order || sessionGallery.index + 1) + "?",
-      what + ". " + (item.files.length > 1 ? "Its RAW and JPEG files go" : "The file goes") + " to the Trash (top bar), where " + (item.files.length > 1 ? "they stay" : "it stays") + " for " + trash.days + " days.", [
+    const one = picked.length === 1, item = picked[0];
+    const groups = picked.map((x) => x.group);
+    const files = picked.reduce((t, x) => t + x.files.length, 0);
+    const what = one ? item.title + (item.subtitle ? " (" + item.subtitle + ")" : "") + ". " : picked.map((x) => pad(x.order || 0)).join(", ") + ". ";
+    dialog(one ? "Delete photo " + pad(item.order || sessionGallery.index + 1) + "?" : "Delete " + picked.length + " photos?",
+      what + (one ? (item.files.length > 1 ? "Its RAW and JPEG files go" : "The file goes") : plural(files, "file goes", "files go")) + " to the Trash (top bar), where " + (files > 1 ? "they stay" : "it stays") + " for " + trash.days + " days.", [
         { label: "Cancel" },
         { label: "Delete", danger: true, onClick: () => {
-          // A miniatura encolhe e some, a foto grande se apaga; só então o arquivo vai embora
-          const thumb = ui.sessionGallery.querySelector(".carousel .frame.selected");
+          // As miniaturas encolhem e somem, a foto grande se apaga; só então os arquivos vão embora
+          const frames = [...ui.sessionGallery.querySelectorAll(".carousel .frame")];
+          const thumbs = sessionGallery.selection.map((k) => frames[k]).filter(Boolean);
           const big = ui.sessionGallery.querySelector(".stage img");
-          if (thumb && thumb.animate) thumb.animate([{ opacity: 1, transform: "scale(1)" }, { opacity: 0, transform: "scale(.4) translateY(30%)" }], { duration: 260, easing: "ease-in", fill: "forwards" });
+          thumbs.forEach((t) => t.animate && t.animate([{ opacity: 1, transform: "scale(1)" }, { opacity: 0, transform: "scale(.4) translateY(30%)" }], { duration: 260, easing: "ease-in", fill: "forwards" }));
           if (big && big.animate && big.getAttribute("src")) big.animate([{ opacity: 1, transform: "scale(1)" }, { opacity: 0, transform: "scale(.85)" }], { duration: 260, easing: "ease-in", fill: "forwards" });
           // A foto grande volta a aparecer quando a próxima carregar (ou, se nada mudar, em 1,5 s)
-          const reveal = () => { if (big) big.getAnimations().forEach((a) => a.cancel()); if (thumb && thumb.isConnected) thumb.getAnimations().forEach((a) => a.cancel()); };
+          const reveal = () => { if (big) big.getAnimations().forEach((a) => a.cancel()); thumbs.forEach((t) => t.isConnected && t.getAnimations().forEach((a) => a.cancel())); };
           setTimeout(() => {
-            window.deletePhotos(session, item.group);
+            window.deletePhotos(session, ...groups);
             if (big) big.addEventListener("load", reveal, { once: true });
             setTimeout(reveal, 1500);
           }, 270);
-          toast("Photo " + pad(item.order || 0) + " deleted from the session of " + sessionLabel(session).date);
-          recordAction({ label: "Delete photo " + pad(item.order || 0) + " from " + sessionLabel(session).date,
-            undo: () => restoreSession(session), redo: () => window.deletePhotos(session, item.group) });
+          const label = one ? "Photo " + pad(item.order || 0) : plural(picked.length, "photo", "photos");
+          toast(label + " deleted from the session of " + sessionLabel(session).date);
+          recordAction({ label: "Delete " + (one ? "photo " + pad(item.order || 0) : plural(picked.length, "photo", "photos")) + " from " + sessionLabel(session).date,
+            undo: () => restoreSession(session), redo: () => window.deletePhotos(session, ...groups) });
         } },
       ]);
   }
@@ -1716,8 +1756,14 @@
     if (e.target.tagName === "INPUT" || !ui.dialogOverlay.classList.contains("hidden")) return;
     const target = order.open ? orderGallery : currentSession ? sessionGallery : null;
     if (!target) return;
-    if (e.key === "ArrowLeft") { e.preventDefault(); stopPlay(); target.prev(); }
-    if (e.key === "ArrowRight") { e.preventDefault(); stopPlay(); target.next(); }
+    if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+      e.preventDefault(); stopPlay();
+      if (target === sessionGallery) photoKeys = true;
+      const d = e.key === "ArrowRight" ? 1 : -1;
+      // Shift+← →: marca várias fotos (só na sessão aberta)
+      if (e.shiftKey && target === sessionGallery && !editing.on) target.extendTo(target.index + d);
+      else if (d > 0) target.next(); else target.prev();
+    }
     if (e.key === " " && !order.open && (isFullscreen() || playTimer)) { e.preventDefault(); togglePlay(); }
     if (order.open) return;
     // Sessão: Esc sai da reordenação ou da tela cheia; F tela cheia; Delete apaga a foto
@@ -1726,7 +1772,7 @@
       else if (isFullscreen()) setFullscreen(false);
     }
     if ((e.key === "f" || e.key === "F") && !editing.on) toggleFullscreen();
-    if ((e.key === "Delete" || e.key === "Backspace") && !editing.on && isFullscreen()) { e.preventDefault(); deleteCurrentPhoto(); }
+    if ((e.key === "Delete" || e.key === "Backspace") && !editing.on && (isFullscreen() || photoKeys)) { e.preventDefault(); deleteCurrentPhoto(); }
   });
 
   // =================== Salvar / sair ===================
@@ -4208,6 +4254,9 @@
   }
   function tabScope() {
     const open = [...document.querySelectorAll(".overlay:not(.hidden)")].filter((o) => o.getClientRects().length > 0);
+    // Sessão em tela cheia: o Tab fica nela
+    const full = document.querySelector(".sessions-panel.fullscreen");
+    if (!open.length && full) return full;
     if (!open.length) return ui.log.classList.contains("expanded") ? ui.log : document.body;  // Activity aberto: só ele
     return open.reduce((top, o) => ((parseInt(getComputedStyle(o).zIndex, 10) || 0) >= (parseInt(getComputedStyle(top).zIndex, 10) || 0) ? o : top));
   }

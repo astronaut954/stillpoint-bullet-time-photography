@@ -1334,6 +1334,10 @@ html.kbd-focus input:focus + .save-check { outline: 2px solid var(--noct-primary
 .trash-row.lvl2 { padding-left: 52px; }
 .trash-row.lvl1, .trash-row.lvl2 { background: linear-gradient(to right, transparent 10px, var(--noct-border) 10px, var(--noct-border) 11px, transparent 11px); }
 .trash-row.lvl2 { background: linear-gradient(to right, transparent 10px, var(--noct-border) 10px, var(--noct-border) 11px, transparent 11px, transparent 36px, var(--noct-border) 36px, var(--noct-border) 37px, transparent 37px); }
-.trash-restored { margin-left: 10px; font: 700 10px var(--noct-font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--noct-primary); border: 1px solid var(--noct-primary); padding: 1px 5px; vertical-align: 2px; }
+.trash-restored { display: inline-block; margin-left: 10px; font: 700 10px/12px var(--noct-font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--noct-primary); border: 1px solid var(--noct-primary); padding: 1px 5px; vertical-align: middle; }
+.trash-row b { padding: 2px 0; }
 .trash-row.blocked .trash-main b .trash-restored { opacity: 1; }
 .trash-row small.trash-note.done { color: var(--noct-text-muted); }
+/* Várias fotos marcadas (Shift+← → ou Shift+clique) */
+.carousel .frame.multi .frame-img { outline: 2px solid var(--noct-info); outline-offset: -2px; }
+.carousel .frame.multi { opacity: 1; }

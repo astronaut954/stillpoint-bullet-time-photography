@@ -1060,6 +1060,16 @@ projeto num HD externo.
       "In the project <nome>".
 - [ ] Delete permanently num projeto: o aviso diz que leva junto os itens da lixeira dele; apaga a pasta escondida de vez.
 
+## 30. Várias fotos e o Delete (2.15.0)
+
+- [ ] Com uma sessão aberta, ← → trocam a foto; Shift+← → marcam várias (borda azul); Shift+clique numa miniatura
+      também marca o intervalo; um clique simples desmarca.
+- [ ] Depois de usar ← → (ou clicar numa miniatura), a tecla Delete apaga a(s) foto(s): "Delete 3 photos?"; um
+      Cmd+Z traz todas de volta. Voltando às sessões (↑ ↓ ou clique numa sessão), o Delete volta a apagar a sessão.
+- [ ] Botão direito numa das fotos marcadas: "n photos selected" e "Delete n photos…".
+- [ ] Tela cheia da sessão: o Tab circula só pelos botões da tela cheia (não vai para a tela de trás).
+- [ ] Trash: a etiqueta "✓ Restored" aparece inteira (sem a linha de cima cortada).
+
 ## 29. Lixeira em árvore e "Restored" (2.15.0)
 
 - [ ] Projeto apagado com sessões/fotos na lixeira dele, e sessão apagada depois de fotos dela: na Trash fica em
