@@ -1163,6 +1163,13 @@ projeto num HD externo.
 - [ ] Arrastando uma sessão de "Not in project": os pontilhados do botão do projeto e da lixeira ficam colados em
       cada botão, sem encostar um no outro.
 
+## 32. Tela cheia toca sozinha (2.15.1)
+
+- [ ] Entrar na tela cheia (F, ou o botão ao lado de "Delete session"): a sessão começa a tocar.
+- [ ] Tocando, clicar em outra sessão na barra da esquerda: a nova sessão já entra tocando.
+- [ ] Pausar (espaço ou o botão de pausa) e clicar em outra sessão: a nova fica parada.
+- [ ] Sair da tela cheia: para de tocar.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |

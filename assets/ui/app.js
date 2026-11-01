@@ -1616,6 +1616,8 @@
   }
 
   function showSession(session, keepIndex) {
+    // Tela cheia tocando: a sessão seguinte continua tocando (pausada, fica pausada)
+    const resume = !!playTimer && isFullscreen();
     stopPlay();
     if (editing.on) setEditing(false);
     currentSession = session;
@@ -1631,6 +1633,7 @@
     const items = sessionItems(session);
     sessionTitles = items.map((i) => i.title).join("|");
     sessionGallery.setItems(items, keepIndex ? sessionGallery.index : 0);
+    if (resume && isFullscreen() && !editing.on) togglePlay();
   }
 
   // As câmeras podem conectar depois que a sessão já está na tela: atualiza os nomes
@@ -1710,10 +1713,13 @@
       stopPlay();
       if (editing.on) stopReorder(false);
     }
+    const entering = on && !isFullscreen();
     sessionsPanel.classList.toggle("fullscreen", on);
     if (!on) setSideWide(false);
     hideRailTip();
     sessionGallery.setActions(currentActions());
+    // Entrar na tela cheia já toca a sessão
+    if (entering && !playTimer && !editing.on) togglePlay();
   }
   function isFullscreen() {
     return sessionsPanel.classList.contains("fullscreen");
