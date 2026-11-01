@@ -646,11 +646,58 @@
     return cameras.filter((c) => c.order > 0);
   }
 
+  // ---- Teclado na lista de câmeras (a mesma lógica do Camera settings) ----
+  // O Tab passa só pelos botões de uma linha (a última usada, ou a primeira); ↑ ↓ vão para o mesmo
+  // botão na câmera de cima/de baixo.
+  let camTabRow = "";
+  const camBtnKey = (b) => b.title || b.getAttribute("aria-label") || b.textContent.trim();
+  function camRowButtons(li) { return [...li.querySelectorAll(".camera-actions button")]; }
+  function camKeyOf(node) {
+    const li = node && node.closest && node.closest("#" + ui.cameraList.id + " li[data-name]");
+    if (!li || node.tagName !== "BUTTON") return null;
+    return { name: li.dataset.name, key: camBtnKey(node), index: camRowButtons(li).indexOf(node) };
+  }
+  function camRows() { return [...ui.cameraList.querySelectorAll("li[data-name]")].filter((li) => camRowButtons(li).length); }
+  function camRoving() {
+    const rows = camRows();
+    const row = rows.find((li) => li.dataset.name === camTabRow) || rows[0];
+    rows.forEach((li) => camRowButtons(li).forEach((b) => { b.tabIndex = li === row ? 0 : -1; }));
+  }
+  function camFocus(name, key, index) {
+    const li = camRows().find((x) => x.dataset.name === name);
+    if (!li) return false;
+    const list = camRowButtons(li), live = list.filter((b) => !b.disabled);
+    if (!live.length) return false;
+    // O mesmo botão; se estiver desligado (ex.: Move up na primeira), o mais próximo
+    let t = list.find((b) => camBtnKey(b) === key && !b.disabled);
+    if (!t) t = live.reduce((best, b) => Math.abs(list.indexOf(b) - index) < Math.abs(list.indexOf(best) - index) ? b : best, live[0]);
+    camTabRow = name;
+    camRoving();
+    t.focus({ preventScroll: false });
+    return true;
+  }
+  document.addEventListener("focusin", (e) => {
+    const k = camKeyOf(e.target);
+    if (k && k.name !== camTabRow) { camTabRow = k.name; camRoving(); }
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+    const k = camKeyOf(document.activeElement);
+    if (!k) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    const rows = camRows();
+    const step = e.key === "ArrowDown" ? 1 : -1;
+    for (let i = rows.findIndex((li) => li.dataset.name === k.name) + step; i >= 0 && i < rows.length; i += step)
+      if (camFocus(rows[i].dataset.name, k.key, k.index)) return;
+  }, true);
+
   function renderCameras() {
     if (typeof renderTiming === "function") setTimeout(renderTiming, 0);
     // Onde cada linha estava: depois de redesenhar, as que mudaram de lugar deslizam até o novo
     const was = {};
     ui.cameraList.querySelectorAll("li[data-name]").forEach((li) => { if (li.dataset.name) was[li.dataset.name] = li.getBoundingClientRect().top; });
+    // Foco do teclado numa linha: volta para o mesmo botão da mesma câmera depois de redesenhar
+    const focusWas = camKeyOf(document.activeElement);
     ui.cameraList.innerHTML = "";
     const placed = placedCameras();
     const empty = cameras.length === 0;
@@ -659,6 +706,8 @@
 
     placed.forEach((cam, index) => ui.cameraList.appendChild(cameraRow(cam, index, placed.length)));
     cameras.filter((c) => c.order === 0).forEach((cam) => ui.cameraList.appendChild(cameraRow(cam, -1, placed.length)));
+    camRoving();
+    if (focusWas) camFocus(focusWas.name, focusWas.key, focusWas.index);
     $("cameraCount").textContent = cameras.length;
     $("cameraCount").classList.toggle("hidden", cameras.length === 0);
     fitCameraList();
@@ -3512,7 +3561,7 @@
         toast(e.error || "A camera did not accept the change.", 8000);
         log("A camera setting was not changed.", "warn", e.error);
       }
-      if (!$("camSettingsOverlay").classList.contains("hidden")) renderCamSettings();
+      if (!$("camSettingsOverlay").classList.contains("hidden")) csRender();
     },
   };
 
@@ -3943,7 +3992,6 @@
       !x.disabled && x.tabIndex >= 0 && x.getClientRects().length > 0 && getComputedStyle(x).visibility !== "hidden" && !x.closest(".hidden"));
   }
   function tabScope() {
-    if (openMenu) return openMenu;
     const open = [...document.querySelectorAll(".overlay:not(.hidden)")].filter((o) => o.getClientRects().length > 0);
     if (!open.length) return ui.log.classList.contains("expanded") ? ui.log : document.body;  // Activity aberto: só ele
     return open.reduce((top, o) => ((parseInt(getComputedStyle(o).zIndex, 10) || 0) >= (parseInt(getComputedStyle(top).zIndex, 10) || 0) ? o : top));
@@ -3951,12 +3999,15 @@
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Tab" || e.metaKey || e.ctrlKey || e.altKey || e.defaultPrevented) return;
     if (selectMenu) closeSelectMenu();  // lista aberta: fecha e segue para o próximo
+    // Menu aberto (ex.: o do projeto): o Tab fecha o menu e segue a partir do botão que o abriu
+    let fromMenu = null;
+    if (openMenu) { fromMenu = openMenu.anchor && openMenu.anchor.isConnected ? openMenu.anchor : null; closeMenu(); }
     const scope = tabScope();
     const list = focusables(scope);
     if (!list.length) return;
     e.preventDefault();
     document.documentElement.classList.add("kbd-focus");
-    let a = document.activeElement;
+    let a = fromMenu || document.activeElement;
     // Dentro da caixa do ±: o Tab sai dela e segue a partir do botão ± (a caixa fecha)
     const pop = $("csStylePop");
     if (pop && pop.contains(a) && csStylePop) a = document.querySelector('.cs-more[data-style-cam="' + csStylePop.camera + '"]') || a;
@@ -3989,6 +4040,7 @@
     const m = selectMenu; selectMenu = null;
     m.sel.classList.remove("open");
     m.remove();
+    if (csRenderLater) setTimeout(() => { if (csRenderLater && !$("camSettingsOverlay").classList.contains("hidden")) csRender(); }, 0);
   }
   function appSelect(sel) {
     const open = () => {
@@ -4372,9 +4424,10 @@
 
   // Redesenha, mas não com uma lista aberta (a lista fecharia sozinha): espera sair dela
   function csRender() {
-    const a = document.activeElement;
-    const pop = $("csStylePop");
-    if (a && a.tagName === "SELECT" && ($("csBody").contains(a) || (pop && pop.contains(a)))) { csRenderLater = true; return; }
+    // Só espera com a lista do app aberta (redesenhar sumiria com ela). Com o foco numa caixa,
+    // redesenha já: o foco volta para o mesmo lugar (antes esperava o foco sair, e com o teclado
+    // o valor novo não aparecia até sair da caixa)
+    if (selectMenu) { csRenderLater = true; return; }
     csRenderLater = false;
     renderCamSettings();
   }
@@ -5172,8 +5225,10 @@
     const left = Math.min(x + 2, window.innerWidth - m.offsetWidth - 8);
     const top = Math.min(y + 2, window.innerHeight - m.offsetHeight - 8);
     m.style.left = Math.max(8, left) + "px"; m.style.top = Math.max(8, top) + "px";
+    m.anchor = document.activeElement !== document.body ? document.activeElement : null;
     openMenu = m;
     armMenuClose(m);
+    menuKeyboardStart(m);
   }
   function buildMenu(items) {
     closeMenu();
@@ -5205,10 +5260,39 @@
     m.style.top = Math.round(r.bottom + 6) + "px";
     if (align === "right") m.style.right = Math.round(window.innerWidth - r.right) + "px";
     else m.style.left = Math.round(Math.min(r.left, window.innerWidth - m.offsetWidth - 12)) + "px";
+    m.anchor = anchor;
     openMenu = m;
     armMenuClose(m);
+    menuKeyboardStart(m);
   }
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && openMenu) closeMenu(); });
+  // Teclado nos menus do app: aberto pelo teclado, o foco vai para a primeira opção; ↑ ↓ (Home/End)
+  // andam pelas opções, Enter escolhe, Esc fecha e volta para o botão; o Tab fecha e segue (tratador do Tab)
+  function menuItems(m) { return [...m.querySelectorAll("button")].filter((b) => !b.disabled && b.getClientRects().length > 0); }
+  function menuKeyboardStart(m) {
+    if (!document.documentElement.classList.contains("kbd-focus")) return;
+    const first = menuItems(m).find((b) => !b.classList.contains("project-menu-clear")) || menuItems(m)[0];
+    if (first) first.focus();
+  }
+  document.addEventListener("keydown", (e) => {
+    if (!openMenu || selectMenu) return;
+    const m = openMenu;
+    if (e.key === "Escape") {
+      e.preventDefault(); e.stopImmediatePropagation();
+      const anc = m.anchor; closeMenu();
+      if (anc && anc.isConnected) anc.focus();
+      return;
+    }
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp" && e.key !== "Home" && e.key !== "End") return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    document.documentElement.classList.add("kbd-focus");
+    const list = menuItems(m);
+    if (!list.length) return;
+    const i = list.indexOf(document.activeElement);
+    const j = e.key === "Home" ? 0 : e.key === "End" ? list.length - 1
+      : i < 0 ? (e.key === "ArrowDown" ? 0 : list.length - 1)
+      : Math.max(0, Math.min(list.length - 1, i + (e.key === "ArrowDown" ? 1 : -1)));
+    list[j].focus();
+  }, true);
   function projectMenuItems(withCurrent) {
     const items = [];
     if (project.open) {
@@ -5258,7 +5342,7 @@
       }
       items.push({ label: project.open ? "Switch project…" : "Open project…", onClick: pickProject });  // a mesma janela de recentes do "Switch…"
       items.push({ label: "New project…", onClick: newProject });
-      if (project.open) items.push({ label: "Close project", onClick: () => { const name = project.name; Promise.resolve(window.projectClose()).then((r) => { toast("Project closed: " + name + " (the sessions stay in its folder)"); projectResult(r); }); } });
+      if (project.open) items.push({ label: "Close project", onClick: closeProjectUndoable });
       popupMenu(anchor, items, align);
     });
   }
@@ -5560,7 +5644,19 @@
           : (r.project ? "There is already a project named \"" + v + "\" in " + shortPath(r.folder) + ". Open it from Recent or choose another name."
                        : "There is already a folder named \"" + v + "\" in " + shortPath(r.folder) + ". Choose another name."));
       },
-      (v) => callProject("projectNew", v, base).then(projectResult),
+      (v) => {
+        const before = project.open ? project.folder : "";
+        return callProject("projectNew", v, base).then((r) => {
+          projectResult(r);
+          // Desfazer: volta ao projeto de antes (ou a nenhum); a pasta criada fica no disco
+          if (r && r.project && r.project.open && !r.error) {
+            const made = r.project.folder, name = r.project.name;
+            recordAction({ label: "New project " + name,
+              undo: () => (before ? Promise.resolve(window.projectOpen(before)) : Promise.resolve(window.projectClose())).then((x) => { projectResult(x); return !(x && x.error); }),
+              redo: () => Promise.resolve(window.projectOpen(made)).then((x) => { projectResult(x); return !(x && x.error); }) });
+          }
+        });
+      },
       { extra: { label: "Choose another folder…", keepOpen: typeof window.projectChooseParent === "function", onClick: () => {
         if (typeof window.projectChooseParent !== "function") { callProject("projectNew", "").then(projectResult); return; }  // app antigo
         Promise.resolve(window.projectChooseParent(base || projectsFolder)).then((r) => {
@@ -5576,6 +5672,17 @@
       $("promptReset").classList.add("hidden");
       $("promptInput").focus();
     };
+  }
+  // Fechar o projeto com desfazer (Ctrl/Cmd+Z abre de novo; refazer fecha outra vez)
+  function closeProjectUndoable() {
+    const name = project.name, folder = project.folder;
+    const close = () => Promise.resolve(window.projectClose()).then((r) => { toast("Project closed: " + name + " (the sessions stay in its folder)"); projectResult(r); return !(r && r.error); });
+    close().then((ok) => {
+      if (!ok) return;
+      recordAction({ label: "Close project " + name,
+        undo: () => Promise.resolve(window.projectOpen(folder)).then((r) => { projectResult(r); return !(r && (r.error || r.notProject)); }),
+        redo: close });
+    });
   }
   function clearRecentProjects(all) {
     const keep = all.filter((f) => project.open && f === project.folder);
@@ -5733,7 +5840,7 @@
   $("projectCloseProjectBtn").addEventListener("click", () => {
     dialog("Close the project?", "The project's sessions leave the list (they stay in " + project.folder + "; nothing is deleted). New sessions go back to staying in the app until you save them. You can open the project again any time.", [
       { label: "Cancel" },
-      { label: "Close project", primary: true, onClick: () => { const name = project.name; closeProjectWindow(); Promise.resolve(window.projectClose()).then((r) => { toast("Project closed: " + name + " (the sessions stay in its folder)"); projectResult(r); }); } },
+      { label: "Close project", primary: true, onClick: () => { closeProjectWindow(); closeProjectUndoable(); } },
     ]);
   });
   $("projectRemoveBtn").addEventListener("click", () => {

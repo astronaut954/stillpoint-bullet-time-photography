@@ -887,6 +887,15 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) serve para tudo, menos para a impress
       ↑ ↓ andam entre as listas dela; Enter abre a lista e ↑ ↓ passam a andar pelas opções. Depois de
       escolher, a caixa continua aberta e o foco fica na mesma lista. Tab sai da caixa (ela fecha) e segue
       para o próximo item depois do "±". Esc fecha e o foco volta para o "±".
+- [ ] Caixa do "±": depois de escolher um valor com o teclado, o valor novo aparece assim que a câmera
+      confirma (não volta para o anterior) e o foco continua na mesma lista.
+- [ ] Caixas de marcar do Save sessions e da janela Project: com o Tab, o quadrado ganha o contorno verde.
+- [ ] Ctrl/Cmd+Z depois de "Close project" abre o projeto de novo (refazer fecha). Depois de "New project…",
+      desfazer volta ao projeto de antes (ou a nenhum); a pasta criada continua no disco.
+- [ ] Menu do projeto (botão do projeto, no alto à esquerda): aberto com Enter, ↑ ↓ andam pelas opções,
+      Enter escolhe, Esc fecha e volta ao botão; o Tab fecha o menu e vai para o próximo botão.
+- [ ] Lista de câmeras: o Tab passa só pelos botões de uma câmera (Identify, setas de mover); ↑ ↓ vão para
+      o mesmo botão na câmera de cima/de baixo. Depois de mover uma câmera com Enter, o foco acompanha a câmera.
 - [ ] Confirmações (ex.: "Calibrate with chart"): Enter aperta o botão que está com o contorno verde
       (Cancel, Open chart ou Start), não sempre o principal.
 - [ ] Pitch test: Enter numa opção muda a opção e o foco continua nela; o próximo Tab segue dali.
