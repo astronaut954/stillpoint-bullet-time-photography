@@ -40,7 +40,7 @@
       <button id="soundBtn" class="btn btn-secondary btn-small btn-icon sound-btn" title="Sound of the countdown and the shots: on" aria-label="Sound"><svg width='16' height='16' viewBox='0 0 24 24' fill='currentColor' aria-hidden='true'><path class='spk' d='M3 9v6h4l5 4V5L7 9H3z'/><path class='w1' d='M16.5 12a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4z'/><path class='w2' d='M14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z'/><path class='x' d='M15.2 9.2l5.6 5.6M20.8 9.2l-5.6 5.6' stroke='currentColor' stroke-width='2.2' fill='none' stroke-linecap='round'/></svg></button>
       <button id="pitchBtn" class="btn btn-secondary btn-small btn-icon" title="Lenticular pitch test: a sheet to measure the real LPI of your lens sheet with your printer" aria-label="Lenticular pitch test"></button>
       <button id="liveBtn" class="btn btn-secondary btn-small" title="Big view of the shoot for a second monitor: countdown, cameras firing and the sequence at the end">Live view</button>
-      <button id="saveBtn" class="btn btn-primary btn-small" disabled>Save sessions</button>
+      <button id="saveBtn" class="btn btn-primary btn-small" disabled>Export sessions</button>
       <!-- Menu do app no Windows (no Mac ele fica na barra de cima do sistema) -->
       <div class="app-menu-wrap">
         <button id="menuBtn" class="btn btn-small btn-secondary btn-icon hidden" title="Menu" aria-label="Menu" aria-haspopup="menu" aria-expanded="false"></button>
@@ -66,13 +66,9 @@
       <aside class="session-folders">
         <div class="sessions-head">
           <h2>Sessions <span id="sessionCount" class="count hidden">0</span></h2>
-          <!-- Selecionar várias (etapa da lixeira): caixas de marcar em cada sessão -->
-          <button id="sessionSelectBtn" class="btn btn-secondary btn-small hidden" title="Select several sessions (or Cmd/Ctrl+click and Shift+click)">Select</button>
           <button id="projectWindowBtn" class="btn btn-secondary btn-small btn-icon hidden" title="Project window" aria-label="Project window"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1.5" y="2.5" width="11" height="9"/><path d="M1.5 5.5h11M4 8h2.5M4 10h4"/></svg></button>
         </div>
-        <div id="sessionSelectHead" class="session-select-head hidden"><button id="sessionSelectAll" class="btn btn-link btn-small">Select all</button><button id="sessionSelectDone" class="btn btn-secondary btn-small">Done</button></div>
         <ul id="sessionList" class="folder-list"></ul>
-        <div id="sessionSelectBar" class="session-select-bar hidden"><span id="sessionSelectCount"></span><div id="sessionSelectActions" class="session-select-actions"></div></div>
         <p id="noSessions" class="empty">None yet.</p>
       </aside>
       <div class="session-viewer">
@@ -370,7 +366,7 @@
         <label id="exportEditedLabel" class="log-option hidden" title="When a session has edited photos in the project's Edited folder, use them instead of the originals"><input id="exportEdited" type="checkbox" checked> Use edited photos when available</label>
         <button id="exportCancel" class="btn btn-secondary">Cancel</button>
         <button id="exportPitch" class="btn btn-secondary" title="A sheet to measure the real LPI of your lens sheet with your printer (Lenticular)">Print pitch test</button>
-        <button id="exportConfirm" class="btn btn-primary">Save</button>
+        <button id="exportConfirm" class="btn btn-primary">Export</button>
       </div>
     </div>
   </div>
@@ -425,7 +421,7 @@
   <!-- Salvar: andamento -->
   <div id="progressOverlay" class="overlay hidden">
     <div class="dialog export-progress-dialog">
-      <h3 id="progressTitle">Saving</h3>
+      <h3 id="progressTitle">Exporting</h3>
       <div class="export-progress-body">
         <div id="progressStep" class="export-note"></div>
         <div class="update-bar"><div id="progressBar"></div></div>

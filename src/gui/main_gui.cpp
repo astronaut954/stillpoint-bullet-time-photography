@@ -2057,7 +2057,7 @@ namespace
         {
             const auto args = ParseStringArgs(request);
             const std::string start = args.empty() ? std::string() : args[0];
-            const std::string folder = NativeWindow::ChooseFolder("Choose where to save your bullet time sessions", start);
+            const std::string folder = NativeWindow::ChooseFolder("Choose where to export your bullet time sessions", start);
             return Json("exportFolder").Add("folder", folder).Str();
         });
         // lenticularPitchTest(dpi, largura pol, altura pol, "flip"|"3d", centro, passo, pasta):
@@ -2987,7 +2987,7 @@ namespace
             const bool exitAfter = !args.empty() && args[0] == "exit";
             const bool deleteRest = args.size() > 1 && args[1] == "delete";
             const std::vector<std::string> names(args.begin() + std::min<size_t>(args.size(), 2), args.end());
-            const std::string folder = NativeWindow::ChooseFolder("Choose where to save your bullet time sessions");
+            const std::string folder = NativeWindow::ChooseFolder("Choose where to export your bullet time sessions");
             if (folder.empty())
             {
                 listener.Emit(Json("saveCancelled"));
@@ -3296,7 +3296,7 @@ namespace
                     report(1.0, "done");
                 }
                 if (error == "cancelled")
-                    error = "Saving was cancelled. The sessions that were not saved are still in the app.";
+                    error = "The export was cancelled. The sessions that were not exported are still in the app.";
                 if (done > 0)
                     Platform::OpenInFileManager(done == 1 ? savedTo.front() : std::filesystem::path(folder));
                 if (error.empty() && deleteRest)
@@ -3460,7 +3460,7 @@ namespace
                 folder = project.Exports().string();
             }
             else
-                folder = NativeWindow::ChooseFolder("Choose where to save your bullet time sessions");
+                folder = NativeWindow::ChooseFolder("Choose where to export your bullet time sessions");
             if (folder.empty())
             {
                 listener.Emit(Json("saveCancelled"));

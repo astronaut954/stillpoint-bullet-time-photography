@@ -1043,10 +1043,13 @@ projeto num HD externo.
 - [ ] Teclado: Tab chega no botão da lixeira; Enter abre; o Tab para numa linha só e ↑ ↓ trocam de linha
       (Restore / Delete now); Esc fecha e volta ao botão.
 
-## 27. Apagar várias sessões (2.15.0)
+## 27. Apagar várias sessões e o nome Export sessions (2.15.0)
 
-- [ ] Cmd+clique (Ctrl no Windows) numa sessão: ela e a aberta ficam marcadas (borda azul); embaixo da lista
-      aparece a barra "2 sessions selected" com Add to project / Remove from project (com projeto) e Delete….
+- [ ] O botão do rodapé e a janela se chamam "Export sessions"; o botão de confirmar diz "Export n sessions";
+      o andamento, "Exporting n sessions"; a etiqueta das sessões já exportadas, "✓ Exported"; o aviso ao
+      fechar, "Export your sessions before closing?" com "Export and close".
+
+- [ ] Cmd+clique (Ctrl no Windows) numa sessão: ela e a aberta ficam marcadas (borda azul).
 - [ ] Shift+clique marca o intervalo; Shift+↑ ↓ com o contorno numa sessão faz o mesmo pelo teclado.
 - [ ] Botão direito numa sessão marcada: "n sessions selected", Add n to project, Remove n from project,
       Delete n sessions….
@@ -1054,8 +1057,6 @@ projeto num HD externo.
       para a lixeira; aparecem na Trash; Cmd+Z traz todas de volta (um passo só).
 - [ ] Tecla Delete (ou Backspace) com o contorno na lista: apaga a seleção (ou só a sessão do contorno).
 - [ ] Esc desfaz a seleção; um clique simples numa sessão também (e abre a sessão).
-- [ ] Botão Select no topo da lista: aparecem caixas de marcar em cada sessão, Select all e Done; clicar numa
-      sessão marca/desmarca (não abre); Enter/Espaço marcam pelo teclado; Done sai e desmarca tudo.
 - [ ] Janela Project: marcar sessões e clicar em "Delete n sessions…" (ao lado de Remove from project): o mesmo
       aviso; vão para a lixeira do projeto.
 

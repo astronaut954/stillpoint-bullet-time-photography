@@ -220,7 +220,7 @@
 
   function ongoingText() {
     if (activity.closing) return "Closing";
-    if (activity.saving) return "Saving sessions";
+    if (activity.saving) return "Exporting sessions";
     if (busy) return activity.busyText || BUSY_TEXT[busyAction] || "Working";
     const connecting = cameras.filter((c) => c.state === "connecting" && !c.waiting);
     if (connecting.length) return "Connecting " + connecting.map((c) => cameraLabel(c.name, c.model)).join(" and ");
@@ -1006,7 +1006,7 @@
       (b.disabled = busy || b.dataset.locked === "1" || (sdkBusy && b.dataset.sdk === "1")));
 
     ui.saveBtn.disabled = sessions.length === 0;
-    ui.saveBtn.textContent = sessions.length ? "Save sessions (" + sessions.length + ")" : "Save sessions";
+    ui.saveBtn.textContent = sessions.length ? "Export sessions (" + sessions.length + ")" : "Export sessions";
     ui.sessionCount.textContent = sessions.length;
     ui.sessionCount.classList.toggle("hidden", sessions.length === 0);
     // A janela de atualização aberta acompanha o estado (ex.: libera "Update now")
@@ -1150,8 +1150,8 @@
   function savedTag() {
     const t = document.createElement("span");
     t.className = "saved-tag";
-    t.textContent = "✓ Saved";
-    t.title = "Already saved. It leaves the app when you close Stillpoint (the saved copy stays where you saved it).";
+    t.textContent = "✓ Exported";
+    t.title = "Already exported. It leaves the app when you close Stillpoint (the exported copy stays where you exported it).";
     return t;
   }
   // Etiqueta de sessão guardada no Project: "In project" ou "Edited n/m" (verde quando completa)
@@ -1175,12 +1175,11 @@
     return t;
   }
 
-  // ---- Várias sessões de uma vez (opções A, B e D, decisão do dono 2026-11-01) ----
-  // A: Cmd/Ctrl+clique marca/desmarca, Shift+clique (e Shift+↑ ↓) marca um intervalo; o botão direito
-  // e a tecla Delete agem em todas. B: o botão Select liga caixas de marcar em cada sessão. As duas
-  // usam a mesma seleção e a mesma barra de ações embaixo da lista.
+  // ---- Várias sessões de uma vez (opções A e D, decisão do dono 2026-11-01) ----
+  // Cmd/Ctrl+clique marca/desmarca, Shift+clique (e Shift+↑ ↓) marca um intervalo; o botão direito
+  // e a tecla Delete agem em todas. A janela Project tem o "Delete…" para as marcadas nela.
   const sessSel = new Set();
-  let selectMode = false, selAnchor = "";
+  let selAnchor = "";
   function visibleSessionRows() { return [...ui.sessionList.querySelectorAll("li.folder")].filter((x) => !x.classList.contains("hidden")); }
   function selectRange(from, to) {
     const names = visibleSessionRows().map((x) => x.dataset.name);
@@ -1190,36 +1189,15 @@
     sessSel.clear();
     for (let i = Math.min(a, b); i <= Math.max(a, b); i++) sessSel.add(names[i]);
   }
-  function setSelectMode(on) {
-    selectMode = on;
-    if (!on) sessSel.clear();
-    renderSessionList();
-  }
-  function selectionActive() { return selectMode || sessSel.size > 1; }
-  function renderSelectBar() {
-    [...sessSel].forEach((n) => { if (!sessions.some((x) => x.name === n)) sessSel.delete(n); });
-    $("sessionSelectBtn").classList.toggle("hidden", selectMode || sessions.length < 2);
-    $("sessionSelectHead").classList.toggle("hidden", !selectMode);
-    const bar = $("sessionSelectBar"), on = selectionActive();
-    bar.classList.toggle("hidden", !on);
-    if (!on) return;
-    const names = [...sessSel], list = names.map((n) => sessions.find((x) => x.name === n)).filter(Boolean);
-    $("sessionSelectCount").textContent = names.length ? plural(names.length, "session", "sessions") + " selected" : "Click the sessions to select them";
-    const box = $("sessionSelectActions"); box.innerHTML = "";
-    const outside = list.filter((x) => !x.inProject).map((x) => x.name), inside = list.filter((x) => x.inProject).map((x) => x.name);
-    if (project.open && outside.length) box.appendChild(button("Add to project", () => moveMany(outside, true)));
-    if (project.open && inside.length) box.appendChild(button("Remove from project", () => moveMany(inside, false)));
-    const del = button("Delete…", () => deleteMany(names), { kind: "btn-danger" });
-    del.disabled = !names.length;
-    box.appendChild(del);
-    $("sessionSelectAll").disabled = visibleSessionRows().every((x) => sessSel.has(x.dataset.name));
-  }
+  function clearSelection() { if (!sessSel.size) return; sessSel.clear(); renderSessionList(); }
+  function selectionActive() { return sessSel.size > 1; }
+  function pruneSelection() { [...sessSel].forEach((n) => { if (!sessions.some((x) => x.name === n)) sessSel.delete(n); }); }
   function moveMany(names, toProject) {
     applyMove(names, toProject).then((ok) => {
       if (!ok) return;
       recordAction({ label: (toProject ? "Add to project: " : "Remove from project: ") + plural(names.length, "session", "sessions"),
                      undo: () => applyMove(names, !toProject), redo: () => applyMove(names, toProject) });
-      if (!selectMode) sessSel.clear();
+      sessSel.clear();
       renderSessionList();
     });
   }
@@ -1236,7 +1214,7 @@
       { label: "Cancel" },
       { label: "Delete " + list.length + " sessions", danger: true, onClick: () => {
         const ns = list.map((x) => x.name);
-        selectMode = false; sessSel.clear();
+        sessSel.clear();
         toast(plural(ns.length, "session", "sessions") + " deleted");
         log("Deleted " + plural(ns.length, "session", "sessions") + ": " + ns.map((n) => sessionLabel(n).date).join(", "), "ok");
         ns.forEach((n) => flyToTrash(n, () => window.deleteSession(n)));
@@ -1257,10 +1235,6 @@
     items.push({ label: "Delete " + list.length + " sessions…", danger: true, onClick: () => deleteMany(names) });
     popupMenuAt(e.clientX, e.clientY, items);
   }
-  $("sessionSelectBtn").addEventListener("click", () => { if (currentSession) { sessSel.clear(); } setSelectMode(true); });
-  $("sessionSelectDone").addEventListener("click", () => setSelectMode(false));
-  $("sessionSelectAll").addEventListener("click", () => { visibleSessionRows().forEach((x) => sessSel.add(x.dataset.name)); renderSessionList(); });
-
   function focusRow(name) {
     const row = [...ui.sessionList.querySelectorAll("li.folder")].find((x) => x.dataset.name === name);
     if (!row) return;
@@ -1268,7 +1242,8 @@
     row.focus();
   }
   function renderSessionList() {
-    if (sessDrag) sessEndDrag(null);  // a linha arrastada vai sumir: termina o arraste
+    if (sessDrag) sessEndDrag(null);
+    pruneSelection();  // a linha arrastada vai sumir: termina o arraste
     ui.sessionList.innerHTML = "";
     ui.noSessions.classList.toggle("hidden", sessions.length > 0);
     const projectOpen = !!project.open;
@@ -1305,9 +1280,7 @@
       li.className = "folder" + (currentSession && currentSession.name === s.name ? " active" : "");
       li.dataset.name = s.name;
       if (projectOpen && !s.inProject && !notInProjectOpen) li.classList.add("hidden");
-      li.innerHTML = (selectMode ? '<label class="export-check"><input type="checkbox" tabindex="-1"><span class="save-check" aria-hidden="true"></span></label>' : icon("session", 16)) +
-        '<div><div class="folder-date"></div><div class="folder-meta"></div></div>';
-      if (selectMode) { const cb = li.querySelector("input"); cb.checked = sessSel.has(s.name); cb.addEventListener("click", (e) => e.preventDefault()); }
+      li.innerHTML = icon("session", 16) + '<div><div class="folder-date"></div><div class="folder-meta"></div></div>';
       if (sessSel.has(s.name) && selectionActive()) li.classList.add("multi");
       li.querySelector(".folder-date").textContent = s.label ? s.label + " · " + label.date : label.date;
       li.querySelector(".folder-meta").textContent = [plural(count, "photo", "photos"), label.detail].filter(Boolean).join(" · ");
@@ -1321,13 +1294,13 @@
           li.querySelector("div").appendChild(add);
         }
         // Segurar e arrastar: para o botão do projeto (barra de cima) = entra; para "Not in project" = sai
-        li.addEventListener("pointerdown", (e) => { if (selectMode || e.metaKey || e.ctrlKey || e.shiftKey) return; sessPointerDown(e, li, s); });
+        li.addEventListener("pointerdown", (e) => { if (e.metaKey || e.ctrlKey || e.shiftKey) return; sessPointerDown(e, li, s); });
       }
       li.addEventListener("contextmenu", (e) => {
         e.preventDefault();
         // Várias selecionadas e o clique numa delas: o menu age em todas
         if (sessSel.size > 1 && sessSel.has(s.name)) { multiSessionMenu(e); return; }
-        if (sessSel.size && !selectMode) { sessSel.clear(); renderSelectBar(); }
+        if (sessSel.size) { sessSel.clear(); visibleSessionRows().forEach((x) => x.classList.remove("multi")); }
         const x = e.clientX, y = e.clientY;
         // Relê a lista antes (fotos editadas podem ter chegado por fora) e abre com os dados novos
         Promise.resolve(window.listSessions()).then((list) => {
@@ -1337,11 +1310,10 @@
       });
       if (s.saved) {
         li.querySelector(".folder-meta").after(savedTag());
-        li.title = "Already saved. It leaves the app when you close Stillpoint (the saved copy stays where you saved it).";
+        li.title = "Already exported. It leaves the app when you close Stillpoint (the exported copy stays where you exported it).";
       }
       const toggle = () => { if (sessSel.has(s.name)) sessSel.delete(s.name); else sessSel.add(s.name); selAnchor = s.name; };
       li.addEventListener("click", (e) => {
-        if (selectMode) { toggle(); renderSessionList(); return; }
         if (e.metaKey || e.ctrlKey) {
           // A aberta entra na seleção junto (como no Finder)
           if (!sessSel.size && currentSession && currentSession.name !== s.name) sessSel.add(currentSession.name);
@@ -1357,27 +1329,26 @@
       li.addEventListener("keydown", (e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault(); e.stopPropagation();
-          if (selectMode) { toggle(); renderSessionList(); focusRow(s.name); } else showSession(s);
+          showSession(s);
           return;
         }
         if (e.key === "Delete" || e.key === "Backspace") {
           e.preventDefault(); e.stopPropagation();
-          if (sessSel.size > 1 || (selectMode && sessSel.size)) deleteMany([...sessSel]); else deleteSessionAsk(s);
+          if (sessSel.size > 1) deleteMany([...sessSel]); else deleteSessionAsk(s);
           return;
         }
-        if (e.key === "Escape" && selectionActive()) { e.preventDefault(); e.stopPropagation(); setSelectMode(false); focusRow(s.name); return; }
+        if (e.key === "Escape" && selectionActive()) { e.preventDefault(); e.stopPropagation(); clearSelection(); focusRow(s.name); return; }
         if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
         e.preventDefault(); e.stopPropagation();
         const rows = [...ui.sessionList.querySelectorAll("li.folder")].filter((x) => x.getClientRects().length > 0);
         const next = rows[rows.indexOf(li) + (e.key === "ArrowDown" ? 1 : -1)];
         if (!next) return;
-        if (e.shiftKey && !selectMode) {
+        if (e.shiftKey) {
           if (!selAnchor || !sessSel.size) selAnchor = s.name;
           selectRange(selAnchor, next.dataset.name);
           renderSessionList(); focusRow(next.dataset.name);
           return;
         }
-        if (selectMode) { focusRow(next.dataset.name); return; }
         sessSel.clear();
         const target = sessions.find((z) => z.name === next.dataset.name);
         if (target) showSession(target);
@@ -1386,7 +1357,6 @@
       ui.sessionList.appendChild(li);
     });
     if (projectOpen) addDivider();  // também sem sessões fora: é o alvo para tirar do projeto arrastando
-    renderSelectBar();
     // Uma sessão só no Tab: a aberta (ou a primeira visível)
     const rowsNow = [...ui.sessionList.querySelectorAll("li.folder")].filter((x) => !x.classList.contains("hidden"));
     const tabRow = rowsNow.find((x) => x.classList.contains("active")) || rowsNow[0];
@@ -1901,7 +1871,7 @@
       const l = st.lent, plan = lentPlan(l, sessionItems(session).filter((i) => i.previewable).length);
       parts.push("Lenticular " + lentPitch(l) + "/" + l.dpi + (plan.warn ? " ⚠" : ""));
     }
-    return parts.length ? "→ " + parts.join(" + ") : "Nothing to save";
+    return parts.length ? "→ " + parts.join(" + ") : "Nothing to export";
   }
   // "Originals + JPG", "Originals", "JPG" ("" = nada escolhido)
   function photosText(p) {
@@ -1993,7 +1963,7 @@
     const now = expSnapshot();
     if (expSnap !== null && now !== expSnap) {
       const before = expSnap;
-      recordAction({ label: "Save sessions settings", exportWin: true, undo: () => expApply(before), redo: () => expApply(now) });
+      recordAction({ label: "Export settings", exportWin: true, undo: () => expApply(before), redo: () => expApply(now) });
     }
     expSnap = now;
   }
@@ -2007,8 +1977,8 @@
   }
 
   function renderExport() {
-    $("exportTitle").textContent = exp.project ? "Export sessions" : "Save sessions";
-    $("exportSub").textContent = "Tick what each session should become: photos, a sequence, a lenticular print, or several. Each session is saved in one folder.";
+    $("exportTitle").textContent = "Export sessions";
+    $("exportSub").textContent = "Tick what each session should become: photos, a sequence, a lenticular print, or several. Each session is exported to one folder.";
     renderExportList();
     renderExportSettings();
     if (renderExportSettings.restoreScroll) renderExportSettings.restoreScroll();  // já com o conteúdo montado
@@ -2089,7 +2059,7 @@
     $("exportConfirm").disabled = chosen === 0 || noOutput || seqEmpty || lentBad || photosEmpty;
     // Folha de teste: só com o Lenticular marcado em alguma sessão escolhida
     $("exportPitch").disabled = !lentSession();
-    $("exportConfirm").textContent = chosen ? (exp.project ? "Export " : "Save ") + plural(chosen, "session", "sessions") : (exp.project ? "Export" : "Save");
+    $("exportConfirm").textContent = chosen ? "Export " + plural(chosen, "session", "sessions") : "Export";
     $("exportSelectAll").disabled = chosen === all.length;
     $("exportUnselectAll").disabled = chosen === 0;
     $("exportEditedLabel").classList.toggle("hidden", !exp.project);
@@ -2794,7 +2764,7 @@
       if (s.original && s.convert) {
         const o = settingsFor(session.name).outputs;
         const pre = o.sequence || o.lenticular ? "Photos/" : "";
-        box.appendChild(el("div", "export-note", "Both are saved, each in its own folder: " + pre + "Originals/ and " + pre + s.format.toUpperCase() + "/."));
+        box.appendChild(el("div", "export-note", "Both are exported, each in its own folder: " + pre + "Originals/ and " + pre + s.format.toUpperCase() + "/."));
       }
       if (!s.original && !s.convert) box.appendChild(el("div", "export-note exp-none", "Choose the originals, a format, or both."));
       if (s.convert && LOSSY_PHOTOS.includes(s.format)) {
@@ -3212,7 +3182,7 @@
       "Custom: a name you type; sessions with the same name get numbers (01, 02…).", "Name");
     // Onde salva: com Project aberto, <Project>/Exports; sem, <pasta do Stillpoint>/Exports.
     // "Choose another folder…" vale só para este salvamento (como no New project)
-    const dest = row("Save to");
+    const dest = row("Export to");
     const where = exp.dest || exp.destDefault || "";
     // Marcas de direção: o corte é no começo (rtl), mas o caminho continua lido da esquerda para a direita
     const path = el("span", "export-dest", where ? "\u200E" + where + "\u200E" : "…");
@@ -3299,20 +3269,20 @@
       const l = settingsFor(lentName).lent;
       dialog("Print a pitch test first?",
         "The lenticular print uses the LPI on the lens package (" + l.lpi + "). Real lens sheets differ a little with each printer, and a small " +
-        "difference makes the effect blurry or striped. A pitch test (one sheet) shows the real value: type it in \"Measured pitch\" and then save.", [
+        "difference makes the effect blurry or striped. A pitch test (one sheet) shows the real value: type it in \"Measured pitch\" and then export.", [
         { label: "Don't ask again", link: true, onClick: () => { pitchAsk = false; window.savePref("pitchAsk", "off"); exp.pitchChecked = true; confirmExport(); exp.pitchChecked = false; } },
         { label: "Print pitch test", onClick: () => openPitchTest(l) },
-        { label: "Save anyway", primary: true, onClick: () => { exp.pitchChecked = true; confirmExport(); exp.pitchChecked = false; } },
+        { label: "Export anyway", primary: true, onClick: () => { exp.pitchChecked = true; confirmExport(); exp.pitchChecked = false; } },
       ]);
       return;
     }
     const mixed = mixedFormats();
     if (mixed && !exp.formatsChecked) {
       dialog("Not every camera sent RAW",
-        "RAW: " + mixed.raw.join(", ") + ". JPEG only: " + mixed.jpeg.join(", ") + ". Saved as Original, each camera keeps the format it shot. " +
-        "To make them the same, set Quality in Camera settings before the next session, or save as JPG to convert all of them now.", [
+        "RAW: " + mixed.raw.join(", ") + ". JPEG only: " + mixed.jpeg.join(", ") + ". Exported as Original, each camera keeps the format it shot. " +
+        "To make them the same, set Quality in Camera settings before the next session, or export as JPG to convert all of them now.", [
         { label: "Back" },
-        { label: "Save as is", primary: true, onClick: () => { exp.formatsChecked = true; confirmExport(); exp.formatsChecked = false; } },
+        { label: "Export as is", primary: true, onClick: () => { exp.formatsChecked = true; confirmExport(); exp.formatsChecked = false; } },
       ]);
       return;
     }
@@ -3320,7 +3290,7 @@
     if (!left || exp.project) return runExport(false);  // Project: exportar nunca apaga nada
     dialog("Delete the sessions you did not select?",
       plural(left, "session was", "sessions were") + " not selected. You can delete " + (left === 1 ? "it" : "them") +
-      " after the others are saved, or keep " + (left === 1 ? "it" : "them") + " in the app to save later.", [
+      " after the others are exported, or keep " + (left === 1 ? "it" : "them") + " in the app to export later.", [
       { label: "Back" },
       { label: "Keep " + (left === 1 ? "it" : "them"), onClick: () => runExport(false) },
       { label: "Delete " + (left === 1 ? "it" : "them"), danger: true, onClick: () => runExport(true) },
@@ -3346,7 +3316,7 @@
       $("progressCancel").disabled = false;
     }
     const total = e.total || 1;
-    $("progressTitle").textContent = "Saving " + plural(total, "session", "sessions");
+    $("progressTitle").textContent = "Exporting " + plural(total, "session", "sessions");
     const stepNames = { photos: "reading the photos", "photos-save": "saving the photos", lenticular: "interlacing the lenticular print", "lenticular-save": "saving the lenticular print", done: "done" };
     const step = stepNames[e.step] || (/^(MP4|MOV|GIF|WEBP|AVIF)$/.test(e.step) ? "making the " + e.step : "converting to " + String(e.step).toUpperCase());
     $("progressStep").textContent = sessionLabel(e.session).date + " · " + step;
@@ -3359,10 +3329,10 @@
   function confirmExit(count) {
     // Salvando: continuar e fechar no fim, ou parar e fechar
     if (!$("progressOverlay").classList.contains("hidden")) {
-      dialog("Saving in progress",
-        "Stillpoint is saving your sessions. You can close when it finishes, or stop now: the sessions that were not saved yet stay in the app for next time.", [
+      dialog("Export in progress",
+        "Stillpoint is exporting your sessions. You can close when it finishes, or stop now: the sessions that were not exported yet stay in the app for next time.", [
         { label: "Stop and close", danger: true, onClick: () => { exp.closeWhenDone = "stop"; window.cancelExport(); } },
-        { label: "Close when done", primary: true, onClick: () => { exp.closeWhenDone = "wait"; toast("Stillpoint will close when saving finishes"); } },
+        { label: "Close when done", primary: true, onClick: () => { exp.closeWhenDone = "wait"; toast("Stillpoint will close when the export finishes"); } },
       ]);
       return;
     }
@@ -3372,20 +3342,20 @@
       $("exportOverlay").classList.add("hidden");
       stopPreview();
       const back = () => { $("exportOverlay").classList.remove("hidden"); renderExportSettings(); };
-      dialog("Save your sessions before closing?",
-        plural(count, "session is", "sessions are") + " not saved yet. If you close without saving, the photos are deleted.", [
+      dialog("Export your sessions before closing?",
+        plural(count, "session is", "sessions are") + " not exported yet. If you close without exporting, the photos are deleted.", [
         { label: "Delete and close", danger: true, onClick: () => window.exitApp(true) },
-        { label: "Continue saving", primary: true, onClick: back },
+        { label: "Continue exporting", primary: true, onClick: back },
       ]);
       return;
     }
     dialog(
-      "Save your sessions before closing?",
-      plural(count, "session is", "sessions are") + " not saved yet. If you close without saving, the photos are deleted.",
+      "Export your sessions before closing?",
+      plural(count, "session is", "sessions are") + " not exported yet. If you close without exporting, the photos are deleted.",
       [
         { label: "Cancel" },
         { label: "Delete and close", danger: true, onClick: () => window.exitApp(true) },
-        { label: "Save and close", primary: true, onClick: () => startSave(true) },
+        { label: "Export and close", primary: true, onClick: () => startSave(true) },
       ]
     );
   }
@@ -3393,14 +3363,14 @@
   function offerRecovery(count) {
     dialog(
       "Sessions from last time",
-      "The app closed before " + plural(count, "session was", "sessions were") + " saved. The photos are safe and shown in Sessions.",
+      "The app closed before " + plural(count, "session was", "sessions were") + " exported. The photos are safe and shown in Sessions.",
       [
         { label: "Delete", link: true, onClick: () => dialog("Delete the kept sessions?", "Their photos will be deleted permanently.", [
           { label: "Cancel" },
           { label: "Delete", danger: true, onClick: () => window.deleteAllSessions() },
         ]) },
         { label: "Later" },
-        { label: "Save", primary: true, onClick: () => startSave(false) },
+        { label: "Export", primary: true, onClick: () => startSave(false) },
       ]
     );
   }
@@ -3718,15 +3688,15 @@
     },
     saveCancelled() {
       if (exp.waiting) exp.waiting = false;  // a janela continua aberta como estava
-      else toast("Save cancelled");
+      else toast("Export cancelled");
     },
     exportConflict(e) {
       const labels = e.names.map((n) => sessionLabel(n).date);
       const one = e.names.length === 1;
-      dialog(one ? "This session was already saved here" : "Some sessions were already saved here",
+      dialog(one ? "This session was already exported here" : "Some sessions were already exported here",
         "The folder " + e.folder + " already has " + (one ? "a folder" : "folders") + " for " + labels.join(", ") + ". " +
-        "Keep both saves a new folder with (2) in the name. Replace deletes everything inside the existing " +
-        (one ? "folder" : "folders") + " and keeps only this new save.", [
+        "Keep both exports to a new folder with (2) in the name. Replace deletes everything inside the existing " +
+        (one ? "folder" : "folders") + " and keeps only this new export.", [
         { label: "Cancel", onClick: () => window.resolveExportConflict("cancel") },
         { label: "Keep both", onClick: () => window.resolveExportConflict("both") },
         { label: "Replace", danger: true, onClick: () => window.resolveExportConflict("replace") },
@@ -3753,20 +3723,20 @@
         toast(e.error, 8000);
         log(e.error, "error");
       } else {
-        const text = "Saved " + plural(e.count, "session", "sessions") + " to " + e.folder;
+        const text = "Exported " + plural(e.count, "session", "sessions") + " to " + e.folder;
         toast(text);
         log(text, "ok");
       }
       // Salvas (sem fechar o app): descartar do app ou manter
       if (saved.length) {
         const one = saved.length === 1;
-        dialog(one ? "Discard the saved session?" : "Discard the " + saved.length + " saved sessions?",
-          (one ? "The session was saved to " : "The sessions were saved to ") + e.folder + ". Discard " + (one ? "it" : "them") +
-          " from Stillpoint now, or keep " + (one ? "it" : "them") + " in the app until you close it. The saved copies are not touched.", [
+        dialog(one ? "Discard the exported session?" : "Discard the " + saved.length + " exported sessions?",
+          (one ? "The session was exported to " : "The sessions were exported to ") + e.folder + ". Discard " + (one ? "it" : "them") +
+          " from Stillpoint now, or keep " + (one ? "it" : "them") + " in the app until you close it. The exported copies are not touched.", [
           { label: "Keep until I close" },
           { label: "Discard from app", primary: true, onClick: () => {
             saved.forEach((name) => window.deleteSession(name));
-            log("Discarded " + plural(saved.length, "saved session", "saved sessions") + " from the app", "tech");
+            log("Discarded " + plural(saved.length, "exported session", "exported sessions") + " from the app", "tech");
           } },
         ]);
       }
@@ -6352,7 +6322,7 @@
   $("projectFolderBtn").addEventListener("click", () => window.projectOpenFolder());
   $("projectSwitchBtn").addEventListener("click", () => pickProject());  // a janela Project fica aberta por baixo
   $("projectCloseProjectBtn").addEventListener("click", () => {
-    dialog("Close the project?", "The project's sessions leave the list (they stay in " + project.folder + "; nothing is deleted). New sessions go back to staying in the app until you save them. You can open the project again any time.", [
+    dialog("Close the project?", "The project's sessions leave the list (they stay in " + project.folder + "; nothing is deleted). New sessions go back to staying in the app until you export them. You can open the project again any time.", [
       { label: "Cancel" },
       { label: "Close project", primary: true, onClick: () => { closeProjectWindow(); closeProjectUndoable(); } },
     ]);
@@ -6365,7 +6335,7 @@
   $("projectRemoveBtn").addEventListener("click", () => {
     const names = [...projectSel];
     dialog(names.length === 1 ? "Remove the session from the project?" : "Remove " + names.length + " sessions from the project?",
-      "The photos move back to the app (out of the project folder); nothing is deleted. They count as unsaved again.", [
+      "The photos move back to the app (out of the project folder); nothing is deleted. They count as not exported again.", [
       { label: "Cancel" },
       { label: "Remove", primary: true, onClick: () => applyMove(names, false).then((ok) => {
         renderProjectWindow();
