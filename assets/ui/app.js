@@ -1175,6 +1175,98 @@
     return t;
   }
 
+  // ---- Várias sessões de uma vez (opções A, B e D, decisão do dono 2026-11-01) ----
+  // A: Cmd/Ctrl+clique marca/desmarca, Shift+clique (e Shift+↑ ↓) marca um intervalo; o botão direito
+  // e a tecla Delete agem em todas. B: o botão Select liga caixas de marcar em cada sessão. As duas
+  // usam a mesma seleção e a mesma barra de ações embaixo da lista.
+  const sessSel = new Set();
+  let selectMode = false, selAnchor = "";
+  function visibleSessionRows() { return [...ui.sessionList.querySelectorAll("li.folder")].filter((x) => !x.classList.contains("hidden")); }
+  function selectRange(from, to) {
+    const names = visibleSessionRows().map((x) => x.dataset.name);
+    let a = names.indexOf(from), b = names.indexOf(to);
+    if (a < 0) a = b;
+    if (b < 0) return;
+    sessSel.clear();
+    for (let i = Math.min(a, b); i <= Math.max(a, b); i++) sessSel.add(names[i]);
+  }
+  function setSelectMode(on) {
+    selectMode = on;
+    if (!on) sessSel.clear();
+    renderSessionList();
+  }
+  function selectionActive() { return selectMode || sessSel.size > 1; }
+  function renderSelectBar() {
+    [...sessSel].forEach((n) => { if (!sessions.some((x) => x.name === n)) sessSel.delete(n); });
+    $("sessionSelectBtn").classList.toggle("hidden", selectMode || sessions.length < 2);
+    $("sessionSelectHead").classList.toggle("hidden", !selectMode);
+    const bar = $("sessionSelectBar"), on = selectionActive();
+    bar.classList.toggle("hidden", !on);
+    if (!on) return;
+    const names = [...sessSel], list = names.map((n) => sessions.find((x) => x.name === n)).filter(Boolean);
+    $("sessionSelectCount").textContent = names.length ? plural(names.length, "session", "sessions") + " selected" : "Click the sessions to select them";
+    const box = $("sessionSelectActions"); box.innerHTML = "";
+    const outside = list.filter((x) => !x.inProject).map((x) => x.name), inside = list.filter((x) => x.inProject).map((x) => x.name);
+    if (project.open && outside.length) box.appendChild(button("Add to project", () => moveMany(outside, true)));
+    if (project.open && inside.length) box.appendChild(button("Remove from project", () => moveMany(inside, false)));
+    const del = button("Delete…", () => deleteMany(names), { kind: "btn-danger" });
+    del.disabled = !names.length;
+    box.appendChild(del);
+    $("sessionSelectAll").disabled = visibleSessionRows().every((x) => sessSel.has(x.dataset.name));
+  }
+  function moveMany(names, toProject) {
+    applyMove(names, toProject).then((ok) => {
+      if (!ok) return;
+      recordAction({ label: (toProject ? "Add to project: " : "Remove from project: ") + plural(names.length, "session", "sessions"),
+                     undo: () => applyMove(names, !toProject), redo: () => applyMove(names, toProject) });
+      if (!selectMode) sessSel.clear();
+      renderSessionList();
+    });
+  }
+  // Apagar várias (a lista da tela principal e a janela Project): um aviso, um passo no Desfazer
+  function deleteMany(names, after) {
+    const list = names.map((n) => sessions.find((x) => x.name === n)).filter(Boolean);
+    if (!list.length) return;
+    if (list.length === 1) { deleteSessionAsk(list[0]); return; }
+    const photos = list.reduce((t, x) => t + sessionItems(x).length, 0);
+    const inProject = list.filter((x) => x.inProject).length;
+    dialog("Delete " + list.length + " sessions?", plural(photos, "photo", "photos") + " from " + list.map((x) => sessionLabel(x.name).date).join(", ") +
+      " go to the Trash (top bar), where they stay for " + trash.days + " days." +
+      (inProject ? " " + (inProject === list.length ? "They are" : inProject + " of them are") + " in the project; the project keeps them in its own trash." : ""), [
+      { label: "Cancel" },
+      { label: "Delete " + list.length + " sessions", danger: true, onClick: () => {
+        const ns = list.map((x) => x.name);
+        selectMode = false; sessSel.clear();
+        toast(plural(ns.length, "session", "sessions") + " deleted");
+        log("Deleted " + plural(ns.length, "session", "sessions") + ": " + ns.map((n) => sessionLabel(n).date).join(", "), "ok");
+        ns.forEach((n) => flyToTrash(n, () => window.deleteSession(n)));
+        recordAction({ label: "Delete " + plural(ns.length, "session", "sessions"),
+          undo: () => Promise.all(ns.map((n) => restoreSession(n))).then((r) => r.some(Boolean)),
+          redo: () => { ns.forEach((n) => window.deleteSession(n)); } });
+        if (after) after();
+      } },
+    ]);
+  }
+  function multiSessionMenu(e) {
+    const names = [...sessSel], list = names.map((n) => sessions.find((x) => x.name === n)).filter(Boolean);
+    const outside = list.filter((x) => !x.inProject).map((x) => x.name), inside = list.filter((x) => x.inProject).map((x) => x.name);
+    const items = [{ html: el("div", "project-menu-label", plural(list.length, "session", "sessions") + " selected") }];
+    if (project.open && outside.length) items.push({ label: "Add " + outside.length + " to project", onClick: () => moveMany(outside, true) });
+    if (project.open && inside.length) items.push({ label: "Remove " + inside.length + " from project", onClick: () => moveMany(inside, false) });
+    if (items.length > 1) items.push("-");
+    items.push({ label: "Delete " + list.length + " sessions…", danger: true, onClick: () => deleteMany(names) });
+    popupMenuAt(e.clientX, e.clientY, items);
+  }
+  $("sessionSelectBtn").addEventListener("click", () => { if (currentSession) { sessSel.clear(); } setSelectMode(true); });
+  $("sessionSelectDone").addEventListener("click", () => setSelectMode(false));
+  $("sessionSelectAll").addEventListener("click", () => { visibleSessionRows().forEach((x) => sessSel.add(x.dataset.name)); renderSessionList(); });
+
+  function focusRow(name) {
+    const row = [...ui.sessionList.querySelectorAll("li.folder")].find((x) => x.dataset.name === name);
+    if (!row) return;
+    ui.sessionList.querySelectorAll("li.folder").forEach((x) => { x.tabIndex = x === row ? 0 : -1; });
+    row.focus();
+  }
   function renderSessionList() {
     if (sessDrag) sessEndDrag(null);  // a linha arrastada vai sumir: termina o arraste
     ui.sessionList.innerHTML = "";
@@ -1213,7 +1305,10 @@
       li.className = "folder" + (currentSession && currentSession.name === s.name ? " active" : "");
       li.dataset.name = s.name;
       if (projectOpen && !s.inProject && !notInProjectOpen) li.classList.add("hidden");
-      li.innerHTML = icon("session", 16) + '<div><div class="folder-date"></div><div class="folder-meta"></div></div>';
+      li.innerHTML = (selectMode ? '<label class="export-check"><input type="checkbox" tabindex="-1"><span class="save-check" aria-hidden="true"></span></label>' : icon("session", 16)) +
+        '<div><div class="folder-date"></div><div class="folder-meta"></div></div>';
+      if (selectMode) { const cb = li.querySelector("input"); cb.checked = sessSel.has(s.name); cb.addEventListener("click", (e) => e.preventDefault()); }
+      if (sessSel.has(s.name) && selectionActive()) li.classList.add("multi");
       li.querySelector(".folder-date").textContent = s.label ? s.label + " · " + label.date : label.date;
       li.querySelector(".folder-meta").textContent = [plural(count, "photo", "photos"), label.detail].filter(Boolean).join(" · ");
       if (s.missing > 0) li.querySelector(".folder-meta").after(missingTag(s.missing));
@@ -1226,10 +1321,13 @@
           li.querySelector("div").appendChild(add);
         }
         // Segurar e arrastar: para o botão do projeto (barra de cima) = entra; para "Not in project" = sai
-        li.addEventListener("pointerdown", (e) => sessPointerDown(e, li, s));
+        li.addEventListener("pointerdown", (e) => { if (selectMode || e.metaKey || e.ctrlKey || e.shiftKey) return; sessPointerDown(e, li, s); });
       }
       li.addEventListener("contextmenu", (e) => {
         e.preventDefault();
+        // Várias selecionadas e o clique numa delas: o menu age em todas
+        if (sessSel.size > 1 && sessSel.has(s.name)) { multiSessionMenu(e); return; }
+        if (sessSel.size && !selectMode) { sessSel.clear(); renderSelectBar(); }
         const x = e.clientX, y = e.clientY;
         // Relê a lista antes (fotos editadas podem ter chegado por fora) e abre com os dados novos
         Promise.resolve(window.listSessions()).then((list) => {
@@ -1241,24 +1339,54 @@
         li.querySelector(".folder-meta").after(savedTag());
         li.title = "Already saved. It leaves the app when you close Stillpoint (the saved copy stays where you saved it).";
       }
-      li.addEventListener("click", () => showSession(s));
-      // Teclado: o Tab passa só por uma sessão (a aberta, ou a primeira); ↑ ↓ trocam de sessão
+      const toggle = () => { if (sessSel.has(s.name)) sessSel.delete(s.name); else sessSel.add(s.name); selAnchor = s.name; };
+      li.addEventListener("click", (e) => {
+        if (selectMode) { toggle(); renderSessionList(); return; }
+        if (e.metaKey || e.ctrlKey) {
+          // A aberta entra na seleção junto (como no Finder)
+          if (!sessSel.size && currentSession && currentSession.name !== s.name) sessSel.add(currentSession.name);
+          toggle(); renderSessionList(); return;
+        }
+        if (e.shiftKey) { selectRange(selAnchor || (currentSession && currentSession.name) || s.name, s.name); renderSessionList(); return; }
+        sessSel.clear(); selAnchor = s.name;
+        showSession(s);
+      });
+      // Teclado: o Tab passa só por uma sessão (a aberta, ou a primeira); ↑ ↓ trocam de sessão;
+      // Shift+↑ ↓ marcam um intervalo; Delete apaga (a seleção, ou esta); Esc desfaz a seleção
       li.tabIndex = -1;
       li.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); showSession(s); return; }
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault(); e.stopPropagation();
+          if (selectMode) { toggle(); renderSessionList(); focusRow(s.name); } else showSession(s);
+          return;
+        }
+        if (e.key === "Delete" || e.key === "Backspace") {
+          e.preventDefault(); e.stopPropagation();
+          if (sessSel.size > 1 || (selectMode && sessSel.size)) deleteMany([...sessSel]); else deleteSessionAsk(s);
+          return;
+        }
+        if (e.key === "Escape" && selectionActive()) { e.preventDefault(); e.stopPropagation(); setSelectMode(false); focusRow(s.name); return; }
         if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
         e.preventDefault(); e.stopPropagation();
         const rows = [...ui.sessionList.querySelectorAll("li.folder")].filter((x) => x.getClientRects().length > 0);
         const next = rows[rows.indexOf(li) + (e.key === "ArrowDown" ? 1 : -1)];
         if (!next) return;
+        if (e.shiftKey && !selectMode) {
+          if (!selAnchor || !sessSel.size) selAnchor = s.name;
+          selectRange(selAnchor, next.dataset.name);
+          renderSessionList(); focusRow(next.dataset.name);
+          return;
+        }
+        if (selectMode) { focusRow(next.dataset.name); return; }
+        sessSel.clear();
         const target = sessions.find((z) => z.name === next.dataset.name);
         if (target) showSession(target);
-        const again = [...ui.sessionList.querySelectorAll("li.folder")].find((x) => x.dataset.name === next.dataset.name);
-        if (again) { again.tabIndex = 0; again.focus(); }
+        focusRow(next.dataset.name);
       });
       ui.sessionList.appendChild(li);
     });
     if (projectOpen) addDivider();  // também sem sessões fora: é o alvo para tirar do projeto arrastando
+    renderSelectBar();
     // Uma sessão só no Tab: a aberta (ou a primeira visível)
     const rowsNow = [...ui.sessionList.querySelectorAll("li.folder")].filter((x) => !x.classList.contains("hidden"));
     const tabRow = rowsNow.find((x) => x.classList.contains("active")) || rowsNow[0];
@@ -6209,6 +6337,8 @@
     $("projectExportBtn").disabled = n === 0 || project.available === false;
     $("projectExportBtn").textContent = n ? "Export " + plural(n, "session", "sessions") + "…" : "Export…";
     $("projectRemoveBtn").disabled = n === 0;
+    $("projectDeleteBtn").disabled = n === 0;
+    $("projectDeleteBtn").textContent = n > 1 ? "Delete " + n + " sessions…" : n === 1 ? "Delete 1 session…" : "Delete…";
     $("projectSelectAll").disabled = n === list.length;
     $("projectUnselectAll").disabled = n === 0;
     const editedOnes = list.filter((s) => s.edited > 0 && s.edited >= s.photos.length);
@@ -6226,6 +6356,11 @@
       { label: "Cancel" },
       { label: "Close project", primary: true, onClick: () => { closeProjectWindow(); closeProjectUndoable(); } },
     ]);
+  });
+  $("projectDeleteBtn").addEventListener("click", () => {
+    const names = projectSessions().filter((s) => projectSel.has(s.name)).map((s) => s.name);
+    if (names.length === 1) { deleteSessionAsk(sessions.find((x) => x.name === names[0])); return; }
+    deleteMany(names, () => { names.forEach((n) => projectSel.delete(n)); });
   });
   $("projectRemoveBtn").addEventListener("click", () => {
     const names = [...projectSel];

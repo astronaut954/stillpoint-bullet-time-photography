@@ -66,9 +66,13 @@
       <aside class="session-folders">
         <div class="sessions-head">
           <h2>Sessions <span id="sessionCount" class="count hidden">0</span></h2>
+          <!-- Selecionar várias (etapa da lixeira): caixas de marcar em cada sessão -->
+          <button id="sessionSelectBtn" class="btn btn-secondary btn-small hidden" title="Select several sessions (or Cmd/Ctrl+click and Shift+click)">Select</button>
           <button id="projectWindowBtn" class="btn btn-secondary btn-small btn-icon hidden" title="Project window" aria-label="Project window"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1.5" y="2.5" width="11" height="9"/><path d="M1.5 5.5h11M4 8h2.5M4 10h4"/></svg></button>
         </div>
+        <div id="sessionSelectHead" class="session-select-head hidden"><button id="sessionSelectAll" class="btn btn-link btn-small">Select all</button><button id="sessionSelectDone" class="btn btn-secondary btn-small">Done</button></div>
         <ul id="sessionList" class="folder-list"></ul>
+        <div id="sessionSelectBar" class="session-select-bar hidden"><span id="sessionSelectCount"></span><div id="sessionSelectActions" class="session-select-actions"></div></div>
         <p id="noSessions" class="empty">None yet.</p>
       </aside>
       <div class="session-viewer">
@@ -398,6 +402,7 @@
       <div class="export-foot">
         <span id="projectHint" class="save-count"></span><span class="spacer"></span>
         <button id="projectRemoveBtn" class="btn btn-secondary">Remove from project</button>
+        <button id="projectDeleteBtn" class="btn btn-danger">Delete…</button>
         <button id="projectCloseBtn" class="btn btn-secondary">Close</button>
         <button id="projectExportBtn" class="btn btn-primary">Export…</button>
       </div>
