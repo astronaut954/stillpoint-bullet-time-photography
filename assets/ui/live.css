@@ -157,3 +157,6 @@
 .live-flash { position: absolute; inset: 0; z-index: 8; background: #eaffee; opacity: 0; pointer-events: none; }
 .live-flash.on { animation: live-flash .25s ease-out forwards; }
 @keyframes live-flash { from { opacity: .9; } to { opacity: 0; } }
+
+/* Teclado (Tab): contorno verde no item com o foco; nas caixas de marcar, o mesmo */
+html.kbd-focus .live :focus { outline: 2px solid var(--noct-primary); outline-offset: 2px; }

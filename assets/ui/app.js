@@ -303,6 +303,56 @@
   ui.toast.addEventListener("mouseenter", () => { clearTimeout(toast.timer); clearTimeout(toast.fadeTimer); ui.toast.classList.remove("fading"); });
   ui.toast.addEventListener("mouseleave", () => { if (!ui.toast.classList.contains("hidden")) armToast(); });
 
+  // Listas com linhas (janela Project, Switch project…): o Tab entra numa linha só; ↑ ↓ vão para o
+  // mesmo controle na linha de cima/de baixo
+  const ROVING = [];
+  function makeRoving(cfg) {
+    cfg.cur = "";
+    cfg.controls = cfg.controls || ((row) => [...row.querySelectorAll("input, button, select, textarea")]);
+    const live = (row) => cfg.controls(row).filter((x) => !x.disabled);
+    const rows = () => { const r = cfg.root(); return r ? cfg.rows(r).filter((row) => live(row).length) : []; };
+    cfg.where = (node) => {
+      const r = cfg.root();
+      if (!node || !r || !r.contains(node)) return null;
+      const row = rows().find((x) => x === node || x.contains(node));
+      return row ? { id: cfg.id(row), i: cfg.controls(row).indexOf(node) } : null;
+    };
+    cfg.apply = () => {
+      const all = rows();
+      const tabRow = all.find((x) => cfg.id(x) === cfg.cur) || all[0];
+      all.forEach((x) => cfg.controls(x).forEach((c) => { c.tabIndex = x === tabRow ? 0 : -1; }));
+    };
+    cfg.focusAt = (id, i) => {
+      const row = rows().find((x) => cfg.id(x) === id);
+      if (!row) return false;
+      const list = cfg.controls(row), ok = live(row);
+      let t = list[i] && !list[i].disabled ? list[i] : ok.reduce((b, c) => Math.abs(list.indexOf(c) - i) < Math.abs(list.indexOf(b) - i) ? c : b, ok[0]);
+      cfg.cur = id; cfg.apply();
+      t.focus();
+      t.scrollIntoView({ block: "nearest" });
+      return true;
+    };
+    cfg.move = (pos, step) => {
+      const all = rows();
+      for (let k = all.findIndex((x) => cfg.id(x) === pos.id) + step; k >= 0 && k < all.length; k += step)
+        if (cfg.focusAt(cfg.id(all[k]), pos.i)) { if (cfg.onMove) cfg.onMove(cfg.id(all[k]), pos.i); return; }
+    };
+    ROVING.push(cfg);
+    return cfg;
+  }
+  document.addEventListener("keydown", (e) => {
+    if ((e.key !== "ArrowDown" && e.key !== "ArrowUp") || selectMenu || openMenu || document.querySelector("body > .suggest")) return;
+    for (const cfg of ROVING) {
+      const pos = cfg.where(document.activeElement);
+      if (!pos) continue;
+      e.preventDefault(); e.stopImmediatePropagation();
+      cfg.move(pos, e.key === "ArrowDown" ? 1 : -1);
+      return;
+    }
+  }, true);
+  document.addEventListener("focusin", (e) => {
+    for (const cfg of ROVING) { const pos = cfg.where(e.target); if (pos && pos.id !== cfg.cur) { cfg.cur = pos.id; cfg.apply(); } }
+  });
   // ---- Desfazer / refazer (Ctrl+Z, Ctrl+Shift+Z; no Mac também com Cmd) ----
   // Cada ação registrada tem um texto e as duas funções (podem devolver uma Promise; false = não deu).
   const history = { undo: [], redo: [] };
@@ -340,6 +390,13 @@
       toast("Redo: " + a.label, TOAST_MS, { kind: "redo" });
     });
   }
+  // Cmd+` (Mac): próxima janela do app (principal ↔ Live); com Shift, a anterior. Pela tecla física
+  // (e.code), para funcionar também nos teclados em que o ` é tecla de acento
+  document.addEventListener("keydown", (e) => {
+    if (!e.metaKey || e.ctrlKey || e.altKey || e.code !== "Backquote" || typeof window.cycleWindows !== "function") return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    window.cycleWindows(e.shiftKey ? "1" : "0");
+  }, true);
   document.addEventListener("keydown", (e) => {
     if (!(e.metaKey || e.ctrlKey) || e.altKey || (e.key !== "z" && e.key !== "Z" && e.key !== "y")) return;
     const tag = e.target.tagName;
@@ -1799,8 +1856,13 @@
 
   // Sessões que a janela de salvar mostra: todas, ou só as do Project (Export… da janela Project)
   function exportable() { return exp.project ? sessions.filter((s) => s.inProject) : sessions; }
+  // Teclado: o Tab para numa sessão só; ↑ ↓ trocam de sessão (e mostram as opções dela, como o clique)
+  const exportRoving = makeRoving({ root: () => $("exportList"), rows: (r) => [...r.querySelectorAll("li.export-item")],
+    controls: (row) => [row.querySelector("input")], id: (row) => row.dataset.name,
+    onMove: (name, i) => { if (exp.active === name) return; exp.active = name; exp.photo = 0; renderExportList(); renderExportSettings(); exportRoving.focusAt(name, i); } });
   function renderExportList() {
     const list = $("exportList");
+    const focusWas = exportRoving.where(document.activeElement);
     list.innerHTML = "";
     exportable().forEach((s) => {
       const label = sessionLabel(s.name);
@@ -1832,8 +1894,12 @@
         renderExportList();
         renderExportSettings();
       });
+      li.dataset.name = s.name;
       list.appendChild(li);
     });
+    exportRoving.cur = exp.active;
+    exportRoving.apply();
+    if (focusWas) exportRoving.focusAt(focusWas.id, focusWas.i);
   }
 
   function updateExportCount() {
@@ -4022,74 +4088,38 @@
     } else next = e.shiftKey ? list[list.length - 1] : list[0];
     next.focus();
   }, true);
-  // Enter/Espaço num botão que redesenha a tela (ex.: modos de disparo): se o botão sumiu e o foco
-  // caiu no nada, volta para o item que ficou no mesmo lugar da ordem do Tab
+  // Enter/Espaço num controle que redesenha a tela (modos de disparo, formatos do Save sessions…)
+  // ou que fica desligado (ex.: Unselect all): o foco volta para o mesmo controle redesenhado (mesmo
+  // nome) ou, se ele não existir mais, para o que ficou no mesmo lugar da ordem do Tab
+  const focusSig = (x) => {
+    const lab = x.tagName === "INPUT" && x.closest("label");
+    return [x.tagName, x.type || "", x.getAttribute("aria-label") || "", x.title || "",
+            x.tagName === "INPUT" ? (lab ? lab.textContent.trim().slice(0, 60) : "") : (x.textContent || "").trim().slice(0, 60)].join("|");
+  };
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Enter" && e.key !== " ") return;
     const a = document.activeElement;
     if (!a || a === document.body) return;
-    const at = focusables(tabScope()).indexOf(a);
+    const before = focusables(tabScope());
+    const at = before.indexOf(a);
     if (at < 0) return;
+    const sig = focusSig(a), nth = before.filter((x) => focusSig(x) === sig).indexOf(a);
+    const kindA = a.tagName + "|" + (a.type || "") + "|" + [...a.classList].filter((c) => c !== "on" && c !== "current").sort().join(".");
     const fix = () => {
-      if (a.isConnected) return;
       const now = document.activeElement;
-      if (now && now !== document.body) return;
+      if (now && now !== document.body && now !== a) return;            // o foco já foi para outro lugar de propósito
       const list = focusables(tabScope());
-      const t = list[Math.min(at, list.length - 1)];
+      if (now === a && list.includes(a)) return;                          // continua onde estava
+      const same = list.filter((x) => focusSig(x) === sig);
+      // Sem o mesmo nome (ex.: o título mudou com o estado): o do mesmo tipo mais perto do lugar de antes
+      const kind = (x) => x.tagName + "|" + (x.type || "") + "|" + [...x.classList].filter((c) => c !== "on" && c !== "current").sort().join(".");
+      const alike = list.filter((x) => kind(x) === kindA);
+      const near = alike.length ? alike.reduce((best, x) => Math.abs(list.indexOf(x) - at) < Math.abs(list.indexOf(best) - at) ? x : best) : null;
+      const t = same[nth] || near || list[Math.min(at, list.length - 1)];
       if (t) t.focus({ preventScroll: true });
     };
     setTimeout(fix, 0); setTimeout(fix, 150); setTimeout(fix, 400);
   }, true);
-  // Listas com linhas (janela Project, Switch project…): o Tab entra numa linha só; ↑ ↓ vão para o
-  // mesmo controle na linha de cima/de baixo
-  const ROVING = [];
-  function makeRoving(cfg) {
-    cfg.cur = "";
-    cfg.controls = cfg.controls || ((row) => [...row.querySelectorAll("input, button, select, textarea")]);
-    const live = (row) => cfg.controls(row).filter((x) => !x.disabled);
-    const rows = () => { const r = cfg.root(); return r ? cfg.rows(r).filter((row) => live(row).length) : []; };
-    cfg.where = (node) => {
-      const r = cfg.root();
-      if (!node || !r || !r.contains(node)) return null;
-      const row = rows().find((x) => x === node || x.contains(node));
-      return row ? { id: cfg.id(row), i: cfg.controls(row).indexOf(node) } : null;
-    };
-    cfg.apply = () => {
-      const all = rows();
-      const tabRow = all.find((x) => cfg.id(x) === cfg.cur) || all[0];
-      all.forEach((x) => cfg.controls(x).forEach((c) => { c.tabIndex = x === tabRow ? 0 : -1; }));
-    };
-    cfg.focusAt = (id, i) => {
-      const row = rows().find((x) => cfg.id(x) === id);
-      if (!row) return false;
-      const list = cfg.controls(row), ok = live(row);
-      let t = list[i] && !list[i].disabled ? list[i] : ok.reduce((b, c) => Math.abs(list.indexOf(c) - i) < Math.abs(list.indexOf(b) - i) ? c : b, ok[0]);
-      cfg.cur = id; cfg.apply();
-      t.focus();
-      t.scrollIntoView({ block: "nearest" });
-      return true;
-    };
-    cfg.move = (pos, step) => {
-      const all = rows();
-      for (let k = all.findIndex((x) => cfg.id(x) === pos.id) + step; k >= 0 && k < all.length; k += step)
-        if (cfg.focusAt(cfg.id(all[k]), pos.i)) return;
-    };
-    ROVING.push(cfg);
-    return cfg;
-  }
-  document.addEventListener("keydown", (e) => {
-    if ((e.key !== "ArrowDown" && e.key !== "ArrowUp") || selectMenu || openMenu || document.querySelector("body > .suggest")) return;
-    for (const cfg of ROVING) {
-      const pos = cfg.where(document.activeElement);
-      if (!pos) continue;
-      e.preventDefault(); e.stopImmediatePropagation();
-      cfg.move(pos, e.key === "ArrowDown" ? 1 : -1);
-      return;
-    }
-  }, true);
-  document.addEventListener("focusin", (e) => {
-    for (const cfg of ROVING) { const pos = cfg.where(e.target); if (pos && pos.id !== cfg.cur) { cfg.cur = pos.id; cfg.apply(); } }
-  });
   // Enter numa caixa de marcar: marca/desmarca (o Mac só faz isso com o Espaço)
   document.addEventListener("keydown", (e) => {
     const t = e.target;

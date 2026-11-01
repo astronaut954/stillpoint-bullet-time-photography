@@ -902,6 +902,13 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) serve para tudo, menos para a impress
       para o mesmo controle na sessão de cima/de baixo.
 - [ ] Switch… (Open a project): o Tab para num projeto só; ↑ ↓ andam pelos projetos da lista (sem rolar a
       janela); Enter abre.
+- [ ] Mac: Cmd+` passa da janela principal para a Live (e para a Live 2), inclusive em tela cheia; Cmd+Shift+`
+      volta na ordem contrária. Também no menu Window → Cycle Through Windows.
+- [ ] Janela Live: o Tab passa pelas opções (Speed, Reverse loop, Mode, Layout, Group sounds, Display, Always on
+      top, Close…) com contorno verde; as opções ficam à mostra enquanto o foco estiver nelas; Enter aperta o
+      botão / marca a caixa e o foco continua nele.
+- [ ] Save sessions: o Tab para numa sessão só da lista; ↑ ↓ trocam de sessão (mostrando as opções dela).
+      Enter em qualquer opção (formatos, Preview, Unselect all…) mantém o foco nela ou no lugar dela.
 - [ ] Confirmações (ex.: "Calibrate with chart"): Enter aperta o botão que está com o contorno verde
       (Cancel, Open chart ou Start), não sempre o principal.
 - [ ] Pitch test: Enter numa opção muda a opção e o foco continua nela; o próximo Tab segue dali.

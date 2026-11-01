@@ -38,5 +38,6 @@ namespace NativeWindow
     void Hide(void*) {}
     bool SetFullScreen(void*, const std::string&) { return false; }
     void IdentifyScreens(int) {}
+    void CycleWindows(bool) {}
     void SetWindowed(void*, bool) {}
 }

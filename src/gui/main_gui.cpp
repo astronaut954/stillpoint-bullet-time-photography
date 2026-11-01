@@ -2267,6 +2267,18 @@ namespace
             });
         };
         bindSetSound(window);
+        // cycleWindows("1" = ao contrário): Cmd+` / Cmd+Shift+` vindo das páginas (tecla física,
+        // vale em qualquer teclado); passa entre a janela principal e as Live
+        auto bindCycle = [&](webview::webview& target)
+        {
+            target.bind("cycleWindows", [](const std::string& request) -> std::string
+            {
+                const auto args = ParseStringArgs(request);
+                NativeWindow::CycleWindows(!args.empty() && args[0] == "1");
+                return "null";
+            });
+        };
+        bindCycle(window);
 
         auto screensJson = []
         {
@@ -2366,6 +2378,7 @@ namespace
                 return "null";
             });
             bindSetSound(v);
+            bindCycle(v);
             bindPhotos(v, "getPhoto", store);
 
             // O botão de fechar só esconde a janela (ela volta com Live view)

@@ -250,4 +250,7 @@ namespace NativeWindow
 
     // No Windows o menu fica num botão dentro da página (assets/ui)
     void InstallAppMenu(void*, std::function<void(const std::string&)>) {}
+
+    // Cmd+` é do Mac; no Windows o sistema já troca de janela com Alt+Tab
+    void CycleWindows(bool) {}
 }

@@ -100,6 +100,11 @@ namespace
         const std::string& name = g_menuItems[static_cast<size_t>(tag)];
         // Quit: mesma pergunta do botão de fechar (sem o "performClose:", que apita
         // quando a página segura o fechamento para mostrar o aviso)
+        if (name == "cyclewindows" || name == "cyclewindowsback")
+        {
+            NativeWindow::CycleWindows(name == "cyclewindowsback");
+            return;
+        }
         if (name == "quit")
         {
             if (g_window && (!g_canClose || g_canClose()))
@@ -403,6 +408,10 @@ namespace NativeWindow
         AddItem(windowMenu, "Minimize", "performMiniaturize:", "m");
         AddItem(windowMenu, "Zoom", "performZoom:");
         AddSeparator(windowMenu);
+        // Cmd+`: passa entre a janela principal e as janelas Live (também em tela cheia).
+        // Cmd+Shift+` (ordem contrária) vem das páginas (tecla física, qualquer teclado).
+        AddAppItem(windowMenu, "Cycle Through Windows", "cyclewindows", "`");
+        AddSeparator(windowMenu);
         AddItem(windowMenu, "Bring All to Front", "arrangeInFront:");
         AddToBar(bar, windowMenu);
         Send<void>(app, "setWindowsMenu:", windowMenu);
@@ -418,5 +427,29 @@ namespace NativeWindow
         Send<void>(app, "setHelpMenu:", help);
 
         Send<void>(app, "setMainMenu:", bar);
+    }
+
+    void CycleWindows(bool backwards)
+    {
+        id app = Send<id>(GetClass("NSApplication"), "sharedApplication");
+        id all = Send<id>(app, "windows");
+        const unsigned long count = Send<unsigned long>(all, "count");
+        std::vector<id> list;
+        for (unsigned long i = 0; i < count; ++i)
+        {
+            id w = Send<id>(all, "objectAtIndex:", i);
+            // Só janelas de verdade e à mostra (fora o número do "Identify displays", que fica por cima de tudo)
+            if (Send<BOOL>(w, "isVisible") && Send<BOOL>(w, "canBecomeKeyWindow") && Send<long>(w, "level") < 100)
+                list.push_back(w);
+        }
+        if (list.size() < 2)
+            return;
+        id key = Send<id>(app, "keyWindow");
+        const auto it = std::find(list.begin(), list.end(), key);
+        const long n = static_cast<long>(list.size());
+        const long at = it == list.end() ? -1 : static_cast<long>(it - list.begin());
+        const long next = at < 0 ? 0 : ((at + (backwards ? -1 : 1)) % n + n) % n;
+        Send<void>(list[static_cast<size_t>(next)], "makeKeyAndOrderFront:", nullptr);
+        Send<void>(app, "activateIgnoringOtherApps:", YES);
     }
 }
