@@ -1025,7 +1025,7 @@ std::vector<TrashItem> PhotoStore::ListTrash() const
     return items;
 }
 
-bool PhotoStore::RestoreEntry(const fs::path& trash, std::string& errorMessage) const
+bool PhotoStore::RestoreEntry(const fs::path& trash, std::string& errorMessage, std::vector<std::string>* restored) const
 {
     std::error_code ec;
     auto info = ReadTrashInfo(trash);
@@ -1062,6 +1062,8 @@ bool PhotoStore::RestoreEntry(const fs::path& trash, std::string& errorMessage) 
             errorMessage = "Could not restore " + name + ": " + mec.message();
             return false;
         }
+        if (restored && !entry.is_directory(ec) && name.rfind('.', 0) != 0 && name != "session.json")
+            restored->push_back(name);
     }
     fs::remove_all(trash, ec);
     fs::remove_all(target / kPreviewFolder, ec);  // prévias podem estar com nomes antigos
@@ -1100,7 +1102,7 @@ static fs::path TrashPathFromId(const std::string& id, const fs::path& appTrash,
     return {};
 }
 
-bool PhotoStore::RestoreTrashItem(const std::string& id, std::string& errorMessage) const
+bool PhotoStore::RestoreTrashItem(const std::string& id, std::string& errorMessage, std::vector<std::string>* restored) const
 {
     const fs::path projectTrash = projectRoot.empty() ? fs::path() : projectRoot.parent_path() / kProjectTrash;
     const fs::path entry = TrashPathFromId(id, root / kTrashFolder, projectTrash);
@@ -1110,7 +1112,7 @@ bool PhotoStore::RestoreTrashItem(const std::string& id, std::string& errorMessa
         errorMessage = "This item is no longer in the trash.";
         return false;
     }
-    return RestoreEntry(entry, errorMessage);
+    return RestoreEntry(entry, errorMessage, restored);
 }
 
 bool PhotoStore::DeleteTrashItem(const std::string& id) const

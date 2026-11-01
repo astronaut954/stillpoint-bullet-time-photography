@@ -115,7 +115,9 @@ public:
     void EmptyTrash() const;
     void PurgeTrash(int days) const;
     std::vector<TrashItem> ListTrash() const;
-    bool RestoreTrashItem(const std::string& id, std::string& errorMessage) const;
+    // restored (opcional): os arquivos de foto que voltaram (para o Desfazer apagar de novo)
+    bool RestoreTrashItem(const std::string& id, std::string& errorMessage,
+                          std::vector<std::string>* restored = nullptr) const;
     bool DeleteTrashItem(const std::string& id) const;
     // Apaga uma sessão de vez, sem passar pela lixeira (ex.: já salva em outro lugar ao fechar)
     bool DeleteSessionNow(const std::string& session) const;
@@ -139,7 +141,8 @@ private:
     std::filesystem::path TrashRootFor(const std::filesystem::path& dir) const;
     std::filesystem::path NewTrashEntry(const std::filesystem::path& dir, const std::string& session,
                                         bool wholeSession) const;
-    bool RestoreEntry(const std::filesystem::path& entry, std::string& errorMessage) const;
+    bool RestoreEntry(const std::filesystem::path& entry, std::string& errorMessage,
+                      std::vector<std::string>* restored = nullptr) const;
     void ReadSessions(const std::filesystem::path& base, bool inProject, std::vector<StoredSession>& out) const;
 
     std::filesystem::path root;

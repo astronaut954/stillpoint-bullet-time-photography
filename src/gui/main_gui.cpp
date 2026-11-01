@@ -3611,11 +3611,12 @@ namespace
         {
             const auto args = ParseStringArgs(request);
             std::string error;
-            const bool ok = !args.empty() && store.RestoreTrashItem(args[0], error);
+            std::vector<std::string> files;
+            const bool ok = !args.empty() && store.RestoreTrashItem(args[0], error, &files);
             if (!ok && error.empty())
                 error = "Could not restore this item.";
             emitSessions();
-            return Json("restore").Add("ok", ok).Add("error", error).Str();
+            return Json("restore").Add("ok", ok).Add("error", error).Add("files", files).Str();
         });
         // trashDelete(id) / trashEmpty(): apaga de vez
         window.bind("trashDelete", [&](const std::string& request) -> std::string

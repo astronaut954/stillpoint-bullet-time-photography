@@ -5841,6 +5841,11 @@
       const text = (item.whole ? "Session restored: " : plural(item.photos, "photo", "photos") + " restored to ") + label.date;
       toast(text); log(text, "ok");
       renderTrash();
+      // Desfazer: volta para a lixeira (a sessão inteira, ou só as fotos que voltaram); refazer restaura de novo
+      const files = (r.files || []).slice();
+      recordAction({ label: item.whole ? "Restore session " + label.date : "Restore " + plural(item.photos, "photo", "photos") + " to " + label.date,
+        undo: () => item.whole ? window.deleteSession(item.session) : (files.length ? window.deletePhotos(item.session, ...files) : false),
+        redo: () => restoreSession(item.session) });
     });
   }
   $("trashBtn").addEventListener("click", openTrash);

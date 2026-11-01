@@ -1024,6 +1024,7 @@ projeto num HD externo.
       good in 15 days".
 - [ ] Apagar uma foto (botão direito → Delete photo…): aparece como "1 photo from this session".
 - [ ] Restore numa linha: a sessão (ou a foto) volta para a lista; a linha sai da Trash.
+- [ ] Cmd+Z depois do Restore: a sessão (ou a foto) volta para a Trash; Cmd+Shift+Z restaura de novo.
 - [ ] Cada linha tem um ícone: pasta = sessão inteira; imagem = fotos de uma sessão.
 - [ ] Delete permanently: pergunta "Delete permanently?"; apaga só aquele item.
 - [ ] Apagar uma foto e depois a sessão inteira dela: a linha da foto fica logo abaixo da sessão, apagada, com
