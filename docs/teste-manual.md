@@ -1119,13 +1119,19 @@ projeto num HD externo.
       "Reorder"), os números se refazem; Cmd+Z volta a ordem anterior.
 - [ ] Arrastar uma miniatura até o botão da lixeira (barra de cima, ao lado do projeto): ao chegar, o botão fica
       vermelho; soltar apaga a foto sem perguntar; Cmd+Z traz de volta.
-- [ ] Marcar várias fotos (Shift+clique) e arrastar uma delas: a cópia mostra "3 photos"; só a lixeira aceita
-      (para mudar a ordem, uma foto por vez).
+- [ ] Marcar várias fotos (Shift+clique, ou Cmd/Ctrl+clique em fotos soltas) e arrastar uma delas: a cópia
+      mostra "3 photos"; soltar entre outras duas leva todas juntas para lá (na ordem em que estavam); soltar na
+      lixeira apaga todas. Cmd+Z volta.
+- [ ] O mesmo no modo "Reorder" (tela cheia) e na janela "Reorder by photo": marcar várias e arrastar juntas; as
+      setas "Move earlier" / "Move later" levam o grupo marcado uma casa.
 - [ ] Arrastar uma sessão da lista até o botão da lixeira: apaga sem perguntar; Cmd+Z traz de volta. Funciona
       também sem projeto aberto e com várias sessões marcadas.
 - [ ] Ao soltar uma miniatura em outro lugar, as outras deslizam até a posição nova (como nas câmeras).
-- [ ] Tela cheia: a barra das sessões fica sempre à esquerda, só com ícones, todos no mesmo eixo; o nome aparece ao
-      parar o ponteiro num deles; o divisor "Not in project" é uma linha curta com a seta embaixo.
+- [ ] Tela cheia: a barra das sessões fica sempre à esquerda, só com ícones, todos no mesmo eixo; o divisor
+      "Not in project" é uma linha curta com a seta embaixo.
+- [ ] Na barra só de ícones, passar o ponteiro num ícone mostra na hora uma legenda no visual do app (nome da
+      sessão; "Not in project · n" no divisor; "Show the session names" no botão de cima). Fora dela, as legendas
+      continuam as do sistema.
 - [ ] O botão de cima da barra ("Show the session names") abre a barra larga, com os nomes, "Sessions" e o botão
       da janela Project; ela fica aberta até clicar no mesmo botão ("Hide the session names").
 - [ ] O título da sessão na tela cheia mostra a hora uma vez só (ex.: "Oct 31, 23:53:22").
@@ -1136,9 +1142,6 @@ projeto num HD externo.
 - [ ] Tela cheia: Tab chega na barra e segue para os botões da tela cheia.
 - [ ] Arrastando uma sessão de "Not in project": os pontilhados do botão do projeto e da lixeira ficam colados em
       cada botão, sem encostar um no outro.
-- [ ] Caso extremo da barra de cima (só para ver o layout; nada é gravado):
-      `STILLPOINT_UI_STRESS=1 STILLPOINT_FAKE_CAMERAS=30 ./build/macos-arm64/Stillpoint` — nome de projeto longo,
-      1284 itens e 1287 GB na lixeira, "Update 2.16.0", 30 câmeras e "Export sessions (30)".
 
 ## Resultado
 

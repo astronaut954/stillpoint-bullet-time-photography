@@ -522,16 +522,17 @@
         img.appendChild(document.createTextNode(item.file ? item.file.split(".").pop().toUpperCase() : ""));
       }
 
-      if (draggable) {
-        li.addEventListener("pointerdown", (e) => onPointerDown(e, li, i));
-      } else {
-        li.addEventListener("click", (e) => {
-          if (suppressClick) { suppressClick = false; return; }  // o clique que fecha um arraste não seleciona
-          if (e.shiftKey && opts.multi) extendTo(i); else select(i);
-          if (opts.onPick) opts.onPick();
-        });
-        if (opts.freeDrag) li.addEventListener("pointerdown", (e) => onFreeDown(e, li, i));
-      }
+      // Clique: Shift marca o intervalo, Cmd/Ctrl marca ou desmarca uma; segurar e arrastar muda a ordem
+      // (todas as marcadas vão juntas)
+      li.addEventListener("click", (e) => {
+        if (suppressClick) { suppressClick = false; return; }  // o clique que fecha um arraste não seleciona
+        const many = opts.multi || draggable;
+        if (e.shiftKey && many) extendTo(i);
+        else if ((e.metaKey || e.ctrlKey) && many) toggleAt(i);
+        else select(i);
+        if (opts.onPick) opts.onPick();
+      });
+      if (draggable || opts.freeDrag) li.addEventListener("pointerdown", (e) => onFreeDown(e, li, i));
       if (opts.onContext) li.addEventListener("contextmenu", (e) => {
         e.preventDefault();
         // Clique numa das fotos marcadas: o menu age em todas (a marcação fica)
@@ -625,62 +626,23 @@
       el.marker.classList.remove("hidden");
     }
 
-    function onPointerDown(e, li, i) {
-      if (e.button !== 0) return;
-      drag = { li, i, x: e.clientX, y: e.clientY, scroll: el.carousel.scrollLeft, moved: false };
-      li.setPointerCapture(e.pointerId);
-      li.onpointermove = onPointerMove;
-      li.onpointerup = onPointerUp;
-      li.onpointercancel = () => endDrag(null);
-    }
-
-    function onPointerMove(e) {
-      if (!drag) return;
-      const dx = e.clientX - drag.x;
-      if (!drag.moved && Math.abs(dx) < 6 && Math.abs(e.clientY - drag.y) < 6) return;
-      drag.moved = true;
-      drag.li.classList.add("dragging");
-
-      // Rola o carrossel quando o arraste chega perto das bordas
-      const r = el.carousel.getBoundingClientRect();
-      if (e.clientX < r.left + 40) el.carousel.scrollLeft -= 12;
-      if (e.clientX > r.right - 40) el.carousel.scrollLeft += 12;
-
-      drag.li.style.transform = "translateX(" + (dx + el.carousel.scrollLeft - drag.scroll) + "px)";
-      showMarker(insertionIndex(e.clientX));
-    }
-
-    function onPointerUp(e) {
-      if (!drag) return;
-      endDrag(drag.moved ? insertionIndex(e.clientX) : null);
-    }
-
-    function endDrag(target) {
-      const d = drag;
-      drag = null;
-      if (!d) return;
-      d.li.onpointermove = d.li.onpointerup = d.li.onpointercancel = null;
-      d.li.classList.remove("dragging");
-      d.li.style.transform = "";
-      el.marker.classList.add("hidden");
-      if (target === null) {
-        if (!d.moved) select(d.i);
-        return;
-      }
-      move(d.i, target);
-    }
-
-    function move(from, to, free, dropRect) {
-      if (to < 0 || to >= items.length || from === to) { select(from); return; }
+    function move(from, to, free, dropRect) { moveMany([from], to, free, dropRect); }
+    // Leva as fotos das posições "picks" (em ordem) para a vaga "slot" entre as que ficam
+    function moveMany(picks, slot, free, dropRect) {
+      picks = picks.filter((k) => k >= 0 && k < items.length).sort((a, b) => a - b);
+      const picked = picks.map((k) => items[k]);
+      const rest = items.filter((_, k) => !picks.includes(k));
+      slot = Math.max(0, Math.min(rest.length, slot));
+      const next = rest.slice(0, slot).concat(picked, rest.slice(slot));
+      if (!picked.length || next.every((it, k) => it === items[k])) { if (picks.length === 1) select(picks[0]); return; }
       // Onde cada miniatura estava: depois de redesenhar, as que mudaram de lugar deslizam até o novo
       // (como nas câmeras); a arrastada sai de onde foi solta
       const was = new Map();
       [...el.carousel.children].forEach((li, k) => { if (items[k]) was.set(items[k], li.getBoundingClientRect()); });
-      if (dropRect) was.set(items[from], dropRect);
-      const [item] = items.splice(from, 1);
-      items.splice(to, 0, item);
-      index = to;
-      multi = new Set(); anchor = index;
+      if (dropRect) picked.forEach((it) => was.set(it, dropRect));
+      items = next;
+      index = slot;
+      if (picked.length > 1) { multi = new Set(picked.map((_, k) => slot + k)); anchor = slot; } else { multi = new Set(); anchor = index; }
       // Arraste fora do modo Reorder: a ordem nova vale na hora (os números das miniaturas também)
       if (free) items.forEach((it, k) => { it.order = k + 1; });
       render();
@@ -696,12 +658,27 @@
       if (free) { if (opts.onFreeReorder) opts.onFreeReorder(items); }
       else if (opts.onReorder) opts.onReorder(items);
     }
+    // Setas do modo Reorder: a foto (ou o grupo marcado) anda uma casa
+    function moveSelected(delta) {
+      const picks = multi.size > 1 ? [...multi].sort((a, b) => a - b) : [index];
+      const before = picks[0];  // quantas das que ficam estão antes do grupo
+      moveMany(picks, before + delta, false);
+    }
+    function toggleAt(i) {
+      if (!items.length) return;
+      if (!multi.size) multi = new Set([index]);
+      if (multi.has(i) && multi.size > 1) { multi.delete(i); index = Math.min(...multi); }
+      else { multi.add(i); index = i; }
+      anchor = i;
+      markSelected(true);
+      showLarge();
+    }
 
     // ----- Arrastar sem o modo Reorder: para o lado (muda a ordem) ou para um alvo de fora (a lixeira) -----
     // Uma cópia da miniatura segue o ponteiro; com várias marcadas, vão todas (só para o alvo de fora)
     let free = null, suppressClick = false;
     function onFreeDown(e, li, i) {
-      if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || (opts.canDrag && !opts.canDrag())) return;
+      if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || (!draggable && opts.canDrag && !opts.canDrag())) return;
       if (free) endFree(true);
       const picks = multi.size > 1 && multi.has(i) ? [...multi].sort((a, b) => a - b) : [i];
       free = { li, i, picks, x: e.clientX, y: e.clientY, moved: false, ghost: null, over: null, slot: null };
@@ -728,19 +705,20 @@
         if (d.picks.length > 1) d.ghost.appendChild(Object.assign(document.createElement("span"), { className: "frame-ghost-count", textContent: d.picks.length + " photos" }));
         document.body.appendChild(d.ghost);
         document.body.classList.add("photo-drag");
-        if (opts.onDragStart) opts.onDragStart();
+        if (opts.onDragStart && !draggable) opts.onDragStart();
       }
       d.ghost.style.transform = "translate(" + dx + "px," + dy + "px)";
-      const t = opts.dropTarget ? opts.dropTarget(e.clientX, e.clientY) : null;
+      // No modo Reorder só muda a ordem (a lixeira não recebe)
+      const t = opts.dropTarget && !draggable ? opts.dropTarget(e.clientX, e.clientY) : null;
       if (d.over !== t) {
         if (d.over) d.over.classList.remove("drop-ok");
         if (t) t.classList.add("drop-ok");
         d.over = t;
       }
-      // Mudar a ordem: só uma foto, de uma câmera, com o ponteiro na altura das miniaturas
+      // Mudar a ordem: fotos de câmera, com o ponteiro na altura das miniaturas (no modo Reorder, em qualquer altura)
       const cr = el.carousel.getBoundingClientRect();
-      const item = items[d.i];
-      if (!t && d.picks.length === 1 && item && item.movable !== false && e.clientY > cr.top - 50 && e.clientY < cr.bottom + 50) {
+      const movable = d.picks.every((k) => items[k] && items[k].movable !== false);
+      if (!t && movable && (draggable || (e.clientY > cr.top - 50 && e.clientY < cr.bottom + 50))) {
         if (e.clientX < cr.left + 40) el.carousel.scrollLeft -= 12;
         if (e.clientX > cr.right - 40) el.carousel.scrollLeft += 12;
         d.slot = insertionIndex(e.clientX);
@@ -768,7 +746,7 @@
       setTimeout(() => { suppressClick = false; }, 0);
       if (cancel) return;
       if (d.over && opts.onDropOut) { opts.onDropOut(d.over, d.picks); return; }
-      if (d.slot !== null) move(d.i, d.slot, true, ghostRect);
+      if (d.slot !== null) moveMany(d.picks, d.slot, !draggable, ghostRect);
     }
 
     return {
@@ -801,7 +779,7 @@
       extendTo,
       get selection() { return multi.size > 1 ? [...multi].sort((a, b) => a - b) : [index]; },
       get dragging() { return !!free; },
-      moveSelected(delta) { move(index, index + delta); },
+      moveSelected,
       get items() { return items; },
       get index() { return index; },
     };
@@ -1055,7 +1033,6 @@
   // Conexão que passa de 1 minuto (a T7 leva ~40 s): o SDK da Canon não deixa
   // cancelar, e o disparo fica bloqueado até ela terminar. Oferece reiniciar o app.
   const SLOW_CONNECT_SECONDS = 60;
-  let uiStress = false;     // STILLPOINT_UI_STRESS=1: valores extremos só na tela (teste de layout)
   let testRestart = false;   // STILLPOINT_TEST_RESTART=1: botão "Restart app" sempre visível (teste)
   const slowWarned = new Set();
   function checkSlowConnections() {
@@ -1123,8 +1100,7 @@
       (b.disabled = busy || b.dataset.locked === "1" || (sdkBusy && b.dataset.sdk === "1")));
 
     ui.saveBtn.disabled = sessions.length === 0;
-    const toExport = uiStress ? 30 : sessions.length;
-    ui.saveBtn.textContent = toExport ? "Export sessions (" + toExport + ")" : "Export sessions";
+    ui.saveBtn.textContent = sessions.length ? "Export sessions (" + sessions.length + ")" : "Export sessions";
     ui.sessionCount.textContent = sessions.length;
     ui.sessionCount.classList.toggle("hidden", sessions.length === 0);
     // A janela de atualização aberta acompanha o estado (ex.: libera "Update now")
@@ -1411,6 +1387,7 @@
       const d = el("li", "folder-divider" + (notInProjectOpen && n ? " open" : "") + (n ? "" : " empty"));
       d.innerHTML = '<span class="chev">' + icon("right", 10) + '</span><span>Not in project</span><span class="line"></span><span class="n"></span>';
       d.querySelector(".n").textContent = n;
+      d.dataset.tip = "Not in project · " + n;
       d.title = (n ? (notInProjectOpen ? "Hide" : "Show") + " the sessions still only in the app. " : "No session outside the project. ") + "Drop a session here to take it out of the project.";
       d.addEventListener("click", () => { if (n) { notInProjectOpen = !notInProjectOpen; renderSessionList(); } });
       ui.sessionList.appendChild(d);
@@ -1430,7 +1407,7 @@
       const li = document.createElement("li");
       li.className = "folder" + (currentSession && currentSession.name === s.name ? " active" : "");
       li.dataset.name = s.name;
-      li.title = (s.label ? s.label + " · " : "") + label.date;  // na barra só de ícones da tela cheia, o nome aparece aqui
+      li.dataset.tip = (s.label ? s.label + " · " : "") + label.date;  // legenda da barra só de ícones (tela cheia)
       if (projectOpen && !s.inProject && !notInProjectOpen) li.classList.add("hidden");
       li.innerHTML = icon("session", 16) + '<div><div class="folder-date"></div><div class="folder-meta"></div></div>';
       if (sessSel.has(s.name) && selectionActive()) li.classList.add("multi");
@@ -1559,7 +1536,7 @@
   function sessionHead(session) {
     const label = sessionLabel(session.name);
     sessionGallery.setHead(label.date,  // a data já tem os segundos
-      editing.on ? "Drag the photos, or select one and use the arrows. Then save the order."
+      editing.on ? "Drag the photos, or select and use the arrows (Shift+click or " + (upd.info && upd.info.os === "windows" ? "Ctrl" : "Cmd") + "+click selects several). Then save the order."
                  : label.detail);
   }
 
@@ -1644,12 +1621,14 @@
     }
     sessionsPanel.classList.toggle("fullscreen", on);
     if (!on) setSideWide(false);
+    hideRailTip();
     sessionGallery.setActions(currentActions());
   }
   function isFullscreen() {
     return sessionsPanel.classList.contains("fullscreen");
   }
   // Barra das sessões na tela cheia: sempre à vista, só com ícones
+  const sideAside = ui.sessionList.parentElement;
   // Botão de cima da barra: mostra os nomes (barra larga, fica aberta) ou volta aos ícones
   function setSideWide(on) {
     sessionsPanel.classList.toggle("side-wide", !!on && isFullscreen());
@@ -1657,8 +1636,39 @@
     b.title = wide ? "Hide the session names" : "Show the session names";
     b.setAttribute("aria-label", b.title);
     b.setAttribute("aria-pressed", wide ? "true" : "false");
+    hideRailTip();
   }
   $("sideWideBtn").addEventListener("click", () => setSideWide(!sessionsPanel.classList.contains("side-wide")));
+  // Legenda da barra só de ícones: aparece na hora, ao lado do ícone, no visual do app (no lugar da
+  // legenda do sistema, que demora); nos outros lugares fica a do sistema
+  const railTip = el("div", "rail-tip hidden");
+  document.body.appendChild(railTip);
+  let railTipOn = null;
+  function railMode() { return isFullscreen() && !sessionsPanel.classList.contains("side-wide"); }
+  function hideRailTip() {
+    railTip.classList.add("hidden");
+    if (railTipOn && railTipOn.dataset.savedTitle !== undefined) { railTipOn.title = railTipOn.dataset.savedTitle; delete railTipOn.dataset.savedTitle; }
+    railTipOn = null;
+  }
+  sideAside.addEventListener("pointerover", (e) => {
+    if (!railMode() || sessDrag || e.pointerType === "touch") return;
+    const t = e.target.closest("[data-tip], [title]");
+    if (!t || !sideAside.contains(t) || t === railTipOn) return;
+    hideRailTip();
+    const text = t.dataset.tip || t.title;
+    if (!text) return;
+    // Sem a legenda do sistema por cima desta
+    if (t.hasAttribute("title")) { t.dataset.savedTitle = t.title; t.removeAttribute("title"); }
+    railTipOn = t;
+    railTip.textContent = text;
+    const r = t.getBoundingClientRect();
+    railTip.style.left = (sideAside.getBoundingClientRect().right + 8) + "px";
+    railTip.style.top = (r.top + r.height / 2) + "px";
+    railTip.classList.remove("hidden");
+  });
+  sideAside.addEventListener("pointerout", (e) => { if (railTipOn && !(e.relatedTarget && railTipOn.contains(e.relatedTarget))) hideRailTip(); });
+  sideAside.addEventListener("pointerdown", hideRailTip);
+  sideAside.addEventListener("scroll", hideRailTip);
   // Teclas de seleção apertadas: o botão "Add to project" não reage ao ponteiro (o clique só marca)
   const modKeys = (e) => document.body.classList.toggle("mod-keys", e.metaKey || e.ctrlKey || e.shiftKey);
   document.addEventListener("keydown", modKeys, true);
@@ -5660,7 +5670,6 @@
   // A pasta escolhida pela pessoa onde as sessões ficam guardadas (docs/project.md). O app
   // manda o estado junto com a lista de sessões (evento "sessions", campo project).
   let project = { open: false };
-  function projectState() { return project; }  // para quem tem um "project" local com o mesmo nome
   const projectSel = new Set();  // sessões marcadas na janela Project
   function setProject(p) {
     p = p || { open: false };
@@ -6126,7 +6135,6 @@
   // pasta dele (mesmo disco), e só aparece com ele aberto.
   const trash = { count: 0, bytes: 0, days: 15 };
   function setTrashInfo(e) {
-    if (uiStress) e = { count: 1284, bytes: 1287.4e9, days: e.days || 15 };
     trash.count = e.count || 0; trash.bytes = +e.bytes || 0; trash.days = e.days || 15;
     const b = $("trashBtn");
     b.classList.toggle("has", trash.count > 0);
@@ -6397,8 +6405,6 @@
   }, true);
 
   function renderProjectBar() {
-    // Teste de layout: um projeto com nome longo e números grandes (só na tela)
-    const project = uiStress ? Object.assign({}, projectState(), { open: true, available: true, name: "Ensaio Priscilla Ibañez — Campanha Verão 2027 (versão final revisada)", sessions: 1284, photos: 38520, edited: 9999 }) : projectState();
     const open = !!project.open;
     const b = $("projectBarBtn");
     b.classList.toggle("on", open);
@@ -7320,13 +7326,6 @@
     refreshSessions();
     if (info && info.unsavedSessions > 0) offerRecovery(info.unsavedSessions);
     if (info && info.testRestart) { testRestart = true; ui.restartAppBtn.classList.remove("hidden"); }
-    if (info && info.uiStress) {
-      uiStress = true;
-      setTrashInfo({});
-      updEl.chipText.textContent = "Update 2.16.0";
-      updEl.chip.classList.remove("hidden");
-      setTimeout(() => { renderProjectBar(); updateButtons(); }, 0);
-    }
     upd.info = info || null;
     loadPrefs(info);
     if (info && info.project) setProject(info.project);

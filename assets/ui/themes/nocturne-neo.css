@@ -1395,3 +1395,10 @@ body.photo-drag, body.photo-drag * { cursor: grabbing !important; user-select: n
 /* Com Cmd/Ctrl/Shift apertado o clique em "Add to project" só marca a sessão: o botão não reage ao ponteiro */
 body.mod-keys .folder-add:hover:not(:disabled) { background: none; border-color: transparent; }
 body.mod-keys .folder-add { cursor: default; }
+/* Legenda da barra só de ícones (tela cheia): aparece na hora, ao lado do ícone */
+.rail-tip {
+  position: fixed; z-index: 95; transform: translateY(-50%); pointer-events: none; white-space: nowrap;
+  padding: 6px 10px; background: var(--noct-surface); border: 1px solid var(--noct-border-strong);
+  color: var(--noct-text); font: 700 10px var(--noct-font-mono); text-transform: uppercase; letter-spacing: .1em;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .5);
+}
