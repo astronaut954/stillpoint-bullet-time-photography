@@ -1055,6 +1055,7 @@
   // Conexão que passa de 1 minuto (a T7 leva ~40 s): o SDK da Canon não deixa
   // cancelar, e o disparo fica bloqueado até ela terminar. Oferece reiniciar o app.
   const SLOW_CONNECT_SECONDS = 60;
+  let uiStress = false;     // STILLPOINT_UI_STRESS=1: valores extremos só na tela (teste de layout)
   let testRestart = false;   // STILLPOINT_TEST_RESTART=1: botão "Restart app" sempre visível (teste)
   const slowWarned = new Set();
   function checkSlowConnections() {
@@ -1122,7 +1123,8 @@
       (b.disabled = busy || b.dataset.locked === "1" || (sdkBusy && b.dataset.sdk === "1")));
 
     ui.saveBtn.disabled = sessions.length === 0;
-    ui.saveBtn.textContent = sessions.length ? "Export sessions (" + sessions.length + ")" : "Export sessions";
+    const toExport = uiStress ? 30 : sessions.length;
+    ui.saveBtn.textContent = toExport ? "Export sessions (" + toExport + ")" : "Export sessions";
     ui.sessionCount.textContent = sessions.length;
     ui.sessionCount.classList.toggle("hidden", sessions.length === 0);
     // A janela de atualização aberta acompanha o estado (ex.: libera "Update now")
@@ -1641,23 +1643,13 @@
       if (editing.on) stopReorder(false);
     }
     sessionsPanel.classList.toggle("fullscreen", on);
-    if (!on) { sessionsPanel.classList.remove("side-open"); setSideWide(false); }
+    if (!on) setSideWide(false);
     sessionGallery.setActions(currentActions());
   }
   function isFullscreen() {
     return sessionsPanel.classList.contains("fullscreen");
   }
-  // Barra das sessões na tela cheia: abre com o ponteiro na borda esquerda; fecha quando ele sai dela
-  // (fica aberta enquanto uma sessão é arrastada ou um menu dela está aberto)
-  const sideAside = ui.sessionList.parentElement;
-  function setSideOpen(on) { sessionsPanel.classList.toggle("side-open", !!on && isFullscreen()); }
-  document.addEventListener("mousemove", (e) => {
-    if (!isFullscreen()) return;
-    const open = sessionsPanel.classList.contains("side-open");
-    if (!open && e.clientX <= 14) setSideOpen(true);
-    else if (open && !sessionsPanel.classList.contains("side-wide") && !sessDrag && !document.querySelector("body > .project-menu") && e.clientX > sideAside.getBoundingClientRect().right + 24) setSideOpen(false);
-  });
-  document.addEventListener("mouseleave", () => { if (!sessDrag && !sessionsPanel.classList.contains("side-wide")) setSideOpen(false); });
+  // Barra das sessões na tela cheia: sempre à vista, só com ícones
   // Botão de cima da barra: mostra os nomes (barra larga, fica aberta) ou volta aos ícones
   function setSideWide(on) {
     sessionsPanel.classList.toggle("side-wide", !!on && isFullscreen());
@@ -1665,7 +1657,6 @@
     b.title = wide ? "Hide the session names" : "Show the session names";
     b.setAttribute("aria-label", b.title);
     b.setAttribute("aria-pressed", wide ? "true" : "false");
-    if (!wide) setSideOpen(sideAside.matches(":hover"));
   }
   $("sideWideBtn").addEventListener("click", () => setSideWide(!sessionsPanel.classList.contains("side-wide")));
   // Teclas de seleção apertadas: o botão "Add to project" não reage ao ponteiro (o clique só marca)
@@ -5669,6 +5660,7 @@
   // A pasta escolhida pela pessoa onde as sessões ficam guardadas (docs/project.md). O app
   // manda o estado junto com a lista de sessões (evento "sessions", campo project).
   let project = { open: false };
+  function projectState() { return project; }  // para quem tem um "project" local com o mesmo nome
   const projectSel = new Set();  // sessões marcadas na janela Project
   function setProject(p) {
     p = p || { open: false };
@@ -6134,6 +6126,7 @@
   // pasta dele (mesmo disco), e só aparece com ele aberto.
   const trash = { count: 0, bytes: 0, days: 15 };
   function setTrashInfo(e) {
+    if (uiStress) e = { count: 1284, bytes: 1287.4e9, days: e.days || 15 };
     trash.count = e.count || 0; trash.bytes = +e.bytes || 0; trash.days = e.days || 15;
     const b = $("trashBtn");
     b.classList.toggle("has", trash.count > 0);
@@ -6404,6 +6397,8 @@
   }, true);
 
   function renderProjectBar() {
+    // Teste de layout: um projeto com nome longo e números grandes (só na tela)
+    const project = uiStress ? Object.assign({}, projectState(), { open: true, available: true, name: "Ensaio Priscilla Ibañez — Campanha Verão 2027 (versão final revisada)", sessions: 1284, photos: 38520, edited: 9999 }) : projectState();
     const open = !!project.open;
     const b = $("projectBarBtn");
     b.classList.toggle("on", open);
@@ -7325,6 +7320,13 @@
     refreshSessions();
     if (info && info.unsavedSessions > 0) offerRecovery(info.unsavedSessions);
     if (info && info.testRestart) { testRestart = true; ui.restartAppBtn.classList.remove("hidden"); }
+    if (info && info.uiStress) {
+      uiStress = true;
+      setTrashInfo({});
+      updEl.chipText.textContent = "Update 2.16.0";
+      updEl.chip.classList.remove("hidden");
+      setTimeout(() => { renderProjectBar(); updateButtons(); }, 0);
+    }
     upd.info = info || null;
     loadPrefs(info);
     if (info && info.project) setProject(info.project);

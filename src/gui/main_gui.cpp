@@ -1283,6 +1283,9 @@ namespace
             const bool canSelfUpdate = Platform::CanSelfUpdate(selfUpdateReason);
             return Json("startup").Add("unsavedSessions", store.CountUnsaved())
                 .Add("testRestart", std::getenv("STILLPOINT_TEST_RESTART") != nullptr)
+                // STILLPOINT_UI_STRESS=1: a barra de cima com valores extremos (nome longo, lixeira cheia,
+                // atualização, muitas sessões), só na tela, para ver o layout; nada é gravado
+                .Add("uiStress", std::getenv("STILLPOINT_UI_STRESS") != nullptr)
                 .Add("version", version)
                 .Add("previousVersion", previousVersion)
 #ifdef _WIN32

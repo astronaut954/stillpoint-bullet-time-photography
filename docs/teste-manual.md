@@ -1124,8 +1124,8 @@ projeto num HD externo.
 - [ ] Arrastar uma sessão da lista até o botão da lixeira: apaga sem perguntar; Cmd+Z traz de volta. Funciona
       também sem projeto aberto e com várias sessões marcadas.
 - [ ] Ao soltar uma miniatura em outro lugar, as outras deslizam até a posição nova (como nas câmeras).
-- [ ] Tela cheia: uma linha fina na borda esquerda; levar o ponteiro até a borda abre a barra das sessões só com
-      ícones (o nome aparece ao parar o ponteiro num deles), e a foto anda para o lado; tirar o ponteiro fecha.
+- [ ] Tela cheia: a barra das sessões fica sempre à esquerda, só com ícones, todos no mesmo eixo; o nome aparece ao
+      parar o ponteiro num deles; o divisor "Not in project" é uma linha curta com a seta embaixo.
 - [ ] O botão de cima da barra ("Show the session names") abre a barra larga, com os nomes, "Sessions" e o botão
       da janela Project; ela fica aberta até clicar no mesmo botão ("Hide the session names").
 - [ ] O título da sessão na tela cheia mostra a hora uma vez só (ex.: "Oct 31, 23:53:22").
@@ -1133,7 +1133,12 @@ projeto num HD externo.
       arrastar funcionam como na lista normal.
 - [ ] Tela cheia: arrastar uma sessão da barra, ou uma miniatura, até o botão da lixeira à direita do nome da
       sessão: apaga; Cmd+Z traz de volta.
-- [ ] Tela cheia: Tab chega na barra (ela abre enquanto o foco está nela) e segue para os botões da tela cheia.
+- [ ] Tela cheia: Tab chega na barra e segue para os botões da tela cheia.
+- [ ] Arrastando uma sessão de "Not in project": os pontilhados do botão do projeto e da lixeira ficam colados em
+      cada botão, sem encostar um no outro.
+- [ ] Caso extremo da barra de cima (só para ver o layout; nada é gravado):
+      `STILLPOINT_UI_STRESS=1 STILLPOINT_FAKE_CAMERAS=30 ./build/macos-arm64/Stillpoint` — nome de projeto longo,
+      1284 itens e 1287 GB na lixeira, "Update 2.16.0", 30 câmeras e "Export sessions (30)".
 
 ## Resultado
 
