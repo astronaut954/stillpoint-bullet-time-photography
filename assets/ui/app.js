@@ -2113,6 +2113,8 @@
     const l = pitchState.l;
     const body = ov.querySelector(".pitch-body");
     const scroll = body.scrollTop;
+    const wasAt = body.contains(document.activeElement) ? focusables(body).indexOf(document.activeElement) : -1;
+    if (wasAt >= 0) setTimeout(() => { if (body.contains(document.activeElement)) return; const l = focusables(body); const t = l[Math.min(wasAt, l.length - 1)]; if (t) t.focus({ preventScroll: true }); }, 0);
     body.innerHTML = "";
     const rerender = () => renderPitchTest();
     lentEffectRows(l, body, rerender, { noReverse: true });
@@ -3942,9 +3944,6 @@
   }
   function tabScope() {
     if (openMenu) return openMenu;
-    // Caixa do ± (Picture Style & Quality) aberta: o Tab circula nela
-    const pop = $("csStylePop");
-    if (pop && csStylePop && !$("camSettingsOverlay").classList.contains("hidden")) return pop;
     const open = [...document.querySelectorAll(".overlay:not(.hidden)")].filter((o) => o.getClientRects().length > 0);
     if (!open.length) return ui.log.classList.contains("expanded") ? ui.log : document.body;  // Activity aberto: só ele
     return open.reduce((top, o) => ((parseInt(getComputedStyle(o).zIndex, 10) || 0) >= (parseInt(getComputedStyle(top).zIndex, 10) || 0) ? o : top));
@@ -3957,7 +3956,10 @@
     if (!list.length) return;
     e.preventDefault();
     document.documentElement.classList.add("kbd-focus");
-    const a = document.activeElement;
+    let a = document.activeElement;
+    // Dentro da caixa do ±: o Tab sai dela e segue a partir do botão ± (a caixa fecha)
+    const pop = $("csStylePop");
+    if (pop && pop.contains(a) && csStylePop) a = document.querySelector('.cs-more[data-style-cam="' + csStylePop.camera + '"]') || a;
     let i = list.indexOf(a);
     let next;
     if (i >= 0) next = list[(i + (e.shiftKey ? -1 : 1) + list.length) % list.length];
@@ -3995,6 +3997,7 @@
       const m = el("div", "app-menu project-menu select-menu");
       m.setAttribute("role", "listbox");
       m.sel = sel;
+      m.inPop = !!sel.closest("#csStylePop");  // (a caixa do ± pode ser redesenhada antes do clique chegar ao documento)
       const buttons = opts.map((o) => {
         const b = el("button", o.value === sel.value ? "current" : "", o.textContent);
         b.type = "button";
@@ -4005,9 +4008,12 @@
           sel.focus();
           // Escolher costuma redesenhar a tela (a caixa é trocada por uma nova): o foco volta para a
           // caixa que ficou no mesmo lugar, para o próximo Tab seguir dali
-          const scope = tabScope(), at = focusables(scope).indexOf(sel);
+          // (na caixa do ±, a posição é contada só entre as listas dela, que é redesenhada sozinha)
+          const inPop = !!sel.closest("#csStylePop");
+          const listNow = () => inPop ? ($("csStylePop") ? [...$("csStylePop").querySelectorAll("select")] : []) : focusables(tabScope());
+          const at = listNow().indexOf(sel);
           if (sel.value !== o.value) { sel.value = o.value; sel.dispatchEvent(new Event("change", { bubbles: true })); }
-          const refocus = () => { if (!sel.isConnected && at >= 0) { const list = focusables(tabScope()); const t = list[Math.min(at, list.length - 1)]; if (t) t.focus({ preventScroll: true }); } };
+          const refocus = () => { if (!sel.isConnected && at >= 0) { const list = listNow(); const t = list[Math.min(at, list.length - 1)]; if (t) t.focus({ preventScroll: true }); } };
           refocus(); setTimeout(refocus, 0); setTimeout(refocus, 120);
         });
         m.appendChild(b);
@@ -4062,7 +4068,7 @@
   ["keydown", "keypress"].forEach((type) => document.addEventListener(type, (e) => {
     const sel = e.target;
     if (!sel || sel.tagName !== "SELECT" || !sel.appMenu || selectMenu) return;
-    const inTable = !!sel.closest("table.cs");
+    const inTable = !!sel.closest("table.cs, #csStylePop");
     const arrow = e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Down" || e.key === "Up";
     if (arrow && inTable) { e.preventDefault(); return; }  // tabela do Camera settings: as setas trocam de câmera (outro tratador)
     if (e.key === " " || e.key === "Enter" || arrow) {
@@ -4161,6 +4167,7 @@
       e.stopPropagation();
       csStylePop = csStylePop && csStylePop.camera === camera ? null : { camera };
       renderStylePop();
+      if (e.detail === 0 && csStylePop) { const first = $("csStylePop") && $("csStylePop").querySelector("select"); if (first) first.focus(); }  // pelo teclado
     });
     return b;
   }
@@ -4185,6 +4192,8 @@
     const styleCams = all ? camSettings.filter((c) => c.adjustable && c.styleDetail) : camSettings.filter((c) => c.camera === csStylePop.camera && c.styleDetail);
     const qualityCams = (all ? camSettings.filter((c) => c.adjustable) : camSettings.filter((c) => c.camera === csStylePop.camera)).filter(csHasQuality);
     const cams = styleCams;
+    const wasAt = pop.contains(document.activeElement) ? [...pop.querySelectorAll("select")].indexOf(document.activeElement) : -1;
+    if (wasAt >= 0) setTimeout(() => { const p = $("csStylePop"); if (!p || p.contains(document.activeElement)) return; const l = p.querySelectorAll("select"); const t = l[Math.min(wasAt, l.length - 1)]; if (t) t.focus({ preventScroll: true }); }, 0);
     pop.innerHTML = "";
     pop.appendChild(el("div", "cs-pop-title", (all ? "All cameras" : csStylePop.camera) + " · " + [styleCams.length ? "Picture Style" : "", qualityCams.length ? "Quality" : ""].filter(Boolean).join(" & ")));
     const range = [];
@@ -4223,7 +4232,13 @@
     pop.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, r.right - w)) + "px";
     pop.style.top = Math.min(window.innerHeight - 190, r.bottom + 6) + "px";
   }
-  document.addEventListener("click", () => { if (csStylePop) { csStylePop = null; renderStylePop(); } });
+  // Clique fora fecha a caixa; escolher numa lista dela (a lista fica fora da caixa) não fecha
+  document.addEventListener("click", (e) => {
+    if (!csStylePop) return;
+    const m = e.target.closest && e.target.closest(".select-menu");
+    if (m && m.inPop) return;
+    csStylePop = null; renderStylePop();
+  });
 
   // ab ou gm null: câmeras com valores diferentes ("—" na lista; qualquer valor, até 0, aplica)
   // flip: modelo que o app mediu com o sentido invertido (troca os rótulos daquele eixo)
@@ -4391,6 +4406,15 @@
   // ↑ ↓ num controle da tabela (com a lista fechada): a mesma coluna na câmera de cima/de baixo
   document.addEventListener("keydown", (e) => {
     if (selectMenu || (e.key !== "ArrowDown" && e.key !== "ArrowUp")) return;
+    const pop = $("csStylePop");
+    if (pop && pop.contains(document.activeElement)) {
+      // Caixa do ±: ↑ ↓ andam entre as listas dela (Enter abre a lista)
+      e.preventDefault(); e.stopImmediatePropagation();
+      const list = [...pop.querySelectorAll("select")].filter((x) => !x.disabled);
+      const t = list[list.indexOf(document.activeElement) + (e.key === "ArrowDown" ? 1 : -1)];
+      if (t) t.focus();
+      return;
+    }
     const pos = csPos(document.activeElement);
     if (!pos) return;
     e.preventDefault(); e.stopImmediatePropagation();
@@ -5014,6 +5038,12 @@
       e.overlayHandled = true;
       e.preventDefault(); e.stopImmediatePropagation();
       OVERLAY_CANCEL[open]();
+      return true;
+    }
+    if (e.key === "Enter" && open === "dialogOverlay" && e.target.tagName === "BUTTON" && ui.dialogActions.contains(e.target)) {
+      e.overlayHandled = true;
+      e.preventDefault(); e.stopImmediatePropagation();
+      e.target.click();  // o botão com o foco (Tab), não o principal
       return true;
     }
     if (e.key === "Enter" && open === "dialogOverlay" && e.target.tagName !== "INPUT" && e.target.tagName !== "TEXTAREA") {

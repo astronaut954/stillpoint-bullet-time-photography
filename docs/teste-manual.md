@@ -883,8 +883,13 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) serve para tudo, menos para a impress
       chart, Copy from camera, Done). Numa lista, ↑ ↓ vão para a mesma coluna da câmera de cima/de baixo
       (a lista não abre). Enter ou Espaço abre a lista escura do app; com ela aberta, ↑ ↓ andam pelas
       opções, Enter escolhe, Esc fecha. Depois de escolher, o foco continua na mesma caixa.
-- [ ] Caixa do "±" (PICTURE STYLE & QUALITY) aberta com Enter: o Tab circula só pelas listas dela; Esc
-      fecha e o foco volta para o "±".
+- [ ] Caixa do "±" (PICTURE STYLE & QUALITY): Enter no "±" abre a caixa com o foco na primeira lista;
+      ↑ ↓ andam entre as listas dela; Enter abre a lista e ↑ ↓ passam a andar pelas opções. Depois de
+      escolher, a caixa continua aberta e o foco fica na mesma lista. Tab sai da caixa (ela fecha) e segue
+      para o próximo item depois do "±". Esc fecha e o foco volta para o "±".
+- [ ] Confirmações (ex.: "Calibrate with chart"): Enter aperta o botão que está com o contorno verde
+      (Cancel, Open chart ou Start), não sempre o principal.
+- [ ] Pitch test: Enter numa opção muda a opção e o foco continua nela; o próximo Tab segue dali.
 - [ ] Pitch test: mudar qualquer opção (Lens sheet, Paper size, Finer steps, o passo) e apertar Ctrl+Z
       (Cmd+Z no Mac) volta a opção anterior; Ctrl+Shift+Z refaz. Ao fechar a janela, essas mudanças saem do
       desfazer.
