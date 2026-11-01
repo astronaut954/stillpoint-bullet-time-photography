@@ -37,6 +37,9 @@ struct TrashItem
     // Item da lixeira de dentro de um projeto apagado: o id do projeto (vazio nos outros). Volta junto
     // com o projeto; o tamanho já conta no do projeto.
     std::string parent;
+    // Já restaurado, mas fica na lista (sem botões) enquanto houver itens apagados antes que dependem dele
+    // (fotos de uma sessão; o que estava na lixeira de um projeto). Sai sozinho quando eles acabam.
+    bool restored = false;
 };
 
 struct StoredSession

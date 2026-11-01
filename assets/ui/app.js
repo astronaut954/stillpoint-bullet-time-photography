@@ -5874,7 +5874,8 @@
       if (!ov || !list || !r) return;
       const items = r.items || [];
       trashProjectName = r.project || "";
-      const top = items.filter((i) => !i.parent);  // os de dentro de um projeto apagado contam no projeto
+      const restoredIds = new Set(items.filter((i) => i.restored).map((i) => i.id));
+      const top = items.filter((i) => !i.restored && (!i.parent || restoredIds.has(i.parent)));  // os de dentro de um projeto apagado contam no projeto
       const total = top.reduce((t, i) => t + (+i.bytes || 0), 0);
       ov.querySelector(".trash-sub").textContent = "Deleted projects, sessions and photos stay here for " + r.days + " days, then are deleted for good. " +
         (top.length ? plural(top.length, "item", "items") + " · " + fmtBytes(total) + "." : "");
@@ -5884,69 +5885,62 @@
       ov.querySelector(".trash-restore-all").disabled = !items.length;
       if (!items.length) { list.appendChild(el("li", "trash-empty", "The trash is empty.")); return; }
       const now = Date.now() / 1000;
+      const tree = trashTree(items);
       [false, true].forEach((inProject) => {
-        const raw = items.filter((i) => !i.parent && !!i.inProject === inProject);
-        // Fotos que dependem de uma sessão também na lixeira: logo abaixo dela; o que estava na lixeira
-        // de dentro de um projeto apagado: logo abaixo do projeto
-        const dependsOn = (o) => !o.whole && raw.find((w) => w.whole && !w.isProject && w.session === o.session && trashLater(w, o));
-        const group = [];
-        raw.forEach((o) => {
-          if (dependsOn(o)) return;
-          group.push(o);
-          if (o.isProject) items.filter((x) => x.parent === o.id).forEach((x) => group.push(x));
-          else if (o.whole) raw.filter((x) => !x.whole && x.session === o.session && trashLater(o, x)).forEach((x) => group.push(x));
-        });
+        const group = tree.filter((n) => n.group === inProject);
         if (!group.length) return;
-        if (items.some((i) => !!i.inProject !== inProject) || inProject)
+        if (tree.some((n) => n.group !== inProject) || inProject)
           list.appendChild(el("li", "trash-group", inProject ? "In the project " + (r.project || "") : "In the app"));
-        group.forEach((item) => {
-          const li = el("li", "trash-row" + (item.whole ? " is-session" : " is-photos"));
+        group.forEach(({ item, level, blockedBy }) => {
+          const li = el("li", "trash-row lvl" + level + (item.whole ? " is-session" : " is-photos"));
           li.dataset.id = item.id;
           const label = sessionLabel(item.session);
-          // Fotos apagadas antes e, depois, a sessão inteira: a entrada das fotos fica desligada até a
-          // sessão voltar (restaurar só as fotos criaria uma sessão pela metade)
-          const sessionAfter = !item.parent && !item.whole && items.find((o) => o.whole && !o.isProject && !o.parent && o.session === item.session && o.inProject === item.inProject && trashLater(o, item));
-          const inDeletedProject = item.parent ? items.find((o) => o.id === item.parent) : null;
-          if (inDeletedProject) li.classList.add("blocked");
-          if (sessionAfter) li.classList.add("blocked");
+          if (blockedBy || item.restored) li.classList.add("blocked");
           const kindIcon = el("span", "trash-kind");
           kindIcon.innerHTML = icon(item.isProject ? "folder" : item.whole ? "session" : "photo", 16);
           kindIcon.title = item.isProject ? "A whole project" : item.whole ? "A whole session" : "Photos from a session";
           li.appendChild(kindIcon);
-          const offDisk = item.isProject && !item.reachable;
+          const offDisk = item.isProject && !item.reachable && !item.restored;
           if (offDisk) li.classList.add("offdisk");
           const main = el("div", "trash-main");
-          main.appendChild(el("b", "", item.isProject ? item.session : label.date + (label.detail ? " · " + label.detail : "")));
+          const title = el("b", "", item.isProject ? item.session : label.date + (label.detail ? " · " + label.detail : ""));
+          if (item.restored) title.appendChild(el("span", "trash-restored", "✓ Restored"));
+          main.appendChild(title);
           const left = Math.max(0, Math.ceil((item.deletedAt + r.days * 86400 - now) / 86400));
-          const meta = el("small", "", (item.isProject ? "Project · " + plural(item.sessions, "session", "sessions")
-            : item.whole ? "Session · " + plural(item.photos, "photo", "photos") : plural(item.photos, "photo", "photos") + " from this session") +
-            (+item.bytes ? " · " + fmtBytes(+item.bytes) : "") + " · deleted " + agoText(now - item.deletedAt) + " · ");
-          if (item.parent) meta.appendChild(el("span", "", "follows the project"));  // o prazo é o do projeto
-          else meta.appendChild(el("span", left <= 2 ? "soon" : "", left <= 1 ? "deleted for good within a day" : "deleted for good in " + left + " days"));
+          const what = item.isProject ? "Project" + (item.sessions ? " · " + plural(item.sessions, "session", "sessions") : "")
+            : item.whole ? "Session" + (item.photos ? " · " + plural(item.photos, "photo", "photos") : "") : plural(item.photos, "photo", "photos") + " from this session";
+          const meta = el("small", "", what + (+item.bytes ? " · " + fmtBytes(+item.bytes) : "") + " · deleted " + agoText(now - item.deletedAt));
+          if (!item.restored) {
+            meta.appendChild(document.createTextNode(" · "));
+            if (blockedBy && blockedBy.isProject) meta.appendChild(el("span", "", "follows the project"));  // o prazo é o do projeto
+            else meta.appendChild(el("span", left <= 2 ? "soon" : "", left <= 1 ? "deleted for good within a day" : "deleted for good in " + left + " days"));
+          }
           main.appendChild(meta);
-          if (offDisk) main.appendChild(el("small", "trash-note", "The disk with this project is not connected. Connect it to restore or delete the project."));
-          if (inDeletedProject) main.appendChild(el("small", "trash-note", (item.whole ? "This session was" : item.photos === 1 ? "This photo was" : "These photos were") + " in the trash of the project " + inDeletedProject.session + ", which was deleted after. Restore the project first."));
-          if (sessionAfter) main.appendChild(el("small", "trash-note", item.photos === 1
+          const these = item.whole ? "This session was" : item.photos === 1 ? "This photo was" : "These photos were";
+          if (item.restored) main.appendChild(el("small", "trash-note done", "Restored. It stays here until the " + (item.isProject ? "items from its trash" : "photos deleted before it") + " below are restored or deleted."));
+          else if (offDisk) main.appendChild(el("small", "trash-note", "The disk with this project is not connected. Connect it to restore or delete the project."));
+          else if (blockedBy && blockedBy.isProject) main.appendChild(el("small", "trash-note", these + " in the trash of the project " + blockedBy.session + ", which was deleted after. Restore the project first."));
+          else if (blockedBy) main.appendChild(el("small", "trash-note", item.photos === 1
             ? "The whole session was deleted after this photo. Restore the session first to bring it back."
             : "The whole session was deleted after these photos. Restore the session first to bring them back."));
           li.appendChild(main);
-          const restore = button("Restore", () => restoreTrashItem(item, label), { title: item.whole ? "Put the session back in the list" : "Put the photos back in their session" });
-          if (sessionAfter) { restore.disabled = true; restore.title = "Restore the session first"; }
-          if (offDisk) { restore.disabled = true; restore.title = "Connect the disk with this project first"; }
-          if (inDeletedProject) { restore.disabled = true; restore.title = "Restore the project first"; }
-          li.appendChild(restore);
-          // Apagar de vez uma sessão leva junto as fotos dela apagadas antes (que dependiam dela)
-          const linked = item.isProject ? items.filter((o) => o.parent === item.id)
-            : item.whole && !item.parent ? items.filter((o) => !o.parent && !o.whole && o.session === item.session && o.inProject === item.inProject && trashLater(item, o)) : [];
-          li.appendChild(button("Delete permanently", () => {
-            dialog("Delete permanently?", (item.isProject ? "The project " + item.session + " and everything in its folder" : (item.whole ? "The session " : item.photos === 1 ? "This photo of " : "These photos of ") + label.date) + " will be deleted for good" +
-              (linked.length ? (item.isProject ? ", together with " + plural(linked.length, "item", "items") + " that " + (linked.length === 1 ? "was" : "were") + " in its trash"
-                : ", together with " + plural(linked.reduce((t, o) => t + o.photos, 0), "photo", "photos") + " of it deleted before") : "") + ". This cannot be undone.", [
-              { label: "Cancel" },
-              { label: "Delete permanently", danger: true, onClick: () => Promise.all([item, ...(item.isProject ? [] : linked)].map((o) => window.trashDelete(o.id))).then(() => { log("Deleted permanently from the trash: " + label.date, "tech"); renderTrash(); }) },
-            ]);
-          }, { kind: "btn-link", title: "Delete this item for good" }));
-          if (offDisk) li.lastChild.disabled = true;
+          if (!item.restored) {
+            const restore = button("Restore", () => restoreTrashItem(item, label), { title: item.isProject ? "Put the project folder back" : item.whole ? "Put the session back in the list" : "Put the photos back in their session" });
+            if (blockedBy) { restore.disabled = true; restore.title = blockedBy.isProject ? "Restore the project first" : "Restore the session first"; }
+            if (offDisk) { restore.disabled = true; restore.title = "Connect the disk with this project first"; }
+            li.appendChild(restore);
+            // Apagar de vez leva junto o que dependia dele (fotos apagadas antes; a lixeira do projeto)
+            const linked = tree.filter((n) => n.under === item.id).map((n) => n.item).filter((o) => !o.restored);
+            li.appendChild(button("Delete permanently", () => {
+              dialog("Delete permanently?", (item.isProject ? "The project " + item.session + " and everything in its folder" : (item.whole ? "The session " : item.photos === 1 ? "This photo of " : "These photos of ") + label.date) + " will be deleted for good" +
+                (linked.length ? (item.isProject ? ", together with " + plural(linked.length, "item", "items") + " that " + (linked.length === 1 ? "was" : "were") + " in its trash"
+                  : ", together with " + plural(linked.reduce((t, o) => t + o.photos, 0), "photo", "photos") + " of it deleted before") : "") + ". This cannot be undone.", [
+                { label: "Cancel" },
+                { label: "Delete permanently", danger: true, onClick: () => Promise.all([item, ...(item.isProject ? [] : linked)].map((o) => window.trashDelete(o.id))).then(() => { log("Deleted permanently from the trash: " + label.date, "tech"); renderTrash(); }) },
+              ]);
+            }, { kind: "btn-link", title: "Delete this item for good" }));
+            if (offDisk) li.lastChild.disabled = true;
+          }
           list.appendChild(li);
         });
       });
@@ -5956,6 +5950,37 @@
         if (first && document.documentElement.classList.contains("kbd-focus")) first.focus();
       }
     });
+  }
+  // Árvore da lixeira: projeto → sessões → fotos (o que foi apagado antes e depende do de cima fica abaixo
+  // dele, recuado). blockedBy = o de cima, enquanto ele não for restaurado; under = id do de cima.
+  function trashTree(items) {
+    const out = [];
+    const used = new Set();
+    const photosOf = (session, pool) => pool.filter((x) => !x.whole && !used.has(x.id) && x.session === session.session && trashLater(session, x));
+    const add = (item, level, parentItem, group) => {
+      used.add(item.id);
+      out.push({ item, level, under: parentItem ? parentItem.id : "", blockedBy: parentItem && !parentItem.restored ? parentItem : null, group });
+    };
+    const addSession = (sess, level, parentItem, pool, group) => {
+      add(sess, level, parentItem, group);
+      if (sess.whole) photosOf(sess, pool).forEach((ph) => add(ph, level + 1, sess, group));
+    };
+    const tops = items.filter((i) => !i.parent);
+    [false, true].forEach((inProject) => {
+      const pool = tops.filter((i) => !!i.inProject === inProject);
+      // fotos que dependem de uma sessão do mesmo grupo entram depois dela
+      const dependent = (o) => !o.whole && !o.isProject && pool.some((w) => w.whole && !w.isProject && w.session === o.session && trashLater(w, o));
+      pool.forEach((o) => {
+        if (used.has(o.id) || dependent(o)) return;
+        if (o.isProject) {
+          add(o, 0, null, inProject);
+          const kids = items.filter((x) => x.parent === o.id);
+          const kidDependent = (k) => !k.whole && kids.some((w) => w.whole && w.session === k.session && trashLater(w, k));
+          kids.forEach((k) => { if (!used.has(k.id) && !kidDependent(k)) addSession(k, 1, o, kids, inProject); });
+        } else addSession(o, 0, null, pool, inProject);
+      });
+    });
+    return out;
   }
   // a foi apagado depois de b? (ordem exata em texto: números do mesmo tamanho; senão, pelos segundos)
   function trashLater(a, b) {
@@ -5998,20 +6023,28 @@
   // Restore everything: primeiro as sessões inteiras, depois as fotos (as que dependiam de uma sessão
   // apagada depois delas voltam para dentro dela). Um passo só no Desfazer.
   function restoreEverything() {
-    Promise.resolve(window.trashList()).then((r) => {
-      const items = ((r && r.items) || []).filter((i) => !i.parent);  // os de dentro de um projeto voltam com ele
-      if (!items.length) return;
-      const ordered = items.filter((i) => i.whole).concat(items.filter((i) => !i.whole));
-      const done = [];
-      let failed = 0;
+    // Em rodadas: o que está liberado volta (sessões e projetos primeiro); o que dependia dele fica
+    // liberado na rodada seguinte (fotos apagadas antes, a lixeira de um projeto)
+    const done = [];
+    let failed = 0;
+    const tried = new Set();
+    const round = (n) => Promise.resolve(window.trashList()).then((r) => {
+      const ready = trashTree((r && r.items) || []).filter((x) => !x.item.restored && !x.blockedBy && !tried.has(x.item.id) && !(x.item.isProject && !x.item.reachable)).map((x) => x.item);
+      if (!ready.length || n > 6) return;
+      const ordered = ready.filter((i) => i.whole).concat(ready.filter((i) => !i.whole));
       const step = (k) => {
         if (k >= ordered.length) return Promise.resolve();
         const item = ordered[k];
+        tried.add(item.id);
         return Promise.resolve(window.trashRestore(item.id)).then((x) => {
           if (x && x.ok) done.push({ session: item.session, whole: item.whole, files: x.files || [], project: item.isProject ? x.folder : "" }); else failed++;
           return step(k + 1);
         });
       };
+      return step(0).then(() => round(n + 1));
+    });
+    {
+      const step = round;
       step(0).then(() => {
         renderTrash();
         const text = "Restored from the trash: " + plural(done.length, "item", "items") + (failed ? " (" + failed + " could not be restored)" : "");
@@ -6038,7 +6071,7 @@
             return true;
           }) });
       });
-    });
+    }
   }
   $("trashBtn").addEventListener("click", openTrash);
   document.addEventListener("keydown", (e) => {
@@ -6965,7 +6998,7 @@
   setTimeout(() => { renderCameras(); readyStatus(); }, SEARCH_GRACE_MS + 100);
   // Lixeira: o número no botão desde a abertura
   if (typeof window.trashList === "function")
-    Promise.resolve(window.trashList()).then((r) => { const top = r ? (r.items || []).filter((i) => !i.parent) : []; if (r) setTrashInfo({ count: top.length, bytes: top.reduce((t, i) => t + (+i.bytes || 0), 0), days: r.days }); });
+    Promise.resolve(window.trashList()).then((r) => { const all = r ? (r.items || []) : [], rids = new Set(all.filter((i) => i.restored).map((i) => i.id)); const top = all.filter((i) => !i.restored && (!i.parent || rids.has(i.parent))); if (r) setTrashInfo({ count: top.length, bytes: top.reduce((t, i) => t + (+i.bytes || 0), 0), days: r.days }); });
   Promise.resolve(window.uiReady()).then((info) => {
     refreshSessions();
     if (info && info.unsavedSessions > 0) offerRecovery(info.unsavedSessions);

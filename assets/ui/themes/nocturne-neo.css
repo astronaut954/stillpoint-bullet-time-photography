@@ -1322,7 +1322,6 @@ html.kbd-focus input:focus + .save-check { outline: 2px solid var(--noct-primary
 .trash-row.is-photos .trash-kind { color: var(--noct-text-dim); }
 .trash-row.blocked .trash-main b, .trash-row.blocked .trash-kind { opacity: .45; }
 .trash-row small.trash-note { color: var(--noct-pending); }
-.trash-row.blocked { padding-left: 22px; }
 .trash-bar .trash-size { color: var(--noct-text-dim); font-weight: 500; }
 .trash-bar .trash-size:empty { display: none; }
 .trash-bar .trash-size::before { content: "· "; }
@@ -1330,3 +1329,11 @@ html.kbd-focus input:focus + .save-check { outline: 2px solid var(--noct-primary
 /* Várias sessões selecionadas (Cmd/Shift+clique ou o modo Select) */
 .folder.multi { background: var(--noct-elevated); box-shadow: inset 0 0 0 1px var(--noct-info); }
 .trash-row.offdisk .trash-main b, .trash-row.offdisk .trash-kind { opacity: .45; }
+/* Árvore da lixeira: projeto → sessões → fotos */
+.trash-row.lvl1 { padding-left: 26px; }
+.trash-row.lvl2 { padding-left: 52px; }
+.trash-row.lvl1, .trash-row.lvl2 { background: linear-gradient(to right, transparent 10px, var(--noct-border) 10px, var(--noct-border) 11px, transparent 11px); }
+.trash-row.lvl2 { background: linear-gradient(to right, transparent 10px, var(--noct-border) 10px, var(--noct-border) 11px, transparent 11px, transparent 36px, var(--noct-border) 36px, var(--noct-border) 37px, transparent 37px); }
+.trash-restored { margin-left: 10px; font: 700 10px var(--noct-font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--noct-primary); border: 1px solid var(--noct-primary); padding: 1px 5px; vertical-align: 2px; }
+.trash-row.blocked .trash-main b .trash-restored { opacity: 1; }
+.trash-row small.trash-note.done { color: var(--noct-text-muted); }

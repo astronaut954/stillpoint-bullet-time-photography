@@ -1060,6 +1060,17 @@ projeto num HD externo.
       "In the project <nome>".
 - [ ] Delete permanently num projeto: o aviso diz que leva junto os itens da lixeira dele; apaga a pasta escondida de vez.
 
+## 29. Lixeira em árvore e "Restored" (2.15.0)
+
+- [ ] Projeto apagado com sessões/fotos na lixeira dele, e sessão apagada depois de fotos dela: na Trash fica em
+      árvore (projeto → sessões → fotos), recuado, com linhas-guia.
+- [ ] Restore na sessão que tem fotos apagadas antes: a sessão volta para a lista, mas a linha dela fica na Trash
+      apagada, com "✓ Restored" e "Restored. It stays here until the photos deleted before it below are restored or
+      deleted."; o Restore das fotos abaixo fica liberado. Restaurando (ou apagando) as fotos, a linha da sessão some.
+- [ ] O mesmo com o projeto: Restore no projeto → linha com "✓ Restored"; as sessões e fotos da lixeira dele ficam
+      liberadas; quando acabarem, a linha do projeto some.
+- [ ] Restore everything traz tudo, em rodadas (primeiro projetos/sessões, depois o que dependia deles).
+
 ## 27. Apagar várias sessões e o nome Export sessions (2.15.0)
 
 - [ ] O botão do rodapé e a janela se chamam "Export sessions"; o botão de confirmar diz "Export n sessions";

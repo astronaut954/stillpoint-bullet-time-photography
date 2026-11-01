@@ -56,6 +56,7 @@
 #include <memory>
 #include <deque>
 #include <fstream>
+#include <set>
 #include <functional>
 #include <mutex>
 #include <regex>
@@ -1125,8 +1126,13 @@ namespace
             const auto items = store.ListTrash();
             unsigned long long bytes = 0;
             int count = 0;
+            std::set<std::string> restoredIds;
             for (const auto& item : items)
-                if (item.parent.empty())  // o de dentro de um projeto apagado já conta no projeto
+                if (item.restored)
+                    restoredIds.insert(item.id);
+            for (const auto& item : items)
+                // o de dentro de um projeto apagado já conta no projeto (até o projeto ser restaurado)
+                if (!item.restored && (item.parent.empty() || restoredIds.count(item.parent)))
                 {
                     bytes += item.bytes;
                     ++count;
@@ -3670,7 +3676,7 @@ namespace
                     .Add("whole", item.wholeSession).Add("photos", item.photos).Raw("bytes", std::to_string(item.bytes))
                     .Raw("deletedAt", std::to_string(item.deletedAt)).Add("order", std::to_string(item.order))
                     .Add("inProject", item.inProject).Add("isProject", item.isProject).Add("reachable", item.reachable)
-                    .Add("sessions", item.sessions).Add("parent", item.parent).Str();
+                    .Add("sessions", item.sessions).Add("parent", item.parent).Add("restored", item.restored).Str();
             return Json("trash").Raw("items", list + "]").Add("days", kTrashDays)
                 .Add("project", project.IsOpen() ? project.Name() : std::string()).Str();
         });
