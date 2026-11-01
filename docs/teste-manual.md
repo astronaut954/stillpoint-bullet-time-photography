@@ -1108,6 +1108,9 @@ projeto num HD externo.
 - [ ] O mesmo com duas do projeto arrastadas para "Not in project": "Drop to remove 2 sessions from project".
 - [ ] Seleção misturada (do projeto e de fora): vão só as do mesmo lado da sessão segurada.
 - [ ] Clicar sem arrastar numa das marcadas desfaz a seleção e abre essa sessão.
+- [ ] Cmd+clique (ou Shift+clique) em cima de "Add to project ↑": só marca a sessão; ela não entra no projeto.
+- [ ] Tirar uma sessão de RAW do projeto logo depois de abri-la e pôr de volta: entra sem o aviso
+      "A session with this name already exists there".
 
 ## Resultado
 

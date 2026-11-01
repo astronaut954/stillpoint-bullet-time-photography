@@ -1335,7 +1335,8 @@
         if (s.inProject && s.edited > 0) li.querySelector(".folder-meta").after(projectTag(s));
         if (!s.inProject) {
           const add = el("button", "btn btn-link btn-small folder-add", "Add to project ↑");
-          add.addEventListener("click", (e) => { e.stopPropagation(); moveToProject(s.name, true); });
+          // Com Cmd/Ctrl/Shift o clique é de seleção: o botão não age e o clique segue para a linha
+          add.addEventListener("click", (e) => { if (e.metaKey || e.ctrlKey || e.shiftKey) return; e.stopPropagation(); moveToProject(s.name, true); });
           li.querySelector("div").appendChild(add);
         }
         // Segurar e arrastar: para o botão do projeto (barra de cima) = entra; para "Not in project" = sai

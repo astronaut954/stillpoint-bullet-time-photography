@@ -549,6 +549,21 @@ bool PhotoStore::WriteSessionInfo(const std::string& session, const std::string&
     return WriteSessionInfoFile(dir, info);
 }
 
+namespace
+{
+    // Pasta que só tem arquivos e pastas do app (começam com ".", como ".previews"): nenhuma foto
+    bool OnlyAppLeftovers(const fs::path& dir)
+    {
+        std::error_code ec;
+        if (!fs::is_directory(dir, ec))
+            return false;
+        for (const auto& entry : fs::directory_iterator(dir, ec))
+            if (entry.path().filename().string().rfind('.', 0) != 0)
+                return false;
+        return !ec;
+    }
+}
+
 bool PhotoStore::MoveSession(const std::string& session, bool toProject, std::string& errorMessage) const
 {
     if (projectRoot.empty())
@@ -568,6 +583,9 @@ bool PhotoStore::MoveSession(const std::string& session, bool toProject, std::st
     fs::path to = destRoot / session;
     if (fs::equivalent(from.parent_path(), destRoot, ec))
         return true;  // já está lá
+    if (fs::exists(to, ec) && OnlyAppLeftovers(to))
+        fs::remove_all(to, ec);  // sobra sem fotos (ex.: só a pasta de prévias): não é uma sessão
+    ec.clear();
     if (fs::exists(to, ec))
     {
         errorMessage = "A session with this name already exists there: " + session;
@@ -734,8 +752,13 @@ std::string PhotoStore::Preview(const std::string& session, const std::string& f
     std::string jpeg;
     stbi_write_jpg_to_func(AppendToString, &jpeg, tw, th, 3, resized.data(), 85);
 
-    fs::create_directories(cache.parent_path(), ec);
-    std::ofstream(cache, std::ios::binary) << jpeg;
+    // A sessão pode ter mudado de lugar (ou ido para a lixeira) enquanto a prévia era feita:
+    // gravar no caminho antigo recriaria uma pasta vazia com o nome dela
+    if (fs::exists(dir / file, ec))
+    {
+        fs::create_directories(cache.parent_path(), ec);
+        std::ofstream(cache, std::ios::binary) << jpeg;
+    }
     return jpeg;
 }
 
