@@ -1402,3 +1402,10 @@ body.mod-keys .folder-add { cursor: default; }
   color: var(--noct-text); font: 700 10px var(--noct-font-mono); text-transform: uppercase; letter-spacing: .1em;
   box-shadow: 0 8px 24px rgba(0, 0, 0, .5);
 }
+/* Nome na exportação: os botões e, no Custom, o campo + "Add date + time" + Before/After embaixo deles */
+.export-name-col { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; min-width: 0; }
+.export-name-custom { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
+.export-row:has(> .export-name-col) { align-items: flex-start; }
+.export-row:has(> .export-name-col) > .export-label { padding-top: 9px; }
+/* Shift+clique nas miniaturas: sem seleção de texto (os números não ficam marcados) */
+.carousel, .carousel .frame { -webkit-user-select: none; user-select: none; }

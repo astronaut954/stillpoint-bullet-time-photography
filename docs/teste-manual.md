@@ -1091,6 +1091,8 @@ projeto num HD externo.
 - [ ] O botão do rodapé e a janela se chamam "Export sessions"; o botão de confirmar diz "Export n sessions";
       o andamento, "Exporting n sessions"; a etiqueta das sessões já exportadas, "✓ Exported"; o aviso ao
       fechar, "Export your sessions before closing?" com "Export and close".
+- [ ] Export sessions, Name = "Custom": o campo do nome, "Add date + time" e Before/After ficam numa linha embaixo
+      dos botões Date + time / Number / Custom, começando no mesmo ponto que eles.
 
 - [ ] Cmd+clique (Ctrl no Windows) numa sessão: ela e a aberta ficam marcadas (borda azul).
 - [ ] Shift+clique marca o intervalo; Shift+↑ ↓ com o contorno numa sessão faz o mesmo pelo teclado.
@@ -1100,6 +1102,10 @@ projeto num HD externo.
       para a lixeira; aparecem na Trash; Cmd+Z traz todas de volta (um passo só).
 - [ ] Tecla Delete (ou Backspace) com o contorno na lista: apaga a seleção (ou só a sessão do contorno).
 - [ ] Esc desfaz a seleção; um clique simples numa sessão também (e abre a sessão).
+- [ ] Cmd+clique seguido em várias sessões, desmarcando algumas: nunca aparece marcada uma sessão que não foi
+      clicada; desmarcar a aberta abre outra das marcadas; sobrando uma só, ela fica aberta e sem marca.
+- [ ] Apertar o botão do mouse com Cmd e soltar o Cmd antes de soltar o botão: conta como Cmd+clique.
+- [ ] Shift+clique nas miniaturas: os números não ficam marcados como texto.
 - [ ] Janela Project: marcar sessões e clicar em "Delete n sessions…" (ao lado de Remove from project): o mesmo
       aviso; vão para a lixeira do projeto.
 - [ ] Arrastar várias: marcar duas sessões de "Not in project", segurar uma delas e arrastar até o botão do projeto

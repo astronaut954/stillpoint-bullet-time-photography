@@ -524,7 +524,11 @@
 
       // Clique: Shift marca o intervalo, Cmd/Ctrl marca ou desmarca uma; segurar e arrastar muda a ordem
       // (todas as marcadas vão juntas)
-      li.addEventListener("click", (e) => {
+      // Vale a tecla apertada ao pressionar o botão do mouse (soltar o Cmd/Shift antes não muda o clique)
+      li.addEventListener("pointerdown", (e) => { downMods = { li, metaKey: e.metaKey, ctrlKey: e.ctrlKey, shiftKey: e.shiftKey }; if (e.shiftKey || e.metaKey || e.ctrlKey) e.preventDefault(); });
+      li.addEventListener("click", (ev) => {
+        const e = downMods && downMods.li === li ? downMods : ev;
+        downMods = null;
         if (suppressClick) { suppressClick = false; return; }  // o clique que fecha um arraste não seleciona
         const many = opts.multi || draggable;
         if (e.shiftKey && many) extendTo(i);
@@ -705,7 +709,7 @@
 
     // ----- Arrastar sem o modo Reorder: para o lado (muda a ordem) ou para um alvo de fora (a lixeira) -----
     // Uma cópia da miniatura segue o ponteiro; com várias marcadas, vão todas (só para o alvo de fora)
-    let free = null, suppressClick = false;
+    let free = null, suppressClick = false, downMods = null;
     function onFreeDown(e, li, i) {
       if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || (!draggable && opts.canDrag && !opts.canDrag())) return;
       if (free) endFree(true);
@@ -1358,6 +1362,7 @@
   }
   function clearSelection() { if (!sessSel.size) return; sessSel.clear(); renderSessionList(); }
   function selectionActive() { return sessSel.size > 1; }
+  let sessDownMods = null;  // teclas apertadas no último "pointerdown" de uma sessão
   function pruneSelection() { [...sessSel].forEach((n) => { if (!sessions.some((x) => x.name === n)) sessSel.delete(n); }); }
   function moveMany(names, toProject) {
     applyMove(names, toProject).then((ok) => {
@@ -1467,6 +1472,7 @@
       // Segurar e arrastar: para o botão do projeto (barra de cima) = entra; para "Not in project" = sai;
       // para o botão da lixeira = apaga (este vale também sem projeto aberto)
       li.addEventListener("pointerdown", (e) => {
+        sessDownMods = { name: s.name, metaKey: e.metaKey, ctrlKey: e.ctrlKey, shiftKey: e.shiftKey, t: Date.now() };
         if (e.metaKey || e.ctrlKey || e.shiftKey) return;
         photoKeys = false;
         // Clique simples desfaz a seleção já aqui: o sessPointerDown redesenha a lista e o "click" nem chega à linha
@@ -1492,11 +1498,28 @@
         li.title = "Already exported. It leaves the app when you close Stillpoint (the exported copy stays where you exported it).";
       }
       const toggle = () => { if (sessSel.has(s.name)) sessSel.delete(s.name); else sessSel.add(s.name); selAnchor = s.name; };
-      li.addEventListener("click", (e) => {
+      li.addEventListener("click", (ev) => {
+        // Vale a tecla que estava apertada ao pressionar o botão do mouse (soltar o Cmd antes de soltar o
+        // botão não vira um clique simples)
+        const e = sessDownMods && sessDownMods.name === s.name && Date.now() - sessDownMods.t < 2000 ? sessDownMods : ev;
+        sessDownMods = null;
         if (e.metaKey || e.ctrlKey) {
           // A aberta entra na seleção junto (como no Finder)
-          if (!sessSel.size && currentSession && currentSession.name !== s.name) sessSel.add(currentSession.name);
-          toggle(); renderSessionList(); return;
+          const open = currentSession && currentSession.name;
+          if (!sessSel.size && open && open !== s.name) sessSel.add(open);
+          toggle();
+          // Nunca fica uma seleção "invisível" de uma sessão só: sobrando uma, ela é a aberta
+          if (sessSel.size === 1) {
+            const only = [...sessSel][0];
+            sessSel.clear();
+            const o = sessions.find((x) => x.name === only);
+            if (o && only !== open) { showSession(o); return; }
+          } else if (sessSel.size > 1 && !sessSel.has(open)) {
+            // A aberta saiu da seleção: abre a primeira das que ficaram marcadas
+            const next = sessions.find((x) => sessSel.has(x.name));
+            if (next) { showSession(next); return; }
+          }
+          renderSessionList(); return;
         }
         if (e.shiftKey) { selectRange(selAnchor || (currentSession && currentSession.name) || s.name, s.name); renderSessionList(); return; }
         sessSel.clear(); selAnchor = s.name; photoKeys = false;
@@ -3508,12 +3531,14 @@
     // Nome da pasta e dos arquivos
     const n = st.naming;
     const nameRow = row("Name");
-    nameRow.appendChild(segmented([["date", "Date + time"], ["number", "Number"], ["custom", "Custom"]], n.kind,
+    // As opções do Custom ficam embaixo dos botões, alinhadas com eles (na mesma coluna)
+    const nameCol = el("div", "export-name-col");
+    nameCol.appendChild(segmented([["date", "Date + time"], ["number", "Number"], ["custom", "Custom"]], n.kind,
       (v) => { n.kind = v; rerender(); }));
+    nameRow.appendChild(nameCol);
     rows.appendChild(nameRow);
     if (n.kind === "custom") {
-      const custom = row("");
-      custom.style.paddingLeft = "84px";
+      const custom = el("div", "export-name-custom");
       const input = document.createElement("input");
       input.className = "export-name";
       input.placeholder = "Name, e.g. Studio test";
@@ -3523,7 +3548,7 @@
       custom.appendChild(input);
       custom.appendChild(checkOption("Add date + time", n.date, (v) => { n.date = v; rerender(); }));
       if (n.date) custom.appendChild(segmented([["before", "Before"], ["after", "After"]], n.position, (v) => { n.position = v; rerender(); }));
-      rows.appendChild(custom);
+      nameCol.appendChild(custom);
     }
     const folderLine = el("div", "export-note", "Folder: " + folderName(session));
     rows.appendChild(folderLine);
