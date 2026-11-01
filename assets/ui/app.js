@@ -1543,7 +1543,8 @@
           const frames = [...ui.sessionGallery.querySelectorAll(".carousel .frame")];
           const thumbs = sessionGallery.selection.map((k) => frames[k]).filter(Boolean);
           const big = ui.sessionGallery.querySelector(".stage img");
-          thumbs.forEach((t) => t.animate && t.animate([{ opacity: 1, transform: "scale(1)" }, { opacity: 0, transform: "scale(.4) translateY(30%)" }], { duration: 260, easing: "ease-in", fill: "forwards" }));
+          flyNodesToTrash(thumbs);  // as miniaturas voam até o ícone da lixeira
+          thumbs.forEach((t) => t.animate && t.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, easing: "ease-in", fill: "forwards" }));
           if (big && big.animate && big.getAttribute("src")) big.animate([{ opacity: 1, transform: "scale(1)" }, { opacity: 0, transform: "scale(.85)" }], { duration: 260, easing: "ease-in", fill: "forwards" });
           // A foto grande volta a aparecer quando a próxima carregar (ou, se nada mudar, em 1,5 s)
           const reveal = () => { if (big) big.getAnimations().forEach((a) => a.cancel()); thumbs.forEach((t) => t.isConnected && t.getAnimations().forEach((a) => a.cancel())); };
@@ -1560,6 +1561,16 @@
       ]);
   }
 
+  // Mostra uma sessão que acabou de voltar (relê a lista antes, para ela já estar lá)
+  function reopenSession(name, full) {
+    return Promise.resolve(window.listSessions()).then((list) => {
+      if (Array.isArray(list)) setSessions(list);
+      const s = sessions.find((x) => x.name === name);
+      if (!s) return;
+      showSession(s);
+      if (full) setFullscreen(true);
+    });
+  }
   function deleteCurrentSession() { if (currentSession) deleteSessionAsk(currentSession); }
   // Traz de volta da lixeira do app (sessão inteira ou as fotos apagadas); false se não deu
   function restoreSession(name) {
@@ -1572,12 +1583,40 @@
   }
   // Apagar sessão: uma cópia da linha voa até o botão da lixeira (encolhendo e sumindo), a linha
   // fecha no lugar e a lixeira dá um pulo; só então a sessão é apagada
+  function trashTarget() {
+    const b = $("trashBtn");
+    return b && b.offsetParent && b.getBoundingClientRect().width ? b : null;
+  }
+  // Cópias de elementos (miniaturas de fotos) voam até o ícone da lixeira
+  function flyNodesToTrash(nodes) {
+    const trash = trashTarget();
+    const to = trash ? trash.getBoundingClientRect() : null;
+    nodes.forEach((node, k) => {
+      if (!node || !node.animate) return;
+      const from = node.getBoundingClientRect();
+      if (!from.width) return;
+      const ghost = node.cloneNode(true);
+      ghost.classList.add("trash-ghost");
+      Object.assign(ghost.style, { left: from.left + "px", top: from.top + "px", width: from.width + "px", height: from.height + "px", margin: "0" });
+      document.body.appendChild(ghost);
+      const dx = to ? to.left + to.width / 2 - (from.left + from.width / 2) : 0;
+      const dy = to ? to.top + to.height / 2 - (from.top + from.height / 2) : -60;
+      const a = ghost.animate([{ transform: "translate(0, 0) scale(1)", opacity: 1 },
+                               { transform: "translate(" + dx * 0.5 + "px, " + (dy * 0.5 - 30) + "px) scale(.55)", opacity: .9, offset: .5 },
+                               { transform: "translate(" + dx + "px, " + dy + "px) scale(.08)", opacity: 0 }],
+                              { duration: 520, delay: k * 40, easing: "cubic-bezier(.5, 0, .7, 1)", fill: "forwards" });
+      a.onfinish = () => ghost.remove();
+      setTimeout(() => ghost.remove(), 1200 + k * 40);
+    });
+    if (trash && trash.animate) setTimeout(() => trash.animate([{ transform: "scale(1)" }, { transform: "scale(1.25)" }, { transform: "scale(1)" }], { duration: 240, easing: "ease-out" }), 470 + (nodes.length - 1) * 40);
+  }
   function flyToTrash(name, done) {
     const full = isFullscreen() && currentSession && currentSession.name === name;
     // Tela cheia: a área da foto (miniaturas + foto grande) vai até o ícone da lixeira da tela cheia
     const li = full ? ui.sessionGallery.querySelector(".stage")
       : [...ui.sessionList.querySelectorAll("li.folder")].find((x) => x.dataset.name === name);
-    const trash = full ? fullTrashBtn : compactActions[0];
+    // Vai para o ícone da lixeira da barra de cima (na tela cheia, para onde ele fica)
+    const trash = trashTarget() || (full ? fullTrashBtn : compactActions[0]);
     const from = li && !li.classList.contains("hidden") ? li.getBoundingClientRect() : null;
     const to = trash && trash.offsetParent ? trash.getBoundingClientRect() : null;
     if (!from || !from.width || !li.animate) { done(); return; }
@@ -1610,8 +1649,11 @@
       { label: "Cancel" },
       { label: "Delete", danger: true, onClick: () => {
         toast("Session deleted: " + label.date + (s.inProject ? " (from the project folder)" : ""));
+        const wasFull = isFullscreen() && currentSession && currentSession.name === s.name;
         flyToTrash(s.name, () => window.deleteSession(s.name));
-        recordAction({ label: "Delete session " + label.date, undo: () => restoreSession(s.name), redo: () => window.deleteSession(s.name) });
+        // Desfazer: a sessão volta e fica aberta (na tela cheia, se foi apagada nela)
+        recordAction({ label: "Delete session " + label.date, undo: () => Promise.resolve(restoreSession(s.name)).then((ok) => { if (ok) reopenSession(s.name, wasFull); return ok; }),
+                       redo: () => window.deleteSession(s.name) });
       } },
     ]);
   }

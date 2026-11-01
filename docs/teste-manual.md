@@ -1068,6 +1068,9 @@ projeto num HD externo.
       Cmd+Z traz todas de volta. Voltando às sessões (↑ ↓ ou clique numa sessão), o Delete volta a apagar a sessão.
 - [ ] Botão direito numa das fotos marcadas: "n photos selected" e "Delete n photos…".
 - [ ] Tela cheia da sessão: o Tab circula só pelos botões da tela cheia (não vai para a tela de trás).
+- [ ] Apagar uma sessão (fora ou dentro da tela cheia) ou fotos: as cópias voam até o ícone da lixeira da barra de
+      cima, que dá um pulinho no fim.
+- [ ] Apagar a sessão na tela cheia e Cmd+Z: a sessão volta aberta, na tela cheia.
 - [ ] Trash: a etiqueta "✓ Restored" aparece inteira (sem a linha de cima cortada).
 
 ## 29. Lixeira em árvore e "Restored" (2.15.0)
