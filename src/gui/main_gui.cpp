@@ -3601,7 +3601,8 @@ namespace
             for (const auto& item : store.ListTrash())
                 list += std::string(list.size() > 1 ? "," : "") + Json("item").Add("id", item.id).Add("session", item.session)
                     .Add("whole", item.wholeSession).Add("photos", item.photos).Raw("bytes", std::to_string(item.bytes))
-                    .Raw("deletedAt", std::to_string(item.deletedAt)).Add("inProject", item.inProject).Str();
+                    .Raw("deletedAt", std::to_string(item.deletedAt)).Add("order", std::to_string(item.order))
+                    .Add("inProject", item.inProject).Str();
             return Json("trash").Raw("items", list + "]").Add("days", kTrashDays)
                 .Add("project", project.IsOpen() ? project.Name() : std::string()).Str();
         });

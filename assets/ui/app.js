@@ -148,6 +148,7 @@
     expand: '<path d="M2 5V2h3M9 2h3v3M12 9v3H9M5 12H2V9"/>',
     shrink: '<path d="M5 2v3H2M12 5H9V2M9 12V9h3M2 9h3v3"/>',
     trash: '<path d="M2.5 4h9M5.5 4V2.5h3V4M3.5 4l.6 7.5h5.8l.6-7.5"/>',
+    photo: '<rect x="1.5" y="2.5" width="11" height="9" rx="1"/><path d="M1.5 10l3.2-3.2 2.3 2.3 1.6-1.6 3.9 3.9"/><circle cx="9.6" cy="5.4" r="1"/>',
     menu: '<path d="M2.5 4h9M2.5 7h9M2.5 10h9"/>',
     close: '<path d="M3.5 3.5l7 7M10.5 3.5l-7 7"/>',
   };
@@ -5771,14 +5772,30 @@
       if (!items.length) { list.appendChild(el("li", "trash-empty", "The trash is empty.")); return; }
       const now = Date.now() / 1000;
       [false, true].forEach((inProject) => {
-        const group = items.filter((i) => !!i.inProject === inProject);
+        const raw = items.filter((i) => !!i.inProject === inProject);
+        // Fotos que dependem de uma sessão também na lixeira: logo abaixo dela
+        const dependsOn = (o) => !o.whole && raw.find((w) => w.whole && w.session === o.session && trashLater(w, o));
+        const group = [];
+        raw.forEach((o) => {
+          if (dependsOn(o)) return;
+          group.push(o);
+          if (o.whole) raw.filter((x) => !x.whole && x.session === o.session && trashLater(o, x)).forEach((x) => group.push(x));
+        });
         if (!group.length) return;
         if (items.some((i) => !!i.inProject !== inProject) || inProject)
           list.appendChild(el("li", "trash-group", inProject ? "In the project " + (r.project || "") : "In the app"));
         group.forEach((item) => {
-          const li = el("li", "trash-row");
+          const li = el("li", "trash-row" + (item.whole ? " is-session" : " is-photos"));
           li.dataset.id = item.id;
           const label = sessionLabel(item.session);
+          // Fotos apagadas antes e, depois, a sessão inteira: a entrada das fotos fica desligada até a
+          // sessão voltar (restaurar só as fotos criaria uma sessão pela metade)
+          const sessionAfter = !item.whole && items.find((o) => o.whole && o.session === item.session && o.inProject === item.inProject && trashLater(o, item));
+          if (sessionAfter) li.classList.add("blocked");
+          const kindIcon = el("span", "trash-kind");
+          kindIcon.innerHTML = icon(item.whole ? "folder" : "photo", 16);
+          kindIcon.title = item.whole ? "A whole session" : "Photos from a session";
+          li.appendChild(kindIcon);
           const main = el("div", "trash-main");
           main.appendChild(el("b", "", label.date + (label.detail ? " · " + label.detail : "")));
           const left = Math.max(0, Math.ceil((item.deletedAt + r.days * 86400 - now) / 86400));
@@ -5786,14 +5803,22 @@
             " · " + fmtBytes(+item.bytes) + " · deleted " + agoText(now - item.deletedAt) + " · ");
           meta.appendChild(el("span", left <= 2 ? "soon" : "", left <= 1 ? "deleted for good within a day" : "deleted for good in " + left + " days"));
           main.appendChild(meta);
+          if (sessionAfter) main.appendChild(el("small", "trash-note", item.photos === 1
+            ? "The whole session was deleted after this photo. Restore the session first to bring it back."
+            : "The whole session was deleted after these photos. Restore the session first to bring them back."));
           li.appendChild(main);
-          li.appendChild(button("Restore", () => restoreTrashItem(item, label), { title: item.whole ? "Put the session back in the list" : "Put the photos back in their session" }));
-          li.appendChild(button("Delete now", () => {
-            dialog("Delete for good?", (item.whole ? "The session " : "These photos of ") + label.date + " will be deleted for good. This cannot be undone.", [
+          const restore = button("Restore", () => restoreTrashItem(item, label), { title: item.whole ? "Put the session back in the list" : "Put the photos back in their session" });
+          if (sessionAfter) { restore.disabled = true; restore.title = "Restore the session first"; }
+          li.appendChild(restore);
+          // Apagar de vez uma sessão leva junto as fotos dela apagadas antes (que dependiam dela)
+          const linked = item.whole ? items.filter((o) => !o.whole && o.session === item.session && o.inProject === item.inProject && trashLater(item, o)) : [];
+          li.appendChild(button("Delete permanently", () => {
+            dialog("Delete permanently?", (item.whole ? "The session " : item.photos === 1 ? "This photo of " : "These photos of ") + label.date + " will be deleted for good" +
+              (linked.length ? ", together with " + plural(linked.reduce((t, o) => t + o.photos, 0), "photo", "photos") + " of it deleted before" : "") + ". This cannot be undone.", [
               { label: "Cancel" },
-              { label: "Delete", danger: true, onClick: () => Promise.resolve(window.trashDelete(item.id)).then(() => { log("Deleted for good from the trash: " + label.date, "tech"); renderTrash(); }) },
+              { label: "Delete permanently", danger: true, onClick: () => Promise.all([item, ...linked].map((o) => window.trashDelete(o.id))).then(() => { log("Deleted permanently from the trash: " + label.date, "tech"); renderTrash(); }) },
             ]);
-          }, { kind: "btn-link" }));
+          }, { kind: "btn-link", title: "Delete this item for good" }));
           list.appendChild(li);
         });
       });
@@ -5803,6 +5828,12 @@
         if (first && document.documentElement.classList.contains("kbd-focus")) first.focus();
       }
     });
+  }
+  // a foi apagado depois de b? (ordem exata em texto: números do mesmo tamanho; senão, pelos segundos)
+  function trashLater(a, b) {
+    const x = String(a.order || ""), y = String(b.order || "");
+    if (x && y && x.length === y.length) return x > y;
+    return a.deletedAt > b.deletedAt;
   }
   function restoreTrashItem(item, label) {
     Promise.resolve(window.trashRestore(item.id)).then((r) => {

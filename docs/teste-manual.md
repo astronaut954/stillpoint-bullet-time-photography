@@ -1024,7 +1024,12 @@ projeto num HD externo.
       good in 15 days".
 - [ ] Apagar uma foto (botão direito → Delete photo…): aparece como "1 photo from this session".
 - [ ] Restore numa linha: a sessão (ou a foto) volta para a lista; a linha sai da Trash.
-- [ ] Delete now: pergunta "Delete for good?"; Delete apaga só aquele item.
+- [ ] Cada linha tem um ícone: pasta = sessão inteira; imagem = fotos de uma sessão.
+- [ ] Delete permanently: pergunta "Delete permanently?"; apaga só aquele item.
+- [ ] Apagar uma foto e depois a sessão inteira dela: a linha da foto fica logo abaixo da sessão, apagada, com
+      Restore desligado e o aviso "The whole session was deleted after this photo. Restore the session first…".
+      Restaurar a sessão: a linha da foto volta a funcionar. Delete permanently na sessão: o aviso diz que leva
+      junto a foto apagada antes, e as duas linhas saem.
 - [ ] Empty trash: pergunta; apaga tudo; a janela mostra "The trash is empty." e o número some do botão.
 - [ ] Cmd+Z depois de apagar uma sessão continua trazendo de volta (e ela sai da Trash).
 - [ ] Fechar e abrir o app: os itens continuam na Trash (antes eram apagados ao abrir).
