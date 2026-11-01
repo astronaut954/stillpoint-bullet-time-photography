@@ -1293,3 +1293,5 @@ html.drag-ns, html.drag-ns * { cursor: ns-resize !important; }
 .info-tip-text { pointer-events: none; }
 /* Navegando pelo teclado: contorno verde em qualquer controle com foco */
 html.kbd-focus :focus { outline: 2px solid var(--noct-primary); outline-offset: 2px; }
+/* Opção marcada pelo teclado na lista do app */
+.select-menu button.kbd { background: var(--noct-elevated); color: var(--noct-primary); outline: 1px solid var(--noct-primary); outline-offset: -1px; }

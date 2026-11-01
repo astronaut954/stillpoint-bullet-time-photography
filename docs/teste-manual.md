@@ -879,8 +879,14 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) serve para tudo, menos para a impress
       time, sessões), com contorno verde. Com uma janela aberta (Camera settings, Save sessions, avisos),
       o Tab fica só dentro dela e passa por tudo dela (Camera settings: listas, ±, Test shot, Match
       automatically, Use gray card, Read again, Calibrate with chart, Copy from camera, Done). Shift+Tab volta.
-- [ ] Camera settings pelo teclado: numa lista, as setas do teclado abrem a lista escura do app (nunca a do
-      Mac); depois de mudar um valor, o foco continua no mesmo lugar (o próximo Tab segue dali).
+- [ ] Camera settings pelo teclado: numa lista, seta para baixo (ou Enter/Espaço) abre a lista escura do
+      app (nunca a do Mac); com ela aberta, as setas andam pela lista (opção marcada com contorno verde),
+      Enter escolhe, Esc fecha, Tab fecha e vai para a próxima caixa. Depois de escolher, o foco continua
+      na mesma caixa. A caixa do "±" fecha quando o Tab sai dela.
+- [ ] Activity aberto: o Tab circula só dentro dele (Show technical details, Copy log, botões); fechado,
+      volta ao normal.
+- [ ] Sessões pelo teclado: o Tab passa pelas sessões da lista e pelas miniaturas; Enter ou Espaço abre a
+      sessão / mostra a foto.
 - [ ] "?" com o Tab: a explicação aparece enquanto o "?" tem o foco e some no próximo Tab, sem precisar
       mexer o mouse.
 - [ ] Lupas: segurando o botão esquerdo somem a mira "+" e a legenda do zoom; ao soltar, voltam. A instrução aparece

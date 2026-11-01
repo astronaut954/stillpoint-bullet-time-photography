@@ -465,6 +465,11 @@
         li.addEventListener("click", () => select(i));
       }
       if (opts.onContext) li.addEventListener("contextmenu", (e) => { e.preventDefault(); select(i); opts.onContext(e); });
+      // Teclado: Tab chega na miniatura; Enter ou Espaço mostra a foto
+      if (!draggable) {
+        li.tabIndex = 0;
+        li.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); select(i); } });
+      }
       return li;
     }
 
@@ -1132,6 +1137,9 @@
         li.title = "Already saved. It leaves the app when you close Stillpoint (the saved copy stays where you saved it).";
       }
       li.addEventListener("click", () => showSession(s));
+      // Teclado: Tab chega na sessão; Enter ou Espaço abre
+      li.tabIndex = 0;
+      li.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); showSession(s); } });
       ui.sessionList.appendChild(li);
     });
     if (projectOpen) addDivider();  // também sem sessões fora: é o alvo para tirar do projeto arrastando
@@ -3896,11 +3904,12 @@
   function tabScope() {
     if (openMenu) return openMenu;
     const open = [...document.querySelectorAll(".overlay:not(.hidden)")].filter((o) => o.getClientRects().length > 0);
-    if (!open.length) return document.body;
+    if (!open.length) return ui.log.classList.contains("expanded") ? ui.log : document.body;  // Activity aberto: só ele
     return open.reduce((top, o) => ((parseInt(getComputedStyle(o).zIndex, 10) || 0) >= (parseInt(getComputedStyle(top).zIndex, 10) || 0) ? o : top));
   }
   document.addEventListener("keydown", (e) => {
-    if (e.key !== "Tab" || e.metaKey || e.ctrlKey || e.altKey || e.defaultPrevented || selectMenu) return;
+    if (e.key !== "Tab" || e.metaKey || e.ctrlKey || e.altKey || e.defaultPrevented) return;
+    if (selectMenu) closeSelectMenu();  // lista aberta: fecha e segue para o próximo
     const scope = tabScope();
     const list = focusables(scope);
     if (!list.length) return;
@@ -3937,7 +3946,12 @@
         b.addEventListener("click", () => {
           closeSelectMenu();
           sel.focus();
+          // Escolher costuma redesenhar a tela (a caixa é trocada por uma nova): o foco volta para a
+          // caixa que ficou no mesmo lugar, para o próximo Tab seguir dali
+          const scope = tabScope(), at = focusables(scope).indexOf(sel);
           if (sel.value !== o.value) { sel.value = o.value; sel.dispatchEvent(new Event("change", { bubbles: true })); }
+          const refocus = () => { if (!sel.isConnected && at >= 0) { const list = focusables(tabScope()); const t = list[Math.min(at, list.length - 1)]; if (t) t.focus({ preventScroll: true }); } };
+          refocus(); setTimeout(refocus, 0); setTimeout(refocus, 120);
         });
         m.appendChild(b);
         return b;
@@ -3951,17 +3965,12 @@
       m.style.left = Math.round(Math.max(8, Math.min(r.left, window.innerWidth - m.offsetWidth - 8))) + "px";
       m.style.top = Math.round(down ? r.bottom + 4 : r.top - 4 - m.offsetHeight) + "px";
       const cur = buttons.find((b) => b.classList.contains("current")) || buttons.find((b) => !b.disabled);
-      if (cur) { cur.scrollIntoView({ block: "center" }); cur.focus({ preventScroll: true }); }
-      // ↑ ↓ andam pela lista; Enter escolhe (é um botão); Esc e Tab fecham
-      m.addEventListener("keydown", (e) => {
-        const live = buttons.filter((b) => !b.disabled);
-        const i = live.indexOf(document.activeElement);
-        if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-          e.preventDefault();
-          const n = live[Math.max(0, Math.min(live.length - 1, i + (e.key === "ArrowDown" ? 1 : -1)))];
-          if (n) n.focus();
-        } else if (e.key === "Tab") { e.preventDefault(); closeSelectMenu(); sel.focus(); }
-      });
+      // Destaque do teclado: uma marca na opção (o foco fica na caixa; no Mac o foco nos botões da
+      // lista não funcionava e as setas iam para a lista do sistema)
+      m.buttons = buttons;
+      m.mark = (b) => { buttons.forEach((x) => x.classList.toggle("kbd", x === b)); m.active = b; if (b) b.scrollIntoView({ block: "nearest" }); };
+      if (cur) { cur.scrollIntoView({ block: "center" }); m.mark(cur); }
+      buttons.forEach((b) => b.addEventListener("mouseenter", () => { if (!b.disabled) m.mark(b); }));
       sel.classList.add("open");
       selectMenu = m;
     };
@@ -3974,6 +3983,23 @@
     });
     sel.appMenu = open;  // as teclas são tratadas na captura (antes do Mac abrir a lista dele)
   }
+  // Lista do app aberta: ↑ ↓ (e Home/End) andam, Enter ou Espaço escolhem; na captura, antes de
+  // qualquer outro tratador (o do Camera settings parava as teclas) e sem deixar a lista do Mac abrir
+  document.addEventListener("keydown", (e) => {
+    if (!selectMenu) return;
+    const m = selectMenu, live = m.buttons.filter((b) => !b.disabled);
+    const i = live.indexOf(m.active);
+    const nav = { ArrowDown: 1, Down: 1, ArrowUp: -1, Up: -1, PageDown: 8, PageUp: -8 };
+    if (e.key in nav || e.key === "Home" || e.key === "End") {
+      e.preventDefault(); e.stopImmediatePropagation();
+      const j = e.key === "Home" ? 0 : e.key === "End" ? live.length - 1 : Math.max(0, Math.min(live.length - 1, (i < 0 ? 0 : i + nav[e.key])));
+      m.mark(live[j]);
+    } else if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault(); e.stopImmediatePropagation();
+      if (m.active) m.active.click(); else closeSelectMenu();
+    }
+  }, true);
+  document.addEventListener("keypress", (e) => { if (selectMenu && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); e.stopImmediatePropagation(); } }, true);
   // Setas, Espaço e Enter numa lista do app abrem a lista do app; na captura e sem deixar seguir,
   // para o WebKit do Mac não abrir a lista dele
   ["keydown", "keypress"].forEach((type) => document.addEventListener(type, (e) => {
@@ -4278,6 +4304,13 @@
     renderCamSettings();
   }
   $("csBody").addEventListener("focusout", () => { if (csRenderLater) setTimeout(csRender, 0); });
+  // Teclado: o foco saiu da caixa do ± (e do botão dela): fecha a caixa
+  document.addEventListener("focusin", (e) => {
+    if (!csStylePop) return;
+    const pop = $("csStylePop"), t = e.target;
+    if ((pop && pop.contains(t)) || (t.closest && t.closest(".cs-more")) || (selectMenu && selectMenu.contains(t))) return;
+    csStylePop = null; renderStylePop();
+  });
 
   function renderCamSettings() {
     const body = $("csBody");
