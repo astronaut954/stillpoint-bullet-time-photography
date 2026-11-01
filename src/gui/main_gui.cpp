@@ -146,6 +146,8 @@ namespace
         return out + "\"";
     }
 
+    const int kTrashDays = 15;  // dias na lixeira antes de sair de vez (decisão do dono, 2026-11-01)
+
     class Json
     {
     public:
@@ -1054,7 +1056,8 @@ namespace
         // Fotos de teste do "Reorder by photo": só servem para ordenar, são apagadas depois
         PhotoStore orderStore(Platform::AppDataFolder() / "Order photos");
         orderStore.DeleteAll();
-        store.EmptyTrash();  // o Desfazer de apagar vale só dentro da mesma abertura do app
+        // Lixeira (etapa 20): o que foi apagado fica 15 dias; ao abrir, sai o que passou do prazo
+        store.PurgeTrash(kTrashDays);
         PreviewThread previews;
 
         bool sdkReady = false;
@@ -1116,9 +1119,19 @@ namespace
             return true;
         };
 
+        // Lixeira: quantos itens e quanto ocupa (para o botão da barra de cima)
+        auto emitTrash = [&]
+        {
+            const auto items = store.ListTrash();
+            unsigned long long bytes = 0;
+            for (const auto& item : items)
+                bytes += item.bytes;
+            listener.Emit(Json("trash").Add("count", static_cast<int>(items.size())).Raw("bytes", std::to_string(bytes)).Add("days", kTrashDays));
+        };
         auto emitSessions = [&]
         {
             listener.Emit(Json("sessions").Raw("sessions", SessionsJson(store)).Raw("project", projectJson()));
+            emitTrash();
         };
 
         // Executa um pedido na thread das câmeras, avisando a página de "ocupado"
@@ -1675,6 +1688,7 @@ namespace
                 store.SetProject(project.Originals(), project.Edited());
             else
                 store.SetProject({}, {});
+            store.PurgeTrash(kTrashDays);  // a lixeira do Project também perde o que passou do prazo
             if (sdkReady)
                 controller.SetOutputFolder(project.Available() ? project.Originals().string() : store.Root().string());
             emitSessions();
@@ -2993,7 +3007,7 @@ namespace
                 if (error.empty() && deleteRest && !names.empty())
                     for (const auto& session : store.ListSessions())
                         if (std::find(names.begin(), names.end(), session.name) == names.end())
-                            store.DeleteSession(session.name);
+                            store.DeleteSessionNow(session.name);
                 listener.Emit(Json("saved").Add("count", moved).Add("folder", folder).Add("error", error));
                 emitSessions();
                 if (exitAfter && error.empty())
@@ -3271,7 +3285,7 @@ namespace
                     if (session->inProject)
                         ;
                     else if (exitAfter)
-                        store.DeleteSession(job.session);
+                        store.DeleteSessionNow(job.session);  // já salva em outro lugar: não ocupa a lixeira
                     else
                     {
                         store.MarkSaved(job.session);  // mantida: não conta como "não salva"
@@ -3288,7 +3302,7 @@ namespace
                 if (error.empty() && deleteRest)
                     for (const auto& session : store.ListSessions())
                         if (!session.inProject && std::find(names.begin(), names.end(), session.name) == names.end())
-                            store.DeleteSession(session.name);
+                            store.DeleteSessionNow(session.name);
                 if (!error.empty())
                     Log("Save sessions: " + error);
                 std::string saved = "[";
@@ -3576,6 +3590,45 @@ namespace
                 store.DeleteSession(args[0]);
             emitSessions();
             return "null";
+        });
+
+        // ---- Lixeira (etapa 20) ----
+        // trashList(): os itens (sessões inteiras ou fotos), do mais recente ao mais antigo
+        window.bind("trashList", [&](const std::string&) -> std::string
+        {
+            store.PurgeTrash(kTrashDays);
+            std::string list = "[";
+            for (const auto& item : store.ListTrash())
+                list += std::string(list.size() > 1 ? "," : "") + Json("item").Add("id", item.id).Add("session", item.session)
+                    .Add("whole", item.wholeSession).Add("photos", item.photos).Raw("bytes", std::to_string(item.bytes))
+                    .Raw("deletedAt", std::to_string(item.deletedAt)).Add("inProject", item.inProject).Str();
+            return Json("trash").Raw("items", list + "]").Add("days", kTrashDays)
+                .Add("project", project.IsOpen() ? project.Name() : std::string()).Str();
+        });
+        // trashRestore(id): volta para onde estava (ou para o app, se a pasta de lá sumiu)
+        window.bind("trashRestore", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            std::string error;
+            const bool ok = !args.empty() && store.RestoreTrashItem(args[0], error);
+            if (!ok && error.empty())
+                error = "Could not restore this item.";
+            emitSessions();
+            return Json("restore").Add("ok", ok).Add("error", error).Str();
+        });
+        // trashDelete(id) / trashEmpty(): apaga de vez
+        window.bind("trashDelete", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            const bool ok = !args.empty() && store.DeleteTrashItem(args[0]);
+            emitTrash();
+            return Json("delete").Add("ok", ok).Str();
+        });
+        window.bind("trashEmpty", [&](const std::string&) -> std::string
+        {
+            store.EmptyTrash();
+            emitTrash();
+            return Json("empty").Add("ok", true).Str();
         });
 
         window.bind("deleteAllSessions", [&](const std::string&) -> std::string

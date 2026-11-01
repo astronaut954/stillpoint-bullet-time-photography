@@ -1392,7 +1392,7 @@
     const session = currentSession.name;
     const what = item.title + (item.subtitle ? " (" + item.subtitle + ")" : "");
     dialog("Delete photo " + pad(item.order || sessionGallery.index + 1) + "?",
-      what + ". " + (item.files.length > 1 ? "Its RAW and JPEG files are" : "The file is") + " deleted permanently.", [
+      what + ". " + (item.files.length > 1 ? "Its RAW and JPEG files go" : "The file goes") + " to the Trash (top bar), where " + (item.files.length > 1 ? "they stay" : "it stays") + " for " + trash.days + " days.", [
         { label: "Cancel" },
         { label: "Delete", danger: true, onClick: () => {
           // A miniatura encolhe e some, a foto grande se apaga; só então o arquivo vai embora
@@ -1459,8 +1459,8 @@
   }
   function deleteSessionAsk(s) {
     const label = sessionLabel(s.name);
-    dialog("Delete this session?", "The photos from " + label.date + " will be deleted permanently" +
-      (s.inProject ? " (from the project folder too)." : "."), [
+    dialog("Delete this session?", "The photos from " + label.date + " go to the Trash (top bar, next to the project), where they stay for " + trash.days + " days" +
+      (s.inProject ? ". They leave the session list and the project's Originals folder; the project keeps them in its own trash." : "."), [
       { label: "Cancel" },
       { label: "Delete", danger: true, onClick: () => {
         toast("Session deleted: " + label.date + (s.inProject ? " (from the project folder)" : ""));
@@ -3573,7 +3573,9 @@
     },
 
     // Fotos guardadas
-    sessions(e) { setSessions(e.sessions); if (e.project) setProject(e.project); },  // sessões antes: a janela Project desenha a partir delas
+    sessions(e) { setSessions(e.sessions); if (e.project) setProject(e.project); },
+    // Lixeira: número de itens e espaço (botão ao lado do projeto); com a janela aberta, relê a lista
+    trash(e) { setTrashInfo(e); },  // sessões antes: a janela Project desenha a partir delas
     // Som do disparo (botão da barra de cima e das janelas Live): um ajuste só, do app
     soundChanged(e) { sound = { sound: !!e.sound, sounds: !!e.sounds }; renderSoundBtn(); },
     saving() { activity.saving = true; renderActivity(); },
@@ -5702,14 +5704,133 @@
     return [plural(project.sessions || 0, "session", "sessions"), plural(project.photos || 0, "photo", "photos"),
             project.edited ? project.edited + " edited" : "", fmtBytes(project.bytes)].filter(Boolean).join(sep);
   }
+  // =================== Lixeira (etapa 20) ===================
+  // Sessões e fotos apagadas ficam 15 dias. A do app fica na pasta de dados; a do Project, dentro da
+  // pasta dele (mesmo disco), e só aparece com ele aberto.
+  const trash = { count: 0, bytes: 0, days: 15 };
+  function setTrashInfo(e) {
+    trash.count = e.count || 0; trash.bytes = +e.bytes || 0; trash.days = e.days || 15;
+    const b = $("trashBtn");
+    b.classList.toggle("has", trash.count > 0);
+    $("trashCount").textContent = trash.count ? String(trash.count) : "";
+    b.title = trash.count ? "Trash: " + plural(trash.count, "item", "items") + " · " + fmtBytes(trash.bytes) + " · kept " + trash.days + " days"
+                          : "Trash: empty. Deleted sessions and photos stay here for " + trash.days + " days.";
+    b.setAttribute("aria-label", b.title);
+    if ($("trashOverlay") && !$("trashOverlay").classList.contains("hidden")) renderTrash();
+  }
+  const trashRoving = makeRoving({ root: () => $("trashList"), rows: (r) => [...r.querySelectorAll("li.trash-row")], id: (row) => row.dataset.id });
+  function agoText(seconds) {
+    const days = Math.floor(seconds / 86400);
+    if (days >= 1) return days === 1 ? "yesterday" : days + " days ago";
+    const hours = Math.floor(seconds / 3600);
+    if (hours >= 1) return plural(hours, "hour", "hours") + " ago";
+    const minutes = Math.floor(seconds / 60);
+    return minutes >= 1 ? plural(minutes, "minute", "minutes") + " ago" : "just now";
+  }
+  function openTrash() {
+    let ov = $("trashOverlay");
+    if (!ov) {
+      ov = el("div", "overlay hidden"); ov.id = "trashOverlay";
+      ov.addEventListener("click", (e) => { if (e.target === ov) closeTrash(); });
+      const d = el("div", "dialog trash-dialog");
+      d.appendChild(el("h3", "", "Trash"));
+      d.appendChild(el("p", "trash-sub"));
+      const list = el("ul", "trash-list"); list.id = "trashList";
+      d.appendChild(list);
+      const actions = el("div", "dialog-actions");
+      const empty = button("Empty trash", () => {
+        dialog("Empty the trash?", "Everything in the trash is deleted for good" + (trashProjectName ? ", including the items of the project " + trashProjectName : "") + ". This cannot be undone.", [
+          { label: "Cancel" },
+          { label: "Empty trash", danger: true, onClick: () => Promise.resolve(window.trashEmpty()).then(() => { toast("Trash emptied"); log("Trash emptied", "ok"); renderTrash(); }) },
+        ]);
+      }, { kind: "btn-danger" });
+      empty.classList.add("trash-empty-btn");
+      actions.append(empty, el("span", "spacer"), button("Close", closeTrash));
+      d.appendChild(actions);
+      ov.appendChild(d);
+      document.body.appendChild(ov);
+    }
+    renderTrash();
+    ov.classList.remove("hidden");
+  }
+  function closeTrash() { const ov = $("trashOverlay"); if (ov) ov.classList.add("hidden"); }
+  let trashProjectName = "";
+  function renderTrash() {
+    if (typeof window.trashList !== "function") return;
+    Promise.resolve(window.trashList()).then((r) => {
+      const ov = $("trashOverlay"), list = $("trashList");
+      if (!ov || !list || !r) return;
+      const items = r.items || [];
+      trashProjectName = r.project || "";
+      const total = items.reduce((t, i) => t + (+i.bytes || 0), 0);
+      ov.querySelector(".trash-sub").textContent = "Deleted sessions and photos stay here for " + r.days + " days, then are deleted for good. " +
+        (items.length ? plural(items.length, "item", "items") + " · " + fmtBytes(total) + "." : "");
+      const focusWas = trashRoving.where(document.activeElement);
+      list.innerHTML = "";
+      ov.querySelector(".trash-empty-btn").disabled = !items.length;
+      if (!items.length) { list.appendChild(el("li", "trash-empty", "The trash is empty.")); return; }
+      const now = Date.now() / 1000;
+      [false, true].forEach((inProject) => {
+        const group = items.filter((i) => !!i.inProject === inProject);
+        if (!group.length) return;
+        if (items.some((i) => !!i.inProject !== inProject) || inProject)
+          list.appendChild(el("li", "trash-group", inProject ? "In the project " + (r.project || "") : "In the app"));
+        group.forEach((item) => {
+          const li = el("li", "trash-row");
+          li.dataset.id = item.id;
+          const label = sessionLabel(item.session);
+          const main = el("div", "trash-main");
+          main.appendChild(el("b", "", label.date + (label.detail ? " · " + label.detail : "")));
+          const left = Math.max(0, Math.ceil((item.deletedAt + r.days * 86400 - now) / 86400));
+          const meta = el("small", "", (item.whole ? "Session · " + plural(item.photos, "photo", "photos") : plural(item.photos, "photo", "photos") + " from this session") +
+            " · " + fmtBytes(+item.bytes) + " · deleted " + agoText(now - item.deletedAt) + " · ");
+          meta.appendChild(el("span", left <= 2 ? "soon" : "", left <= 1 ? "deleted for good within a day" : "deleted for good in " + left + " days"));
+          main.appendChild(meta);
+          li.appendChild(main);
+          li.appendChild(button("Restore", () => restoreTrashItem(item, label), { title: item.whole ? "Put the session back in the list" : "Put the photos back in their session" }));
+          li.appendChild(button("Delete now", () => {
+            dialog("Delete for good?", (item.whole ? "The session " : "These photos of ") + label.date + " will be deleted for good. This cannot be undone.", [
+              { label: "Cancel" },
+              { label: "Delete", danger: true, onClick: () => Promise.resolve(window.trashDelete(item.id)).then(() => { log("Deleted for good from the trash: " + label.date, "tech"); renderTrash(); }) },
+            ]);
+          }, { kind: "btn-link" }));
+          list.appendChild(li);
+        });
+      });
+      trashRoving.apply();
+      if (focusWas && !trashRoving.focusAt(focusWas.id, focusWas.i)) {
+        const first = list.querySelector("li.trash-row button") || ov.querySelector(".dialog-actions button:not(:disabled)");
+        if (first && document.documentElement.classList.contains("kbd-focus")) first.focus();
+      }
+    });
+  }
+  function restoreTrashItem(item, label) {
+    Promise.resolve(window.trashRestore(item.id)).then((r) => {
+      if (!r || !r.ok) { toast((r && r.error) || "Could not restore this item.", 8000, { warn: true }); return; }
+      const text = (item.whole ? "Session restored: " : plural(item.photos, "photo", "photos") + " restored to ") + label.date;
+      toast(text); log(text, "ok");
+      renderTrash();
+    });
+  }
+  $("trashBtn").addEventListener("click", openTrash);
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape" || selectMenu || !$("trashOverlay") || $("trashOverlay").classList.contains("hidden") || !$("dialogOverlay").classList.contains("hidden")) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    closeTrash();
+    $("trashBtn").focus();
+  }, true);
+
   function renderProjectBar() {
     const open = !!project.open;
     const b = $("projectBarBtn");
     b.classList.toggle("on", open);
     b.classList.toggle("unavailable", open && project.available === false);
-    $("projectBarName").textContent = open ? project.name : "No project";
+    // Nome com limite de caracteres, para não ocupar a barra; o nome inteiro aparece ao parar o mouse
+    const PROJECT_NAME_MAX = 24;
+    const name = open ? project.name || "" : "No project";
+    $("projectBarName").textContent = name.length > PROJECT_NAME_MAX ? name.slice(0, PROJECT_NAME_MAX - 1).trimEnd() + "…" : name;
     $("projectBarMeta").textContent = open ? (project.available === false ? "not reachable" : [project.sessions || 0, project.photos || 0, project.edited ? project.edited + " edited" : ""].filter((x) => x !== "").join(" · ")) : "";
-    b.title = open ? project.folder : "Open or create a project (a folder of yours that keeps the sessions)";
+    b.title = open ? project.name + "\n" + project.folder : "Open or create a project (a folder of yours that keeps the sessions)";
     $("projectReload").classList.toggle("hidden", !(open && project.available === false));
     $("projectWindowBtn").classList.toggle("hidden", !open);
   }
@@ -6576,6 +6697,9 @@
   readyStatus();
   // Ao fim da procura inicial, mostra o guia se nenhuma câmera apareceu
   setTimeout(() => { renderCameras(); readyStatus(); }, SEARCH_GRACE_MS + 100);
+  // Lixeira: o número no botão desde a abertura
+  if (typeof window.trashList === "function")
+    Promise.resolve(window.trashList()).then((r) => { if (r) setTrashInfo({ count: (r.items || []).length, bytes: (r.items || []).reduce((t, i) => t + (+i.bytes || 0), 0), days: r.days }); });
   Promise.resolve(window.uiReady()).then((info) => {
     refreshSessions();
     if (info && info.unsavedSessions > 0) offerRecovery(info.unsavedSessions);

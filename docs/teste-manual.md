@@ -1011,6 +1011,30 @@ podem ficar só em JPG).
 - [ ] Lenticular com a sessão real: prévia Tilt (arrastar ↕) e Interlaced com a lupa; o TIFF sai com
       o tamanho certo (abrir no Pré-visualização → Ferramentas → Mostrar Inspetor: dpi e tamanho).
 
+## 26. Lixeira do app (2.15.0)
+
+Pode ser com câmeras simuladas (`STILLPOINT_FAKE_CAMERAS=9`), mas o item do HD externo precisa de um
+projeto num HD externo.
+
+- [ ] Barra de cima: ao lado do botão do projeto, o botão da lixeira (ícone) com o número de itens; parando
+      o mouse, "Trash: n items · tamanho · kept 15 days" (vazia: "Trash: empty…").
+- [ ] Nome de projeto comprido: aparece cortado com "…" (até 24 caracteres); parando o mouse, o nome inteiro.
+- [ ] Apagar uma sessão (fora de projeto): o aviso diz que vai para a Trash por 15 dias; o número do botão sobe.
+      Abrir a Trash: a sessão aparece em "In the app" com fotos, tamanho, "deleted just now" e "deleted for
+      good in 15 days".
+- [ ] Apagar uma foto (botão direito → Delete photo…): aparece como "1 photo from this session".
+- [ ] Restore numa linha: a sessão (ou a foto) volta para a lista; a linha sai da Trash.
+- [ ] Delete now: pergunta "Delete for good?"; Delete apaga só aquele item.
+- [ ] Empty trash: pergunta; apaga tudo; a janela mostra "The trash is empty." e o número some do botão.
+- [ ] Cmd+Z depois de apagar uma sessão continua trazendo de volta (e ela sai da Trash).
+- [ ] Fechar e abrir o app: os itens continuam na Trash (antes eram apagados ao abrir).
+- [ ] Projeto aberto: apagar uma sessão do projeto → aparece em "In the project <nome>"; no Finder, a pasta
+      `<Projeto>/.stillpoint-trash` (pasta escondida: Cmd+Shift+. mostra) tem a sessão. Fechando o projeto,
+      esses itens somem da Trash; abrindo de novo, voltam.
+- [ ] Projeto em HD externo: apagar uma sessão é instantâneo (não copia para o computador).
+- [ ] Teclado: Tab chega no botão da lixeira; Enter abre; o Tab para numa linha só e ↑ ↓ trocam de linha
+      (Restore / Delete now); Esc fecha e volta ao botão.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |

@@ -641,6 +641,17 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    últimas configurações de exportação (não por combinação lâmina + impressora).
    Decisões do dono (2026-10-30): listas de fábrica acima; cm como padrão; prévia na tela; aba
    dentro do Export.
+   **Lixeira do app (entre a 19 e a 20; branch `lixeira-do-app`, versão 2.15.0, iniciada em 2026-11-01).**
+   Sessões e fotos apagadas ficam **15 dias** na lixeira e depois saem de vez (ao abrir o app, ao abrir
+   um projeto e ao abrir a janela Trash). Cada exclusão é um item próprio (`.trashinfo`: sessão, inteira
+   ou só fotos, origem, quando). Sessões do Project vão para a lixeira **dentro da pasta do projeto**
+   (`<Projeto>/.stillpoint-trash`, mesmo disco, sem copiar para o computador) e só aparecem com o
+   projeto aberto (decisão do dono: opção B). Botão com o ícone da lixeira e o número de itens **ao lado
+   do menu do projeto** (espaço ocupado no aviso do botão e na janela); o nome do projeto na barra tem
+   limite de 24 caracteres (o nome inteiro ao parar o mouse). Janela Trash: itens agrupados (app /
+   projeto), data, fotos, tamanho, há quanto tempo e quantos dias faltam; Restore, Delete now e Empty
+   trash. O Desfazer de apagar continua (traz o item mais recente da sessão). Sessões já salvas que o
+   app apaga ao fechar, e as descartadas no fechamento, saem de vez (não ocupam a lixeira), como antes.
 5. **Etapa 20 — Edit in Lightroom Classic / Photoshop.** Ida e volta: o app abre os originais
    do Project no Lightroom Classic (o dono do projeto usa o Classic); um plugin do Stillpoint
    (SDK Lua do Classic) agrupa cada sessão como coleção e tem "Export to Stillpoint", que
@@ -735,12 +746,6 @@ Junto com essas etapas (sem etapa própria):
   saída em TIFF/PNG sem perda na resolução nativa da impressora. Pré-requisito: o Project (as
   sessões precisam ficar guardadas para reimprimir). Decisões pendentes: quais lentes/impressoras
   cadastrar de fábrica, e se a prévia do efeito aparece no app.
-- **Lixeira do app (pedido em 2026-10-30).** Um lugar que guarda as fotos e sessões apagadas, de onde
-  dá para recuperar uma por uma (ou várias) ou esvaziar de vez. Hoje o apagado vai para uma lixeira
-  interna (`Photos/.trash`) que só o Desfazer usa e que é esvaziada ao abrir o app. Decisões
-  pendentes: por quanto tempo guardar (até esvaziar à mão, ou N dias), onde fica o acesso (menu,
-  botão na lista de sessões), se mostra o espaço ocupado, e o que acontece com as do Project
-  (lixeira dentro da pasta do projeto ou uma só do app).
 - **Licença (decidido em 2026-10-22, implementação pendente).** Hoje é MIT (qualquer um, inclusive
   empresa grande, usa de graça). Decisão do dono do projeto: trocar, numa versão futura, para o
   modelo de **licença dupla**: grátis para pessoas e empresas pequenas (quem está começando na

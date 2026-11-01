@@ -1297,3 +1297,24 @@ html.kbd-focus :focus { outline: 2px solid var(--noct-primary); outline-offset: 
 html.kbd-focus input:focus + .save-check { outline: 2px solid var(--noct-primary); outline-offset: 2px; }
 /* Opção marcada pelo teclado na lista do app */
 .select-menu button.kbd { background: var(--noct-elevated); color: var(--noct-primary); outline: 1px solid var(--noct-primary); outline-offset: -1px; }
+
+/* Lixeira (etapa 20): botão ao lado do projeto e a janela Trash */
+.trash-bar {
+  display: inline-flex; align-items: center; gap: 6px; height: 30px; margin-left: 6px; padding: 0 9px;
+  border: 1px solid var(--noct-border); background: var(--noct-surface-inner); color: var(--noct-text-dim); cursor: pointer;
+  font: 600 11px var(--noct-font-mono); transition: border-color 150ms var(--noct-ease), color 150ms var(--noct-ease);
+}
+.trash-bar:hover { border-color: var(--noct-primary); color: var(--noct-primary); }
+.trash-bar.has { color: var(--noct-text-muted); }
+.trash-bar span:empty { display: none; }
+.trash-dialog { width: 640px; max-width: calc(100vw - 40px); }
+.trash-sub { margin: 4px 0 12px; color: var(--noct-text-muted); font-size: 13px; }
+.trash-list { list-style: none; margin: 0; padding: 0 18px 8px; max-height: min(52vh, 460px); overflow: auto; }
+.trash-group { margin: 14px 0 4px; font: 700 10px var(--noct-font-mono); text-transform: uppercase; letter-spacing: .1em; color: var(--noct-text-dim); }
+.trash-row { display: flex; align-items: center; gap: 10px; padding: 9px 2px; border-bottom: 1px solid var(--noct-border); }
+.trash-row .trash-main { flex: 1; min-width: 0; }
+.trash-row b { display: block; font: 600 14px var(--noct-font-sans); color: var(--noct-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.trash-row small { display: block; margin-top: 2px; font: 11px var(--noct-font-mono); color: var(--noct-text-dim); }
+.trash-row small .soon { color: var(--noct-pending); }
+.trash-empty { padding: 26px 0; text-align: center; color: var(--noct-text-dim); }
+.trash-dialog .dialog-actions .spacer { flex: 1; }

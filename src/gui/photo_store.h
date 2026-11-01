@@ -16,6 +16,21 @@ struct StoredPhoto
     bool previewable = true; // JPEG ou RAW (prévia embutida no arquivo)
 };
 
+// Item da lixeira (etapa 20): uma sessão inteira ou fotos de uma sessão, guardadas por 15 dias.
+// A lixeira do app fica na pasta de dados; a do Project, dentro da pasta do Project
+// (<Project>/.stillpoint-trash), no mesmo disco das fotos.
+struct TrashItem
+{
+    std::string id;          // "app/<pasta>" ou "project/<pasta>"
+    std::string session;     // nome da sessão (data/hora)
+    bool wholeSession = true; // a sessão inteira, ou só algumas fotos dela
+    int photos = 0;          // fotos (RAW + JPG da mesma câmera contam como uma)
+    unsigned long long bytes = 0;
+    long long deletedAt = 0; // segundos desde 1970
+    long long order = 0;     // ordem exata em que foi apagado (mais recente = maior)
+    bool inProject = false;
+};
+
 struct StoredSession
 {
     std::string name;    // nome da pasta (data/hora da sessão)
@@ -91,11 +106,19 @@ public:
     // Apaga fotos de uma sessão. Cada item é um grupo "ordem_câmera" (ex.: "02_T7_1",
     // apaga o RAW e o JPEG dessa câmera) ou o nome de um arquivo. Se a sessão ficar
     // vazia, a pasta é apagada.
-    // Lixeira do app (<dados>/.trash): apagar sessão ou fotos move para lá, para o Desfazer;
-    // Restore(sessão) traz de volta (a pasta inteira, ou só as fotos se a sessão ainda existe).
-    // EmptyTrash() apaga de vez (chamado ao abrir o app: o desfazer vale só na mesma abertura).
+    // Lixeira (etapa 20): apagar sessão ou fotos move para lá (a do app ou a do Project, conforme
+    // onde a sessão estava), cada vez num item próprio. Restore(sessão) traz de volta o item mais
+    // recente dessa sessão (o Desfazer); RestoreTrashItem/DeleteTrashItem agem num item da janela
+    // Trash. PurgeTrash(dias) apaga de vez o que passou do prazo; EmptyTrash() apaga tudo (a do
+    // app e a do Project aberto).
     bool Restore(const std::string& session, std::string& errorMessage) const;
     void EmptyTrash() const;
+    void PurgeTrash(int days) const;
+    std::vector<TrashItem> ListTrash() const;
+    bool RestoreTrashItem(const std::string& id, std::string& errorMessage) const;
+    bool DeleteTrashItem(const std::string& id) const;
+    // Apaga uma sessão de vez, sem passar pela lixeira (ex.: já salva em outro lugar ao fechar)
+    bool DeleteSessionNow(const std::string& session) const;
     bool DeletePhotos(const std::string& session, const std::vector<std::string>& groups,
                       std::string& errorMessage) const;
 
@@ -112,6 +135,11 @@ public:
 
 private:
     std::filesystem::path SessionPath(const std::string& session) const;
+    // Lixeira de quem é a pasta (a do Project, se a pasta estiver no Project; senão a do app)
+    std::filesystem::path TrashRootFor(const std::filesystem::path& dir) const;
+    std::filesystem::path NewTrashEntry(const std::filesystem::path& dir, const std::string& session,
+                                        bool wholeSession) const;
+    bool RestoreEntry(const std::filesystem::path& entry, std::string& errorMessage) const;
     void ReadSessions(const std::filesystem::path& base, bool inProject, std::vector<StoredSession>& out) const;
 
     std::filesystem::path root;
