@@ -1343,8 +1343,10 @@
           if (e.metaKey || e.ctrlKey || e.shiftKey) return;
           photoKeys = false;
           // Clique simples desfaz a seleção já aqui: o sessPointerDown redesenha a lista e o "click" nem chega à linha
-          if (e.button === 0 && sessSel.size) sessSel.clear();
-          sessPointerDown(e, li, s);
+          // Exceção: segurar uma das várias marcadas guarda a seleção para arrastar todas (se não arrastar, o soltar desfaz)
+          const keep = e.button === 0 && sessSel.size > 1 && sessSel.has(s.name);
+          if (e.button === 0 && sessSel.size && !keep) sessSel.clear();
+          sessPointerDown(e, li, s, keep);
         });
       }
       li.addEventListener("contextmenu", (e) => {
@@ -5777,19 +5779,35 @@
     }
     return null;
   }
-  function sessPointerDown(e, li, s) {
+  function sessPointerDown(e, li, s, multi) {
     if (e.button !== 0 || busy || e.target.closest("button")) return;
     if (sessDrag) sessEndDrag(null);
     e.preventDefault();  // sem seleção de texto pelo caminho do arraste (o clique continua valendo)
+    // Várias marcadas: vão juntas as do mesmo lado da segurada (todas do projeto, ou todas de fora)
+    let names = null;
+    if (multi) {
+      names = sessions.filter((x) => sessSel.has(x.name) && !!x.inProject === !!s.inProject).map((x) => x.name);
+      if (names.length < 2) names = null;
+    }
     // A sessão segurada passa a ser a selecionada (a lista é redesenhada: pega a linha nova)
-    if (!currentSession || currentSession.name !== s.name) {
+    if (!names && (!currentSession || currentSession.name !== s.name)) {
       showSession(s);
       li = ui.sessionList.querySelector('li.folder[data-name="' + CSS.escape(s.name) + '"]') || li;
     }
-    sessDrag = { li, s, x: e.clientX, y: e.clientY, moved: false, ghost: null, over: null };
+    sessDrag = { li, s, names, x: e.clientX, y: e.clientY, moved: false, ghost: null, over: null };
     li.setPointerCapture(e.pointerId);
     li.onpointermove = sessPointerMove;
-    li.onpointerup = (ev) => sessEndDrag(sessDrag && sessDrag.moved ? sessDropTarget(ev.clientX, ev.clientY) : null);
+    li.onpointerup = (ev) => {
+      const d = sessDrag;
+      if (d && !d.moved && d.names) {
+        // Clique simples (sem arrastar) numa das marcadas: desfaz a seleção e abre essa sessão
+        sessEndDrag(null);
+        sessSel.clear();
+        if (!currentSession || currentSession.name !== s.name) showSession(s); else renderSessionList();
+        return;
+      }
+      sessEndDrag(d && d.moved ? sessDropTarget(ev.clientX, ev.clientY) : null);
+    };
     // Se a linha sumir no meio (lista redesenhada) ou o sistema cancelar, termina sem soltar
     li.onpointercancel = () => sessEndDrag(null);
     li.onlostpointercapture = () => { if (sessDrag && sessDrag.li === li && !sessDrag.ending) sessEndDrag(null); };
@@ -5802,6 +5820,7 @@
     if (!d.moved) {
       d.moved = true;
       d.li.classList.add("dragging");
+      if (d.names) ui.sessionList.querySelectorAll("li.folder.multi").forEach((x) => { if (d.names.includes(x.dataset.name)) x.classList.add("dragging"); });
       document.body.classList.add("session-drag", d.s.inProject ? "from-project" : "from-app");
       // Fantasma: cópia da linha que segue o ponteiro
       const r = d.li.getBoundingClientRect();
@@ -5809,10 +5828,16 @@
       d.ghost.className = "folder session-ghost";
       d.ghost.style.width = r.width + "px";
       d.ghost.style.left = r.left + "px"; d.ghost.style.top = r.top + "px";
+      if (d.names) {
+        // Várias: o fantasma vira uma pilha com a contagem
+        d.ghost.classList.add("stack");
+        d.ghost.appendChild(el("span", "session-ghost-count", plural(d.names.length, "session", "sessions")));
+      }
       document.body.appendChild(d.ghost);
       // Zona tracejada: a área do projeto (sessão de fora) ou a área "Not in project" (sessão do projeto)
       d.zone = el("div", "session-drop-zone" + (d.s.inProject ? " out" : ""));
-      d.zone.innerHTML = '<span>' + (d.s.inProject ? "Drop to remove from project" : "Drop to add to project") + '</span>';
+      const what = d.names ? plural(d.names.length, "session", "sessions") + " " : "";
+      d.zone.innerHTML = '<span>' + (d.s.inProject ? "Drop to remove " + what + "from project" : "Drop to add " + what + "to project") + '</span>';
       ui.sessionList.parentElement.appendChild(d.zone);
     }
     placeDropZone(d.zone, !d.s.inProject);
@@ -5832,12 +5857,14 @@
     sessDrag = null;
     d.li.onpointermove = d.li.onpointerup = d.li.onpointercancel = d.li.onlostpointercapture = null;
     d.li.classList.remove("dragging");
+    ui.sessionList.querySelectorAll("li.folder.dragging").forEach((x) => x.classList.remove("dragging"));
     if (d.ghost) d.ghost.remove();
     if (d.zone) d.zone.remove();
     if (d.over) d.over.classList.remove("drop-ok");
     document.body.classList.remove("session-drag", "from-project", "from-app");
     if (!target || busy) return;
-    moveToProject(d.s.name, target.toProject);
+    if (d.names) moveMany(d.names, target.toProject);
+    else moveToProject(d.s.name, target.toProject);
   }
   function moveToProject(name, toProject) {
     const s = sessions.find((x) => x.name === name);

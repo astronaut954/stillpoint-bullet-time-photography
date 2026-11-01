@@ -1102,6 +1102,12 @@ projeto num HD externo.
 - [ ] Esc desfaz a seleção; um clique simples numa sessão também (e abre a sessão).
 - [ ] Janela Project: marcar sessões e clicar em "Delete n sessions…" (ao lado de Remove from project): o mesmo
       aviso; vão para a lixeira do projeto.
+- [ ] Arrastar várias: marcar duas sessões de "Not in project", segurar uma delas e arrastar até o botão do projeto
+      (barra de cima): o fantasma mostra "2 sessions", a zona tracejada diz "Drop to add 2 sessions to project";
+      soltar coloca as duas no projeto; Cmd+Z tira as duas (um passo só).
+- [ ] O mesmo com duas do projeto arrastadas para "Not in project": "Drop to remove 2 sessions from project".
+- [ ] Seleção misturada (do projeto e de fora): vão só as do mesmo lado da sessão segurada.
+- [ ] Clicar sem arrastar numa das marcadas desfaz a seleção e abre essa sessão.
 
 ## Resultado
 

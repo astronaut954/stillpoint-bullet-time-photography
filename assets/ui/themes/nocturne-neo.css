@@ -1126,11 +1126,13 @@ body.timing-open .app { --controls-h: clamp(320px, 64vh, 720px); }
 /* Fantasma da sessão arrastada */
 .session-ghost { position: fixed; z-index: 70; pointer-events: none; opacity: .85; background: var(--noct-elevated); border-left-color: var(--noct-info); box-shadow: 0 12px 32px rgba(0, 0, 0, .55); margin: 0; }
 .session-ghost .folder-add { display: none; }
+.session-ghost.stack { box-shadow: 4px 4px 0 -1px var(--noct-elevated), 4px 4px 0 0 var(--noct-border-strong), 8px 8px 0 -1px var(--noct-elevated), 8px 8px 0 0 var(--noct-border-strong), 0 12px 32px rgba(0, 0, 0, .55); }
+.session-ghost-count { position: absolute; bottom: 8px; right: 10px; padding: 3px 8px; background: var(--noct-primary); color: var(--noct-bg, #000); font: 700 10px var(--noct-font-mono); text-transform: uppercase; letter-spacing: .1em; white-space: nowrap; }
 body.session-drag { cursor: grabbing; user-select: none; -webkit-user-select: none; }
 /* Área do projeto na lista enquanto se arrasta uma sessão de fora */
 .session-folders { position: relative; }
 .session-drop-zone { position: absolute; z-index: 1; pointer-events: none; box-sizing: border-box; border: 1px dashed var(--noct-border-strong); background: rgba(var(--noct-primary-rgb), .04); display: flex; align-items: flex-end; justify-content: center; padding: 6px; }
-.session-drop-zone span { white-space: nowrap; font: 700 10px var(--noct-font-mono); text-transform: uppercase; letter-spacing: .1em; color: var(--noct-text-dim); background: var(--noct-surface); padding: 2px 6px; }
+.session-drop-zone span { white-space: normal; text-align: center; max-width: 100%; box-sizing: border-box; font: 700 10px var(--noct-font-mono); text-transform: uppercase; letter-spacing: .1em; color: var(--noct-text-dim); background: var(--noct-surface); padding: 2px 6px; }
 .session-drop-zone.out { border-color: var(--noct-border); align-items: flex-start; padding-top: 30px; }  /* etiqueta no alto, logo abaixo do divisor: a zona pode passar do fim visível da coluna */
 .session-drop-zone.drop-ok { border-color: var(--noct-primary); background: rgba(var(--noct-primary-rgb), .1); box-shadow: var(--noct-glow-primary-soft); }
 .session-drop-zone.drop-ok span { color: var(--noct-primary); }
