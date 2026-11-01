@@ -637,26 +637,55 @@
       if (!picked.length || next.every((it, k) => it === items[k])) { if (picks.length === 1) select(picks[0]); return; }
       // Onde cada miniatura estava: depois de redesenhar, as que mudaram de lugar deslizam até o novo
       // (como nas câmeras); a arrastada sai de onde foi solta
-      const was = new Map();
-      [...el.carousel.children].forEach((li, k) => { if (items[k]) was.set(items[k], li.getBoundingClientRect()); });
+      const was = rectsBy((it) => it);
       if (dropRect) picked.forEach((it) => was.set(it, dropRect));
+      const before = items.slice();
       items = next;
       index = slot;
       if (picked.length > 1) { multi = new Set(picked.map((_, k) => slot + k)); anchor = slot; } else { multi = new Set(); anchor = index; }
       // Arraste fora do modo Reorder: a ordem nova vale na hora (os números das miniaturas também)
       if (free) items.forEach((it, k) => { it.order = k + 1; });
       render();
+      slideFrom(was, (it) => it);
+      showLarge();
+      markSelected(true);
+      if (free) { if (opts.onFreeReorder) opts.onFreeReorder(items); }
+      else if (opts.onReorder) opts.onReorder(items, before);
+    }
+    // Posição de cada miniatura na tela, pela chave do item
+    function rectsBy(key) {
+      const m = new Map();
+      [...el.carousel.children].forEach((li, k) => { if (items[k]) m.set(key(items[k]), li.getBoundingClientRect()); });
+      return m;
+    }
+    // Depois de redesenhar: cada miniatura que mudou de lugar desliza da posição antiga até a nova
+    function slideFrom(was, key) {
       [...el.carousel.children].forEach((li, k) => {
-        const r0 = was.get(items[k]);
+        const r0 = items[k] && was.get(key(items[k]));
         if (!r0 || !li.animate) return;
         const r1 = li.getBoundingClientRect();
         const dx = r0.left - r1.left, dy = r0.top - r1.top;
         if (Math.abs(dx) > 1 || Math.abs(dy) > 1) li.animate([{ transform: "translate(" + dx + "px," + dy + "px)" }, { transform: "none" }], { duration: 220, easing: "ease-out" });
       });
+    }
+    // Troca os itens por outros com as mesmas chaves (ex.: os mesmos arquivos depois de renomeados):
+    // na mesma ordem, nada se redesenha; em outra ordem, as miniaturas deslizam até o lugar novo.
+    // Devolve false quando as chaves não batem (quem chamou redesenha do jeito normal)
+    function morph(list, key) {
+      const a = items.map(key), b = list.map(key);
+      if (a.length !== b.length || a.slice().sort().join("|") !== b.slice().sort().join("|")) return false;
+      const cur = key(items[index]), marked = new Set([...multi].map((k) => key(items[k])));
+      if (a.join("|") === b.join("|")) { items = list.slice(); return true; }
+      const was = rectsBy(key);
+      items = list.slice();
+      index = Math.max(0, b.indexOf(cur));
+      multi = new Set(b.map((k, i) => (marked.has(k) ? i : -1)).filter((i) => i >= 0));
+      if (multi.size < 2) multi = new Set();
+      anchor = index;
+      render();
+      slideFrom(was, key);
       showLarge();
-      markSelected(true);
-      if (free) { if (opts.onFreeReorder) opts.onFreeReorder(items); }
-      else if (opts.onReorder) opts.onReorder(items);
+      return true;
     }
     // Setas do modo Reorder: a foto (ou o grupo marcado) anda uma casa
     function moveSelected(delta) {
@@ -780,6 +809,9 @@
       get selection() { return multi.size > 1 ? [...multi].sort((a, b) => a - b) : [index]; },
       get dragging() { return !!free; },
       moveSelected,
+      morph,
+      // Volta a uma ordem anterior dos mesmos itens (Desfazer no Reorder by photo), deslizando
+      setOrder(list) { return morph(list, (it) => it.name || it.group || it.file); },
       get items() { return items; },
       get index() { return index; },
     };
@@ -1269,7 +1301,15 @@
 
     if (!newest) showSession(null);
     else if (!current || arrivedNewer) showSession(newest);
-    else if (filesOf(current) !== filesOf(currentSession)) showSession(current, true);
+    else if (filesOf(current) !== filesOf(currentSession)) {
+      // Mesmas fotos com outra numeração (ordem mudada aqui ou no Desfazer): desliza em vez de redesenhar
+      const camKey = (it) => (it.group || "").replace(/^\d+_/, "") + "|" + (it.files || []).map((f) => f.file.replace(/^\d+_/, "")).join("+");
+      if (current.name === currentSession.name && !editing.on && !playTimer && sessionGallery.morph(sessionItems(current), camKey)) {
+        currentSession = current;
+        sessionTitles = sessionGallery.items.map((i) => i.title).join("|");
+        renderSessionList();
+      } else showSession(current, true);
+    }
     else { currentSession = current; renderSessionList(); }
   }
 
@@ -1591,6 +1631,21 @@
     if (save && changed) saveOrder(session);
     else showSession(session, true);
   }
+  // Os arquivos de uma sessão vão ser renumerados na ordem "groups" ("NN_câmera"): as prévias já
+  // carregadas passam para os nomes novos (o app renomeia as prévias dele do mesmo jeito)
+  function remapPhotoCache(sessionName, groups) {
+    const prefix = "sessions/" + sessionName + "/";
+    const moved = {};
+    Object.keys(photoCache).filter((k) => k.startsWith(prefix)).forEach((k) => {
+      const rest = k.slice(prefix.length), cut = rest.lastIndexOf("/");
+      const file = rest.slice(0, cut), size = rest.slice(cut);
+      const at = groups.findIndex((g) => file.startsWith(g + "_"));
+      const renamed = at < 0 ? file : pad(at + 1) + file.slice(groups[at].indexOf("_"));
+      moved[prefix + renamed + size] = photoCache[k];
+      delete photoCache[k];
+    });
+    Object.assign(photoCache, moved);
+  }
   // Grava a ordem que está na galeria (modo Reorder ou arraste direto); um passo no Desfazer
   function saveOrder(session) {
     if (!session) return;
@@ -1598,8 +1653,9 @@
     // As prévias guardadas usam os nomes antigos dos arquivos
     const before = sessionItems(session).filter((i) => i.movable).map((i) => i.group);
     if (before.join("|") === groups.join("|")) return;
-    const clearCache = () => Object.keys(photoCache).filter((k) => k.startsWith("sessions/" + session.name + "/")).forEach((k) => delete photoCache[k]);
-    clearCache();
+    // As miniaturas já carregadas passam para os nomes novos dos arquivos (não precisam ser lidas de novo)
+    const clearCache = (order) => remapPhotoCache(session.name, order);
+    clearCache(groups);
     window.reorderSession(session.name, ...groups);
     log("Photo order changed in the session from " + sessionLabel(session.name).date, "ok");
     // Desfazer: a ordem anterior, pelos nomes de grupo que os arquivos têm depois de renumerados
@@ -1607,8 +1663,8 @@
     const camOf = (g) => g.replace(/^\d+_/, "");
     const currentGroupsFor = (camOrder) => { const now = sessionItems(sessions.find((x) => x.name === session.name) || session).filter((i) => i.movable); return camOrder.map((c) => (now.find((i) => camOf(i.group) === c) || {}).group).filter(Boolean); };
     recordAction({ label: "Photo order in " + sessionLabel(session.name).date,
-      undo: () => { clearCache(); window.reorderSession(session.name, ...currentGroupsFor(before.map(camOf))); },
-      redo: () => { clearCache(); window.reorderSession(session.name, ...currentGroupsFor(groups.map(camOf))); } });
+      undo: () => { const g = currentGroupsFor(before.map(camOf)); clearCache(g); window.reorderSession(session.name, ...g); },
+      redo: () => { const g = currentGroupsFor(groups.map(camOf)); clearCache(g); window.reorderSession(session.name, ...g); } });
   }
 
   // ----- Tela cheia -----
@@ -1875,6 +1931,14 @@
   const order = { open: false, capturing: false, session: null };
   const orderGallery = Gallery(ui.orderGallery, {
     draggable: true,
+    // Cada mudança de ordem (arrastar ou setas) é um passo no Desfazer, mesmo antes de "Save";
+    // esses passos somem quando a janela fecha
+    onReorder: (items, before) => {
+      const after = items.slice();
+      recordAction({ label: "Photo order in Reorder by photo", orderWindow: true,
+        undo: () => (order.open ? orderGallery.setOrder(before) : false),
+        redo: () => (order.open ? orderGallery.setOrder(after) : false) });
+    },
     load: (item, size) => orderPhoto(item.session, item.file, size),
   });
   // Teste rápido do Camera settings (fotos temporárias, as mesmas do "Reorder by photo")
@@ -1960,6 +2024,9 @@
   }
 
   function closeOrder(save) {
+    // Os passos de ordem da janela não valem fora dela
+    history.undo = history.undo.filter((a) => !a.orderWindow);
+    history.redo = history.redo.filter((a) => !a.orderWindow);
     if (save) {
       const names = orderGallery.items.map((i) => i.name);
       applyCameraOrder(names, "Camera order from photos");

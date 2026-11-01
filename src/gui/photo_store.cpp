@@ -868,8 +868,36 @@ bool PhotoStore::ReorderSession(const std::string& session, const std::vector<st
         }
     }
 
-    // As prévias guardadas usam os nomes antigos
-    fs::remove_all(dir / kPreviewFolder, ec);
+    // As prévias guardadas ("<tamanho>_<arquivo>") passam para os nomes novos: assim não precisam ser
+    // refeitas (com RAW isso demora). Se algo falhar, apaga todas (são refeitas quando pedidas)
+    std::map<std::string, std::string> oldToNew;
+    for (const auto& r : renames)
+        oldToNew[r.from.filename().string()] = r.to.filename().string();
+    const fs::path previews = dir / kPreviewFolder;
+    std::vector<Rename> previewRenames;
+    if (!oldToNew.empty() && fs::is_directory(previews, ec))
+    {
+        for (const auto& entry : fs::directory_iterator(previews, ec))
+        {
+            const std::string name = entry.path().filename().string();
+            const size_t cut = name.find('_');
+            if (cut == std::string::npos)
+                continue;
+            auto it = oldToNew.find(name.substr(cut + 1));
+            if (it != oldToNew.end())
+                previewRenames.push_back({ entry.path(), previews / (name + ".reorder-tmp"), previews / (name.substr(0, cut + 1) + it->second) });
+        }
+    }
+    bool previewsOk = !ec;
+    for (const auto& r : previewRenames)
+        if (previewsOk) { fs::rename(r.from, r.temp, ec); previewsOk = !ec; }
+    for (const auto& r : previewRenames)
+        if (previewsOk) { fs::rename(r.temp, r.to, ec); previewsOk = !ec; }
+    if (!previewsOk)
+    {
+        ec.clear();
+        fs::remove_all(previews, ec);
+    }
     return true;
 }
 

@@ -1124,6 +1124,10 @@ projeto num HD externo.
       lixeira apaga todas. Cmd+Z volta.
 - [ ] O mesmo no modo "Reorder" (tela cheia) e na janela "Reorder by photo": marcar várias e arrastar juntas; as
       setas "Move earlier" / "Move later" levam o grupo marcado uma casa.
+- [ ] "Reorder by photo": cada mudança de ordem (arrastar ou setas) volta com Cmd+Z antes de clicar em Save, com
+      as fotos deslizando; Cmd+Shift+Z refaz. Depois de fechar a janela, esses passos não ficam no Desfazer.
+- [ ] Tela principal e tela cheia: depois de mudar fotos de lugar arrastando (uma ou várias), as miniaturas não
+      piscam nem recarregam; Cmd+Z volta a ordem com as fotos deslizando até o lugar antigo.
 - [ ] Arrastar uma sessão da lista até o botão da lixeira: apaga sem perguntar; Cmd+Z traz de volta. Funciona
       também sem projeto aberto e com várias sessões marcadas.
 - [ ] Ao soltar uma miniatura em outro lugar, as outras deslizam até a posição nova (como nas câmeras).
