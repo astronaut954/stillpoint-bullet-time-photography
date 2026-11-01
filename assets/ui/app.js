@@ -1294,7 +1294,12 @@
           li.querySelector("div").appendChild(add);
         }
         // Segurar e arrastar: para o botão do projeto (barra de cima) = entra; para "Not in project" = sai
-        li.addEventListener("pointerdown", (e) => { if (e.metaKey || e.ctrlKey || e.shiftKey) return; sessPointerDown(e, li, s); });
+        li.addEventListener("pointerdown", (e) => {
+          if (e.metaKey || e.ctrlKey || e.shiftKey) return;
+          // Clique simples desfaz a seleção já aqui: o sessPointerDown redesenha a lista e o "click" nem chega à linha
+          if (e.button === 0 && sessSel.size) sessSel.clear();
+          sessPointerDown(e, li, s);
+        });
       }
       li.addEventListener("contextmenu", (e) => {
         e.preventDefault();
