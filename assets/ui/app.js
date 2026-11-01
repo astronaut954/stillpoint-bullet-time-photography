@@ -465,11 +465,6 @@
         li.addEventListener("click", () => select(i));
       }
       if (opts.onContext) li.addEventListener("contextmenu", (e) => { e.preventDefault(); select(i); opts.onContext(e); });
-      // Teclado: Tab chega na miniatura; Enter ou Espaço mostra a foto
-      if (!draggable) {
-        li.tabIndex = 0;
-        li.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); select(i); } });
-      }
       return li;
     }
 
@@ -1137,12 +1132,27 @@
         li.title = "Already saved. It leaves the app when you close Stillpoint (the saved copy stays where you saved it).";
       }
       li.addEventListener("click", () => showSession(s));
-      // Teclado: Tab chega na sessão; Enter ou Espaço abre
-      li.tabIndex = 0;
-      li.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); showSession(s); } });
+      // Teclado: o Tab passa só por uma sessão (a aberta, ou a primeira); ↑ ↓ trocam de sessão
+      li.tabIndex = -1;
+      li.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); showSession(s); return; }
+        if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+        e.preventDefault(); e.stopPropagation();
+        const rows = [...ui.sessionList.querySelectorAll("li.folder")].filter((x) => x.getClientRects().length > 0);
+        const next = rows[rows.indexOf(li) + (e.key === "ArrowDown" ? 1 : -1)];
+        if (!next) return;
+        const target = sessions.find((z) => z.name === next.dataset.name);
+        if (target) showSession(target);
+        const again = [...ui.sessionList.querySelectorAll("li.folder")].find((x) => x.dataset.name === next.dataset.name);
+        if (again) { again.tabIndex = 0; again.focus(); }
+      });
       ui.sessionList.appendChild(li);
     });
     if (projectOpen) addDivider();  // também sem sessões fora: é o alvo para tirar do projeto arrastando
+    // Uma sessão só no Tab: a aberta (ou a primeira visível)
+    const rowsNow = [...ui.sessionList.querySelectorAll("li.folder")].filter((x) => !x.classList.contains("hidden"));
+    const tabRow = rowsNow.find((x) => x.classList.contains("active")) || rowsNow[0];
+    if (tabRow) tabRow.tabIndex = 0;
   }
 
   // Uma foto por câmera: o RAW e o JPEG da mesma câmera ficam juntos (a prévia
@@ -3903,6 +3913,9 @@
   }
   function tabScope() {
     if (openMenu) return openMenu;
+    // Caixa do ± (Picture Style & Quality) aberta: o Tab circula nela
+    const pop = $("csStylePop");
+    if (pop && csStylePop && !$("camSettingsOverlay").classList.contains("hidden")) return pop;
     const open = [...document.querySelectorAll(".overlay:not(.hidden)")].filter((o) => o.getClientRects().length > 0);
     if (!open.length) return ui.log.classList.contains("expanded") ? ui.log : document.body;  // Activity aberto: só ele
     return open.reduce((top, o) => ((parseInt(getComputedStyle(o).zIndex, 10) || 0) >= (parseInt(getComputedStyle(top).zIndex, 10) || 0) ? o : top));
@@ -3915,9 +3928,24 @@
     if (!list.length) return;
     e.preventDefault();
     document.documentElement.classList.add("kbd-focus");
-    const i = list.indexOf(document.activeElement);
-    const next = i < 0 ? (e.shiftKey ? list[list.length - 1] : list[0]) : list[(i + (e.shiftKey ? -1 : 1) + list.length) % list.length];
+    const a = document.activeElement;
+    let i = list.indexOf(a);
+    let next;
+    if (i >= 0) next = list[(i + (e.shiftKey ? -1 : 1) + list.length) % list.length];
+    else if (a && a !== document.body && scope.contains(a)) {
+      // Fora da ordem do Tab (ex.: linha de uma câmera): segue a partir dele, na ordem da tela
+      const after = list.filter((x) => a.compareDocumentPosition(x) & Node.DOCUMENT_POSITION_FOLLOWING);
+      const before = list.filter((x) => a.compareDocumentPosition(x) & Node.DOCUMENT_POSITION_PRECEDING);
+      next = e.shiftKey ? (before[before.length - 1] || list[list.length - 1]) : (after[0] || list[0]);
+    } else next = e.shiftKey ? list[list.length - 1] : list[0];
     next.focus();
+  }, true);
+  // Enter numa caixa de marcar: marca/desmarca (o Mac só faz isso com o Espaço)
+  document.addEventListener("keydown", (e) => {
+    const t = e.target;
+    if (e.key !== "Enter" || !t || t.tagName !== "INPUT" || (t.type !== "checkbox" && t.type !== "radio")) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    t.click();
   }, true);
   // Mouse de volta: some o contorno de foco do teclado
   document.addEventListener("mousedown", () => document.documentElement.classList.remove("kbd-focus"), true);
@@ -4005,7 +4033,10 @@
   ["keydown", "keypress"].forEach((type) => document.addEventListener(type, (e) => {
     const sel = e.target;
     if (!sel || sel.tagName !== "SELECT" || !sel.appMenu || selectMenu) return;
-    if (e.key === " " || e.key === "Enter" || e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Down" || e.key === "Up") {
+    const inTable = !!sel.closest("table.cs");
+    const arrow = e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Down" || e.key === "Up";
+    if (arrow && inTable) { e.preventDefault(); return; }  // tabela do Camera settings: as setas trocam de câmera (outro tratador)
+    if (e.key === " " || e.key === "Enter" || arrow) {
       e.preventDefault(); e.stopPropagation();
       if (type === "keydown") sel.appMenu();
     }
@@ -4312,12 +4343,40 @@
     csStylePop = null; renderStylePop();
   });
 
+  // Posição de um controle na tabela: linha (entre as linhas com controles), coluna e ordem na célula
+  function csControls(td) { return [...td.querySelectorAll("select, button, input")]; }
+  function csRows() { const t = $("csBody").querySelector("table.cs"); return t ? [...t.querySelectorAll("tr")].filter((tr) => tr.querySelector("select, button, input")) : []; }
+  function csPos(node) {
+    if (!node || !$("csBody").contains(node)) return null;
+    const td = node.closest("td"), tr = node.closest("tr");
+    if (!td || !tr) return null;
+    return { r: csRows().indexOf(tr), c: [...tr.children].indexOf(td), k: csControls(td).indexOf(node) };
+  }
+  function csAt(pos) {
+    const tr = csRows()[pos.r];
+    const td = tr && tr.children[pos.c];
+    if (!td) return null;
+    const list = csControls(td);
+    return list[Math.min(Math.max(0, pos.k), list.length - 1)] || null;
+  }
+  // ↑ ↓ num controle da tabela (com a lista fechada): a mesma coluna na câmera de cima/de baixo
+  document.addEventListener("keydown", (e) => {
+    if (selectMenu || (e.key !== "ArrowDown" && e.key !== "ArrowUp")) return;
+    const pos = csPos(document.activeElement);
+    if (!pos) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    const rows = csRows();
+    for (let r = pos.r + (e.key === "ArrowDown" ? 1 : -1); r >= 0 && r < rows.length; r += (e.key === "ArrowDown" ? 1 : -1)) {
+      const t = csAt({ r, c: pos.c, k: pos.k });
+      if (t && !t.disabled) { t.focus(); return; }
+    }
+  }, true);
   function renderCamSettings() {
     const body = $("csBody");
     const scroll = body.scrollTop;
-    // O foco (teclado) estava na tabela: volta para o mesmo lugar depois de redesenhar
-    const was = document.activeElement && body.contains(document.activeElement) ? focusables(body).indexOf(document.activeElement) : -1;
-    if (was >= 0) setTimeout(() => { const list = focusables(body); const t = list[Math.min(was, list.length - 1)]; if (t && !body.contains(document.activeElement)) t.focus({ preventScroll: true }); }, 0);
+    // O foco (teclado) estava na tabela: volta para a mesma linha/coluna depois de redesenhar
+    const was = csPos(document.activeElement);
+    if (was) setTimeout(() => { const t = csAt(was); if (t && !body.contains(document.activeElement)) t.focus({ preventScroll: true }); }, 0);
     body.innerHTML = "";
     const copy = $("csCopy");
     copy.innerHTML = "";
@@ -4382,6 +4441,8 @@
         table.appendChild(note);
       }
     });
+    // Teclado: o Tab passa só pela linha "All cameras"; nas linhas das câmeras chega-se com ↑ ↓
+    table.querySelectorAll("tr:not(.all) select, tr:not(.all) button, tr:not(.all) input").forEach((x) => { x.tabIndex = -1; });
     body.appendChild(table);
     body.scrollTop = scroll;
     renderStylePop();
@@ -4863,7 +4924,11 @@
     if (open) {
       if (e.key === "Escape") {
         if (open === "camSettingsOverlay" && csCardOpen()) $("csCardCancel").click();  // cartão cinza: Esc = Cancel
-        else if (open === "camSettingsOverlay" && csStylePop) { csStylePop = null; renderStylePop(); }
+        else if (open === "camSettingsOverlay" && csStylePop) {
+          const anchor = document.querySelector('.cs-more[data-style-cam="' + csStylePop.camera + '"]');
+          csStylePop = null; renderStylePop();
+          if (anchor) anchor.focus();
+        }
         else if (open === "camSettingsOverlay" && csZoom) csSetZoom(false);  // primeiro fecha a foto grande
         else if (open === "camSettingsOverlay") closeCamSettings();
         else $(open).classList.add("hidden");

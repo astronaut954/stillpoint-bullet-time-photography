@@ -875,18 +875,21 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) serve para tudo, menos para a impress
       para `Imagens/Stillpoint` e some. A linha "Save to" da janela de salvar (sem projeto) acompanha
       (`…/Stillpoint/Exports`). Na janela de salvar, depois de "Choose another folder…", "RESET TO DEFAULT"
       volta para a pasta padrão.
-- [ ] **Teclado (Tab):** na tela principal o Tab passa por todos os botões e campos (topo, câmeras, Bullet
-      time, sessões), com contorno verde. Com uma janela aberta (Camera settings, Save sessions, avisos),
-      o Tab fica só dentro dela e passa por tudo dela (Camera settings: listas, ±, Test shot, Match
-      automatically, Use gray card, Read again, Calibrate with chart, Copy from camera, Done). Shift+Tab volta.
-- [ ] Camera settings pelo teclado: numa lista, seta para baixo (ou Enter/Espaço) abre a lista escura do
-      app (nunca a do Mac); com ela aberta, as setas andam pela lista (opção marcada com contorno verde),
-      Enter escolhe, Esc fecha, Tab fecha e vai para a próxima caixa. Depois de escolher, o foco continua
-      na mesma caixa. A caixa do "±" fecha quando o Tab sai dela.
+- [ ] **Teclado (Tab):** na tela principal o Tab passa pelos botões e campos (topo, câmeras, Bullet
+      time) e por uma sessão só (não passa pelas miniaturas das fotos), com contorno verde. Com uma janela
+      aberta (Camera settings, Save sessions, avisos), o Tab fica só dentro dela. Shift+Tab volta.
+- [ ] Camera settings pelo teclado: o Tab passa só pela linha "All cameras" (listas e "±") e depois
+      pelos botões de baixo (Test shot, Match automatically, Use gray card, Read again, Calibrate with
+      chart, Copy from camera, Done). Numa lista, ↑ ↓ vão para a mesma coluna da câmera de cima/de baixo
+      (a lista não abre). Enter ou Espaço abre a lista escura do app; com ela aberta, ↑ ↓ andam pelas
+      opções, Enter escolhe, Esc fecha. Depois de escolher, o foco continua na mesma caixa.
+- [ ] Caixa do "±" (PICTURE STYLE & QUALITY) aberta com Enter: o Tab circula só pelas listas dela; Esc
+      fecha e o foco volta para o "±".
+- [ ] Enter marca/desmarca caixas de marcar (ex.: "Match automatically"), como o Espaço.
 - [ ] Activity aberto: o Tab circula só dentro dele (Show technical details, Copy log, botões); fechado,
       volta ao normal.
-- [ ] Sessões pelo teclado: o Tab passa pelas sessões da lista e pelas miniaturas; Enter ou Espaço abre a
-      sessão / mostra a foto.
+- [ ] Sessões pelo teclado: o Tab para só na sessão aberta (ou na primeira); ↑ ↓ trocam de sessão;
+      ← → trocam de foto.
 - [ ] "?" com o Tab: a explicação aparece enquanto o "?" tem o foco e some no próximo Tab, sem precisar
       mexer o mouse.
 - [ ] Lupas: segurando o botão esquerdo somem a mira "+" e a legenda do zoom; ao soltar, voltam. A instrução aparece
