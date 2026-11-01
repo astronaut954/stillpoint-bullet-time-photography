@@ -1122,6 +1122,12 @@
   speedCaption.textContent = "Speed";
   speedGroup.append(speedCaption, slowerBtn, speedLabel, fasterBtn);
 
+  // Na tela cheia: o mesmo botão da lixeira da barra de cima (abre a Trash; número de itens e espaço)
+  const fullTrashOpenBtn = document.createElement("button");
+  fullTrashOpenBtn.className = "trash-bar full-trash-bar";
+  fullTrashOpenBtn.type = "button";
+  fullTrashOpenBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 4h9M5.5 4V2.5h3V4M3.5 4l.6 7.5h5.8l.6-7.5"/></svg><span class="trash-count-full"></span><span class="trash-size trash-size-full"></span>';
+  fullTrashOpenBtn.addEventListener("click", () => openTrash());
   const viewActions = [
     button("", () => { stopPlay(); sessionGallery.prev(); }, { icon: "left", title: "Previous photo" }),
     playBtn,
@@ -1130,6 +1136,7 @@
     reverseLoopOption,
     button("Reorder", startReorder, { title: "Change the order of the photos in this session" }),
     fullTrashBtn,
+    fullTrashOpenBtn,
     exitFullBtn,
   ];
   const editActions = [
@@ -1584,6 +1591,8 @@
   // Apagar sessão: uma cópia da linha voa até o botão da lixeira (encolhendo e sumindo), a linha
   // fecha no lugar e a lixeira dá um pulo; só então a sessão é apagada
   function trashTarget() {
+    // Na tela cheia, o botão da lixeira dela; fora, o da barra de cima
+    if (isFullscreen() && fullTrashOpenBtn.offsetParent) return fullTrashOpenBtn;
     const b = $("trashBtn");
     return b && b.offsetParent && b.getBoundingClientRect().width ? b : null;
   }
@@ -5911,12 +5920,16 @@
     const b = $("trashBtn");
     b.classList.toggle("has", trash.count > 0);
     $("trashCount").textContent = trash.count ? String(trash.count) : "";
+    fullTrashOpenBtn.querySelector(".trash-count-full").textContent = trash.count ? String(trash.count) : "";
     // Espaço ocupado, sempre em GB (com mais casas quando é pouco)
     const gb = trash.bytes / 1e9;
     $("trashSize").textContent = trash.count ? (gb >= 10 ? gb.toFixed(0) : gb >= 0.1 ? gb.toFixed(1) : gb >= 0.01 ? gb.toFixed(2) : "<0.01") + " GB" : "";
+    fullTrashOpenBtn.querySelector(".trash-size-full").textContent = $("trashSize").textContent;
+    fullTrashOpenBtn.classList.toggle("has", trash.count > 0);
     b.title = trash.count ? "Trash: " + plural(trash.count, "item", "items") + " · " + fmtBytes(trash.bytes) + " · kept " + trash.days + " days"
                           : "Trash: empty. Deleted sessions and photos stay here for " + trash.days + " days.";
     b.setAttribute("aria-label", b.title);
+    fullTrashOpenBtn.title = b.title; fullTrashOpenBtn.setAttribute("aria-label", b.title);
     if ($("trashOverlay") && !$("trashOverlay").classList.contains("hidden")) renderTrash();
   }
   const trashRoving = makeRoving({ root: () => $("trashList"), rows: (r) => [...r.querySelectorAll("li.trash-row")], id: (row) => row.dataset.id });

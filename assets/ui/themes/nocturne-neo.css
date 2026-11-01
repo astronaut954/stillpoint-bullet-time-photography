@@ -1339,3 +1339,5 @@ html.kbd-focus input:focus + .save-check { outline: 2px solid var(--noct-primary
 /* Várias fotos marcadas (Shift+← → ou Shift+clique) */
 .carousel .frame.multi .frame-img { outline: 2px solid var(--noct-info); outline-offset: -2px; }
 .carousel .frame.multi { opacity: 1; }
+.full-trash-bar { margin-left: 0; }
+.full-trash-bar span:empty { display: none; }
