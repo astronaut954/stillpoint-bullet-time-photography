@@ -2009,6 +2009,7 @@
     const print = { widthCm: base.widthCm, heightCm: base.heightCm };
     l.widthCm = l.unit === "in" ? 8.5 * CM_PER_IN : 21; l.heightCm = l.unit === "in" ? 11 * CM_PER_IN : 29.7;
     Object.assign(pitchState, { l, step: 0.05, print, fine: false });
+    pitchSnap = null;
     let ov = $("pitchOverlay");
     if (!ov) {
       ov = el("div", "overlay pitch-overlay hidden"); ov.id = "pitchOverlay";
@@ -2035,7 +2036,22 @@
     renderPitchTest();
     ov.classList.remove("hidden");
   }
-  function closePitchTest() { const ov = $("pitchOverlay"); if (ov) ov.classList.add("hidden"); }
+  function closePitchTest() {
+    const ov = $("pitchOverlay"); if (ov) ov.classList.add("hidden");
+    // As mudanças do Pitch test só valem com a janela aberta: saem do desfazer ao fechar
+    history.undo = history.undo.filter((a) => !a.pitch);
+    history.redo = history.redo.filter((a) => !a.pitch);
+  }
+  // Desfazer no Pitch test: cada mudança vira um passo (estado inteiro antes/depois)
+  let pitchSnap = null;
+  const pitchSnapshot = () => JSON.stringify({ l: pitchState.l, step: pitchState.step, fine: pitchState.fine });
+  function pitchApply(s) {
+    if (!$("pitchOverlay") || $("pitchOverlay").classList.contains("hidden")) return false;
+    const o = JSON.parse(s);
+    pitchState.l = o.l; pitchState.step = o.step; pitchState.fine = o.fine;
+    pitchSnap = s;
+    renderPitchTest();
+  }
   // Fonte 5×7 do programa (Export: Glyph), para os números na lupa
   const PITCH_GLYPHS = { "0": [0x0E, 0x11, 0x13, 0x15, 0x19, 0x11, 0x0E], "1": [0x04, 0x0C, 0x04, 0x04, 0x04, 0x04, 0x0E],
     "2": [0x0E, 0x11, 0x01, 0x02, 0x04, 0x08, 0x1F], "3": [0x1F, 0x02, 0x04, 0x02, 0x01, 0x11, 0x0E], "4": [0x02, 0x06, 0x0A, 0x12, 0x1F, 0x02, 0x02],
@@ -2087,8 +2103,14 @@
     return { W, H, horizontal, center, edge, gap, label, band, lpis, decimals, digitScale, at, across, stripCm };
   }
   function renderPitchTest() {
-    const ov = $("pitchOverlay"), l = pitchState.l;
-    if (!ov || !l) return;
+    const ov = $("pitchOverlay");
+    if (!ov || !pitchState.l) return;
+    const now = pitchSnapshot();
+    if (pitchSnap !== null && now !== pitchSnap) {
+      const before = pitchSnap;
+      recordAction({ label: "Pitch test settings", pitch: true, undo: () => pitchApply(before), redo: () => pitchApply(now) });
+    }
+    const l = pitchState.l;
     const body = ov.querySelector(".pitch-body");
     const scroll = body.scrollTop;
     body.innerHTML = "";
@@ -2145,6 +2167,7 @@
     body.scrollTop = scroll;
     const save = $("pitchOverlay").querySelector(".pitch-save");
     if (save) save.disabled = !!pitchState.blocked;
+    pitchSnap = pitchSnapshot();
     drawPitchPreview(P);
   }
   // Prévia da folha: a página inteira reduzida (as listras aparecem maiores do que são, só para mostrar
@@ -3288,9 +3311,15 @@
       csGallery.message(e.stage);
     },
     // Cartão cinza: depois da primeira foto, conferir onde está o cartão
-    grayCardPick(e) { csCardShow(e.sessions, e.regions || []); },
+    grayCardPick(e) {
+      if ($("camSettingsOverlay").classList.contains("hidden")) { window.cancelTest(); return; }  // janela fechada: ninguém para conferir
+      csCardShow(e.sessions, e.regions || []);
+    },
     // Cartela de cores
-    chartPick(e) { csChartShow(e.sessions, e.quads || []); },
+    chartPick(e) {
+      if ($("camSettingsOverlay").classList.contains("hidden")) { window.cancelTest(); return; }
+      csChartShow(e.sessions, e.quads || []);
+    },
     chartProgress(e) {
       csGallery.setHead("Chart calibration", "Photo " + e.shot + " of " + e.shots + " · " + e.stage);
       csGallery.message(e.stage);
@@ -4876,6 +4905,9 @@
   function closeCamSettings() {
     // Fechar esperando o cartão cinza: cancela (senão o Match ficaria esperando)
     if (csCardOpen()) $("csCardCancel").click();
+    // Fechar no meio do Test shot, do Match ou da calibração: cancela também (as câmeras voltam
+    // como estavam; sem isso o programa ficava esperando a conferência numa janela fechada)
+    else if (csTest.capturing && !csTest.cancelling) csTakeTest();
     $("camSettingsOverlay").classList.add("hidden");
     csStylePop = null;
     renderStylePop();

@@ -885,6 +885,12 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) serve para tudo, menos para a impress
       opções, Enter escolhe, Esc fecha. Depois de escolher, o foco continua na mesma caixa.
 - [ ] Caixa do "±" (PICTURE STYLE & QUALITY) aberta com Enter: o Tab circula só pelas listas dela; Esc
       fecha e o foco volta para o "±".
+- [ ] Pitch test: mudar qualquer opção (lâmina, impressora, papel, Finer steps, passo) e apertar Ctrl+Z
+      (Cmd+Z no Mac) volta a opção anterior; Ctrl+Shift+Z refaz. Ao fechar a janela, essas mudanças saem do
+      desfazer.
+- [ ] Camera settings: apertar Esc (ou Done) no meio do Test shot, do Match automatically ou do Calibrate
+      with chart cancela o que estava em andamento; o Activity não fica preso em "Receiving photos" e as
+      câmeras voltam como estavam.
 - [ ] Enter marca/desmarca caixas de marcar (ex.: "Match automatically"), como o Espaço.
 - [ ] Activity aberto: o Tab circula só dentro dele (Show technical details, Copy log, botões); fechado,
       volta ao normal.
