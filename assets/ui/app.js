@@ -4919,7 +4919,8 @@
     }
     const all = csStylePop.camera === "*";
     const styleCams = all ? camSettings.filter((c) => c.adjustable && c.styleDetail) : camSettings.filter((c) => c.camera === csStylePop.camera && c.styleDetail);
-    const qualityCams = (all ? camSettings.filter((c) => c.adjustable) : camSettings.filter((c) => c.camera === csStylePop.camera)).filter(csHasQuality);
+    // Quality: entram também as câmeras que não aceitam mudar (a linha aparece fixa, como a proporção)
+    const qualityCams = (all ? camSettings.filter((c) => c.adjustable) : camSettings.filter((c) => c.camera === csStylePop.camera)).filter(csShowsQuality);
     // Proporção: entram também as câmeras que não aceitam mudar (a linha aparece fixa)
     const aspectCams = (all ? camSettings.filter((c) => c.adjustable) : camSettings.filter((c) => c.camera === csStylePop.camera)).filter(csHasAspect);
     const cams = styleCams;
@@ -4944,8 +4945,9 @@
     if (styleCams.length) pop.appendChild(el("div", "cs-pop-note", "Color tone: − redder, + more yellow (skin tones)."));
     // Quality (RAW, L fine…): saiu da tabela para ela caber; em All cameras só as opções comuns
     if (qualityCams.length) {
-      const lists = qualityCams.map((c) => c.settings.quality.choices);
-      const common = lists[0].filter(([v]) => lists.every((l) => l.some(([x]) => x === v)));
+      const changeable = qualityCams.filter(csHasQuality);
+      const lists = changeable.map((c) => c.settings.quality.choices);
+      const common = lists.length ? lists[0].filter(([v]) => lists.every((l) => l.some(([x]) => x === v))) : [];
       const values = new Set(qualityCams.map((c) => c.settings.quality.value));
       const current = values.size === 1 ? String([...values][0]) : "";
       const options = common.map(([v, l]) => [String(v), l]);
@@ -4953,9 +4955,18 @@
       else if (!options.some(([x]) => x === current)) options.unshift([current, qualityCams[0].settings.quality.label]);
       const ref = csReference();
       const off = !all && ref.quality !== undefined && ref.quality !== null && csLabel(qualityCams[0], "quality") !== ref.quality;
-      const row = el("label", "cs-pop-row" + (csIsPending(csStylePop.camera, ["quality"]) ? " applying" : "") + (styleCams.length ? " cs-pop-sep" : ""));
+      const fixed = !changeable.length;
+      const row = el("label", "cs-pop-row" + (csIsPending(csStylePop.camera, ["quality"]) ? " applying" : "") + (styleCams.length ? " cs-pop-sep" : "") + (fixed ? " cs-pop-fixed" : ""));
       row.appendChild(el("span", "", "Quality"));
-      row.appendChild(csSelect(options, current, (v) => csSet(csStylePop.camera, "quality", +v), "pop-wide" + (off || !current ? " diff" : "")));
+      const sel = csSelect(options, current, (v) => { if (all) changeable.forEach((c) => { if (c.settings.quality.value !== +v) csSet(c.camera, "quality", +v); }); else csSet(csStylePop.camera, "quality", +v); }, "pop-wide" + (off || !current ? " diff" : ""));
+      row.appendChild(sel);
+      if (fixed) {
+        sel.disabled = true;
+        row.title = all ? "No camera allows changing the quality over USB. Change it in the camera menus." : "This camera does not allow changing the quality (size and format) over USB. Change it in the camera menu.";
+      } else if (all && changeable.length < qualityCams.length) {
+        const fixedNames = qualityCams.filter((c) => !csHasQuality(c)).map((c) => c.camera);
+        row.title = fixedNames.join(", ") + (fixedNames.length === 1 ? " does" : " do") + " not allow changing the quality over USB; the change goes to the other cameras.";
+      }
       pop.appendChild(row);
     }
     // Aspect ratio (3:2, 4:3, 16:9, 1:1), logo abaixo de Quality. Câmera que não aceita mudar pelo USB:
@@ -5054,10 +5065,11 @@
       if (k === "wb" && v.startsWith("k")) csSet(c.camera, "kelvin", +v.slice(1));
       else csSet(c.camera, k, +v);
     }, diff ? "diff" : ""));
-    if (k === "style" && (c.styleDetail || csHasQuality(c) || csHasAspect(c))) td.appendChild(csStyleButton(c.camera, csStyleDetailLevel(c) || (csDiffers(c, "quality", ref) || csDiffers(c, "aspect", ref) ? "partial" : ""), c));
+    if (k === "style" && (c.styleDetail || csShowsQuality(c) || csHasAspect(c))) td.appendChild(csStyleButton(c.camera, csStyleDetailLevel(c) || (csDiffers(c, "quality", ref) || csDiffers(c, "aspect", ref) ? "partial" : ""), c));
     return td;
   }
   function csHasQuality(c) { const q = c.settings && c.settings.quality; return !!(q && q.available && q.choices && q.choices.length); }
+  function csShowsQuality(c) { const q = c.settings && c.settings.quality; return !!(q && q.available); }
   function csHasAspect(c) { const a = c.settings && c.settings.aspect; return !!(a && a.available); }
   function csCanChangeAspect(c) { const a = c.settings && c.settings.aspect; return !!(a && a.available && a.choices && a.choices.length); }
 

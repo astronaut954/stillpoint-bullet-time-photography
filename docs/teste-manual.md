@@ -1178,6 +1178,8 @@ projeto num HD externo.
       o "±" delas fica âmbar tracejado e a lista de câmeras mostra "Settings differ".
 - [ ] Câmera 6 simulada: a linha "Aspect ratio" aparece apagada e desabilitada; ao parar o ponteiro, a
       explicação diz que a câmera não aceita mudar pelo USB.
+- [ ] Câmeras simuladas: a linha "Quality" aparece em todas, apagada e desabilitada (elas não aceitam mudar a
+      qualidade pelo USB), com a explicação ao parar o ponteiro. Antes ela não aparecia.
 - [ ] "±" de "All cameras": "Aspect ratio" mostra "Different"; escolher 3:2 muda só as câmeras que aceitam
       (a 6 fica como está); o aviso some das câmeras 2 e 4; Cmd+Z volta uma a uma.
 - [ ] "Copy from camera" leva a proporção da câmera escolhida às outras que aceitam.
