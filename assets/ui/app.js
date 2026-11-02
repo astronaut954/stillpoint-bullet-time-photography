@@ -5014,7 +5014,7 @@
   // Célula de uma câmera
   function csCell(c, k, ref) {
     const td = document.createElement("td");
-    td.className = "cs-cell col-" + k + (csIsPending(c.camera, COL_KEYS[k] || [k]) ? " applying" : "");
+    td.className = "cs-cell" + (csIsPending(c.camera, COL_KEYS[k] || [k]) ? " applying" : "");
     const diff = csDiffers(c, k, ref);
     if (k === "focus") {
       const f = c.settings.focus;
@@ -5084,7 +5084,7 @@
   // Célula de "All cameras": só os valores que todas as câmeras ajustáveis aceitam
   function csAllCell(k, cams) {
     const td = document.createElement("td");
-    td.className = "cs-cell col-" + k + (csIsPending("*", COL_KEYS[k] || [k]) ? " applying" : "");
+    td.className = "cs-cell" + (csIsPending("*", COL_KEYS[k] || [k]) ? " applying" : "");
     const labels = new Set(cams.map((c) => csLabel(c, k)).filter((l) => l !== null));
     const same = labels.size === 1;
     if (k === "focus") {
@@ -5250,8 +5250,7 @@
     table.className = "cs";
     const head = document.createElement("tr");
     head.appendChild(document.createElement("th"));
-    head.firstChild.className = "col-name";
-    CS_COLS.forEach(([k, label]) => head.appendChild(el("th", "col-" + k, label)));
+    CS_COLS.forEach(([, label]) => head.appendChild(el("th", "", label)));
     table.appendChild(head);
 
     const all = document.createElement("tr");
