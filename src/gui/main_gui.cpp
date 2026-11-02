@@ -2745,12 +2745,16 @@ namespace
         {
             const auto values = ParseIntArgs(request);
             const bool grayCard = values.size() > 1 && values[1] != 0;
+            // Terceiro valor: o que igualar e o modo revisão, em bits (ver a janela Match automatically no app):
+            // 1 exposição (tv/av/exp. comp.), 2 ISO, 4 brilho, 8 balanço de branco, 16 cor, 32 Picture Style,
+            // 64 formato, 128 proporção, 256 revisão (as câmeras voltam ao "antes"; o app aplica depois)
+            const int flags = values.size() > 2 ? values[2] : 0xFF;
             SequenceSettings settings;
             settings.countdownSeconds = 0;
             settings.sessionCount = 1;
             settings.downloadWaitSeconds = values.empty() ? 10 : std::max(1, values[0]);
             settings.playSounds = false;
-            run("orderPhotos", [&, settings, grayCard]
+            run("orderPhotos", [&, settings, grayCard, flags]
             {
                 if (cameraConnecting())
                     return;
@@ -2770,7 +2774,16 @@ namespace
                     if (testCancel)
                         return false;
                     listener.Emit(Json("autoMatchProgress").Add("shot", shot).Add("shots", shots).Add("stage", stage));
-                    orderStore.DeleteAll();
+                    // Revisão: a primeira foto fica guardada (é o "antes"); as do meio vão embora
+                    if (flags & 256)
+                    {
+                        auto old = orderStore.ListSessions();
+                        std::sort(old.begin(), old.end(), [](const StoredSession& a, const StoredSession& b) { return a.name < b.name; });
+                        for (size_t i = 1; i < old.size(); ++i)
+                            orderStore.DeleteSessionNow(old[i].name);
+                    }
+                    else
+                        orderStore.DeleteAll();
                     EnsureSingleShot(controller, singleShotWarned);
                     const std::string previous = controller.GetOutputFolder();
                     controller.SetOutputFolder(orderStore.Root().string());
@@ -2839,6 +2852,15 @@ namespace
                 AutoMatch::Options options;
                 options.grayCard = grayCard;
                 options.chartFile = ChartCalibrationFile();
+                options.exposure = flags & 1;
+                options.iso = flags & 2;
+                options.brightness = flags & 4;
+                options.whiteBalance = flags & 8;
+                options.color = flags & 16;
+                options.style = flags & 32;
+                options.format = flags & 64;
+                options.aspect = flags & 128;
+                options.review = flags & 256;
                 const AutoMatch::Result result = AutoMatch::Run(controller, shoot, CalibrationFile(), [&] { return testCancel.load(); }, options,
                                                                 debug.Active() ? std::function<void(const std::string&)>(trace) : nullptr);
                 if (debug.Active())
@@ -2862,7 +2884,10 @@ namespace
                         items += (j ? "," : "") + std::string("[") + JsonString(item[0]) + "," + JsonString(item[1]) + ","
                                  + JsonString(item[2]) + "]";
                     }
-                    changes += (i ? "," : "") + Json("change").Add("camera", result.changes[i].camera).Raw("items", items + "]").Str();
+                    std::string apply = "[";
+                    for (size_t j = 0; j < result.changes[i].apply.size(); ++j)
+                        apply += (j ? "," : "") + std::string("[") + JsonString(result.changes[i].apply[j].first) + "," + std::to_string(result.changes[i].apply[j].second) + "]";
+                    changes += (i ? "," : "") + Json("change").Add("camera", result.changes[i].camera).Raw("items", items + "]").Raw("apply", apply + "]").Str();
                 }
                 changes += "]";
                 std::string notes = "[";
@@ -2872,7 +2897,7 @@ namespace
 
                 listener.Emit(Json("orderPhotos").Raw("sessions", SessionsJson(orderStore)));
                 listener.Emit(Json("autoMatchResult").Add("ok", result.ok).Add("matched", result.matched)
-                                  .Add("cancelled", result.cancelled)
+                                  .Add("cancelled", result.cancelled).Add("review", (flags & 256) != 0)
                                   .Add("debugFolder", debug.Active() ? PathToUtf8(debug.Folder()) : std::string())
                                   .Add("error", result.error).Raw("changes", changes).Raw("notes", notes));
                 EmitCameraSettings(controller, listener, singleShotWarned);

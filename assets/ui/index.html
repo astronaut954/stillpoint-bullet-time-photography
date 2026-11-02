@@ -237,6 +237,25 @@
       <!-- Teste rápido: uma foto de cada câmera, só para conferir (não é salva) -->
       <div id="csTestBox" class="cs-test hidden"><div id="csGallery" class="gallery"></div></div>
       <div id="csBody" class="cs-body"></div>
+      <!-- Match automatically em três passos: escolher, foto de teste, revisar (nada muda antes do Apply) -->
+      <div id="csMatch" class="cs-match hidden">
+        <div class="cs-match-head">
+          <div>
+            <h3>Match automatically</h3>
+            <p id="csMatchSub">Choose what the app may change. Nothing changes on the cameras before you review the result.</p>
+          </div>
+          <div class="cs-steps"><span id="csStep1" class="cs-step on">1 Choose</span><span class="cs-step-sep">—</span><span id="csStep2" class="cs-step">2 Test shot</span><span class="cs-step-sep">—</span><span id="csStep3" class="cs-step">3 Review</span></div>
+        </div>
+        <div id="csMatchBody" class="cs-match-body"></div>
+        <div class="cs-match-foot">
+          <span id="csMatchNote" class="cs-match-note"></span>
+          <span class="spacer"></span>
+          <button id="csMatchBack" class="btn btn-secondary hidden">← Back</button>
+          <button id="csMatchCancel" class="btn btn-secondary">Cancel</button>
+          <button id="csMatchKeep" class="btn btn-secondary hidden">Keep current settings</button>
+          <button id="csMatchGo" class="btn btn-primary">Take the test shot →</button>
+        </div>
+      </div>
       <!-- Cartão cinza: conferir (ou clicar para corrigir) onde está o cartão em cada foto -->
       <div id="csCardPick" class="cs-card-pick hidden">
         <div class="cs-card-head">
@@ -253,8 +272,8 @@
       </div>
       <div class="cs-foot">
         <button id="csTest" class="btn btn-secondary" title="Fires all cameras to check the photos. The photos are not saved.">Test shot</button>
-        <label class="log-option cs-auto" title="Sets the same shutter, aperture, ISO and Picture Style, a common white balance, and matches the color (white balance fine-tune) and brightness (ISO) of every camera to the average of all. Takes up to 5 photos."><input id="csAuto" type="checkbox" checked> Match automatically</label>
-        <label class="log-option cs-auto cs-card-option" title="Put a gray card where every camera sees it. The app measures only the card (not the rest of the scene) and sets the white balance so the card comes out neutral gray in every camera. After the first photo, you check where the card is."><input id="csCard" type="checkbox"> Use gray card</label>
+        <button id="csMatchBtn" class="btn btn-primary" title="Makes the cameras look alike: you choose what to match, the app takes test photos and shows the result before changing anything.">Match automatically</button>
+        <input id="csAuto" type="checkbox" class="hidden" aria-hidden="true"><input id="csCard" type="checkbox" class="hidden" aria-hidden="true">
         <button id="csRead" class="btn btn-link btn-small">Read again</button>
         <button id="csChart" class="btn btn-link btn-small" title="Makes cameras of different models look alike in contrast, saturation and color tone, using a printed chart. Once per camera model.">Calibrate with chart</button>
         <span class="spacer"></span>

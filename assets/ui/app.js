@@ -3970,6 +3970,7 @@
     autoMatchProgress(e) {
       csGallery.setHead("Test shot · matching", "Photo " + e.shot + " of up to " + e.shots + " · " + e.stage);
       csGallery.message(e.stage);
+      csMatchProgress(e);
     },
     // Cartão cinza: depois da primeira foto, conferir onde está o cartão
     grayCardPick(e) {
@@ -4012,8 +4013,10 @@
       if (e.cancelled) {
         toast("Test shot cancelled. The cameras are back to how they were.");
         log("Match automatically cancelled; camera settings restored", "warn");
+        csMatchClose();
         return;
       }
+      if (e.review) { csMatchReview(e); return; }
       if (!e.matched) {
         if (!e.ok) toast(e.error || "The photos could not be taken.", 8000);
         if (notes.length) dialog("Not matched automatically", notes.join("\n"), [{ label: "OK", primary: true }]);
@@ -4045,6 +4048,7 @@
     orderPhotos(e) {
       csCardHide();
       if (csTest.capturing && csTest.cancelling) return;  // cancelado: as fotos não são mostradas
+      csTest.sessions = e.sessions || [];
       if (csTest.capturing) showCsTest(e.sessions);
       else if (order.open) showOrderPhotos(e.sessions);
     },
@@ -5407,7 +5411,7 @@
     }
     const connected = cameras.filter((c) => c.connected).length;
     if (busy || !connected) return;
-    const match = $("csAuto").checked && connected >= 2;
+    const match = $("csAuto").checked && connected >= 2;  // csAuto: ligado só pela janela Match automatically
     // ISO em Auto: o brilho não tem como ser igualado; avisa antes de começar
     const isoAuto = camSettings.filter((c) => c.adjustable && c.settings.iso && c.settings.iso.available && c.settings.iso.value === 0).map((c) => c.camera);
     if (match && isoAuto.length && skipIsoCheck !== true) {
@@ -5446,9 +5450,326 @@
     csGallery.setHead(match ? "Test shot · matching" : "Test shot", "");
     csGallery.message("Taking a photo with each camera");
     csTest.before = match ? csSnapshot() : null;  // para desfazer o Match automatically de uma vez
-    if (match) window.autoMatch(intValue(ui.downloadWait, 1, 10), $("csCard").checked ? 1 : 0);
+    if (match) window.autoMatch(intValue(ui.downloadWait, 1, 10), $("csCard").checked ? 1 : 0, csMatchFlags());
     else window.takeOrderPhotos(intValue(ui.downloadWait, 1, 10));
   }
+  // ----- Match automatically em três passos (decisão do dono, 2026-11-01): 1 Choose (o que igualar),
+  // 2 Test shot (até 5 fotos; nada muda nas câmeras: no fim elas voltam ao "antes"), 3 Review (tabela
+  // por câmera + fotos antes/depois; só o Apply mexe nas câmeras; um ⌘Z desfaz tudo) -----
+  const MATCH_ITEMS = [
+    ["exposure", 1, "Shutter, aperture, exposure comp.", "same value on every camera", "set"],
+    ["iso", 2, "ISO", "same value on every camera", "set"],
+    ["wb", 8, "White balance", "a common white balance", "set"],
+    ["style", 32, "Picture Style", "same style and adjustments", "set"],
+    ["format", 64, "Format", "same size and file format", "set"],
+    ["aspect", 128, "Aspect ratio", "to the cameras that cannot change it", "set"],
+    ["brightness", 4, "Brightness", "ISO fine-tune, measured in the test shot", "measure"],
+    ["color", 16, "Color", "WB fine-tune, measured in the test shot", "measure"],
+  ];
+  const matchWin = { step: 0, choices: null, result: null, cam: null, mode: "split", split: 50, playing: 0, dir: 1, picked: new Set(), before: null };
+  function csMatchChoices() {
+    if (matchWin.choices) return matchWin.choices;
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem("stillpoint.matchChoices") || "null"); } catch (e) {}
+    matchWin.choices = Object.assign({ exposure: true, iso: true, wb: true, style: true, format: true, aspect: true, brightness: true, color: true, grayCard: false }, saved || {});
+    return matchWin.choices;
+  }
+  function csMatchSaveChoices() { try { localStorage.setItem("stillpoint.matchChoices", JSON.stringify(csMatchChoices())); } catch (e) {} }
+  function csMatchFlags() {
+    const c = csMatchChoices();
+    return MATCH_ITEMS.reduce((f, [key, bit]) => f | (c[key] ? bit : 0), 0) | 256;
+  }
+  function csMatchSetStep(n) {
+    matchWin.step = n;
+    [1, 2, 3].forEach((k) => $("csStep" + k).classList.toggle("on", k === n));
+    $("csMatchBack").classList.toggle("hidden", n !== 3);
+    $("csMatchKeep").classList.toggle("hidden", n !== 3);
+    $("csMatchCancel").classList.toggle("hidden", n === 3);
+    $("csMatchGo").textContent = n === 1 ? "Take the test shot →" : n === 2 ? "Cancel the test shot" : "Apply";
+    $("csMatchGo").classList.toggle("btn-primary", n !== 2);
+    $("csMatchGo").classList.toggle("btn-secondary", n === 2);
+  }
+  function csMatchOpen() {
+    if (busy || csTest.capturing) return;
+    const connected = cameras.filter((c) => c.connected).length;
+    if (connected < 2) { toast("Match automatically needs at least two connected cameras.", 6000, { warn: true }); return; }
+    matchWin.result = null; matchWin.picked = new Set(); matchWin.before = null;
+    $("csMatch").classList.remove("hidden");
+    csMatchRenderChoose();
+  }
+  function csMatchClose() {
+    csMatchStopPlay();
+    $("csMatch").classList.add("hidden");
+    matchWin.step = 0;
+    $("csAuto").checked = false;
+  }
+  function csMatchRenderChoose() {
+    csMatchSetStep(1);
+    $("csMatchSub").textContent = "Choose what the app may change. Nothing changes on the cameras before you review the result.";
+    const c = csMatchChoices();
+    const body = $("csMatchBody");
+    body.innerHTML = "";
+    const grid = el("div", "cs-match-grid");
+    const col = (title) => { const d = el("div", "cs-match-col"); d.appendChild(el("div", "cs-match-coltitle", title)); grid.appendChild(d); return d; };
+    const left = col("Set the same value on every camera"), right = col("Measure in the test shot and fine-tune each camera");
+    MATCH_ITEMS.forEach(([key, , label, hint, kind]) => {
+      const row = el("label", "cs-match-row");
+      const box = document.createElement("input"); box.type = "checkbox"; box.checked = !!c[key];
+      box.addEventListener("change", () => { c[key] = box.checked; csMatchSaveChoices(); csMatchCount(); });
+      row.append(box, el("span", "cs-match-label", label), el("span", "cs-match-hint", hint));
+      (kind === "set" ? left : right).appendChild(row);
+    });
+    const card = el("label", "cs-match-row");
+    const cardBox = document.createElement("input"); cardBox.type = "checkbox"; cardBox.checked = !!c.grayCard;
+    cardBox.addEventListener("change", () => { c.grayCard = cardBox.checked; csMatchSaveChoices(); });
+    card.append(cardBox, el("span", "cs-match-label", "Use the gray card"), el("span", "cs-match-hint", "measure only the card; you check where it is after the first photo"));
+    right.appendChild(card);
+    right.appendChild(el("div", "cs-match-info", "The test shot fires every camera (the photos are not kept). Up to 5 photos until the cameras agree, plus one with the result. Nothing changes on the cameras before you review it in step 3."));
+    body.appendChild(grid);
+    csMatchCount();
+  }
+  function csMatchCount() {
+    if (matchWin.step !== 1) return;
+    const c = csMatchChoices();
+    const n = MATCH_ITEMS.filter(([key]) => c[key]).length;
+    $("csMatchNote").textContent = n + " of " + MATCH_ITEMS.length + " settings selected";
+    $("csMatchGo").disabled = n === 0;
+  }
+  function csMatchStart() {
+    csMatchSetStep(2);
+    $("csMatchSub").textContent = "Taking test photos. The cameras are changed only to measure; they go back to how they were before you review.";
+    $("csMatchNote").textContent = "";
+    $("csMatchGo").disabled = false;
+    const body = $("csMatchBody");
+    body.innerHTML = "";
+    const box = el("div", "cs-match-progress");
+    box.appendChild(el("div", "cs-match-stage", "Taking a photo with each camera"));
+    const bar = el("div", "cs-match-bar"); bar.appendChild(el("div", "cs-match-bar-fill")); box.appendChild(bar);
+    box.appendChild(el("div", "cs-match-shot", ""));
+    body.appendChild(box);
+    matchWin.before = csSnapshot();
+    $("csAuto").checked = true;
+    $("csCard").checked = !!csMatchChoices().grayCard;
+    csTakeTest();
+  }
+  function csMatchProgress(e) {
+    if (matchWin.step !== 2) return;
+    const stage = $("csMatchBody").querySelector(".cs-match-stage"), fill = $("csMatchBody").querySelector(".cs-match-bar-fill"), shot = $("csMatchBody").querySelector(".cs-match-shot");
+    if (stage) stage.textContent = e.stage;
+    if (fill) fill.style.width = Math.round((e.shot / Math.max(1, e.shots)) * 100) + "%";
+    if (shot) shot.textContent = "Photo " + e.shot + " of up to " + e.shots;
+  }
+  // Passo 3: o resultado veio, as câmeras já voltaram ao "antes"
+  function csMatchReview(e) {
+    const notes = e.notes || [];
+    matchWin.result = e;
+    if (!e.ok || !e.matched) {
+      dialog(e.matched ? "Matching did not finish" : "Not matched automatically", [e.error || "Try again."].concat(notes).join("\n\n"), [{ label: "OK", primary: true }]);
+      log("Match automatically did not finish", "warn", e.error);
+      csMatchClose();
+      return;
+    }
+    const changes = e.changes || [];
+    matchWin.picked = new Set(changes.map((c) => c.camera));
+    matchWin.cam = changes.length ? changes[0].camera : (placedCameras()[0] || {}).name;
+    csMatchSetStep(3);
+    $("csMatchSub").textContent = changes.length
+      ? plural(changes.length, "camera would change", "cameras would change") + " · nothing has been changed on the cameras yet"
+      : "The cameras already look alike. Nothing to change.";
+    csMatchRenderReview();
+    if (e.debugFolder) log("Debug data saved", "tech", e.debugFolder);
+  }
+  // Fotos do teste: a primeira sessão é o "antes", a última o "depois"
+  function csMatchSessions() {
+    const list = (csTest.sessions || []).slice().sort((a, b) => (a.name < b.name ? -1 : 1));
+    return { before: list[0] || null, after: list[list.length - 1] || null };
+  }
+  function csMatchPhoto(session, camName, size) {
+    if (!session) return Promise.resolve(null);
+    const photos = session.photos.filter((p) => p.camera === camName);
+    const pick = photos.find((p) => /\.jpe?g$/i.test(p.file)) || photos.find((p) => p.previewable) || photos[0];
+    if (!pick) return Promise.resolve(null);
+    return orderPhoto(session.name, pick.file, size);
+  }
+  function csMatchRenderReview() {
+    const e = matchWin.result;
+    const changes = e.changes || [];
+    const body = $("csMatchBody");
+    body.innerHTML = "";
+    const wrap = el("div", "cs-review");
+    // Tabela: uma linha por câmera
+    const table = el("div", "cs-review-table");
+    const head = el("div", "cs-review-head");
+    const allBox = document.createElement("input"); allBox.type = "checkbox"; allBox.setAttribute("aria-label", "All cameras");
+    allBox.checked = changes.length > 0 && changes.every((c) => matchWin.picked.has(c.camera));
+    allBox.disabled = !changes.length;
+    allBox.addEventListener("change", () => { matchWin.picked = new Set(allBox.checked ? changes.map((c) => c.camera) : []); csMatchRenderReview(); });
+    head.append(allBox, el("span", "", "Camera"), el("span", "", "Changes"), el("span", "cs-review-th-after", "After"));
+    table.appendChild(head);
+    const { before, after } = csMatchSessions();
+    placedCameras().filter((c) => c.connected).forEach((cam) => {
+      const ch = changes.find((x) => x.camera === cam.name);
+      const row = el("div", "cs-review-row" + (ch ? "" : " same") + (matchWin.cam === cam.name ? " current" : ""));
+      const box = document.createElement("input"); box.type = "checkbox";
+      box.checked = !!ch && matchWin.picked.has(cam.name); box.disabled = !ch;
+      box.setAttribute("aria-label", "Apply to " + cam.name);
+      box.addEventListener("click", (ev) => ev.stopPropagation());
+      box.addEventListener("change", () => { if (box.checked) matchWin.picked.add(cam.name); else matchWin.picked.delete(cam.name); csMatchFootNote(); });
+      const name = el("span", "cs-review-name"); name.append(el("b", "", pad(cam.order)), document.createTextNode(" " + cam.name));
+      const list = el("span", "cs-review-changes");
+      if (ch) ch.items.forEach(([what, from, to]) => { const it = el("span", "cs-review-change"); it.append(el("s", "", from), el("span", "to", to)); it.title = what; list.appendChild(it); });
+      else list.appendChild(el("span", "cs-review-none", changes.length && cam.name === (changes[0] || {}).camera ? "reference" : "no change"));
+      const thumb = el("span", "cs-review-thumb" + (ch ? " changed" : ""));
+      csMatchPhoto(after, cam.name, 320).then((url) => { if (url) thumb.style.backgroundImage = "url(" + url + ")"; });
+      row.append(box, name, list, thumb);
+      row.addEventListener("click", () => { matchWin.cam = cam.name; csMatchRenderReview(); });
+      table.appendChild(row);
+    });
+    const tnote = el("div", "cs-review-tnote", "Click a row to see that camera on the right. Play runs the whole sequence, before and after at once. Untick a camera to keep it as it is.");
+    table.appendChild(tnote);
+    wrap.appendChild(table);
+    // Fotos: a câmera escolhida, antes e depois
+    const photos = el("div", "cs-review-photos");
+    const top = el("div", "cs-review-top");
+    const camLabel = el("span", "cs-review-cam", matchWin.cam || "");
+    const ctrls = el("div", "cs-review-ctrls");
+    const prev = button("", () => csMatchStep(-1), { icon: "left", title: "Previous camera" });
+    const play = button("", () => csMatchTogglePlay(), { icon: matchWin.playing ? "pause" : "play", title: matchWin.playing ? "Pause" : "Play the sequence" });
+    play.classList.add("cs-review-play");
+    const next = button("", () => csMatchStep(1), { icon: "right", title: "Next camera" });
+    const slower = button("", () => { speedIndex = Math.max(0, speedIndex - 1); renderSpeed(); csMatchRenderReview(); }, { icon: "minus", title: "Slower" });
+    const faster = button("", () => { speedIndex = Math.min(PLAY_SPEEDS.length - 1, speedIndex + 1); renderSpeed(); csMatchRenderReview(); }, { icon: "plus", title: "Faster" });
+    const v = PLAY_SPEEDS[speedIndex];
+    const speed = el("span", "cs-review-speed", (v % 1 === 0 ? v.toFixed(1) : String(v)) + "x");
+    const rev = el("label", "cs-review-rev"); const revBox = document.createElement("input"); revBox.type = "checkbox"; revBox.checked = reverseLoop.checked;
+    revBox.addEventListener("change", () => { reverseLoop.checked = revBox.checked; });
+    rev.append(revBox, document.createTextNode(" Reverse loop"));
+    ctrls.append(prev, play, next, el("span", "cs-review-speedlabel", "Speed"), slower, speed, faster, rev);
+    const modes = el("div", "cs-review-modes");
+    [["split", "Split"], ["side", "Side by side"], ["flip", "Flip"]].forEach(([m, label]) => {
+      const b = el("button", "cs-review-mode" + (matchWin.mode === m ? " on" : ""), label); b.type = "button";
+      b.addEventListener("click", () => { matchWin.mode = m; csMatchRenderReview(); });
+      modes.appendChild(b);
+    });
+    top.append(camLabel, ctrls, modes);
+    photos.appendChild(top);
+    const stage = el("div", "cs-review-stage " + matchWin.mode);
+    const imgB = el("div", "cs-review-img before"), imgA = el("div", "cs-review-img after");
+    imgB.appendChild(el("span", "cs-review-tag", "Before")); imgA.appendChild(el("span", "cs-review-tag on", "After"));
+    const ch = changes.find((x) => x.camera === matchWin.cam);
+    if (ch) { imgB.querySelector(".cs-review-tag").textContent = "Before · " + ch.items.map((i) => i[1]).join(" · "); imgA.querySelector(".cs-review-tag").textContent = "After · " + ch.items.map((i) => i[2]).join(" · "); }
+    csMatchPhoto(before, matchWin.cam, 1600).then((url) => { if (url) imgB.style.backgroundImage = "url(" + url + ")"; });
+    csMatchPhoto(after, matchWin.cam, 1600).then((url) => { if (url) imgA.style.backgroundImage = "url(" + url + ")"; });
+    stage.append(imgB, imgA);
+    if (matchWin.mode === "split") {
+      imgA.style.clipPath = "inset(0 0 0 " + matchWin.split + "%)";
+      const handle = el("div", "cs-review-handle"); handle.style.left = matchWin.split + "%";
+      handle.appendChild(el("span", "cs-review-knob", "⇔"));
+      stage.appendChild(handle);
+      let dragging = false;
+      const move = (ev) => { const r = stage.getBoundingClientRect(); matchWin.split = Math.max(2, Math.min(98, ((ev.clientX - r.left) / r.width) * 100)); imgA.style.clipPath = "inset(0 0 0 " + matchWin.split + "%)"; handle.style.left = matchWin.split + "%"; };
+      stage.addEventListener("pointerdown", (ev) => { dragging = true; stage.setPointerCapture(ev.pointerId); move(ev); });
+      stage.addEventListener("pointermove", (ev) => { if (dragging) move(ev); });
+      stage.addEventListener("pointerup", () => { dragging = false; });
+      stage.addEventListener("pointercancel", () => { dragging = false; });
+    } else if (matchWin.mode === "flip") {
+      stage.classList.toggle("show-after", !!matchWin.flipAfter);
+      stage.title = "Click to switch between before and after";
+      stage.addEventListener("click", () => { matchWin.flipAfter = !matchWin.flipAfter; stage.classList.toggle("show-after", !!matchWin.flipAfter); });
+    }
+    photos.appendChild(stage);
+    // Fileiras de miniaturas: antes e depois
+    const strip = el("div", "cs-review-strips");
+    [["Before", before, ""], ["After", after, "on"]].forEach(([label, session, cls]) => {
+      const row = el("div", "cs-review-strip");
+      row.appendChild(el("span", "cs-review-striplabel " + cls, label));
+      placedCameras().filter((c) => c.connected).forEach((cam) => {
+        const chg = changes.some((x) => x.camera === cam.name);
+        const t = el("button", "cs-review-mini" + (chg ? " changed" : "") + (matchWin.cam === cam.name ? " current" : "")); t.type = "button";
+        t.title = cam.name; t.setAttribute("aria-label", label + " · " + cam.name);
+        t.appendChild(el("span", "cs-review-minilabel", pad(cam.order)));
+        csMatchPhoto(session, cam.name, 320).then((url) => { if (url) t.style.backgroundImage = "url(" + url + ")"; });
+        t.addEventListener("click", () => { matchWin.cam = cam.name; csMatchRenderReview(); });
+        row.appendChild(t);
+      });
+      strip.appendChild(row);
+    });
+    photos.appendChild(strip);
+    wrap.appendChild(photos);
+    body.appendChild(wrap);
+    csMatchFootNote();
+  }
+  function csMatchFootNote() {
+    const n = matchWin.picked.size;
+    $("csMatchNote").textContent = "After Apply, one " + (upd.info && upd.info.os === "windows" ? "Ctrl+Z" : "⌘Z") + " brings every camera back.";
+    $("csMatchGo").textContent = n ? "Apply to " + plural(n, "camera", "cameras") : "Apply";
+    $("csMatchGo").disabled = n === 0;
+  }
+  function csMatchStep(d) {
+    const cams = placedCameras().filter((c) => c.connected).map((c) => c.name);
+    const i = cams.indexOf(matchWin.cam);
+    if (!cams.length) return;
+    matchWin.cam = cams[(i + d + cams.length) % cams.length];
+    csMatchRenderReview();
+  }
+  function csMatchStopPlay() { clearInterval(matchWin.playing); matchWin.playing = 0; }
+  function csMatchTogglePlay() {
+    if (matchWin.playing) { csMatchStopPlay(); csMatchRenderReview(); return; }
+    matchWin.dir = 1;
+    matchWin.playing = setInterval(() => {
+      const cams = placedCameras().filter((c) => c.connected).map((c) => c.name);
+      if (cams.length < 2 || matchWin.step !== 3) { csMatchStopPlay(); return; }
+      let i = cams.indexOf(matchWin.cam);
+      if (!reverseLoop.checked) i = (i + 1) % cams.length;
+      else { i += matchWin.dir; if (i >= cams.length) { matchWin.dir = -1; i = cams.length - 2; } else if (i < 0) { matchWin.dir = 1; i = 1; } }
+      matchWin.cam = cams[i];
+      csMatchSwapPhotos();
+    }, playInterval());
+    csMatchRenderReview();
+  }
+  // Tocando: só as fotos trocam (sem redesenhar tudo a cada passo)
+  function csMatchSwapPhotos() {
+    const { before, after } = csMatchSessions();
+    const body = $("csMatchBody");
+    const imgB = body.querySelector(".cs-review-img.before"), imgA = body.querySelector(".cs-review-img.after");
+    const label = body.querySelector(".cs-review-cam");
+    if (label) label.textContent = matchWin.cam;
+    body.querySelectorAll(".cs-review-row").forEach((r) => r.classList.toggle("current", r.querySelector(".cs-review-name") && r.querySelector(".cs-review-name").textContent.trim().endsWith(matchWin.cam)));
+    body.querySelectorAll(".cs-review-mini").forEach((m) => m.classList.toggle("current", m.title === matchWin.cam));
+    csMatchPhoto(before, matchWin.cam, 1600).then((url) => { if (url && imgB) imgB.style.backgroundImage = "url(" + url + ")"; });
+    csMatchPhoto(after, matchWin.cam, 1600).then((url) => { if (url && imgA) imgA.style.backgroundImage = "url(" + url + ")"; });
+  }
+  // Apply: só as câmeras marcadas; um passo no Desfazer para todas
+  function csMatchApply() {
+    const e = matchWin.result;
+    if (!e) return;
+    const chosen = (e.changes || []).filter((c) => matchWin.picked.has(c.camera));
+    if (!chosen.length) return;
+    const before = matchWin.before || csSnapshot();
+    const applyAll = () => { csRecord = false; try { chosen.forEach((c) => (c.apply || []).forEach(([key, value]) => csSet(c.camera, key, value))); } finally { csRecord = true; } return true; };
+    applyAll();
+    recordAction({ label: "Match automatically (" + plural(chosen.length, "camera", "cameras") + ")", camera: true,
+      undo: () => csRestore(before), redo: () => applyAll() });
+    toast("Matched: " + plural(chosen.length, "camera", "cameras") + " changed");
+    log("Match automatically: " + plural(chosen.length, "camera", "cameras") + " changed" + (chosen.length < (e.changes || []).length ? " (" + ((e.changes || []).length - chosen.length) + " kept as they were)" : ""), "ok");
+    csMatchClose();
+  }
+  $("csMatchBtn").addEventListener("click", csMatchOpen);
+  $("csMatchCancel").addEventListener("click", () => { if (csTest.capturing && !csTest.cancelling) csTakeTest(); csMatchClose(); });
+  $("csMatchBack").addEventListener("click", () => { csMatchStopPlay(); csMatchRenderChoose(); });
+  $("csMatchKeep").addEventListener("click", () => { log("Match automatically: result not applied", "ok"); csMatchClose(); });
+  $("csMatchGo").addEventListener("click", () => {
+    if (matchWin.step === 1) csMatchStart();
+    else if (matchWin.step === 2) { if (csTest.capturing && !csTest.cancelling) csTakeTest(); }
+    else if (matchWin.step === 3) csMatchApply();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape" || $("csMatch").classList.contains("hidden") || csCardOpen() || selectMenu) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    if (matchWin.step === 2) { if (csTest.capturing && !csTest.cancelling) csTakeTest(); }
+    csMatchClose();
+  }, true);
+
   // ----- Cartão cinza: o app achou o cartão em cada foto; a pessoa confere ou clica nele -----
   const csCard = { regions: {}, mode: "card", quads: {}, moved: {} };
   function csCardHide() { $("csCardPick").classList.add("hidden"); }
@@ -5696,14 +6017,7 @@
     csCardHide();
     if (csTest.capturing) csTakeTest();  // o mesmo que o botão Cancel do Test shot
   });
-  // "Use gray card" só vale com "Match automatically"
-  function csCardOption() {
-    const on = $("csAuto").checked;
-    $("csCard").disabled = !on;
-    document.querySelector(".cs-card-option").classList.toggle("off", !on);
-  }
-  $("csAuto").addEventListener("change", csCardOption);
-  csCardOption();
+  // ("Use gray card" e "Match automatically" saíram do rodapé: agora são o passo 1 da janela Match automatically)
 
   function showCsTest(list) {
     csTest.capturing = false;
@@ -5742,6 +6056,7 @@
     // como estavam; sem isso o programa ficava esperando a conferência numa janela fechada)
     else if (csTest.capturing && !csTest.cancelling) csTakeTest();
     $("camSettingsOverlay").classList.add("hidden");
+    csMatchClose();
     csStylePop = null;
     renderStylePop();
     clearInterval(csPoll);

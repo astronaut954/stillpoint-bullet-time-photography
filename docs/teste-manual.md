@@ -1191,6 +1191,28 @@ projeto num HD externo.
 - [ ] Câmeras de verdade: anotar para cada modelo se Ratio vem com opções ou fixa (a SL3 e a T7 precisam ser
       conferidas; a Canon não garante essa propriedade em todos os modelos).
 
+## 34. Match automatically em três passos (2.16.0)
+
+- [ ] Camera settings: a caixa "Match automatically" e "Use gray card" saíram do rodapé; o botão
+      "Match automatically" (verde, ao lado de "Test shot") abre uma janela por cima da tabela.
+- [ ] Passo 1, "Choose": duas colunas. "Set the same value on every camera": Shutter/aperture/exposure comp.,
+      ISO, White balance, Picture Style, Format, Aspect ratio. "Measure in the test shot…": Brightness, Color,
+      Use the gray card. Desmarcar um item muda "n of 8 settings selected"; as escolhas ficam guardadas para a
+      próxima vez. "Take the test shot →" segue; "Cancel" fecha.
+- [ ] Passo 2, "Test shot": barra de progresso e "Photo n of up to m" com a etapa; o botão vira "Cancel the test
+      shot". (Os avisos de ISO Auto e Metering differ aparecem por cima, como antes.) Com o cartão cinza, a
+      conferência do cartão aparece por cima da janela.
+- [ ] Passo 3, "Review": à esquerda, uma linha por câmera com a caixa, as mudanças (antes riscado → depois em
+      verde) e a miniatura do depois; à direita, a câmera da linha clicada em Split (divisor arrastável),
+      Side by side ou Flip (clique troca), com ‹ › , play, Speed − + e Reverse loop; embaixo, as fileiras
+      Before e After. O texto de cima diz "n cameras would change · nothing has been changed on the cameras yet".
+- [ ] Na tabela do Camera settings atrás da janela, nada mudou (as câmeras voltaram ao "antes").
+- [ ] Desmarcar uma câmera muda "Apply to n cameras"; "Apply" muda só as marcadas; a janela fecha; um Cmd+Z
+      volta todas; Cmd+Shift+Z refaz. "Keep current settings" fecha sem mudar nada. "← Back" volta ao passo 1.
+- [ ] Com câmeras simuladas (`STILLPOINT_FAKE_CAMERAS=9`): as câmeras 2 e 4 (16:9) aparecem com "16:9 → 3:2"
+      e a 6 (fixa) não muda de proporção.
+- [ ] Esc fecha a janela (no passo 2, cancela o teste antes).
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |

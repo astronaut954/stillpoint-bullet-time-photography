@@ -41,6 +41,9 @@ namespace AutoMatch
     {
         std::string camera;
         std::vector<std::array<std::string, 3>> items;  // configuração, antes, depois
+        // Os valores de "depois", prontos para aplicar (chave do app, valor): só no modo revisão,
+        // em que as câmeras voltam ao "antes" no fim e a pessoa escolhe aplicar ou não
+        std::vector<std::pair<std::string, long long>> apply;
     };
 
     struct Result
@@ -67,6 +70,18 @@ namespace AutoMatch
     struct Options
     {
         bool grayCard = false;  // as medidas são do cartão cinza: cor certa = cinza neutro
+        // O que igualar (a pessoa escolhe no passo 1 da janela Match automatically)
+        bool exposure = true;    // shutter, aperture, exposure comp.: o mesmo valor em todas
+        bool iso = true;         // ISO: o mesmo valor em todas
+        bool brightness = true;  // ajuste fino do brilho pela foto (ISO ou exp. comp.)
+        bool whiteBalance = true;// um balanço de branco comum
+        bool color = true;       // ajuste fino da cor pela foto (WB fine-tune)
+        bool style = true;       // Picture Style e os ajustes dele
+        bool format = true;      // tamanho e formato do arquivo (Image quality)
+        bool aspect = true;      // proporção; iguala as que aceitam mudar às que não aceitam
+        // Revisão: no fim, uma foto a mais com o resultado, as câmeras voltam ao "antes" e cada
+        // Change traz os valores para aplicar depois (o app pergunta antes de aplicar)
+        bool review = false;
         // Calibração com a cartela (LoadChartCalibration): com modelos misturados, cada modelo
         // recebe o Contrast/Saturation/Color tone que o deixa parecido com os outros
         std::filesystem::path chartFile;

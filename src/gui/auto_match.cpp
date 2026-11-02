@@ -56,6 +56,7 @@ namespace
 
     // Registro do que o ajuste mediu e decidiu (modo debug); quem chama Run define
     std::function<void(const std::string&)> g_trace;
+    bool g_matchColor = true, g_matchBrightness = true;  // o que o Correct pode mexer (Options)
     bool g_grayCard = false;  // medindo o cartão cinza (muda o aviso de foto sem medida)
     void Trace(const std::string& line)
     {
@@ -172,6 +173,33 @@ namespace
     }
 
     // O que aparece no resumo, na ordem da tabela
+    // Os valores "depois" que diferem do "antes", com as chaves que o app aceita em setCameraSetting
+    std::vector<std::pair<std::string, long long>> ApplyValues(const CameraSettings& was, const CameraSettings& now)
+    {
+        std::vector<std::pair<std::string, long long>> out;
+        for (const char* key : { "iso", "tv", "av", "expcomp", "style", "quality", "aspect" })
+        {
+            const CameraSetting* a = Get(was, key);
+            const CameraSetting* b = Get(now, key);
+            if (a && b && a->value != b->value)
+                out.push_back({ key, b->value });
+        }
+        if (const CameraSetting* wb = Get(now, "wb"); wb && WbId(was) != WbId(now))
+        {
+            if (wb->value == kWbKelvin) out.push_back({ "kelvin", now.kelvin });
+            else out.push_back({ "wb", wb->value });
+        }
+        if (now.shiftAvailable && now.shiftAB != was.shiftAB) out.push_back({ "shiftab", now.shiftAB });
+        if (now.shiftAvailable && now.shiftGM != was.shiftGM) out.push_back({ "shiftgm", now.shiftGM });
+        if (now.styleDetailAvailable)
+        {
+            if (now.contrast != was.contrast) out.push_back({ "contrast", now.contrast });
+            if (now.saturation != was.saturation) out.push_back({ "saturation", now.saturation });
+            if (now.colorTone != was.colorTone) out.push_back({ "colortone", now.colorTone });
+        }
+        return out;
+    }
+
     std::vector<std::pair<std::string, std::string>> SummaryLabels(const CameraSettings& s)
     {
         std::vector<std::pair<std::string, std::string>> out;
@@ -189,6 +217,8 @@ namespace
         add("Shutter", "tv");
         add("Aperture", "av");
         add("Exp. comp.", "expcomp");
+        add("Format", "quality");
+        add("Aspect ratio", "aspect");
         if (const CameraSetting* wb = Get(s, "wb"))
             out.push_back({ "White balance", wb->value == kWbKelvin ? std::to_string(s.kelvin) + " K" : wb->label });
         if (s.shiftAvailable)
@@ -237,7 +267,7 @@ namespace
             const CameraSettings& was = it->second;
             const CameraSettings now = controller.ReadSettings(*ctx);
             std::string error;
-            for (const char* key : { "tv", "av", "iso", "expcomp", "style" })
+            for (const char* key : { "tv", "av", "iso", "expcomp", "style", "quality", "aspect" })
             {
                 const CameraSetting* a = Get(was, key);
                 const CameraSetting* b = Get(now, key);
@@ -329,6 +359,62 @@ namespace
             if (want && *want != it.s.value)
                 Write(controller, it.name, key, *want, notes);
         }
+    }
+
+    // Uma escolha sem escala (Format, Aspect ratio): o valor das câmeras que não aceitam mudar, se
+    // todas elas têm o mesmo; senão, o mais comum entre todas (empate: a primeira na ordem). Só as
+    // câmeras que aceitam mudar recebem o valor.
+    void UnifyChoice(CameraFleet& controller, const std::vector<std::string>& names, const std::string& key,
+                     const char* what, std::vector<std::string>& notes)
+    {
+        struct Item { std::string name; CameraSetting s; };
+        std::vector<Item> items;
+        for (const auto& n : names)
+            if (const CameraContext* ctx = Find(controller, n))
+            {
+                const CameraSettings s = controller.ReadSettings(*ctx);
+                if (const CameraSetting* c = Get(s, key))
+                    items.push_back({ n, *c });
+            }
+        if (items.size() < 2)
+            return;
+        std::optional<long long> fixedValue;
+        bool fixedAgree = true;
+        std::vector<std::string> fixedNames;
+        for (const auto& it : items)
+            if (it.s.choices.empty())
+            {
+                fixedNames.push_back(it.name);
+                if (!fixedValue) fixedValue = it.s.value;
+                else if (*fixedValue != it.s.value) fixedAgree = false;
+            }
+        std::optional<long long> target;
+        if (fixedValue && fixedAgree)
+            target = fixedValue;
+        else
+        {
+            if (fixedValue && !fixedAgree)
+            {
+                std::string list;
+                for (const auto& n : fixedNames) list += (list.empty() ? "" : ", ") + n;
+                notes.push_back(list + ": " + what + " cannot be changed from the app and these cameras disagree. Set it in their menus.");
+            }
+            std::map<long long, int> counts;
+            for (const auto& it : items) ++counts[it.s.value];
+            int best = 0;
+            for (const auto& it : items)
+                if (counts[it.s.value] > best) { best = counts[it.s.value]; target = it.s.value; }
+        }
+        if (!target)
+            return;
+        for (const auto& it : items)
+            if (!it.s.choices.empty() && it.s.value != *target)
+            {
+                if (Accepts(it.s, *target))
+                    Write(controller, it.name, key, *target, notes);
+                else
+                    notes.push_back(it.name + ": does not offer this " + what + ".");
+            }
     }
 
     // Picture Style: o mais comum entre as câmeras (empate: a primeira na ordem). Nunca
@@ -576,13 +662,13 @@ namespace
         std::string error;
         std::vector<std::string> why;  // para o registro do modo debug
 
-        // Cor: azul/âmbar pelo balanço (em mireds) e verde/magenta pelo ajuste fino
+        // Cor: azul/âmbar pelo balanço (em mireds) e verde/magenta pelo ajuste fino (se pedido)
         double base = 0;
         const bool known = BaseMired(s, base);
         if (!known)
             base = 0;
         const bool sameBase = WbId(s) == c.wbId;
-        if (sameBase || (known && c.baseKnown))
+        if (g_matchColor && (sameBase || (known && c.baseKnown)))
         {
             const double eLast = c.Effective(c.baseMired, c.ab);
             const double eWant = eLast - (target.rb - c.last.rb) / c.rbPerMired;
@@ -632,7 +718,7 @@ namespace
 
         // Brilho
         const double wantEv = target.ev - c.last.ev;
-        if (exposureOk && std::abs(wantEv) >= (apply ? ColorMatch::kEvTolerance : kFinalEvTolerance))
+        if (g_matchBrightness && exposureOk && std::abs(wantEv) >= (apply ? ColorMatch::kEvTolerance : kFinalEvTolerance))
         {
             const std::string key = BrightnessKey(s);
             const CameraSetting* e = Get(s, key);
@@ -918,6 +1004,8 @@ namespace AutoMatch
         struct TraceGuard { ~TraceGuard() { g_trace = nullptr; g_grayCard = false; } } traceGuard;
         g_trace = trace;
         g_grayCard = options.grayCard;
+        g_matchColor = options.color;
+        g_matchBrightness = options.brightness;
 
         // Câmeras que dá para ajustar, na ordem do app
         std::vector<std::pair<int, std::string>> ordered;
@@ -958,13 +1046,23 @@ namespace AutoMatch
         }
         result.matched = true;
 
-        // 1. Mesmas configurações em todas (sem foto)
-        for (const char* key : { "tv", "av", "iso", "expcomp" })
-            UnifyLight(controller, names, key, notes);
-        UnifyStyle(controller, names, notes);
-        Settle();
-        UnifyStyleDetails(controller, names, notes,  // depois do estilo: cada estilo tem os seus
-                          options.chartFile.empty() ? std::map<std::string, ChartOffsets>{} : LoadChartCalibration(options.chartFile));
+        // 1. Mesmas configurações em todas (sem foto), conforme o que a pessoa pediu
+        if (options.exposure)
+            for (const char* key : { "tv", "av", "expcomp" })
+                UnifyLight(controller, names, key, notes);
+        if (options.iso)
+            UnifyLight(controller, names, "iso", notes);
+        if (options.format)
+            UnifyChoice(controller, names, "quality", "format", notes);
+        if (options.aspect)
+            UnifyChoice(controller, names, "aspect", "aspect ratio", notes);
+        if (options.style)
+        {
+            UnifyStyle(controller, names, notes);
+            Settle();
+            UnifyStyleDetails(controller, names, notes,  // depois do estilo: cada estilo tem os seus
+                              options.chartFile.empty() ? std::map<std::string, ChartOffsets>{} : LoadChartCalibration(options.chartFile));
+        }
         Settle();
 
         // Balanço de branco: já igual e fixo em todas? Senão, procura um comum.
@@ -989,8 +1087,8 @@ namespace AutoMatch
         }
         // Com o cartão cinza o alvo é o cinza neutro, que pode estar longe do balanço atual
         // (o ajuste fino só alcança um pouco): procura o balanço comum mesmo se já é igual
-        const bool commonWb = (!sameFixed || options.grayCard) && !wbCams.empty();
-        if (!sameFixed && wbCams.empty())
+        const bool commonWb = options.whiteBalance && (!sameFixed || options.grayCard) && !wbCams.empty();
+        if (options.whiteBalance && !sameFixed && wbCams.empty())
             notes.push_back("The white balance cannot be changed from the app on these cameras. Set the same white balance on each camera.");
 
         // Calibração guardada por modelo; as câmeras de modelo novo com ajuste fino são
@@ -1062,11 +1160,18 @@ namespace AutoMatch
                         change.items.push_back({ setting, old->second, value });
                 }
                 if (!change.items.empty())
+                {
+                    if (options.review)
+                        change.apply = ApplyValues(before[name], controller.ReadSettings(*ctx));
                     result.changes.push_back(change);
+                }
             }
             std::sort(notes.begin(), notes.end());
             notes.erase(std::unique(notes.begin(), notes.end()), notes.end());
             result.notes = notes;
+            // Revisão: as câmeras voltam ao "antes"; o app aplica depois, se a pessoa quiser
+            if (options.review && !result.cancelled)
+                Restore(controller, names, before);
             return result;
         };
 
@@ -1211,7 +1316,17 @@ namespace AutoMatch
             for (auto& c : cams)
                 any = Correct(controller, c, round, !last, state) || any;
             if (!any || last)
+            {
+                // Revisão: a última foto precisa mostrar o resultado final (mudou algo depois dela?)
+                if (options.review && any && last)
+                {
+                    Settle();
+                    ++shots;
+                    if (!take("Final photo with the result"))
+                        return stopped();
+                }
                 break;
+            }
             Settle();
             if (!take("Matching color and brightness"))
                 return stopped();
