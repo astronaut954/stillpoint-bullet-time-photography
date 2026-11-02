@@ -1540,6 +1540,8 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .cs-review-half.before { clip-path: inset(0 50% 0 0); }
 .cs-review-half.after { clip-path: inset(0 0 0 50%); box-shadow: inset 1px 0 0 var(--noct-primary); }
 .cs-review-half.after::before { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: var(--noct-primary); }
+.cs-review-mini.off .cs-review-half.before { clip-path: none; }
+.cs-review-mini.off .cs-review-half.after { display: none; }
 .cs-review-row:focus { outline: none; box-shadow: inset 0 0 0 1px var(--noct-primary); }
 .cs-review-row.current:focus { box-shadow: inset 2px 0 0 var(--noct-primary), inset 0 0 0 1px var(--noct-primary); }
 .cs-review-mini { position: relative; height: 40px; min-width: 0; padding: 0; border: 1px solid var(--noct-border); background: var(--noct-surface-inner) center / cover no-repeat; cursor: pointer; }

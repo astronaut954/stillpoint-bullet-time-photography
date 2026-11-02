@@ -1220,7 +1220,14 @@ projeto num HD externo.
       change · nothing has been changed on the cameras yet". O botão do passo 1 é "Take the test shot" (sem seta).
 - [ ] Caixas do passo 3: desmarcar uma linha deixa a caixa de cima com um traço (algumas) e muda "Apply to n
       cameras"; a caixa de cima marca ou desmarca todas as que mudariam. Clicar na caixa não troca a câmera
-      mostrada; clicar no resto da linha troca.
+      mostrada; clicar no resto da linha troca. Câmera desmarcada (ou sem mudança): a miniatura de baixo mostra
+      só a foto de antes, inteira; marcada: cortada ao meio (antes | depois).
+- [ ] Teclado nas caixas: no passo 1, Tab até uma caixa e Enter (ou Espaço) marca/desmarca; no passo 3, Enter
+      ou Espaço na linha da câmera marca/desmarca, e Enter na caixa de cima também.
+- [ ] Desfazer dentro da janela: nos passos 1 e 3, Cmd+Z (Ctrl+Z no Windows) desfaz a última mudança feita na
+      janela (caixa marcada/desmarcada, valor trocado numa lista, câmera marcada/desmarcada, a caixa de cima);
+      Cmd+Shift+Z refaz; a Activity mostra "Undo: ISO off", "Undo: Shutter → 1/250" etc. Esse desfazer não
+      mexe nas câmeras nem no histórico geral do app; fechar a janela zera a lista.
 - [ ] Sair no meio: no passo 2 ou 3, Esc, clicar fora da janela ou "Done" perguntam antes ("Leave Match
       automatically?" com "Keep matching" / "Leave and cancel"; "Leave without applying?" com "Stay" / "Leave
       without applying"). No passo 1, Esc fecha direto.

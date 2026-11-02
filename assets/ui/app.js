@@ -418,6 +418,8 @@
     // Dentro de um campo de texto, o desfazer é o do texto (caixas de marcar e botões não)
     if (tag === "TEXTAREA" || (tag === "INPUT" && !["checkbox", "radio", "button", "range"].includes(e.target.type))) return;
     e.preventDefault(); e.stopImmediatePropagation();
+    // Janela Match automatically (passos 1 e 3): desfaz as escolhas feitas nela (caixas e valores)
+    if (typeof csMatchHistoryActive === "function" && csMatchHistoryActive()) { if (e.key === "y" || e.shiftKey) csMatchRedo(); else csMatchUndo(); return; }
     if (e.key === "y" || e.shiftKey) doRedo(); else doUndo();
   }, true);
 
@@ -5470,7 +5472,22 @@
     ["brightness", 4, "Brightness", "ISO fine-tune, measured in the test shot", "measure"],
     ["color", 16, "Color", "WB fine-tune, measured in the test shot", "measure"],
   ];
-  const matchWin = { step: 0, choices: null, result: null, cam: null, mode: "split", split: 50, playing: 0, dir: 1, picked: new Set(), before: null, targets: {} };
+  const matchWin = { step: 0, choices: null, result: null, cam: null, mode: "split", split: 50, playing: 0, dir: 1, picked: new Set(), before: null, targets: {}, undo: [], redo: [] };
+  // Desfazer dentro da janela (⌘Z / Ctrl+Z nos passos 1 e 3): caixas marcadas e valores escolhidos
+  function csMatchHistoryActive() { return !$("csMatch").classList.contains("hidden") && (matchWin.step === 1 || matchWin.step === 3) && $("dialogOverlay").classList.contains("hidden"); }
+  function csMatchRecord(label, undo, redo) { matchWin.undo.push({ label, undo, redo }); if (matchWin.undo.length > 50) matchWin.undo.shift(); matchWin.redo.length = 0; }
+  function csMatchUndo() {
+    const a = matchWin.undo.pop();
+    if (!a) { toast("Nothing to undo", TOAST_MS, { silent: true }); return; }
+    a.undo(); matchWin.redo.push(a);
+    toast("Undo: " + a.label, TOAST_MS, { kind: "undo" });
+  }
+  function csMatchRedo() {
+    const a = matchWin.redo.pop();
+    if (!a) { toast("Nothing to redo", TOAST_MS, { silent: true }); return; }
+    a.redo(); matchWin.undo.push(a);
+    toast("Redo: " + a.label, TOAST_MS, { kind: "redo" });
+  }
   // Valores de "Set the same value on every camera" (decisão do dono, 2026-11-02): o passo 1 já calcula o
   // valor que o Match poria em todas, mostra e deixa trocar. A regra é a mesma do núcleo (auto_match.cpp):
   // shutter/aperture/exp. comp./ISO: o valor mais perto da média (em stops) que todas aceitam; Picture
@@ -5585,6 +5602,7 @@
     const connected = cameras.filter((c) => c.connected).length;
     if (connected < 2) { toast("Match automatically needs at least two connected cameras.", 6000, { warn: true }); return; }
     matchWin.result = null; matchWin.picked = new Set(); matchWin.before = null; matchWin.targets = {};  // valores: recalculados a cada abertura
+    matchWin.undo = []; matchWin.redo = [];
     $("csMatch").classList.remove("hidden");
     $("camSettingsOverlay").querySelector(".cs-sheet").classList.add("matching");
     csMatchRenderChoose();
@@ -5611,7 +5629,11 @@
     const item = (checked, label, hint, sum, onChange, keys) => {
       const row = el("div", "cs-match-row" + (checked ? " on" : "") + (keys ? " has-vals" : ""));
       const box = document.createElement("input"); box.type = "checkbox"; box.className = "cs-check"; box.checked = checked;
-      box.addEventListener("change", () => { row.classList.toggle("on", box.checked); onChange(box.checked); });
+      box.addEventListener("change", () => {
+        row.classList.toggle("on", box.checked); onChange(box.checked);
+        const v = box.checked;
+        csMatchRecord(label + (v ? " on" : " off"), () => { onChange(!v); csMatchRenderChoose(); }, () => { onChange(v); csMatchRenderChoose(); });
+      });
       // A linha inteira marca/desmarca, menos as listas de valor
       row.addEventListener("click", (e) => { if (e.target === box || (e.target.closest && e.target.closest(".cs-match-vals"))) return; box.checked = !box.checked; box.dispatchEvent(new Event("change")); });
       const name = el("span", "cs-match-name");
@@ -5627,7 +5649,13 @@
           pair.title = title;
           if (!p) { pair.appendChild(csText("—", "na", "Not changeable from the app on at least two cameras")); vals.appendChild(pair); return; }
           const chosen = matchWin.targets[key] !== undefined && p.options.some(([x, , d]) => x === matchWin.targets[key] && !d) ? matchWin.targets[key] : p.value;
-          const sel = csSelect(p.options, chosen, (v) => { matchWin.targets[key] = v; csMatchRenderChoose(); }, "match-val" + (chosen !== p.value ? " mine" : ""));
+          const sel = csSelect(p.options, chosen, (v) => {
+            const prev = matchWin.targets[key];
+            const text = (x) => (p.options.find(([o]) => o === x) || ["", x])[1];
+            const set = (x) => { if (x === undefined) delete matchWin.targets[key]; else matchWin.targets[key] = x; csMatchRenderChoose(); };
+            set(v);
+            csMatchRecord(title + " → " + text(v), () => set(prev), () => set(v));
+          }, "match-val" + (chosen !== p.value ? " mine" : ""));
           sel.title = chosen !== p.value ? "Your choice (the app would pick " + (p.options.find(([x]) => x === p.value) || ["", "—"])[1] + ")" : p.note;
           pair.appendChild(sel);
           vals.appendChild(pair);
@@ -5746,7 +5774,11 @@
     syncAll();
     allBox.disabled = !changes.length;
     allBox.addEventListener("click", (ev) => ev.stopPropagation());
-    allBox.addEventListener("change", () => { matchWin.picked = new Set(allBox.checked ? changes.map((c) => c.camera) : []); csMatchRenderReview(); });
+    allBox.addEventListener("change", () => {
+      const prev = new Set(matchWin.picked), next = new Set(allBox.checked ? changes.map((c) => c.camera) : []);
+      matchWin.picked = next; csMatchRenderReview();
+      csMatchRecord(allBox.checked ? "Apply to all cameras" : "Apply to no camera", () => { matchWin.picked = new Set(prev); csMatchRenderReview(); }, () => { matchWin.picked = new Set(next); csMatchRenderReview(); });
+    });
     head.append(allBox, el("span", "", "Camera"), el("span", "", "Changes"), el("span", "cs-review-th-after", "After"));
     table.appendChild(head);
     const { before, after } = csMatchSessions();
@@ -5759,7 +5791,8 @@
       box.checked = !!ch && matchWin.picked.has(cam.name); box.disabled = !ch;
       box.setAttribute("aria-label", "Apply to " + cam.name);
       box.addEventListener("click", (ev) => ev.stopPropagation());
-      box.addEventListener("change", () => { if (box.checked) matchWin.picked.add(cam.name); else matchWin.picked.delete(cam.name); syncAll(); csMatchFootNote(); });
+      const pick = (on) => { if (on) matchWin.picked.add(cam.name); else matchWin.picked.delete(cam.name); box.checked = on; syncAll(); csMatchFootNote(); csMatchSyncMinis(); };
+      box.addEventListener("change", () => { const v = box.checked; pick(v); csMatchRecord("Apply to " + cam.name + (v ? " on" : " off"), () => { if (box.isConnected) pick(!v); else { if (v) matchWin.picked.delete(cam.name); else matchWin.picked.add(cam.name); csMatchRenderReview(); } }, () => { if (box.isConnected) pick(v); else { if (v) matchWin.picked.add(cam.name); else matchWin.picked.delete(cam.name); csMatchRenderReview(); } }); });
       const name = el("span", "cs-review-name"); name.append(el("b", "", pad(cam.order)), document.createTextNode(" " + cam.name));
       const list = el("span", "cs-review-changes");
       if (ch) ch.items.forEach(([what, from, to]) => { const it = el("span", "cs-review-change"); it.append(el("s", "", from), el("span", "to", to)); it.title = what; list.appendChild(it); });
@@ -5842,8 +5875,8 @@
     const strip = el("div", "cs-review-strip");
     placedCameras().filter((c) => c.connected).forEach((cam) => {
       const chg = changes.some((x) => x.camera === cam.name);
-      const t = el("button", "cs-review-mini" + (chg ? " changed" : "") + (matchWin.cam === cam.name ? " current" : "")); t.type = "button"; t.tabIndex = -1;
-      t.title = cam.name + " · before (left) and after (right)"; t.setAttribute("aria-label", cam.name);
+      const t = el("button", "cs-review-mini" + (chg ? " changed" : "") + (matchWin.cam === cam.name ? " current" : "") + (chg && matchWin.picked.has(cam.name) ? "" : " off")); t.type = "button"; t.tabIndex = -1;
+      t.title = cam.name + " · before (left) and after (right)"; t.setAttribute("aria-label", cam.name); t.dataset.cam = cam.name;
       const half = (cls) => { const h = el("span", "cs-review-half " + cls); t.appendChild(h); return h; };
       const hb = half("before"), ha = half("after");
       t.appendChild(el("span", "cs-review-minilabel", pad(cam.order)));
@@ -5856,6 +5889,11 @@
     wrap.appendChild(photos);
     body.appendChild(wrap);
     csMatchFootNote();
+  }
+  // Miniaturas: câmera desmarcada (ou sem mudança) mostra só o "antes", inteiro
+  function csMatchSyncMinis() {
+    const changes = (matchWin.result && matchWin.result.changes) || [];
+    $("csMatchBody").querySelectorAll(".cs-review-mini").forEach((m) => { const n = m.dataset.cam; m.classList.toggle("off", !(changes.some((x) => x.camera === n) && matchWin.picked.has(n))); });
   }
   function csMatchFootNote() {
     const n = matchWin.picked.size;
@@ -5894,7 +5932,7 @@
     const label = body.querySelector(".cs-review-cam");
     if (label) label.textContent = matchWin.cam;
     body.querySelectorAll(".cs-review-row").forEach((r) => { const on = r.querySelector(".cs-review-name") && r.querySelector(".cs-review-name").textContent.trim().endsWith(matchWin.cam); r.classList.toggle("current", on); r.tabIndex = on ? 0 : -1; });
-    body.querySelectorAll(".cs-review-mini").forEach((m) => m.classList.toggle("current", m.title === matchWin.cam));
+    body.querySelectorAll(".cs-review-mini").forEach((m) => m.classList.toggle("current", m.dataset.cam === matchWin.cam));
     csMatchPhoto(before, matchWin.cam, 1600).then((url) => { if (url && imgB) imgB.style.backgroundImage = "url(" + url + ")"; });
     csMatchPhoto(after, matchWin.cam, 1600).then((url) => { if (url && imgA) imgA.style.backgroundImage = "url(" + url + ")"; });
   }
@@ -5947,12 +5985,18 @@
         csMatchStep(e.key === "ArrowUp" ? -1 : 1, true);
         return;
       }
-      if (onRow && e.key === " ") {
+      if (onRow && (e.key === " " || e.key === "Enter")) {
         e.preventDefault(); e.stopImmediatePropagation();
         const box = e.target.matchBox;
         if (box) { box.checked = !box.checked; box.dispatchEvent(new Event("change")); }
         return;
       }
+    }
+    // Enter numa caixa de marcar da janela (passo 1 e cabeçalho do passo 3): marca/desmarca, como o Espaço
+    if (!$("csMatch").classList.contains("hidden") && e.key === "Enter" && e.target.tagName === "INPUT" && e.target.type === "checkbox" && $("csMatch").contains(e.target) && $("dialogOverlay").classList.contains("hidden")) {
+      e.preventDefault(); e.stopImmediatePropagation();
+      e.target.click();
+      return;
     }
     if (e.key !== "Escape" || $("csMatch").classList.contains("hidden") || csCardOpen() || selectMenu || !$("dialogOverlay").classList.contains("hidden")) return;
     e.preventDefault(); e.stopImmediatePropagation();
