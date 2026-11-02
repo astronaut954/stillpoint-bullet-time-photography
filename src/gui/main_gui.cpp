@@ -2656,6 +2656,7 @@ namespace
             std::mutex mutex;
             std::condition_variable wake;
             bool confirmed = false;
+            std::atomic<bool> skipped{ false };                      // "Skip the gray card": segue medindo a foto inteira
             std::map<std::string, ColorMatch::Region> regions;      // por câmera
             std::map<std::string, std::filesystem::path> files;     // a foto 1 de cada câmera
             std::map<std::string, Chart::Quad> quads;               // cartela: cantos por câmera
@@ -2731,12 +2732,16 @@ namespace
             return regionJson(args[0], region);
         });
 
-        // grayCardConfirm(): o cartão está certo em todas; o Match continua
-        window.bind("grayCardConfirm", [&](const std::string&) -> std::string
+        // grayCardConfirm(skip): o cartão está certo em todas; o Match continua. Com skip = 1, a pessoa
+        // desistiu do cartão: o Match segue medindo a foto inteira (como sem o cartão)
+        window.bind("grayCardConfirm", [&](const std::string& request) -> std::string
         {
+            const auto values = ParseIntArgs(request);
             {
                 std::lock_guard<std::mutex> lock(cardPick.mutex);
                 cardPick.confirmed = true;
+                if (!values.empty() && values[0] != 0)
+                    cardPick.skipped = true;
             }
             cardPick.wake.notify_all();
             return "null";
@@ -2780,6 +2785,7 @@ namespace
                 {
                     std::lock_guard<std::mutex> lock(cardPick.mutex);
                     cardPick.confirmed = false;
+                    cardPick.skipped = false;
                     cardPick.regions.clear();
                     cardPick.files.clear();
                 }
@@ -2853,7 +2859,7 @@ namespace
                         if (photo->previewable)
                         {
                             const auto file = orderStore.Root() / session.name / photo->file;
-                            if (!grayCard)
+                            if (!grayCard || cardPick.skipped)
                                 measured[camera] = ColorMatch::Measure(file);
                             else
                             {
@@ -2885,6 +2891,7 @@ namespace
                 options.aspect = flags & 128;
                 options.review = flags & 256;
                 options.targets = targets;
+                options.grayCardSkipped = &cardPick.skipped;
                 const AutoMatch::Result result = AutoMatch::Run(controller, shoot, CalibrationFile(), [&] { return testCancel.load(); }, options,
                                                                 debug.Active() ? std::function<void(const std::string&)>(trace) : nullptr);
                 if (debug.Active())

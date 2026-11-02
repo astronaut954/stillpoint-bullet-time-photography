@@ -21,6 +21,7 @@
 #include "color_match.h"
 
 #include <array>
+#include <atomic>
 #include <filesystem>
 #include <functional>
 #include <map>
@@ -86,6 +87,9 @@ namespace AutoMatch
         // aspect, wb; "kelvin" com a temperatura. Com valor, o app põe esse em todas as câmeras que o
         // aceitam em vez de calcular; "wb" ou "kelvin" fixa o balanço (a foto só faz o ajuste fino).
         std::map<std::string, long long> targets;
+        // Cartão cinza pulado pela pessoa na conferência (depois da primeira foto): o resto do
+        // ajuste segue sem o cartão, medindo a foto inteira
+        const std::atomic<bool>* grayCardSkipped = nullptr;
         // Calibração com a cartela (LoadChartCalibration): com modelos misturados, cada modelo
         // recebe o Contrast/Saturation/Color tone que o deixa parecido com os outros
         std::filesystem::path chartFile;

@@ -5561,10 +5561,11 @@
     if (matchWin.choices) return matchWin.choices;
     let saved = null;
     try { saved = JSON.parse(localStorage.getItem("stillpoint.matchChoices") || "null"); } catch (e) {}
-    matchWin.choices = Object.assign({ exposure: true, iso: true, wb: true, style: true, format: true, aspect: true, brightness: true, color: true, grayCard: false }, saved || {});
+    matchWin.choices = Object.assign({ exposure: true, iso: true, wb: true, style: true, format: true, aspect: true, brightness: true, color: true }, saved || {});
+    matchWin.choices.grayCard = false;  // o cartão cinza começa desligado a cada abertura (decisão do dono, 2026-11-02)
     return matchWin.choices;
   }
-  function csMatchSaveChoices() { try { localStorage.setItem("stillpoint.matchChoices", JSON.stringify(csMatchChoices())); } catch (e) {} }
+  function csMatchSaveChoices() { try { const c = Object.assign({}, csMatchChoices()); delete c.grayCard; localStorage.setItem("stillpoint.matchChoices", JSON.stringify(c)); } catch (e) {} }
   function csMatchFlags() {
     const c = csMatchChoices();
     return MATCH_ITEMS.reduce((f, [key, bit]) => f | (c[key] ? bit : 0), 0) | 256;
@@ -5813,7 +5814,6 @@
     // Fileira de miniaturas: cada uma com a metade esquerda do "antes" e a direita do "depois";
     // fora do Tab (← → trocam de câmera, como na tela principal)
     const strip = el("div", "cs-review-strip");
-    strip.appendChild(el("span", "cs-review-striplabel", "Before | After"));
     placedCameras().filter((c) => c.connected).forEach((cam) => {
       const chg = changes.some((x) => x.camera === cam.name);
       const t = el("button", "cs-review-mini" + (chg ? " changed" : "") + (matchWin.cam === cam.name ? " current" : "")); t.type = "button"; t.tabIndex = -1;
@@ -6031,13 +6031,21 @@
     });
     csCardStatus();
     csSetZoom(false);
+    $("csCardSkip").classList.remove("hidden");
     $("csCardPick").classList.remove("hidden");
     csGallery.message("Waiting for you to check the gray card");
   }
   $("csCardContinue").addEventListener("click", () => {
     csCardHide();
     csGallery.message(csCard.mode === "chart" ? "Calibrating with the chart" : "Matching with the gray card");
-    window.grayCardConfirm();
+    window.grayCardConfirm(0);
+  });
+  // Desistir do cartão no meio: o Match segue medindo a foto inteira
+  $("csCardSkip").addEventListener("click", () => {
+    csCardHide();
+    csGallery.message("Matching without the gray card");
+    log("Gray card skipped: matching with the whole photo", "ok");
+    window.grayCardConfirm(1);
   });
 
   // ----- Cartela de cores: o app achou as 4 marcas; a pessoa confere ou arrasta os cantos -----
@@ -6132,6 +6140,7 @@
     });
     csChartStatus();
     csSetZoom(false);
+    $("csCardSkip").classList.add("hidden");  // (a cartela não tem "pular")
     $("csCardPick").classList.remove("hidden");
     csGallery.message("Waiting for you to check the chart");
   }

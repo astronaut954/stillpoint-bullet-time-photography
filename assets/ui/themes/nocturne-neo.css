@@ -1532,9 +1532,11 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .cs-review-strip { display: flex; gap: 6px; align-items: center; }
 .cs-review-striplabel { flex: none; margin-right: 6px; font: 700 10px var(--noct-font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--noct-text-dim); white-space: nowrap; }
 .cs-review-strip .cs-review-mini { flex: 1 1 0; overflow: hidden; }
-.cs-review-half { position: absolute; top: 0; bottom: 0; background: var(--noct-surface-inner) center / cover no-repeat; }
-.cs-review-half.before { left: 0; right: 50%; }
-.cs-review-half.after { left: 50%; right: 0; border-left: 1px solid var(--noct-primary); }
+/* A mesma foto cortada ao meio: a metade esquerda vem do "antes", a direita do "depois" */
+.cs-review-half { position: absolute; inset: 0; background: var(--noct-surface-inner) center / cover no-repeat; }
+.cs-review-half.before { clip-path: inset(0 50% 0 0); }
+.cs-review-half.after { clip-path: inset(0 0 0 50%); box-shadow: inset 1px 0 0 var(--noct-primary); }
+.cs-review-half.after::before { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: var(--noct-primary); }
 .cs-review-row:focus { outline: none; box-shadow: inset 0 0 0 1px var(--noct-primary); }
 .cs-review-row.current:focus { box-shadow: inset 2px 0 0 var(--noct-primary), inset 0 0 0 1px var(--noct-primary); }
 .cs-review-mini { position: relative; height: 40px; min-width: 0; padding: 0; border: 1px solid var(--noct-border); background: var(--noct-surface-inner) center / cover no-repeat; cursor: pointer; }

@@ -1228,7 +1228,10 @@ namespace AutoMatch
         if (all.size() < 2)
             return finish("The test photos could not be measured. Check that every camera sent a photo.");
         Stats target = ColorMatch::Average(all);
-        if (options.grayCard)
+        // A pessoa pode ter pulado o cartão na conferência: daqui em diante é como sem cartão
+        const bool grayCard = options.grayCard && !(options.grayCardSkipped && options.grayCardSkipped->load());
+        g_grayCard = grayCard;
+        if (grayCard)
         {
             // Cartão cinza: a cor certa é o cinza sem cor nenhuma; o brilho fica na média
             target.rb = 0;
