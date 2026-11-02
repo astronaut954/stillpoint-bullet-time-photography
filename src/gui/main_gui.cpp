@@ -1552,7 +1552,20 @@ namespace
                         continue;
                     char prefix[8];
                     std::snprintf(prefix, sizeof(prefix), "%02d", static_cast<int>(i) + 1);
-                    WriteTestPhoto(dir / (std::string(prefix) + "_" + plan[i].shortName + "_IMG_" + std::to_string(1000 + i) + ".jpg"), number, static_cast<int>(i) + 1);
+                    // A foto simulada sai na proporção que a câmera simulada informa (Ratio); a câmera 02
+                    // entrega sempre 16:9, o que for que esteja marcado, para testar o aviso de proporção
+                    double ratio = 1.5;
+                    for (const auto& cam : controller.GetCameras())
+                        if (cam.shortName == plan[i].shortName)
+                        {
+                            const CameraSettings s = controller.ReadSettings(cam);
+                            for (const auto& st : s.settings)
+                                if (st.key == "aspect" && st.available)
+                                    ratio = st.value == 1 ? 4.0 / 3.0 : st.value == 2 ? 16.0 / 9.0 : st.value == 7 ? 1.0 : 1.5;
+                            if (cam.orderPrefix == 2)
+                                ratio = 16.0 / 9.0;
+                        }
+                    WriteTestPhoto(dir / (std::string(prefix) + "_" + plan[i].shortName + "_IMG_" + std::to_string(1000 + i) + ".jpg"), number, static_cast<int>(i) + 1, ratio);
                     ++done;
                 }
                 if (!refusedLines.empty())
@@ -2925,12 +2938,18 @@ namespace
                 for (size_t i = 0; i < result.notes.size(); ++i)
                     notes += (i ? "," : "") + JsonString(result.notes[i]);
                 notes += "]";
+                // Proporção real de cada foto contra a informada pela câmera
+                std::string ratios = "[";
+                for (size_t i = 0; i < result.ratios.size(); ++i)
+                    ratios += (i ? "," : "") + Json("ratio").Add("camera", result.ratios[i].camera).Add("shot", result.ratios[i].shot)
+                                                  .Add("reported", result.ratios[i].reported).Add("differs", result.ratios[i].differs).Str();
+                ratios += "]";
 
                 listener.Emit(Json("orderPhotos").Raw("sessions", SessionsJson(orderStore)));
                 listener.Emit(Json("autoMatchResult").Add("ok", result.ok).Add("matched", result.matched)
                                   .Add("cancelled", result.cancelled).Add("review", (flags & 256) != 0)
                                   .Add("debugFolder", debug.Active() ? PathToUtf8(debug.Folder()) : std::string())
-                                  .Add("error", result.error).Raw("changes", changes).Raw("notes", notes));
+                                  .Add("error", result.error).Raw("changes", changes).Raw("notes", notes).Raw("ratios", ratios));
                 EmitCameraSettings(controller, listener, singleShotWarned);
             });
             return "null";

@@ -55,7 +55,13 @@ namespace AutoMatch
         std::string error;
         std::vector<Change> changes;
         std::vector<std::string> notes;
+        // Proporção real de cada foto de teste contra a que a câmera informa (Parte 2 da
+        // Proporção): "16:9" medido no arquivo; differs = a câmera entregou outra proporção
+        struct Ratio { std::string camera, shot, reported; bool differs = false; };
+        std::vector<Ratio> ratios;
     };
+    // Nome da proporção de uma foto (3:2, 4:3, 16:9, 1:1), a mais perto de largura/altura
+    std::string RatioName(int width, int height);
 
     // Como o ajuste fino de um modelo mexe na foto, medido pelo app (2 fotos de teste nos
     // extremos) e guardado no computador: sentido de cada eixo (1 = + âmbar / + verde,

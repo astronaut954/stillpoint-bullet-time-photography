@@ -687,7 +687,10 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      foto de teste foi para o subtítulo. "Use the gray card" começa desligado a cada abertura; na
      conferência do cartão há "Skip the gray card" (segue medindo a foto inteira).
    - **Aspect ratio no Match:** iguala as que aceitam mudar às que não aceitam ("fixed"); o Test shot mede
-     a proporção real de cada foto e marca em amarelo a que saiu diferente do informado.
+     a proporção real de cada foto e marca em amarelo a que saiu diferente do informado. **Feito em
+     2026-11-02:** o Match mede largura/altura da primeira foto de cada câmera (`Result.ratios`), o passo 3
+     mostra "Shot 16:9 · camera reports 3:2" e a célula Ratio do Camera settings fica tracejada âmbar; as
+     câmeras simuladas entregam a foto na proporção marcada e a 02 entrega sempre 16:9 para testar.
    - **Aviso na sessão (primeiro disparo):** etiqueta "Mixed ratios" e aviso uma vez por sessão,
      "Cameras 02 and 04 shot 16:9; the others 3:2", com "Open Camera settings" e "Crop on export to
      16:9 (keeps 94%)": a sugestão é a proporção presente que perde menos pixels; as outras (3:2, 4:3,

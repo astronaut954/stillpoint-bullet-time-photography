@@ -562,6 +562,7 @@ namespace
     {
         std::string name;
         std::string model;
+        std::string shotRatio, reportedRatio;  // proporção da primeira foto medida e a informada pela câmera
         bool calibrated = false;  // sentido e força já medidos (agora ou antes, guardado)
         Stats last;
         std::string wbId;
@@ -1019,6 +1020,19 @@ namespace AutoMatch
         return all;
     }
 
+    std::string RatioName(int width, int height)
+    {
+        if (width <= 0 || height <= 0)
+            return "";
+        const double r = static_cast<double>(std::max(width, height)) / std::min(width, height);
+        const std::pair<const char*, double> known[] = { { "3:2", 1.5 }, { "4:3", 4.0 / 3.0 }, { "16:9", 16.0 / 9.0 }, { "1:1", 1.0 } };
+        const char* best = "3:2";
+        double bestError = 1e9;
+        for (const auto& [name, value] : known)
+            if (std::abs(value - r) < bestError) { bestError = std::abs(value - r); best = name; }
+        return best;
+    }
+
     Result Run(CameraFleet& controller, const Shoot& shoot, const std::filesystem::path& calibrationFile,
                const std::function<bool()>& cancelled, const Options& options,
                const std::function<void(const std::string&)>& trace)
@@ -1159,7 +1173,15 @@ namespace AutoMatch
                 }
                 const auto it = measured.find(c.name);
                 c.flipped = false;
-                Learn(c, it != measured.end() ? it->second : Stats{}, controller.ReadSettings(*ctx));
+                const CameraSettings now = controller.ReadSettings(*ctx);
+                Learn(c, it != measured.end() ? it->second : Stats{}, now);
+                // Proporção real da foto (primeira foto que chegou) contra a que a câmera informa
+                if (c.shotRatio.empty() && it != measured.end() && it->second.width > 0 && it->second.height > 0)
+                {
+                    c.shotRatio = RatioName(it->second.width, it->second.height);
+                    if (const CameraSetting* a = Get(now, "aspect"))
+                        c.reportedRatio = a->label;
+                }
                 if (c.flipped && !extraShot)
                 {
                     extraShot = true;
@@ -1197,6 +1219,9 @@ namespace AutoMatch
                     result.changes.push_back(change);
                 }
             }
+            for (const auto& c : cams)
+                if (!c.shotRatio.empty())
+                    result.ratios.push_back({ c.name, c.shotRatio, c.reportedRatio, !c.reportedRatio.empty() && c.reportedRatio != c.shotRatio });
             std::sort(notes.begin(), notes.end());
             notes.erase(std::unique(notes.begin(), notes.end()), notes.end());
             result.notes = notes;

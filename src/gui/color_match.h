@@ -22,6 +22,7 @@ namespace ColorMatch
         // Brilho e contraste confiáveis: a foto não está quase toda preta nem estourada.
         // (Nas sombras e nos estourados a câmera achata os tons, e a medida engana.)
         bool exposureOk = true;
+        int width = 0, height = 0;  // tamanho da foto em pixels (para a proporção real)
     };
 
     // Parte da foto, de 0 a 1 (0,0 = canto superior esquerdo)

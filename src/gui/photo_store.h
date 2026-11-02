@@ -69,7 +69,8 @@ bool LoadPhotoRgb(const std::filesystem::path& file, RgbFrame& out, std::string*
 
 // Foto de teste (câmeras simuladas, STILLPOINT_FAKE_CAMERAS): JPEG com o número da
 // câmera em destaque e o número da foto na sessão, numa cor por câmera.
-bool WriteTestPhoto(const std::filesystem::path& file, int cameraNumber, int shotNumber);
+// ratio: largura/altura da foto simulada (1.5 = 3:2, como as câmeras entregam por padrão)
+bool WriteTestPhoto(const std::filesystem::path& file, int cameraNumber, int shotNumber, double ratio = 1.5);
 bool IsRawPhoto(const std::string& file);
 bool IsJpegPhoto(const std::string& file);
 

@@ -353,9 +353,9 @@ namespace
     }
 }
 
-bool WriteTestPhoto(const fs::path& file, int cameraNumber, int shotNumber)
+bool WriteTestPhoto(const fs::path& file, int cameraNumber, int shotNumber, double ratio)
 {
-    const int w = 900, h = 600;
+    const int w = 900, h = std::max(100, static_cast<int>(std::lround(900.0 / std::max(0.5, ratio))));
     std::vector<unsigned char> px(static_cast<size_t>(w) * h * 3);
     // Uma cor por câmera (tons escuros, para o número branco ler bem)
     const int hue = (cameraNumber * 47) % 360;

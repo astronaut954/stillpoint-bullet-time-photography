@@ -117,7 +117,7 @@
   let shootMissing = [];         // fotos recusadas no disparo atual: { camera, index, gap }
   let camSettings = [];          // configurações de cada câmera (evento cameraSettings)
   const csPending = new Set();   // "câmera|chave" enviados e ainda sem resposta ("*" = todas)
-  const csTest = { capturing: false, has: false };  // teste rápido do Camera settings
+  const csTest = { capturing: false, has: false, ratios: {} };  // teste rápido do Camera settings; ratios: proporção real medida por câmera no último Match
   let csPoll = 0;                // releitura a cada 3 s com a janela aberta
   let csRenderLater = false;     // chegou leitura nova com uma lista aberta: redesenha ao sair dela
   let cameras = [];              // última lista recebida (inclui as que estão conectando)
@@ -5066,10 +5066,18 @@
       if (st.value === 9 && !KELVINS.includes(c.kelvin)) options.push(["k" + c.kelvin, c.kelvin + " K"]);
     }
     if (!options.some(([v]) => v === current)) options.unshift([current, currentLabel]);
-    td.appendChild(csSelect(options, current, (v) => {
+    const sel = csSelect(options, current, (v) => {
       if (k === "wb" && v.startsWith("k")) csSet(c.camera, "kelvin", +v.slice(1));
       else csSet(c.camera, k, +v);
-    }, diff ? "diff" : ""));
+    }, diff ? "diff" : "");
+    td.appendChild(sel);
+    // Ratio: a última foto de teste saiu numa proporção diferente da informada → marca amarela
+    const ratio = k === "aspect" && csTest.ratios[c.camera];
+    if (ratio && ratio.differs && ratio.reported === currentLabel) {
+      sel.classList.add("shot-warn");
+      sel.title = "The last test shot came out " + ratio.shot + ", but the camera reports " + ratio.reported + ". Check the camera menu.";
+      td.appendChild(csText(ratio.shot, "shot-ratio", sel.title));
+    }
     return td;
   }
   // Resumo da coluna Color: duas linhas (balanço de branco, estilo), na altura do botão ±
@@ -5748,6 +5756,11 @@
       return;
     }
     const changes = e.changes || [];
+    // Proporção real de cada foto contra a informada (Parte 2 da Proporção): fica para a tabela do Camera settings
+    csTest.ratios = {};
+    (e.ratios || []).forEach((r) => { csTest.ratios[r.camera] = r; });
+    const wrong = (e.ratios || []).filter((r) => r.differs);
+    if (wrong.length) log("Aspect ratio: " + wrong.map((r) => r.camera + " shot " + r.shot + " but reports " + r.reported).join(" · "), "warn");
     matchWin.picked = new Set(changes.map((c) => c.camera));
     matchWin.cam = changes.length ? changes[0].camera : (placedCameras()[0] || {}).name;
     csMatchSetStep(3);
@@ -5807,7 +5820,13 @@
       const list = el("span", "cs-review-changes");
       if (ch) ch.items.forEach(([what, from, to]) => { const it = el("span", "cs-review-change"); it.append(el("s", "", from), el("span", "to", to)); it.title = what; list.appendChild(it); });
       else list.appendChild(el("span", "cs-review-none", changes.length && cam.name === (changes[0] || {}).camera ? "reference" : "no change"));
-      const thumb = el("span", "cs-review-thumb" + (ch ? " changed" : ""));
+      const ratio = csTest.ratios[cam.name];
+      if (ratio && ratio.differs) {
+        const w = el("span", "cs-review-ratio", "Shot " + ratio.shot + " · camera reports " + ratio.reported);
+        w.title = "The test photo came out " + ratio.shot + ", but the camera says its aspect ratio is " + ratio.reported + ". Check the camera menu (some settings only apply to JPEG, not RAW).";
+        list.appendChild(w);
+      }
+      const thumb = el("span", "cs-review-thumb" + (ch ? " changed" : "") + (ratio && ratio.differs ? " ratio-warn" : ""));
       csMatchPhoto(after, cam.name, 320).then((url) => { if (url) thumb.style.backgroundImage = "url(" + url + ")"; });
       row.append(box, name, list, thumb);
       row.addEventListener("click", () => { matchWin.cam = cam.name; csMatchRenderReview(); });
@@ -5885,7 +5904,7 @@
     const strip = el("div", "cs-review-strip");
     placedCameras().filter((c) => c.connected).forEach((cam) => {
       const chg = changes.some((x) => x.camera === cam.name);
-      const t = el("button", "cs-review-mini" + (chg ? " changed" : "") + (matchWin.cam === cam.name ? " current" : "") + (chg && matchWin.picked.has(cam.name) ? "" : " off")); t.type = "button"; t.tabIndex = -1;
+      const t = el("button", "cs-review-mini" + (chg ? " changed" : "") + (matchWin.cam === cam.name ? " current" : "") + (chg && matchWin.picked.has(cam.name) ? "" : " off") + (csTest.ratios[cam.name] && csTest.ratios[cam.name].differs ? " ratio-warn" : "")); t.type = "button"; t.tabIndex = -1;
       t.title = cam.name + " · before (left) and after (right)"; t.setAttribute("aria-label", cam.name); t.dataset.cam = cam.name;
       const half = (cls) => { const h = el("span", "cs-review-half " + cls); t.appendChild(h); return h; };
       const hb = half("before"), ha = half("after");
