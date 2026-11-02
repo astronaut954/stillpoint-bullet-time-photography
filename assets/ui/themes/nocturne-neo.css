@@ -1478,6 +1478,8 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 /* Proporção da foto diferente da informada pela câmera: amarelo (Parte 2 da Proporção) */
 .cs-review-ratio { color: var(--noct-pending); font: 11px var(--noct-font-mono); border: 1px dashed var(--noct-pending); padding: 0 5px; }
 .cs-review-thumb.ratio-warn, .cs-review-mini.ratio-warn { border-color: var(--noct-pending); border-style: dashed; }
+.cs-test .frame.ratio-warn .frame-img { outline: 1px dashed var(--noct-pending); outline-offset: 2px; }
+.cs-test .frame.ratio-warn .frame-badge { color: var(--noct-pending); }
 .cs-sel.shot-warn { border-style: dashed; border-color: var(--noct-pending); }
 .cs-val.shot-ratio { margin-left: 4px; color: var(--noct-pending); font: 10px var(--noct-font-mono); }
 .cs-review-thumb { display: block; width: 48px; height: 32px; background: var(--noct-surface-inner) center / cover no-repeat; border: 1px solid var(--noct-border); }

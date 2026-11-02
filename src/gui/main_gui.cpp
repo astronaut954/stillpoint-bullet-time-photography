@@ -574,9 +574,14 @@ namespace
         {
             const CameraSettings& s = all[i];
             int order = 0;
+            std::string quirk;  // câmera simulada com comportamento de propósito (a página mostra ao lado do nome)
             for (const auto& cam : controller.GetCameras())
                 if (cam.shortName == s.camera)
+                {
                     order = cam.orderPrefix;
+                    if (cam.fake && order == 2)
+                        quirk = "Simulated camera: always shoots 16:9, whatever Ratio says (to test the aspect ratio warning).";
+                }
             std::string settings = "{";
             for (size_t k = 0; k < s.settings.size(); ++k)
             {
@@ -604,7 +609,7 @@ namespace
                                     .Add("colorTone", it->second.colorTone).Str();
             list += (i ? "," : "") + Json("camera").Add("camera", s.camera).Add("model", s.model)
                 .Add("abFlip", abFlip).Add("gmFlip", gmFlip)
-                .Add("order", order).Add("adjustable", s.adjustable).Add("reason", s.reason)
+                .Add("order", order).Add("adjustable", s.adjustable).Add("reason", s.reason).Add("quirk", quirk)
                 .Add("mode", s.mode).Add("manual", s.manualMode).Add("kelvin", s.kelvin)
                 .Add("kelvinAvailable", s.kelvinAvailable).Add("shiftAvailable", s.shiftAvailable)
                 .Add("shiftAB", s.shiftAB).Add("shiftGM", s.shiftGM).Add("focusManual", s.focusManual)

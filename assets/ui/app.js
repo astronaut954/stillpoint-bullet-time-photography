@@ -483,6 +483,13 @@
   // =================== Galeria: carrossel + foto grande ===================
   // Usada nas sessões e no "Reorder by photo". Com draggable, as miniaturas podem
   // ser arrastadas para mudar a ordem.
+  // Nome da proporção de uma foto: a mais perto entre 3:2, 4:3, 16:9 e 1:1 (como RatioName no programa)
+  function ratioName(w, h) {
+    if (!w || !h) return "";
+    const r = Math.max(w, h) / Math.min(w, h);
+    const known = [["3:2", 1.5], ["4:3", 4 / 3], ["16:9", 16 / 9], ["1:1", 1]];
+    return known.reduce((best, k) => (Math.abs(k[1] - r) < Math.abs(best[1] - r) ? k : best))[0];
+  }
   function Gallery(root, opts) {
     root.innerHTML =
       '<div class="gallery-head"><div><div class="gallery-title"></div><div class="gallery-sub"></div></div><div class="gallery-actions"></div></div>' +
@@ -529,7 +536,10 @@
           // Miniatura com a proporção da foto (foto inteira, em pé ou deitada)
           if (opts.fitThumbs) {
             const probe = new Image();
-            probe.onload = () => img.style.setProperty("--ar", probe.naturalWidth + " / " + probe.naturalHeight);
+            probe.onload = () => {
+              img.style.setProperty("--ar", probe.naturalWidth + " / " + probe.naturalHeight);
+              if (opts.showRatio) { li.dataset.ratio = ratioName(probe.naturalWidth, probe.naturalHeight); markRatios(); }
+            };
             probe.src = url;
           }
         });
@@ -562,6 +572,22 @@
       return li;
     }
 
+    // Proporções misturadas na fileira: a etiqueta ganha a proporção ("02 · 16:9") e as diferentes da
+    // mais comum ficam com borda âmbar tracejada (Parte 2 da Proporção)
+    function markRatios() {
+      const lis = [...el.carousel.children].filter((li) => li.dataset.ratio);
+      const counts = {};
+      lis.forEach((li) => { counts[li.dataset.ratio] = (counts[li.dataset.ratio] || 0) + 1; });
+      const names = Object.keys(counts);
+      const common = names.sort((a, b) => counts[b] - counts[a])[0];
+      const mixed = names.length > 1;
+      [...el.carousel.children].forEach((li, i) => {
+        const r = li.dataset.ratio;
+        li.classList.toggle("ratio-warn", mixed && !!r && r !== common);
+        const b = li.querySelector(".frame-badge");
+        if (b && items[i]) b.textContent = badge(items[i], i) + (mixed && r ? " · " + r : "");
+      });
+    }
     function markSelected(scroll) {
       [...el.carousel.children].forEach((li, i) => { li.classList.toggle("selected", i === index); li.classList.toggle("multi", multi.size > 1 && multi.has(i)); });
       const active = el.carousel.children[index];
@@ -1990,6 +2016,7 @@
   const csGallery = Gallery($("csGallery"), {
     draggable: false,
     fitThumbs: true,
+    showRatio: true,
     load: (item, size) => orderPhoto(item.session, item.file, size),
   });
   // Só a fileira de miniaturas (maiores); clicar numa abre a foto grande por cima da
@@ -5294,6 +5321,8 @@
         tag.title = c.focusManual ? "Manual focus" : "Autofocus is on. Turn the lens switch to MF so the camera fires without delay.";
         name.appendChild(tag);
       }
+      // Câmera simulada com comportamento de propósito (ex.: a 02 entrega sempre 16:9): etiqueta âmbar
+      if (c.quirk) { const q = el("span", "cs-focus-tag warn", "always 16:9"); q.title = c.quirk; name.appendChild(q); }
       name.appendChild(el("small", "", c.model + (c.mode ? " · " + c.mode : "")));
       tr.appendChild(name);
       if (!c.adjustable) {

@@ -1256,8 +1256,11 @@ projeto num HD externo.
 - [ ] Com câmeras simuladas (`STILLPOINT_FAKE_CAMERAS=9`): as câmeras 2 e 4 (16:9) aparecem com "16:9 → 3:2"
       e a 6 (fixa) não muda de proporção.
 - [ ] Proporção real da foto (Parte 2): as fotos simuladas saem na proporção que a câmera informa (no Test
-      shot, as miniaturas 02 e 04 são mais largas, 16:9). A câmera simulada 02 entrega sempre 16:9, o que
-      for que esteja marcado: no passo 3 do Match, a linha 02 ganha a etiqueta amarela tracejada "Shot 16:9 ·
+      shot, as miniaturas 02 e 04 são mais largas, 16:9). Quando a fileira do Test shot tem proporções
+      misturadas, cada etiqueta mostra a proporção ("02 · 16:9", "01 · 3:2") e as diferentes da mais comum
+      ganham contorno âmbar tracejado. A câmera simulada 02 entrega sempre 16:9, o que for que esteja
+      marcado, de propósito (etiqueta âmbar "always 16:9" ao lado do nome dela na tabela, com a explicação
+      ao passar o mouse): no passo 3 do Match, a linha 02 ganha a etiqueta amarela tracejada "Shot 16:9 ·
       camera reports 3:2", a miniatura da linha e a da fileira de baixo ficam com borda amarela tracejada, e
       o Activity diz "Aspect ratio: T7_1 shot 16:9 but reports 3:2". Depois de Apply (ou Discard), na tabela
       do Camera settings a célula Ratio da 02 fica tracejada âmbar com "16:9" ao lado e a explicação ao passar
