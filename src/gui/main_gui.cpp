@@ -2678,6 +2678,7 @@ namespace
         window.bind("cancelTest", [&](const std::string&) -> std::string
         {
             testCancel = true;
+            fakeCancel = true;  // câmeras simuladas: para o fakeRun também
             controller.RequestCancel();
             cardPick.wake.notify_all();
             return "null";
@@ -2805,7 +2806,10 @@ namespace
                     EnsureSingleShot(controller, singleShotWarned);
                     const std::string previous = controller.GetOutputFolder();
                     controller.SetOutputFolder(orderStore.Root().string());
-                    controller.RunSequence(settings);
+                    if (fakeCount)
+                        fakeRun(settings);  // câmeras simuladas: grava uma foto de teste por câmera (como o Test shot)
+                    else
+                        controller.RunSequence(settings);
                     controller.SetOutputFolder(previous);
                     const auto sessions = orderStore.ListSessions();
                     if (sessions.empty() || testCancel)
@@ -2996,7 +3000,10 @@ namespace
                     EnsureSingleShot(controller, singleShotWarned);
                     const std::string previous = controller.GetOutputFolder();
                     controller.SetOutputFolder(orderStore.Root().string());
-                    controller.RunSequence(settings);
+                    if (fakeCount)
+                        fakeRun(settings);  // câmeras simuladas: grava uma foto de teste por câmera (como o Test shot)
+                    else
+                        controller.RunSequence(settings);
                     controller.SetOutputFolder(previous);
                     const auto sessions = orderStore.ListSessions();
                     if (sessions.empty() || testCancel)
