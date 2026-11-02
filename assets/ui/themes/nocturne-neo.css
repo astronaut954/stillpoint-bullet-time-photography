@@ -1429,3 +1429,14 @@ td.cs-color { white-space: nowrap; }
 td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle; }
 .cs-color-sum { display: inline-flex; flex-direction: column; justify-content: center; height: 28px; vertical-align: middle; font: 11px var(--noct-font-mono); line-height: 14px; color: var(--noct-text); }
 .cs-color-sum .diff { color: var(--noct-pending); }
+/* Colunas com largura fixa: as caixas têm o mesmo tamanho em todas as linhas, seja qual for o valor
+   (pedido do dono, 2026-11-02). A tabela tem layout fixo; o nome e a coluna Color pegam o que sobra. */
+table.cs { table-layout: fixed; }
+table.cs .col-name { width: 150px; }
+table.cs .col-iso, table.cs .col-av, table.cs .col-expcomp { width: 78px; }
+table.cs .col-tv { width: 86px; }
+table.cs .col-aspect { width: 96px; }
+table.cs .col-metering, table.cs .col-quality { width: 122px; }
+table.cs td.cs-cell:not(.cs-color) .cs-sel { width: 100%; max-width: none; }
+table.cs td.cs-cell:not(.cs-color) > .cs-val { width: 100%; justify-content: center; }
+table.cs td.cs-cell.col-quality > .cs-val, table.cs td.cs-cell.col-aspect > .cs-val { overflow: hidden; text-overflow: ellipsis; }
