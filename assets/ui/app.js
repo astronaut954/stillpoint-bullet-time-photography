@@ -5495,16 +5495,19 @@
     if (connected < 2) { toast("Match automatically needs at least two connected cameras.", 6000, { warn: true }); return; }
     matchWin.result = null; matchWin.picked = new Set(); matchWin.before = null;
     $("csMatch").classList.remove("hidden");
+    $("camSettingsOverlay").querySelector(".cs-sheet").classList.add("matching");
     csMatchRenderChoose();
   }
   function csMatchClose() {
     csMatchStopPlay();
     $("csMatch").classList.add("hidden");
+    $("camSettingsOverlay").querySelector(".cs-sheet").classList.remove("matching");
     matchWin.step = 0;
     $("csAuto").checked = false;
   }
   function csMatchRenderChoose() {
     csMatchSetStep(1);
+    $("csMatchBody").className = "cs-match-body choose";
     $("csMatchSub").textContent = "Choose what the app may change. Nothing changes on the cameras before you review the result.";
     const c = csMatchChoices();
     const body = $("csMatchBody");
@@ -5512,20 +5515,21 @@
     const grid = el("div", "cs-match-grid");
     const col = (title) => { const d = el("div", "cs-match-col"); d.appendChild(el("div", "cs-match-coltitle", title)); grid.appendChild(d); return d; };
     const left = col("Set the same value on every camera"), right = col("Measure in the test shot and fine-tune each camera");
+    // Cada item como as saídas do Export sessions: caixa do app, título, explicação e o resumo à direita
+    const item = (checked, label, hint, sum, onChange) => {
+      const row = el("label", "cs-match-row" + (checked ? " on" : ""));
+      const box = document.createElement("input"); box.type = "checkbox"; box.className = "cs-check"; box.checked = checked;
+      box.addEventListener("change", () => { row.classList.toggle("on", box.checked); onChange(box.checked); });
+      const name = el("span", "cs-match-name"); name.append(el("b", "cs-match-label", label), el("span", "cs-match-hint", hint));
+      row.append(box, name, el("span", "cs-match-sum", sum));
+      return row;
+    };
     MATCH_ITEMS.forEach(([key, , label, hint, kind]) => {
-      const row = el("label", "cs-match-row");
-      const box = document.createElement("input"); box.type = "checkbox"; box.checked = !!c[key];
-      box.addEventListener("change", () => { c[key] = box.checked; csMatchSaveChoices(); csMatchCount(); });
-      row.append(box, el("span", "cs-match-label", label), el("span", "cs-match-hint", hint));
-      (kind === "set" ? left : right).appendChild(row);
+      (kind === "set" ? left : right).appendChild(item(!!c[key], label, hint, kind === "set" ? "Set" : "Measured", (v) => { c[key] = v; csMatchSaveChoices(); csMatchCount(); }));
     });
-    const card = el("label", "cs-match-row");
-    const cardBox = document.createElement("input"); cardBox.type = "checkbox"; cardBox.checked = !!c.grayCard;
-    cardBox.addEventListener("change", () => { c.grayCard = cardBox.checked; csMatchSaveChoices(); });
-    card.append(cardBox, el("span", "cs-match-label", "Use the gray card"), el("span", "cs-match-hint", "measure only the card; you check where it is after the first photo"));
-    right.appendChild(card);
-    right.appendChild(el("div", "cs-match-info", "The test shot fires every camera (the photos are not kept). Up to 5 photos until the cameras agree, plus one with the result. Nothing changes on the cameras before you review it in step 3."));
+    right.appendChild(item(!!c.grayCard, "Use the gray card", "the app measures only the card; you check where it is after the first photo", "Option", (v) => { c.grayCard = v; csMatchSaveChoices(); }));
     body.appendChild(grid);
+    body.appendChild(el("div", "cs-match-info", "The test shot fires every camera; the photos are not kept. Up to 5 photos until the cameras agree, plus one with the result. Nothing changes on the cameras before you review it in step 3."));
     csMatchCount();
   }
   function csMatchCount() {
@@ -5537,6 +5541,7 @@
   }
   function csMatchStart() {
     csMatchSetStep(2);
+    $("csMatchBody").className = "cs-match-body";
     $("csMatchSub").textContent = "Taking test photos. The cameras are changed only to measure; they go back to how they were before you review.";
     $("csMatchNote").textContent = "";
     $("csMatchGo").disabled = false;
@@ -5573,6 +5578,7 @@
     matchWin.picked = new Set(changes.map((c) => c.camera));
     matchWin.cam = changes.length ? changes[0].camera : (placedCameras()[0] || {}).name;
     csMatchSetStep(3);
+    $("csMatchBody").className = "cs-match-body";
     $("csMatchSub").textContent = changes.length
       ? plural(changes.length, "camera would change", "cameras would change") + " · nothing has been changed on the cameras yet"
       : "The cameras already look alike. Nothing to change.";
@@ -5600,7 +5606,7 @@
     // Tabela: uma linha por câmera
     const table = el("div", "cs-review-table");
     const head = el("div", "cs-review-head");
-    const allBox = document.createElement("input"); allBox.type = "checkbox"; allBox.setAttribute("aria-label", "All cameras");
+    const allBox = document.createElement("input"); allBox.type = "checkbox"; allBox.className = "cs-check"; allBox.setAttribute("aria-label", "All cameras");
     allBox.checked = changes.length > 0 && changes.every((c) => matchWin.picked.has(c.camera));
     allBox.disabled = !changes.length;
     allBox.addEventListener("change", () => { matchWin.picked = new Set(allBox.checked ? changes.map((c) => c.camera) : []); csMatchRenderReview(); });
@@ -5610,7 +5616,7 @@
     placedCameras().filter((c) => c.connected).forEach((cam) => {
       const ch = changes.find((x) => x.camera === cam.name);
       const row = el("div", "cs-review-row" + (ch ? "" : " same") + (matchWin.cam === cam.name ? " current" : ""));
-      const box = document.createElement("input"); box.type = "checkbox";
+      const box = document.createElement("input"); box.type = "checkbox"; box.className = "cs-check";
       box.checked = !!ch && matchWin.picked.has(cam.name); box.disabled = !ch;
       box.setAttribute("aria-label", "Apply to " + cam.name);
       box.addEventListener("click", (ev) => ev.stopPropagation());
@@ -5641,7 +5647,7 @@
     const faster = button("", () => { speedIndex = Math.min(PLAY_SPEEDS.length - 1, speedIndex + 1); renderSpeed(); csMatchRenderReview(); }, { icon: "plus", title: "Faster" });
     const v = PLAY_SPEEDS[speedIndex];
     const speed = el("span", "cs-review-speed", (v % 1 === 0 ? v.toFixed(1) : String(v)) + "x");
-    const rev = el("label", "cs-review-rev"); const revBox = document.createElement("input"); revBox.type = "checkbox"; revBox.checked = reverseLoop.checked;
+    const rev = el("label", "cs-review-rev log-option"); const revBox = document.createElement("input"); revBox.type = "checkbox"; revBox.checked = reverseLoop.checked;
     revBox.addEventListener("change", () => { reverseLoop.checked = revBox.checked; });
     rev.append(revBox, document.createTextNode(" Reverse loop"));
     ctrls.append(prev, play, next, el("span", "cs-review-speedlabel", "Speed"), slower, speed, faster, rev);
