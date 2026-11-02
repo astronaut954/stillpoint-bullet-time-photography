@@ -1212,8 +1212,9 @@ projeto num HD externo.
 - [ ] Passo 3, "Review": à esquerda, uma linha por câmera com a caixa, as mudanças (antes riscado → depois em
       verde) e a miniatura do depois; à direita, a câmera da linha clicada em Split (divisor arrastável; arrastar
       não seleciona texto), Side by side ou Flip (clique troca). Os controles ‹ ▶ ›, Speed − + e Reverse loop
-      ficam dentro da prévia, no canto de cima à direita: aparecem com o mouse sobre a prévia (fade) ou ao
-      chegar neles pelo Tab, e somem quando o mouse sai. Embaixo, uma fileira só de miniaturas: cada foto cortada ao
+      ficam dentro da prévia, no canto de cima à direita: aparecem (fade) quando o mouse se mexe sobre a prévia
+      ou ao chegar neles pelo Tab; somem 2 s depois que o mouse para (mexer de novo traz de volta) ou quando
+      ele sai da prévia; em cima dos controles não somem. Embaixo, uma fileira só de miniaturas: cada foto cortada ao
       meio, a metade esquerda do antes e a direita do depois (linha verde fina no meio), sem rótulo. O texto de cima diz "n cameras would
       change · nothing has been changed on the cameras yet". O botão do passo 1 é "Take the test shot" (sem seta).
 - [ ] Caixas do passo 3: desmarcar uma linha deixa a caixa de cima com um traço (algumas) e muda "Apply to n

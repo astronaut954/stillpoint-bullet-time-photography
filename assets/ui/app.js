@@ -5802,6 +5802,14 @@
     photos.appendChild(top);
     const stage = el("div", "cs-review-stage " + matchWin.mode);
     stage.appendChild(ctrls);
+    // Os controles aparecem quando o mouse se mexe sobre a prévia e somem depois de 2 s parado (ou ao sair);
+    // com o foco do teclado neles, ficam (CSS)
+    let hideTimer = 0;
+    const showCtrls = () => { ctrls.classList.add("show"); clearTimeout(hideTimer); hideTimer = setTimeout(() => ctrls.classList.remove("show"), 2000); };
+    stage.addEventListener("pointermove", showCtrls);
+    stage.addEventListener("pointerenter", showCtrls);
+    stage.addEventListener("pointerleave", () => { clearTimeout(hideTimer); ctrls.classList.remove("show"); });
+    ctrls.addEventListener("pointermove", (ev) => { ev.stopPropagation(); ctrls.classList.add("show"); clearTimeout(hideTimer); });  // em cima dos controles, não somem
     const imgB = el("div", "cs-review-img before"), imgA = el("div", "cs-review-img after");
     imgB.appendChild(el("span", "cs-review-tag", "Before")); imgA.appendChild(el("span", "cs-review-tag on", "After"));
     const ch = changes.find((x) => x.camera === matchWin.cam);
