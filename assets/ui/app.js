@@ -5541,7 +5541,7 @@
   }
   function csMatchStart() {
     csMatchSetStep(2);
-    $("csMatchBody").className = "cs-match-body";
+    $("csMatchBody").className = "cs-match-body progress";
     $("csMatchSub").textContent = "Taking test photos. The cameras are changed only to measure; they go back to how they were before you review.";
     $("csMatchNote").textContent = "";
     $("csMatchGo").disabled = false;

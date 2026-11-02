@@ -1466,7 +1466,8 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .cs-match-row.on .cs-match-sum { color: var(--noct-primary); }
 .cs-match-info { max-width: 1180px; margin: 18px auto 0; width: 100%; box-sizing: border-box; padding: 10px 14px; border: 1px solid var(--noct-border); color: var(--noct-text-muted); font-size: 12px; line-height: 1.5; }
 /* Passo 2 */
-.cs-match-progress { max-width: 520px; margin: 40px auto; display: flex; flex-direction: column; gap: 12px; text-align: center; }
+.cs-match-body.progress { display: flex; align-items: center; justify-content: center; }
+.cs-match-progress { width: min(520px, 90%); display: flex; flex-direction: column; gap: 12px; text-align: center; }
 .cs-match-stage { font-size: 15px; }
 .cs-match-bar { height: 4px; background: var(--noct-border); }
 .cs-match-bar-fill { height: 4px; width: 0; background: var(--noct-primary); transition: width 300ms var(--noct-ease); }

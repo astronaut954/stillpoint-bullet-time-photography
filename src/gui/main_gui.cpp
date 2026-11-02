@@ -2774,8 +2774,9 @@ namespace
                     if (testCancel)
                         return false;
                     listener.Emit(Json("autoMatchProgress").Add("shot", shot).Add("shots", shots).Add("stage", stage));
-                    // Revisão: a primeira foto fica guardada (é o "antes"); as do meio vão embora
-                    if (flags & 256)
+                    // Revisão: a primeira foto fica guardada (é o "antes"); as do meio vão embora.
+                    // Na primeira foto, tudo o que havia de testes anteriores sai.
+                    if ((flags & 256) && shot > 1)
                     {
                         auto old = orderStore.ListSessions();
                         std::sort(old.begin(), old.end(), [](const StoredSession& a, const StoredSession& b) { return a.name < b.name; });
@@ -2792,8 +2793,9 @@ namespace
                     const auto sessions = orderStore.ListSessions();
                     if (sessions.empty() || testCancel)
                         return false;
-                    // Uma foto por câmera (JPEG quando houver RAW + JPEG)
-                    const StoredSession& session = sessions.back();
+                    // Uma foto por câmera (JPEG quando houver RAW + JPEG); a sessão nova é a mais recente
+                    // (a lista vem da mais nova para a mais antiga; no modo revisão a primeira foto fica guardada)
+                    const StoredSession& session = sessions.front();
                     std::map<std::string, const StoredPhoto*> picks;
                     for (const auto& p : session.photos)
                         if (!picks.count(p.camera) || IsJpegPhoto(p.file))
