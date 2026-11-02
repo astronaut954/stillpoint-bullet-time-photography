@@ -1173,7 +1173,8 @@ projeto num HD externo.
 ## 33. Camera settings reorganizado: Format, Ratio e o painel Color (2.16.0)
 
 - [ ] Colunas da tabela: ISO, Shutter, Aperture, Exp. comp., Metering, Format (antes "Quality", no ±), Ratio
-      (nova: 3:2, 4:3, 16:9, 1:1) e Color (resumo "balanço de branco · estilo" e o botão ±). A tabela cabe sem
+      (nova: 3:2, 4:3, 16:9, 1:1) e Color (o botão ± à esquerda e, ao lado, duas linhas: "· balanço de branco"
+      e "· estilo", na altura do botão). A tabela cabe sem
       rolagem lateral.
 - [ ] Botão "±" abre o painel "Color": White balance (com Kelvin quando a câmera tem), WB fine-tune A/B e
       G/M, Picture Style, Contrast, Saturation e Color tone. Nas câmeras do fim da lista, o painel abre para cima.

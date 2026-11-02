@@ -1424,6 +1424,8 @@ body.mod-keys .folder-add { cursor: default; }
 /* Aspect ratio fixo (a câmera não aceita mudar pelo USB): a linha fica apagada, a explicação no title */
 .cs-pop-row.cs-pop-fixed { opacity: .55; }
 .cs-pop-row.cs-pop-fixed .cs-sel { cursor: default; }
-/* Coluna Color: resumo (balanço de branco · estilo) e o botão ± lado a lado */
+/* Coluna Color: o botão ± à esquerda e o resumo em duas linhas (balanço de branco, estilo) na altura dele */
 td.cs-color { white-space: nowrap; }
-td.cs-color .cs-val { margin-right: 6px; }
+td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle; }
+.cs-color-sum { display: inline-flex; flex-direction: column; justify-content: center; height: 28px; vertical-align: middle; font: 11px var(--noct-font-mono); line-height: 14px; color: var(--noct-text); }
+.cs-color-sum .diff { color: var(--noct-pending); }

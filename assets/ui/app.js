@@ -5031,10 +5031,9 @@
     if (k === "color") {
       // Resumo (balanço de branco · estilo) e o botão ± que abre o painel Color
       const wbL = csLabel(c, "wb"), stL = csLabel(c, "style");
-      const parts = [wbL, stL].filter((x) => x !== null);
       td.classList.add("cs-color");
-      if (parts.length) td.appendChild(csText(parts.join(" · "), csColorLevel(c, ref) ? "diff" : ""));
       td.appendChild(csStyleButton(c.camera, csColorLevel(c, ref), c));
+      td.appendChild(csColorSummary(wbL, stL, csDiffers(c, "wb", ref), csDiffers(c, "style", ref) || csStyleDetailDiffers(c)));
       return td;
     }
     const st = c.settings[k];
@@ -5059,6 +5058,13 @@
       else csSet(c.camera, k, +v);
     }, diff ? "diff" : ""));
     return td;
+  }
+  // Resumo da coluna Color: duas linhas (balanço de branco, estilo), na altura do botão ±
+  function csColorSummary(wb, style, wbDiff, styleDiff) {
+    const box = el("span", "cs-color-sum");
+    if (wb !== null) box.appendChild(el("span", wbDiff ? "diff" : "", "· " + wb));
+    if (style !== null) box.appendChild(el("span", styleDiff ? "diff" : "", "· " + style));
+    return box;
   }
   // Quanto da cor difere das outras câmeras: "" nada; "partial" algo; "diff" tudo o que a câmera tem
   function csColorLevel(c, ref) {
@@ -5101,9 +5107,9 @@
         || (cams.some((c) => c.shiftAvailable) && new Set(cams.filter((c) => c.shiftAvailable).map((c) => c.shiftAB + "/" + c.shiftGM)).size > 1)
         || STYLE_DETAILS.some(([, , f]) => refs[f] !== null);
       const wbs = new Set(cams.map((c) => csLabel(c, "wb")).filter((l) => l !== null)), sts = new Set(cams.map((c) => csLabel(c, "style")).filter((l) => l !== null));
-      const summary = [wbs.size === 1 ? [...wbs][0] : wbs.size ? "Different" : null, sts.size === 1 ? [...sts][0] : sts.size ? "Different" : null].filter((x) => x !== null).join(" · ");
-      if (summary) td.appendChild(csText(summary, anyDiff ? "diff" : ""));
       td.appendChild(csStyleButton("*", anyDiff ? "partial" : "", null));
+      td.appendChild(csColorSummary(wbs.size === 1 ? [...wbs][0] : wbs.size ? "Different" : null, sts.size === 1 ? [...sts][0] : sts.size ? "Different" : null,
+        wbs.size > 1, sts.size > 1 || STYLE_DETAILS.some(([, , f]) => refs[f] !== null)));
       return td;
     }
     if (k === "wb") {
