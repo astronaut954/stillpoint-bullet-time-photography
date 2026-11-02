@@ -93,6 +93,12 @@ namespace
     // os valores aceitos vêm de cada câmera (EdsGetPropertyDesc), como os outros
     const EdsPropertyID kPropMeteringMode = 0x00000403;
     const Table kMetering = { { 1, "Spot" }, { 3, "Evaluative" }, { 4, "Partial" }, { 5, "Center-wtd" } };
+    // Proporção da foto (kEdsPropID_Aspect, "limited property" no SDK: nem toda câmera responde; quando
+    // não responde, a linha aparece como fixa e o Match iguala as outras a ela)
+    const Table kAspect = { { 0, "3:2" }, { 1, "4:3" }, { 2, "16:9" }, { 7, "1:1" } };
+#ifndef kEdsPropID_Aspect
+#define kEdsPropID_Aspect 0x01000431
+#endif
 
     const Table kMode = {
         { 0x00, "P" }, { 0x01, "Tv" }, { 0x02, "Av" }, { 0x03, "M" }, { 0x04, "Bulb" }, { 0x05, "A-DEP" },
@@ -220,7 +226,8 @@ namespace
     // -----------------------------------------------------------------------
     struct FakeState
     {
-        long long iso = 0x58, tv = 0x70, av = 0x30, expcomp = 0, wb = 1, style = 0x81, drive = 0, metering = 3;
+        long long iso = 0x58, tv = 0x70, av = 0x30, expcomp = 0, wb = 1, style = 0x81, drive = 0, metering = 3, aspect = 0;
+        bool aspectFixed = false;  // câmera que não aceita mudar a proporção pelo USB
         int kelvin = 5200, shiftAB = 0, shiftGM = 0, contrast = 0, saturation = 0, colorTone = 0;
     };
     std::map<std::string, FakeState>& FakeStates()
@@ -246,6 +253,9 @@ namespace
             s.shiftGM = (n % 4 == 0) ? -1 : 0;
             s.contrast = (n % 5 == 0) ? 1 : 0;
             s.saturation = (n % 7 == 0) ? -1 : 0;
+            // Proporção: as câmeras 2 e 4 em 16:9; a 6 não aceita mudar pelo USB (para testar o Match)
+            s.aspect = (n == 2 || n == 4) ? 2 : 0;
+            s.aspectFixed = n == 6;
             it = states.emplace(cam.shortName, s).first;
         }
         return it->second;
@@ -280,6 +290,7 @@ namespace
         out.settings.push_back(FakeSetting("wb", f.wb, &kWhiteBalance, { 0, 1, 2, 3, 4, 5, 8, 9 }));
         out.settings.push_back(FakeSetting("style", f.style, &kPictureStyle, { 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87 }));
         out.settings.push_back(FakeSetting("quality", 0x00130000 | 0x0000FF00 | 0x000000F0 | 0x0000000F, nullptr, { }, true));
+        out.settings.push_back(FakeSetting("aspect", f.aspect, &kAspect, { 0, 1, 2, 7 }, f.aspectFixed));
         out.settings.push_back(FakeSetting("drive", f.drive, &kDrive, { 0x00, 0x01, 0x10, 0x11 }));
         out.settings.push_back(FakeSetting("focus", 3, &kFocus, { }, true));
         out.focusManual = true;
@@ -307,6 +318,7 @@ namespace
         else if (key == "style") f.style = value;
         else if (key == "drive") f.drive = value;
         else if (key == "quality") { error = "This camera does not allow this change."; return false; }
+        else if (key == "aspect") { if (f.aspectFixed) { error = "This camera does not allow this change."; return false; } f.aspect = value; }
         else if (key == "kelvin") { if (!range(2800, 10000, "Use a value from 2800 K to 10000 K.")) return false; f.wb = 9; f.kelvin = static_cast<int>(value / 100 * 100); }
         else if (key == "shiftab") { if (!range(-9, 9, "Use a value from -9 to +9.")) return false; f.shiftAB = static_cast<int>(value); }
         else if (key == "shiftgm") { if (!range(-9, 9, "Use a value from -9 to +9.")) return false; f.shiftGM = static_cast<int>(value); }
@@ -347,6 +359,7 @@ namespace CameraSettingsCanon
         out.settings.push_back(Make(camera, "wb", kEdsPropID_WhiteBalance, &kWhiteBalance, true));
         out.settings.push_back(Make(camera, "style", kEdsPropID_PictureStyle, &kPictureStyle));
         out.settings.push_back(Make(camera, "quality", kEdsPropID_ImageQuality, nullptr));
+        out.settings.push_back(Make(camera, "aspect", kEdsPropID_Aspect, &kAspect));
         out.settings.push_back(Make(camera, "drive", kEdsPropID_DriveMode, &kDrive));
         // Foco: só leitura (MF vem da chave da lente; mudar o modo AF só foi testado pela Canon na EOS R5)
         out.settings.push_back(Make(camera, "focus", kEdsPropID_AFMode, &kFocus, false, true));
@@ -426,7 +439,7 @@ namespace CameraSettingsCanon
             { "iso", kEdsPropID_ISOSpeed }, { "tv", kEdsPropID_Tv }, { "av", kEdsPropID_Av },
             { "expcomp", kEdsPropID_ExposureCompensation }, { "style", kEdsPropID_PictureStyle },
             { "quality", kEdsPropID_ImageQuality }, { "drive", kEdsPropID_DriveMode },
-            { "metering", kPropMeteringMode },
+            { "metering", kPropMeteringMode }, { "aspect", kEdsPropID_Aspect },
         };
         if (auto it = simple.find(key); it != simple.end())
             return setU32(it->second, value);

@@ -1170,6 +1170,20 @@ projeto num HD externo.
 - [ ] Pausar (espaço ou o botão de pausa) e clicar em outra sessão: a nova fica parada.
 - [ ] Sair da tela cheia: para de tocar.
 
+## 33. Proporção da foto no Camera settings (2.16.0)
+
+- [ ] Camera settings → botão "±" de uma câmera: o painel se chama "Style, Quality & Ratio" e tem a linha
+      "Aspect ratio" logo abaixo de "Quality", com 3:2, 4:3, 16:9 e 1:1.
+- [ ] Com câmeras simuladas (`STILLPOINT_FAKE_CAMERAS=9`): as câmeras 2 e 4 vêm em 16:9 e as outras em 3:2;
+      o "±" delas fica âmbar tracejado e a lista de câmeras mostra "Settings differ".
+- [ ] Câmera 6 simulada: a linha "Aspect ratio" aparece apagada e desabilitada; ao parar o ponteiro, a
+      explicação diz que a câmera não aceita mudar pelo USB.
+- [ ] "±" de "All cameras": "Aspect ratio" mostra "Different"; escolher 3:2 muda só as câmeras que aceitam
+      (a 6 fica como está); o aviso some das câmeras 2 e 4; Cmd+Z volta uma a uma.
+- [ ] "Copy from camera" leva a proporção da câmera escolhida às outras que aceitam.
+- [ ] Câmeras de verdade: anotar para cada modelo se a linha vem com opções ou fixa (a SL3 e a T7 precisam
+      ser conferidas; a Canon não garante essa propriedade em todos os modelos).
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |
