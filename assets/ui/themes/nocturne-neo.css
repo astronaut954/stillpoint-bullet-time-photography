@@ -1447,7 +1447,11 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 /* Caixa de seleção do app (a mesma das opções do Activity), solta */
 .cs-check { -webkit-appearance: none; appearance: none; margin: 0; flex: 0 0 16px; width: 16px; height: 16px; border: 1px solid var(--noct-border-strong); border-radius: 0; background: var(--noct-bg); position: relative; cursor: pointer; }
 .cs-check:checked { background: var(--noct-primary); border-color: var(--noct-primary); box-shadow: var(--noct-glow-primary-soft); }
-.cs-check:checked::after { content: ""; position: absolute; left: 5px; top: 1px; width: 4px; height: 9px; border: solid var(--noct-on-primary); border-width: 0 2px 2px 0; transform: rotate(45deg); }
+/* O visto na mesma posição das outras caixas do app (.save-check: left 4px, top 0, acertado em 2026-10) */
+.cs-check:checked::after { content: ""; position: absolute; left: 4px; top: 0; width: 4px; height: 9px; border: solid var(--noct-on-primary); border-width: 0 2px 2px 0; transform: rotate(45deg); }
+/* Algumas marcadas (caixa "All" do passo 3): um traço */
+.cs-check:indeterminate { background: var(--noct-primary); border-color: var(--noct-primary); box-shadow: var(--noct-glow-primary-soft); }
+.cs-check:indeterminate::after { content: ""; position: absolute; left: 3px; top: 6px; width: 8px; height: 2px; background: var(--noct-on-primary); }
 .cs-check:focus-visible { outline: 2px solid var(--noct-primary); outline-offset: 2px; }
 .cs-check:disabled { opacity: .35; cursor: default; }
 /* Passo 1: as opções como as saídas do Export sessions (blocos com a caixa, o título e o resumo) */
