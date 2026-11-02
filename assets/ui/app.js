@@ -483,13 +483,6 @@
   // =================== Galeria: carrossel + foto grande ===================
   // Usada nas sessões e no "Reorder by photo". Com draggable, as miniaturas podem
   // ser arrastadas para mudar a ordem.
-  // Nome da proporção de uma foto: a mais perto entre 3:2, 4:3, 16:9 e 1:1 (como RatioName no programa)
-  function ratioName(w, h) {
-    if (!w || !h) return "";
-    const r = Math.max(w, h) / Math.min(w, h);
-    const known = [["3:2", 1.5], ["4:3", 4 / 3], ["16:9", 16 / 9], ["1:1", 1]];
-    return known.reduce((best, k) => (Math.abs(k[1] - r) < Math.abs(best[1] - r) ? k : best))[0];
-  }
   function Gallery(root, opts) {
     root.innerHTML =
       '<div class="gallery-head"><div><div class="gallery-title"></div><div class="gallery-sub"></div></div><div class="gallery-actions"></div></div>' +
@@ -538,7 +531,6 @@
             const probe = new Image();
             probe.onload = () => {
               img.style.setProperty("--ar", probe.naturalWidth + " / " + probe.naturalHeight);
-              if (opts.showRatio) { li.dataset.ratio = ratioName(probe.naturalWidth, probe.naturalHeight); markRatios(); }
             };
             probe.src = url;
           }
@@ -572,20 +564,6 @@
       return li;
     }
 
-    // Foto numa proporção diferente da que a câmera informa (coluna Ratio): a etiqueta ganha a proporção
-    // medida ("02 · 16:9") e a borda âmbar tracejada. Só isso: diferir das outras câmeras não marca
-    // (decisão do dono, 2026-11-02). opts.reportedRatio(item) devolve o que a câmera informa, ou "".
-    function markRatios() {
-      [...el.carousel.children].forEach((li, i) => {
-        const r = li.dataset.ratio;
-        const reported = r && opts.reportedRatio ? opts.reportedRatio(items[i]) : "";
-        const warn = !!r && !!reported && reported !== r;
-        li.classList.toggle("ratio-warn", warn);
-        li.title = (items[i].title + (items[i].subtitle ? " · " + items[i].subtitle : "")) + (warn ? " · shot " + r + ", camera reports " + reported : "");
-        const b = li.querySelector(".frame-badge");
-        if (b && items[i]) b.textContent = badge(items[i], i) + (warn ? " · " + r : "");
-      });
-    }
     function markSelected(scroll) {
       [...el.carousel.children].forEach((li, i) => { li.classList.toggle("selected", i === index); li.classList.toggle("multi", multi.size > 1 && multi.has(i)); });
       const active = el.carousel.children[index];
@@ -829,7 +807,6 @@
         render();
       },
       setHead(title, sub) { el.title.textContent = title || ""; el.sub.textContent = sub || ""; },
-      refreshRatios() { if (opts.showRatio) markRatios(); },  // (as câmeras foram relidas: a marca de proporção acompanha)
       setActions(nodes) { el.actions.innerHTML = ""; nodes.forEach((n) => el.actions.appendChild(n)); },
       // Botões sobre a foto grande (canto superior direito)
       setStageTools(nodes) {
@@ -2015,9 +1992,6 @@
   const csGallery = Gallery($("csGallery"), {
     draggable: false,
     fitThumbs: true,
-    showRatio: true,
-    // O que a câmera informa na coluna Ratio (para marcar a foto que saiu diferente)
-    reportedRatio: (item) => { const c = camSettings.find((x) => x.camera === item.name); const a = c && c.settings && c.settings.aspect; return a && a.available ? a.label : ""; },
     load: (item, size) => orderPhoto(item.session, item.file, size),
   });
   // Só a fileira de miniaturas (maiores); clicar numa abre a foto grande por cima da
@@ -5356,7 +5330,6 @@
     body.appendChild(table);
     body.scrollTop = scroll;
     renderStylePop();
-    csGallery.refreshRatios();
 
     copy.disabled = adjustable.length < 2;
     copy.appendChild(new Option("Choose…", ""));
