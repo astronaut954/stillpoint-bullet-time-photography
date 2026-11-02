@@ -153,6 +153,8 @@
     photo: '<rect x="1.5" y="2.5" width="11" height="9" rx="1"/><path d="M1.5 10l3.2-3.2 2.3 2.3 1.6-1.6 3.9 3.9"/><circle cx="9.6" cy="5.4" r="1"/>',
     menu: '<path d="M2.5 4h9M2.5 7h9M2.5 10h9"/>',
     close: '<path d="M3.5 3.5l7 7M10.5 3.5l-7 7"/>',
+    // Cortina do Split (Match, passo 3): duas setas, para os dois lados
+    curtain: '<path d="M4.5 4.5L2 7l2.5 2.5M9.5 4.5L12 7l-2.5 2.5M2 7h10"/>',
   };
   function icon(name, size) {
     const s = size || 14;
@@ -5862,7 +5864,7 @@
     if (matchWin.mode === "split") {
       imgA.style.clipPath = "inset(0 0 0 " + matchWin.split + "%)";
       const handle = el("div", "cs-review-handle"); handle.style.left = matchWin.split + "%";
-      handle.appendChild(el("span", "cs-review-knob", "⇔"));
+      const knob = el("span", "cs-review-knob"); knob.innerHTML = icon("curtain", 16); handle.appendChild(knob);
       stage.appendChild(handle);
       let dragging = false;
       const move = (ev) => { const r = stage.getBoundingClientRect(); matchWin.split = Math.max(2, Math.min(98, ((ev.clientX - r.left) / r.width) * 100)); imgA.style.clipPath = "inset(0 0 0 " + matchWin.split + "%)"; handle.style.left = matchWin.split + "%"; };
