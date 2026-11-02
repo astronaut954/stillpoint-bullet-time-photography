@@ -1463,22 +1463,22 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .cs-match-name { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .cs-match-label { font: 700 15px var(--noct-font-sans); color: var(--noct-text); }
 .cs-match-hint { color: var(--noct-text-dim); font-size: 12px; }
-.cs-match-row.has-vals:not(:has(.cs-match-vals.aside)) { align-items: flex-start; }
-.cs-match-row.has-vals:not(:has(.cs-match-vals.aside)) .cs-check, .cs-match-row.has-vals:not(:has(.cs-match-vals.aside)) .cs-match-sum { margin-top: 2px; }
-.cs-match-vals.aside { margin-top: 0; flex: none; }
-.cs-match-vals { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 6px; cursor: default; }
-.cs-match-val { display: flex; align-items: center; gap: 8px; }
-.cs-match-valname { font: 11px var(--noct-font-mono); color: var(--noct-text-dim); text-transform: uppercase; letter-spacing: .08em; white-space: nowrap; }
-.cs-sel.match-val { width: auto; min-width: 96px; max-width: 220px; padding-right: 26px; }
+.cs-match-vals { display: flex; gap: 6px; flex: none; cursor: default; }
+.cs-match-val { display: flex; align-items: center; }
+.cs-match-row .cs-match-hint { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cs-match-row .cs-match-label { white-space: nowrap; }
+.cs-match-vals.multi .cs-sel.match-val { min-width: 72px; max-width: 104px; }
+.cs-sel.match-val { width: auto; min-width: 88px; max-width: 200px; padding-right: 26px; }
 .cs-sel.match-val.mine { border-color: var(--noct-primary); color: var(--noct-primary); }  /* valor escolhido pela pessoa, não o calculado */
 .cs-match-row:not(.on) .cs-match-vals { opacity: .4; }
 .cs-match-row:not(.on) .cs-match-vals { pointer-events: none; }
 .cs-match-sum { font: 11px var(--noct-font-mono); color: var(--noct-text-dim); text-transform: uppercase; letter-spacing: .08em; white-space: nowrap; }
 .cs-match-row.on .cs-match-sum { color: var(--noct-primary); }
-.cs-match-info { max-width: 1180px; margin: 18px auto 0; width: 100%; box-sizing: border-box; padding: 10px 14px; border: 1px solid var(--noct-border); color: var(--noct-text-muted); font-size: 12px; line-height: 1.5; }
-.cs-match-info.warn { display: flex; align-items: center; gap: 14px; border-color: var(--noct-pending); color: var(--noct-text); }
-.cs-match-info.warn > span { flex: 1; }
-.cs-match-info.warn .btn { flex: none; }
+.cs-match-info { width: 100%; box-sizing: border-box; padding: 10px 14px; border: 1px solid var(--noct-border); color: var(--noct-text-muted); font-size: 12px; line-height: 1.5; display: flex; align-items: center; gap: 14px; }
+.cs-match-info > span { flex: 1; }
+.cs-match-info .btn { flex: none; }
+.cs-match-info.warn { border-color: var(--noct-pending); color: var(--noct-text); }
+.cs-match-coltitle.cs-match-models { margin-top: 14px; }
 /* Passo 2 */
 .cs-match-body.progress { display: flex; align-items: center; justify-content: center; }
 .cs-match-progress { width: min(520px, 90%); display: flex; flex-direction: column; gap: 12px; text-align: center; }

@@ -1199,8 +1199,9 @@ projeto num HD externo.
       ISO, White balance, Picture Style, Format, Aspect ratio. "Measure in the test shot…": Brightness, Color,
       Use the gray card. Desmarcar um item muda "n of 8 settings selected"; as escolhas ficam guardadas para a
       próxima vez. "Take the test shot →" segue; "Cancel" fecha.
-- [ ] Passo 1, valores: cada item de "Set the same value…" já mostra o valor que o app poria em todas (lista à
-      direita; na linha Shutter/aperture/exp. comp., três listas embaixo do título) e o porquê no texto cinza
+- [ ] Passo 1, valores: cada item de "Set the same value…" é uma linha só, sem rolagem: título e explicação à
+      esquerda, a lista com o valor que o app poria em todas à direita (na linha Shutter/aperture/exp. comp.,
+      três listas lado a lado) e o porquê no texto cinza
       ("Closest to the average of the cameras", "The most common style; Auto is never used", "The value of 1 camera
       that cannot change it (…)", "Already the same on every camera"). White balance começa em "Let the test shot
       choose". Trocar um valor na lista: a borda fica verde e o texto diz "Shutter: your choice"; clicar na lista
@@ -1223,10 +1224,12 @@ projeto num HD externo.
 - [ ] Sair no meio: no passo 2 ou 3, Esc, clicar fora da janela ou "Done" perguntam antes ("Leave Match
       automatically?" com "Keep matching" / "Leave and cancel"; "Leave without applying?" com "Stay" / "Leave
       without applying"). No passo 1, Esc fecha direto.
-- [ ] Passo 1 com modelos misturados sem calibração da cartela (ex.: SL3 + T7): caixa âmbar embaixo da lista,
-      "EOS Rebel SL3 and EOS Rebel T7 have not been calibrated with the chart…", com o botão "Calibrate with
-      chart", que fecha a janela Match e abre a explicação da calibração. Com um modelo só, ou já calibrados,
-      a caixa não aparece. O botão "Calibrate with chart" do rodapé do Camera settings continua.
+- [ ] Passo 1 com modelos misturados (ex.: SL3 + T7): bloco "Camera models" na coluna da direita, abaixo de
+      "Use the gray card". Sem calibração da cartela: caixa âmbar "EOS Rebel SL3 and EOS Rebel T7 have not been
+      calibrated with the chart…" com o botão "Calibrate with chart", que fecha a janela Match e abre a
+      explicação da calibração. Já calibrados: linha "… are calibrated with the chart: Match automatically uses
+      it…" com o botão "Recalibrate". Com um modelo só, o bloco não aparece. O botão "Calibrate with chart" do
+      rodapé do Camera settings continua.
 - [ ] Passo 3, Split: dois cliques na prévia devolvem a cortina ao centro.
 - [ ] "Use the gray card" começa desmarcado toda vez que a janela abre (as outras escolhas ficam lembradas).
 - [ ] Com o cartão: na conferência do cartão há "Skip the gray card" ao lado de "Continue"; ele segue o Match

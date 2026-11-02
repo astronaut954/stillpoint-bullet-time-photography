@@ -5599,7 +5599,7 @@
   function csMatchRenderChoose() {
     csMatchSetStep(1);
     $("csMatchBody").className = "cs-match-body choose";
-    $("csMatchSub").textContent = "Choose what the app may change. Nothing changes on the cameras before you review the result.";
+    $("csMatchSub").textContent = "Choose what the app may change. The test shot fires every camera (the photos are not kept: up to 5 until the cameras agree, plus one with the result); nothing changes on the cameras before you review it in step 3.";
     const c = csMatchChoices();
     const body = $("csMatchBody");
     body.innerHTML = "";
@@ -5624,7 +5624,7 @@
         keys.forEach(([key, title]) => {
           const p = csMatchPropose(key);
           const pair = el("label", "cs-match-val");
-          if (keys.length > 1) pair.appendChild(el("span", "cs-match-valname", title));
+          pair.title = title;
           if (!p) { pair.appendChild(csText("—", "na", "Not changeable from the app on at least two cameras")); vals.appendChild(pair); return; }
           const chosen = matchWin.targets[key] !== undefined && p.options.some(([x, , d]) => x === matchWin.targets[key] && !d) ? matchWin.targets[key] : p.value;
           const sel = csSelect(p.options, chosen, (v) => { matchWin.targets[key] = v; csMatchRenderChoose(); }, "match-val" + (chosen !== p.value ? " mine" : ""));
@@ -5635,9 +5635,8 @@
           else if (p.note && !notes.includes(p.note)) notes.push(p.note);
         });
         if (notes.length) hintEl.textContent = notes.join(" · ");
-        // Um valor só: a lista fica à direita, no lugar do "Set"; vários (exposição): embaixo do título
-        if (keys.length === 1) { vals.classList.add("aside"); row.append(box, name, vals); return row; }
-        name.appendChild(vals);
+        // Layout G (decisão do dono, 2026-11-02): uma linha por item, as listas à direita no lugar do "Set"
+        vals.classList.add("aside"); if (keys.length > 1) vals.classList.add("multi"); row.append(box, name, vals); return row;
       }
       row.append(box, name, el("span", "cs-match-sum", sum));
       return row;
@@ -5646,24 +5645,26 @@
       (kind === "set" ? left : right).appendChild(item(!!c[key], label, hint, kind === "set" ? "Set" : "Measured", (v) => { c[key] = v; csMatchSaveChoices(); csMatchCount(); }, kind === "set" ? MATCH_SET_KEYS[key] : null));
     });
     right.appendChild(item(!!c.grayCard, "Use the gray card", "the app measures only the card; you check where it is after the first photo", "Option", (v) => { c.grayCard = v; csMatchSaveChoices(); }));
-    body.appendChild(grid);
-    // Modelos misturados sem a calibração da cartela (decisão do dono, 2026-11-02, opção A): avisa aqui e
-    // oferece o Calibrate with chart; o botão do rodapé continua para refazer
+    // Modelos misturados (decisão do dono, 2026-11-02, opção A): bloco "Camera models" na coluna da direita.
+    // Sem calibração da cartela: aviso âmbar com "Calibrate with chart"; calibrados: uma linha com "Recalibrate".
+    // O botão do rodapé do Camera settings continua.
     {
       const styleCams = camSettings.filter((c) => c.adjustable && c.styleDetail && cameras.some((x) => x.name === c.camera && x.connected));
       const models = [...new Set(styleCams.map((c) => c.model))];
       const missing = models.filter((m) => !styleCams.some((c) => c.model === m && c.chart));
-      if (models.length > 1 && missing.length) {
-        const warn = el("div", "cs-match-info warn");
-        const text = el("span", "", (missing.length === models.length ? models : missing).map(shortModel).join(" and ")
-          + (missing.length === 1 ? " has" : " have") + " not been calibrated with the chart. Without it, Contrast, Saturation and Color tone only get the same value on every camera, and different models may still look a little different. It is done once per camera model.");
-        const b = el("button", "btn btn-secondary btn-small", "Calibrate with chart"); b.type = "button";
+      if (models.length > 1) {
+        right.appendChild(el("div", "cs-match-coltitle cs-match-models", "Camera models"));
+        const warn = el("div", "cs-match-info" + (missing.length ? " warn" : " done"));
+        const b = el("button", "btn btn-secondary btn-small", missing.length ? "Calibrate with chart" : "Recalibrate"); b.type = "button";
         b.addEventListener("click", () => { csMatchClose(); csChartIntro(); });
+        const text = el("span", "", missing.length
+          ? (missing.length === models.length ? models : missing).map(shortModel).join(" and ") + (missing.length === 1 ? " has" : " have") + " not been calibrated with the chart. Without it, Contrast, Saturation and Color tone only get the same value on every camera, and different models may still look a little different. It is done once per camera model."
+          : models.map(shortModel).join(" and ") + " are calibrated with the chart: Match automatically uses it for Contrast, Saturation and Color tone.");
         warn.append(text, b);
-        body.appendChild(warn);
+        right.appendChild(warn);
       }
     }
-    body.appendChild(el("div", "cs-match-info", "The test shot fires every camera; the photos are not kept. Up to 5 photos until the cameras agree, plus one with the result. Nothing changes on the cameras before you review it in step 3."));
+    body.appendChild(grid);
     csMatchCount();
   }
   function csMatchCount() {

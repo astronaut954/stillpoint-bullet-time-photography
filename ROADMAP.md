@@ -680,8 +680,11 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      O valor trocado pela pessoa vai ao núcleo (`autoMatch`, 4.º argumento "tv=93 kelvin=5200") e vale
      para todas as câmeras que o aceitam. As trocas não ficam guardadas: cada abertura recalcula.
    - **Cartela no Match (decisão do dono, 2026-11-02, opção A):** o Calibrate with chart continua um preparo
-     separado (uma vez por modelo), mas o passo 1 do Match avisa quando há modelos misturados sem calibração e
-     oferece o botão "Calibrate with chart" ali. "Use the gray card" começa desligado a cada abertura; na
+     separado (uma vez por modelo; botão do rodapé fica), mas o passo 1 do Match tem o bloco "Camera models":
+     sem calibração, aviso âmbar com "Calibrate with chart"; calibrados, uma linha com "Recalibrate".
+   - **Passo 1 sem rolagem (decisão do dono, 2026-11-02, protótipo G):** uma linha por item, título e
+     explicação à esquerda e a lista de valor à direita (exposição: três listas lado a lado); o texto sobre a
+     foto de teste foi para o subtítulo. "Use the gray card" começa desligado a cada abertura; na
      conferência do cartão há "Skip the gray card" (segue medindo a foto inteira).
    - **Aspect ratio no Match:** iguala as que aceitam mudar às que não aceitam ("fixed"); o Test shot mede
      a proporção real de cada foto e marca em amarelo a que saiu diferente do informado.
