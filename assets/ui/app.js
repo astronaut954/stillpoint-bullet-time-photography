@@ -5691,7 +5691,8 @@
         right.appendChild(el("div", "cs-match-coltitle cs-match-models", "Camera models"));
         const warn = el("div", "cs-match-info" + (missing.length ? " warn" : " done"));
         const b = el("button", "btn btn-secondary btn-small", missing.length ? "Calibrate with chart" : "Recalibrate"); b.type = "button";
-        b.addEventListener("click", () => { csMatchClose(); matchWin.returnAfterChart = true; csChartIntro(csMatchReturn); });
+        // A janela Match fica atrás da explicação; só sai quando a calibração começa (Start) e volta no fim
+        b.addEventListener("click", () => { matchWin.returnAfterChart = true; csChartIntro(() => { matchWin.returnAfterChart = false; }); });
         const text = el("span", "", missing.length
           ? (missing.length === models.length ? models : missing).map(shortModel).join(" and ") + (missing.length === 1 ? " has" : " have") + " not been calibrated with the chart. Without it, Contrast, Saturation and Color tone only get the same value on every camera, and different models may still look a little different. It is done once per camera model."
           : models.map(shortModel).join(" and ") + " are calibrated with the chart: Match automatically uses it for Contrast, Saturation and Color tone.");
@@ -6251,6 +6252,7 @@
   function csChartStart() {
     const connected = cameras.filter((c) => c.connected).length;
     if (busy || !connected || csTest.capturing) return;
+    if (matchWin.returnAfterChart) csMatchClose();  // veio do Match: a janela sai durante a calibração e volta no fim
     csTest.capturing = true;
     csTest.cancelling = false;
     csTest.has = false;
