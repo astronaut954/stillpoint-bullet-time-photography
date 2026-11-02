@@ -1239,11 +1239,11 @@ projeto num HD externo.
       settings atrás). No passo 3 a lista de câmeras é um ponto só do Tab (a linha atual) e as miniaturas
       ficam fora dele; na linha, ↑ ↓ trocam de câmera e Espaço marca/desmarca; ← → trocam de câmera em
       qualquer lugar da janela.
-- [ ] Depois de "Keep current settings" ou "Apply", a fileira "Test shot · matched" no Camera settings rola
+- [ ] Depois de "Discard changes" ou "Apply", a fileira "Test shot · matched" no Camera settings rola
       dentro da janela (com 9 câmeras não vaza pela direita) e mostra "Hide photos".
 - [ ] Na tabela do Camera settings atrás da janela, nada mudou (as câmeras voltaram ao "antes").
 - [ ] Desmarcar uma câmera muda "Apply to n cameras"; "Apply" muda só as marcadas; a janela fecha; um Cmd+Z
-      volta todas; Cmd+Shift+Z refaz. "Keep current settings" fecha sem mudar nada. "← Back" volta ao passo 1.
+      volta todas; Cmd+Shift+Z refaz. "Discard changes" fecha sem mudar nada. "← Back" volta ao passo 1.
 - [ ] Com câmeras simuladas (`STILLPOINT_FAKE_CAMERAS=9`): as câmeras 2 e 4 (16:9) aparecem com "16:9 → 3:2"
       e a 6 (fixa) não muda de proporção.
 - [ ] Esc fecha a janela (no passo 2, cancela o teste antes).

@@ -5928,7 +5928,7 @@
       dialog("Leave Match automatically?", "The test shot is still running. Leaving cancels it and the cameras stay as they were.",
         [{ label: "Keep matching" }, { label: "Leave and cancel", primary: true, onClick: then }]);
     else if (matchWin.step === 3)
-      dialog("Leave without applying?", "The result has not been applied to the cameras yet. You can still apply it, or keep the current settings.",
+      dialog("Leave without applying?", "The result has not been applied to the cameras yet. You can still apply it, or discard the changes.",
         [{ label: "Stay" }, { label: "Leave without applying", primary: true, onClick: then }]);
     else then();
   }
