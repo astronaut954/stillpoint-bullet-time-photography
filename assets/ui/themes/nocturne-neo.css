@@ -1480,6 +1480,18 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .cs-review-thumb.ratio-warn, .cs-review-mini.ratio-warn { border-color: var(--noct-pending); border-style: dashed; }
 .cs-sel.shot-warn { border-style: dashed; border-color: var(--noct-pending); }
 .cs-val.shot-ratio { margin-left: 4px; color: var(--noct-pending); font: 10px var(--noct-font-mono); }
+.cs-ratio-alert { display: inline-flex; align-items: center; margin-left: 4px; color: var(--noct-pending); vertical-align: middle; cursor: help; }
+.cs-ratio-alert:focus-visible { outline: 1px dashed var(--noct-pending); outline-offset: 2px; }
+/* Fileira do Test shot: a foto que saiu diferente da informada só muda a cor da seleção (âmbar tracejada) */
+.cs-test .frame.ratio-warn.selected { border-color: var(--noct-pending); border-style: dashed; box-shadow: 0 0 16px rgba(var(--noct-pending-rgb), .25); }
+.cs-test .frame.ratio-warn.selected .frame-badge { background: var(--noct-pending); border-color: var(--noct-pending); color: var(--noct-on-primary); }
+/* Explicação instantânea (data-itip) */
+.itip {
+  position: fixed; z-index: 96; pointer-events: none; max-width: 300px;
+  padding: 8px 10px; background: var(--noct-surface); border: 1px solid var(--noct-pending);
+  color: var(--noct-text); font: 11px/1.45 var(--noct-font-mono);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .5);
+}
 .cs-review-thumb { display: block; width: 48px; height: 32px; background: var(--noct-surface-inner) center / cover no-repeat; border: 1px solid var(--noct-border); }
 .cs-review-thumb.changed { border-color: var(--noct-primary); }
 .cs-review-tnote { margin-top: auto; padding: 10px 12px; color: var(--noct-text-dim); font-size: 12px; line-height: 1.5; border-top: 1px solid var(--noct-border); }
@@ -1526,4 +1538,7 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .cs-review-mini { position: relative; height: 40px; min-width: 0; padding: 0; border: 1px solid var(--noct-border); background: var(--noct-surface-inner) center / cover no-repeat; cursor: pointer; }
 .cs-review-mini.changed { border-color: var(--noct-primary); }
 .cs-review-mini.current { outline: 2px solid var(--noct-primary); outline-offset: 1px; }
+/* Foto numa proporção diferente da informada: borda e seleção âmbar tracejadas (vale sobre .changed e .current) */
+.cs-review-mini.ratio-warn, .cs-review-mini.changed.ratio-warn { border-color: var(--noct-pending); border-style: dashed; }
+.cs-review-mini.current.ratio-warn { outline: 2px dashed var(--noct-pending); }
 .cs-review-minilabel { position: absolute; left: 4px; top: 4px; padding: 0 4px; background: #000; color: var(--noct-text); font: 700 9px var(--noct-font-mono); }

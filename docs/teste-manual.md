@@ -1260,10 +1260,14 @@ projeto num HD externo.
       nas etiquetas; decisão do dono, 2026-11-02). A câmera simulada 02 entrega sempre 16:9, o que for que esteja
       marcado, de propósito (etiqueta âmbar "always 16:9" ao lado do nome dela na tabela, com a explicação
       ao passar o mouse): no passo 3 do Match, a linha 02 ganha a etiqueta amarela tracejada "Shot 16:9 ·
-      camera reports 3:2", a miniatura da linha e a da fileira de baixo ficam com borda amarela tracejada, e
-      o Activity diz "Aspect ratio: T7_1 shot 16:9 but reports 3:2". Depois de Apply (ou Discard), na tabela
-      do Camera settings a célula Ratio da 02 fica tracejada âmbar com "16:9" ao lado e a explicação ao passar
-      o mouse. As outras câmeras não ganham marca.
+      camera reports 3:2", a miniatura da linha e a da fileira de baixo ficam com borda âmbar tracejada (não
+      verde, mesmo com mudanças), e ao chegar na 02 com ← → o contorno de seleção da miniatura de baixo também
+      fica âmbar tracejado; o Activity diz "Aspect ratio: T7_1 shot 16:9 but reports 3:2". Depois de Apply (ou
+      Discard), na tabela do Camera settings a célula Ratio da 02 fica tracejada âmbar com "16:9" e um ícone
+      de alerta (triângulo) ao lado: passar o mouse no ícone abre na hora uma caixa âmbar com a explicação
+      (sem a espera da legenda do sistema; Tab até o ícone também abre). Na fileira do Test shot (em cima),
+      selecionar a 02 (clique ou ← →) deixa a borda e a etiqueta da miniatura em âmbar tracejado em vez de
+      verde; sem seleção ela fica igual às outras. As outras câmeras não ganham marca.
 - [ ] Esc fecha a janela (no passo 2, cancela o teste antes).
 
 ## Resultado

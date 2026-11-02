@@ -565,7 +565,11 @@
     }
 
     function markSelected(scroll) {
-      [...el.carousel.children].forEach((li, i) => { li.classList.toggle("selected", i === index); li.classList.toggle("multi", multi.size > 1 && multi.has(i)); });
+      [...el.carousel.children].forEach((li, i) => {
+        li.classList.toggle("selected", i === index); li.classList.toggle("multi", multi.size > 1 && multi.has(i));
+        // Foto que saiu numa proporção diferente da informada: a seleção fica âmbar tracejada (a etiqueta continua só o número)
+        if (opts.warnItem) li.classList.toggle("ratio-warn", !!opts.warnItem(items[i]));
+      });
       const active = el.carousel.children[index];
       if (scroll && active) active.scrollIntoView({ block: "nearest", inline: "nearest" });
     }
@@ -807,6 +811,7 @@
         render();
       },
       setHead(title, sub) { el.title.textContent = title || ""; el.sub.textContent = sub || ""; },
+      refreshMarks() { markSelected(false); },  // (a proporção medida chegou depois das fotos)
       setActions(nodes) { el.actions.innerHTML = ""; nodes.forEach((n) => el.actions.appendChild(n)); },
       // Botões sobre a foto grande (canto superior direito)
       setStageTools(nodes) {
@@ -1772,6 +1777,32 @@
   sideAside.addEventListener("pointerout", (e) => { if (railTipOn && !(e.relatedTarget && railTipOn.contains(e.relatedTarget))) hideRailTip(); });
   sideAside.addEventListener("pointerdown", hideRailTip);
   sideAside.addEventListener("scroll", hideRailTip);
+  // Explicação instantânea ([data-itip]): uma caixa no visual do app, embaixo do elemento, sem a espera da
+  // legenda do sistema. Usada no ícone de alerta da proporção (Camera settings).
+  const itip = el("div", "itip hidden");
+  document.body.appendChild(itip);
+  let itipOn = null;
+  function hideItip() { itip.classList.add("hidden"); itipOn = null; }
+  function showItip(t) {
+    if (!t || t === itipOn) return;
+    itipOn = t;
+    itip.textContent = t.dataset.itip;
+    itip.classList.remove("hidden");
+    const r = t.getBoundingClientRect();
+    const w = itip.offsetWidth, h = itip.offsetHeight;
+    let left = r.left + r.width / 2 - w / 2;
+    left = Math.max(8, Math.min(left, window.innerWidth - w - 8));
+    let top = r.bottom + 8;
+    if (top + h > window.innerHeight - 8) top = r.top - h - 8;
+    itip.style.left = left + "px";
+    itip.style.top = top + "px";
+  }
+  document.addEventListener("pointerover", (e) => { if (e.pointerType !== "touch") showItip(e.target.closest("[data-itip]")); });
+  document.addEventListener("pointerout", (e) => { if (itipOn && !(e.relatedTarget && itipOn.contains(e.relatedTarget))) hideItip(); });
+  document.addEventListener("focusin", (e) => showItip(e.target.closest("[data-itip]")));
+  document.addEventListener("focusout", hideItip);
+  document.addEventListener("pointerdown", hideItip, true);
+  document.addEventListener("scroll", hideItip, true);
   // Teclas de seleção apertadas: o botão "Add to project" não reage ao ponteiro (o clique só marca)
   const modKeys = (e) => document.body.classList.toggle("mod-keys", e.metaKey || e.ctrlKey || e.shiftKey);
   document.addEventListener("keydown", modKeys, true);
@@ -1992,6 +2023,8 @@
   const csGallery = Gallery($("csGallery"), {
     draggable: false,
     fitThumbs: true,
+    // Foto que saiu numa proporção diferente da que a câmera informa (medida pelo Match): seleção âmbar tracejada
+    warnItem: (item) => !!(csTest.ratios[item.name] && csTest.ratios[item.name].differs),
     load: (item, size) => orderPhoto(item.session, item.file, size),
   });
   // Só a fileira de miniaturas (maiores); clicar numa abre a foto grande por cima da
@@ -5077,8 +5110,15 @@
     const ratio = k === "aspect" && csTest.ratios[c.camera];
     if (ratio && ratio.differs && ratio.reported === currentLabel) {
       sel.classList.add("shot-warn");
-      sel.title = "The last test shot came out " + ratio.shot + ", but the camera reports " + ratio.reported + ". Check the camera menu.";
-      td.appendChild(csText(ratio.shot, "shot-ratio", sel.title));
+      const why = "The last test shot from this camera came out " + ratio.shot + ", but the camera reports " + ratio.reported + ". The app sets what the camera accepts over USB; a setting in the camera menu may still change the shape of the photo. Check the aspect ratio in the camera menu, then take a new test shot.";
+      sel.title = why;
+      td.appendChild(csText(ratio.shot, "shot-ratio", ""));
+      const alert = el("span", "cs-ratio-alert");
+      alert.innerHTML = "<svg width='14' height='14' viewBox='0 0 16 16' aria-hidden='true'><path d='M8 1.5 15 14H1z' fill='none' stroke='currentColor' stroke-width='1.5' stroke-linejoin='round'/><path d='M8 6v4' stroke='currentColor' stroke-width='1.6' stroke-linecap='round'/><circle cx='8' cy='12' r='.9' fill='currentColor'/></svg>";
+      alert.setAttribute("role", "img"); alert.setAttribute("aria-label", why);
+      alert.dataset.itip = why;
+      alert.tabIndex = 0;
+      td.appendChild(alert);
     }
     return td;
   }
@@ -5763,6 +5803,7 @@
     // Proporção real de cada foto contra a informada (Parte 2 da Proporção): fica para a tabela do Camera settings
     csTest.ratios = {};
     (e.ratios || []).forEach((r) => { csTest.ratios[r.camera] = r; });
+    csGallery.refreshMarks();
     const wrong = (e.ratios || []).filter((r) => r.differs);
     if (wrong.length) log("Aspect ratio: " + wrong.map((r) => r.camera + " shot " + r.shot + " but reports " + r.reported).join(" · "), "warn");
     matchWin.picked = new Set(changes.map((c) => c.camera));
