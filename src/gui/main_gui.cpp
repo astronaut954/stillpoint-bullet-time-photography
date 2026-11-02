@@ -2749,12 +2749,29 @@ namespace
             // 1 exposição (tv/av/exp. comp.), 2 ISO, 4 brilho, 8 balanço de branco, 16 cor, 32 Picture Style,
             // 64 formato, 128 proporção, 256 revisão (as câmeras voltam ao "antes"; o app aplica depois)
             const int flags = values.size() > 2 ? values[2] : 0xFF;
+            // Quarto valor (texto): os valores escolhidos no passo 1, "tv=93 av=40 kelvin=5200" (ver csMatchTargets no app)
+            std::map<std::string, long long> targets;
+            {
+                const auto strings = ParseStringArgs(request);
+                if (!strings.empty())
+                {
+                    std::istringstream in(strings[0]);
+                    std::string pair;
+                    while (in >> pair)
+                    {
+                        const size_t eq = pair.find('=');
+                        if (eq == std::string::npos)
+                            continue;
+                        try { targets[pair.substr(0, eq)] = std::stoll(pair.substr(eq + 1)); } catch (...) {}
+                    }
+                }
+            }
             SequenceSettings settings;
             settings.countdownSeconds = 0;
             settings.sessionCount = 1;
             settings.downloadWaitSeconds = values.empty() ? 10 : std::max(1, values[0]);
             settings.playSounds = false;
-            run("orderPhotos", [&, settings, grayCard, flags]
+            run("orderPhotos", [&, settings, grayCard, flags, targets]
             {
                 if (cameraConnecting())
                     return;
@@ -2863,6 +2880,7 @@ namespace
                 options.format = flags & 64;
                 options.aspect = flags & 128;
                 options.review = flags & 256;
+                options.targets = targets;
                 const AutoMatch::Result result = AutoMatch::Run(controller, shoot, CalibrationFile(), [&] { return testCancel.load(); }, options,
                                                                 debug.Active() ? std::function<void(const std::string&)>(trace) : nullptr);
                 if (debug.Active())

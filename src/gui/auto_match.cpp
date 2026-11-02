@@ -299,6 +299,29 @@ namespace
         Settle();
     }
 
+    // Valor escolhido pela pessoa no passo 1: vai para todas as câmeras que aceitam mudar e o têm
+    // na lista (as outras ganham um aviso). true: havia escolha; o cálculo automático não roda.
+    bool UnifyChosen(CameraFleet& controller, const std::vector<std::string>& names, const std::string& key,
+                     const char* what, const std::map<std::string, long long>& targets, std::vector<std::string>& notes)
+    {
+        const auto t = targets.find(key);
+        if (t == targets.end())
+            return false;
+        for (const auto& n : names)
+            if (const CameraContext* ctx = Find(controller, n))
+            {
+                const CameraSettings s = controller.ReadSettings(*ctx);
+                const CameraSetting* c = Get(s, key);
+                if (!c || c->choices.empty() || c->value == t->second)
+                    continue;
+                if (Accepts(*c, t->second))
+                    Write(controller, n, key, t->second, notes);
+                else
+                    notes.push_back(n + ": does not offer the chosen " + what + ".");
+            }
+        return true;
+    }
+
     // Uma configuração da mesma escala de luz em todas: o valor mais perto da média que
     // todas aceitam (sem valor em comum: o mais perto em cada uma)
     void UnifyLight(CameraFleet& controller, const std::vector<std::string>& names, const std::string& key,
@@ -1047,18 +1070,21 @@ namespace AutoMatch
         result.matched = true;
 
         // 1. Mesmas configurações em todas (sem foto), conforme o que a pessoa pediu
+        // (valor escolhido no passo 1: vai direto; sem escolha, a regra de cada um)
         if (options.exposure)
-            for (const char* key : { "tv", "av", "expcomp" })
-                UnifyLight(controller, names, key, notes);
-        if (options.iso)
+            for (const auto& [key, what] : { std::pair{ "tv", "shutter speed" }, std::pair{ "av", "aperture" }, std::pair{ "expcomp", "exposure compensation" } })
+                if (!UnifyChosen(controller, names, key, what, options.targets, notes))
+                    UnifyLight(controller, names, key, notes);
+        if (options.iso && !UnifyChosen(controller, names, "iso", "ISO", options.targets, notes))
             UnifyLight(controller, names, "iso", notes);
-        if (options.format)
+        if (options.format && !UnifyChosen(controller, names, "quality", "format", options.targets, notes))
             UnifyChoice(controller, names, "quality", "format", notes);
-        if (options.aspect)
+        if (options.aspect && !UnifyChosen(controller, names, "aspect", "aspect ratio", options.targets, notes))
             UnifyChoice(controller, names, "aspect", "aspect ratio", notes);
         if (options.style)
         {
-            UnifyStyle(controller, names, notes);
+            if (!UnifyChosen(controller, names, "style", "Picture Style", options.targets, notes))
+                UnifyStyle(controller, names, notes);
             Settle();
             UnifyStyleDetails(controller, names, notes,  // depois do estilo: cada estilo tem os seus
                               options.chartFile.empty() ? std::map<std::string, ChartOffsets>{} : LoadChartCalibration(options.chartFile));
@@ -1087,7 +1113,12 @@ namespace AutoMatch
         }
         // Com o cartão cinza o alvo é o cinza neutro, que pode estar longe do balanço atual
         // (o ajuste fino só alcança um pouco): procura o balanço comum mesmo se já é igual
-        const bool commonWb = options.whiteBalance && (!sameFixed || options.grayCard) && !wbCams.empty();
+        // Balanço escolhido no passo 1 (predefinido ou Kelvin): vai para todas em vez do Daylight e
+        // a foto não troca por outro; só o ajuste fino corre depois
+        const auto wbChosen = options.targets.find("wb");
+        const auto kelvinChosen = options.targets.find("kelvin");
+        const bool chosenWb = wbChosen != options.targets.end() || kelvinChosen != options.targets.end();
+        const bool commonWb = options.whiteBalance && (!sameFixed || options.grayCard || chosenWb) && !wbCams.empty();
         if (options.whiteBalance && !sameFixed && wbCams.empty())
             notes.push_back("The white balance cannot be changed from the app on these cameras. Set the same white balance on each camera.");
 
@@ -1212,7 +1243,10 @@ namespace AutoMatch
         {
             for (const auto& name : wbCams)
             {
-                Write(controller, name, "wb", kWbDaylight, notes);
+                if (kelvinChosen != options.targets.end())
+                    Write(controller, name, "kelvin", kelvinChosen->second, notes);
+                else
+                    Write(controller, name, "wb", wbChosen != options.targets.end() ? wbChosen->second : kWbDaylight, notes);
                 const CameraContext* ctx = Find(controller, name);
                 if (ctx && controller.ReadSettings(*ctx).shiftAvailable)
                 {
@@ -1221,7 +1255,7 @@ namespace AutoMatch
                 }
             }
             Settle();
-            if (!take("Finding a common white balance"))
+            if (!take(chosenWb ? "Setting the chosen white balance" : "Finding a common white balance"))
                 return stopped();
         }
 
@@ -1292,7 +1326,7 @@ namespace AutoMatch
             if (saved)
                 SaveCalibration(calibrationFile, calibrations);
         }
-        if (commonWb)
+        if (commonWb && !chosenWb)
         {
             ChooseCommonWb(controller, cams, wbCams, target, notes);
             Settle();

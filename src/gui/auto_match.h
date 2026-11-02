@@ -82,6 +82,10 @@ namespace AutoMatch
         // Revisão: no fim, uma foto a mais com o resultado, as câmeras voltam ao "antes" e cada
         // Change traz os valores para aplicar depois (o app pergunta antes de aplicar)
         bool review = false;
+        // Valores escolhidos no passo 1 (chave → código da Canon): tv, av, expcomp, iso, style, quality,
+        // aspect, wb; "kelvin" com a temperatura. Com valor, o app põe esse em todas as câmeras que o
+        // aceitam em vez de calcular; "wb" ou "kelvin" fixa o balanço (a foto só faz o ajuste fino).
+        std::map<std::string, long long> targets;
         // Calibração com a cartela (LoadChartCalibration): com modelos misturados, cada modelo
         // recebe o Contrast/Saturation/Color tone que o deixa parecido com os outros
         std::filesystem::path chartFile;

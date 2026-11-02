@@ -1199,6 +1199,13 @@ projeto num HD externo.
       ISO, White balance, Picture Style, Format, Aspect ratio. "Measure in the test shot…": Brightness, Color,
       Use the gray card. Desmarcar um item muda "n of 8 settings selected"; as escolhas ficam guardadas para a
       próxima vez. "Take the test shot →" segue; "Cancel" fecha.
+- [ ] Passo 1, valores: cada item de "Set the same value…" já mostra o valor que o app poria em todas (lista à
+      direita; na linha Shutter/aperture/exp. comp., três listas embaixo do título) e o porquê no texto cinza
+      ("Closest to the average of the cameras", "The most common style; Auto is never used", "The value of 1 camera
+      that cannot change it (…)", "Already the same on every camera"). White balance começa em "Let the test shot
+      choose". Trocar um valor na lista: a borda fica verde e o texto diz "Shutter: your choice"; clicar na lista
+      não desmarca o item; desmarcar o item apaga a lista. No passo 3, o "depois" das câmeras é o valor escolhido.
+      Fechar e abrir a janela volta aos valores calculados.
 - [ ] Passo 2, "Test shot": barra de progresso e "Photo n of up to m" com a etapa; o botão vira "Cancel the test
       shot". (Os avisos de ISO Auto e Metering differ aparecem por cima, como antes.) Com o cartão cinza, a
       conferência do cartão aparece por cima da janela.

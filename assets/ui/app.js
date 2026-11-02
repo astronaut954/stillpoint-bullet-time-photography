@@ -5450,7 +5450,7 @@
     csGallery.setHead(match ? "Test shot · matching" : "Test shot", "");
     csGallery.message("Taking a photo with each camera");
     csTest.before = match ? csSnapshot() : null;  // para desfazer o Match automatically de uma vez
-    if (match) window.autoMatch(intValue(ui.downloadWait, 1, 10), $("csCard").checked ? 1 : 0, csMatchFlags());
+    if (match) window.autoMatch(intValue(ui.downloadWait, 1, 10), $("csCard").checked ? 1 : 0, csMatchFlags(), csMatchTargets());
     else window.takeOrderPhotos(intValue(ui.downloadWait, 1, 10));
   }
   // ----- Match automatically em três passos (decisão do dono, 2026-11-01): 1 Choose (o que igualar),
@@ -5466,7 +5466,93 @@
     ["brightness", 4, "Brightness", "ISO fine-tune, measured in the test shot", "measure"],
     ["color", 16, "Color", "WB fine-tune, measured in the test shot", "measure"],
   ];
-  const matchWin = { step: 0, choices: null, result: null, cam: null, mode: "split", split: 50, playing: 0, dir: 1, picked: new Set(), before: null };
+  const matchWin = { step: 0, choices: null, result: null, cam: null, mode: "split", split: 50, playing: 0, dir: 1, picked: new Set(), before: null, targets: {} };
+  // Valores de "Set the same value on every camera" (decisão do dono, 2026-11-02): o passo 1 já calcula o
+  // valor que o Match poria em todas, mostra e deixa trocar. A regra é a mesma do núcleo (auto_match.cpp):
+  // shutter/aperture/exp. comp./ISO: o valor mais perto da média (em stops) que todas aceitam; Picture
+  // Style: o mais comum (nunca Auto); Format e Ratio: o das câmeras que não aceitam mudar, senão o mais
+  // comum; White balance: Daylight e a foto de teste escolhe o predefinido comum mais perto, ou um fixo.
+  const MATCH_SET_KEYS = { exposure: [["tv", "Shutter"], ["av", "Aperture"], ["expcomp", "Exp. comp."]], iso: [["iso", "ISO"]],
+    wb: [["wb", "White balance"]], style: [["style", "Picture Style"]], format: [["quality", "Format"]], aspect: [["aspect", "Aspect ratio"]] };
+  // Escala de luz da Canon (8 = 1 stop); null: sem valor fixo (ISO Auto, Bulb...)
+  function csLightUnits(key, code) {
+    if (key === "iso") return code === 0 ? null : code;
+    if (key === "tv") return code < 0x10 ? null : code;
+    if (key === "av") return code < 0x08 || code === 0x85 ? null : code;
+    if (key === "expcomp") return code < 0 || code > 0xFF ? null : code >= 0x80 ? code - 256 : code;
+    return null;
+  }
+  // Proposta para uma configuração: { options: [[valor, rótulo]], value, note } ou null (nada a igualar)
+  function csMatchPropose(key) {
+    const cams = camSettings.filter((c) => c.adjustable && c.settings[key] && c.settings[key].available);
+    const can = cams.filter((c) => c.settings[key].choices.length);
+    if (can.length < 2 && !(key === "quality" || key === "aspect")) return null;
+    if (!can.length) return null;
+    const accepted = (v) => can.every((c) => c.settings[key].choices.some(([x]) => x === v));
+    const label = (v) => { const ch = can.map((c) => c.settings[key].choices.find(([x]) => x === v)).find(Boolean); return ch ? (key === "iso" ? isoText(ch[1]) : ch[1]) : String(v); };
+    if (key === "wb") {
+      const options = [["auto", "Let the test shot choose"]];
+      can[0].settings.wb.choices.filter(([v]) => v !== 9 && v !== 0 && v !== 23 && accepted(v)).forEach(([v, l]) => options.push([String(v), l]));
+      if (accepted(9)) KELVINS.forEach((kv) => options.push(["k" + kv, kv + " K"]));
+      return { options, value: "auto", note: "Starts at Daylight; the test shot picks the common white balance closest to the scene" };
+    }
+    if (key === "style") {
+      const common = can[0].settings.style.choices.filter(([v]) => v !== 0x87 && accepted(v));
+      if (!common.length) return { options: [["", "No style in common", true]], value: "", note: "" };
+      const counts = new Map();
+      can.forEach((c) => { const v = c.settings.style.value; if (v !== 0x87) counts.set(v, (counts.get(v) || 0) + 1); });
+      let best = null, n = 0;
+      can.forEach((c) => { const v = c.settings.style.value; if (v !== 0x87 && counts.get(v) > n && accepted(v)) { n = counts.get(v); best = v; } });
+      if (best === null) best = accepted(0x81) ? 0x81 : common[0][0];
+      const same = can.every((c) => c.settings.style.value === can[0].settings.style.value) && can[0].settings.style.value !== 0x87;
+      return { options: common.map(([v, l]) => [String(v), l]), value: String(best), note: same ? "Already the same on every camera" : "The most common style; Auto is never used" };
+    }
+    if (key === "quality" || key === "aspect") {
+      const fixed = cams.filter((c) => !c.settings[key].choices.length);
+      const fixedValues = new Set(fixed.map((c) => c.settings[key].value));
+      let target = null, note = "";
+      if (fixed.length && fixedValues.size === 1) { target = [...fixedValues][0]; note = "The value of " + plural(fixed.length, "camera", "cameras") + " that cannot change it (" + fixed.map((c) => c.camera).join(", ") + ")"; }
+      else {
+        if (fixed.length) note = fixed.map((c) => c.camera).join(", ") + ": cannot be changed from the app and disagree. Set it in their menus.";
+        else note = "The most common value";
+        const counts = new Map();
+        cams.forEach((c) => counts.set(c.settings[key].value, (counts.get(c.settings[key].value) || 0) + 1));
+        let n = 0;
+        cams.forEach((c) => { const v = c.settings[key].value; if (counts.get(v) > n) { n = counts.get(v); target = v; } });
+      }
+      const union = [];
+      can.forEach((c) => c.settings[key].choices.forEach(([v, l]) => { if (!union.some(([x]) => x === v)) union.push([v, l]); }));
+      const options = union.map(([v, l]) => [String(v), l + (accepted(v) ? "" : " (not on every camera)")]);
+      if (target !== null && !union.some(([v]) => v === target)) options.unshift([String(target), label(target) + " (no camera can change to it)", true]);
+      if (cams.every((c) => c.settings[key].value === cams[0].settings[key].value)) note = "Already the same on every camera";
+      return { options, value: String(target), note };
+    }
+    // Escala de luz: a média do que as câmeras usam, no valor mais perto que todas aceitam
+    const common = can[0].settings[key].choices.filter(([v]) => csLightUnits(key, v) !== null && accepted(v));
+    if (!common.length) return { options: [["", "No value in common: each camera goes to its closest", true]], value: "", note: "" };
+    let sum = 0, n = 0;
+    can.forEach((c) => { const u = csLightUnits(key, c.settings[key].value); if (u !== null) { sum += u; n++; } });
+    const same = can.every((c) => c.settings[key].value === can[0].settings[key].value);
+    let best = common[0][0], err = 1e9;
+    if (n) { const avg = sum / n; common.forEach(([v]) => { const e = Math.abs(csLightUnits(key, v) - avg); if (e < err - 1e-9) { err = e; best = v; } }); }
+    return { options: common.map(([v]) => [String(v), label(v)]), value: String(best), note: same ? "Already the same on every camera" : n ? "Closest to the average of the cameras" : "" };
+  }
+  // Os valores do passo 1 para o núcleo: "tv=93 av=40 wb=1" ("kelvin=5200" para temperatura; sem wb = a foto escolhe)
+  function csMatchTargets() {
+    const c = csMatchChoices(), out = [];
+    Object.keys(MATCH_SET_KEYS).forEach((item) => {
+      if (!c[item]) return;
+      MATCH_SET_KEYS[item].forEach(([key]) => {
+        const p = csMatchPropose(key);
+        if (!p) return;
+        let v = matchWin.targets[key] !== undefined && p.options.some(([x, , d]) => x === matchWin.targets[key] && !d) ? matchWin.targets[key] : p.value;
+        if (v === "" || v === "auto") return;
+        if (key === "wb" && v.startsWith("k")) out.push("kelvin=" + v.slice(1));
+        else out.push(key + "=" + v);
+      });
+    });
+    return out.join(" ");
+  }
   function csMatchChoices() {
     if (matchWin.choices) return matchWin.choices;
     let saved = null;
@@ -5493,7 +5579,7 @@
     if (busy || csTest.capturing) return;
     const connected = cameras.filter((c) => c.connected).length;
     if (connected < 2) { toast("Match automatically needs at least two connected cameras.", 6000, { warn: true }); return; }
-    matchWin.result = null; matchWin.picked = new Set(); matchWin.before = null;
+    matchWin.result = null; matchWin.picked = new Set(); matchWin.before = null; matchWin.targets = {};  // valores: recalculados a cada abertura
     $("csMatch").classList.remove("hidden");
     $("camSettingsOverlay").querySelector(".cs-sheet").classList.add("matching");
     csMatchRenderChoose();
@@ -5515,17 +5601,44 @@
     const grid = el("div", "cs-match-grid");
     const col = (title) => { const d = el("div", "cs-match-col"); d.appendChild(el("div", "cs-match-coltitle", title)); grid.appendChild(d); return d; };
     const left = col("Set the same value on every camera"), right = col("Measure in the test shot and fine-tune each camera");
-    // Cada item como as saídas do Export sessions: caixa do app, título, explicação e o resumo à direita
-    const item = (checked, label, hint, sum, onChange) => {
-      const row = el("label", "cs-match-row" + (checked ? " on" : ""));
+    // Cada item como as saídas do Export sessions: caixa do app, título, explicação e o resumo à direita.
+    // Nos itens "Set", o valor que o app poria em todas, já calculado, numa lista para trocar.
+    const item = (checked, label, hint, sum, onChange, keys) => {
+      const row = el("div", "cs-match-row" + (checked ? " on" : "") + (keys ? " has-vals" : ""));
       const box = document.createElement("input"); box.type = "checkbox"; box.className = "cs-check"; box.checked = checked;
       box.addEventListener("change", () => { row.classList.toggle("on", box.checked); onChange(box.checked); });
-      const name = el("span", "cs-match-name"); name.append(el("b", "cs-match-label", label), el("span", "cs-match-hint", hint));
+      // A linha inteira marca/desmarca, menos as listas de valor
+      row.addEventListener("click", (e) => { if (e.target === box || (e.target.closest && e.target.closest(".cs-match-vals"))) return; box.checked = !box.checked; box.dispatchEvent(new Event("change")); });
+      const name = el("span", "cs-match-name");
+      const hintEl = el("span", "cs-match-hint", hint);
+      name.append(el("b", "cs-match-label", label), hintEl);
+      if (keys) {
+        // A explicação vira o porquê do valor ("Closest to the average…"); com mais de um valor, cada um com o nome
+        const vals = el("div", "cs-match-vals");
+        const notes = [];
+        keys.forEach(([key, title]) => {
+          const p = csMatchPropose(key);
+          const pair = el("label", "cs-match-val");
+          if (keys.length > 1) pair.appendChild(el("span", "cs-match-valname", title));
+          if (!p) { pair.appendChild(csText("—", "na", "Not changeable from the app on at least two cameras")); vals.appendChild(pair); return; }
+          const chosen = matchWin.targets[key] !== undefined && p.options.some(([x, , d]) => x === matchWin.targets[key] && !d) ? matchWin.targets[key] : p.value;
+          const sel = csSelect(p.options, chosen, (v) => { matchWin.targets[key] = v; csMatchRenderChoose(); }, "match-val" + (chosen !== p.value ? " mine" : ""));
+          sel.title = chosen !== p.value ? "Your choice (the app would pick " + (p.options.find(([x]) => x === p.value) || ["", "—"])[1] + ")" : p.note;
+          pair.appendChild(sel);
+          vals.appendChild(pair);
+          if (chosen !== p.value) notes.push(title + ": your choice");
+          else if (p.note && !notes.includes(p.note)) notes.push(p.note);
+        });
+        if (notes.length) hintEl.textContent = notes.join(" · ");
+        // Um valor só: a lista fica à direita, no lugar do "Set"; vários (exposição): embaixo do título
+        if (keys.length === 1) { vals.classList.add("aside"); row.append(box, name, vals); return row; }
+        name.appendChild(vals);
+      }
       row.append(box, name, el("span", "cs-match-sum", sum));
       return row;
     };
     MATCH_ITEMS.forEach(([key, , label, hint, kind]) => {
-      (kind === "set" ? left : right).appendChild(item(!!c[key], label, hint, kind === "set" ? "Set" : "Measured", (v) => { c[key] = v; csMatchSaveChoices(); csMatchCount(); }));
+      (kind === "set" ? left : right).appendChild(item(!!c[key], label, hint, kind === "set" ? "Set" : "Measured", (v) => { c[key] = v; csMatchSaveChoices(); csMatchCount(); }, kind === "set" ? MATCH_SET_KEYS[key] : null));
     });
     right.appendChild(item(!!c.grayCard, "Use the gray card", "the app measures only the card; you check where it is after the first photo", "Option", (v) => { c.grayCard = v; csMatchSaveChoices(); }));
     body.appendChild(grid);

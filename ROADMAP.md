@@ -671,6 +671,14 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      ao lado a comparação de fotos: Split/Side by side/Flip, play com velocidade e Reverse loop,
      fileiras de miniaturas antes/depois). Só o "Apply to n cameras" mexe nas câmeras; um ⌘Z desfaz tudo.
      Para o "depois" existir, o Match tira uma foto extra no fim, já com as mudanças.
+   - **Valores do passo 1 (decisão do dono, 2026-11-02):** cada item de "Set the same value on every
+     camera" já mostra o valor calculado que o app poria em todas, com o porquê, numa lista para trocar.
+     Regra (a mesma do núcleo): shutter/aperture/exp. comp./ISO, o valor mais perto da média em stops que
+     todas aceitam; Picture Style, o mais comum (nunca Auto); Format e Ratio, o das câmeras que não aceitam
+     mudar, senão o mais comum; White balance, "Let the test shot choose" (Daylight e a foto escolhe o
+     predefinido comum mais perto) ou um predefinido/Kelvin fixo, que a foto não troca (só ajuste fino).
+     O valor trocado pela pessoa vai ao núcleo (`autoMatch`, 4.º argumento "tv=93 kelvin=5200") e vale
+     para todas as câmeras que o aceitam. As trocas não ficam guardadas: cada abertura recalcula.
    - **Aspect ratio no Match:** iguala as que aceitam mudar às que não aceitam ("fixed"); o Test shot mede
      a proporção real de cada foto e marca em amarelo a que saiu diferente do informado.
    - **Aviso na sessão (primeiro disparo):** etiqueta "Mixed ratios" e aviso uma vez por sessão,
