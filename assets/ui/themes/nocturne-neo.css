@@ -1486,8 +1486,10 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .cs-test .frame.ratio-warn { border-color: var(--noct-pending); border-style: dashed; }
 .cs-test .frame.ratio-warn.selected { box-shadow: 0 0 16px rgba(var(--noct-pending-rgb), .25); }
 .cs-test .frame.ratio-warn.selected .frame-badge { background: var(--noct-pending); border-color: var(--noct-pending); color: var(--noct-on-primary); }
-.frame-alert { position: absolute; top: 3px; right: 3px; display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 17px;
+.frame-alert { position: absolute; top: 3px; right: 3px; box-sizing: border-box; width: 22px; height: 17px; padding: 0; margin: 0; line-height: 0;
+  display: flex; align-items: center; justify-content: center;
   background: rgba(var(--noct-bg-rgb), .85); border: 1px solid var(--noct-pending); color: var(--noct-pending); cursor: help; }
+.frame-alert svg, .cs-ratio-alert svg { display: block; width: 13px; height: 13px; }
 .frame-alert:focus-visible { outline: 1px dashed var(--noct-pending); outline-offset: 2px; }
 /* Explicação instantânea (data-itip) */
 .itip {
