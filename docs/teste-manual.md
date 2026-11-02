@@ -1275,6 +1275,10 @@ projeto num HD externo.
       com a coluna Ratio. Com a simulada 02 (sempre 16:9) em "3:2": a célula Ratio dela fica tracejada âmbar com
       "16:9" e o ícone de alerta, a seleção dela na fileira fica âmbar tracejada e o Activity diz "Aspect ratio:
       T7_1 shot 16:9 but reports 3:2". Mudar a 02 para 16:9 na lista e repetir o Test shot: a marca some.
+- [ ] Caixa de explicação do alerta (miniatura do Test shot e célula Ratio): enquanto ela está aberta, a
+      legenda do sistema (nome da câmera) não aparece por cima dela.
+- [ ] Tela cheia com a barra só de ícones: uma sessão com "n missing" tem o ícone âmbar na barra (as outras,
+      verde); passar o mouse mostra a data e "· n missing".
 - [ ] Esc fecha a janela (no passo 2, cancela o teste antes).
 
 ## Resultado

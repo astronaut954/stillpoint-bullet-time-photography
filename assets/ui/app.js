@@ -1497,6 +1497,7 @@
       li.className = "folder" + (currentSession && currentSession.name === s.name ? " active" : "");
       li.dataset.name = s.name;
       li.dataset.tip = (s.label ? s.label + " · " : "") + label.date;  // legenda da barra só de ícones (tela cheia)
+      if (s.missing > 0) { li.classList.add("warn"); li.dataset.tip += " · " + s.missing + " missing"; }  // aviso âmbar: o ícone da barra só de ícones também fica âmbar
       if (projectOpen && !s.inProject && !notInProjectOpen) li.classList.add("hidden");
       li.innerHTML = icon("session", 16) + '<div><div class="folder-date"></div><div class="folder-meta"></div></div>';
       if (sessSel.has(s.name) && selectionActive()) li.classList.add("multi");
@@ -1802,11 +1803,17 @@
   // legenda do sistema. Usada no ícone de alerta da proporção (Camera settings).
   const itip = el("div", "itip hidden");
   document.body.appendChild(itip);
-  let itipOn = null;
-  function hideItip() { itip.classList.add("hidden"); itipOn = null; }
+  let itipOn = null, itipTitles = [];
+  function hideItip() {
+    itip.classList.add("hidden"); itipOn = null;
+    itipTitles.forEach(([n, title]) => n.setAttribute("title", title)); itipTitles = [];
+  }
   function showItip(t) {
     if (!t || t === itipOn) return;
+    hideItip();
     itipOn = t;
+    // Sem a legenda do sistema (ex.: o nome da câmera na miniatura) por cima da caixa
+    for (let n = t; n && n.nodeType === 1; n = n.parentElement) if (n.hasAttribute("title")) { itipTitles.push([n, n.getAttribute("title")]); n.removeAttribute("title"); }
     itip.textContent = t.dataset.itip;
     itip.classList.remove("hidden");
     const r = t.getBoundingClientRect();

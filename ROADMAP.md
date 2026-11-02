@@ -695,7 +695,15 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      "Cameras 02 and 04 shot 16:9; the others 3:2", com "Open Camera settings" e "Crop on export to
      16:9 (keeps 94%)": a sugestão é a proporção presente que perde menos pixels; as outras (3:2, 4:3,
      16:9, 1:1) ao lado, cada uma com quanto mantém. Miniaturas com proporção diferente ganham marca
-     amarela. Nas sessões seguintes só a etiqueta.
+     amarela. Nas sessões seguintes só a etiqueta. **Decisões do dono (2026-11-02, protótipo J):** o
+     aviso é uma janela por cima da tela (como as confirmações do app); a sugestão é a proporção que
+     perde menos pixels e o número entre parênteses é a média por foto; a marca vai nas fotos que
+     diferem da proporção mais comum e, em empate, nas da proporção de menor área (ex.: 3 em 3:2 e 3
+     em 16:9 → marca as 16:9); o aviso volta ao reabrir o app e quando a combinação de câmeras/
+     proporções muda; só a proporção conta (tamanho de sensor não). Em aberto: o botão "Crop on
+     export" antes da linha "Aspect ratio" do Export existir, o texto com três proporções e o botão
+     "Keep as shot". Toda sessão com aviso âmbar (fotos que faltaram, proporções misturadas) deixa o
+     ícone dela âmbar na barra só de ícones da tela cheia (feito para "n missing" em 2026-11-02).
    - **Export sessions:** linha "Aspect ratio" (As shot, 3:2, 4:3, 16:9, 1:1) para Photos e Sequence;
      "As shot" com proporções misturadas avisa. Recorte único por sessão (a sequência não pode pular),
      prévia arrastável no Fill, nove posições rápidas. Photos: opção "Same size for all photos"
@@ -874,6 +882,10 @@ Junto com essas etapas (sem etapa própria):
 Atualizar esta tabela sempre que uma função mudar de status.
 
 ## Pendências conhecidas
+
+- **Live view com várias sessões num disparo (anotado pelo dono em 2026-11-02):** quando "Sessions"
+  é maior que 1, o Live view (modo operador e modo audiência) só mostra uma sessão; não dá para
+  navegar entre as sessões do mesmo bullet time. Decisão de como deve ser: do dono, ainda não tomada.
 
 - **Testes com câmeras reais ainda não feitos (anotado pelo dono em 2026-11-02):** o **cartão
   cinza** ("Use the gray card" no Match automatically: achar o cartão na foto, a conferência com

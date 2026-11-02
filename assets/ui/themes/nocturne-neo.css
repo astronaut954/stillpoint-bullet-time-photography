@@ -342,6 +342,8 @@ button { font: inherit; }
   width: 40px; height: 40px; padding: 0; border-left: 0; box-shadow: none;
 }
 .sessions-panel.fullscreen:not(.side-wide) .folder svg { margin: 0; }
+/* Sessão com aviso âmbar (fotos que faltaram, proporções misturadas): o ícone fica âmbar na barra só de ícones */
+.sessions-panel.fullscreen:not(.side-wide) .folder.warn svg { color: var(--noct-pending); }
 .sessions-panel.fullscreen:not(.side-wide) .folder.active { box-shadow: inset 0 0 0 1px var(--noct-info); }
 .sessions-panel.fullscreen:not(.side-wide) .folder.multi { box-shadow: inset 0 0 0 1px var(--noct-info); }
 /* Divisor "Not in project": uma linha curta com a seta embaixo, centralizadas */
