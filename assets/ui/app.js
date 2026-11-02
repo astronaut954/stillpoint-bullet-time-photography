@@ -5000,7 +5000,14 @@
     const r = anchor.getBoundingClientRect();
     const w = 230;
     pop.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, r.right - w)) + "px";
-    pop.style.top = Math.min(window.innerHeight - 190, r.bottom + 6) + "px";
+    // Abaixo do botão; sem espaço embaixo (câmeras do fim da lista), acima dele; se não couber nem
+    // acima, encostado na borda de baixo da janela, para nenhuma linha ficar escondida
+    pop.style.top = "0px";
+    const h = pop.offsetHeight;
+    let top = r.bottom + 6;
+    if (top + h > window.innerHeight - 8) top = r.top - 6 - h;
+    if (top < 8) top = Math.max(8, window.innerHeight - 8 - h);
+    pop.style.top = top + "px";
   }
   // Clique fora fecha a caixa; escolher numa lista dela (a lista fica fora da caixa) não fecha
   document.addEventListener("click", (e) => {
