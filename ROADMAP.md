@@ -679,6 +679,10 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      predefinido comum mais perto) ou um predefinido/Kelvin fixo, que a foto não troca (só ajuste fino).
      O valor trocado pela pessoa vai ao núcleo (`autoMatch`, 4.º argumento "tv=93 kelvin=5200") e vale
      para todas as câmeras que o aceitam. As trocas não ficam guardadas: cada abertura recalcula.
+   - **Cartela no Match (decisão do dono, 2026-11-02, opção A):** o Calibrate with chart continua um preparo
+     separado (uma vez por modelo), mas o passo 1 do Match avisa quando há modelos misturados sem calibração e
+     oferece o botão "Calibrate with chart" ali. "Use the gray card" começa desligado a cada abertura; na
+     conferência do cartão há "Skip the gray card" (segue medindo a foto inteira).
    - **Aspect ratio no Match:** iguala as que aceitam mudar às que não aceitam ("fixed"); o Test shot mede
      a proporção real de cada foto e marca em amarelo a que saiu diferente do informado.
    - **Aviso na sessão (primeiro disparo):** etiqueta "Mixed ratios" e aviso uma vez por sessão,

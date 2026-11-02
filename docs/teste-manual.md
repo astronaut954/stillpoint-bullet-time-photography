@@ -1222,6 +1222,11 @@ projeto num HD externo.
 - [ ] Sair no meio: no passo 2 ou 3, Esc, clicar fora da janela ou "Done" perguntam antes ("Leave Match
       automatically?" com "Keep matching" / "Leave and cancel"; "Leave without applying?" com "Stay" / "Leave
       without applying"). No passo 1, Esc fecha direto.
+- [ ] Passo 1 com modelos misturados sem calibração da cartela (ex.: SL3 + T7): caixa âmbar embaixo da lista,
+      "EOS Rebel SL3 and EOS Rebel T7 have not been calibrated with the chart…", com o botão "Calibrate with
+      chart", que fecha a janela Match e abre a explicação da calibração. Com um modelo só, ou já calibrados,
+      a caixa não aparece. O botão "Calibrate with chart" do rodapé do Camera settings continua.
+- [ ] Passo 3, Split: dois cliques na prévia devolvem a cortina ao centro.
 - [ ] "Use the gray card" começa desmarcado toda vez que a janela abre (as outras escolhas ficam lembradas).
 - [ ] Com o cartão: na conferência do cartão há "Skip the gray card" ao lado de "Continue"; ele segue o Match
       medindo a foto inteira (Activity: "Gray card skipped: matching with the whole photo"). Na conferência da

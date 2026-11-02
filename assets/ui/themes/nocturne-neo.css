@@ -1476,6 +1476,9 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .cs-match-sum { font: 11px var(--noct-font-mono); color: var(--noct-text-dim); text-transform: uppercase; letter-spacing: .08em; white-space: nowrap; }
 .cs-match-row.on .cs-match-sum { color: var(--noct-primary); }
 .cs-match-info { max-width: 1180px; margin: 18px auto 0; width: 100%; box-sizing: border-box; padding: 10px 14px; border: 1px solid var(--noct-border); color: var(--noct-text-muted); font-size: 12px; line-height: 1.5; }
+.cs-match-info.warn { display: flex; align-items: center; gap: 14px; border-color: var(--noct-pending); color: var(--noct-text); }
+.cs-match-info.warn > span { flex: 1; }
+.cs-match-info.warn .btn { flex: none; }
 /* Passo 2 */
 .cs-match-body.progress { display: flex; align-items: center; justify-content: center; }
 .cs-match-progress { width: min(520px, 90%); display: flex; flex-direction: column; gap: 12px; text-align: center; }

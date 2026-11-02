@@ -5647,6 +5647,22 @@
     });
     right.appendChild(item(!!c.grayCard, "Use the gray card", "the app measures only the card; you check where it is after the first photo", "Option", (v) => { c.grayCard = v; csMatchSaveChoices(); }));
     body.appendChild(grid);
+    // Modelos misturados sem a calibração da cartela (decisão do dono, 2026-11-02, opção A): avisa aqui e
+    // oferece o Calibrate with chart; o botão do rodapé continua para refazer
+    {
+      const styleCams = camSettings.filter((c) => c.adjustable && c.styleDetail && cameras.some((x) => x.name === c.camera && x.connected));
+      const models = [...new Set(styleCams.map((c) => c.model))];
+      const missing = models.filter((m) => !styleCams.some((c) => c.model === m && c.chart));
+      if (models.length > 1 && missing.length) {
+        const warn = el("div", "cs-match-info warn");
+        const text = el("span", "", (missing.length === models.length ? models : missing).map(shortModel).join(" and ")
+          + (missing.length === 1 ? " has" : " have") + " not been calibrated with the chart. Without it, Contrast, Saturation and Color tone only get the same value on every camera, and different models may still look a little different. It is done once per camera model.");
+        const b = el("button", "btn btn-secondary btn-small", "Calibrate with chart"); b.type = "button";
+        b.addEventListener("click", () => { csMatchClose(); csChartIntro(); });
+        warn.append(text, b);
+        body.appendChild(warn);
+      }
+    }
     body.appendChild(el("div", "cs-match-info", "The test shot fires every camera; the photos are not kept. Up to 5 photos until the cameras agree, plus one with the result. Nothing changes on the cameras before you review it in step 3."));
     csMatchCount();
   }
@@ -5804,6 +5820,7 @@
       stage.addEventListener("pointermove", (ev) => { if (dragging) move(ev); });
       stage.addEventListener("pointerup", () => { dragging = false; });
       stage.addEventListener("pointercancel", () => { dragging = false; });
+      stage.addEventListener("dblclick", () => { matchWin.split = 50; imgA.style.clipPath = "inset(0 0 0 50%)"; handle.style.left = "50%"; });  // dois cliques: cortina no centro
     } else if (matchWin.mode === "flip") {
       stage.classList.toggle("show-after", !!matchWin.flipAfter);
       stage.title = "Click to switch between before and after";
