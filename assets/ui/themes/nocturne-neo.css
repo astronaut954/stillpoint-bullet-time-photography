@@ -963,7 +963,7 @@ table.cs tr.has-note td { border-bottom-color: transparent; }
 .cs-more.diff.open { background: var(--noct-pending); color: var(--noct-on-primary); }
 .cs-more.partial { border-style: dashed; border-color: var(--noct-pending); color: var(--noct-pending); }
 .cs-more.partial.open { background: var(--noct-pending); color: var(--noct-on-primary); }
-.cs-pop { position: fixed; z-index: 7; width: 230px; box-sizing: border-box; padding: 10px 12px 12px; background: var(--noct-surface);
+.cs-pop { position: fixed; z-index: 7; width: 290px; box-sizing: border-box; padding: 10px 12px 12px; background: var(--noct-surface);
   border: 1px solid var(--noct-border-strong); box-shadow: 0 12px 32px rgba(0, 0, 0, .55); }
 .cs-pop-title { font: 700 11px var(--noct-font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--noct-primary); margin-bottom: 8px; }
 .cs-pop-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 4px 0;
@@ -1424,3 +1424,6 @@ body.mod-keys .folder-add { cursor: default; }
 /* Aspect ratio fixo (a câmera não aceita mudar pelo USB): a linha fica apagada, a explicação no title */
 .cs-pop-row.cs-pop-fixed { opacity: .55; }
 .cs-pop-row.cs-pop-fixed .cs-sel { cursor: default; }
+/* Coluna Color: resumo (balanço de branco · estilo) e o botão ± lado a lado */
+td.cs-color { white-space: nowrap; }
+td.cs-color .cs-val { margin-right: 6px; }

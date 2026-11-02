@@ -1170,21 +1170,25 @@ projeto num HD externo.
 - [ ] Pausar (espaço ou o botão de pausa) e clicar em outra sessão: a nova fica parada.
 - [ ] Sair da tela cheia: para de tocar.
 
-## 33. Proporção da foto no Camera settings (2.16.0)
+## 33. Camera settings reorganizado: Format, Ratio e o painel Color (2.16.0)
 
-- [ ] Camera settings → botão "±" de uma câmera: o painel se chama "Style, Quality & Ratio" e tem a linha
-      "Aspect ratio" logo abaixo de "Quality", com 3:2, 4:3, 16:9 e 1:1.
+- [ ] Colunas da tabela: ISO, Shutter, Aperture, Exp. comp., Metering, Format (antes "Quality", no ±), Ratio
+      (nova: 3:2, 4:3, 16:9, 1:1) e Color (resumo "balanço de branco · estilo" e o botão ±). A tabela cabe sem
+      rolagem lateral.
+- [ ] Botão "±" abre o painel "Color": White balance (com Kelvin quando a câmera tem), WB fine-tune A/B e
+      G/M, Picture Style, Contrast, Saturation e Color tone. Nas câmeras do fim da lista, o painel abre para cima.
 - [ ] Com câmeras simuladas (`STILLPOINT_FAKE_CAMERAS=9`): as câmeras 2 e 4 vêm em 16:9 e as outras em 3:2;
-      o "±" delas fica âmbar tracejado e a lista de câmeras mostra "Settings differ".
-- [ ] Câmera 6 simulada: a linha "Aspect ratio" aparece apagada e desabilitada; ao parar o ponteiro, a
-      explicação diz que a câmera não aceita mudar pelo USB.
-- [ ] Câmeras simuladas: a linha "Quality" aparece em todas, apagada e desabilitada (elas não aceitam mudar a
-      qualidade pelo USB), com a explicação ao parar o ponteiro. Antes ela não aparecia.
-- [ ] "±" de "All cameras": "Aspect ratio" mostra "Different"; escolher 3:2 muda só as câmeras que aceitam
-      (a 6 fica como está); o aviso some das câmeras 2 e 4; Cmd+Z volta uma a uma.
-- [ ] "Copy from camera" leva a proporção da câmera escolhida às outras que aceitam.
-- [ ] Câmeras de verdade: anotar para cada modelo se a linha vem com opções ou fixa (a SL3 e a T7 precisam
-      ser conferidas; a Canon não garante essa propriedade em todos os modelos).
+      a célula Ratio delas fica âmbar e a lista de câmeras mostra "Settings differ".
+- [ ] Câmera 6 simulada: Ratio aparece dentro do tracejado (fixa); ao parar o ponteiro, a explicação diz que a
+      câmera não aceita mudar pelo USB. Format aparece fixo em todas as simuladas, com a mesma explicação.
+- [ ] Linha "All cameras", Ratio: mostra "Different"; escolher 3:2 muda só as câmeras que aceitam (a 6 fica);
+      o aviso some das câmeras 2 e 4; Cmd+Z volta uma a uma. Ao parar o ponteiro na lista, a explicação diz
+      quais câmeras ficam de fora.
+- [ ] Coluna Color: o resumo e o ± ficam âmbar quando algo de cor difere (balanço de branco, fine-tune, estilo
+      ou os ajustes dele); em "All cameras", "Different" no que difere.
+- [ ] "Copy from camera" leva Format e Ratio da câmera escolhida às outras que aceitam.
+- [ ] Câmeras de verdade: anotar para cada modelo se Ratio vem com opções ou fixa (a SL3 e a T7 precisam ser
+      conferidas; a Canon não garante essa propriedade em todos os modelos).
 
 ## Resultado
 

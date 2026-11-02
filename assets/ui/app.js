@@ -4499,11 +4499,14 @@
   // valores que aquela câmera aceita agora.
   // Quality fica no popover "±" (com o Picture Style) e o Focus vira etiqueta ao lado do nome:
   // a tabela cabe sem rolagem lateral (decisão do dono, 2026-10-30)
-  const CS_COLS = [["iso", "ISO"], ["tv", "Shutter"], ["av", "Aperture"], ["expcomp", "Exp. comp."], ["metering", "Metering"], ["wb", "White balance"],
-    ["shift", "WB fine-tune"], ["style", "Picture Style"]];
-  const CS_NAMES = { quality: "Quality", aspect: "Aspect ratio", focus: "Focus", kelvin: "Color temperature", shiftab: "WB fine-tune A/B", shiftgm: "WB fine-tune G/M" };
-  // Configurações que ficam no painel "Style, Quality & Ratio" (botão ±), fora das colunas
-  const CS_POP_KEYS = [["quality"], ["aspect"]];
+  // Na tabela, o que define a captura (ISO, Shutter, Aperture, Exp. comp., Metering, Format, Aspect ratio);
+  // a cor (White balance, WB fine-tune, Picture Style e os ajustes dele) fica no painel "Color" (botão ±)
+  // (reorganização pedida pelo dono, 2026-11-02)
+  const CS_COLS = [["iso", "ISO"], ["tv", "Shutter"], ["av", "Aperture"], ["expcomp", "Exp. comp."], ["metering", "Metering"],
+    ["quality", "Format"], ["aspect", "Ratio"], ["color", "Color"]];
+  const CS_NAMES = { quality: "Format", aspect: "Aspect ratio", wb: "White balance", style: "Picture Style", focus: "Focus", kelvin: "Color temperature", shiftab: "WB fine-tune A/B", shiftgm: "WB fine-tune G/M" };
+  // Configurações que ficam no painel "Color" (botão ±), fora das colunas
+  const CS_POP_KEYS = [["wb"], ["shift"], ["style"]];
   const isoText = (l) => String(l).replace(/^ISO\s+/i, "");  // "ISO 400" → "400": o cabeçalho já diz ISO
   // Disparo único (o app põe sozinho; não é escolha). Único silencioso também vale.
   const isSingleShot = (v) => v === 0x00 || v === 0x06 || v === 0x13;
@@ -4523,8 +4526,8 @@
   function csReference() {
     const ref = {};
     const cams = camSettings.filter((c) => c.adjustable);
-    CS_COLS.concat(CS_POP_KEYS).forEach(([k]) => {  // quality e aspect: no painel ±, mas contam como diferença
-      if (k === "focus" || k === "shift") return;  // ajuste fino: correção por câmera, diferente de propósito
+    CS_COLS.concat(CS_POP_KEYS).forEach(([k]) => {  // wb e style: no painel ±, mas contam como diferença
+      if (k === "focus" || k === "shift" || k === "color") return;  // ajuste fino: correção por câmera, diferente de propósito
       const counts = new Map();
       cams.forEach((c) => { const l = csLabel(c, k); if (l !== null) counts.set(l, (counts.get(l) || 0) + 1); });
       let best = null, n = 0;
@@ -4580,7 +4583,7 @@
       return { cls: "diff", text: "Not on single shot", title: "The camera is on " + drive.label + " and did not accept single shooting. Set it to single shooting on the camera." };
     if (!c.adjustable) return { cls: "locked", text: "Settings on the camera only", title: c.reason };
     const ref = csReference();
-    if (CS_COLS.concat(CS_POP_KEYS).some(([k]) => k !== "focus" && csDiffers(c, k, ref)) || csStyleDetailDiffers(c)) return { cls: "diff", text: "Settings differ", title: "Open Camera settings to match the cameras." };
+    if (CS_COLS.concat(CS_POP_KEYS).some(([k]) => k !== "focus" && k !== "color" && csDiffers(c, k, ref)) || csStyleDetailDiffers(c)) return { cls: "diff", text: "Settings differ", title: "Open Camera settings to match the cameras." };
     return null;
   }
 
@@ -4873,7 +4876,8 @@
   function csIsPending(camera, keys) {
     return keys.some((k) => csPending.has(camera + "|" + k) || csPending.has("*|" + k));
   }
-  const COL_KEYS = { wb: ["wb", "kelvin"], shift: ["shiftab", "shiftgm"], style: ["style", "contrast", "saturation", "colortone"] };
+  const COL_KEYS = { wb: ["wb", "kelvin"], shift: ["shiftab", "shiftgm"], style: ["style", "contrast", "saturation", "colortone"],
+    color: ["wb", "kelvin", "shiftab", "shiftgm", "style", "contrast", "saturation", "colortone"] };
 
   // ----- Ajustes do Picture Style (contraste, saturação, tom de cor), como o INFO da
   // câmera: um botão na célula abre uma caixa com os três -----
@@ -4918,16 +4922,41 @@
       $("camSettingsOverlay").appendChild(pop);
     }
     const all = csStylePop.camera === "*";
-    const styleCams = all ? camSettings.filter((c) => c.adjustable && c.styleDetail) : camSettings.filter((c) => c.camera === csStylePop.camera && c.styleDetail);
-    // Quality: entram também as câmeras que não aceitam mudar (a linha aparece fixa, como a proporção)
-    const qualityCams = (all ? camSettings.filter((c) => c.adjustable) : camSettings.filter((c) => c.camera === csStylePop.camera)).filter(csShowsQuality);
-    // Proporção: entram também as câmeras que não aceitam mudar (a linha aparece fixa)
-    const aspectCams = (all ? camSettings.filter((c) => c.adjustable) : camSettings.filter((c) => c.camera === csStylePop.camera)).filter(csHasAspect);
+    const target = all ? camSettings.filter((c) => c.adjustable) : camSettings.filter((c) => c.camera === csStylePop.camera);
+    const styleCams = target.filter((c) => c.styleDetail);
     const cams = styleCams;
+    const ref = csReference();
     const wasAt = pop.contains(document.activeElement) ? [...pop.querySelectorAll("select")].indexOf(document.activeElement) : -1;
     if (wasAt >= 0) setTimeout(() => { const p = $("csStylePop"); if (!p || p.contains(document.activeElement)) return; const l = p.querySelectorAll("select"); const t = l[Math.min(wasAt, l.length - 1)]; if (t) t.focus({ preventScroll: true }); }, 0);
     pop.innerHTML = "";
-    pop.appendChild(el("div", "cs-pop-title", (all ? "All cameras" : csStylePop.camera) + " · Style, Quality & Ratio"));
+    pop.appendChild(el("div", "cs-pop-title", (all ? "All cameras" : csStylePop.camera) + " · Color"));
+    const popRow = (label, keys, cls) => el("label", "cs-pop-row" + (csIsPending(csStylePop.camera, keys) ? " applying" : "") + (cls ? " " + cls : ""));
+    // White balance (predefinidos e Kelvin): a mesma lista que ficava na coluna
+    {
+      const node = all ? csAllCell("wb", target) : csCell(target[0], "wb", ref);
+      const row = popRow("White balance", ["wb", "kelvin"]);
+      row.appendChild(el("span", "", "White balance"));
+      const ctl = node.firstChild;
+      if (ctl) { if (ctl.tagName === "SELECT") ctl.classList.add("pop-wide"); row.appendChild(ctl); }
+      pop.appendChild(row);
+    }
+    // WB fine-tune A/B e G/M
+    {
+      const node = all ? csAllCell("shift", target) : csCell(target[0], "shift", ref);
+      const row = popRow("WB fine-tune", ["shiftab", "shiftgm"]);
+      row.appendChild(el("span", "", "WB fine-tune"));
+      if (node.firstChild) row.appendChild(node.firstChild);
+      pop.appendChild(row);
+    }
+    // Picture Style
+    {
+      const node = all ? csAllCell("style", target) : csCell(target[0], "style", ref);
+      const row = popRow("Picture Style", ["style"], "cs-pop-sep");
+      row.appendChild(el("span", "", "Picture Style"));
+      const ctl = node.firstChild;
+      if (ctl) { if (ctl.tagName === "SELECT") ctl.classList.add("pop-wide"); row.appendChild(ctl); }
+      pop.appendChild(row);
+    }
     const range = [];
     for (let v = -4; v <= 4; v++) range.push(v);
     if (styleCams.length) STYLE_DETAILS.forEach(([key, label, field]) => {
@@ -4943,62 +4972,8 @@
       pop.appendChild(row);
     });
     if (styleCams.length) pop.appendChild(el("div", "cs-pop-note", "Color tone: − redder, + more yellow (skin tones)."));
-    // Quality (RAW, L fine…): saiu da tabela para ela caber; em All cameras só as opções comuns
-    if (qualityCams.length) {
-      const changeable = qualityCams.filter(csHasQuality);
-      const lists = changeable.map((c) => c.settings.quality.choices);
-      const common = lists.length ? lists[0].filter(([v]) => lists.every((l) => l.some(([x]) => x === v))) : [];
-      const values = new Set(qualityCams.map((c) => c.settings.quality.value));
-      const current = values.size === 1 ? String([...values][0]) : "";
-      const options = common.map(([v, l]) => [String(v), l]);
-      if (!current) options.unshift(["", "Different", true]);
-      else if (!options.some(([x]) => x === current)) options.unshift([current, qualityCams[0].settings.quality.label]);
-      const ref = csReference();
-      const off = !all && ref.quality !== undefined && ref.quality !== null && csLabel(qualityCams[0], "quality") !== ref.quality;
-      const fixed = !changeable.length;
-      const row = el("label", "cs-pop-row" + (csIsPending(csStylePop.camera, ["quality"]) ? " applying" : "") + (styleCams.length ? " cs-pop-sep" : "") + (fixed ? " cs-pop-fixed" : ""));
-      row.appendChild(el("span", "", "Quality"));
-      const sel = csSelect(options, current, (v) => { if (all) changeable.forEach((c) => { if (c.settings.quality.value !== +v) csSet(c.camera, "quality", +v); }); else csSet(csStylePop.camera, "quality", +v); }, "pop-wide" + (off || !current ? " diff" : ""));
-      row.appendChild(sel);
-      if (fixed) {
-        sel.disabled = true;
-        row.title = all ? "No camera allows changing the quality over USB. Change it in the camera menus." : "This camera does not allow changing the quality (size and format) over USB. Change it in the camera menu.";
-      } else if (all && changeable.length < qualityCams.length) {
-        const fixedNames = qualityCams.filter((c) => !csHasQuality(c)).map((c) => c.camera);
-        row.title = fixedNames.join(", ") + (fixedNames.length === 1 ? " does" : " do") + " not allow changing the quality over USB; the change goes to the other cameras.";
-      }
-      pop.appendChild(row);
-    }
-    // Aspect ratio (3:2, 4:3, 16:9, 1:1), logo abaixo de Quality. Câmera que não aceita mudar pelo USB:
-    // a linha fica desabilitada, com a explicação ao parar o mouse; em All cameras só as que aceitam
-    if (aspectCams.length) {
-      const changeable = aspectCams.filter(csCanChangeAspect);
-      const values = new Set(aspectCams.map((c) => c.settings.aspect.value));
-      const current = values.size === 1 ? String([...values][0]) : "";
-      const lists = changeable.map((c) => c.settings.aspect.choices);
-      const common = lists.length ? lists[0].filter(([v]) => lists.every((l) => l.some(([x]) => x === v))) : [];
-      const options = common.map(([v, l]) => [String(v), l]);
-      if (!current) options.unshift(["", "Different", true]);
-      else if (!options.some(([x]) => x === current)) options.unshift([current, aspectCams[0].settings.aspect.label]);
-      const ref = csReference();
-      const off = !all && ref.aspect !== undefined && ref.aspect !== null && csLabel(aspectCams[0], "aspect") !== ref.aspect;
-      const fixed = !changeable.length;
-      const row = el("label", "cs-pop-row" + (csIsPending(csStylePop.camera, ["aspect"]) ? " applying" : "") + (styleCams.length || qualityCams.length ? " cs-pop-sep" : "") + (fixed ? " cs-pop-fixed" : ""));
-      row.appendChild(el("span", "", "Aspect ratio"));
-      // Em All cameras a mudança vai só às câmeras que aceitam (as fixas recusariam)
-      const sel = csSelect(options, current, (v) => { if (all) changeable.forEach((c) => { if (c.settings.aspect.value !== +v) csSet(c.camera, "aspect", +v); }); else csSet(csStylePop.camera, "aspect", +v); }, "pop-wide" + (off || !current ? " diff" : ""));
-      row.appendChild(sel);
-      if (fixed) {
-        sel.disabled = true;
-        row.title = all ? "No camera allows changing the aspect ratio over USB. Change it in the camera menus." : "This camera does not allow changing the aspect ratio over USB. Change it in the camera menu. Match automatically sets the other cameras to this ratio.";
-      } else if (all && changeable.length < aspectCams.length) {
-        const fixedNames = aspectCams.filter((c) => !csCanChangeAspect(c)).map((c) => c.camera);
-        row.title = fixedNames.join(", ") + (fixedNames.length === 1 ? " does" : " do") + " not allow changing the aspect ratio over USB; the change goes to the other cameras.";
-      }
-      pop.appendChild(row);
-    }
     const r = anchor.getBoundingClientRect();
-    const w = 230;
+    const w = 290;
     pop.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, r.right - w)) + "px";
     // Abaixo do botão; sem espaço embaixo (câmeras do fim da lista), acima dele; se não couber nem
     // acima, encostado na borda de baixo da janela, para nenhuma linha ficar escondida
@@ -5053,13 +5028,24 @@
       else td.appendChild(shiftPair(c.shiftAB, c.shiftGM, (v) => csSet(c.camera, "shiftab", v), (v) => csSet(c.camera, "shiftgm", v), diff, { ab: c.abFlip, gm: c.gmFlip }));
       return td;
     }
+    if (k === "color") {
+      // Resumo (balanço de branco · estilo) e o botão ± que abre o painel Color
+      const wbL = csLabel(c, "wb"), stL = csLabel(c, "style");
+      const parts = [wbL, stL].filter((x) => x !== null);
+      td.classList.add("cs-color");
+      if (parts.length) td.appendChild(csText(parts.join(" · "), csColorLevel(c, ref) ? "diff" : ""));
+      td.appendChild(csStyleButton(c.camera, csColorLevel(c, ref), c));
+      return td;
+    }
     const st = c.settings[k];
     if (!st || !st.available) { td.appendChild(csText("—", "na", "Not available on this camera")); return td; }
     const current = k === "wb" && st.value === 9 ? "k" + c.kelvin : String(st.value);
     const currentLabel = k === "wb" && st.value === 9 ? c.kelvin + " K" : st.label;
     if (!st.choices.length) {
       // Tem o valor, mas não deixa mudar agora: valor dentro do tracejado
-      td.appendChild(csText(currentLabel, "na" + (diff ? " diff" : ""), "The camera does not allow changing this now."));
+      td.appendChild(csText(currentLabel, "na" + (diff ? " diff" : ""), k === "quality" || k === "aspect"
+        ? "This camera does not allow changing this over USB. Change it in the camera menu." + (k === "aspect" ? " Match automatically sets the other cameras to this ratio." : "")
+        : "The camera does not allow changing this now."));
       return td;
     }
     let options = st.choices.filter(([v]) => !(k === "wb" && v === 9)).map(([v, l]) => [String(v), k === "iso" ? isoText(l) : l]);
@@ -5072,8 +5058,17 @@
       if (k === "wb" && v.startsWith("k")) csSet(c.camera, "kelvin", +v.slice(1));
       else csSet(c.camera, k, +v);
     }, diff ? "diff" : ""));
-    if (k === "style" && (c.styleDetail || csShowsQuality(c) || csHasAspect(c))) td.appendChild(csStyleButton(c.camera, csStyleDetailLevel(c) || (csDiffers(c, "quality", ref) || csDiffers(c, "aspect", ref) ? "partial" : ""), c));
     return td;
+  }
+  // Quanto da cor difere das outras câmeras: "" nada; "partial" algo; "diff" tudo o que a câmera tem
+  function csColorLevel(c, ref) {
+    const checks = [];
+    if (c.settings && c.settings.wb && c.settings.wb.available) checks.push(csDiffers(c, "wb", ref));
+    if (c.shiftAvailable) checks.push(csDiffers(c, "shift", ref));
+    if (c.settings && c.settings.style && c.settings.style.available) checks.push(csDiffers(c, "style", ref));
+    if (c.styleDetail) checks.push(csStyleDetailDiffers(c));
+    const n = checks.filter(Boolean).length;
+    return n === 0 ? "" : n === checks.length ? "diff" : "partial";
   }
   function csHasQuality(c) { const q = c.settings && c.settings.quality; return !!(q && q.available && q.choices && q.choices.length); }
   function csShowsQuality(c) { const q = c.settings && c.settings.quality; return !!(q && q.available); }
@@ -5097,6 +5092,18 @@
       if (!cams.every((c) => c.shiftAvailable)) { td.appendChild(csText("—", "na", "Not available on every camera")); return td; }
       const one = (key) => (new Set(cams.map((c) => c[key])).size === 1 ? cams[0][key] : null);
       td.appendChild(shiftPair(one("shiftAB"), one("shiftGM"), (v) => csSet("*", "shiftab", v), (v) => csSet("*", "shiftgm", v), false));
+      return td;
+    }
+    if (k === "color") {
+      td.classList.add("cs-color");
+      const refs = csStyleDetailRefs();
+      const anyDiff = ["wb", "style"].some((key) => new Set(cams.map((c) => csLabel(c, key)).filter((l) => l !== null)).size > 1)
+        || (cams.some((c) => c.shiftAvailable) && new Set(cams.filter((c) => c.shiftAvailable).map((c) => c.shiftAB + "/" + c.shiftGM)).size > 1)
+        || STYLE_DETAILS.some(([, , f]) => refs[f] !== null);
+      const wbs = new Set(cams.map((c) => csLabel(c, "wb")).filter((l) => l !== null)), sts = new Set(cams.map((c) => csLabel(c, "style")).filter((l) => l !== null));
+      const summary = [wbs.size === 1 ? [...wbs][0] : wbs.size ? "Different" : null, sts.size === 1 ? [...sts][0] : sts.size ? "Different" : null].filter((x) => x !== null).join(" · ");
+      if (summary) td.appendChild(csText(summary, anyDiff ? "diff" : ""));
+      td.appendChild(csStyleButton("*", anyDiff ? "partial" : "", null));
       return td;
     }
     if (k === "wb") {
@@ -5125,6 +5132,23 @@
       }, same ? "" : "diff"));
       return td;
     }
+    // Format e Ratio: câmeras que não aceitam mudar pelo USB ficam de fora; a mudança vai às outras
+    if (k === "quality" || k === "aspect") {
+      const can = cams.filter((c) => c.settings[k] && c.settings[k].available && c.settings[k].choices.length);
+      const fixedNames = cams.filter((c) => c.settings[k] && c.settings[k].available && !c.settings[k].choices.length).map((c) => c.camera);
+      if (!can.length) { td.appendChild(csText(same && labels.size ? [...labels][0] : "—", "na" + (same ? "" : " diff"), "No camera allows changing this over USB. Change it in the camera menus.")); return td; }
+      const lists = can.map((c) => c.settings[k].choices);
+      const common = lists[0].filter(([v]) => lists.every((l) => l.some(([x]) => x === v)));
+      if (!common.length) { td.appendChild(csText("—", "na", "The cameras have no value in common")); return td; }
+      const options = common.map(([v, l]) => [String(v), l]);
+      let current = "";
+      if (same) { const v = String(can[0].settings[k].value); if (options.some(([x]) => x === v)) current = v; }
+      if (!current) options.unshift(["", same ? [...labels][0] : "Different", true]);
+      const sel = csSelect(options, current, (v) => can.forEach((c) => { if (c.settings[k].value !== +v) csSet(c.camera, k, +v); }), same ? "" : "diff");
+      if (fixedNames.length) sel.title = fixedNames.join(", ") + (fixedNames.length === 1 ? " does" : " do") + " not allow changing this over USB; the change goes to the other cameras.";
+      td.appendChild(sel);
+      return td;
+    }
     const lists = cams.filter((c) => c.settings[k] && c.settings[k].available).map((c) => c.settings[k].choices);
     // Alguma câmera não deixa mudar agora: "—" tracejado (não dá para aplicar em todas)
     if (!lists.length || lists.some((l) => !l.length)) {
@@ -5142,11 +5166,6 @@
     }
     if (!current) options.unshift(["", same ? [...labels][0] : "Different", true]);
     td.appendChild(csSelect(options, current, (v) => csSet("*", k, +v), same ? "" : "diff"));
-    if (k === "style" && cams.some((c) => c.styleDetail || csHasQuality(c))) {
-      const refs = csStyleDetailRefs();
-      const n = cams.some((c) => c.styleDetail) ? STYLE_DETAILS.filter(([, , f]) => refs[f] !== null).length : 0;
-      td.appendChild(csStyleButton("*", n === 0 ? "" : n === STYLE_DETAILS.length ? "diff" : "partial", null));
-    }
     return td;
   }
 
