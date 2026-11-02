@@ -872,6 +872,14 @@ Atualizar esta tabela sempre que uma função mudar de status.
 
 ## Pendências conhecidas
 
+- **Testes com câmeras reais ainda não feitos (anotado pelo dono em 2026-11-02):** o **cartão
+  cinza** ("Use the gray card" no Match automatically: achar o cartão na foto, a conferência com
+  clique/arrastar, "Skip the gray card", o alvo cinza neutro) e o **Calibrate with chart** (impressão
+  da cartela, achar as 4 marcas, arrastar os cantos, as 4 fotos, o resultado por modelo e o uso
+  dele pelo Match) nunca foram testados com câmeras de verdade: só com simuladas, que entregam fotos
+  de cor lisa (sem cartão nem marcas). Roteiro: `docs/teste-manual.md`, seções 34 (cartão) e a da
+  cartela. Precisa de SL3 + T7 (dois modelos), o cartão cinza e a cartela impressa a 100%.
+
 - **2.12.0 (etapa 17 — Project) publicada em 2026-10-29; no mesmo dia testada no Mac com
   câmeras reais (T7 + SL3 + T5): tudo aprovado** — `session.json`, `.xmp` renomeado junto,
   undo/redo das Camera settings e do Copy from camera, apagar + Ctrl+Z com RAW (também em HD
