@@ -483,6 +483,12 @@
   // =================== Galeria: carrossel + foto grande ===================
   // Usada nas sessões e no "Reorder by photo". Com draggable, as miniaturas podem
   // ser arrastadas para mudar a ordem.
+  // Triângulo de alerta (proporção da foto diferente da informada)
+  const ALERT_SVG = "<svg width='14' height='14' viewBox='0 0 16 16' aria-hidden='true'><path d='M8 1.5 15 14H1z' fill='none' stroke='currentColor' stroke-width='1.5' stroke-linejoin='round'/><path d='M8 6v4' stroke='currentColor' stroke-width='1.6' stroke-linecap='round'/><circle cx='8' cy='12' r='.9' fill='currentColor'/></svg>";
+  // Texto da explicação do alerta de proporção (o mesmo na célula Ratio e na miniatura)
+  function ratioWhy(ratio) {
+    return "The last test shot from this camera came out " + ratio.shot + ", but the camera reports " + ratio.reported + ". The app sets what the camera accepts over USB; a setting in the camera menu may still change the shape of the photo. Check the aspect ratio in the camera menu, then take a new test shot.";
+  }
   function Gallery(root, opts) {
     root.innerHTML =
       '<div class="gallery-head"><div><div class="gallery-title"></div><div class="gallery-sub"></div></div><div class="gallery-actions"></div></div>' +
@@ -568,7 +574,22 @@
       [...el.carousel.children].forEach((li, i) => {
         li.classList.toggle("selected", i === index); li.classList.toggle("multi", multi.size > 1 && multi.has(i));
         // Foto que saiu numa proporção diferente da informada: a seleção fica âmbar tracejada (a etiqueta continua só o número)
-        if (opts.warnItem) li.classList.toggle("ratio-warn", !!opts.warnItem(items[i]));
+        if (opts.warnItem) {
+          const warn = !!opts.warnItem(items[i]);
+          li.classList.toggle("ratio-warn", warn);
+          // Ícone de alerta no canto da miniatura, com a explicação instantânea (data-itip)
+          let a = li.querySelector(".frame-alert");
+          if (warn && !a) {
+            a = document.createElement("span");
+            a.className = "frame-alert";
+            a.innerHTML = ALERT_SVG;
+            a.tabIndex = 0;
+            a.setAttribute("role", "img");
+            li.querySelector(".frame-img").appendChild(a);
+          }
+          if (warn) { const why = opts.warnTip ? opts.warnTip(items[i]) : ""; a.dataset.itip = why; a.setAttribute("aria-label", why); }
+          else if (a) a.remove();
+        }
       });
       const active = el.carousel.children[index];
       if (scroll && active) active.scrollIntoView({ block: "nearest", inline: "nearest" });
@@ -2025,6 +2046,7 @@
     fitThumbs: true,
     // Foto que saiu numa proporção diferente da que a câmera informa (medida pelo Match): seleção âmbar tracejada
     warnItem: (item) => !!(csTest.ratios[item.name] && csTest.ratios[item.name].differs),
+    warnTip: (item) => ratioWhy(csTest.ratios[item.name]),
     load: (item, size) => orderPhoto(item.session, item.file, size),
   });
   // Só a fileira de miniaturas (maiores); clicar numa abre a foto grande por cima da
@@ -5110,11 +5132,11 @@
     const ratio = k === "aspect" && csTest.ratios[c.camera];
     if (ratio && ratio.differs && ratio.reported === currentLabel) {
       sel.classList.add("shot-warn");
-      const why = "The last test shot from this camera came out " + ratio.shot + ", but the camera reports " + ratio.reported + ". The app sets what the camera accepts over USB; a setting in the camera menu may still change the shape of the photo. Check the aspect ratio in the camera menu, then take a new test shot.";
+      const why = ratioWhy(ratio);
       sel.title = why;
       td.appendChild(csText(ratio.shot, "shot-ratio", ""));
       const alert = el("span", "cs-ratio-alert");
-      alert.innerHTML = "<svg width='14' height='14' viewBox='0 0 16 16' aria-hidden='true'><path d='M8 1.5 15 14H1z' fill='none' stroke='currentColor' stroke-width='1.5' stroke-linejoin='round'/><path d='M8 6v4' stroke='currentColor' stroke-width='1.6' stroke-linecap='round'/><circle cx='8' cy='12' r='.9' fill='currentColor'/></svg>";
+      alert.innerHTML = ALERT_SVG;
       alert.setAttribute("role", "img"); alert.setAttribute("aria-label", why);
       alert.dataset.itip = why;
       alert.tabIndex = 0;

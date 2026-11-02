@@ -1482,9 +1482,13 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .cs-val.shot-ratio { margin-left: 4px; color: var(--noct-pending); font: 10px var(--noct-font-mono); }
 .cs-ratio-alert { display: inline-flex; align-items: center; margin-left: 4px; color: var(--noct-pending); vertical-align: middle; cursor: help; }
 .cs-ratio-alert:focus-visible { outline: 1px dashed var(--noct-pending); outline-offset: 2px; }
-/* Fileira do Test shot: a foto que saiu diferente da informada só muda a cor da seleção (âmbar tracejada) */
-.cs-test .frame.ratio-warn.selected { border-color: var(--noct-pending); border-style: dashed; box-shadow: 0 0 16px rgba(var(--noct-pending-rgb), .25); }
+/* Fileira do Test shot: a foto que saiu diferente da informada tem borda âmbar tracejada e o ícone de alerta no canto */
+.cs-test .frame.ratio-warn { border-color: var(--noct-pending); border-style: dashed; }
+.cs-test .frame.ratio-warn.selected { box-shadow: 0 0 16px rgba(var(--noct-pending-rgb), .25); }
 .cs-test .frame.ratio-warn.selected .frame-badge { background: var(--noct-pending); border-color: var(--noct-pending); color: var(--noct-on-primary); }
+.frame-alert { position: absolute; top: 3px; right: 3px; display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 17px;
+  background: rgba(var(--noct-bg-rgb), .85); border: 1px solid var(--noct-pending); color: var(--noct-pending); cursor: help; }
+.frame-alert:focus-visible { outline: 1px dashed var(--noct-pending); outline-offset: 2px; }
 /* Explicação instantânea (data-itip) */
 .itip {
   position: fixed; z-index: 96; pointer-events: none; max-width: 300px;
@@ -1533,6 +1537,8 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .cs-review-half.after::before { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: var(--noct-primary); }
 .cs-review-mini.off .cs-review-half.before { clip-path: none; }
 .cs-review-mini.off .cs-review-half.after { display: none; }
+/* A linha com foco ou atual fica por cima das vizinhas: o fundo do hover da linha de baixo não cobre o contorno dela */
+.cs-review-row:focus, .cs-review-row.current { position: relative; z-index: 1; }
 .cs-review-row:focus { outline: none; box-shadow: inset 0 0 0 1px var(--noct-primary); }
 .cs-review-row.current:focus { box-shadow: inset 2px 0 0 var(--noct-primary), inset 0 0 0 1px var(--noct-primary); }
 .cs-review-mini { position: relative; height: 40px; min-width: 0; padding: 0; border: 1px solid var(--noct-border); background: var(--noct-surface-inner) center / cover no-repeat; cursor: pointer; }

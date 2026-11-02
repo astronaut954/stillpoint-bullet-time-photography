@@ -1244,6 +1244,8 @@ projeto num HD externo.
 - [ ] Com o cartão: na conferência do cartão há "Skip the gray card" ao lado de "Continue"; ele segue o Match
       medindo a foto inteira (Activity: "Gray card skipped: matching with the whole photo"). Na conferência da
       cartela (Calibrate with chart) o botão não aparece.
+- [ ] Passo 3, linha atual: com o foco na linha (Tab ou clique), passar o mouse na linha de baixo escurece só
+      ela, sem cobrir o contorno verde da linha atual.
 - [ ] Tab: nos passos 1 e 3 o Tab anda só pelos controles da janela Match (não chega na tabela do Camera
       settings atrás). No passo 3 a lista de câmeras é um ponto só do Tab (a linha atual) e as miniaturas
       ficam fora dele; na linha, ↑ ↓ trocam de câmera e Espaço marca/desmarca; ← → trocam de câmera em
@@ -1266,8 +1268,9 @@ projeto num HD externo.
       Discard), na tabela do Camera settings a célula Ratio da 02 fica tracejada âmbar com "16:9" e um ícone
       de alerta (triângulo) ao lado: passar o mouse no ícone abre na hora uma caixa âmbar com a explicação
       (sem a espera da legenda do sistema; Tab até o ícone também abre). Na fileira do Test shot (em cima),
-      selecionar a 02 (clique ou ← →) deixa a borda e a etiqueta da miniatura em âmbar tracejado em vez de
-      verde; sem seleção ela fica igual às outras. As outras câmeras não ganham marca.
+      a miniatura da 02 tem a borda âmbar tracejada e o mesmo ícone de alerta no canto de cima à direita (mouse
+      em cima abre a mesma caixa); selecionada (clique ou ← →), a etiqueta "02" fica âmbar. A etiqueta continua
+      só com o número. As outras câmeras não ganham marca.
 - [ ] "Test shot" simples (botão do rodapé, sem Match): o app mede a proporção de cada foto na prévia e compara
       com a coluna Ratio. Com a simulada 02 (sempre 16:9) em "3:2": a célula Ratio dela fica tracejada âmbar com
       "16:9" e o ícone de alerta, a seleção dela na fileira fica âmbar tracejada e o Activity diz "Aspect ratio:
