@@ -4618,7 +4618,11 @@
     const full = document.querySelector(".sessions-panel.fullscreen");
     if (!open.length && full) return full;
     if (!open.length) return ui.log.classList.contains("expanded") ? ui.log : document.body;  // Activity aberto: só ele
-    return open.reduce((top, o) => ((parseInt(getComputedStyle(o).zIndex, 10) || 0) >= (parseInt(getComputedStyle(top).zIndex, 10) || 0) ? o : top));
+    const top = open.reduce((t, o) => ((parseInt(getComputedStyle(o).zIndex, 10) || 0) >= (parseInt(getComputedStyle(t).zIndex, 10) || 0) ? o : t));
+    // Camera settings: a janela Match automatically (ou a conferência do cartão cinza) por cima da tabela fica com o Tab
+    if (top.id === "camSettingsOverlay")
+      for (const id of ["csCardPick", "csMatch"]) { const w = $(id); if (w && !w.classList.contains("hidden")) return w; }
+    return top;
   }
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Tab" || e.metaKey || e.ctrlKey || e.altKey || e.defaultPrevented) return;
@@ -5466,7 +5470,7 @@
     ["brightness", 4, "Brightness", "ISO fine-tune, measured in the test shot", "measure"],
     ["color", 16, "Color", "WB fine-tune, measured in the test shot", "measure"],
   ];
-  const matchWin = { step: 0, choices: null, result: null, cam: null, mode: "split", split: 50, playing: 0, dir: 1, picked: new Set(), before: null, targets: {} };
+  const matchWin = { step: 0, choices: null, result: null, cam: null, mode: "split", split: 50, playing: 0, dir: 1, picked: new Set(), before: null, targets: {}, strip: "after" };
   // Valores de "Set the same value on every camera" (decisão do dono, 2026-11-02): o passo 1 já calcula o
   // valor que o Match poria em todas, mostra e deixa trocar. A regra é a mesma do núcleo (auto_match.cpp):
   // shutter/aperture/exp. comp./ISO: o valor mais perto da média (em stops) que todas aceitam; Picture
@@ -5720,8 +5724,10 @@
     const table = el("div", "cs-review-table");
     const head = el("div", "cs-review-head");
     const allBox = document.createElement("input"); allBox.type = "checkbox"; allBox.className = "cs-check"; allBox.setAttribute("aria-label", "All cameras");
-    allBox.checked = changes.length > 0 && changes.every((c) => matchWin.picked.has(c.camera));
+    const syncAll = () => { const n = changes.filter((c) => matchWin.picked.has(c.camera)).length; allBox.checked = changes.length > 0 && n === changes.length; allBox.indeterminate = n > 0 && n < changes.length; };
+    syncAll();
     allBox.disabled = !changes.length;
+    allBox.addEventListener("click", (ev) => ev.stopPropagation());
     allBox.addEventListener("change", () => { matchWin.picked = new Set(allBox.checked ? changes.map((c) => c.camera) : []); csMatchRenderReview(); });
     head.append(allBox, el("span", "", "Camera"), el("span", "", "Changes"), el("span", "cs-review-th-after", "After"));
     table.appendChild(head);
@@ -5733,7 +5739,7 @@
       box.checked = !!ch && matchWin.picked.has(cam.name); box.disabled = !ch;
       box.setAttribute("aria-label", "Apply to " + cam.name);
       box.addEventListener("click", (ev) => ev.stopPropagation());
-      box.addEventListener("change", () => { if (box.checked) matchWin.picked.add(cam.name); else matchWin.picked.delete(cam.name); csMatchFootNote(); });
+      box.addEventListener("change", () => { if (box.checked) matchWin.picked.add(cam.name); else matchWin.picked.delete(cam.name); syncAll(); csMatchFootNote(); });
       const name = el("span", "cs-review-name"); name.append(el("b", "", pad(cam.order)), document.createTextNode(" " + cam.name));
       const list = el("span", "cs-review-changes");
       if (ch) ch.items.forEach(([what, from, to]) => { const it = el("span", "cs-review-change"); it.append(el("s", "", from), el("span", "to", to)); it.title = what; list.appendChild(it); });
@@ -5764,22 +5770,25 @@
     revBox.addEventListener("change", () => { reverseLoop.checked = revBox.checked; });
     rev.append(revBox, document.createTextNode(" Reverse loop"));
     ctrls.append(prev, play, next, el("span", "cs-review-speedlabel", "Speed"), slower, speed, faster, rev);
+    // Os controles não arrastam a cortina nem viram a foto (Flip)
+    ["pointerdown", "click"].forEach((t) => ctrls.addEventListener(t, (ev) => ev.stopPropagation()));
     const modes = el("div", "cs-review-modes");
     [["split", "Split"], ["side", "Side by side"], ["flip", "Flip"]].forEach(([m, label]) => {
       const b = el("button", "cs-review-mode" + (matchWin.mode === m ? " on" : ""), label); b.type = "button";
       b.addEventListener("click", () => { matchWin.mode = m; csMatchRenderReview(); });
       modes.appendChild(b);
     });
-    top.append(camLabel, ctrls, modes);
+    top.append(camLabel, modes);
     photos.appendChild(top);
     const stage = el("div", "cs-review-stage " + matchWin.mode);
+    stage.appendChild(ctrls);
     const imgB = el("div", "cs-review-img before"), imgA = el("div", "cs-review-img after");
     imgB.appendChild(el("span", "cs-review-tag", "Before")); imgA.appendChild(el("span", "cs-review-tag on", "After"));
     const ch = changes.find((x) => x.camera === matchWin.cam);
     if (ch) { imgB.querySelector(".cs-review-tag").textContent = "Before · " + ch.items.map((i) => i[1]).join(" · "); imgA.querySelector(".cs-review-tag").textContent = "After · " + ch.items.map((i) => i[2]).join(" · "); }
     csMatchPhoto(before, matchWin.cam, 1600).then((url) => { if (url) imgB.style.backgroundImage = "url(" + url + ")"; });
     csMatchPhoto(after, matchWin.cam, 1600).then((url) => { if (url) imgA.style.backgroundImage = "url(" + url + ")"; });
-    stage.append(imgB, imgA);
+    stage.prepend(imgB, imgA);
     if (matchWin.mode === "split") {
       imgA.style.clipPath = "inset(0 0 0 " + matchWin.split + "%)";
       const handle = el("div", "cs-review-handle"); handle.style.left = matchWin.split + "%";
@@ -5787,7 +5796,7 @@
       stage.appendChild(handle);
       let dragging = false;
       const move = (ev) => { const r = stage.getBoundingClientRect(); matchWin.split = Math.max(2, Math.min(98, ((ev.clientX - r.left) / r.width) * 100)); imgA.style.clipPath = "inset(0 0 0 " + matchWin.split + "%)"; handle.style.left = matchWin.split + "%"; };
-      stage.addEventListener("pointerdown", (ev) => { dragging = true; stage.setPointerCapture(ev.pointerId); move(ev); });
+      stage.addEventListener("pointerdown", (ev) => { ev.preventDefault(); dragging = true; stage.setPointerCapture(ev.pointerId); move(ev); });
       stage.addEventListener("pointermove", (ev) => { if (dragging) move(ev); });
       stage.addEventListener("pointerup", () => { dragging = false; });
       stage.addEventListener("pointercancel", () => { dragging = false; });
@@ -5798,20 +5807,24 @@
     }
     photos.appendChild(stage);
     // Fileiras de miniaturas: antes e depois
-    const strip = el("div", "cs-review-strips");
-    [["Before", before, ""], ["After", after, "on"]].forEach(([label, session, cls]) => {
-      const row = el("div", "cs-review-strip");
-      row.appendChild(el("span", "cs-review-striplabel " + cls, label));
-      placedCameras().filter((c) => c.connected).forEach((cam) => {
-        const chg = changes.some((x) => x.camera === cam.name);
-        const t = el("button", "cs-review-mini" + (chg ? " changed" : "") + (matchWin.cam === cam.name ? " current" : "")); t.type = "button";
-        t.title = cam.name; t.setAttribute("aria-label", label + " · " + cam.name);
-        t.appendChild(el("span", "cs-review-minilabel", pad(cam.order)));
-        csMatchPhoto(session, cam.name, 320).then((url) => { if (url) t.style.backgroundImage = "url(" + url + ")"; });
-        t.addEventListener("click", () => { matchWin.cam = cam.name; csMatchRenderReview(); });
-        row.appendChild(t);
-      });
-      strip.appendChild(row);
+    // Fileira de miniaturas: uma só, Before ou After (os dois botões trocam), para ocupar pouco
+    const strip = el("div", "cs-review-strip");
+    const which = el("div", "cs-review-which");
+    [["before", "Before"], ["after", "After"]].forEach(([k, label]) => {
+      const b = el("button", "cs-review-mode" + (matchWin.strip === k ? " on" : ""), label); b.type = "button";
+      b.addEventListener("click", () => { matchWin.strip = k; csMatchRenderReview(); });
+      which.appendChild(b);
+    });
+    strip.appendChild(which);
+    const stripSession = matchWin.strip === "before" ? before : after, stripLabel = matchWin.strip === "before" ? "Before" : "After";
+    placedCameras().filter((c) => c.connected).forEach((cam) => {
+      const chg = changes.some((x) => x.camera === cam.name);
+      const t = el("button", "cs-review-mini" + (chg ? " changed" : "") + (matchWin.cam === cam.name ? " current" : "")); t.type = "button";
+      t.title = cam.name; t.setAttribute("aria-label", stripLabel + " · " + cam.name);
+      t.appendChild(el("span", "cs-review-minilabel", pad(cam.order)));
+      csMatchPhoto(stripSession, cam.name, 320).then((url) => { if (url) t.style.backgroundImage = "url(" + url + ")"; });
+      t.addEventListener("click", () => { matchWin.cam = cam.name; csMatchRenderReview(); });
+      strip.appendChild(t);
     });
     photos.appendChild(strip);
     wrap.appendChild(photos);
@@ -5882,11 +5895,23 @@
     else if (matchWin.step === 2) { if (csTest.capturing && !csTest.cancelling) csTakeTest(); }
     else if (matchWin.step === 3) csMatchApply();
   });
+  // Sair no meio (Esc, clique fora, Done): no passo 2 e no 3 pergunta antes (decisão do dono, 2026-11-02)
+  function csMatchLeave(then) {
+    if (matchWin.step === 2)
+      dialog("Leave Match automatically?", "The test shot is still running. Leaving cancels it and the cameras stay as they were.",
+        [{ label: "Keep matching" }, { label: "Leave and cancel", primary: true, onClick: then }]);
+    else if (matchWin.step === 3)
+      dialog("Leave without applying?", "The result has not been applied to the cameras yet. You can still apply it, or keep the current settings.",
+        [{ label: "Stay" }, { label: "Leave without applying", primary: true, onClick: then }]);
+    else then();
+  }
   document.addEventListener("keydown", (e) => {
-    if (e.key !== "Escape" || $("csMatch").classList.contains("hidden") || csCardOpen() || selectMenu) return;
+    if (e.key !== "Escape" || $("csMatch").classList.contains("hidden") || csCardOpen() || selectMenu || !$("dialogOverlay").classList.contains("hidden")) return;
     e.preventDefault(); e.stopImmediatePropagation();
-    if (matchWin.step === 2) { if (csTest.capturing && !csTest.cancelling) csTakeTest(); }
-    csMatchClose();
+    csMatchLeave(() => {
+      if (matchWin.step === 2) { if (csTest.capturing && !csTest.cancelling) csTakeTest(); }
+      csMatchClose();
+    });
   }, true);
 
   // ----- Cartão cinza: o app achou o cartão em cada foto; a pessoa confere ou clica nele -----
@@ -6169,6 +6194,11 @@
     Object.keys(photoCache).filter((k) => k.startsWith("order/")).forEach((k) => delete photoCache[k]);
   }
   function closeCamSettings() {
+    // No meio do Match automatically (foto de teste ou revisão): pergunta antes de fechar
+    if (!$("csMatch").classList.contains("hidden") && (matchWin.step === 2 || matchWin.step === 3) && $("dialogOverlay").classList.contains("hidden")) { csMatchLeave(closeCamSettingsNow); return; }
+    closeCamSettingsNow();
+  }
+  function closeCamSettingsNow() {
     // Fechar esperando o cartão cinza: cancela (senão o Match ficaria esperando)
     if (csCardOpen()) $("csCardCancel").click();
     // Fechar no meio do Test shot, do Match ou da calibração: cancela também (as câmeras voltam

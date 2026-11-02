@@ -1210,9 +1210,22 @@ projeto num HD externo.
       shot". (Os avisos de ISO Auto e Metering differ aparecem por cima, como antes.) Com o cartão cinza, a
       conferência do cartão aparece por cima da janela.
 - [ ] Passo 3, "Review": à esquerda, uma linha por câmera com a caixa, as mudanças (antes riscado → depois em
-      verde) e a miniatura do depois; à direita, a câmera da linha clicada em Split (divisor arrastável),
-      Side by side ou Flip (clique troca), com ‹ › , play, Speed − + e Reverse loop; embaixo, as fileiras
-      Before e After. O texto de cima diz "n cameras would change · nothing has been changed on the cameras yet".
+      verde) e a miniatura do depois; à direita, a câmera da linha clicada em Split (divisor arrastável; arrastar
+      não seleciona texto), Side by side ou Flip (clique troca). Os controles ‹ ▶ ›, Speed − + e Reverse loop
+      ficam dentro da prévia, no canto de cima à direita: aparecem com o mouse sobre a prévia (fade) ou ao
+      chegar neles pelo Tab, e somem quando o mouse sai. Embaixo, uma fileira só de miniaturas com os botões
+      "Before" / "After" para trocar. O texto de cima diz "n cameras would change · nothing has been changed
+      on the cameras yet".
+- [ ] Caixas do passo 3: desmarcar uma linha deixa a caixa de cima com um traço (algumas) e muda "Apply to n
+      cameras"; a caixa de cima marca ou desmarca todas as que mudariam. Clicar na caixa não troca a câmera
+      mostrada; clicar no resto da linha troca.
+- [ ] Sair no meio: no passo 2 ou 3, Esc, clicar fora da janela ou "Done" perguntam antes ("Leave Match
+      automatically?" com "Keep matching" / "Leave and cancel"; "Leave without applying?" com "Stay" / "Leave
+      without applying"). No passo 1, Esc fecha direto.
+- [ ] Tab: nos passos 1 e 3 o Tab anda só pelos controles da janela Match (não chega na tabela do Camera
+      settings atrás).
+- [ ] Depois de "Keep current settings" ou "Apply", a fileira "Test shot · matched" no Camera settings rola
+      dentro da janela (com 9 câmeras não vaza pela direita) e mostra "Hide photos".
 - [ ] Na tabela do Camera settings atrás da janela, nada mudou (as câmeras voltaram ao "antes").
 - [ ] Desmarcar uma câmera muda "Apply to n cameras"; "Apply" muda só as marcadas; a janela fecha; um Cmd+Z
       volta todas; Cmd+Shift+Z refaz. "Keep current settings" fecha sem mudar nada. "← Back" volta ao passo 1.

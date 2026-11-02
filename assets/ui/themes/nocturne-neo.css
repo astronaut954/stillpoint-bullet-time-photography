@@ -992,7 +992,8 @@ table.cs tr.has-note td { border-bottom-color: transparent; }
 /* Só a fileira de miniaturas (foto inteira); a foto grande abre por cima da janela */
 .cs-sheet { position: relative; }
 .cs-test { flex: none; display: flex; padding: 10px 22px; border-bottom: 1px solid var(--noct-border); }
-.cs-test .gallery { gap: 8px; }
+.cs-test .gallery { gap: 8px; min-width: 0; }  /* min-width: a fileira rola dentro da janela em vez de vazar (9 câmeras) */
+.cs-test .carousel-wrap { min-width: 0; }
 .cs-test .gallery-head { align-items: flex-end; }
 .cs-test .gallery-title { font-size: 18px; }
 .cs-test .frame { flex: 0 0 auto; width: auto; }
@@ -1504,7 +1505,9 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .cs-review-photos { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .cs-review-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .cs-review-cam { font: 700 10px var(--noct-font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--noct-text-dim); }
-.cs-review-ctrls { display: flex; align-items: center; gap: 6px; }
+.cs-review-ctrls { position: absolute; top: 10px; right: 10px; z-index: 2; display: flex; align-items: center; gap: 6px; padding: 6px 8px; background: rgba(0, 0, 0, .78); border: 1px solid var(--noct-border);
+  opacity: 0; transition: opacity .25s ease; }
+.cs-review-stage:hover .cs-review-ctrls, .cs-review-stage:focus-within .cs-review-ctrls, .cs-review-ctrls:focus-within { opacity: 1; }
 .cs-review-speedlabel { margin-left: 8px; font: 700 10px var(--noct-font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--noct-text-dim); }
 .cs-review-speed { min-width: 40px; text-align: center; font: 12px var(--noct-font-mono); }
 .cs-review-rev { display: flex; align-items: center; gap: 6px; margin-left: 8px; font: 11px var(--noct-font-mono); text-transform: uppercase; letter-spacing: .08em; color: var(--noct-text-muted); }
@@ -1512,7 +1515,7 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .cs-review-modes { display: flex; border: 1px solid var(--noct-border); }
 .cs-review-mode { padding: 6px 12px; background: transparent; border: 0; color: var(--noct-text-dim); font: 700 10px var(--noct-font-mono); letter-spacing: .12em; text-transform: uppercase; cursor: pointer; }
 .cs-review-mode.on { background: var(--noct-primary); color: var(--noct-on-primary); }
-.cs-review-stage { position: relative; flex: 1; min-height: 260px; border: 1px solid var(--noct-border); background: #000; overflow: hidden; display: flex; }
+.cs-review-stage { position: relative; flex: 1; min-height: 260px; border: 1px solid var(--noct-border); background: #000; overflow: hidden; display: flex; user-select: none; -webkit-user-select: none; }
 .cs-review-img { position: absolute; inset: 0; background: #000 center / contain no-repeat; }
 .cs-review-stage.side { position: relative; }
 .cs-review-stage.side .cs-review-img { position: relative; flex: 1; inset: auto; }
@@ -1526,11 +1529,11 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .cs-review-tag.on { background: var(--noct-primary); color: var(--noct-on-primary); }
 .cs-review-handle { position: absolute; top: 0; bottom: 0; width: 3px; margin-left: -1.5px; background: var(--noct-primary); box-shadow: 0 0 10px var(--noct-primary); pointer-events: none; }
 .cs-review-knob { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 34px; height: 34px; border-radius: 50%; background: #000; border: 1px solid var(--noct-primary); display: flex; align-items: center; justify-content: center; color: var(--noct-primary); font-size: 12px; }
-.cs-review-strips { display: flex; flex-direction: column; gap: 6px; }
-.cs-review-strip { display: grid; grid-template-columns: 56px repeat(auto-fit, minmax(0, 1fr)); gap: 6px; align-items: center; }
-.cs-review-striplabel { font: 700 10px var(--noct-font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--noct-text-dim); }
-.cs-review-striplabel.on { color: var(--noct-primary); }
-.cs-review-mini { position: relative; height: 48px; min-width: 0; padding: 0; border: 1px solid var(--noct-border); background: var(--noct-surface-inner) center / cover no-repeat; cursor: pointer; }
+.cs-review-strip { display: flex; gap: 6px; align-items: center; }
+.cs-review-which { display: flex; border: 1px solid var(--noct-border); flex: none; margin-right: 6px; }
+.cs-review-which .cs-review-mode { padding: 5px 10px; }
+.cs-review-strip .cs-review-mini { flex: 1 1 0; }
+.cs-review-mini { position: relative; height: 40px; min-width: 0; padding: 0; border: 1px solid var(--noct-border); background: var(--noct-surface-inner) center / cover no-repeat; cursor: pointer; }
 .cs-review-mini.changed { border-color: var(--noct-primary); }
 .cs-review-mini.current { outline: 2px solid var(--noct-primary); outline-offset: 1px; }
 .cs-review-minilabel { position: absolute; left: 4px; top: 4px; padding: 0 4px; background: #000; color: var(--noct-text); font: 700 9px var(--noct-font-mono); }
