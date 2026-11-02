@@ -3994,9 +3994,10 @@
       if (e.cancelled) {
         toast("Chart calibration cancelled. The cameras are back to how they were.");
         log("Chart calibration cancelled; camera settings restored", "warn");
+        csMatchReturn();
         return;
       }
-      const actions = [{ label: "OK", primary: true }];
+      const actions = [{ label: "OK", primary: true, onClick: csMatchReturn }];
       if (e.debugFolder) actions.unshift({ label: "Open debug folder", link: true, onClick: () => window.openDebugFolder() });
       if (!e.ok) {
         dialog("Chart calibration did not finish", [e.error || "Try again."].concat(notes).join("\n\n"), actions);
@@ -5607,6 +5608,12 @@
     $("camSettingsOverlay").querySelector(".cs-sheet").classList.add("matching");
     csMatchRenderChoose();
   }
+  // Calibração aberta de dentro do Match: no fim (ou ao desistir), a janela Match volta ao passo 1
+  function csMatchReturn() {
+    if (!matchWin.returnAfterChart) return;
+    matchWin.returnAfterChart = false;
+    if (!$("camSettingsOverlay").classList.contains("hidden")) csMatchOpen();
+  }
   function csMatchClose() {
     csMatchStopPlay();
     $("csMatch").classList.add("hidden");
@@ -5684,7 +5691,7 @@
         right.appendChild(el("div", "cs-match-coltitle cs-match-models", "Camera models"));
         const warn = el("div", "cs-match-info" + (missing.length ? " warn" : " done"));
         const b = el("button", "btn btn-secondary btn-small", missing.length ? "Calibrate with chart" : "Recalibrate"); b.type = "button";
-        b.addEventListener("click", () => { csMatchClose(); csChartIntro(); });
+        b.addEventListener("click", () => { csMatchClose(); matchWin.returnAfterChart = true; csChartIntro(csMatchReturn); });
         const text = el("span", "", missing.length
           ? (missing.length === models.length ? models : missing).map(shortModel).join(" and ") + (missing.length === 1 ? " has" : " have") + " not been calibrated with the chart. Without it, Contrast, Saturation and Color tone only get the same value on every camera, and different models may still look a little different. It is done once per camera model."
           : models.map(shortModel).join(" and ") + " are calibrated with the chart: Match automatically uses it for Contrast, Saturation and Color tone.");
@@ -6216,14 +6223,15 @@
   }
 
   // Botão "Calibrate with chart": instruções, abrir a cartela e começar
-  function csChartIntro() {
+  // onCancel: chamado se a pessoa desistir antes de começar (o Match reabre, se veio de lá)
+  function csChartIntro(onCancel) {
     const cams = camSettings.filter((c) => c.adjustable && c.styleDetail && cameras.some((x) => x.name === c.camera && x.connected));
     const models = new Set(cams.map((c) => c.model));
     if (models.size < 2) {
       dialog("Calibrate with chart",
         "This compares camera models, so it needs at least two different models connected whose Picture Style can be changed from the app (for example, an SL3 and a T7).\n\n" +
         "Cameras of the same model already look alike: Match automatically is enough for them.",
-        [{ label: "Open chart", link: true, onClick: () => window.openChart() }, { label: "OK", primary: true }]);
+        [{ label: "Open chart", link: true, onClick: () => { window.openChart(); csChartIntro(onCancel); } }, { label: "OK", primary: true, onClick: onCancel }]);
       return;
     }
     dialog("Calibrate with chart",
@@ -6233,10 +6241,10 @@
       "3. Set the exposure so the chart looks normal in every camera (tip: run Test shot with Match automatically first).\n" +
       "4. Click Start. The app takes 4 photos, changing contrast, saturation and color tone, and then puts every setting back as it was.\n\n" +
       "After the first photo, you check that the chart corners are marked right.",
-      [{ label: "Cancel" },
+      [{ label: "Cancel", onClick: onCancel },
        { label: "Open chart", link: true, onClick: () => {
          Promise.resolve(window.openChart()).then((r) => { if (!r || !r.ok) toast("The chart file was not found. Build the app again."); });
-         csChartIntro();
+         csChartIntro(onCancel);
        } },
        { label: "Start", primary: true, onClick: csChartStart }]);
   }
@@ -6300,6 +6308,7 @@
     closeCamSettingsNow();
   }
   function closeCamSettingsNow() {
+    matchWin.returnAfterChart = false;
     // Fechar esperando o cartão cinza: cancela (senão o Match ficaria esperando)
     if (csCardOpen()) $("csCardCancel").click();
     // Fechar no meio do Test shot, do Match ou da calibração: cancela também (as câmeras voltam

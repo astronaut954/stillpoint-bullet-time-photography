@@ -1233,8 +1233,9 @@ projeto num HD externo.
       without applying"). No passo 1, Esc fecha direto.
 - [ ] Passo 1 com modelos misturados (ex.: SL3 + T7): bloco "Camera models" na coluna da direita, abaixo de
       "Use the gray card". Sem calibração da cartela: caixa âmbar "EOS Rebel SL3 and EOS Rebel T7 have not been
-      calibrated with the chart…" com o botão "Calibrate with chart", que fecha a janela Match e abre a
-      explicação da calibração. Já calibrados: linha "… are calibrated with the chart: Match automatically uses
+      calibrated with the chart…" com o botão "Calibrate with chart", que guarda a janela Match, abre a
+      explicação da calibração e, no fim dela (OK em "Cameras calibrated", cancelar, ou "Cancel" na
+      explicação), traz a janela Match de volta no passo 1. Já calibrados: linha "… are calibrated with the chart: Match automatically uses
       it…" com o botão "Recalibrate". Com um modelo só, o bloco não aparece. O botão "Calibrate with chart" do
       rodapé do Camera settings continua.
 - [ ] Passo 3, Split: dois cliques na prévia devolvem a cortina ao centro.
