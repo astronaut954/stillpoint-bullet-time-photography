@@ -988,7 +988,9 @@ table.cs tr.has-note td { border-bottom-color: transparent; }
 .cs-test:not(.has-photos) .stage { flex: none; height: 150px; }   /* enquanto fotografa: o aviso */
 .cs-test:not(.zoom) .stage-tools { display: none; }
 .cs-test.zoom .stage { display: flex; position: absolute; inset: 0; z-index: 6; border: 0; background: rgba(0, 0, 0, .94); }
-.cs-test.zoom .stage img { max-width: calc(100% - 48px); max-height: calc(100% - 120px); }
+/* Foto grande centralizada, com margem para os botões em cima e a legenda embaixo (o img da fileira é
+   absoluto em inset 0; com max-width/height ele ficava preso no canto de cima à esquerda) */
+.cs-test.zoom .stage img { inset: 64px 24px; width: calc(100% - 48px); height: calc(100% - 128px); max-width: none; max-height: none; }
 .cs-test.zoom .stage-tools { top: 16px; right: 16px; }
 .cs-test.zoom .stage-caption { left: 24px; bottom: 20px; }
 .cs-sheet.capturing .cs-body { opacity: .5; pointer-events: none; }
