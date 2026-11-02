@@ -6355,10 +6355,45 @@
                title: shortModel(cam.model), subtitle: cam.name };
     });
     csGallery.setItems(items, 0);
+    if (csTest.mode !== "chart" && csTest.mode !== "match") csMeasureRatios(items);
     $("csTestBox").classList.toggle("has-photos", items.length > 0);
     const missing = items.filter((i) => !i.file).length;
     csGallery.setHead(csTest.mode === "chart" ? "Chart calibration" : csTest.mode === "match" ? "Test shot · matched" : "Test shot",
       (missing ? plural(missing, "camera", "cameras") + " did not send a photo · " : "") + "Not saved · click a photo to enlarge · ← → to compare");
+  }
+  // Nome da proporção de uma foto: a mais perto entre 3:2, 4:3, 16:9 e 1:1 (como RatioName no programa)
+  function ratioName(w, h) {
+    if (!w || !h) return "";
+    const r = Math.max(w, h) / Math.min(w, h);
+    const known = [["3:2", 1.5], ["4:3", 4 / 3], ["16:9", 16 / 9], ["1:1", 1]];
+    return known.reduce((best, k) => (Math.abs(k[1] - r) < Math.abs(best[1] - r) ? k : best))[0];
+  }
+  // Test shot simples: mede a proporção real de cada foto na prévia e compara com o que a câmera informa
+  // (coluna Ratio), como o Match faz no programa. Resultado em csTest.ratios: célula Ratio, ícone de alerta,
+  // seleção âmbar na fileira e linha na Activity.
+  function csMeasureRatios(items) {
+    const found = {};
+    const probes = items.filter((i) => i.file && i.previewable).map((item) => orderPhoto(item.session, item.file, 320).then((url) => new Promise((done) => {
+      if (!url) return done();
+      const probe = new Image();
+      probe.onload = () => { found[item.name] = ratioName(probe.naturalWidth, probe.naturalHeight); done(); };
+      probe.onerror = () => done();
+      probe.src = url;
+    })));
+    Promise.all(probes).then(() => {
+      if (!csTest.has) return;  // as fotos já foram descartadas
+      csTest.ratios = {};
+      Object.keys(found).forEach((name) => {
+        const c = camSettings.find((x) => x.camera === name);
+        const a = c && c.settings && c.settings.aspect;
+        const reported = a && a.available ? a.label : "";
+        csTest.ratios[name] = { camera: name, shot: found[name], reported, differs: !!reported && reported !== found[name] };
+      });
+      const wrong = Object.values(csTest.ratios).filter((r) => r.differs);
+      if (wrong.length) log("Aspect ratio: " + wrong.map((r) => r.camera + " shot " + r.shot + " but reports " + r.reported).join(" · "), "warn");
+      csGallery.refreshMarks();
+      csRender();
+    });
   }
   function csDiscardTest() {
     if (!csTest.has && !csTest.capturing) return;

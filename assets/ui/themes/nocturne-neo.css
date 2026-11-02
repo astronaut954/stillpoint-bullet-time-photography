@@ -1540,5 +1540,5 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .cs-review-mini.current { outline: 2px solid var(--noct-primary); outline-offset: 1px; }
 /* Foto numa proporção diferente da informada: borda e seleção âmbar tracejadas (vale sobre .changed e .current) */
 .cs-review-mini.ratio-warn, .cs-review-mini.changed.ratio-warn { border-color: var(--noct-pending); border-style: dashed; }
-.cs-review-mini.current.ratio-warn { outline: 2px dashed var(--noct-pending); }
+.cs-review-mini.current.ratio-warn { outline: 2px solid var(--noct-pending); }
 .cs-review-minilabel { position: absolute; left: 4px; top: 4px; padding: 0 4px; background: #000; color: var(--noct-text); font: 700 9px var(--noct-font-mono); }
