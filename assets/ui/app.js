@@ -6711,7 +6711,8 @@
     const headRow = table && (table.querySelector("thead") || table.querySelector("tr"));
     if (!headRow) return;
     const h = headRow.getBoundingClientRect().height;
-    if (h > 0) table.querySelectorAll("tr.all td").forEach((td) => { td.style.top = h + "px"; });
+    // O cabeçalho gruda 3 px acima do topo (CSS, table.cs thead top: -3px); a linha "All cameras" gruda logo abaixo dele
+    if (h > 0) table.querySelectorAll("tr.all td").forEach((td) => { td.style.top = (h - 3) + "px"; });
   }
   $("camSettingsBtn").addEventListener("click", () => {
     renderCamSettings();

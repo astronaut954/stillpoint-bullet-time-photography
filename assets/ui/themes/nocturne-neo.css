@@ -914,7 +914,7 @@ table.cs td.name { height: 52px; max-width: 132px; overflow: hidden; text-overfl
 .cs-focus-tag.warn { border-color: var(--noct-pending); color: var(--noct-pending); }
 .cs-pop-row.cs-pop-sep { margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--noct-border); }
 table.cs td.name small { display: block; overflow: hidden; text-overflow: ellipsis; font: 10px var(--noct-font-mono); color: var(--noct-text-dim); letter-spacing: .08em; text-transform: uppercase; }
-table.cs tr.all td { position: sticky; top: 37px; z-index: 1; background: var(--noct-surface-inner); box-shadow: 0 -1px 0 0 var(--noct-surface-inner); }  /* (top: medido em csStickAllRow; a sombra fecha a emenda com o cabeçalho) */
+table.cs tr.all td { position: sticky; top: 34px; z-index: 1; background: var(--noct-surface-inner); box-shadow: 0 -2px 0 0 var(--noct-surface-inner); }  /* (top: medido em csStickAllRow, altura do cabeçalho menos os 3px; a sombra fecha a emenda com ele) */
 table.cs tr.all td.name { color: var(--noct-primary); }
 table.cs tr.locked td { color: var(--noct-text-dim); }
 table.cs td.msg { color: var(--noct-pending); font: 13px var(--noct-font-sans); white-space: normal; }
