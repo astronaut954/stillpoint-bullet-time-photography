@@ -1334,17 +1334,41 @@
   // Barra da tela cheia: nada quebra linha; sem espaço, some primeiro o que importa menos (como fitTopbar)
   const HEAD_FIT_STEPS = 5;
   let headFitQueued = false;
+  let headFitting = false;
   function fitHead() {
     headFitQueued = false;
     const head = ui.sessionGallery.querySelector(".gallery-head");
-    if (!head) return;
+    if (!head || headFitting) return;
+    headFitting = true;
+    const wasWrap = head.classList.contains("wrap");
+    const before = head.offsetHeight;
+    head.style.height = "";
+    head.classList.remove("wrap");
     for (let k = 1; k <= HEAD_FIT_STEPS; k++) head.classList.remove("fit-" + k);
-    if (!isFullscreen()) return;
-    for (let k = 1; k <= HEAD_FIT_STEPS && head.scrollWidth > head.clientWidth + 1; k++) head.classList.add("fit-" + k);
+    if (isFullscreen()) {
+      const overflows = () => head.scrollWidth > head.clientWidth + 1;
+      // 1) Os controles encostaram na lixeira: linha nova abaixo. 2) Ainda sem espaço: some o que importa menos
+      if (overflows()) head.classList.add("wrap");
+      const actions = head.querySelector(".gallery-actions");
+      const actionsOverflow = () => actions && actions.scrollWidth > actions.clientWidth + 1;
+      for (let k = 1; k <= HEAD_FIT_STEPS && (head.classList.contains("wrap") ? actionsOverflow() : overflows()); k++) head.classList.add("fit-" + k);
+    }
+    // A mudança de uma para duas linhas (e volta) anima a altura em vez de pular
+    const nowWrap = head.classList.contains("wrap");
+    if (nowWrap !== wasWrap && before) {
+      const after = head.offsetHeight;
+      head.style.height = before + "px";
+      void head.offsetHeight;
+      head.style.height = after + "px";
+      setTimeout(() => { head.style.height = ""; }, 200);
+    }
+    headFitting = false;
   }
   function queueHeadFit() { if (!headFitQueued) { headFitQueued = true; requestAnimationFrame(fitHead); } }
   window.addEventListener("resize", queueHeadFit);
-  new MutationObserver(() => queueHeadFit()).observe(ui.sessionGallery, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ["class"] });
+  // (as classes que o próprio fitHead põe na barra não contam, senão ele rodaria sem parar)
+  new MutationObserver((list) => { if (list.some((m) => !m.target.classList || !m.target.classList.contains("gallery-head"))) queueHeadFit(); })
+    .observe(ui.sessionGallery, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ["class"] });
   const editActions = [
     button("", () => sessionGallery.moveSelected(-1), { icon: "left", title: "Move the selected photo earlier" }),
     button("", () => sessionGallery.moveSelected(1), { icon: "right", title: "Move the selected photo later" }),
@@ -6193,6 +6217,8 @@
     if (matchWin.playing) csMatchStopPlay();
     matchWin.cam = cams[(i + d + cams.length) % cams.length];
     csMatchSwapPhotos();
+    const m = $("csMatchBody").querySelector(".cs-review-mini.current");
+    if (m) m.scrollIntoView({ block: "nearest", inline: "nearest" });  // (o play não rola; ‹ › e as setas sim)
     if (focusRow) { const r = $("csMatchBody").querySelector(".cs-review-row.current"); if (r) r.focus({ preventScroll: false }); }
   }
   function csMatchPlayButton() {

@@ -1286,9 +1286,14 @@ projeto num HD externo.
 
 - [ ] Play na sessão (janela principal e tela cheia): a fileira de miniaturas não rola sozinha; só a marca da foto
       atual anda. Clicar numa miniatura ou usar ← → continua rolando até ela.
-- [ ] Tela cheia, janela estreita: a barra de cima não quebra linha. Estreitando, some primeiro o tamanho da lixeira,
-      depois "SPEED", depois "Reorder" e "Delete session" viram só ícone (setas trocadas e lixeira; "Reverse loop"
-      vira "Loop"), depois o subtítulo ("2 shot 16:9"), e por fim a data fica menor. A etiqueta "Mixed ratios" fica.
+- [ ] Tela cheia, janela estreita: quando os controles encostam no botão da lixeira, eles descem para uma linha
+      abaixo da data (a barra cresce com uma animação curta, sem pulo); alargando, voltam para a linha da data.
+      Estreitando mais, na linha dos controles some primeiro o tamanho da lixeira, depois "SPEED", depois "Reorder" e
+      "Delete session" viram só ícone (setas trocadas e lixeira; "Reverse loop" vira "Loop"), depois o subtítulo
+      ("2 shot 16:9"), e por fim a data fica menor. Nada se sobrepõe; a etiqueta "Mixed ratios" fica.
+- [ ] Fileira de miniaturas (sessão e passo 3 do Match): o espaço até a foto grande não muda quando a barra de
+      rolagem aparece ou some (o lugar dela fica reservado).
+- [ ] Match, passo 3: ‹ › e ← → rolam a fileira de miniaturas até a câmera atual; o play não rola.
 - [ ] Match, passo 3, tocando: − + mudam a velocidade na hora (o play continua, no ritmo novo) e os controles não
       piscam nem mudam de altura; ‹ › e ← → param o play e andam uma câmera; a fileira de miniaturas mostra as
       fotos inteiras (sem cortar o topo).

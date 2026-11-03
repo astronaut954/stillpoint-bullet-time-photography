@@ -373,7 +373,7 @@ button { font: inherit; }
 .gallery-actions { display: flex; gap: 6px; align-items: center; }
 
 .carousel-wrap { position: relative; }
-.carousel { list-style: none; margin: 0; padding: 3px 3px 7px; display: flex; gap: 6px; overflow-x: auto; scroll-behavior: smooth; }
+.carousel { list-style: none; margin: 0; padding: 3px 3px 7px; display: flex; gap: 6px; overflow-x: auto; scroll-behavior: smooth; scrollbar-gutter: stable; }  /* o lugar da barra de rolagem fica reservado: o espaço até a foto grande não muda */
 /* Reordenando as fotos: contorno âmbar (em andamento) */
 .gallery.editing .carousel { outline: 1px dashed var(--noct-pending); outline-offset: 2px; }
 .frame {
@@ -1392,10 +1392,13 @@ body.mod-keys .folder-add { cursor: default; }
 /* Shift+clique nas miniaturas: sem seleção de texto (os números não ficam marcados) */
 .carousel, .carousel .frame { -webkit-user-select: none; user-select: none; }
 /* Barra da tela cheia: nada quebra linha; sem espaço, some primeiro o que importa menos (fitHead) */
-.sessions-panel.fullscreen .gallery-head { flex-wrap: nowrap; overflow: hidden; }
+.sessions-panel.fullscreen .gallery-head { flex-wrap: nowrap; overflow: hidden; transition: height 180ms var(--noct-ease); }
 .sessions-panel.fullscreen .gallery-head, .sessions-panel.fullscreen .gallery-head button, .sessions-panel.fullscreen .gallery-title, .sessions-panel.fullscreen .gallery-sub { white-space: nowrap; }
-.sessions-panel.fullscreen .gallery-head > div:first-child { flex: 0 1 auto; min-width: 0; }
+.sessions-panel.fullscreen .gallery-head > div:first-child { flex: none; }
 .sessions-panel.fullscreen .gallery-actions > * { flex-shrink: 0; }
+/* Os controles encostaram na lixeira: vão para uma linha abaixo (a altura anima; fitHead) */
+.sessions-panel.fullscreen .gallery-head.wrap { flex-wrap: wrap; }
+.sessions-panel.fullscreen .gallery-head.wrap .gallery-actions { flex-basis: 100%; justify-content: flex-end; }
 .hd-short { display: none; }
 .gallery-head.fit-1 .trash-size-full,
 .gallery-head.fit-2 .play-group-caption,
@@ -1564,7 +1567,7 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .cs-review-knob { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 34px; height: 34px; border-radius: 50%; background: #000; border: 1px solid var(--noct-primary); display: flex; align-items: center; justify-content: center; color: var(--noct-primary); }
 .cs-review-knob svg { display: block; }
 /* Fileira de miniaturas: tamanho fixo; sem espaço, rola para o lado (o play só anda a marca, sem rolar) */
-.cs-review-strip { display: flex; gap: 6px; align-items: flex-start; flex: none; overflow-x: auto; overflow-y: hidden; box-sizing: border-box; height: 64px; padding: 3px 3px 0; margin: -3px -3px 0; }
+.cs-review-strip { display: flex; gap: 6px; align-items: flex-start; flex: none; overflow-x: auto; overflow-y: hidden; scrollbar-gutter: stable; box-sizing: border-box; height: 64px; padding: 3px 3px 0; margin: -3px -3px 0; }
 .cs-review-strip .cs-review-striplabel { line-height: 40px; }
 .cs-review-striplabel { flex: none; margin-right: 6px; font: 700 10px var(--noct-font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--noct-text-dim); white-space: nowrap; }
 .cs-review-strip .cs-review-mini { flex: 0 0 64px; width: 64px; overflow: hidden; }
