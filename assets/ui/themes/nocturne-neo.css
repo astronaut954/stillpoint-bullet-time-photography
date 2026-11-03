@@ -745,10 +745,15 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
 .export-tab.on { background: var(--noct-primary); border-color: var(--noct-primary); color: var(--noct-on-primary); cursor: default; }
 .export-tab.off:not(.on) { color: var(--noct-text-dim); border-style: dashed; }
 .export-tab:focus-visible { outline: 2px solid var(--noct-primary); outline-offset: 2px; }
-/* A caixa dentro da aba: quadrado cheio = exportada; vazio = não */
-.export-tab-check { width: 12px; height: 12px; box-sizing: border-box; border: 1px solid currentColor; flex: none; cursor: pointer; }
-.export-tab-check.on { background: currentColor; box-shadow: inset 0 0 0 2px var(--noct-surface); }
-.export-tab.on .export-tab-check.on { box-shadow: inset 0 0 0 2px var(--noct-primary); }
+/* A caixa de marcar dentro da aba (a mesma do resto do app) liga/desliga a saída */
+.export-tab .export-tab-check { display: block; position: relative; width: 14px; height: 14px; flex: none; cursor: pointer; }
+.export-tab .export-tab-check input { position: absolute; opacity: 0; pointer-events: none; }
+.export-tab .export-tab-check .save-check { width: 14px; height: 14px; flex-basis: 14px; }
+.export-tab.on .export-tab-check .save-check { border-color: var(--noct-on-primary); background: transparent; }
+.export-tab.on .export-tab-check input:checked + .save-check { background: var(--noct-on-primary); border-color: var(--noct-on-primary); box-shadow: none; }
+.export-tab.on .export-tab-check input:checked + .save-check::after { border-color: var(--noct-primary); left: 3px; top: -1px; }
+/* Esta sessão difere das outras nesta saída: ponto âmbar na aba */
+.export-tab-diff { width: 6px; height: 6px; border-radius: 50%; background: var(--noct-pending); flex: none; }
 .export-tab-body { flex: 0 0 auto; display: flex; flex-direction: column; gap: 12px; }
 .export-tab-body > .export-tab-sum { font: 500 11px var(--noct-font-mono); letter-spacing: .04em; color: var(--noct-text-muted); }
 .exp-sec { border: 1px solid var(--noct-border); background: var(--noct-surface-inner); flex: 0 0 auto; }
@@ -1546,15 +1551,11 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .export-keep { font: 11px var(--noct-font-mono); color: var(--noct-text-dim); margin-left: 6px; }
 .export-note.exp-warn { color: var(--noct-pending); }
 .export-note-inline { font: 11px var(--noct-font-mono); color: var(--noct-text-dim); margin-left: 8px; }
-/* Seção Framing em foco: prévia grande + coluna ao lado (protótipo W1); ⤢ amplia (teatro) */
-.framing-top { display: flex; gap: 18px; flex: 1 1 auto; min-height: 0; }
-.framing-top .framing-stage { flex: 1 1 auto; min-width: 0; height: auto; min-height: 240px; }
-.framing-side { flex: 0 0 280px; display: flex; flex-direction: column; overflow: auto; }
-.framing-block { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--noct-border); }
-.framing-block > .export-label { min-width: auto; }
-.framing-block .export-note { margin: 0; }
+/* Aba Framing: a prévia (recorte sobre a foto) em cima, como nas outras abas, e as configurações embaixo;
+   ⤢ amplia (teatro: a prévia ocupa a janela, a fileira fica) */
+.framing-stage.export-preview { height: 260px; }
 .framing-theater-btn { position: absolute; left: 10px; top: 10px; z-index: 2; }
-.export-rows.hidden { display: none; }
+.export-settings.theater .framing-stage.export-preview { height: auto; flex: 1 1 auto; min-height: 0; }
 /* Seção Framing: a prévia de cima é o recorte sobre a foto (crop-stage), no tamanho da prévia do Export */
 .crop-box { position: relative; width: 100%; background: var(--noct-surface-inner); border: 1px solid var(--noct-border); overflow: hidden; cursor: grab; user-select: none; -webkit-user-select: none; touch-action: none; }
 .exp-sec-framing .exp-sec-head { padding-left: 12px; }

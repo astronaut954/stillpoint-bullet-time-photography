@@ -2431,6 +2431,13 @@
                 timer: null, frame: 0, photo: 0, sameForAll: true, project: false };
 
   // Configuração da sessão aberta igual nas outras (saídas ligadas, as três configurações e o nome)
+  // As duas sessões têm a mesma configuração numa saída (framing: proporção, posição e Same size)
+  function sameKind(a, b, kind) {
+    const x = settingsFor(a), y = settingsFor(b);
+    const keys = kind === "framing" ? ["crop"] : kind === "photos" ? ["photos"] : kind === "sequence" ? ["seq"] : ["lent"];
+    const pick = (st) => keys.map((k) => { const v = Object.assign({}, st[k]); delete v.loaded; return v; }).concat(kind === "framing" ? [!!st.photos.sameSize] : []);
+    return JSON.stringify(pick(x)) === JSON.stringify(pick(y)) && (kind === "framing" || !!x.outputs[kind] === !!y.outputs[kind]);
+  }
   function sameAsActive(name) {
     const a = settingsFor(exp.active), o = settingsFor(name);
     return OUTPUT_KEYS.every((k) => JSON.stringify(a[k]) === JSON.stringify(o[k]));
@@ -3304,28 +3311,6 @@
     box.relayout = layout;
     return box;
   }
-  // Coluna ao lado da prévia da Framing (protótipo W1): blocos "Aspect ratio" e "Position"; "References" e
-  // "This photo" chegam no pedaço 2
-  function framingSide(session, st, side, rerender) {
-    const info = ratioInfoCached(session.name);
-    const block = (title) => { const b = el("div", "framing-block"); b.appendChild(el("span", "export-label", title)); side.appendChild(b); return b; };
-    const a = block("Aspect ratio");
-    a.appendChild(segmented(CROP_RATIOS, st.crop.ratio, (v) => { st.crop.ratio = v; cropSave(session, st); rerender(); }));
-    if (st.crop.ratio !== "asshot" && info && info.keep && info.keep[st.crop.ratio] != null) a.appendChild(el("span", "export-note", "keeps " + info.keep[st.crop.ratio] + "% of the photos on average"));
-    a.appendChild(checkOption("Same size for all photos", !!st.photos.sameSize, (v) => { st.photos.sameSize = v; rerender(); }));
-    if (info && info.mixed) a.appendChild(el("div", "export-note exp-warn", "Mixed ratios · " + ratioText(info).replace(/^Camera/, "camera") + ' "As shot" keeps each photo as it is; the sequence will jump.'));
-    if (st.crop.ratio !== "asshot") {
-      const pos = block("Position");
-      const dots = el("div", "crop-dots");
-      const names = ["Top left", "Top", "Top right", "Left", "Center", "Right", "Bottom left", "Bottom", "Bottom right"];
-      [0, 0.5, 1].forEach((y, yi) => [0, 0.5, 1].forEach((x, xi) => {
-        const d = el("button", "crop-dot" + (Math.abs(x - st.crop.x) < 0.01 && Math.abs(y - st.crop.y) < 0.01 ? " on" : "")); d.type = "button"; d.title = names[yi * 3 + xi];
-        d.addEventListener("click", () => { st.crop.x = x; st.crop.y = y; cropSave(session, st); rerender(); });
-        dots.appendChild(d);
-      }));
-      pos.append(dots, el("div", "export-note", "Or drag the frame. One crop for the whole session: the sequence cannot jump."));
-    }
-  }
   // Seção "Framing" do Export (decisão do dono, 2026-11-03, protótipo W1): proporção + Same size (pedaço 1);
   // o alinhamento das fotos (referências, Move/Size/Rotate) vem no pedaço 2
   function framingRows(session, st, box, rerender) {
@@ -3529,12 +3514,8 @@
           theater.classList.add("lent-theater-btn", "framing-theater-btn");
           theater.addEventListener("pointerdown", (e) => e.stopPropagation());
           stage.appendChild(theater);
-          const side = el("div", "framing-side");
-          framingSide(session, st, side, rerender);
-          const top = el("div", "framing-top");
-          top.append(stage, side);
           outer.classList.toggle("theater", !!exp.framingTheater);
-          outer.insertBefore(top, rows);
+          outer.insertBefore(stage, rows);
           const stripScroll = el("div", "export-strip-scroll");
           const strip = el("ul", "export-strip");
           stripScroll.appendChild(strip);
@@ -3550,8 +3531,8 @@
           const slot = el("div", "export-strip-slot");
           slot.appendChild(stripScroll);
           outer.insertBefore(slot, rows);
-          rows.classList.add("hidden");  // a coluna ao lado da prévia tem tudo: sem área de baixo, a prévia ocupa a altura
-        } else framingRows(session, st, box, rerender);  // (prévia escondida: as linhas ficam no corpo)
+        }
+        framingRows(session, st, box, rerender);  // as configurações embaixo da prévia, em linhas (decisão do dono, 2026-11-03)
       } else if (kind === "photos") {
       const s = st.photos;
       // A fileira (ul) fica dentro de uma caixa que rola (div): o WebKit do Mac pintava os
@@ -3968,13 +3949,19 @@
       const tab = el("button", "export-tab" + (current ? " on" : "") + (on ? "" : " off"), ""); tab.type = "button";
       tab.setAttribute("role", "tab"); tab.setAttribute("aria-selected", current ? "true" : "false"); tab.tabIndex = current ? 0 : -1;
       if (!always) {
-        const check = el("span", "export-tab-check" + (on ? " on" : ""));
-        check.title = on ? "Exported · click to turn off" : "Not exported · click to turn on";
-        check.addEventListener("click", (e) => { e.stopPropagation(); st.outputs[kind] = !on; if (!on) exp.mode = kind; rerender(); });
+        const check = el("label", "export-check export-tab-check");
+        const input = document.createElement("input");
+        input.type = "checkbox"; input.checked = on; input.setAttribute("aria-label", "Export " + title); input.tabIndex = -1;
+        check.append(input, el("span", "save-check"));
+        check.addEventListener("click", (e) => e.stopPropagation());
+        input.addEventListener("change", () => { st.outputs[kind] = input.checked; if (input.checked) exp.mode = kind; rerender(); });
         tab.appendChild(check);
       }
       tab.appendChild(document.createTextNode(title));
-      tab.title = sub + (always ? "" : on ? " · exported" : " · not exported");
+      // Esta sessão difere das outras nesta saída (só com "Same settings for all sessions" desligado): marca na aba
+      const differs = !exp.sameForAll && sessions.some((o) => exp.selected.has(o.name) && o.name !== session.name && !sameKind(session.name, o.name, kind));
+      if (differs) { tab.classList.add("different"); tab.appendChild(el("span", "export-tab-diff", "")); }
+      tab.title = sub + (always ? "" : on ? " · exported" : " · not exported") + (differs ? " · different from the other sessions" : "");
       tab.addEventListener("click", () => { if (!current) { exp.mode = kind; rerender(); } });
       tab.addEventListener("keydown", (e) => {
         if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;

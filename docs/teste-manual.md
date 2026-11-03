@@ -1347,21 +1347,19 @@ Com `STILLPOINT_FAKE_CAMERAS=9` (02 e 04 em 16:9). Abrir "Export sessions" com u
 proporção. O alinhamento — referências, Move/Size/Rotate — vem no pedaço 2.)
 
 - [ ] A coluna da direita tem abas no topo, acima da prévia: Framing · Photos · Sequence · Lenticular (chips; a
-      atual em verde). Photos, Sequence e Lenticular têm um quadrado dentro da aba: cheio = exportada, vazio = não
-      (clicar nele liga/desliga; aba desligada fica tracejada); Framing não tem (vale para todas). ← → trocam de
-      aba pelo teclado. Abaixo da prévia, só o conteúdo da aba atual, começando pelo resumo ("Originals + JPG ·
-      High", "3:2 · same size", ou "Off · tick the box in the tab to export it").
+      atual em verde). Photos, Sequence e Lenticular têm a caixa de marcar do app dentro da aba (liga/desliga a
+      saída; aba desligada fica tracejada); Framing não tem (vale para todas). Com "Same settings for all
+      sessions" desligado, a aba ganha um ponto âmbar quando esta sessão difere das outras nessa saída (mouse
+      em cima explica). ← → trocam de aba pelo teclado. Abaixo da prévia, o conteúdo da aba atual, começando pelo
+      resumo ("Originals + JPG · High" ou "Off · tick the box in the tab to export it").
 - [ ] Ao abrir o Export a prévia está sempre visível (mesmo que da última vez tenha ficado escondida); "Hide
       preview" esconde e assim fica ao trocar de seção, até fechar e abrir a janela de novo.
-- [ ] Aba Framing: em cima, a prévia grande (320 px) com o recorte sobre a foto (com
-      "As shot" a etiqueta diz "As shot: nothing is cut · choose a ratio below") e, à direita dela, a coluna com
-      "Aspect ratio" (As shot · 3:2 · 4:3 · 16:9 · 1:1, "keeps n%", a caixa "Same size for all photos", a nota
-      âmbar de mistura) e "Position" (nove pontos). Embaixo, a fileira de miniaturas (clique ou ← → trocam a
-      foto da prévia). O corpo da seção diz só que os controles estão ao lado da prévia.
-- [ ] Botão ⤢ no canto da prévia: a prévia ocupa a janela, a coluna fica ao lado, a fileira embaixo; as seções
-      somem; ⤡ volta. Trocar para outra seção também volta.
-- [ ] Com a prévia escondida, a aba Framing mostra as mesmas opções em linhas no corpo ("Aspect ratio" com a caixa
-      "Same size", nota de mistura, "Position").
+- [ ] Aba Framing: em cima, a prévia (260 px) com o recorte sobre a foto (com "As shot" a etiqueta diz "As shot:
+      nothing is cut · choose a ratio below"); embaixo, a fileira de miniaturas (clique ou ← → trocam a foto da
+      prévia); embaixo dela, as linhas "Aspect ratio" (As shot · 3:2 · 4:3 · 16:9 · 1:1, "keeps n%", a caixa "Same
+      size for all photos"), a nota âmbar de mistura e "Position" (nove pontos). Mesma estrutura das outras abas.
+- [ ] Botão ⤢ no canto da prévia: a prévia ocupa a janela com a fileira embaixo; as configurações somem; ⤡
+      volta. Trocar de aba também volta.
 - [ ] Escolher 3:2: na prévia, o quadro aceso e o resto escuro; na foto 02 o quadro é mais estreito e arrasta
       para os lados (etiqueta "Drag the frame to choose the part that stays · ← → other photos"); nas 3:2 o quadro
       tracejado cobre tudo ("Nothing to cut"). "Position": clicar num ponto move o quadro; o ponto aceso
