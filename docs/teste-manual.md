@@ -1307,8 +1307,8 @@ Com `STILLPOINT_FAKE_CAMERAS=9` as câmeras 02 e 04 estão em 16:9 e as outras e
       mostra a data e "· Mixed ratios" em âmbar (com fotos que faltaram, "· 5 missing · Mixed ratios").
 - [ ] Sessões antigas misturadas (já existentes ao abrir o app): ganham as marcas conforme o app mede as fotos
       (lista, cabeçalho, miniaturas), sem janela.
-- [ ] Sessão com todas as fotos iguais (todas as câmeras em 3:2 e a 02 em 16:9 no Ratio? não: a 02 sempre sai
-      16:9): para ver uma sessão sem marca, apagar a foto 02 da sessão (Delete) → a etiqueta some.
+- [ ] Sessão sem mistura: com a 04 em 3:2, apagar a foto 02 de uma sessão (Delete) → as marcas e a etiqueta somem
+      (a simulada 02 sempre sai 16:9, então é o único jeito de ter uma sessão toda igual).
 
 ## Resultado
 
