@@ -815,7 +815,7 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
 .export-settings.theater .export-strip-slot:not(:has(+ .export-rows)) { display: none; }
 .export-settings.theater .export-preview { height: auto; flex: 1 1 auto; min-height: 0; }
 /* No teatro a foto (e o canvas) preenchem a área, não o tamanho natural do arquivo de prévia */
-.export-settings.theater .export-preview img, .export-settings.theater .export-preview .lent-canvas { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; object-fit: contain; }
+.export-settings.theater .export-preview > img, .export-settings.theater .export-preview .lent-canvas { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; object-fit: contain; }
 .export-settings.theater .export-preview .lent-canvas { border: 0; }
 .lent-presets { margin-left: 8px; }
 /* Altura fixa (miniatura 53 + 4 + barra de rolagem 10): com ou sem a barra, o espaço até a seção
@@ -1568,10 +1568,14 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .crop-dot { width: 12px; height: 12px; padding: 0; border: 1px solid var(--noct-border-strong); background: transparent; cursor: pointer; }
 .crop-dot.on { background: var(--noct-primary); border-color: var(--noct-primary); }
 .crop-dot:hover { border-color: var(--noct-primary); }
-/* Prévia Tilt do Lenticular: Fill cobre na posição escolhida; Fit mostra inteira com a faixa */
-.export-preview.lent-preview:not(.interlaced) img { object-fit: cover; width: 100%; height: 100%; max-width: none; max-height: none; }
-.export-preview.lent-preview.place-fit:not(.interlaced) { background: var(--band, #000); }
-.export-preview.lent-preview.place-fit:not(.interlaced) img { object-fit: contain; }
+/* Prévia Tilt do Lenticular: o "papel" na proporção da impressão, centrado e cabendo na prévia; Fill cobre
+   na posição escolhida, Fit mostra inteira com a faixa (cor do papel) */
+.lent-paper { position: relative; height: 100%; max-width: 100%; aspect-ratio: 3 / 2; border: 1px solid var(--noct-border-strong); box-sizing: border-box; }
+.lent-paper img { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; object-fit: cover; display: block; }
+.lent-paper.place-fit img { object-fit: contain; }
+.export-preview.lent-preview.interlaced .lent-paper { display: none; }
+.export-settings.theater .export-preview .lent-paper { height: 100%; }
+.export-settings.theater .export-preview .lent-paper img { position: absolute; inset: 0; width: 100%; height: 100%; }
 /* Proporções misturadas na sessão (Parte 3 da Proporção) */
 .missing-tag.mixed-tag { border-style: dashed; cursor: help; }
 .gallery-title .mixed-tag { display: inline-block; margin: 0 0 0 10px; vertical-align: 2px; }

@@ -3627,8 +3627,13 @@
       // baixo; 3D: lentes em pé, girando para os lados
       const vertical = l.effect !== "3d";
       preview.classList.toggle("tilt-vertical", vertical);
-      preview.classList.toggle("place-fit", (l.placement || "fill") === "fit");
-      preview.style.setProperty("--band", lentBand === "white" ? "#fff" : "#000");
+      // Tilt: a foto dentro de um "papel" com a proporção da impressão (cabe na prévia); Fill cobre o papel na
+      // posição do recorte da Framing, Fit mostra inteira com a faixa
+      const paper = el("div", "lent-paper");
+      paper.style.aspectRatio = l.widthCm + " / " + l.heightCm;
+      paper.style.background = lentBand === "white" ? "#fff" : "#000";
+      paper.classList.toggle("place-fit", (l.placement || "fill") === "fit");
+      img.remove(); paper.appendChild(img); preview.insertBefore(paper, caption);
       img.style.objectPosition = Math.round(st.crop.x * 100) + "% " + Math.round(st.crop.y * 100) + "%";
       const order = l.reverse ? items.map((_, i) => n - 1 - i) : items.map((_, i) => i);
       let frameAt = Math.min(exp.frame >= 0 ? exp.frame : 0, Math.max(0, n - 1));
@@ -3721,6 +3726,7 @@
         theater.title = exp.lentTheater ? "Leave theater mode" : "Theater mode: larger preview, settings hidden";
         if (exp.lentView === "interlaced") requestAnimationFrame(fitCanvas);
       };
+      if (window.ResizeObserver) { const ro = new ResizeObserver(() => { if (full && exp.lentView === "interlaced") fitCanvas(); }); ro.observe(preview); }
       const fitCanvas = () => {
         if (!full) return;
         // Cabe na prévia mantendo a proporção do arquivo (com margem e marcas); o navegador reduz
