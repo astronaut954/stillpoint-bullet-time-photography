@@ -726,8 +726,9 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      proporção são interdependentes, então ficam juntos numa aba **"Framing"** do Export sessions (antes de
      Photos/Sequence/Lenticular; uma porta só, sem botão ao lado de "Reorder"), com a prévia em cima e as
      linhas embaixo, como nas outras abas (decisão de 2026-11-03, commit `fefd1b0`; o desenho inicial era uma
-     coluna à direita) e **sem modo teatro** (decisão do dono, 2026-11-03: o botão do teatro, "< >", foi retirado da aba; só o
-     Lenticular tem). Linhas: "Aspect ratio" (As shot · 3:2 · 4:3 · 16:9 · 1:1, "keeps n%") com a caixa "Same size for all
+     coluna à direita) e **sem modo teatro** (decisão do dono, 2026-11-03): o ⤢ do canto da prévia só amplia a prévia e deixa as
+     linhas do Framing à vista (a fileira, Aspect ratio, Same size, Position); o teatro "< >" que esconde tudo é só
+     do Lenticular, que não mudou. Linhas: "Aspect ratio" (As shot · 3:2 · 4:3 · 16:9 · 1:1, "keeps n%") com a caixa "Same size for all
      photos" na mesma linha; "References": Previous photo (azul), Next photo (laranja) e Photo 01 (verde),
      cada uma com a sua caixa para ligar/desligar, e uma opacidade só; "This photo": Move X, Move Y, Size e
      Rotate com − +, campo para digitar e passos pequenos (1 px / ⇧ 10; 0,1 % / ⇧ 1; 0,05° / ⇧ 0,5),

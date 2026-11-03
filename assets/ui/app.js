@@ -137,6 +137,9 @@
     // Modo teatro, como no YouTube: tela com barra embaixo e dois ângulos dentro
     // (para fora = entrar; para dentro = sair)
     // Modo teatro: só as setas (para fora = entrar; para dentro = sair), no botão igual ao da janela Project
+    // Framing: ⤢ (setas em diagonal para fora) amplia a prévia; ⤡ (para dentro) volta
+    enlargeIn: '<path d="M8 2.5h3.5V6M11.5 2.5L7.5 6.5M6 11.5H2.5V8M2.5 11.5L6.5 7.5"/>',
+    enlargeOut: '<path d="M11.5 2.5L7.5 6.5M7.5 3.5v3h3M2.5 11.5L6.5 7.5M6.5 10.5v-3h-3"/>',
     theaterIn: '<path d="M4.5 4L1.5 7l3 3M9.5 4l3 3-3 3"/>',
     theaterOut: '<path d="M1.5 4l3 3-3 3M12.5 4l-3 3 3 3"/>',
     up: '<path d="M3 9l4-4 4 4"/>',
@@ -2601,6 +2604,7 @@
     if (exportPrefs && (OUTPUT_KINDS.includes(exportPrefs.mode) || exportPrefs.mode === "framing")) exp.mode = exportPrefs.mode;
     if (exportPrefs && exportPrefs.collapsed) exp.collapsed = Object.assign({}, exportPrefs.collapsed);
     exp.previewHidden = false;  // a prévia abre sempre visível; "Hide preview" vale até fechar a janela (decisão do dono, 2026-11-03)
+    exp.framingLarge = false;
     exp.project = Array.isArray(projectNames);
     const all = exportable();
     // Salvando para fechar: só as que ainda não foram salvas (as já salvas ficam marcadas fora)
@@ -3481,6 +3485,8 @@
     // Foco da prévia: a seção clicada por último, se marcada; senão a primeira marcada
     if (!OUTPUT_KINDS.includes(exp.mode) && exp.mode !== "framing") exp.mode = "framing";
     if (exp.mode !== "lenticular") { exp.lentTheater = false; outer.classList.remove("theater"); }
+    if (exp.mode !== "framing" || exp.previewHidden) exp.framingLarge = false;
+    outer.classList.toggle("framing-large", !!exp.framingLarge);
 
     // Monta a prévia (só a da seção em foco entra na tela) e as configurações de uma saída
     exp.keyNav = null;
@@ -3502,11 +3508,17 @@
       if (kind === "framing") {
         cropLoad(session, st);
         // Em foco: a prévia (o recorte sobre a foto) em cima, as linhas embaixo, a fileira de miniaturas entre as duas.
-        // Sem modo teatro nesta aba (decisão do dono, 2026-11-03).
+        // Sem modo teatro nesta aba (decisão do dono, 2026-11-03): o ⤢ amplia a prévia, mas as linhas do Framing
+        // (Aspect ratio, Same size, Position) continuam à vista; o resto da janela (Name etc.) some. ⤡ volta.
         if (focused && !exp.previewHidden) {
           preview.remove();
           const stage = cropStage(session, items, st, st.crop.ratio !== "asshot" ? RATIOS[st.crop.ratio] : 0, (changed) => { cropSave(session, st); if (changed) rerender(); });
           stage.classList.add("export-preview", "framing-stage");
+          const large = button("", () => { exp.framingLarge = !exp.framingLarge; rerender(); },
+            { icon: exp.framingLarge ? "enlargeOut" : "enlargeIn", title: exp.framingLarge ? "Back to the normal size" : "Enlarge the preview (the Framing settings stay)", kind: "btn-secondary" });
+          large.classList.add("framing-large-btn");
+          large.addEventListener("pointerdown", (e) => e.stopPropagation());
+          stage.appendChild(large);
           outer.insertBefore(stage, rows);
           const stripScroll = el("div", "export-strip-scroll");
           const strip = el("ul", "export-strip");

@@ -1358,9 +1358,12 @@ proporção. O alinhamento — referências, Move/Size/Rotate — vem no pedaço
       nothing is cut · choose a ratio below"); embaixo, a fileira de miniaturas (clique ou ← → trocam a foto da
       prévia); embaixo dela, as linhas "Aspect ratio" (As shot · 3:2 · 4:3 · 16:9 · 1:1, "keeps n%", a caixa "Same
       size for all photos"), a nota âmbar de mistura e "Position" (nove pontos). Mesma estrutura das outras abas.
-- [ ] A aba Framing não tem o botão do teatro no canto superior esquerdo da prévia (o botão quadrado com duas
-      setas "< >", dica "Theater mode: larger preview, settings hidden"); só o Lenticular tem (decisão do dono,
-      2026-11-03).
+- [ ] Aba Framing, botão ⤢ (setas em diagonal) no canto superior esquerdo da prévia, dica "Enlarge the preview
+      (the Framing settings stay)": a prévia cresce até o que a janela permite; a fileira de miniaturas e as linhas
+      "Aspect ratio", "Same size for all photos", a nota de mistura e "Position" continuam embaixo; a linha "Same
+      settings for all sessions" e as linhas de baixo ("Name" etc.) somem. O botão vira ⤡; ele, "Hide preview" ou
+      trocar de aba voltam ao tamanho normal. Não é o teatro do Lenticular (esse esconde as configurações e tem o
+      botão "< >"); o Lenticular não mudou.
 - [ ] Escolher 3:2: na prévia, o quadro aceso e o resto escuro; na foto 02 o quadro é mais estreito e arrasta
       para os lados (etiqueta "Drag the frame to choose the part that stays · ← → other photos"); nas 3:2 o quadro
       tracejado cobre tudo ("Nothing to cut"). "Position": clicar num ponto move o quadro; o ponto aceso
