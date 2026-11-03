@@ -3495,7 +3495,7 @@
     top.appendChild(pv);
     outer.insertBefore(top, rows);
     // Foco da prévia: a seção clicada por último, se marcada; senão a primeira marcada
-    if (exp.mode !== "framing" && !st.outputs[exp.mode]) exp.mode = OUTPUTS.map(([k]) => k).find((k) => st.outputs[k]) || "framing";
+    if (!OUTPUT_KINDS.includes(exp.mode) && exp.mode !== "framing") exp.mode = "framing";
     if (exp.mode !== "lenticular") { exp.lentTheater = false; outer.classList.remove("theater"); }
     if (exp.mode !== "framing") exp.framingTheater = false;
 
@@ -3950,61 +3950,45 @@
           }
     };
 
+    // Abas (decisão do dono, 2026-11-03, protótipo W1): Framing · Photos · Sequence · Lenticular. Cada saída tem a
+    // caixa de ligar/desligar dentro da aba; só o conteúdo da aba atual aparece. A prévia de cima é a da aba atual.
+    const tabs = el("div", "export-tabs");
     [["framing", "Framing", "aspect ratio and alignment, for every output"]].concat(OUTPUTS).forEach(([kind, title, sub]) => {
-      const always = kind === "framing";  // a seção Framing não tem interruptor: vale para todas as saídas
+      const always = kind === "framing";
       const on = always || !!st.outputs[kind];
-      const focused = on && kind === exp.mode;
-      const sec = el("section", "exp-sec" + (on ? " on" : "") + (focused ? " focus" : "") + (always ? " exp-sec-framing" : ""));
-      const head = el("div", "exp-sec-head");
-      const check = el("label", "export-check exp-sec-check");
-      const input = document.createElement("input");
-      input.type = "checkbox";
-      input.checked = on;
-      input.setAttribute("aria-label", title);
-      check.append(input, el("span", "save-check"));
-      check.addEventListener("click", (e) => e.stopPropagation());
-      input.addEventListener("change", () => {
-        st.outputs[kind] = input.checked;
-        if (input.checked) exp.mode = kind;  // a que acabou de ligar vira a prévia
-        rerender();
-      });
-      // Ligar (se desligada) e levar a prévia para esta saída
-      const pick = (e) => { e.stopPropagation(); if (!always) st.outputs[kind] = true; exp.mode = kind; rerender(); };
-      const name = el("span", "exp-sec-name");
-      name.append(el("b", "exp-sec-title", title), el("span", "exp-sec-sub", sub));
-      if (!on) { head.classList.add("pick"); head.title = "Turn on " + title; head.addEventListener("click", pick); }
-      if (!always) head.appendChild(check);
-      head.appendChild(name);
-      const sum = el("span", "exp-sec-sum");
+      const current = kind === exp.mode;
+      const tab = el("div", "export-tab" + (current ? " on" : "") + (on ? "" : " off"));
+      tab.setAttribute("role", "tab"); tab.setAttribute("aria-selected", current ? "true" : "false"); tab.tabIndex = current ? 0 : -1;
+      if (!always) {
+        const check = el("label", "export-check exp-sec-check");
+        const input = document.createElement("input");
+        input.type = "checkbox"; input.checked = on; input.setAttribute("aria-label", "Export " + title);
+        check.append(input, el("span", "save-check"));
+        check.addEventListener("click", (e) => e.stopPropagation());
+        input.addEventListener("change", () => { st.outputs[kind] = input.checked; if (input.checked) exp.mode = kind; rerender(); });
+        tab.appendChild(check);
+      }
+      const name = el("span", "export-tab-name");
+      name.append(el("b", "export-tab-title", title));
+      const sum = el("span", "export-tab-sum");
       setWarnText(sum, on ? outputText(session, kind) : "Off");
-      head.appendChild(sum);
-      if (on) {
-        // Fica nas seções ligadas; na que está na prévia, aceso
-        const hint = el("button", "exp-sec-hint" + (focused ? " on" : ""), "Preview");
-        hint.type = "button";
-        hint.title = focused ? "This output is in the preview" : "Show the " + title + " preview";
-        hint.setAttribute("aria-pressed", focused ? "true" : "false");
-        hint.addEventListener("click", (e) => { e.stopPropagation(); if (!focused) pick(e); });
-        head.appendChild(hint);
-      }
-      // Recolher / abrir as configurações (a saída continua ligada); vale para todas as sessões
-      exp.collapsed = exp.collapsed || {};
-      const folded = on && !!exp.collapsed[kind];
-      if (on) {
-        const fold = button("", (e) => { e.stopPropagation(); exp.collapsed[kind] = !folded; rerender(); },
-          { icon: folded ? "down" : "up", title: folded ? "Show the " + title + " settings" : "Hide the " + title + " settings" });
-        fold.classList.add("exp-sec-fold");
-        head.appendChild(fold);
-      }
-      if (folded) sec.classList.add("folded");
-      sec.appendChild(head);
-      if (on) {
-        const body = el("div", "exp-sec-body" + (folded ? " hidden" : ""));
-        sec.appendChild(body);
-        buildKind(kind, body, focused);
-      }
-      rows.appendChild(sec);
+      name.appendChild(sum);
+      tab.appendChild(name);
+      tab.title = sub;
+      tab.addEventListener("click", () => { if (!current) { exp.mode = kind; rerender(); } });
+      tab.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); tab.click(); } });
+      tabs.appendChild(tab);
     });
+    rows.appendChild(tabs);
+    {
+      const kind = exp.mode;
+      const always = kind === "framing";
+      const on = always || !!st.outputs[kind];
+      const body = el("div", "exp-sec-body export-tab-body");
+      if (!on) body.appendChild(el("div", "export-note exp-none", "This output is off: tick the box in the tab to export it."));
+      buildKind(kind, body, true);
+      rows.appendChild(body);
+    }
     if (!OUTPUT_KINDS.some((k) => st.outputs[k])) rows.appendChild(el("div", "export-note exp-none", "Tick at least one output: Photos, Sequence or Lenticular."));
     slideBlocks(outer, before, rows);
 

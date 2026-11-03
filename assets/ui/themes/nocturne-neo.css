@@ -735,6 +735,20 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
    fazia o WebKit do Mac pintar as miniaturas deslocadas da caixa */
 /* Janela de salvar com três saídas (opção A): cada saída é uma seção com interruptor;
    desmarcada fica recolhida (só o cabeçalho), marcada abre as configurações */
+/* Abas do Export (Framing · Photos · Sequence · Lenticular), com a caixa de ligar/desligar dentro da aba */
+.export-tabs { display: flex; gap: 0; flex: 0 0 auto; border-bottom: 1px solid var(--noct-border-strong); }
+.export-tab { display: flex; align-items: center; gap: 10px; padding: 10px 14px; margin-bottom: -1px; border: 1px solid transparent; border-bottom-color: var(--noct-border-strong); cursor: pointer; user-select: none; -webkit-user-select: none; }
+.export-tab:hover .export-tab-title { color: var(--noct-primary); }
+.export-tab.on { border-color: var(--noct-border-strong); border-bottom-color: var(--noct-surface); background: var(--noct-surface); cursor: default; }
+.export-tab.on .export-tab-title { color: var(--noct-primary); }
+.export-tab.off .export-tab-title { color: var(--noct-text-dim); }
+.export-tab:focus-visible { outline: 1px solid var(--noct-primary); outline-offset: -1px; }
+.export-tab-name { display: flex; flex-direction: column; gap: 2px; }
+.export-tab-title { font: 700 14px var(--noct-font-sans); color: var(--noct-text); }
+.export-tab-sum { font: 500 10px var(--noct-font-mono); letter-spacing: .04em; color: var(--noct-text-muted); white-space: nowrap; }
+.export-tab.off .export-tab-sum { color: var(--noct-text-dim); }
+.export-tab-body { border: 1px solid var(--noct-border-strong); border-top: 0; background: var(--noct-surface); flex: 0 0 auto; }
+.export-tab-body.exp-sec-body { border-top: 0; padding-top: 12px; }
 .exp-sec { border: 1px solid var(--noct-border); background: var(--noct-surface-inner); flex: 0 0 auto; }
 .exp-sec.on { border-color: var(--noct-border-strong); }
 .exp-sec.focus { border-color: var(--noct-primary); }
