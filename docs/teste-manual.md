@@ -1358,12 +1358,10 @@ proporção. O alinhamento — referências, Move/Size/Rotate — vem no pedaço
       nothing is cut · choose a ratio below"); embaixo, a fileira de miniaturas (clique ou ← → trocam a foto da
       prévia); embaixo dela, as linhas "Aspect ratio" (As shot · 3:2 · 4:3 · 16:9 · 1:1, "keeps n%", a caixa "Same
       size for all photos"), a nota âmbar de mistura e "Position" (nove pontos). Mesma estrutura das outras abas.
-- [ ] Aba Framing, botão ⤢ (setas em diagonal) no canto superior esquerdo da prévia, dica "Enlarge the preview
-      (the Framing settings stay)": a prévia cresce até o que a janela permite; a fileira de miniaturas e as linhas
-      "Aspect ratio", "Same size for all photos", a nota de mistura e "Position" continuam embaixo; a linha "Same
-      settings for all sessions" e as linhas de baixo ("Name" etc.) somem. O botão vira ⤡; ele, "Hide preview" ou
-      trocar de aba voltam ao tamanho normal. Não é o teatro do Lenticular (esse esconde as configurações e tem o
-      botão "< >"); o Lenticular não mudou.
+- [ ] Aba Framing: no canto superior esquerdo da prévia, o botão "Align photos" (ícone de dois quadros sobrepostos
+      e o texto; dica "Align photos: move, resize and rotate each photo over the others"). Não há modo teatro nesta
+      aba (o botão "< >" é só do Lenticular, que não mudou). Com alguma foto alinhada, uma etiqueta "Aligned" no
+      canto superior direito da prévia. A tela que o botão abre é a seção 37.
 - [ ] Escolher 3:2: na prévia, o quadro aceso e o resto escuro; na foto 02 o quadro é mais estreito e arrasta
       para os lados (etiqueta "Drag the frame to choose the part that stays · ← → other photos"); nas 3:2 o quadro
       tracejado cobre tudo ("Nothing to cut"). "Position": clicar num ponto move o quadro; o ponto aceso
@@ -1381,6 +1379,42 @@ proporção. O alinhamento — referências, Move/Size/Rotate — vem no pedaço
 - [ ] Settings (menu, ou Ctrl+,): linha "Lenticular" com Black / White; mudar para White e voltar ao Export: a nota
       e as prévias ficam brancas. Exportar um lenticular em Fit: o TIFF tem a faixa da cor escolhida, e o
       "settings.txt" ao lado diz "Placement: Fit (whole photo, white band)"; em Fill diz a posição do recorte.
+
+## 37. Export: tela "Align photos" (2.16.0, pedaço 2 do Framing)
+
+Com `STILLPOINT_FAKE_CAMERAS=9`. Abrir "Export sessions", aba Framing, botão "Align photos" (canto superior esquerdo da
+prévia). Protótipo X2 (2026-11-03): prévia grande à esquerda com a fileira de miniaturas embaixo; coluna de controles à
+direita; a lista de sessões continua à esquerda da janela.
+
+- [ ] Ao abrir: no topo, o botão "Back to Framing" e "Photo 01 of 09 · ← → other photos". Na prévia, "Measuring the
+      photos…" por um instante, depois a foto 01 nítida; por cima dela, em transparência, a foto 02 tingida de laranja
+      (Next photo). Quadro aceso (verde, "Common frame · 6000 × 4000 px" no canto) em volta do que todas cobrem; com
+      "Aspect ratio" em 3:2 e fotos 3:2, o quadro da proporção (âmbar) cobre o quadro comum; fora dele a prévia escurece.
+      Embaixo, a instrução "01 · Drag to move · scroll to resize · ⌥ scroll to rotate · ⌘ arrows 1 px (⇧ 10)".
+- [ ] Fileira de miniaturas: a 01 marcada; a 02 com um ponto laranja (é a Next photo). Clicar na 04 (ou → três vezes):
+      "Photo 04 of 09", a 03 com ponto azul (Previous photo), a 05 com ponto laranja; na prévia a 04 nítida sobre a 03
+      azulada e a 05 alaranjada.
+- [ ] Coluna "References": caixas "Previous photo" (azul, "03"), "Next photo" (laranja, "05") e "Photo 01" (verde, "01",
+      desligada por padrão). Ligar "Photo 01": a 01 aparece esverdeada na prévia e a miniatura 01 ganha o ponto verde.
+      Desligar "Next photo": a 05 some. "Opacity" (barra): muda a transparência de todas as referências de uma vez. As
+      escolhas ficam para as próximas aberturas (memória do app).
+- [ ] "This photo 04": "Move X", "Move Y" (px; − + andam 1, com ⇧ 10), "Size" (%; 0,1, ⇧ 1), "Rotate" (°; 0,05, ⇧ 0,5;
+      sem limite). Digitar um valor e Enter aplica; ↑ ↓ no campo também andam. A foto 04 se mexe na prévia na hora; o
+      quadro comum encolhe conforme ela sai de cima das outras, e o texto "Common frame" mostra o tamanho novo.
+- [ ] Gestos na prévia: arrastar move a 04 (os campos Move X/Y acompanham, arredondados ao pixel ao soltar); a roda do
+      mouse/trackpad muda o Size; ⌥ + roda muda o Rotate; ⌘ + ← → ↑ ↓ movem 1 px (⇧ 10); ← → sozinhas trocam de foto.
+- [ ] Afastar muito uma foto (Move X 7000): o quadro comum some e "Common frame" avisa em âmbar "The photos do not
+      overlap: move them closer, or Reset." "Reset photo" volta a 04 a zero; "Reset all" zera todas.
+- [ ] "Aspect ratio" na coluna (As shot · 3:2 · 4:3 · 16:9 · 1:1, "Same size for all photos") e "Position": o quadro
+      âmbar corta o quadro comum (não cada foto) e segue os nove pontos; a mesma escolha aparece na aba Framing ao
+      voltar ("Back to Framing"), e a prévia do Framing ganha a etiqueta "Aligned".
+- [ ] Fechar e abrir o Export, e fechar e abrir o app: o alinhamento volta (session.json tem "align").
+- [ ] Exportar (Photos convertidas em JPG + Sequence MP4 + Lenticular Fill) uma sessão com a 04 movida 300 px para a
+      direita e girada 2°: no Finder, todas as JPG convertidas têm o mesmo tamanho em pixels (o quadro comum, menor que
+      6000 × 4000), a 04 sai deslocada e girada de modo a coincidir com as outras, as demais saem recortadas ao quadro
+      comum; o MP4 e o lenticular usam as mesmas fotos alinhadas; os Originals continuam intactos; o settings.txt do
+      lenticular tem a linha "Alignment: photos aligned in Stillpoint (common frame … px)". Sessão sem alinhamento:
+      a exportação sai exatamente como na seção 36.
 
 ## Resultado
 

@@ -138,6 +138,8 @@
     // (para fora = entrar; para dentro = sair)
     // Modo teatro: só as setas (para fora = entrar; para dentro = sair), no botão igual ao da janela Project
     // Framing: ⤢ (setas em diagonal para fora) amplia a prévia; ⤡ (para dentro) volta
+    // Align photos (pedaço 2 do Framing): dois quadros sobrepostos, um deles tracejado
+    alignPhotos: '<rect x="1.5" y="4.5" width="8" height="6"/><path d="M5 1.5h7.5V7" stroke-dasharray="2 1.5"/>',
     enlargeIn: '<path d="M8 2.5h3.5V6M11.5 2.5L7.5 6.5M6 11.5H2.5V8M2.5 11.5L6.5 7.5"/>',
     enlargeOut: '<path d="M11.5 2.5L7.5 6.5M7.5 3.5v3h3M2.5 11.5L6.5 7.5M6.5 10.5v-3h-3"/>',
     theaterIn: '<path d="M4.5 4L1.5 7l3 3M9.5 4l3 3-3 3"/>',
@@ -2466,6 +2468,8 @@
                    photos: { original: true, convert: false, format: "jpg", quality: "high", sameSize: false },
                    // Parte 4 da Proporção: um recorte por sessão (Converted e Sequence; Lenticular usa só a posição)
                    crop: { ratio: "asshot", x: 0.5, y: 0.5, loaded: false },
+                   // Pedaço 2 do Framing: alinhamento por foto (arquivo → { dx, dy, scale, rot }), em session.json
+                   align: { byFile: {}, loaded: false },
                    seq: { formats: ["mp4"], fps: 6, loops: 3, reverse: true, height: 1080, alsoPhotos: true, quality: "high" },
                    // lpi: lâmina; pitch: medido na folha de teste (0 = usar o nominal); dpi: impressora;
                    // tamanho em cm (unit "cm"|"in" só muda a exibição); effect "flip" (animação) | "3d"
@@ -2604,7 +2608,7 @@
     if (exportPrefs && (OUTPUT_KINDS.includes(exportPrefs.mode) || exportPrefs.mode === "framing")) exp.mode = exportPrefs.mode;
     if (exportPrefs && exportPrefs.collapsed) exp.collapsed = Object.assign({}, exportPrefs.collapsed);
     exp.previewHidden = false;  // a prévia abre sempre visível; "Hide preview" vale até fechar a janela (decisão do dono, 2026-11-03)
-    exp.framingLarge = false;
+    exp.aligning = false;
     exp.project = Array.isArray(projectNames);
     const all = exportable();
     // Salvando para fechar: só as que ainda não foram salvas (as já salvas ficam marcadas fora)
@@ -2637,10 +2641,14 @@
 
   // ← → no Save sessions: trocam a foto da prévia (Photos) e a do Tilt (Lenticular)
   document.addEventListener("keydown", (e) => {
-    if ((e.key !== "ArrowLeft" && e.key !== "ArrowRight") || selectMenu || openMenu || !exp.keyNav) return;
+    const arrows = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+    if (!arrows[e.key] || selectMenu || openMenu) return;
     if ($("exportOverlay").classList.contains("hidden") || tabScope() !== $("exportOverlay")) return;
     const t = e.target;
     if (t && (t.tagName === "TEXTAREA" || t.tagName === "SELECT" || (t.tagName === "INPUT" && !["checkbox", "radio", "button"].includes(t.type)))) return;
+    // Tela de alinhamento: ⌘ + setas movem a foto 1 px (⇧ 10)
+    if (exp.keyMove && (e.metaKey || e.ctrlKey)) { e.preventDefault(); e.stopImmediatePropagation(); exp.keyMove(arrows[e.key][0], arrows[e.key][1], e.shiftKey); return; }
+    if ((e.key !== "ArrowLeft" && e.key !== "ArrowRight") || !exp.keyNav) return;
     e.preventDefault(); e.stopImmediatePropagation();
     exp.keyNav(e.key === "ArrowRight" ? 1 : -1);
   }, true);
@@ -3341,6 +3349,257 @@
       box.appendChild(pos);
     }
   }
+  // =================== Alinhamento das fotos (pedaço 2 do Framing) ===================
+  // Cada foto pode ser movida, redimensionada e girada sobre as outras ("Align photos", no Export). Unidades: pixels
+  // do original (dx, dy), fração do tamanho (scale) e graus (rot, sentido horário). Guardado em session.json
+  // ("align": "arquivo:dx,dy,scale,rot;..."); os originais não mudam; o programa aplica na exportação (Converted,
+  // Sequence e Lenticular Fill) e corta tudo ao "quadro comum" (o que todas as fotos cobrem depois do ajuste).
+  const photoSizes = {};  // "sessão/arquivo" → Promise<{ w, h }> (tamanho real da foto, pelo programa)
+  function photoSizeOf(sessionName, file) {
+    const key = sessionName + "/" + file;
+    if (!photoSizes[key]) {
+      photoSizes[key] = (typeof window.photoSize === "function" ? window.photoSize(sessionName, file) : Promise.resolve(null))
+        .then((r) => (r && r.width > 0 ? { w: r.width, h: r.height } : null)).catch(() => null);
+    }
+    return photoSizes[key];
+  }
+  let alignPrefs = { prev: true, next: true, first: false, opacity: 0.45 };
+  try { Object.assign(alignPrefs, JSON.parse(localStorage.getItem("stillpoint.alignPrefs") || "{}") || {}); } catch (e) {}
+  function saveAlignPrefs() { try { localStorage.setItem("stillpoint.alignPrefs", JSON.stringify(alignPrefs)); } catch (e) {} }
+  const ALIGN_ID = () => ({ dx: 0, dy: 0, scale: 1, rot: 0 });
+  function alignIsIdentity(a) { return !a || (Math.abs(a.dx) < 1e-6 && Math.abs(a.dy) < 1e-6 && Math.abs(a.scale - 1) < 1e-9 && Math.abs(a.rot) < 1e-9); }
+  function alignLoad(session, st) {
+    if (st.align.loaded) return;
+    st.align.loaded = true;
+    st.align.byFile = {};
+    String(session.align || "").split(";").forEach((item) => {
+      const colon = item.lastIndexOf(":");
+      if (colon <= 0) return;
+      const [dx, dy, scale, rot] = item.slice(colon + 1).split(",").map(Number);
+      st.align.byFile[item.slice(0, colon)] = { dx: dx || 0, dy: dy || 0, scale: scale > 0 ? scale : 1, rot: rot || 0 };
+    });
+  }
+  function alignText(st) {
+    return Object.keys(st.align.byFile).filter((f) => !alignIsIdentity(st.align.byFile[f]))
+      .map((f) => { const a = st.align.byFile[f]; return f + ":" + a.dx.toFixed(2) + "," + a.dy.toFixed(2) + "," + a.scale.toFixed(5) + "," + a.rot.toFixed(3); }).join(";");
+  }
+  function alignSave(session, st) {
+    const text = alignText(st);
+    session.align = text;
+    if (typeof window.setSessionAlign === "function") window.setSessionAlign(session.name, text);
+  }
+  function alignOf(st, file) { if (!st.align.byFile[file]) st.align.byFile[file] = ALIGN_ID(); return st.align.byFile[file]; }
+  function sessionAligned(session, st) { alignLoad(session, st); return Object.keys(st.align.byFile).some((f) => !alignIsIdentity(st.align.byFile[f])); }
+  // O maior retângulo reto que cabe num retângulo w×h girado (a mesma conta do programa, Export::ComputeCommonFrame)
+  function largestInnerRect(w, h, degrees) {
+    const rad = degrees * Math.PI / 180, sn = Math.abs(Math.sin(rad)), cs = Math.abs(Math.cos(rad));
+    if (w <= 0 || h <= 0) return { w: 0, h: 0 };
+    const shortSide = Math.min(w, h), longSide = Math.max(w, h), widthLonger = w >= h;
+    if (shortSide <= 2 * sn * cs * longSide || Math.abs(sn - cs) < 1e-10) {
+      const x = 0.5 * shortSide;
+      return widthLonger ? { w: sn > 1e-12 ? x / sn : w, h: cs > 1e-12 ? x / cs : h } : { w: cs > 1e-12 ? x / cs : w, h: sn > 1e-12 ? x / sn : h };
+    }
+    const cos2 = cs * cs - sn * sn;
+    return { w: (w * cs - h * sn) / cos2, h: (h * cs - w * sn) / cos2 };
+  }
+  // Quadro comum (canvas com o centro em 0,0): a interseção do que cada foto cobre depois do ajuste
+  function commonFrame(items, sizes, st) {
+    let left = -1e18, top = -1e18, right = 1e18, bottom = 1e18;
+    items.forEach((item) => {
+      const sz = sizes[item.file]; if (!sz) return;
+      const a = alignOf(st, item.file);
+      const r = largestInnerRect(sz.w * a.scale, sz.h * a.scale, a.rot);
+      left = Math.max(left, a.dx - r.w / 2); right = Math.min(right, a.dx + r.w / 2);
+      top = Math.max(top, a.dy - r.h / 2); bottom = Math.min(bottom, a.dy + r.h / 2);
+    });
+    if (right - left < 16 || bottom - top < 16) return null;
+    return { x: left, y: top, w: right - left, h: bottom - top };
+  }
+
+  // A tela "Align photos" dentro da janela do Export (protótipo X2, 2026-11-03): prévia grande com as referências
+  // tingidas por cima, a fileira de miniaturas embaixo e, numa coluna à direita, References, This photo, Common frame e
+  // Aspect ratio/Position. Arrastar move a foto, a roda redimensiona, ⌥ + roda gira, ← → trocam de foto, ⌘ + setas
+  // movem 1 px (⇧ 10).
+  function alignScreen(session, items, st, outer, rows, top, rerender) {
+    alignLoad(session, st); cropLoad(session, st);
+    const REF_COLORS = { prev: "#4da3ff", next: "#ff8a3d", first: "#7cff5a" };
+    const n = items.length;
+    let cur = Math.max(0, Math.min(n - 1, exp.photo || 0));
+    const item = items[cur];
+    top.innerHTML = "";
+    top.appendChild(button("Back to Framing", () => { exp.aligning = false; rerender(); }, { icon: "left", kind: "btn-secondary" }));
+    const where = el("span", "align-where", "Photo " + pad(item.order || cur + 1) + " of " + pad(n) + " · ← → other photos");
+    top.appendChild(where);
+    rows.classList.add("hidden");
+    const wrap = el("div", "align-wrap");
+    const left = el("div", "align-left");
+    const stage = el("div", "export-preview align-stage");
+    const layers = el("div", "align-layers");
+    const common = el("div", "align-common");
+    const ratio = el("div", "crop-frame align-ratio");
+    const tag = el("span", "crop-tag", pad(item.order || cur + 1) + " · Drag to move · scroll to resize · ⌥ scroll to rotate · ⌘ arrows 1 px (⇧ 10)");
+    const wait = el("div", "align-wait", "Measuring the photos…");
+    stage.append(layers, common, ratio, tag, wait);
+    left.appendChild(stage);
+    // Fileira de miniaturas, com um ponto da cor da referência
+    const stripScroll = el("div", "export-strip-scroll");
+    const strip = el("ul", "export-strip");
+    stripScroll.appendChild(strip);
+    const refIndex = { prev: cur - 1, next: cur + 1, first: 0 };
+    items.forEach((it, k) => {
+      const li = el("li", "frame" + (k === cur ? " selected" : ""));
+      li.innerHTML = '<div class="frame-img"><img alt=""><span class="frame-badge"></span></div>';
+      li.querySelector(".frame-badge").textContent = pad(it.order || k + 1);
+      ["prev", "next", "first"].forEach((key) => { if (alignPrefs[key] && refIndex[key] === k && k !== cur) { const dot = el("span", "align-refdot"); dot.style.background = REF_COLORS[key]; li.querySelector(".frame-img").appendChild(dot); } });
+      if (!alignIsIdentity(st.align.byFile[it.file])) li.classList.add("aligned");
+      sessionPhoto(session.name, it.file, 320).then((url) => { if (url) li.querySelector("img").src = url; });
+      li.addEventListener("click", () => { exp.photo = k; rerender(); });
+      strip.appendChild(li);
+    });
+    const slot = el("div", "export-strip-slot"); slot.appendChild(stripScroll); left.appendChild(slot);
+    exp.keyNav = (d) => { const k = Math.max(0, Math.min(n - 1, cur + d)); if (k === cur) return; exp.photo = k; rerender(); };
+    wrap.appendChild(left);
+
+    // Coluna de controles
+    const panel = el("div", "align-panel");
+    const block = (title, extra) => { const b = el("div", "align-block"); const h = el("h3", "", title); if (extra) h.appendChild(extra); b.appendChild(h); panel.appendChild(b); return b; };
+    const refs = block("References");
+    const refRow = (key, label, k) => {
+      const r = el("label", "align-ref" + (k < 0 || k >= n || k === cur ? " dimmed" : ""));
+      const c = document.createElement("input"); c.type = "checkbox"; c.className = "cs-check"; c.checked = !!alignPrefs[key];
+      c.addEventListener("change", () => { alignPrefs[key] = c.checked; saveAlignPrefs(); rerender(); });
+      const sw = el("span", "align-sw"); sw.style.background = REF_COLORS[key];
+      r.append(c, sw, document.createTextNode(label), el("span", "align-who", k >= 0 && k < n && k !== cur ? pad(items[k].order || k + 1) : "—"));
+      refs.appendChild(r);
+    };
+    refRow("prev", "Previous photo", cur - 1); refRow("next", "Next photo", cur + 1); refRow("first", "Photo 01", 0);
+    const op = el("div", "align-opacity");
+    const opIn = document.createElement("input"); opIn.type = "range"; opIn.min = "5"; opIn.max = "100"; opIn.value = String(Math.round(alignPrefs.opacity * 100));
+    const opVal = el("span", "align-opval", opIn.value + "%");
+    opIn.addEventListener("input", () => { alignPrefs.opacity = (+opIn.value) / 100; opVal.textContent = opIn.value + "%"; layout(); });
+    opIn.addEventListener("change", saveAlignPrefs);
+    op.append(el("span", "align-lab", "Opacity"), opIn, opVal);
+    refs.appendChild(op);
+
+    const self = block("This photo", el("span", "align-cur", pad(item.order || cur + 1)));
+    const a = alignOf(st, item.file);
+    const fields = {};
+    const control = (key, label, unit, step, bigStep, decimals, get, set) => {
+      const r = el("div", "align-ctl");
+      const inp = document.createElement("input"); inp.type = "text"; inp.className = "lent-num align-num"; inp.value = get().toFixed(decimals);
+      inp.setAttribute("aria-label", label);
+      const apply = () => { const v = parseFloat(inp.value.replace(",", ".")); if (!isNaN(v)) set(v); sync(); layout(); save(); };
+      inp.addEventListener("change", apply);
+      inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { apply(); inp.blur(); } if (e.key === "ArrowUp" || e.key === "ArrowDown") { e.preventDefault(); set(get() + (e.key === "ArrowUp" ? 1 : -1) * (e.shiftKey ? bigStep : step)); sync(); layout(); save(); } e.stopPropagation(); });
+      const minus = button("", (e) => { set(get() - (e.shiftKey ? bigStep : step)); sync(); layout(); save(); }, { icon: "minus", title: "−" + step + " (⇧ " + bigStep + ")", kind: "btn-secondary" });
+      const plus = button("", (e) => { set(get() + (e.shiftKey ? bigStep : step)); sync(); layout(); save(); }, { icon: "plus", title: "+" + step + " (⇧ " + bigStep + ")", kind: "btn-secondary" });
+      r.append(el("span", "align-lab", label), minus, inp, plus, el("span", "align-unit", unit));
+      fields[key] = inp;
+      self.appendChild(r);
+    };
+    control("dx", "Move X", "px · ⇧ 10", 1, 10, 0, () => a.dx, (v) => { a.dx = v; });
+    control("dy", "Move Y", "px · ⇧ 10", 1, 10, 0, () => a.dy, (v) => { a.dy = v; });
+    control("scale", "Size", "% · 0.1 / ⇧ 1", 0.1, 1, 1, () => a.scale * 100, (v) => { a.scale = Math.max(5, Math.min(2000, v)) / 100; });
+    control("rot", "Rotate", "° · 0.05 / ⇧ 0.5", 0.05, 0.5, 2, () => a.rot, (v) => { a.rot = v; });
+    const resets = el("div", "align-resets");
+    resets.appendChild(button("Reset photo", () => { st.align.byFile[item.file] = ALIGN_ID(); save(); rerender(); }, { kind: "btn-secondary" }));
+    resets.appendChild(button("Reset all", () => { st.align.byFile = {}; save(); rerender(); }, { kind: "btn-secondary" }));
+    self.appendChild(resets);
+    const cfBlock = block("Common frame");
+    const cf = el("div", "align-cf", "Measuring the photos…");
+    cfBlock.appendChild(cf);
+    const ar = block("Aspect ratio");
+    const arRows = el("div", "align-rows");
+    framingRows(session, st, arRows, rerender);
+    ar.appendChild(arRows);
+    wrap.appendChild(panel);
+    outer.insertBefore(wrap, rows);
+
+    const sync = () => { fields.dx.value = a.dx.toFixed(0); fields.dy.value = a.dy.toFixed(0); fields.scale.value = (a.scale * 100).toFixed(1); fields.rot.value = a.rot.toFixed(2); };
+    let saveTimer = 0;
+    const save = () => { clearTimeout(saveTimer); saveTimer = setTimeout(() => alignSave(session, st), 150); };
+
+    // Tamanhos reais e as imagens das camadas
+    const sizes = {};
+    let scaleK = 1, cx = 0, cy = 0;  // canvas (px do original) → tela
+    const layerOf = {};
+    const makeLayer = (it, key) => {
+      const l = el("div", "align-layer" + (key ? " align-ref" : " align-current"));
+      const im = document.createElement("img"); im.alt = "";
+      l.appendChild(im);
+      if (key) { const tint = el("div", "align-tint"); tint.style.background = REF_COLORS[key]; l.appendChild(tint); }
+      sessionPhoto(session.name, it.file, 1600).then((url) => { if (url) im.src = url; });
+      return l;
+    };
+    const order = [];
+    ["first", "prev", "next"].forEach((key) => { const k = refIndex[key]; if (alignPrefs[key] && k >= 0 && k < n && k !== cur && !order.some((o) => o.k === k)) order.push({ k, key }); });
+    order.forEach((o) => { layerOf[o.k] = makeLayer(items[o.k], o.key); layers.appendChild(layerOf[o.k]); });
+    layerOf[cur] = makeLayer(item, ""); layers.appendChild(layerOf[cur]);
+
+    const layout = () => {
+      const W = stage.clientWidth, H = stage.clientHeight;
+      if (!W || !H || !sizes[item.file]) return;
+      // Escala da tela: a maior foto (com margem) cabe inteira
+      let maxW = 0, maxH = 0;
+      items.forEach((it) => { const sz = sizes[it.file]; if (sz) { maxW = Math.max(maxW, sz.w); maxH = Math.max(maxH, sz.h); } });
+      scaleK = Math.min(W / (maxW * 1.12), H / (maxH * 1.12)); cx = W / 2; cy = H / 2;
+      Object.keys(layerOf).forEach((k) => {
+        const it = items[k], sz = sizes[it.file], l = layerOf[k]; if (!sz) { l.style.display = "none"; return; }
+        const al = alignOf(st, it.file);
+        const w = sz.w * scaleK, h = sz.h * scaleK;
+        l.style.display = ""; l.style.width = w + "px"; l.style.height = h + "px";
+        l.style.left = (cx + al.dx * scaleK - w / 2) + "px"; l.style.top = (cy + al.dy * scaleK - h / 2) + "px";
+        l.style.transform = "scale(" + al.scale + ") rotate(" + al.rot + "deg)";
+        if (l.classList.contains("align-ref")) l.style.opacity = alignPrefs.opacity;
+      });
+      const frame = commonFrame(items, sizes, st);
+      if (!frame) { common.style.display = "none"; ratio.style.display = "none"; cf.textContent = "The photos do not overlap: move them closer, or Reset."; cf.classList.add("exp-warn"); return; }
+      cf.classList.remove("exp-warn");
+      common.style.display = ""; common.style.left = (cx + frame.x * scaleK) + "px"; common.style.top = (cy + frame.y * scaleK) + "px";
+      common.style.width = (frame.w * scaleK) + "px"; common.style.height = (frame.h * scaleK) + "px";
+      common.setAttribute("data-size", "Common frame · " + Math.round(frame.w) + " × " + Math.round(frame.h) + " px");
+      const r = st.crop.ratio !== "asshot" ? RATIOS[st.crop.ratio] : 0;
+      let fw = frame.w, fh = frame.h;
+      if (r) { const t = frame.w >= frame.h ? r : 1 / r; if (frame.w / frame.h > t) fw = frame.h * t; else fh = frame.w / t; }
+      const fx = frame.x + (frame.w - fw) * st.crop.x, fy = frame.y + (frame.h - fh) * st.crop.y;
+      ratio.style.display = ""; ratio.classList.toggle("free", r && (frame.w - fw > 1 || frame.h - fh > 1));
+      ratio.style.left = (cx + fx * scaleK) + "px"; ratio.style.top = (cy + fy * scaleK) + "px"; ratio.style.width = (fw * scaleK) + "px"; ratio.style.height = (fh * scaleK) + "px";
+      const sz = sizes[item.file];
+      cf.textContent = "What every photo covers after the alignment: " + Math.round(frame.w) + " × " + Math.round(frame.h) + " px" +
+        (sz ? " (this photo: " + sz.w + " × " + sz.h + ")" : "") + ". " + (r ? "The " + st.crop.ratio + " frame cuts " + Math.round(fw) + " × " + Math.round(fh) + " px of it." : "The aspect ratio cuts this frame, not each photo.");
+    };
+    Promise.all(items.map((it) => photoSizeOf(session.name, it.file).then((sz) => { if (sz) sizes[it.file] = sz; }))).then(() => {
+      wait.remove();
+      if (!sizes[item.file]) { cf.textContent = "Could not read the size of this photo."; cf.classList.add("exp-warn"); return; }
+      layout();
+    });
+    if (window.ResizeObserver) new ResizeObserver(layout).observe(stage);
+
+    // Gestos na prévia
+    let drag = null;
+    stage.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0 || e.target.closest("button") || !sizes[item.file]) return;
+      drag = { x: e.clientX, y: e.clientY, dx: a.dx, dy: a.dy }; stage.setPointerCapture(e.pointerId); e.preventDefault();
+      stage.classList.add("dragging");
+    });
+    stage.addEventListener("pointermove", (e) => {
+      if (!drag) return;
+      a.dx = drag.dx + (e.clientX - drag.x) / scaleK; a.dy = drag.dy + (e.clientY - drag.y) / scaleK;
+      sync(); layout();
+    });
+    const endDrag = () => { if (!drag) return; drag = null; stage.classList.remove("dragging"); a.dx = Math.round(a.dx); a.dy = Math.round(a.dy); sync(); layout(); save(); };
+    stage.addEventListener("pointerup", endDrag); stage.addEventListener("pointercancel", endDrag);
+    stage.addEventListener("wheel", (e) => {
+      if (!sizes[item.file]) return;
+      e.preventDefault();
+      const d = Math.max(-40, Math.min(40, e.deltaY));
+      if (e.altKey) a.rot = Math.round((a.rot - d * 0.01) * 100) / 100;
+      else a.scale = Math.max(0.05, Math.min(20, a.scale * (1 - d * 0.001)));
+      sync(); layout(); save();
+    }, { passive: false });
+    exp.keyMove = (ddx, ddy, big) => { const step = big ? 10 : 1; a.dx += ddx * step; a.dy += ddy * step; sync(); layout(); save(); };
+  }
+
   function lentSizeRow(l, box, rerender, label) {
       const size = row(label || "Print size");
       const unitIn = l.unit === "in";
@@ -3485,8 +3744,11 @@
     // Foco da prévia: a seção clicada por último, se marcada; senão a primeira marcada
     if (!OUTPUT_KINDS.includes(exp.mode) && exp.mode !== "framing") exp.mode = "framing";
     if (exp.mode !== "lenticular") { exp.lentTheater = false; outer.classList.remove("theater"); }
-    if (exp.mode !== "framing" || exp.previewHidden) exp.framingLarge = false;
-    outer.classList.toggle("framing-large", !!exp.framingLarge);
+    exp.keyMove = null;
+    // Tela "Align photos" (pedaço 2 do Framing): toma a coluna inteira no lugar das abas
+    if (exp.mode !== "framing") exp.aligning = false;
+    outer.classList.toggle("aligning", !!exp.aligning);
+    if (exp.aligning) { exp.keyNav = null; alignScreen(session, items, st, outer, rows, top, rerender); return; }
 
     // Monta a prévia (só a da seção em foco entra na tela) e as configurações de uma saída
     exp.keyNav = null;
@@ -3514,11 +3776,13 @@
           preview.remove();
           const stage = cropStage(session, items, st, st.crop.ratio !== "asshot" ? RATIOS[st.crop.ratio] : 0, (changed) => { cropSave(session, st); if (changed) rerender(); });
           stage.classList.add("export-preview", "framing-stage");
-          const large = button("", () => { exp.framingLarge = !exp.framingLarge; rerender(); },
-            { icon: exp.framingLarge ? "enlargeOut" : "enlargeIn", title: exp.framingLarge ? "Back to the normal size" : "Enlarge the preview (the Framing settings stay)", kind: "btn-secondary" });
-          large.classList.add("framing-large-btn");
-          large.addEventListener("pointerdown", (e) => e.stopPropagation());
-          stage.appendChild(large);
+          // "Align photos" (pedaço 2): abre a tela de alinhamento no lugar do ⤢ (decisão do dono, 2026-11-03, protótipo X1)
+          const alignBtn = button("Align photos", () => { exp.aligning = true; rerender(); },
+            { icon: "alignPhotos", title: "Align photos: move, resize and rotate each photo over the others", kind: "btn-secondary" });
+          alignBtn.classList.add("framing-align-btn");
+          alignBtn.addEventListener("pointerdown", (e) => e.stopPropagation());
+          stage.appendChild(alignBtn);
+          if (sessionAligned(session, st)) stage.appendChild(el("span", "framing-aligned-tag", "Aligned"));
           outer.insertBefore(stage, rows);
           const stripScroll = el("div", "export-strip-scroll");
           const strip = el("ul", "export-strip");

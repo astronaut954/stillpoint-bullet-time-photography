@@ -18,7 +18,9 @@
 #include <cstdint>
 #include <cstring>
 #include <fstream>
+#include <sstream>
 #include <functional>
+#include <map>
 #include <thread>
 
 #include "stb_image_resize2.h"
@@ -794,6 +796,114 @@ namespace Export
         return true;
     }
 
+    // ---- Alinhamento (pedaço 2 do Framing) ----
+    std::map<std::string, Align> ParseAlign(const std::string& text)
+    {
+        std::map<std::string, Align> out;
+        std::stringstream items(text);
+        for (std::string item; std::getline(items, item, ';');)
+        {
+            const size_t colon = item.rfind(':');
+            if (colon == std::string::npos || colon == 0) continue;
+            Align a;
+            double v[4] = { 0, 0, 1, 0 };
+            std::stringstream nums(item.substr(colon + 1));
+            size_t k = 0;
+            for (std::string n; k < 4 && std::getline(nums, n, ',');)
+            {
+                try { v[k] = std::stod(n); } catch (...) {}
+                ++k;
+            }
+            a.dx = v[0]; a.dy = v[1]; a.scale = std::clamp(v[2], 0.05, 20.0); a.rot = v[3];
+            out[item.substr(0, colon)] = a;
+        }
+        return out;
+    }
+    bool Framing::Aligned() const
+    {
+        for (const Align& a : align)
+            if (!a.Identity()) return true;
+        return false;
+    }
+    namespace
+    {
+        constexpr double kPi = 3.14159265358979323846;
+        // O maior retângulo reto (lados na horizontal e na vertical) que cabe dentro de um retângulo w×h girado
+        // de `radians`, centrado no mesmo ponto
+        void LargestInnerRect(double w, double h, double radians, double& outW, double& outH)
+        {
+            const double s = std::abs(std::sin(radians)), c = std::abs(std::cos(radians));
+            if (w <= 0 || h <= 0) { outW = outH = 0; return; }
+            const bool widthLonger = w >= h;
+            const double shortSide = std::min(w, h), longSide = std::max(w, h);
+            if (shortSide <= 2 * s * c * longSide || std::abs(s - c) < 1e-10)
+            {
+                const double x = 0.5 * shortSide;
+                if (widthLonger) { outW = s > 1e-12 ? x / s : w; outH = c > 1e-12 ? x / c : h; }
+                else { outW = c > 1e-12 ? x / c : w; outH = s > 1e-12 ? x / s : h; }
+            }
+            else
+            {
+                const double cos2 = c * c - s * s;
+                outW = (w * c - h * s) / cos2;
+                outH = (h * c - w * s) / cos2;
+            }
+        }
+    }
+    bool ComputeCommonFrame(Framing& framing, const std::vector<std::pair<int, int>>& sizes)
+    {
+        if (!framing.Aligned() || sizes.size() != framing.align.size()) { framing.align.clear(); return false; }
+        double left = -1e18, top = -1e18, right = 1e18, bottom = 1e18;
+        for (size_t k = 0; k < sizes.size(); ++k)
+        {
+            const Align& a = framing.align[k];
+            double iw = 0, ih = 0;
+            LargestInnerRect(sizes[k].first * a.scale, sizes[k].second * a.scale, a.rot * kPi / 180.0, iw, ih);
+            left = std::max(left, a.dx - iw / 2); right = std::min(right, a.dx + iw / 2);
+            top = std::max(top, a.dy - ih / 2); bottom = std::min(bottom, a.dy + ih / 2);
+        }
+        if (right - left < 16 || bottom - top < 16) { framing.align.clear(); return false; }
+        framing.commonX = left; framing.commonY = top; framing.commonW = right - left; framing.commonH = bottom - top;
+        return true;
+    }
+    void ApplyAlign(RgbFrame& frame, const Framing& framing, size_t k)
+    {
+        if (!framing.Aligned() || k >= framing.align.size() || framing.commonW <= 0 || framing.commonH <= 0) return;
+        if (frame.width <= 0 || frame.height <= 0) return;
+        const Align& a = framing.align[k];
+        const int W = std::max(1, static_cast<int>(std::lround(framing.commonW)));
+        const int H = std::max(1, static_cast<int>(std::lround(framing.commonH)));
+        const double rad = a.rot * kPi / 180.0, cs = std::cos(rad), sn = std::sin(rad);
+        const double cx = frame.width / 2.0, cy = frame.height / 2.0;
+        const int sw = frame.width, sh = frame.height;
+        std::vector<unsigned char> out(static_cast<size_t>(W) * H * 3);
+        for (int y = 0; y < H; ++y)
+        {
+            const double py = framing.commonY + y + 0.5 - a.dy;
+            for (int x = 0; x < W; ++x)
+            {
+                // Do canvas para a foto: desfaz o deslocamento, o giro e o tamanho
+                const double px = framing.commonX + x + 0.5 - a.dx;
+                const double ux = (px * cs + py * sn) / a.scale, uy = (-px * sn + py * cs) / a.scale;
+                const double fx = std::clamp(cx + ux - 0.5, 0.0, sw - 1.0), fy = std::clamp(cy + uy - 0.5, 0.0, sh - 1.0);
+                const int x0 = static_cast<int>(fx), y0 = static_cast<int>(fy);
+                const int x1 = std::min(x0 + 1, sw - 1), y1 = std::min(y0 + 1, sh - 1);
+                const double tx = fx - x0, ty = fy - y0;
+                const unsigned char* p00 = &frame.pixels[(static_cast<size_t>(y0) * sw + x0) * 3];
+                const unsigned char* p01 = &frame.pixels[(static_cast<size_t>(y0) * sw + x1) * 3];
+                const unsigned char* p10 = &frame.pixels[(static_cast<size_t>(y1) * sw + x0) * 3];
+                const unsigned char* p11 = &frame.pixels[(static_cast<size_t>(y1) * sw + x1) * 3];
+                unsigned char* o = &out[(static_cast<size_t>(y) * W + x) * 3];
+                for (int c = 0; c < 3; ++c)
+                {
+                    const double v = (p00[c] * (1 - tx) + p01[c] * tx) * (1 - ty) + (p10[c] * (1 - tx) + p11[c] * tx) * ty;
+                    o[c] = static_cast<unsigned char>(std::clamp(static_cast<int>(std::lround(v)), 0, 255));
+                }
+            }
+        }
+        frame.pixels = std::move(out); frame.width = W; frame.height = H;
+    }
+
     Quality ParseQuality(const std::string& text)
     {
         if (text == "standard") return Quality::Standard;
@@ -849,6 +959,7 @@ namespace Export
                 error = "Could not read " + photos[i].filename().string();
                 return false;
             }
+            ApplyAlign(frame, options.framing, i);
             ApplyFraming(frame, options.framing);
             decoded.push_back(std::move(frame));
             if (progress)
@@ -967,6 +1078,7 @@ namespace Export
             if (progress) progress(static_cast<double>(k) / (n + 1), "lenticular");
             RgbFrame frame;
             if (!LoadPhotoRgb(photos[static_cast<size_t>(k)], frame)) { error = "Could not read " + photos[static_cast<size_t>(k)].filename().string(); return false; }
+            ApplyAlign(frame, o.framing, static_cast<size_t>(k));
             const std::vector<unsigned char> fitted = o.fit ? FitBand(frame, W, H, o.whiteBand) : Cover(frame, W, H, o.posX, o.posY);
             if (o.horizontalLenses)
             {
@@ -1089,14 +1201,14 @@ namespace Export
     }
 
     bool ConvertPhoto(const fs::path& photo, const fs::path& dest, const std::string& format, Quality quality,
-                      std::string& error, const Framing& framing, int targetWidth, int targetHeight)
+                      std::string& error, const Framing& framing, int targetWidth, int targetHeight, size_t photoIndex)
     {
         const fs::path file = fs::path(dest).concat("." + format);
         std::string jpeg;
         RgbFrame image;
         // De JPEG para JPG: o próprio arquivo, sem perder qualidade nem os dados da câmera (só quando a foto
         // não vai ser recortada nem reduzida)
-        const bool reframe = framing.Active() || targetWidth > 0;
+        const bool reframe = framing.Active() || framing.Aligned() || targetWidth > 0;
         if (format == "jpg" && IsJpegPhoto(photo.filename().string()) && !reframe)
         {
             std::error_code ec;
@@ -1109,6 +1221,7 @@ namespace Export
             error = "Could not read " + photo.filename().string();
             return false;
         }
+        ApplyAlign(image, framing, photoIndex);
         ApplyFraming(image, framing);
         if (targetWidth > 0 && targetHeight > 0 && (image.width > targetWidth || image.height > targetHeight))
         {

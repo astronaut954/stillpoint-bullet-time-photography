@@ -728,7 +728,16 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      linhas embaixo, como nas outras abas (decisão de 2026-11-03, commit `fefd1b0`; o desenho inicial era uma
      coluna à direita) e **sem modo teatro** (decisão do dono, 2026-11-03): o ⤢ do canto da prévia só amplia a prévia e deixa as
      linhas do Framing à vista (a fileira, Aspect ratio, Same size, Position); o teatro "< >" que esconde tudo é só
-     do Lenticular, que não mudou. Linhas: "Aspect ratio" (As shot · 3:2 · 4:3 · 16:9 · 1:1, "keeps n%") com a caixa "Same size for all
+     do Lenticular, que não mudou. **Pedaço 2 feito em 2026-11-03** (`docs/teste-manual.md`, seção 37; protótipo X2):
+     o botão do canto da prévia virou "Align photos" (texto + ícone de dois quadros) e abre a tela de alinhamento no
+     lugar das abas: prévia grande com as referências tingidas (Previous azul, Next laranja, Photo 01 verde; uma
+     opacidade; guardadas na memória do app), quadro comum aceso, quadro da proporção âmbar, fileira de miniaturas com
+     o ponto da referência; coluna com References, This photo (Move X/Y, Size, Rotate, Reset photo/Reset all), Common
+     frame e Aspect ratio/Position; gestos como decidido. `session.json` ganha "align" (arquivo:dx,dy,scale,rot); o
+     programa (`Export::Align`, `ComputeCommonFrame`, `ApplyAlign`) transforma cada foto e corta ao quadro comum antes
+     da proporção, em Converted, Sequence e Lenticular (Fill e Fit); sem foto alinhada nada muda. Em aberto: sessões
+     com sensores de tamanhos diferentes e sem alinhamento continuam como no pedaço 1 (cada foto inteira), não ao quadro
+     comum — a decidir. Linhas: "Aspect ratio" (As shot · 3:2 · 4:3 · 16:9 · 1:1, "keeps n%") com a caixa "Same size for all
      photos" na mesma linha; "References": Previous photo (azul), Next photo (laranja) e Photo 01 (verde),
      cada uma com a sua caixa para ligar/desligar, e uma opacidade só; "This photo": Move X, Move Y, Size e
      Rotate com − +, campo para digitar e passos pequenos (1 px / ⇧ 10; 0,1 % / ⇧ 1; 0,05° / ⇧ 0,5),

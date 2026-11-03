@@ -747,7 +747,7 @@ namespace
             Json item("session");
             item.Add("name", session.name).Add("saved", session.saved).Add("missing", session.missing)
                 .Add("inProject", session.inProject).Add("label", session.label).Add("edited", session.edited)
-                .Add("timing", session.timing).Add("crop", session.crop).Raw("photos", photos);
+                .Add("timing", session.timing).Add("crop", session.crop).Add("align", session.align).Raw("photos", photos);
             list += (firstSession ? "" : ",") + item.Str();
             firstSession = false;
         }
@@ -2254,6 +2254,46 @@ namespace
             const bool ok = args.size() >= 2 && store.SetCrop(args[0], args[1]);
             return Json("crop").Add("ok", ok).Str();
         });
+        // setSessionAlign(sessão, "arquivo:dx,dy,scale,rot;..."): o alinhamento das fotos (tela "Align photos" do
+        // Export) fica na sessão; os originais não mudam (pedaço 2 do Framing)
+        window.bind("setSessionAlign", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            const bool ok = args.size() >= 2 && store.SetAlign(args[0], args[1]);
+            return Json("align").Add("ok", ok).Str();
+        });
+        // photoSize(sessão, arquivo): largura e altura da foto em pixels (a tela de alinhamento trabalha em
+        // pixels do original). Decodifica na fila de prévias; o resultado fica guardado por arquivo.
+        {
+            static std::map<std::string, std::pair<int, int>> sizeCache;
+            static std::mutex sizeMutex;
+            window.bind("photoSize", [&](const std::string& id, const std::string& request, void*)
+            {
+                const auto args = ParseStringArgs(request);
+                const std::string session = args.size() > 0 ? args[0] : "";
+                const std::string file = args.size() > 1 ? args[1] : "";
+                previews.Post([&, id, session, file]
+                {
+                    const std::string key = session + "/" + file;
+                    int w = 0, h = 0;
+                    {
+                        std::lock_guard<std::mutex> lock(sizeMutex);
+                        auto it = sizeCache.find(key);
+                        if (it != sizeCache.end()) { w = it->second.first; h = it->second.second; }
+                    }
+                    if (w <= 0)
+                    {
+                        const std::filesystem::path dir = store.SessionDir(session);
+                        if (!dir.empty() && Export::PhotoSize(dir / file, w, h))
+                        {
+                            std::lock_guard<std::mutex> lock(sizeMutex);
+                            sizeCache[key] = { w, h };
+                        }
+                    }
+                    window.resolve(id, 0, Json("size").Add("width", w).Add("height", h).Str());
+                });
+            }, nullptr);
+        }
         // projectExportDefaults(json): guarda as últimas configurações de export do Project
         window.bind("projectExportDefaults", [&](const std::string& request) -> std::string
         {
@@ -3307,6 +3347,34 @@ namespace
                     std::vector<std::string> perCamera;
                     for (const auto& [group, file] : byCamera)
                         perCamera.push_back(file);
+                    // Alinhamento (pedaço 2 do Framing): uma transformação por foto, na ordem de perCamera, e o
+                    // quadro comum calculado a partir do tamanho real de cada foto. Sem foto alinhada, nada muda.
+                    Export::Framing framing = job.framing;
+                    {
+                        const auto aligns = Export::ParseAlign(session->align);
+                        bool any = false;
+                        for (const auto& f : perCamera)
+                        {
+                            auto it = aligns.find(f);
+                            framing.align.push_back(it == aligns.end() ? Export::Align() : it->second);
+                            if (it != aligns.end() && !it->second.Identity()) any = true;
+                        }
+                        if (any)
+                        {
+                            std::vector<std::pair<int, int>> sizes;
+                            for (const auto& f : perCamera)
+                            {
+                                int w = 0, h = 0;
+                                if (exportCancel) break;
+                                if (!Export::PhotoSize(photoPath(f), w, h)) { w = 0; h = 0; }
+                                sizes.push_back({ w, h });
+                            }
+                            if (!Export::ComputeCommonFrame(framing, sizes))
+                                framing.align.clear();
+                        }
+                        else
+                            framing.align.clear();
+                    }
 
                     // Subpastas quando há mais de uma saída: Photos/, Sequence/ e Lenticular/
                     const bool savePhotos = !job.photoFormat.empty();
@@ -3323,6 +3391,7 @@ namespace
                         {
                             Export::SequenceOptions one = job.options;
                             one.formats = { format };
+                            one.framing = framing;
                             const fs::path dir = split ? target / "Sequence" : target;
                             fs::create_directories(dir, ec);
                             if (!Export::WriteSequence(photos, dir / job.folderName, one, report, &exportCancel, error))
@@ -3345,6 +3414,7 @@ namespace
                         // Configurações em texto (dentro do TIFF e num .txt ao lado): para reimprimir
                         // ou conferir depois, mesmo sem o app
                         Export::LenticularOptions lent = job.lent;
+                        lent.framing = framing;
                         {
                             const Export::LenticularInfo info = Export::LenticularPlan(lent, static_cast<int>(photos.size()));
                             const double nominal = job.lentNominal > 0 ? job.lentNominal : lent.lpi;
@@ -3379,6 +3449,12 @@ namespace
                             t += line;
                             if (lent.fit) t += std::string("Placement: Fit (whole photo, ") + (lent.whiteBand ? "white" : "black") + " band)\n";
                             else { std::snprintf(line, sizeof(line), "Placement: Fill (crop at %.0f%% across, %.0f%% down)\n", lent.posX * 100, lent.posY * 100); t += line; }
+                            if (framing.Aligned())
+                            {
+                                std::snprintf(line, sizeof(line), "Alignment: photos aligned in Stillpoint (common frame %d x %d px)\n",
+                                              static_cast<int>(std::lround(framing.commonW)), static_cast<int>(std::lround(framing.commonH)));
+                                t += line;
+                            }
                             t += "\nPrint at 100% (actual size), never \"fit to page\": the file already has the right size and dpi.\n";
                             lent.description = t;
                         }
@@ -3431,7 +3507,8 @@ namespace
                             {
                                 if (exportCancel) break;
                                 int w = 0, h = 0;
-                                if (!Export::PhotoSize(photoPath(f), w, h)) continue;
+                                if (framing.Aligned()) { w = static_cast<int>(std::lround(framing.commonW)); h = static_cast<int>(std::lround(framing.commonH)); }
+                                else if (!Export::PhotoSize(photoPath(f), w, h)) continue;
                                 const double r = Export::RatioValue(job.framing.ratio);
                                 int cw = std::max(w, h), ch = std::min(w, h);  // deitada
                                 if (r > 0)
@@ -3461,7 +3538,7 @@ namespace
                             }
                             else
                                 Export::ConvertPhoto(from, formatDir / shortStem(files[i], "." + photoFormat), photoFormat,
-                                                     job.photoQuality, error, job.framing, targetW, targetH);
+                                                     job.photoQuality, error, framing, targetW, targetH, i);
                         }
                         if (!error.empty())
                             break;
