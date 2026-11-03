@@ -373,7 +373,7 @@ button { font: inherit; }
 .gallery-actions { display: flex; gap: 6px; align-items: center; }
 
 .carousel-wrap { position: relative; }
-.carousel { list-style: none; margin: 0; padding: 3px 3px 7px; display: flex; gap: 6px; overflow-x: auto; scroll-behavior: smooth; scrollbar-gutter: stable; }  /* o lugar da barra de rolagem fica reservado: o espaço até a foto grande não muda */
+.carousel { list-style: none; margin: 0; padding: 3px 3px 7px; display: flex; gap: 6px; overflow-x: scroll; scroll-behavior: smooth; }  /* trilho sempre presente: o espaço até a foto grande não muda quando as miniaturas passam a caber */
 /* Reordenando as fotos: contorno âmbar (em andamento) */
 .gallery.editing .carousel { outline: 1px dashed var(--noct-pending); outline-offset: 2px; }
 .frame {
@@ -902,7 +902,7 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
 .cs-body { padding: 0 16px 12px; overflow: auto; min-height: 0; }
 .cs-empty { padding: 28px 0; color: var(--noct-text-muted); }
 table.cs { width: 100%; border-collapse: separate; border-spacing: 0; font: 12px var(--noct-font-mono); }
-table.cs th { position: sticky; top: 0; z-index: 2; background: var(--noct-surface); text-align: left; padding: 12px 3px 8px; border-bottom: 1px solid var(--noct-border);
+table.cs th { position: sticky; top: 0; z-index: 2; background: var(--noct-surface); box-shadow: 0 -2px 0 0 var(--noct-surface); text-align: left; padding: 12px 3px 8px; border-bottom: 1px solid var(--noct-border);
   font: 700 10px var(--noct-font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--noct-text-muted); white-space: nowrap; }
 table.cs td { height: 44px; box-sizing: border-box; padding: 0 3px; border-bottom: 1px solid var(--noct-border); color: var(--noct-text); vertical-align: middle; white-space: nowrap; }
 table.cs td.name { font: 600 15px var(--noct-font-sans); }
@@ -912,7 +912,7 @@ table.cs td.name { height: 52px; max-width: 132px; overflow: hidden; text-overfl
 .cs-focus-tag.warn { border-color: var(--noct-pending); color: var(--noct-pending); }
 .cs-pop-row.cs-pop-sep { margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--noct-border); }
 table.cs td.name small { display: block; overflow: hidden; text-overflow: ellipsis; font: 10px var(--noct-font-mono); color: var(--noct-text-dim); letter-spacing: .08em; text-transform: uppercase; }
-table.cs tr.all td { position: sticky; top: 37px; z-index: 1; background: var(--noct-surface-inner); }
+table.cs tr.all td { position: sticky; top: 37px; z-index: 1; background: var(--noct-surface-inner); box-shadow: 0 -1px 0 0 var(--noct-surface-inner); }  /* (top: medido em csStickAllRow; a sombra fecha a emenda com o cabeçalho) */
 table.cs tr.all td.name { color: var(--noct-primary); }
 table.cs tr.locked td { color: var(--noct-text-dim); }
 table.cs td.msg { color: var(--noct-pending); font: 13px var(--noct-font-sans); white-space: normal; }
@@ -1397,7 +1397,7 @@ body.mod-keys .folder-add { cursor: default; }
 .stage-ctrls .play-group { margin: 0 0 0 4px; padding: 0 0 0 10px; height: auto; }
 .stage-ctrls .play-option { margin: 0 0 0 4px; padding-left: 10px; height: auto; font: 11px var(--noct-font-mono); text-transform: uppercase; letter-spacing: .08em; color: var(--noct-text-muted); }
 /* Barra da tela cheia: nada quebra linha; sem espaço, some primeiro o que importa menos (fitHead) */
-.sessions-panel.fullscreen .gallery-head { flex-wrap: nowrap; overflow: hidden; transition: height 180ms var(--noct-ease); }
+.sessions-panel.fullscreen .gallery-head { flex-wrap: nowrap; overflow: visible; padding-right: 4px; transition: height 180ms var(--noct-ease); }  /* (sem overflow hidden: o contorno do foco do último botão não é cortado) */
 .sessions-panel.fullscreen .gallery-head, .sessions-panel.fullscreen .gallery-head button, .sessions-panel.fullscreen .gallery-title, .sessions-panel.fullscreen .gallery-sub { white-space: nowrap; }
 .sessions-panel.fullscreen .gallery-head > div:first-child { flex: none; }
 .sessions-panel.fullscreen .gallery-actions > * { flex-shrink: 0; }
@@ -1572,7 +1572,7 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .cs-review-knob { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 34px; height: 34px; border-radius: 50%; background: #000; border: 1px solid var(--noct-primary); display: flex; align-items: center; justify-content: center; color: var(--noct-primary); }
 .cs-review-knob svg { display: block; }
 /* Fileira de miniaturas: tamanho fixo; sem espaço, rola para o lado (o play só anda a marca, sem rolar) */
-.cs-review-strip { display: flex; gap: 6px; align-items: flex-start; flex: none; overflow-x: auto; overflow-y: hidden; scrollbar-gutter: stable; box-sizing: border-box; height: 64px; padding: 3px 3px 0; margin: -3px -3px 0; }
+.cs-review-strip { display: flex; gap: 6px; align-items: flex-start; flex: none; overflow-x: scroll; overflow-y: hidden; box-sizing: border-box; height: 64px; padding: 3px 3px 0; margin: -3px -3px 0; }
 .cs-review-strip .cs-review-striplabel { line-height: 40px; }
 .cs-review-striplabel { flex: none; margin-right: 6px; font: 700 10px var(--noct-font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--noct-text-dim); white-space: nowrap; }
 .cs-review-strip .cs-review-mini { flex: 0 0 64px; width: 64px; overflow: hidden; }

@@ -1324,7 +1324,7 @@
     button("", () => { stopPlay(); sessionGallery.next(); }, { icon: "right", title: "Next photo" }),
     speedGroup,
     reverseLoopOption);
-  fadeControls(ui.sessionGallery.querySelector(".stage"), stageCtrls);
+  const showStageCtrls = fadeControls(ui.sessionGallery.querySelector(".stage"), stageCtrls);
   const viewActions = [
     withShortIcon(button("Reorder", startReorder, { title: "Change the order of the photos in this session" }), "swap"),
     fullTrashBtn,
@@ -1954,6 +1954,7 @@
     hideRailTip();
     sessionGallery.setActions(currentActions());
     queueHeadFit();
+    if (entering) showStageCtrls(CTRLS_REVEAL_MS);  // os controles sobre a foto já aparecem ao entrar
     // Entrar na tela cheia já toca a sessão
     if (entering && !playTimer && !editing.on) togglePlay();
   }
@@ -5605,8 +5606,7 @@
     body.appendChild(table);
     // A linha "All cameras" gruda logo abaixo do cabeçalho, na altura real dele (um valor fixo deixava uma fresta
     // por onde as linhas de trás apareciam)
-    const headRow = table.querySelector("thead") || table.querySelector("tr");
-    if (headRow) { const h = headRow.getBoundingClientRect().height; table.querySelectorAll("tr.all td").forEach((td) => { td.style.top = h + "px"; }); }
+    csStickAllRow();
     body.scrollTop = scroll;
     renderStylePop();
 
@@ -6048,6 +6048,7 @@
     matchWin.picked = new Set(changes.map((c) => c.camera));
     matchWin.cam = changes.length ? changes[0].camera : (placedCameras()[0] || {}).name;
     csMatchSetStep(3);
+    matchWin.revealCtrls = true;
     $("csMatchBody").className = "cs-match-body review";
     $("csMatchSub").textContent = changes.length
       ? plural(changes.length, "camera would change", "cameras would change") + " · nothing has been changed on the cameras yet"
@@ -6153,7 +6154,8 @@
     top.append(camLabel, modes);
     photos.appendChild(top);
     const stage = el("div", "cs-review-stage " + matchWin.mode);
-    fadeControls(stage, ctrls);
+    const showCtrls = fadeControls(stage, ctrls);
+    if (matchWin.revealCtrls) { matchWin.revealCtrls = false; setTimeout(() => showCtrls(CTRLS_REVEAL_MS), 0); }  // ao chegar no passo 3, já aparecem
     const imgB = el("div", "cs-review-img before"), imgA = el("div", "cs-review-img after");
     imgB.appendChild(el("span", "cs-review-tag", "Before")); imgA.appendChild(el("span", "cs-review-tag on", "After"));
     const ch = changes.find((x) => x.camera === matchWin.cam);
@@ -6253,13 +6255,16 @@
   function fadeControls(stage, ctrls) {
     stage.appendChild(ctrls);
     let hideTimer = 0;
-    const show = () => { ctrls.classList.add("show"); clearTimeout(hideTimer); hideTimer = setTimeout(() => ctrls.classList.remove("show"), 2000); };
-    stage.addEventListener("pointermove", show);
-    stage.addEventListener("pointerenter", show);
+    // show(ms): mostra e some depois de ms parado (2 s pelo mouse; mais ao entrar na tela, para a pessoa ver que existem)
+    const show = (ms) => { ctrls.classList.add("show"); clearTimeout(hideTimer); hideTimer = setTimeout(() => ctrls.classList.remove("show"), typeof ms === "number" ? ms : 2000); };
+    stage.addEventListener("pointermove", () => show());
+    stage.addEventListener("pointerenter", () => show());
     stage.addEventListener("pointerleave", () => { clearTimeout(hideTimer); ctrls.classList.remove("show"); });
     ctrls.addEventListener("pointermove", (ev) => { ev.stopPropagation(); ctrls.classList.add("show"); clearTimeout(hideTimer); });
     ["pointerdown", "click", "dblclick"].forEach((t) => ctrls.addEventListener(t, (ev) => ev.stopPropagation()));
+    return show;
   }
+  const CTRLS_REVEAL_MS = 4000;  // ao entrar na tela cheia / no passo 3: os controles já aparecem e ficam 4 s
   // Tocando: só as fotos trocam (sem redesenhar tudo a cada passo)
   function csMatchSwapPhotos() {
     const { before, after } = csMatchSessions();
@@ -6695,9 +6700,19 @@
     window.readCameraSettings();
   }
 
+  // A linha "All cameras" gruda logo abaixo do cabeçalho, na altura real dele. Com a janela ainda escondida a
+  // medida dá 0 (a linha sumiria por baixo do cabeçalho): nesse caso fica para a próxima vez
+  function csStickAllRow() {
+    const table = $("csBody").querySelector("table.cs");
+    const headRow = table && (table.querySelector("thead") || table.querySelector("tr"));
+    if (!headRow) return;
+    const h = headRow.getBoundingClientRect().height;
+    if (h > 0) table.querySelectorAll("tr.all td").forEach((td) => { td.style.top = h + "px"; });
+  }
   $("camSettingsBtn").addEventListener("click", () => {
     renderCamSettings();
     $("camSettingsOverlay").classList.remove("hidden");
+    csStickAllRow();
     window.readCameraSettings();
     clearInterval(csPoll);
     csPoll = setInterval(csPollTick, 3000);

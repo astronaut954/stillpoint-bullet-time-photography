@@ -1295,8 +1295,13 @@ projeto num HD externo.
       para uma linha abaixo da data (a barra cresce com uma animação curta, sem pulo); alargando, voltam.
       Estreitando mais, some o tamanho da lixeira, depois "Reorder" e "Delete session" viram só ícone (setas
       trocadas e lixeira), depois o subtítulo ("2 shot 16:9"), e por fim a data fica menor. Nada se sobrepõe.
-- [ ] Camera settings, rolando a tabela: a linha "All cameras" fica presa logo abaixo do cabeçalho, sem fresta
-      mostrando as linhas que passam por trás.
+- [ ] Camera settings, rolando a tabela (com e sem fotos do Test shot): a linha "All cameras" fica presa logo abaixo
+      do cabeçalho, sem fresta acima do cabeçalho nem entre ele e a linha.
+- [ ] Tela cheia: ao entrar, os controles sobre a foto já estão visíveis e só começam a sumir uns 4 s depois; no
+      passo 3 do Match, o mesmo ao chegar no passo. Tab até o botão de sair da tela cheia: o contorno aparece
+      inteiro, com a linha da direita.
+- [ ] Fileira de miniaturas (sessão, tela cheia e passo 3): o trilho da rolagem está sempre lá, com ou sem
+      miniaturas sobrando; o espaço até a foto grande nunca muda.
 - [ ] Fileira de miniaturas (sessão e passo 3 do Match): o espaço até a foto grande não muda quando a barra de
       rolagem aparece ou some (o lugar dela fica reservado).
 - [ ] Match, passo 3: ‹ › e ← → rolam a fileira de miniaturas até a câmera atual; o play não rola.
