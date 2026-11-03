@@ -1279,7 +1279,13 @@ projeto num HD externo.
       legenda do sistema (nome da câmera) não aparece por cima dela.
 - [ ] Tela cheia com a barra só de ícones: uma sessão com "n missing" tem o ícone âmbar na barra (as outras,
       verde); passar o mouse mostra a data e "· n missing".
+- [ ] Passo 3 com muitas câmeras (`STILLPOINT_FAKE_CAMERAS=18`): a janela não cresce; a lista de câmeras rola
+      dentro da tabela (o texto "Click a row…" fica fixo embaixo); a prévia à direita respeita a altura da janela; a
+      fileira de miniaturas mantém o tamanho de cada uma e rola para o lado; o play só anda a marca, sem rolar.
 - [ ] Esc fecha a janela (no passo 2, cancela o teste antes).
+
+- [ ] Play na sessão (janela principal e tela cheia): a fileira de miniaturas não rola sozinha; só a marca da foto
+      atual anda. Clicar numa miniatura ou usar ← → continua rolando até ela.
 
 ## 35. Aviso "Mixed ratios" na sessão (2.16.0, Parte 3 da Proporção)
 

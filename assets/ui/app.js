@@ -644,11 +644,11 @@
     }
 
     if (opts.onContext) root.querySelector(".stage img").addEventListener("contextmenu", (e) => { if (items[index]) { e.preventDefault(); opts.onContext(e); } });
-    function select(i) {
+    function select(i, scroll) {
       if (!items.length) return;
       index = (i + items.length) % items.length;
       multi = new Set(); anchor = index;
-      markSelected(true);
+      markSelected(scroll !== false);  // (o play passa false: marca a miniatura sem rolar a fileira)
       showLarge();
     }
     function extendTo(i) {
@@ -862,8 +862,8 @@
       },
       message,
       select,
-      next() { select(index + 1); },
-      prev() { select(index - 1); },
+      next(scroll) { select(index + 1, scroll); },
+      prev(scroll) { select(index - 1, scroll); },
       extendTo,
       get selection() { return multi.size > 1 ? [...multi].sort((a, b) => a - b) : [index]; },
       get dragging() { return !!free; },
@@ -2163,11 +2163,11 @@
   let playDirection = 1;
   function playStep() {
     const count = sessionGallery.items.length;
-    if (count < 2 || !reverseLoop.checked) return sessionGallery.next();
+    if (count < 2 || !reverseLoop.checked) return sessionGallery.next(false);
     let i = sessionGallery.index + playDirection;
     if (i >= count) { playDirection = -1; i = count - 2; }
     else if (i < 0) { playDirection = 1; i = 1; }
-    sessionGallery.select(i);
+    sessionGallery.select(i, false);  // sem rolar a fileira: só a marca da miniatura anda
   }
 
   function stopPlay() {
@@ -5990,7 +5990,7 @@
     matchWin.picked = new Set(changes.map((c) => c.camera));
     matchWin.cam = changes.length ? changes[0].camera : (placedCameras()[0] || {}).name;
     csMatchSetStep(3);
-    $("csMatchBody").className = "cs-match-body";
+    $("csMatchBody").className = "cs-match-body review";
     $("csMatchSub").textContent = changes.length
       ? plural(changes.length, "camera would change", "cameras would change") + " · nothing has been changed on the cameras yet"
       : "The cameras already look alike. Nothing to change.";
@@ -6030,6 +6030,8 @@
     });
     head.append(allBox, el("span", "", "Camera"), el("span", "", "Changes"), el("span", "cs-review-th-after", "After"));
     table.appendChild(head);
+    const rowsBox = el("div", "cs-review-rows");  // as linhas rolam aqui dentro; a prévia à direita não cresce com elas
+    table.appendChild(rowsBox);
     const { before, after } = csMatchSessions();
     placedCameras().filter((c) => c.connected).forEach((cam) => {
       const ch = changes.find((x) => x.camera === cam.name);
@@ -6057,7 +6059,7 @@
       row.append(box, name, list, thumb);
       row.addEventListener("click", () => { matchWin.cam = cam.name; csMatchRenderReview(); });
       row.matchBox = ch ? box : null;  // (teclado: ↑ ↓ e Espaço tratados no documento, antes do tratador do Camera settings)
-      table.appendChild(row);
+      rowsBox.appendChild(row);
     });
     const tnote = el("div", "cs-review-tnote", "Click a row to see that camera on the right. Play runs the whole sequence, before and after at once. Untick a camera to keep it as it is.");
     table.appendChild(tnote);

@@ -1463,8 +1463,11 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .cs-match-bar-fill { height: 4px; width: 0; background: var(--noct-primary); transition: width 300ms var(--noct-ease); }
 .cs-match-shot { color: var(--noct-text-dim); font: 11px var(--noct-font-mono); letter-spacing: .1em; text-transform: uppercase; }
 /* Passo 3 */
-.cs-review { display: grid; grid-template-columns: minmax(380px, 1fr) minmax(0, 1.3fr); gap: 18px; min-height: 100%; }
-.cs-review-table { border: 1px solid var(--noct-border); display: flex; flex-direction: column; min-width: 0; }
+/* Passo 3: a altura é a da janela; a lista de câmeras rola dentro da tabela e a prévia não cresce com ela */
+.cs-match-body.review { overflow: hidden; display: flex; }
+.cs-review { display: grid; grid-template-columns: minmax(380px, 1fr) minmax(0, 1.3fr); gap: 18px; flex: 1; min-height: 0; min-width: 0; }
+.cs-review-table { border: 1px solid var(--noct-border); display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.cs-review-rows { flex: 1; min-height: 0; overflow-y: auto; }
 .cs-review-head, .cs-review-row { display: grid; grid-template-columns: 24px 92px minmax(0, 1fr) 48px; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--noct-border); }
 .cs-review-head { font: 700 10px var(--noct-font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--noct-text-dim); }
 .cs-review-th-after { text-align: right; }
@@ -1515,8 +1518,8 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 }
 .cs-review-thumb { display: block; width: 48px; height: 32px; background: var(--noct-surface-inner) center / cover no-repeat; border: 1px solid var(--noct-border); }
 .cs-review-thumb.changed { border-color: var(--noct-primary); }
-.cs-review-tnote { margin-top: auto; padding: 10px 12px; color: var(--noct-text-dim); font-size: 12px; line-height: 1.5; border-top: 1px solid var(--noct-border); }
-.cs-review-photos { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.cs-review-tnote { flex: none; padding: 10px 12px; color: var(--noct-text-dim); font-size: 12px; line-height: 1.5; border-top: 1px solid var(--noct-border); }
+.cs-review-photos { display: flex; flex-direction: column; gap: 10px; min-width: 0; min-height: 0; }
 .cs-review-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .cs-review-cam { font: 700 10px var(--noct-font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--noct-text-dim); }
 .cs-review-ctrls { position: absolute; top: 10px; right: 10px; z-index: 2; display: flex; align-items: center; gap: 6px; padding: 6px 8px; background: rgba(0, 0, 0, .78); border: 1px solid var(--noct-border);
@@ -1529,7 +1532,7 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .cs-review-modes { display: flex; border: 1px solid var(--noct-border); }
 .cs-review-mode { padding: 6px 12px; background: transparent; border: 0; color: var(--noct-text-dim); font: 700 10px var(--noct-font-mono); letter-spacing: .12em; text-transform: uppercase; cursor: pointer; }
 .cs-review-mode.on { background: var(--noct-primary); color: var(--noct-on-primary); }
-.cs-review-stage { position: relative; flex: 1; min-height: 260px; border: 1px solid var(--noct-border); background: #000; overflow: hidden; display: flex; user-select: none; -webkit-user-select: none; }
+.cs-review-stage { position: relative; flex: 1; min-height: 0; border: 1px solid var(--noct-border); background: #000; overflow: hidden; display: flex; user-select: none; -webkit-user-select: none; }
 .cs-review-img { position: absolute; inset: 0; background: #000 center / contain no-repeat; }
 .cs-review-stage.side { position: relative; }
 .cs-review-stage.side .cs-review-img { position: relative; flex: 1; inset: auto; }
@@ -1544,9 +1547,10 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .cs-review-handle { position: absolute; top: 0; bottom: 0; width: 3px; margin-left: -1.5px; background: var(--noct-primary); box-shadow: 0 0 10px var(--noct-primary); pointer-events: none; }
 .cs-review-knob { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 34px; height: 34px; border-radius: 50%; background: #000; border: 1px solid var(--noct-primary); display: flex; align-items: center; justify-content: center; color: var(--noct-primary); }
 .cs-review-knob svg { display: block; }
-.cs-review-strip { display: flex; gap: 6px; align-items: center; }
+/* Fileira de miniaturas: tamanho fixo; sem espaço, rola para o lado (o play só anda a marca, sem rolar) */
+.cs-review-strip { display: flex; gap: 6px; align-items: center; flex: none; overflow-x: auto; overflow-y: hidden; padding: 3px 3px 6px; margin: -3px -3px 0; }
 .cs-review-striplabel { flex: none; margin-right: 6px; font: 700 10px var(--noct-font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--noct-text-dim); white-space: nowrap; }
-.cs-review-strip .cs-review-mini { flex: 1 1 0; overflow: hidden; }
+.cs-review-strip .cs-review-mini { flex: 0 0 64px; width: 64px; overflow: hidden; }
 /* A mesma foto cortada ao meio: a metade esquerda vem do "antes", a direita do "depois" */
 .cs-review-half { position: absolute; inset: 0; background: var(--noct-surface-inner) center / cover no-repeat; }
 .cs-review-half.before { clip-path: inset(0 50% 0 0); }
