@@ -1391,6 +1391,20 @@ body.mod-keys .folder-add { cursor: default; }
 .export-row:has(> .export-name-col) > .export-label { padding-top: 9px; }
 /* Shift+clique nas miniaturas: sem seleção de texto (os números não ficam marcados) */
 .carousel, .carousel .frame { -webkit-user-select: none; user-select: none; }
+/* Barra da tela cheia: nada quebra linha; sem espaço, some primeiro o que importa menos (fitHead) */
+.sessions-panel.fullscreen .gallery-head { flex-wrap: nowrap; overflow: hidden; }
+.sessions-panel.fullscreen .gallery-head, .sessions-panel.fullscreen .gallery-head button, .sessions-panel.fullscreen .gallery-title, .sessions-panel.fullscreen .gallery-sub { white-space: nowrap; }
+.sessions-panel.fullscreen .gallery-head > div:first-child { flex: 0 1 auto; min-width: 0; }
+.sessions-panel.fullscreen .gallery-actions > * { flex-shrink: 0; }
+.hd-short { display: none; }
+.gallery-head.fit-1 .trash-size-full,
+.gallery-head.fit-2 .play-group-caption,
+.gallery-head.fit-3 .hd-full,
+.gallery-head.fit-4 .gallery-sub { display: none !important; }
+.gallery-head.fit-3 .hd-short { display: inline-flex; align-items: center; }
+.gallery-head.fit-3 .btn .hd-short svg { display: block; }
+.gallery-head.fit-3 .btn:has(.hd-short) { width: 30px; padding: 0; justify-content: center; }
+.gallery-head.fit-5 .gallery-title { font-size: 16px; }
 /* Barra de cima: nada quebra linha; sem espaço, some primeiro o que importa menos (fitTopbar) */
 .topbar, .topbar button, .topbar .status { white-space: nowrap; }
 .topbar > *, .topbar-right > * { flex-shrink: 0; }
@@ -1509,6 +1523,8 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .ratio-others-label { width: 100%; font: 700 10px var(--noct-font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--noct-text-dim); margin-bottom: 2px; }
 .ratio-chip .dim { color: var(--noct-text-dim); text-transform: none; letter-spacing: 0; }
 .dialog-actions .btn-left { margin-right: auto; }
+.dialog:has(.ratio-others) { width: min(760px, 92%); }  /* opção N: os três botões cabem numa linha */
+.dialog:has(.ratio-others) .dialog-actions { flex-wrap: nowrap; }
 /* Explicação instantânea (data-itip) */
 .itip {
   position: fixed; z-index: 96; pointer-events: none; max-width: 300px;
@@ -1548,7 +1564,8 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .cs-review-knob { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 34px; height: 34px; border-radius: 50%; background: #000; border: 1px solid var(--noct-primary); display: flex; align-items: center; justify-content: center; color: var(--noct-primary); }
 .cs-review-knob svg { display: block; }
 /* Fileira de miniaturas: tamanho fixo; sem espaço, rola para o lado (o play só anda a marca, sem rolar) */
-.cs-review-strip { display: flex; gap: 6px; align-items: center; flex: none; overflow-x: auto; overflow-y: hidden; padding: 3px 3px 6px; margin: -3px -3px 0; }
+.cs-review-strip { display: flex; gap: 6px; align-items: flex-start; flex: none; overflow-x: auto; overflow-y: hidden; box-sizing: border-box; height: 64px; padding: 3px 3px 0; margin: -3px -3px 0; }
+.cs-review-strip .cs-review-striplabel { line-height: 40px; }
 .cs-review-striplabel { flex: none; margin-right: 6px; font: 700 10px var(--noct-font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--noct-text-dim); white-space: nowrap; }
 .cs-review-strip .cs-review-mini { flex: 0 0 64px; width: 64px; overflow: hidden; }
 /* A mesma foto cortada ao meio: a metade esquerda vem do "antes", a direita do "depois" */

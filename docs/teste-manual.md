@@ -1286,16 +1286,22 @@ projeto num HD externo.
 
 - [ ] Play na sessão (janela principal e tela cheia): a fileira de miniaturas não rola sozinha; só a marca da foto
       atual anda. Clicar numa miniatura ou usar ← → continua rolando até ela.
+- [ ] Tela cheia, janela estreita: a barra de cima não quebra linha. Estreitando, some primeiro o tamanho da lixeira,
+      depois "SPEED", depois "Reorder" e "Delete session" viram só ícone (setas trocadas e lixeira; "Reverse loop"
+      vira "Loop"), depois o subtítulo ("2 shot 16:9"), e por fim a data fica menor. A etiqueta "Mixed ratios" fica.
+- [ ] Match, passo 3, tocando: − + mudam a velocidade na hora (o play continua, no ritmo novo) e os controles não
+      piscam nem mudam de altura; ‹ › e ← → param o play e andam uma câmera; a fileira de miniaturas mostra as
+      fotos inteiras (sem cortar o topo).
 
 ## 35. Aviso "Mixed ratios" na sessão (2.16.0, Parte 3 da Proporção)
 
 Com `STILLPOINT_FAKE_CAMERAS=9` as câmeras 02 e 04 estão em 16:9 e as outras em 3:2, então todo disparo sai misturado.
 
-- [ ] Disparar "It's bullet time". Quando a sessão nova aparece, abre uma janela "Mixed ratios" por cima da tela:
-      texto "Cameras 02 and 04 shot 16:9; the others 3:2." e a explicação; embaixo, "Other ratios on export" com os
-      botões "4:3 · keeps 86%", "16:9 · keeps 88%", "1:1 · keeps 64%" (os três que não são a sugestão); no rodapé,
-      à esquerda o link "Keep as shot", à direita "Open Camera settings" e o verde "Crop on export to 3:2 (keeps
-      97%)". Esc ou clicar fora = "Keep as shot".
+- [ ] Disparar "It's bullet time". Quando a sessão nova aparece, abre uma janela "Mixed ratios" por cima da tela
+      (mais larga que as outras, opção N): texto "Cameras 02 and 04 shot 16:9; the others 3:2." e a explicação;
+      embaixo, "Other ratios on export" com os botões "4:3 · keeps 86%", "16:9 · keeps 88%", "1:1 · keeps 64%" (os
+      três que não são a sugestão); no rodapé, numa linha só, à esquerda o link "Keep as shot", à direita "Open
+      Camera settings" e o verde "Crop on export to 3:2 (keeps 97%)". Esc ou clicar fora = "Keep as shot".
 - [ ] Marcas na sessão (ficam para sempre): na lista Sessions, etiqueta tracejada âmbar "Mixed ratios" abaixo de
       "9 photos"; no cabeçalho, a mesma etiqueta ao lado da data e o subtítulo "2 shot 16:9"; as miniaturas 02 e 04
       com borda âmbar tracejada e "16:9" no canto de baixo à direita; selecionada, a etiqueta do número fica âmbar.

@@ -1259,12 +1259,21 @@
   const exitFullBtn = button("", () => setFullscreen(false), { icon: "shrink", title: "Exit full screen (Esc)" });
   // Na tela cheia a lixeira apaga a sessão (como fora dela); uma foto: botão direito ou a tecla Delete
   const fullTrashBtn = button("Delete session", deleteCurrentSession, { title: "Delete this session (a photo: right-click it, or the Delete key)" });
+  // Sem espaço na barra da tela cheia (fitHead), os botões com texto viram só o ícone
+  function withShortIcon(b, name) {
+    const text = b.lastChild;
+    const full = el("span", "hd-full"); full.appendChild(text);
+    const short = el("span", "hd-short"); short.innerHTML = icon(name);
+    b.append(full, short);
+    return b;
+  }
+  withShortIcon(fullTrashBtn, "trash");
   // "Reverse loop" (ligado por padrão): o play vai e volta (1, 2, 3, 2, 1...);
   // desligado, recomeça do início (1, 2, 3, 1, 2, 3...)
   const reverseLoopOption = document.createElement("label");
   reverseLoopOption.className = "log-option play-option";
   reverseLoopOption.title = "Play back and forth (1, 2, 3, 2, 1...)";
-  reverseLoopOption.innerHTML = '<input type="checkbox" checked> Reverse loop';
+  reverseLoopOption.innerHTML = '<input type="checkbox" checked> <span class="hd-full">Reverse loop</span><span class="hd-short">Loop</span>';
   const reverseLoop = reverseLoopOption.querySelector("input");
 
   // Velocidade do play: de 0,25x a 5x; 1x = 220 ms por foto
@@ -1311,7 +1320,7 @@
     button("", () => { stopPlay(); sessionGallery.next(); }, { icon: "right", title: "Next photo" }),
     speedGroup,
     reverseLoopOption,
-    button("Reorder", startReorder, { title: "Change the order of the photos in this session" }),
+    withShortIcon(button("Reorder", startReorder, { title: "Change the order of the photos in this session" }), "swap"),
     fullTrashBtn,
     exitFullBtn,
   ];
@@ -1322,6 +1331,20 @@
     title.replaceWith(row);
     row.append(title, fullTrashOpenBtn);
   }
+  // Barra da tela cheia: nada quebra linha; sem espaço, some primeiro o que importa menos (como fitTopbar)
+  const HEAD_FIT_STEPS = 5;
+  let headFitQueued = false;
+  function fitHead() {
+    headFitQueued = false;
+    const head = ui.sessionGallery.querySelector(".gallery-head");
+    if (!head) return;
+    for (let k = 1; k <= HEAD_FIT_STEPS; k++) head.classList.remove("fit-" + k);
+    if (!isFullscreen()) return;
+    for (let k = 1; k <= HEAD_FIT_STEPS && head.scrollWidth > head.clientWidth + 1; k++) head.classList.add("fit-" + k);
+  }
+  function queueHeadFit() { if (!headFitQueued) { headFitQueued = true; requestAnimationFrame(fitHead); } }
+  window.addEventListener("resize", queueHeadFit);
+  new MutationObserver(() => queueHeadFit()).observe(ui.sessionGallery, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ["class"] });
   const editActions = [
     button("", () => sessionGallery.moveSelected(-1), { icon: "left", title: "Move the selected photo earlier" }),
     button("", () => sessionGallery.moveSelected(1), { icon: "right", title: "Move the selected photo later" }),
@@ -1900,6 +1923,7 @@
     if (!on) setSideWide(false);
     hideRailTip();
     sessionGallery.setActions(currentActions());
+    queueHeadFit();
     // Entrar na tela cheia já toca a sessão
     if (entering && !playTimer && !editing.on) togglePlay();
   }
@@ -6073,10 +6097,13 @@
     const play = button("", () => csMatchTogglePlay(), { icon: matchWin.playing ? "pause" : "play", title: matchWin.playing ? "Pause" : "Play the sequence" });
     play.classList.add("cs-review-play");
     const next = button("", () => csMatchStep(1), { icon: "right", title: "Next camera" });
-    const slower = button("", () => { speedIndex = Math.max(0, speedIndex - 1); renderSpeed(); csMatchRenderReview(); }, { icon: "minus", title: "Slower" });
-    const faster = button("", () => { speedIndex = Math.min(PLAY_SPEEDS.length - 1, speedIndex + 1); renderSpeed(); csMatchRenderReview(); }, { icon: "plus", title: "Faster" });
-    const v = PLAY_SPEEDS[speedIndex];
-    const speed = el("span", "cs-review-speed", (v % 1 === 0 ? v.toFixed(1) : String(v)) + "x");
+    // Velocidade: muda o texto e o ritmo do play no lugar, sem redesenhar a janela (os controles não piscam)
+    const speed = el("span", "cs-review-speed");
+    const showSpeed = () => { const v = PLAY_SPEEDS[speedIndex]; speed.textContent = (v % 1 === 0 ? v.toFixed(1) : String(v)) + "x"; slower.disabled = speedIndex === 0; faster.disabled = speedIndex === PLAY_SPEEDS.length - 1; };
+    const setSpeed = (d) => { speedIndex = Math.max(0, Math.min(PLAY_SPEEDS.length - 1, speedIndex + d)); renderSpeed(); showSpeed(); csMatchRestartPlay(); };
+    const slower = button("", () => setSpeed(-1), { icon: "minus", title: "Slower" });
+    const faster = button("", () => setSpeed(1), { icon: "plus", title: "Faster" });
+    showSpeed();
     const rev = el("label", "cs-review-rev log-option"); const revBox = document.createElement("input"); revBox.type = "checkbox"; revBox.checked = reverseLoop.checked;
     revBox.addEventListener("change", () => { reverseLoop.checked = revBox.checked; });
     rev.append(revBox, document.createTextNode(" Reverse loop"));
@@ -6158,28 +6185,39 @@
     $("csMatchGo").textContent = n ? "Apply to " + plural(n, "camera", "cameras") : "Apply";
     $("csMatchGo").disabled = n === 0;
   }
+  // ‹ › e as setas: como na tela cheia da sessão, param o play e andam uma câmera (sem redesenhar a janela)
   function csMatchStep(d, focusRow) {
     const cams = placedCameras().filter((c) => c.connected).map((c) => c.name);
     const i = cams.indexOf(matchWin.cam);
     if (!cams.length) return;
+    if (matchWin.playing) csMatchStopPlay();
     matchWin.cam = cams[(i + d + cams.length) % cams.length];
-    csMatchRenderReview();
+    csMatchSwapPhotos();
     if (focusRow) { const r = $("csMatchBody").querySelector(".cs-review-row.current"); if (r) r.focus({ preventScroll: false }); }
   }
-  function csMatchStopPlay() { clearInterval(matchWin.playing); matchWin.playing = 0; }
+  function csMatchPlayButton() {
+    const b = $("csMatchBody").querySelector(".cs-review-play");
+    if (!b) return;
+    b.innerHTML = icon(matchWin.playing ? "pause" : "play");
+    b.title = matchWin.playing ? "Pause" : "Play the sequence"; b.setAttribute("aria-label", b.title);
+  }
+  function csMatchStopPlay() { clearInterval(matchWin.playing); matchWin.playing = 0; csMatchPlayButton(); }
+  function csMatchPlayTick() {
+    const cams = placedCameras().filter((c) => c.connected).map((c) => c.name);
+    if (cams.length < 2 || matchWin.step !== 3) { csMatchStopPlay(); return; }
+    let i = cams.indexOf(matchWin.cam);
+    if (!reverseLoop.checked) i = (i + 1) % cams.length;
+    else { i += matchWin.dir; if (i >= cams.length) { matchWin.dir = -1; i = cams.length - 2; } else if (i < 0) { matchWin.dir = 1; i = 1; } }
+    matchWin.cam = cams[i];
+    csMatchSwapPhotos();
+  }
+  // Velocidade mudou no meio do play: continua, no ritmo novo
+  function csMatchRestartPlay() { if (!matchWin.playing) return; clearInterval(matchWin.playing); matchWin.playing = setInterval(csMatchPlayTick, playInterval()); }
   function csMatchTogglePlay() {
-    if (matchWin.playing) { csMatchStopPlay(); csMatchRenderReview(); return; }
+    if (matchWin.playing) { csMatchStopPlay(); return; }
     matchWin.dir = 1;
-    matchWin.playing = setInterval(() => {
-      const cams = placedCameras().filter((c) => c.connected).map((c) => c.name);
-      if (cams.length < 2 || matchWin.step !== 3) { csMatchStopPlay(); return; }
-      let i = cams.indexOf(matchWin.cam);
-      if (!reverseLoop.checked) i = (i + 1) % cams.length;
-      else { i += matchWin.dir; if (i >= cams.length) { matchWin.dir = -1; i = cams.length - 2; } else if (i < 0) { matchWin.dir = 1; i = 1; } }
-      matchWin.cam = cams[i];
-      csMatchSwapPhotos();
-    }, playInterval());
-    csMatchRenderReview();
+    matchWin.playing = setInterval(csMatchPlayTick, playInterval());
+    csMatchPlayButton();
   }
   // Tocando: só as fotos trocam (sem redesenhar tudo a cada passo)
   function csMatchSwapPhotos() {
