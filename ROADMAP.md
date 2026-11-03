@@ -722,8 +722,23 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      com faixa; a escolha (proporção e posição) fica em `session.json` (`crop`), também fora do Project,
      e a janela "Mixed ratios" grava nela. Testado só com câmeras simuladas; RAW e lenticular real
      continuam adiados.
-   - **Futuro (anotado a pedido do dono):** alinhamento por foto com transparência entre as câmeras e
-     recorte final comum, para rigs tortos.
+   - **Framing (decisão do dono, 2026-11-03, protótipos T/U/V → W1/W2):** o alinhamento das fotos e a
+     proporção são interdependentes, então ficam juntos numa aba **"Framing"** do Export sessions (antes de
+     Photos/Sequence/Lenticular; uma porta só, sem botão ao lado de "Reorder"), com a prévia grande e uma
+     coluna à direita; o botão ⤢ amplia a aba (a prévia ocupa a janela, como o teatro do Lenticular).
+     Coluna: "Aspect ratio" (As shot · 3:2 · 4:3 · 16:9 · 1:1, "keeps n%") com a caixa "Same size for all
+     photos" na mesma linha; "References": Previous photo (azul), Next photo (laranja) e Photo 01 (verde),
+     cada uma com a sua caixa para ligar/desligar, e uma opacidade só; "This photo": Move X, Move Y, Size e
+     Rotate com − +, campo para digitar e passos pequenos (1 px / ⇧ 10; 0,1 % / ⇧ 1; 0,05° / ⇧ 0,5),
+     rotação sem limite; "Reset photo" / "Reset all"; "Common frame" (o que todas as fotos cobrem depois do
+     ajuste, com o tamanho). Prévia: foto atual nítida sobre as referências tingidas; quadro comum aceso;
+     quadro da proporção tracejado âmbar, arrastável (ou nove posições); arrastar move, roda redimensiona,
+     ⌥ + roda gira; ← → trocam de foto, ⌘ + setas movem 1 px (⇧ 10); uma instrução sutil na prévia ensina
+     os gestos. Tudo em session.json (por foto: deslocamento, tamanho, rotação; da sessão: proporção e
+     posição do corte); originais intactos; vale para Converted, Sequence e Lenticular (Fill). A proporção
+     corta o quadro comum, não cada foto. Entrega em dois pedaços: (1) a aba com proporção + Same size no
+     lugar das linhas "Aspect ratio"/"Crop"/"Same size" de 2026-11-03; (2) o alinhamento (transformar cada
+     foto na exportação, no programa).
 5. **Etapa 20 — Edit in Lightroom Classic / Photoshop.** Ida e volta: o app abre os originais
    do Project no Lightroom Classic (o dono do projeto usa o Classic); um plugin do Stillpoint
    (SDK Lua do Classic) agrupa cada sessão como coleção e tem "Export to Stillpoint", que
