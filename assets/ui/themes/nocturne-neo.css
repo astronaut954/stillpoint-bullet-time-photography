@@ -1529,16 +1529,15 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .export-keep { font: 11px var(--noct-font-mono); color: var(--noct-text-dim); margin-left: 6px; }
 .export-note.exp-warn { color: var(--noct-pending); }
 .export-note-inline { font: 11px var(--noct-font-mono); color: var(--noct-text-dim); margin-left: 8px; }
-.crop-wrap { display: flex; gap: 14px; align-items: flex-start; }
-.crop-box { position: relative; width: 300px; height: 200px; background: var(--noct-surface-inner); border: 1px solid var(--noct-border); overflow: hidden; cursor: grab; user-select: none; -webkit-user-select: none; touch-action: none; }
+/* Seção Framing: a prévia de cima é o recorte sobre a foto (crop-stage), no tamanho da prévia do Export */
+.crop-box { position: relative; width: 100%; background: var(--noct-surface-inner); border: 1px solid var(--noct-border); overflow: hidden; cursor: grab; user-select: none; -webkit-user-select: none; touch-action: none; }
+.exp-sec-framing .exp-sec-head { padding-left: 12px; }
 .crop-box:active { cursor: grabbing; }
 /* A foto inteira fica apagada e o quadro do recorte aceso: o escurecimento é a sombra do quadro, fora dele */
 .crop-box img { position: absolute; display: block; pointer-events: none; }
 .crop-frame { position: absolute; box-sizing: border-box; border: 1px solid var(--noct-primary); box-shadow: 0 0 0 999px rgba(0, 0, 0, .6); pointer-events: none; }
 .crop-frame:not(.free) { border-style: dashed; }
 .crop-tag { position: absolute; left: 6px; bottom: 6px; padding: 1px 5px; background: rgba(var(--noct-bg-rgb), .85); color: var(--noct-text); font: 700 9px var(--noct-font-mono); letter-spacing: .08em; text-transform: uppercase; pointer-events: none; }
-.crop-side { display: flex; flex-direction: column; gap: 6px; max-width: 170px; }
-.crop-side-label { min-width: auto; }
 .crop-dots { display: grid; grid-template-columns: repeat(3, 12px); gap: 4px; }
 .crop-dot { width: 12px; height: 12px; padding: 0; border: 1px solid var(--noct-border-strong); background: transparent; cursor: pointer; }
 .crop-dot.on { background: var(--noct-primary); border-color: var(--noct-primary); }

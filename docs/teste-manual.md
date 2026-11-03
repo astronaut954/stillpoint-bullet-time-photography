@@ -1340,31 +1340,35 @@ Com `STILLPOINT_FAKE_CAMERAS=9` as câmeras 02 e 04 estão em 16:9 e as outras e
 - [ ] Sessão sem mistura: com a 04 em 3:2, apagar a foto 02 de uma sessão (Delete) → as marcas e a etiqueta somem
       (a simulada 02 sempre sai 16:9, então é o único jeito de ter uma sessão toda igual).
 
-## 36. Export: Aspect ratio, recorte, Same size e Placement do Lenticular (2.16.0, Parte 4 da Proporção)
+## 36. Export: seção Framing (proporção, posição, Same size) e Placement do Lenticular (2.16.0, Parte 4)
 
 Com `STILLPOINT_FAKE_CAMERAS=9` (02 e 04 em 16:9). Abrir "Export sessions" com uma sessão misturada marcada.
+(Decisão do dono, 2026-11-03: a proporção e o alinhamento ficam juntos na seção "Framing"; este pedaço é só a
+proporção. O alinhamento — referências, Move/Size/Rotate — vem no pedaço 2.)
 
-- [ ] Photos: depois de Originals/Converted/Quality vêm as linhas "Aspect ratio" (As shot · 3:2 · 4:3 · 16:9 · 1:1,
-      com "keeps n%" ao lado quando não é As shot) e "Same size" (caixa "Same size for all photos", desligada). Com
-      Converted desligado as duas ficam apagadas (os originais nunca são recortados). O "?" de cada linha explica.
-- [ ] Sessão misturada: nota âmbar embaixo da linha ("Mixed ratios · cameras 02 and 04 shot 16:9; the others 3:2.
-      …"). Se na janela "Mixed ratios" foi escolhido "Crop on export to 3:2", a linha já abre em 3:2 e a nota diz
-      que a escolha já está marcada.
-- [ ] Escolher 3:2: aparece a linha "Crop" com a prévia (a foto escolhida apagada, o quadro do recorte aceso) e as
-      nove posições à direita. Nas fotos 3:2 o quadro cobre tudo (tracejado, "Nothing to cut"); clicar na foto 02
-      na fileira de cima: o quadro fica mais estreito, dá para arrastar para os lados; as nove posições mudam o
-      quadro; o ponto aceso acompanha. A posição vale para a sessão inteira.
-- [ ] Sequence: as mesmas linhas "Aspect ratio" e "Crop" depois de Quality; a escolha é a mesma da aba Photos
-      (uma por sessão).
+- [ ] A primeira seção da coluna é "Framing · aspect ratio and alignment, for every output", sem interruptor
+      (vale para todas as saídas); o resumo à direita diz "As shot ⚠ mixed ratios" numa sessão misturada. As
+      seções Photos, Sequence e Lenticular não têm mais as linhas "Aspect ratio"/"Crop"/"Same size".
+- [ ] Clicar em "Preview" na seção Framing: a prévia de cima vira o recorte sobre a foto (a foto inteira; com
+      "As shot" a etiqueta diz "As shot: nothing is cut · choose a ratio below"); embaixo, a fileira de miniaturas
+      (clique ou ← → trocam a foto da prévia).
+- [ ] Linha "Aspect ratio": As shot · 3:2 · 4:3 · 16:9 · 1:1, "keeps n%" ao lado quando não é As shot, e a caixa
+      "Same size for all photos" na mesma linha. O "?" explica. Sessão misturada: nota âmbar embaixo ("Mixed
+      ratios · cameras 02 and 04 shot 16:9; the others 3:2. …"); se a janela "Mixed ratios" já escolheu 3:2, a
+      linha abre em 3:2 e a nota diz que já está marcada.
+- [ ] Escolher 3:2: na prévia, o quadro aceso e o resto escuro; na foto 02 o quadro é mais estreito e arrasta
+      para os lados (etiqueta "Drag the frame to choose the part that stays · ← → other photos"); nas 3:2 o quadro
+      tracejado cobre tudo ("Nothing to cut"). Aparece a linha "Position" com as nove posições; clicar numa move o
+      quadro; o ponto aceso acompanha o arraste. Uma posição para a sessão inteira.
 - [ ] Exportar (Photos convertidas em JPG + Sequence MP4) com 3:2: no Finder, as fotos 02 e 04 convertidas saem
-      3:2 (cortadas nas laterais), as outras inteiras; os Originals continuam 16:9; o MP4 não pula. Com "Same size"
-      ligado: todas as convertidas com o mesmo tamanho em pixels (o da menor). Com "As shot": nada é cortado.
-- [ ] Fechar e abrir o Export (e o app): a proporção e a posição escolhidas voltam para essa sessão (gravadas em
-      session.json). A caixa da etiqueta "Mixed ratios" (mouse em cima) mostra a escolha.
-- [ ] Lenticular: linha "Placement" (Fill · Fit) depois do tamanho. Fill: linha "Crop" com a prévia na proporção
-      do papel e as nove posições; a prévia Tilt mostra a parte escolhida; a Interlaced também. Fit: sem "Crop";
-      a nota "Band: black · change it in Settings › Lenticular"; prévia Tilt e Interlaced com a foto inteira e a
-      faixa.
+      3:2 (cortadas nas laterais), as outras inteiras; os Originals continuam 16:9; o MP4 não pula. Com "Same
+      size" ligado: todas as convertidas com o mesmo tamanho em pixels (o da menor). Com "As shot": nada é
+      cortado.
+- [ ] Fechar e abrir o Export (e o app): a proporção e a posição voltam para essa sessão (session.json). A caixa
+      da etiqueta "Mixed ratios" (mouse em cima) mostra a escolha.
+- [ ] Lenticular: linha "Placement" (Fill · Fit) depois do tamanho. Fill: as prévias Tilt e Interlaced mostram a
+      parte escolhida na seção Framing (Position). Fit: nota "Band: black · change it in Settings › Lenticular";
+      prévias com a foto inteira e a faixa.
 - [ ] Settings (menu, ou Ctrl+,): linha "Lenticular" com Black / White; mudar para White e voltar ao Export: a nota
       e as prévias ficam brancas. Exportar um lenticular em Fit: o TIFF tem a faixa da cor escolhida, e o
       "settings.txt" ao lado diz "Placement: Fit (whole photo, white band)"; em Fill diz a posição do recorte.
