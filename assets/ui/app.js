@@ -3695,7 +3695,7 @@
         preview.classList.toggle("interlaced", inter);
         if (inter) drawInterlaced(); else showFrame(frameAt);
       };
-      [["tilt", "Tilt"], ["interlaced", "Interlaced"]].forEach(([v, t]) => {
+      [["interlaced", "Interlaced"], ["tilt", "Tilt"]].forEach(([v, t]) => {  // Interlaced primeiro e padrão (decisão do dono, 2026-11-03)
         const b = el("button", "", t); b.dataset.view = v; b.title = v === "tilt" ? "Drag to see the photos change, as when tilting the print" : "The whole interlaced file, as it prints; move the mouse over it for a close-up";
         b.addEventListener("click", (e) => { e.stopPropagation(); setView(v); });
         views.appendChild(b);
@@ -3832,7 +3832,7 @@
       preview.addEventListener("pointerleave", () => { loupe.classList.add("hidden"); loupeTag.classList.add("hidden"); });
       if (focused) {
         applyTheater();
-        setView(exp.lentView === "interlaced" ? "interlaced" : "tilt");
+        setView(exp.lentView === "tilt" ? "tilt" : "interlaced");
       }
 
       // Leitura: o que a combinação lâmina + impressora dá para esta sessão

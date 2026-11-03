@@ -1372,6 +1372,7 @@ proporção. O alinhamento — referências, Move/Size/Rotate — vem no pedaço
       cortado.
 - [ ] Fechar e abrir o Export (e o app): a proporção e a posição voltam para essa sessão (session.json). A caixa
       da etiqueta "Mixed ratios" (mouse em cima) mostra a escolha.
+- [ ] Lenticular: ao entrar na aba, a prévia abre em "Interlaced" (o seletor é Interlaced · Tilt, nessa ordem).
 - [ ] Lenticular: linha "Placement" (Fill · Fit) depois do tamanho. Fill: as prévias Tilt e Interlaced mostram a
       parte escolhida na seção Framing (Position). Fit: nota "Band: black · change it in Settings › Lenticular";
       prévias com a foto inteira e a faixa.
