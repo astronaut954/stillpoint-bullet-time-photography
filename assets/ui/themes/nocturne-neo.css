@@ -1556,10 +1556,8 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .export-note.exp-warn { color: var(--noct-pending); }
 .export-note-inline { font: 11px var(--noct-font-mono); color: var(--noct-text-dim); margin-left: 8px; }
 /* Aba Framing: a prévia (recorte sobre a foto) em cima, como nas outras abas, e as configurações embaixo;
-   ⤢ amplia (teatro: a prévia ocupa a janela, a fileira fica) */
+   sem modo teatro (decisão do dono, 2026-11-03) */
 .framing-stage.export-preview { height: 200px; }  /* a mesma altura da prévia das outras abas */
-.framing-theater-btn { position: absolute; left: 10px; top: 10px; z-index: 2; }
-.export-settings.theater .framing-stage.export-preview { height: auto; flex: 1 1 auto; min-height: 0; }
 /* Seção Framing: a prévia de cima é o recorte sobre a foto (crop-stage), no tamanho da prévia do Export */
 .crop-box { position: relative; width: 100%; background: var(--noct-surface-inner); border: 1px solid var(--noct-border); overflow: hidden; cursor: grab; user-select: none; -webkit-user-select: none; touch-action: none; }
 .exp-sec-framing .exp-sec-head { padding-left: 12px; }

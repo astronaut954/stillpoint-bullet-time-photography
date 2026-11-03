@@ -2601,7 +2601,6 @@
     if (exportPrefs && (OUTPUT_KINDS.includes(exportPrefs.mode) || exportPrefs.mode === "framing")) exp.mode = exportPrefs.mode;
     if (exportPrefs && exportPrefs.collapsed) exp.collapsed = Object.assign({}, exportPrefs.collapsed);
     exp.previewHidden = false;  // a prévia abre sempre visível; "Hide preview" vale até fechar a janela (decisão do dono, 2026-11-03)
-    exp.framingTheater = false;
     exp.project = Array.isArray(projectNames);
     const all = exportable();
     // Salvando para fechar: só as que ainda não foram salvas (as já salvas ficam marcadas fora)
@@ -3482,7 +3481,6 @@
     // Foco da prévia: a seção clicada por último, se marcada; senão a primeira marcada
     if (!OUTPUT_KINDS.includes(exp.mode) && exp.mode !== "framing") exp.mode = "framing";
     if (exp.mode !== "lenticular") { exp.lentTheater = false; outer.classList.remove("theater"); }
-    if (exp.mode !== "framing") exp.framingTheater = false;
 
     // Monta a prévia (só a da seção em foco entra na tela) e as configurações de uma saída
     exp.keyNav = null;
@@ -3503,18 +3501,12 @@
       };
       if (kind === "framing") {
         cropLoad(session, st);
-        // Em foco: a prévia grande (o recorte sobre a foto) com a coluna de controles ao lado, como no protótipo
-        // W1; ⤢ amplia (a prévia ocupa a janela, como o teatro do Lenticular). A fileira de miniaturas embaixo.
+        // Em foco: a prévia (o recorte sobre a foto) em cima, as linhas embaixo, a fileira de miniaturas entre as duas.
+        // Sem modo teatro nesta aba (decisão do dono, 2026-11-03).
         if (focused && !exp.previewHidden) {
           preview.remove();
           const stage = cropStage(session, items, st, st.crop.ratio !== "asshot" ? RATIOS[st.crop.ratio] : 0, (changed) => { cropSave(session, st); if (changed) rerender(); });
           stage.classList.add("export-preview", "framing-stage");
-          const theater = button("", () => { exp.framingTheater = !exp.framingTheater; rerender(); },
-            { icon: exp.framingTheater ? "theaterOut" : "theaterIn", title: exp.framingTheater ? "Back to the Export window" : "Enlarge: the preview fills the window", kind: "btn-secondary" });
-          theater.classList.add("lent-theater-btn", "framing-theater-btn");
-          theater.addEventListener("pointerdown", (e) => e.stopPropagation());
-          stage.appendChild(theater);
-          outer.classList.toggle("theater", !!exp.framingTheater);
           outer.insertBefore(stage, rows);
           const stripScroll = el("div", "export-strip-scroll");
           const strip = el("ul", "export-strip");

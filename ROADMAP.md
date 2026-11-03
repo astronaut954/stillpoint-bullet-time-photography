@@ -724,9 +724,10 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      continuam adiados.
    - **Framing (decisão do dono, 2026-11-03, protótipos T/U/V → W1/W2):** o alinhamento das fotos e a
      proporção são interdependentes, então ficam juntos numa aba **"Framing"** do Export sessions (antes de
-     Photos/Sequence/Lenticular; uma porta só, sem botão ao lado de "Reorder"), com a prévia grande e uma
-     coluna à direita; o botão ⤢ amplia a aba (a prévia ocupa a janela, como o teatro do Lenticular).
-     Coluna: "Aspect ratio" (As shot · 3:2 · 4:3 · 16:9 · 1:1, "keeps n%") com a caixa "Same size for all
+     Photos/Sequence/Lenticular; uma porta só, sem botão ao lado de "Reorder"), com a prévia em cima e as
+     linhas embaixo, como nas outras abas (decisão de 2026-11-03, commit `fefd1b0`; o desenho inicial era uma
+     coluna à direita) e **sem modo teatro** (decisão do dono, 2026-11-03: o ⤢ foi retirado da aba; só o
+     Lenticular tem). Linhas: "Aspect ratio" (As shot · 3:2 · 4:3 · 16:9 · 1:1, "keeps n%") com a caixa "Same size for all
      photos" na mesma linha; "References": Previous photo (azul), Next photo (laranja) e Photo 01 (verde),
      cada uma com a sua caixa para ligar/desligar, e uma opacidade só; "This photo": Move X, Move Y, Size e
      Rotate com − +, campo para digitar e passos pequenos (1 px / ⇧ 10; 0,1 % / ⇧ 1; 0,05° / ⇧ 0,5),
