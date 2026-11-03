@@ -3388,7 +3388,7 @@
     }
     return photoSizes[key];
   }
-  let alignPrefs = { prev: true, next: true, first: false, opacity: 0.45 };
+  let alignPrefs = { prev: true, next: true, opacity: 0.6 };
   try { Object.assign(alignPrefs, JSON.parse(localStorage.getItem("stillpoint.alignPrefs") || "{}") || {}); } catch (e) {}
   function saveAlignPrefs() { try { localStorage.setItem("stillpoint.alignPrefs", JSON.stringify(alignPrefs)); } catch (e) {} }
   // base: o tamanho escolhido pela pessoa; scale: o tamanho em uso (o base, ou mais, quando o giro obriga a crescer
@@ -3449,7 +3449,7 @@
   // movem 1 px (⇧ 10).
   function alignScreen(session, items, st, outer, rows, top, rerender) {
     alignLoad(session, st); cropLoad(session, st);
-    const REF_COLORS = { prev: "#4da3ff", next: "#ff8a3d", first: "#7cff5a" };
+    const REF_COLORS = { prev: "#4da3ff", next: "#ff8a3d" };
     const n = items.length;
     let cur = Math.max(0, Math.min(n - 1, exp.photo || 0));
     const item = items[cur];
@@ -3480,12 +3480,12 @@
     const stripScroll = el("div", "export-strip-scroll");
     const strip = el("ul", "export-strip");
     stripScroll.appendChild(strip);
-    const refIndex = { prev: cur - 1, next: cur + 1, first: 0 };
+    const refIndex = { prev: cur - 1, next: cur + 1 };
     items.forEach((it, k) => {
       const li = el("li", "frame" + (k === cur ? " selected" : ""));
       li.innerHTML = '<div class="frame-img"><img alt=""><span class="frame-badge"></span></div>';
       li.querySelector(".frame-badge").textContent = pad(it.order || k + 1);
-      ["prev", "next", "first"].forEach((key) => { if (alignPrefs[key] && refIndex[key] === k && k !== cur) { const dot = el("span", "align-refdot"); dot.style.background = REF_COLORS[key]; li.querySelector(".frame-img").appendChild(dot); } });
+      ["prev", "next"].forEach((key) => { if (alignPrefs[key] && refIndex[key] === k && k !== cur) { const dot = el("span", "align-refdot"); dot.style.background = REF_COLORS[key]; li.querySelector(".frame-img").appendChild(dot); } });
       if (!alignIsIdentity(st.align.byFile[it.file])) li.classList.add("aligned");
       sessionPhoto(session.name, it.file, 320).then((url) => { if (url) li.querySelector("img").src = url; });
       li.addEventListener("click", () => { exp.photo = k; rerender(); });
@@ -3512,41 +3512,37 @@
       return { row: r, input: inp, val };
     };
     const refSliders = {};
-    // Ordem: Previous photo, a foto atual (só legenda, sempre no meio), Next photo, First photo (decisão do dono,
-    // 2026-11-03). Nas pontas, a referência que não existe fica desativada; First photo desativada quando é a atual.
+    // Ordem (decisão do dono, 2026-11-03): Previous photo, Current photo (#n, a própria foto, sem caixa), Next photo.
+    // Cada uma com a sua barra de opacidade; a barra da Current photo move as três juntas, e mexer numa referência a
+    // desprende até a próxima vez que a da Current photo for usada. Nas pontas, a referência que não existe fica
+    // desativada.
     const refRow = (key, label, k) => {
-      const off = k < 0 || k >= n || k === cur;
-      const r = el("div", "align-ref" + (off ? " dimmed" : ""));
-      const head = el("label", "align-ref-head");
-      const c = document.createElement("input"); c.type = "checkbox"; c.className = "cs-check"; c.checked = !!alignPrefs[key]; c.disabled = off;
-      c.addEventListener("change", () => { alignPrefs[key] = c.checked; saveAlignPrefs(); rerender(); });
-      const sw = el("span", "align-sw"); sw.style.background = REF_COLORS[key];
-      head.append(c, sw, document.createTextNode(label), el("span", "align-who", !off ? pad(items[k].order || k + 1) : (k === cur ? "this photo" : "none")));
-      const sl = slider(opOf(key), (v) => { alignPrefs.op[key] = v; });
-      sl.input.title = "Opacity of this reference"; sl.input.disabled = off;
-      refSliders[key] = sl;
+      const isCur = key === "cur";
+      const off = !isCur && (k < 0 || k >= n);
+      const r = el("div", "align-ref" + (off ? " dimmed" : "") + (isCur ? " align-ref-me" : ""));
+      const head = el(isCur ? "div" : "label", "align-ref-head");
+      if (!isCur) {
+        const c = document.createElement("input"); c.type = "checkbox"; c.className = "cs-check"; c.checked = !!alignPrefs[key]; c.disabled = off;
+        c.addEventListener("change", () => { alignPrefs[key] = c.checked; saveAlignPrefs(); rerender(); });
+        head.appendChild(c);
+      }
+      const sw = el("span", "align-sw" + (isCur ? " align-sw-me" : "")); if (!isCur) sw.style.background = REF_COLORS[key];
+      head.append(sw, document.createTextNode(label), el("span", "align-who", isCur ? "#" + pad(item.order || cur + 1) : !off ? pad(items[k].order || k + 1) : "none"));
+      const sl = slider(isCur ? alignPrefs.opacity : opOf(key), (v) => {
+        if (isCur) {
+          alignPrefs.opacity = v; alignPrefs.op = {};  // as três juntas
+          Object.keys(refSliders).forEach((o) => { refSliders[o].input.value = String(Math.round(v * 100)); refSliders[o].val.textContent = Math.round(v * 100) + "%"; });
+        } else alignPrefs.op[key] = v;
+      });
+      sl.input.title = isCur ? "Opacity of every photo at once (the current photo and the references)" : "Opacity of this reference only";
+      sl.input.disabled = off;
+      if (!isCur) refSliders[key] = sl;
       r.append(head, sl.row);
       refs.appendChild(r);
     };
     refRow("prev", "Previous photo", cur - 1);
-    {
-      const me = el("div", "align-ref align-ref-me");
-      const head = el("div", "align-ref-head");
-      head.append(el("span", "align-sw align-sw-me"), document.createTextNode("This photo"), el("span", "align-who", pad(item.order || cur + 1)));
-      me.appendChild(head);
-      refs.appendChild(me);
-    }
+    refRow("cur", "Current photo", cur);
     refRow("next", "Next photo", cur + 1);
-    refRow("first", "First photo", 0);
-    const all = el("div", "align-ref align-ref-all");
-    all.appendChild(el("span", "align-lab", "All references"));
-    const allSl = slider(alignPrefs.opacity, (v) => {
-      alignPrefs.opacity = v; alignPrefs.op = {};  // volta a valer para as três
-      Object.keys(refSliders).forEach((key) => { refSliders[key].input.value = String(Math.round(v * 100)); refSliders[key].val.textContent = Math.round(v * 100) + "%"; });
-    });
-    allSl.input.title = "Opacity of every reference at once";
-    all.appendChild(allSl.row);
-    refs.appendChild(all);
 
     const self = block("This photo", el("span", "align-cur", pad(item.order || cur + 1)));
     const a = alignOf(st, item.file);
@@ -3658,12 +3654,12 @@
       sessionPhoto(session.name, it.file, 1600).then((url) => { if (url) im.src = url; });
       return l;
     };
-    // A foto atual embaixo, nítida; as referências por cima, tingidas e com a sua transparência (onion skin)
+    // As referências embaixo, tingidas; a foto atual por cima. Cada camada com a sua opacidade (onion skin)
     const order = [];
-    ["first", "prev", "next"].forEach((key) => { const k = refIndex[key]; if (alignPrefs[key] && k >= 0 && k < n && k !== cur && !order.some((o) => o.k === k)) order.push({ k, key }); });
-    layerOf[cur] = makeLayer(item, ""); layers.appendChild(layerOf[cur]);
+    ["prev", "next"].forEach((key) => { const k = refIndex[key]; if (alignPrefs[key] && k >= 0 && k < n && k !== cur && !order.some((o) => o.k === k)) order.push({ k, key }); });
     const refKeyOf = {};
     order.forEach((o) => { layerOf[o.k] = makeLayer(items[o.k], o.key); refKeyOf[o.k] = o.key; layers.appendChild(layerOf[o.k]); });
+    layerOf[cur] = makeLayer(item, ""); layers.appendChild(layerOf[cur]);
 
     // A área útil: o quadro da proporção (ou o quadro comum, em "As shot"), em px do canvas. Para a trava, a foto
     // atual conta com o tamanho escolhido (base) e sem giro: assim o giro não muda a área, só obriga a crescer para
@@ -3689,7 +3685,7 @@
         l.style.display = ""; l.style.width = w + "px"; l.style.height = h + "px";
         l.style.left = (cx + al.dx * scaleK - w / 2) + "px"; l.style.top = (cy + al.dy * scaleK - h / 2) + "px";
         l.style.transform = "scale(" + al.scale + ") rotate(" + al.rot + "deg)";
-        if (l.classList.contains("align-ref")) l.style.opacity = opOf(refKeyOf[k]);
+        l.style.opacity = l.classList.contains("align-ref") ? opOf(refKeyOf[k]) : alignPrefs.opacity;
         if (+k === cur) { box.style.display = ""; box.style.width = w + "px"; box.style.height = h + "px"; box.style.left = l.style.left; box.style.top = l.style.top; box.style.transform = l.style.transform;
           // alças com o mesmo tamanho na tela, seja qual for o zoom da foto
           const inv = 1 / al.scale; [...box.children].forEach((hd) => { hd.style.setProperty("--inv", inv); }); }

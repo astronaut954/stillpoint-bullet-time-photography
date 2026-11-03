@@ -1394,12 +1394,13 @@ direita; a lista de sessões continua à esquerda da janela.
 - [ ] Fileira de miniaturas: a 01 marcada; a 02 com um ponto laranja (é a Next photo). Clicar na 04 (ou → três vezes):
       "Photo 04 of 09", a 03 com ponto azul (Previous photo), a 05 com ponto laranja; na prévia a 04 nítida sobre a 03
       azulada e a 05 alaranjada.
-- [ ] Coluna "References", nesta ordem: "Previous photo" (azul, "03"), "This photo" (só legenda, "04", sempre no meio),
-      "Next photo" (laranja, "05") e "First photo" (verde, "01", desligada por padrão). Na foto 01, "Previous photo"
-      fica desativada ("none") e "First photo" também ("this photo"); na 09, "Next photo" desativada. Ligar "First
-      photo": a 01 aparece esverdeada na prévia e a miniatura 01 ganha o ponto verde. Desligar "Next photo": a 05 some. As referências ficam por cima da foto atual, tingidas e transparentes (a 04
-      continua inteira por baixo). Cada referência tem a sua barra de opacidade (muda só ela); a barra "All references"
-      move as três juntas. As escolhas ficam para as próximas aberturas (memória do app).
+- [ ] Coluna "References", nesta ordem: "Previous photo" (azul, "03"), "Current photo" (sem caixa, "#04", a própria
+      foto) e "Next photo" (laranja, "05"). Na foto 01, "Previous photo" fica desativada ("none"); na 09, "Next photo".
+      Na prévia, a foto atual fica por cima, nítida, e as referências por baixo, tingidas. Com todas as barras em 100%
+      vê-se só a atual. Cada linha tem a sua barra de opacidade: a da "Current photo" move as três juntas (baixar para
+      60%: a atual fica transparente e as referências aparecem através dela); mexer na barra de uma referência muda só
+      ela, até a próxima vez que a da "Current photo" for usada. Desligar "Next photo": a 05 some. As escolhas ficam
+      para as próximas aberturas (memória do app).
 - [ ] "This photo 04": "Move X", "Move Y" (px; − + andam 1, com ⇧ 10), "Size" (%; 0,1, ⇧ 1), "Rotate" (°; 0,05, ⇧ 0,5;
       sem limite). Sem legenda ao lado dos campos: a unidade e os passos estão na dica do campo. Digitar um valor e
       Enter aplica; ↑ ↓ no campo também andam. A foto 04 se mexe na prévia na hora; o quadro comum encolhe conforme

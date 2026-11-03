@@ -1603,7 +1603,8 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .align-ref-all .align-opacity { padding-left: 0; }
 .align-sw { width: 10px; height: 10px; border-radius: 50%; flex: none; }
 .align-sw-me { background: transparent; border: 1px solid var(--noct-text); box-sizing: border-box; margin-left: 26px; }
-.align-ref-me .align-ref-head { cursor: default; color: var(--noct-text-muted); }
+.align-ref-me .align-ref-head { cursor: default; }
+.align-ref-me .align-who { color: var(--noct-text); }
 .align-ref .cs-check:disabled { opacity: .35; }
 .align-who { margin-left: auto; font: 10px var(--noct-font-mono); color: var(--noct-text-dim); }
 .align-lab { font: 700 10px var(--noct-font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--noct-text-dim); }
