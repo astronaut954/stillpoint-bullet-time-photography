@@ -1510,7 +1510,7 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .cs-review-none { color: var(--noct-text-dim); font: 11px var(--noct-font-mono); }
 /* Proporção da foto diferente da informada pela câmera: amarelo (Parte 2 da Proporção) */
 .cs-review-ratio { color: var(--noct-pending); font: 11px var(--noct-font-mono); border: 1px dashed var(--noct-pending); padding: 0 5px; }
-.cs-review-thumb.ratio-warn, .cs-review-mini.ratio-warn { border-color: var(--noct-pending); border-style: dashed; }
+.cs-review-mini.ratio-warn { border-color: var(--noct-pending); border-style: dashed; }  /* (a miniatura da linha da tabela não: a etiqueta amarela já avisa) */
 .cs-sel.shot-warn { border-style: dashed; border-color: var(--noct-pending); }
 .cs-val.shot-ratio { margin-left: 4px; color: var(--noct-pending); font: 10px var(--noct-font-mono); }
 .cs-ratio-alert { display: inline-flex; align-items: center; margin-left: 4px; color: var(--noct-pending); vertical-align: middle; cursor: help; }
@@ -1570,6 +1570,7 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 }
 .cs-review-thumb { display: block; width: 48px; height: 32px; background: var(--noct-surface-inner) center / cover no-repeat; border: 1px solid var(--noct-border); }
 .cs-review-thumb.changed { border-color: var(--noct-primary); }
+.cs-review-thumb.changed.ratio-warn { border-style: solid; }
 .cs-review-tnote { flex: none; padding: 10px 12px; color: var(--noct-text-dim); font-size: 12px; line-height: 1.5; border-top: 1px solid var(--noct-border); }
 .cs-review-photos { display: flex; flex-direction: column; gap: 10px; min-width: 0; min-height: 0; }
 .cs-review-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
