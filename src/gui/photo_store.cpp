@@ -532,6 +532,18 @@ bool PhotoStore::SetLabel(const std::string& session, const std::string& label) 
     return WriteSessionInfoFile(dir, info);
 }
 
+bool PhotoStore::SetCrop(const std::string& session, const std::string& crop) const
+{
+    const fs::path dir = SessionDir(session);
+    if (dir.empty())
+        return false;
+    JsonLite::Value info = ReadSessionInfo(dir);
+    if (!info.isObject())
+        info = JsonLite::Value::NewObject();
+    info.set("crop", crop);
+    return WriteSessionInfoFile(dir, info);
+}
+
 bool PhotoStore::WriteSessionInfo(const std::string& session, const std::string& jsonText) const
 {
     const fs::path dir = SessionDir(session);
@@ -637,11 +649,14 @@ void PhotoStore::ReadSessions(const fs::path& base, bool inProject, std::vector<
         StoredSession session;
         session.name = dir.path().filename().string();
         session.inProject = inProject;
-        if (inProject)
         {
             const JsonLite::Value info = ReadSessionInfo(dir.path());
-            session.label = info.get("label").asString();
-            session.timing = info.get("timing").asString();
+            if (inProject)
+            {
+                session.label = info.get("label").asString();
+                session.timing = info.get("timing").asString();
+            }
+            session.crop = info.get("crop").asString();  // (também fora do Project)
         }
 
         session.saved = fs::exists(dir.path() / kSavedMark, ec);

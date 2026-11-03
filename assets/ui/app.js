@@ -1410,6 +1410,7 @@
     sessions = list || [];
     updateButtons();
     // Proporções: sessões novas de um disparo são medidas já (e avisam se misturadas); o resto na fila
+    sessions.forEach((x) => { const r = String(x.crop || "").split("|")[0]; if (RATIOS[r]) sessionCrop[x.name] = r; });
     const fresh = known.length ? sessions.filter((x) => !known.includes(x.name)) : [];
     const afterShoot = busyAction === "shoot" || Date.now() - lastShootAt < 20000;
     if (afterShoot) fresh.forEach((x) => measureSessionRatios(x).then((info) => maybeWarnMixed(x, info)));
@@ -1823,6 +1824,9 @@
   function chooseSessionCrop(name, r, info) {
     sessionCrop[name] = r;
     saveSessionCrop();
+    const s = sessions.find((x) => x.name === name);
+    if (s) { s.crop = r + "|0.500|0.500"; if (typeof window.setSessionCrop === "function") window.setSessionCrop(name, s.crop); }
+    if (exp.settings[name]) exp.settings[name].crop.loaded = false;  // o Export relê a escolha
     log("Crop on export: " + r + " for " + sessionLabel(name).date, "ok", "Keeps " + info.keep[r] + "% of the photos on average. The photos are not changed; Export sessions will use it.");
     if (currentSession && currentSession.name === name) sessionHead(currentSession);
   }
@@ -2449,13 +2453,15 @@
     const base = { naming: { kind: "date", text: "", date: true, position: "after" },
                    outputs: { photos: true, sequence: false, lenticular: false },
                    // original: copiar como a câmera salvou; convert + format: uma cópia convertida (os dois podem)
-                   photos: { original: true, convert: false, format: "jpg", quality: "high" },
+                   photos: { original: true, convert: false, format: "jpg", quality: "high", sameSize: false },
+                   // Parte 4 da Proporção: um recorte por sessão (Converted e Sequence; Lenticular usa só a posição)
+                   crop: { ratio: "asshot", x: 0.5, y: 0.5, loaded: false },
                    seq: { formats: ["mp4"], fps: 6, loops: 3, reverse: true, height: 1080, alsoPhotos: true, quality: "high" },
                    // lpi: lâmina; pitch: medido na folha de teste (0 = usar o nominal); dpi: impressora;
                    // tamanho em cm (unit "cm"|"in" só muda a exibição); effect "flip" (animação) | "3d"
                    lent: { lpi: 60, pitch: 0, dpi: 720, widthCm: 15, heightCm: 10, unit: "cm", effect: "flip", reverse: false,
                            // marcas (entrega 2, decisão do dono em 2026-10-30): corte e alinhamento ligados, sangria 3 mm
-                           cropMarks: true, alignMarks: true, bleedMm: 3 } };
+                           cropMarks: true, alignMarks: true, bleedMm: 3, placement: "fill" } };
     const p = exportPrefs && exportPrefs.settings;
     if (p) ["naming", "outputs", "photos", "seq", "lent"].forEach((k) => { if (p[k] && typeof p[k] === "object") Object.assign(base[k], JSON.parse(JSON.stringify(p[k]))); });
     // Preferências de antes da 2.14 (um modo só): o modo vira a saída ligada; Sequence com
@@ -2490,7 +2496,9 @@
     if (exportPrefs && typeof exportPrefs.sameForAll === "boolean") exp.sameForAll = exportPrefs.sameForAll;
     pitchAsk = prefs.pitchAsk !== "off";
     startPrefs.splash = prefs.splash !== "off";
+    lentBand = prefs.lentBand === "white" ? "white" : "black";
   }
+  let lentBand = "black";  // Lenticular, Placement Fit: cor da faixa (ajuste geral do app; decisão do dono, 2026-11-03)
   function settingsFor(name) {
     if (!exp.settings[name]) exp.settings[name] = defaultSettings();
     return exp.settings[name];
@@ -3229,6 +3237,100 @@
       box.appendChild(printer);
       addTip(box, PRINTER_HELP, "Printer");
   }
+  // ---- Parte 4 da Proporção: linha "Aspect ratio", recorte (um por sessão), "Same size" e Placement ----
+  const CROP_RATIOS = [["asshot", "As shot"], ["3:2", "3:2"], ["4:3", "4:3"], ["16:9", "16:9"], ["1:1", "1:1"]];
+  // A escolha guardada na sessão (session.json, também fora do Project) entra uma vez por abertura
+  function cropLoad(session, st) {
+    if (st.crop.loaded) return;
+    st.crop.loaded = true;
+    const [ratio, x, y] = String(session.crop || (sessionCrop[session.name] ? sessionCrop[session.name] + "|0.5|0.5" : "")).split("|");
+    if (ratio === "asshot" || RATIOS[ratio]) st.crop.ratio = ratio;
+    if (x !== undefined && !isNaN(+x)) st.crop.x = Math.max(0, Math.min(1, +x));
+    if (y !== undefined && !isNaN(+y)) st.crop.y = Math.max(0, Math.min(1, +y));
+  }
+  // Uma fonte só: a sessão (o programa grava em session.json) e a memória do app (a etiqueta "Mixed ratios" usa)
+  function cropSave(session, st) {
+    const text = st.crop.ratio + "|" + st.crop.x.toFixed(3) + "|" + st.crop.y.toFixed(3);
+    if (st.crop.ratio !== "asshot") sessionCrop[session.name] = st.crop.ratio; else delete sessionCrop[session.name];
+    saveSessionCrop();
+    session.crop = text;
+    if (typeof window.setSessionCrop === "function") window.setSessionCrop(session.name, text);
+    if (currentSession && currentSession.name === session.name) sessionHead(currentSession);
+  }
+  // Prévia do recorte: a foto escolhida apagada, o quadro do recorte aceso; arrastar move o quadro; nove posições
+  function cropWidget(session, items, st, targetRatio, onChange) {
+    const wrap = el("div", "crop-wrap");
+    const box = el("div", "crop-box");
+    const img = document.createElement("img"); img.alt = "";
+    const frame = el("div", "crop-frame");
+    const tag = el("span", "crop-tag");
+    box.append(img, frame, tag);
+    const item = items[Math.max(0, Math.min(items.length - 1, exp.photo || 0))] || items[0];
+    let nat = null;  // largura/altura natural da foto
+    const layout = () => {
+      if (!nat) return;
+      const bw = box.clientWidth, bh = box.clientHeight;
+      const s = Math.min(bw / nat.w, bh / nat.h);
+      const iw = nat.w * s, ih = nat.h * s, ix = (bw - iw) / 2, iy = (bh - ih) / 2;
+      img.style.width = iw + "px"; img.style.height = ih + "px"; img.style.left = ix + "px"; img.style.top = iy + "px";
+      const t = nat.w >= nat.h ? targetRatio : 1 / targetRatio;
+      let fw = iw, fh = ih;
+      if (iw / ih > t) fw = ih * t; else fh = iw / t;
+      frame.style.width = fw + "px"; frame.style.height = fh + "px";
+      frame.style.left = (ix + (iw - fw) * st.crop.x) + "px"; frame.style.top = (iy + (ih - fh) * st.crop.y) + "px";
+      const free = iw - fw > 1 || ih - fh > 1;
+      frame.classList.toggle("free", free);
+      tag.textContent = (item ? pad(item.order || 1) + " · " : "") + (free ? "Drag to choose the part that stays" : "Nothing to cut: the photo already has this shape");
+    };
+    if (item) sessionPhoto(session.name, item.file, 1600).then((url) => { if (!url) return; img.onload = () => { nat = { w: img.naturalWidth, h: img.naturalHeight }; layout(); }; img.src = url; });
+    if (window.ResizeObserver) new ResizeObserver(layout).observe(box);
+    let drag = null;
+    box.addEventListener("pointerdown", (e) => { if (!nat) return; drag = { x: e.clientX, y: e.clientY, cx: st.crop.x, cy: st.crop.y }; box.setPointerCapture(e.pointerId); e.preventDefault(); });
+    box.addEventListener("pointermove", (e) => {
+      if (!drag || !nat) return;
+      const iw = parseFloat(img.style.width), ih = parseFloat(img.style.height), fw = parseFloat(frame.style.width), fh = parseFloat(frame.style.height);
+      if (iw - fw > 1) st.crop.x = Math.max(0, Math.min(1, drag.cx + (e.clientX - drag.x) / (iw - fw)));
+      if (ih - fh > 1) st.crop.y = Math.max(0, Math.min(1, drag.cy + (e.clientY - drag.y) / (ih - fh)));
+      layout(); markDots();
+    });
+    const endDrag = () => { if (!drag) return; drag = null; onChange(false); };
+    box.addEventListener("pointerup", endDrag); box.addEventListener("pointercancel", endDrag);
+    // Nove posições
+    const side = el("div", "crop-side");
+    side.appendChild(el("span", "export-label crop-side-label", "Position"));
+    const dots = el("div", "crop-dots");
+    const names = ["top left", "top", "top right", "left", "center", "right", "bottom left", "bottom", "bottom right"];
+    [0, 0.5, 1].forEach((y) => [0, 0.5, 1].forEach((x) => {
+      const d = el("button", "crop-dot"); d.type = "button"; d.dataset.x = x; d.dataset.y = y;
+      d.title = names[Math.round(y * 2) * 3 + Math.round(x * 2)][0].toUpperCase() + names[Math.round(y * 2) * 3 + Math.round(x * 2)].slice(1);
+      d.addEventListener("click", () => { st.crop.x = x; st.crop.y = y; layout(); markDots(); onChange(false); });
+      dots.appendChild(d);
+    }));
+    const markDots = () => [...dots.children].forEach((d) => d.classList.toggle("on", Math.abs(+d.dataset.x - st.crop.x) < 0.01 && Math.abs(+d.dataset.y - st.crop.y) < 0.01));
+    markDots();
+    side.append(dots, el("div", "export-note", "One crop for the whole session: the sequence cannot jump between photos."));
+    wrap.append(box, side);
+    return wrap;
+  }
+  // Linha "Aspect ratio" (+ aviso de mistura, + recorte) para Photos e Sequence
+  function ratioRows(session, st, box, rerender, kind, items) {
+    cropLoad(session, st);
+    const info = ratioInfoCached(session.name);
+    const r = row("Aspect ratio");
+    r.appendChild(segmented(CROP_RATIOS, st.crop.ratio, (v) => { st.crop.ratio = v; cropSave(session, st); rerender(); }));
+    if (st.crop.ratio !== "asshot" && info && info.keep && info.keep[st.crop.ratio] != null) r.appendChild(el("span", "export-keep", "keeps " + info.keep[st.crop.ratio] + "%"));
+    if (kind === "photos" && !st.photos.convert) r.classList.add("dimmed");
+    box.appendChild(r);
+    if (info && info.mixed) box.appendChild(el("div", "export-note exp-warn", "Mixed ratios · " + ratioText(info).replace(/^Camera/, "camera") +
+      ' "As shot" keeps each photo as it is' + (kind === "sequence" ? "; the sequence will jump." : ".") + (sessionCrop[session.name] ? " The ratio chosen in the Mixed ratios window is already selected." : "")));
+    addTip(box, "Every " + (kind === "photos" ? "converted photo" : "frame of the sequence") + " is cut to this shape; the originals are never cropped. " +
+      "Choose the ratio once for the session: it is the same for the photos and the sequence.", "Aspect ratio");
+    if (st.crop.ratio !== "asshot") {
+      const c = row("Crop");
+      c.appendChild(cropWidget(session, items, st, RATIOS[st.crop.ratio], () => cropSave(session, st)));
+      box.appendChild(c);
+    }
+  }
   function lentSizeRow(l, box, rerender, label) {
       const size = row(label || "Print size");
       const unitIn = l.unit === "in";
@@ -3456,6 +3558,12 @@
       }
       addTip(box, "The originals are the highest quality: each file exactly as the camera saved it. A converted copy makes one file per camera; RAW photos are converted from the " +
         "full-size image the camera keeps inside them, and when a camera saved RAW + JPG, the JPG is used.", "Originals");
+      ratioRows(session, st, box, rerender, "photos", items);
+      const same = row("Same size");
+      same.appendChild(checkOption("Same size for all photos", !!s.sameSize, (v) => { s.sameSize = v; rerender(); }));
+      if (!s.convert) same.classList.add("dimmed");
+      box.appendChild(same);
+      addTip(box, "Off: each converted photo keeps the size of its camera. On: every converted photo is reduced to the size of the smallest camera, so all files have the same pixel size. The originals are not changed.", "Same size");
       } else if (kind === "lenticular") {
       const l = st.lent;
       const n = items.length;
@@ -3466,6 +3574,9 @@
       // baixo; 3D: lentes em pé, girando para os lados
       const vertical = l.effect !== "3d";
       preview.classList.toggle("tilt-vertical", vertical);
+      preview.classList.toggle("place-fit", (l.placement || "fill") === "fit");
+      preview.style.setProperty("--band", lentBand === "white" ? "#fff" : "#000");
+      img.style.objectPosition = Math.round(st.crop.x * 100) + "% " + Math.round(st.crop.y * 100) + "%";
       const order = l.reverse ? items.map((_, i) => n - 1 - i) : items.map((_, i) => i);
       let frameAt = Math.min(exp.frame >= 0 ? exp.frame : 0, Math.max(0, n - 1));
       const showFrame = (k) => {
@@ -3588,7 +3699,8 @@
         full = document.createElement("canvas"); full.width = FW; full.height = FH;
         const fctx = full.getContext("2d");
         fctx.fillStyle = "#fff"; fctx.fillRect(0, 0, FW, FH);
-        fctx.fillStyle = "#000"; fctx.fillRect(off, off, W, H);
+        const fitPlace = (l.placement || "fill") === "fit";
+        fctx.fillStyle = fitPlace && lentBand === "white" ? "#fff" : "#000"; fctx.fillRect(off, off, W, H);
         drawPrintMarks(fctx, l, f, { fw: FW, fh: FH, margin: margin * f, bleed: b, w: plan.w * f, h: plan.h * f });
         lentBuiltAt = f;
         setLoupeTag();
@@ -3605,9 +3717,10 @@
           sessionPhoto(session.name, item.file, 1600).then((url) => new Promise((res) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = url || ""; })).then((im) => {
             if (token !== drawInterlaced.token) return;
             if (im) {
-              const s = Math.max(W / im.naturalWidth, H / im.naturalHeight);
+              const s = fitPlace ? Math.min(W / im.naturalWidth, H / im.naturalHeight) : Math.max(W / im.naturalWidth, H / im.naturalHeight);
               const fw = im.naturalWidth * s, fh = im.naturalHeight * s;
-              const ox = (fw - W) / 2, oy = (fh - H) / 2;
+              // Fill: a parte escolhida (posição do recorte da sessão); Fit: centrada (sobra a faixa)
+              const ox = fitPlace ? (fw - W) / 2 : (fw - W) * st.crop.x, oy = fitPlace ? (fh - H) / 2 : (fh - H) * st.crop.y;
               fctx.imageSmoothingEnabled = true;
               runs.forEach(([start, len, owner]) => {
                 if (owner !== k) return;
@@ -3689,6 +3802,19 @@
       lentLensRows(l, box, rerender, { measured: true });
       lentPrinterRows(l, box, rerender);
       lentSizeRow(l, box, rerender);
+      // Placement (Parte 4 da Proporção): Fill cobre o papel e corta (a posição escolhe a parte); Fit mostra a foto
+      // inteira com uma faixa (cor em Settings, igual para todas as sessões)
+      cropLoad(session, st);
+      const place = row("Placement");
+      place.appendChild(segmented([["fill", "Fill"], ["fit", "Fit"]], l.placement || "fill", (v) => { l.placement = v; rerender(); }));
+      if ((l.placement || "fill") === "fit") place.appendChild(el("span", "export-note-inline", "Band: " + lentBand + " · change it in Settings › Lenticular"));
+      box.appendChild(place);
+      addTip(box, "Fill: the photo covers the sheet and is cropped; drag the crop to choose the part that stays. Fit: the whole photo, with a band where it does not reach the edge of the sheet.", "Placement");
+      if ((l.placement || "fill") !== "fit") {
+        const c = row("Crop");
+        c.appendChild(cropWidget(session, items, st, l.widthCm / l.heightCm, () => { cropSave(session, st); if (exp.lentView === "interlaced") rerender(); }));
+        box.appendChild(c);
+      }
       // Marcas de impressão (entrega 2)
       const marks = row("Marks");
       marks.appendChild(checkOption("Crop marks", !!l.cropMarks, (v) => { l.cropMarks = v; rerender(); }));
@@ -3762,6 +3888,7 @@
       addTip(box, "Standard: smaller files, good for sharing online. High: very close to the photos, with smaller files; good for most uses. " +
         "Maximum: as close to the photos as each format allows (WEBP keeps every pixel; MP4, MOV and AVIF get much more detail); large files, and AVIF takes longer. " +
         "GIF always has 256 colors, at any quality.", "Quality");
+      ratioRows(session, st, box, rerender, "sequence", items);
 
       const t = seqTotal(session, s);
       const total = el("div", "export-total");
@@ -3905,7 +4032,9 @@
       o.photos ? [st.photos.original ? "original" : "", st.photos.convert ? st.photos.format : ""].filter(Boolean).join(",") : "", st.photos.quality,
       o.sequence ? s.formats.join(",") : "", s.fps, s.loops, s.reverse ? 1 : 0, s.height, s.quality,
       o.lenticular ? 1 : 0, lentPitch(l), l.dpi, (l.widthCm / CM_PER_IN).toFixed(4), (l.heightCm / CM_PER_IN).toFixed(4), l.effect, l.reverse ? 1 : 0,
-      l.cropMarks ? 1 : 0, l.alignMarks ? 1 : 0, l.bleedMm || 0, l.lpi].join("|");
+      l.cropMarks ? 1 : 0, l.alignMarks ? 1 : 0, l.bleedMm || 0, l.lpi,
+      // Parte 4 da Proporção: 25 proporção | 26 posição x | 27 posição y | 28 same size | 29 placement | 30 faixa
+      st.crop.ratio || "asshot", st.crop.x.toFixed(3), st.crop.y.toFixed(3), st.photos.sameSize ? 1 : 0, l.placement || "fill", lentBand].join("|");
   }
 
   function runExport(deleteRest) {
@@ -4714,6 +4843,16 @@
       Promise.resolve(window.savePref("splash", v)).then(() => log("Opening animation " + v, "tech"));
       renderSettings();
     }));
+    // Lenticular (Parte 4 da Proporção): cor da faixa do Placement Fit, igual para todas as sessões
+    if ($("settingsLentBand")) {
+      $("settingsLentBand").innerHTML = "";
+      $("settingsLentBand").appendChild(segmented([["black", "Black"], ["white", "White"]], lentBand, (v) => {
+        lentBand = v;
+        Promise.resolve(window.savePref("lentBand", v)).then(() => log("Lenticular band: " + v, "tech"));
+        renderSettings();
+        if (!$("exportOverlay").classList.contains("hidden")) renderExport();
+      }));
+    }
     // Modo debug: vale na hora
     $("settingsDebug").innerHTML = "";
     $("settingsDebug").appendChild(segmented([["off", "Off"], ["on", "On"]], prefs.debug ? "on" : "off", (v) => {

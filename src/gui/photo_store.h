@@ -51,6 +51,7 @@ struct StoredSession
     // Project (etapa 17): sessão guardada em <Project>/Originals/ em vez da pasta de dados
     bool inProject = false;
     std::string label;   // rótulo opcional ("Pose 7"), em session.json
+    std::string crop;    // recorte escolhido para o Export ("3:2|0.5|0.5": proporção|posição x|posição y), em session.json
     int edited = 0;      // fotos com versão editada em <Project>/Edited/<sessão>/
     std::string timing;  // resumo do Timing usado ("Sweep · 0.2 s · 1 → 9"), em session.json
 };
@@ -93,6 +94,7 @@ public:
     bool MoveSession(const std::string& session, bool toProject, std::string& errorMessage) const;
     // session.json: rótulo e resumo do Timing (só para sessões no Project)
     bool SetLabel(const std::string& session, const std::string& label) const;
+    bool SetCrop(const std::string& session, const std::string& crop) const;  // Parte 4 da Proporção
     bool WriteSessionInfo(const std::string& session, const std::string& jsonText) const;
     // Arquivo editado de uma foto (em Edited/<sessão>/, mesmo nome-base, o mais recente); vazio se não houver
     std::filesystem::path EditedFile(const std::string& session, const std::string& file) const;

@@ -569,7 +569,8 @@ namespace
 
     // Redimensiona cobrindo w×h inteiro (corta o que sobra, centrado) — para a impressão
     // lenticular, onde a imagem precisa ter exatamente o tamanho do papel
-    std::vector<unsigned char> Cover(const RgbFrame& src, int w, int h)
+    // Cobre w x h com a foto (ampliada/reduzida e cortada); posX/posY (0..1) escolhem a parte que fica
+    std::vector<unsigned char> Cover(const RgbFrame& src, int w, int h, double posX = 0.5, double posY = 0.5)
     {
         const double scale = std::max(static_cast<double>(w) / src.width, static_cast<double>(h) / src.height);
         const int fw = std::max(w, static_cast<int>(std::lround(src.width * scale)));
@@ -577,10 +578,35 @@ namespace
         std::vector<unsigned char> resized(static_cast<size_t>(fw) * fh * 3);
         stbir_resize_uint8_srgb(src.pixels.data(), src.width, src.height, 0, resized.data(), fw, fh, 0, STBIR_RGB);
         std::vector<unsigned char> out(static_cast<size_t>(w) * h * 3);
-        const int ox = (fw - w) / 2, oy = (fh - h) / 2;
+        const int ox = std::clamp(static_cast<int>(std::lround((fw - w) * std::clamp(posX, 0.0, 1.0))), 0, fw - w);
+        const int oy = std::clamp(static_cast<int>(std::lround((fh - h) * std::clamp(posY, 0.0, 1.0))), 0, fh - h);
         for (int y = 0; y < h; ++y)
             std::memcpy(&out[static_cast<size_t>(y) * w * 3], &resized[(static_cast<size_t>(y + oy) * fw + ox) * 3], static_cast<size_t>(w) * 3);
         return out;
+    }
+    // A foto inteira dentro de w x h, com faixa preta ou branca onde não chega à borda (Placement: Fit)
+    std::vector<unsigned char> FitBand(const RgbFrame& src, int w, int h, bool white)
+    {
+        std::vector<unsigned char> out = Fit(src, w, h);
+        if (!white) return out;
+        // Fit pinta de preto: troca pelo branco fora da foto
+        const double scale = std::min(static_cast<double>(w) / src.width, static_cast<double>(h) / src.height);
+        const int fw = std::max(1, std::min(w, static_cast<int>(std::lround(src.width * scale))));
+        const int fh = std::max(1, std::min(h, static_cast<int>(std::lround(src.height * scale))));
+        const int ox = (w - fw) / 2, oy = (h - fh) / 2;
+        for (int y = 0; y < h; ++y)
+            for (int x = 0; x < w; ++x)
+                if (y < oy || y >= oy + fh || x < ox || x >= ox + fw)
+                    std::memset(&out[(static_cast<size_t>(y) * w + x) * 3], 255, 3);
+        return out;
+    }
+    // Reduz a foto para exatamente w x h (mesma proporção: "Same size for all photos")
+    void ResizeTo(RgbFrame& img, int w, int h)
+    {
+        if (w <= 0 || h <= 0 || (img.width == w && img.height == h)) return;
+        std::vector<unsigned char> resized(static_cast<size_t>(w) * h * 3);
+        stbir_resize_uint8_srgb(img.pixels.data(), img.width, img.height, 0, resized.data(), w, h, 0, STBIR_RGB);
+        img.pixels = std::move(resized); img.width = w; img.height = h;
     }
 
     // ---- Lenticular, entrega 2: marcas de impressão e folha de teste ----
@@ -734,6 +760,40 @@ namespace
 
 namespace Export
 {
+    double RatioValue(const std::string& ratio)
+    {
+        if (ratio == "3:2") return 3.0 / 2.0;
+        if (ratio == "4:3") return 4.0 / 3.0;
+        if (ratio == "16:9") return 16.0 / 9.0;
+        if (ratio == "1:1") return 1.0;
+        return 0;
+    }
+    void ApplyFraming(RgbFrame& frame, const Framing& framing)
+    {
+        const double r = RatioValue(framing.ratio);
+        if (r <= 0 || frame.width <= 0 || frame.height <= 0) return;
+        // A proporção vale para o lado maior: foto em pé fica em pé
+        const double target = frame.width >= frame.height ? r : 1.0 / r;
+        const double have = static_cast<double>(frame.width) / frame.height;
+        if (std::abs(have - target) < 0.005) return;
+        int nw = frame.width, nh = frame.height;
+        if (have > target) nw = std::max(1, static_cast<int>(std::lround(frame.height * target)));
+        else nh = std::max(1, static_cast<int>(std::lround(frame.width / target)));
+        const int x0 = std::clamp(static_cast<int>(std::lround((frame.width - nw) * std::clamp(framing.posX, 0.0, 1.0))), 0, frame.width - nw);
+        const int y0 = std::clamp(static_cast<int>(std::lround((frame.height - nh) * std::clamp(framing.posY, 0.0, 1.0))), 0, frame.height - nh);
+        std::vector<unsigned char> out(static_cast<size_t>(nw) * nh * 3);
+        for (int y = 0; y < nh; ++y)
+            std::memcpy(&out[static_cast<size_t>(y) * nw * 3], &frame.pixels[(static_cast<size_t>(y + y0) * frame.width + x0) * 3], static_cast<size_t>(nw) * 3);
+        frame.pixels = std::move(out); frame.width = nw; frame.height = nh;
+    }
+    bool PhotoSize(const fs::path& photo, int& width, int& height)
+    {
+        RgbFrame frame;
+        if (!LoadPhotoRgb(photo, frame)) return false;
+        width = frame.width; height = frame.height;
+        return true;
+    }
+
     Quality ParseQuality(const std::string& text)
     {
         if (text == "standard") return Quality::Standard;
@@ -789,6 +849,7 @@ namespace Export
                 error = "Could not read " + photos[i].filename().string();
                 return false;
             }
+            ApplyFraming(frame, options.framing);
             decoded.push_back(std::move(frame));
             if (progress)
                 progress(static_cast<double>(i + 1) / photos.size(), "photos");
@@ -906,7 +967,7 @@ namespace Export
             if (progress) progress(static_cast<double>(k) / (n + 1), "lenticular");
             RgbFrame frame;
             if (!LoadPhotoRgb(photos[static_cast<size_t>(k)], frame)) { error = "Could not read " + photos[static_cast<size_t>(k)].filename().string(); return false; }
-            const std::vector<unsigned char> fitted = Cover(frame, W, H);
+            const std::vector<unsigned char> fitted = o.fit ? FitBand(frame, W, H, o.whiteBand) : Cover(frame, W, H, o.posX, o.posY);
             if (o.horizontalLenses)
             {
                 for (int y = 0; y < H; ++y)
@@ -1028,13 +1089,15 @@ namespace Export
     }
 
     bool ConvertPhoto(const fs::path& photo, const fs::path& dest, const std::string& format, Quality quality,
-                      std::string& error)
+                      std::string& error, const Framing& framing, int targetWidth, int targetHeight)
     {
         const fs::path file = fs::path(dest).concat("." + format);
         std::string jpeg;
         RgbFrame image;
-        // De JPEG para JPG: o próprio arquivo, sem perder qualidade nem os dados da câmera
-        if (format == "jpg" && IsJpegPhoto(photo.filename().string()))
+        // De JPEG para JPG: o próprio arquivo, sem perder qualidade nem os dados da câmera (só quando a foto
+        // não vai ser recortada nem reduzida)
+        const bool reframe = framing.Active() || targetWidth > 0;
+        if (format == "jpg" && IsJpegPhoto(photo.filename().string()) && !reframe)
         {
             std::error_code ec;
             fs::copy_file(photo, file, fs::copy_options::overwrite_existing, ec);
@@ -1045,6 +1108,13 @@ namespace Export
         {
             error = "Could not read " + photo.filename().string();
             return false;
+        }
+        ApplyFraming(image, framing);
+        if (targetWidth > 0 && targetHeight > 0 && (image.width > targetWidth || image.height > targetHeight))
+        {
+            // Mesmo tamanho para todas: reduz mantendo a proporção (as fotos em pé ficam no tamanho trocado)
+            const bool portrait = image.height > image.width;
+            ResizeTo(image, portrait ? targetHeight : targetWidth, portrait ? targetWidth : targetHeight);
         }
         bool ok = false;
         if (format == "jpg")

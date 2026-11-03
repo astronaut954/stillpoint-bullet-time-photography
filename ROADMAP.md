@@ -714,6 +714,14 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    - **Lenticular:** "Placement" Fill (cobre e corta; arrastar para escolher a parte) ou Fit (foto
      inteira, faixa preta ou branca); nove posições; sem zoom intermediário; prévia com sangria e marcas
      de corte; um enquadramento por sessão.
+   - **Decisões do dono (2026-11-03, protótipos P–S):** a linha "Aspect ratio" vem por último, depois de
+     Quality (opção Q); "Placement" Fill/Fit é por sessão e a cor da faixa é um ajuste geral do app, em
+     Settings › Lenticular (opção S); linha "Crop" separada, com a prévia e as nove posições. **Feito em
+     2026-11-03** (`docs/teste-manual.md`, seção 36): o programa recorta Converted e Sequence
+     (`Export::Framing`), "Same size" reduz ao tamanho da menor câmera, Lenticular Fill com posição e Fit
+     com faixa; a escolha (proporção e posição) fica em `session.json` (`crop`), também fora do Project,
+     e a janela "Mixed ratios" grava nela. Testado só com câmeras simuladas; RAW e lenticular real
+     continuam adiados.
    - **Futuro (anotado a pedido do dono):** alinhamento por foto com transparência entre as câmeras e
      recorte final comum, para rigs tortos.
 5. **Etapa 20 — Edit in Lightroom Classic / Photoshop.** Ida e volta: o app abre os originais

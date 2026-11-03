@@ -5,6 +5,8 @@
 
 #include <atomic>
 #include <filesystem>
+
+#include "photo_store.h"  // RgbFrame
 #include <functional>
 #include <string>
 #include <vector>
@@ -21,6 +23,21 @@ namespace Export
     // Bits por segundo do MP4/MOV (H.264) para o tamanho, a velocidade e a qualidade
     int VideoBitrate(int width, int height, int fps, Quality quality);
 
+    // Proporção da saída (Parte 4 da Proporção): recorte de cada foto para "3:2", "4:3", "16:9" ou "1:1"
+    // ("" ou "asshot" = como saiu da câmera). posX/posY (0..1): que parte da foto fica quando se corta
+    // (0,5 = o meio; 0 = esquerda/topo; 1 = direita/base). Um recorte só por sessão.
+    struct Framing
+    {
+        std::string ratio;
+        double posX = 0.5, posY = 0.5;
+        bool Active() const { return !ratio.empty() && ratio != "asshot"; }
+    };
+    double RatioValue(const std::string& ratio);  // "3:2" -> 1.5; 0 se não for uma das quatro
+    // Recorta a foto no lugar (não faz nada se já estiver na proporção, ou sem proporção)
+    void ApplyFraming(RgbFrame& frame, const Framing& framing);
+    // Largura e altura de uma foto (decodifica; RAW usa a prévia embutida)
+    bool PhotoSize(const std::filesystem::path& photo, int& width, int& height);
+
     struct SequenceOptions
     {
         std::vector<std::string> formats;  // "mp4", "mov", "gif", "webp", "avif"
@@ -29,6 +46,7 @@ namespace Export
         bool reverse = true;               // vai e volta: 1, 2, 3, 2, 1...
         int height = 1080;                 // 720, 1080 ou 2160 (4K: só MP4/MOV)
         Quality quality = Quality::High;
+        Framing framing;                   // proporção da sequência (recorte igual em todas as fotos)
     };
 
     // Ordem dos quadros de UMA volta: 0..n-1 e, com reverse, volta até 1 (sem repetir as pontas)
@@ -45,8 +63,11 @@ namespace Export
                        const std::atomic<bool>* cancel, std::string& error);
 
     // Converte uma foto para "jpg", "png", "webp", "tiff" ou "heic". dest sem extensão.
+    // framing: recorte para a proporção escolhida; targetWidth/targetHeight > 0: a foto (já recortada) é
+    // reduzida para esse tamanho ("Same size for all photos": o da menor câmera).
     bool ConvertPhoto(const std::filesystem::path& photo, const std::filesystem::path& destWithoutExtension,
-                      const std::string& format, Quality quality, std::string& error);
+                      const std::string& format, Quality quality, std::string& error,
+                      const Framing& framing = Framing(), int targetWidth = 0, int targetHeight = 0);
 
     // Formatos que este computador consegue gerar (HEIC no Windows depende de extensões)
     bool FormatAvailable(const std::string& format, std::string& reason);
@@ -69,6 +90,11 @@ namespace Export
         bool cropMarks = false;      // risquinhos nos cantos: onde cortar
         bool alignMarks = false;     // cruzes no meio de cada lado: para posicionar a lâmina
         double bleedInches = 0;      // sangria (3 mm = 0,118 pol)
+        // Parte 4 da Proporção: "Placement". fit=false (Fill): a foto cobre o papel e é cortada, posX/posY
+        // escolhem a parte; fit=true: a foto inteira, com faixa preta (ou branca) onde não chega à borda
+        bool fit = false;
+        bool whiteBand = false;
+        double posX = 0.5, posY = 0.5;
         // As configurações em texto: vão dentro do TIFF (descrição da imagem) e num .txt ao lado
         std::string description;
     };

@@ -747,7 +747,7 @@ namespace
             Json item("session");
             item.Add("name", session.name).Add("saved", session.saved).Add("missing", session.missing)
                 .Add("inProject", session.inProject).Add("label", session.label).Add("edited", session.edited)
-                .Add("timing", session.timing).Raw("photos", photos);
+                .Add("timing", session.timing).Add("crop", session.crop).Raw("photos", photos);
             list += (firstSession ? "" : ",") + item.Str();
             firstSession = false;
         }
@@ -2247,6 +2247,13 @@ namespace
             emitSessions();
             return Json("label").Add("ok", ok).Str();
         });
+        // setSessionCrop(sessão, "3:2|0.5|0.5"): o recorte escolhido para o Export fica na sessão (Project)
+        window.bind("setSessionCrop", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            const bool ok = args.size() >= 2 && store.SetCrop(args[0], args[1]);
+            return Json("crop").Add("ok", ok).Str();
+        });
         // projectExportDefaults(json): guarda as últimas configurações de export do Project
         window.bind("projectExportDefaults", [&](const std::string& request) -> std::string
         {
@@ -3201,6 +3208,10 @@ namespace
             std::string photoFormat;          // "original", "jpg"... ("" = não salvar fotos)
             Export::Quality photoQuality = Export::Quality::High;
             Export::SequenceOptions options;
+            // Parte 4 da Proporção: recorte da sessão (Converted e Sequence; os originais não mudam) e
+            // "Same size for all photos" (Converted reduzidas ao tamanho da menor câmera)
+            Export::Framing framing;
+            bool sameSize = false;
         };
 
         // Salvamento de fato (na fila de prévias). replace: apaga o que havia dentro da
@@ -3366,6 +3377,8 @@ namespace
                             std::snprintf(line, sizeof(line), "Marks: %s; bleed %.3g mm; file %d x %d px\n", marks.empty() ? "none" : marks.c_str(),
                                           lent.bleedInches * 25.4, info.fileWidth, info.fileHeight);
                             t += line;
+                            if (lent.fit) t += std::string("Placement: Fit (whole photo, ") + (lent.whiteBand ? "white" : "black") + " band)\n";
+                            else { std::snprintf(line, sizeof(line), "Placement: Fill (crop at %.0f%% across, %.0f%% down)\n", lent.posX * 100, lent.posY * 100); t += line; }
                             t += "\nPrint at 100% (actual size), never \"fit to page\": the file already has the right size and dpi.\n";
                             lent.description = t;
                         }
@@ -3409,6 +3422,27 @@ namespace
                         }
                         else
                             files = perCamera;
+                        // Same size: o tamanho da menor foto depois do recorte (todas na mesma proporção)
+                        int targetW = 0, targetH = 0;
+                        if (!original && job.sameSize)
+                        {
+                            long long bestArea = -1;
+                            for (const auto& f : files)
+                            {
+                                if (exportCancel) break;
+                                int w = 0, h = 0;
+                                if (!Export::PhotoSize(photoPath(f), w, h)) continue;
+                                const double r = Export::RatioValue(job.framing.ratio);
+                                int cw = std::max(w, h), ch = std::min(w, h);  // deitada
+                                if (r > 0)
+                                {
+                                    if (static_cast<double>(cw) / ch > r) cw = static_cast<int>(std::lround(ch * r));
+                                    else ch = static_cast<int>(std::lround(cw / r));
+                                }
+                                const long long area = static_cast<long long>(cw) * ch;
+                                if (bestArea < 0 || area < bestArea) { bestArea = area; targetW = cw; targetH = ch; }
+                            }
+                        }
                         for (size_t i = 0; i < files.size() && error.empty(); ++i)
                         {
                             if (exportCancel) { error = "cancelled"; break; }
@@ -3427,7 +3461,7 @@ namespace
                             }
                             else
                                 Export::ConvertPhoto(from, formatDir / shortStem(files[i], "." + photoFormat), photoFormat,
-                                                     job.photoQuality, error);
+                                                     job.photoQuality, error, job.framing, targetW, targetH);
                         }
                         if (!error.empty())
                             break;
@@ -3551,6 +3585,21 @@ namespace
                     job.lent.cropMarks = at(21) == "1";
                     job.lent.alignMarks = at(22) == "1";
                     try { if (!at(23).empty()) job.lent.bleedInches = std::max(0.0, std::stod(at(23))) / 25.4; } catch (...) {}
+                    // Parte 4 da Proporção: 25 proporção (asshot|3:2|4:3|16:9|1:1) | 26 posição x | 27 posição y |
+                    // 28 same size 1/0 | 29 placement fill|fit | 30 faixa black|white
+                    job.framing.ratio = at(25);
+                    try
+                    {
+                        if (!at(26).empty()) job.framing.posX = std::clamp(std::stod(at(26)), 0.0, 1.0);
+                        if (!at(27).empty()) job.framing.posY = std::clamp(std::stod(at(27)), 0.0, 1.0);
+                    }
+                    catch (...) {}
+                    job.sameSize = at(28) == "1";
+                    job.options.framing = job.framing;
+                    job.lent.fit = at(29) == "fit";
+                    job.lent.whiteBand = at(30) == "white";
+                    job.lent.posX = job.framing.posX;
+                    job.lent.posY = job.framing.posY;
                 }
                 else if (job.lenticular)
                 {
