@@ -3391,7 +3391,9 @@
   let alignPrefs = { prev: true, next: true, first: false, opacity: 0.45 };
   try { Object.assign(alignPrefs, JSON.parse(localStorage.getItem("stillpoint.alignPrefs") || "{}") || {}); } catch (e) {}
   function saveAlignPrefs() { try { localStorage.setItem("stillpoint.alignPrefs", JSON.stringify(alignPrefs)); } catch (e) {} }
-  const ALIGN_ID = () => ({ dx: 0, dy: 0, scale: 1, rot: 0 });
+  // base: o tamanho escolhido pela pessoa; scale: o tamanho em uso (o base, ou mais, quando o giro obriga a crescer
+  // para continuar cobrindo a área útil; volta ao base conforme o giro é desfeito)
+  const ALIGN_ID = () => ({ dx: 0, dy: 0, scale: 1, rot: 0, base: 1 });
   function alignIsIdentity(a) { return !a || (Math.abs(a.dx) < 1e-6 && Math.abs(a.dy) < 1e-6 && Math.abs(a.scale - 1) < 1e-9 && Math.abs(a.rot) < 1e-9); }
   function alignLoad(session, st) {
     if (st.align.loaded) return;
@@ -3400,13 +3402,13 @@
     String(session.align || "").split(";").forEach((item) => {
       const colon = item.lastIndexOf(":");
       if (colon <= 0) return;
-      const [dx, dy, scale, rot] = item.slice(colon + 1).split(",").map(Number);
-      st.align.byFile[item.slice(0, colon)] = { dx: dx || 0, dy: dy || 0, scale: scale > 0 ? scale : 1, rot: rot || 0 };
+      const [dx, dy, scale, rot, base] = item.slice(colon + 1).split(",").map(Number);
+      st.align.byFile[item.slice(0, colon)] = { dx: dx || 0, dy: dy || 0, scale: scale > 0 ? scale : 1, rot: rot || 0, base: base > 0 ? base : (scale > 0 ? scale : 1) };
     });
   }
   function alignText(st) {
     return Object.keys(st.align.byFile).filter((f) => !alignIsIdentity(st.align.byFile[f]))
-      .map((f) => { const a = st.align.byFile[f]; return f + ":" + a.dx.toFixed(2) + "," + a.dy.toFixed(2) + "," + a.scale.toFixed(5) + "," + a.rot.toFixed(3); }).join(";");
+      .map((f) => { const a = st.align.byFile[f]; return f + ":" + a.dx.toFixed(2) + "," + a.dy.toFixed(2) + "," + a.scale.toFixed(5) + "," + a.rot.toFixed(3) + "," + (a.base || a.scale).toFixed(5); }).join(";");
   }
   function alignSave(session, st) {
     const text = alignText(st);
@@ -3428,11 +3430,11 @@
     return { w: (w * cs - h * sn) / cos2, h: (h * cs - w * sn) / cos2 };
   }
   // Quadro comum (canvas com o centro em 0,0): a interseção do que cada foto cobre depois do ajuste
-  function commonFrame(items, sizes, st) {
+  function commonFrame(items, sizes, st, override) {
     let left = -1e18, top = -1e18, right = 1e18, bottom = 1e18;
     items.forEach((item) => {
       const sz = sizes[item.file]; if (!sz) return;
-      const a = alignOf(st, item.file);
+      const a = override && override.file === item.file ? override.align : alignOf(st, item.file);
       const r = largestInnerRect(sz.w * a.scale, sz.h * a.scale, a.rot);
       left = Math.max(left, a.dx - r.w / 2); right = Math.min(right, a.dx + r.w / 2);
       top = Math.max(top, a.dy - r.h / 2); bottom = Math.min(bottom, a.dy + r.h / 2);
@@ -3510,20 +3512,32 @@
       return { row: r, input: inp, val };
     };
     const refSliders = {};
+    // Ordem: Previous photo, a foto atual (só legenda, sempre no meio), Next photo, First photo (decisão do dono,
+    // 2026-11-03). Nas pontas, a referência que não existe fica desativada; First photo desativada quando é a atual.
     const refRow = (key, label, k) => {
-      const r = el("div", "align-ref" + (k < 0 || k >= n || k === cur ? " dimmed" : ""));
+      const off = k < 0 || k >= n || k === cur;
+      const r = el("div", "align-ref" + (off ? " dimmed" : ""));
       const head = el("label", "align-ref-head");
-      const c = document.createElement("input"); c.type = "checkbox"; c.className = "cs-check"; c.checked = !!alignPrefs[key];
+      const c = document.createElement("input"); c.type = "checkbox"; c.className = "cs-check"; c.checked = !!alignPrefs[key]; c.disabled = off;
       c.addEventListener("change", () => { alignPrefs[key] = c.checked; saveAlignPrefs(); rerender(); });
       const sw = el("span", "align-sw"); sw.style.background = REF_COLORS[key];
-      head.append(c, sw, document.createTextNode(label), el("span", "align-who", k >= 0 && k < n && k !== cur ? pad(items[k].order || k + 1) : "—"));
+      head.append(c, sw, document.createTextNode(label), el("span", "align-who", !off ? pad(items[k].order || k + 1) : (k === cur ? "this photo" : "none")));
       const sl = slider(opOf(key), (v) => { alignPrefs.op[key] = v; });
-      sl.input.title = "Opacity of this reference";
+      sl.input.title = "Opacity of this reference"; sl.input.disabled = off;
       refSliders[key] = sl;
       r.append(head, sl.row);
       refs.appendChild(r);
     };
-    refRow("prev", "Previous photo", cur - 1); refRow("next", "Next photo", cur + 1); refRow("first", "Photo 01", 0);
+    refRow("prev", "Previous photo", cur - 1);
+    {
+      const me = el("div", "align-ref align-ref-me");
+      const head = el("div", "align-ref-head");
+      head.append(el("span", "align-sw align-sw-me"), document.createTextNode("This photo"), el("span", "align-who", pad(item.order || cur + 1)));
+      me.appendChild(head);
+      refs.appendChild(me);
+    }
+    refRow("next", "Next photo", cur + 1);
+    refRow("first", "First photo", 0);
     const all = el("div", "align-ref align-ref-all");
     all.appendChild(el("span", "align-lab", "All references"));
     const allSl = slider(alignPrefs.opacity, (v) => {
@@ -3540,7 +3554,15 @@
     // Trava (como o Lightroom ao girar): a foto nunca deixa de cobrir a área útil — o quadro da proporção (ou o quadro
     // comum, sem proporção) como está no começo do gesto. Um passo que descobriria parte dela é recusado.
     let lockRect = null;
-    const lockStart = () => { lockRect = usefulRect(); };
+    const lockStart = () => { lockRect = usefulRect(true); };
+    // O menor tamanho (a partir de from) com que a foto cobre a área útil nessa posição e giro; null se nem 4× basta
+    const minCoverScale = (cand, from) => {
+      if (covers(Object.assign({}, cand, { scale: from }))) return from;
+      let lo = from, hi = Math.min(20, from * 4);
+      if (!covers(Object.assign({}, cand, { scale: hi }))) return null;
+      for (let i = 0; i < 24; i++) { const mid = (lo + hi) / 2; if (covers(Object.assign({}, cand, { scale: mid }))) hi = mid; else lo = mid; }
+      return hi;
+    };
     const covers = (cand) => {
       const sz = sizes[item.file]; if (!sz || !lockRect) return true;
       const r = largestInnerRect(sz.w * cand.scale, sz.h * cand.scale, cand.rot);
@@ -3551,15 +3573,14 @@
     // Tenta aplicar uma mudança; se descobrir a área útil, mantém o que havia (nos movimentos, tenta cada eixo)
     const tryApply = (change) => {
       const cand = Object.assign({}, a); change(cand);
-      if (covers(cand)) { Object.assign(a, cand); return true; }
-      // Girar: em vez de travar, a foto cresce o mínimo para continuar cobrindo a área (como o Lightroom)
-      if (cand.rot !== a.rot && cand.dx === a.dx && cand.dy === a.dy && cand.scale === a.scale) {
-        let lo = cand.scale, hi = Math.min(20, cand.scale * 4);
-        if (covers(Object.assign({}, cand, { scale: hi }))) {
-          for (let i = 0; i < 24; i++) { const mid = (lo + hi) / 2; if (covers(Object.assign({}, cand, { scale: mid }))) hi = mid; else lo = mid; }
-          cand.scale = hi; Object.assign(a, cand); return true;
-        }
+      if (cand.scale !== a.scale) cand.base = cand.scale;  // tamanho mexido pela pessoa: vira o novo base
+      // Girar (ou mover com giro): o tamanho em uso é o base, ou o mínimo acima dele que ainda cobre a área (como o
+      // Lightroom); ao desfazer o giro ele volta ao base
+      if (cand.rot !== a.rot || (cand.scale === a.scale && (cand.dx !== a.dx || cand.dy !== a.dy))) {
+        const need = minCoverScale(cand, cand.base || cand.scale);
+        if (need != null && cand.rot !== a.rot) { cand.scale = need; Object.assign(a, cand); return true; }
       }
+      if (covers(cand)) { Object.assign(a, cand); return true; }
       if (cand.dx !== a.dx || cand.dy !== a.dy) {
         const onlyX = Object.assign({}, a, { dx: cand.dx }), onlyY = Object.assign({}, a, { dy: cand.dy });
         if (cand.scale === a.scale && cand.rot === a.rot) {
@@ -3644,9 +3665,11 @@
     const refKeyOf = {};
     order.forEach((o) => { layerOf[o.k] = makeLayer(items[o.k], o.key); refKeyOf[o.k] = o.key; layers.appendChild(layerOf[o.k]); });
 
-    // A área útil: o quadro da proporção (ou o quadro comum, em "As shot"), em px do canvas
-    const usefulRect = () => {
-      const frame = commonFrame(items, sizes, st); if (!frame) return null;
+    // A área útil: o quadro da proporção (ou o quadro comum, em "As shot"), em px do canvas. Para a trava, a foto
+    // atual conta com o tamanho escolhido (base) e sem giro: assim o giro não muda a área, só obriga a crescer para
+    // cobri-la, e o crescimento se desfaz conforme o giro é desfeito.
+    const usefulRect = (forLock) => {
+      const frame = commonFrame(items, sizes, st, forLock ? { file: item.file, align: Object.assign({}, a, { scale: a.base || a.scale, rot: 0 }) } : null); if (!frame) return null;
       const r = st.crop.ratio !== "asshot" ? RATIOS[st.crop.ratio] : 0;
       let fw = frame.w, fh = frame.h;
       if (r) { const t = frame.w >= frame.h ? r : 1 / r; if (frame.w / frame.h > t) fw = frame.h * t; else fh = frame.w / t; }

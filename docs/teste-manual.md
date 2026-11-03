@@ -1394,9 +1394,10 @@ direita; a lista de sessões continua à esquerda da janela.
 - [ ] Fileira de miniaturas: a 01 marcada; a 02 com um ponto laranja (é a Next photo). Clicar na 04 (ou → três vezes):
       "Photo 04 of 09", a 03 com ponto azul (Previous photo), a 05 com ponto laranja; na prévia a 04 nítida sobre a 03
       azulada e a 05 alaranjada.
-- [ ] Coluna "References": caixas "Previous photo" (azul, "03"), "Next photo" (laranja, "05") e "Photo 01" (verde, "01",
-      desligada por padrão). Ligar "Photo 01": a 01 aparece esverdeada na prévia e a miniatura 01 ganha o ponto verde.
-      Desligar "Next photo": a 05 some. As referências ficam por cima da foto atual, tingidas e transparentes (a 04
+- [ ] Coluna "References", nesta ordem: "Previous photo" (azul, "03"), "This photo" (só legenda, "04", sempre no meio),
+      "Next photo" (laranja, "05") e "First photo" (verde, "01", desligada por padrão). Na foto 01, "Previous photo"
+      fica desativada ("none") e "First photo" também ("this photo"); na 09, "Next photo" desativada. Ligar "First
+      photo": a 01 aparece esverdeada na prévia e a miniatura 01 ganha o ponto verde. Desligar "Next photo": a 05 some. As referências ficam por cima da foto atual, tingidas e transparentes (a 04
       continua inteira por baixo). Cada referência tem a sua barra de opacidade (muda só ela); a barra "All references"
       move as três juntas. As escolhas ficam para as próximas aberturas (memória do app).
 - [ ] "This photo 04": "Move X", "Move Y" (px; − + andam 1, com ⇧ 10), "Size" (%; 0,1, ⇧ 1), "Rotate" (°; 0,05, ⇧ 0,5;
@@ -1411,7 +1412,9 @@ direita; a lista de sessões continua à esquerda da janela.
 - [ ] Trava da área útil (como no Lightroom): com "Aspect ratio" em 16:9, tentar mover ou encolher a 04 até descobrir
       parte do quadro âmbar: o movimento para no limite (num eixo só, quando dá) e o quadro âmbar pisca; o campo
       digitado volta ao valor que havia. Girar é diferente: quando o giro descobriria um canto, a foto cresce o mínimo
-      necessário (o "Size" sobe sozinho) para continuar cobrindo a área. Em "As shot" a área útil é o quadro comum.
+      necessário (o "Size" sobe sozinho) para continuar cobrindo a área, e ao desfazer o giro ela volta a encolher até
+      o tamanho que você tinha escolhido (girar 5° e voltar a 0° termina no Size de antes). Em "As shot" a área útil é o quadro comum.
+- [ ] Os botões − e + de cada campo ficam à mesma distância do campo, dos dois lados.
 - [ ] Segurar o − ou o + de qualquer campo: repete o passo (começa depois de 0,4 s); com ⇧ segurado, o passo grande.
 - [ ] A lista de sessões, à esquerda, mostra só as miniaturas (sessão desmarcada apagada); passar o mouse numa
       miniatura mostra na hora, ao lado, a legenda no visual do app (data, fotos, aviso âmbar se houver), como na barra
