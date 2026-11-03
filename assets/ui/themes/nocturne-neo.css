@@ -1391,6 +1391,11 @@ body.mod-keys .folder-add { cursor: default; }
 .export-row:has(> .export-name-col) > .export-label { padding-top: 9px; }
 /* Shift+clique nas miniaturas: sem seleção de texto (os números não ficam marcados) */
 .carousel, .carousel .frame { -webkit-user-select: none; user-select: none; }
+/* Tela cheia: ‹ ▶ › Speed e Reverse loop sobre a foto grande (mesmo visual do passo 3 do Match) */
+.stage-ctrls { display: none; }
+.sessions-panel.fullscreen .stage-ctrls { display: flex; }
+.stage-ctrls .play-group { margin: 0 0 0 4px; padding: 0 0 0 10px; height: auto; }
+.stage-ctrls .play-option { margin: 0 0 0 4px; padding-left: 10px; height: auto; font: 11px var(--noct-font-mono); text-transform: uppercase; letter-spacing: .08em; color: var(--noct-text-muted); }
 /* Barra da tela cheia: nada quebra linha; sem espaço, some primeiro o que importa menos (fitHead) */
 .sessions-panel.fullscreen .gallery-head { flex-wrap: nowrap; overflow: hidden; transition: height 180ms var(--noct-ease); }
 .sessions-panel.fullscreen .gallery-head, .sessions-panel.fullscreen .gallery-head button, .sessions-panel.fullscreen .gallery-title, .sessions-panel.fullscreen .gallery-sub { white-space: nowrap; }

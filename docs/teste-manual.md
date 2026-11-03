@@ -1286,11 +1286,17 @@ projeto num HD externo.
 
 - [ ] Play na sessão (janela principal e tela cheia): a fileira de miniaturas não rola sozinha; só a marca da foto
       atual anda. Clicar numa miniatura ou usar ← → continua rolando até ela.
-- [ ] Tela cheia, janela estreita: quando os controles encostam no botão da lixeira, eles descem para uma linha
-      abaixo da data (a barra cresce com uma animação curta, sem pulo); alargando, voltam para a linha da data.
-      Estreitando mais, na linha dos controles some primeiro o tamanho da lixeira, depois "SPEED", depois "Reorder" e
-      "Delete session" viram só ícone (setas trocadas e lixeira; "Reverse loop" vira "Loop"), depois o subtítulo
-      ("2 shot 16:9"), e por fim a data fica menor. Nada se sobrepõe; a etiqueta "Mixed ratios" fica.
+- [ ] Tela cheia: ‹ ▶ › , "Speed − 1.0x +" e "Reverse loop" ficam sobre a foto grande, no canto de cima à direita,
+      como no passo 3 do Match: aparecem quando o mouse se mexe sobre a foto, somem 2 s depois de parado (ou ao
+      sair da foto), em cima deles não somem; Tab chega neles (depois das miniaturas) e eles ficam visíveis
+      enquanto têm o foco. Clicar neles não entra nem sai da tela cheia. Na barra de cima ficam só a data, as
+      etiquetas, a lixeira, "Reorder", "Delete session" e o botão de sair.
+- [ ] Tela cheia, janela estreita: quando "Reorder"/"Delete session"/sair encostam no botão da lixeira, eles descem
+      para uma linha abaixo da data (a barra cresce com uma animação curta, sem pulo); alargando, voltam.
+      Estreitando mais, some o tamanho da lixeira, depois "Reorder" e "Delete session" viram só ícone (setas
+      trocadas e lixeira), depois o subtítulo ("2 shot 16:9"), e por fim a data fica menor. Nada se sobrepõe.
+- [ ] Camera settings, rolando a tabela: a linha "All cameras" fica presa logo abaixo do cabeçalho, sem fresta
+      mostrando as linhas que passam por trás.
 - [ ] Fileira de miniaturas (sessão e passo 3 do Match): o espaço até a foto grande não muda quando a barra de
       rolagem aparece ou some (o lugar dela fica reservado).
 - [ ] Match, passo 3: ‹ › e ← → rolam a fileira de miniaturas até a câmera atual; o play não rola.

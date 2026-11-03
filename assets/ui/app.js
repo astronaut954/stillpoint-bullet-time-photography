@@ -1314,12 +1314,18 @@
   fullTrashOpenBtn.type = "button";
   fullTrashOpenBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 4h9M5.5 4V2.5h3V4M3.5 4l.6 7.5h5.8l.6-7.5"/></svg><span class="trash-count-full"></span><span class="trash-size trash-size-full"></span>';
   fullTrashOpenBtn.addEventListener("click", () => openTrash());
-  const viewActions = [
+  // Na tela cheia, ‹ ▶ › Speed e Reverse loop ficam sobre a foto grande, no canto de cima à direita, e aparecem
+  // quando o mouse se mexe sobre a foto (somem 2 s depois; com o foco do teclado neles, ficam), como no passo 3
+  // do Match. Na barra de cima ficam só Reorder, Delete session e sair da tela cheia.
+  const stageCtrls = el("div", "cs-review-ctrls stage-ctrls");
+  stageCtrls.append(
     button("", () => { stopPlay(); sessionGallery.prev(); }, { icon: "left", title: "Previous photo" }),
     playBtn,
     button("", () => { stopPlay(); sessionGallery.next(); }, { icon: "right", title: "Next photo" }),
     speedGroup,
-    reverseLoopOption,
+    reverseLoopOption);
+  fadeControls(ui.sessionGallery.querySelector(".stage"), stageCtrls);
+  const viewActions = [
     withShortIcon(button("Reorder", startReorder, { title: "Change the order of the photos in this session" }), "swap"),
     fullTrashBtn,
     exitFullBtn,
@@ -5597,6 +5603,10 @@
     // Teclado: o Tab passa só pela linha "All cameras"; nas linhas das câmeras chega-se com ↑ ↓
     table.querySelectorAll("tr:not(.all) select, tr:not(.all) button, tr:not(.all) input").forEach((x) => { x.tabIndex = -1; });
     body.appendChild(table);
+    // A linha "All cameras" gruda logo abaixo do cabeçalho, na altura real dele (um valor fixo deixava uma fresta
+    // por onde as linhas de trás apareciam)
+    const headRow = table.querySelector("thead") || table.querySelector("tr");
+    if (headRow) { const h = headRow.getBoundingClientRect().height; table.querySelectorAll("tr.all td").forEach((td) => { td.style.top = h + "px"; }); }
     body.scrollTop = scroll;
     renderStylePop();
 
@@ -6143,15 +6153,7 @@
     top.append(camLabel, modes);
     photos.appendChild(top);
     const stage = el("div", "cs-review-stage " + matchWin.mode);
-    stage.appendChild(ctrls);
-    // Os controles aparecem quando o mouse se mexe sobre a prévia e somem depois de 2 s parado (ou ao sair);
-    // com o foco do teclado neles, ficam (CSS)
-    let hideTimer = 0;
-    const showCtrls = () => { ctrls.classList.add("show"); clearTimeout(hideTimer); hideTimer = setTimeout(() => ctrls.classList.remove("show"), 2000); };
-    stage.addEventListener("pointermove", showCtrls);
-    stage.addEventListener("pointerenter", showCtrls);
-    stage.addEventListener("pointerleave", () => { clearTimeout(hideTimer); ctrls.classList.remove("show"); });
-    ctrls.addEventListener("pointermove", (ev) => { ev.stopPropagation(); ctrls.classList.add("show"); clearTimeout(hideTimer); });  // em cima dos controles, não somem
+    fadeControls(stage, ctrls);
     const imgB = el("div", "cs-review-img before"), imgA = el("div", "cs-review-img after");
     imgB.appendChild(el("span", "cs-review-tag", "Before")); imgA.appendChild(el("span", "cs-review-tag on", "After"));
     const ch = changes.find((x) => x.camera === matchWin.cam);
@@ -6244,6 +6246,19 @@
     matchWin.dir = 1;
     matchWin.playing = setInterval(csMatchPlayTick, playInterval());
     csMatchPlayButton();
+  }
+  // Controles sobre uma prévia: aparecem quando o mouse se mexe sobre ela e somem 2 s depois de parado (ou ao
+  // sair); em cima deles não somem; com o foco do teclado neles, ficam (CSS :focus-within). Clicar neles não
+  // chega à prévia (não arrasta a cortina nem vira a foto).
+  function fadeControls(stage, ctrls) {
+    stage.appendChild(ctrls);
+    let hideTimer = 0;
+    const show = () => { ctrls.classList.add("show"); clearTimeout(hideTimer); hideTimer = setTimeout(() => ctrls.classList.remove("show"), 2000); };
+    stage.addEventListener("pointermove", show);
+    stage.addEventListener("pointerenter", show);
+    stage.addEventListener("pointerleave", () => { clearTimeout(hideTimer); ctrls.classList.remove("show"); });
+    ctrls.addEventListener("pointermove", (ev) => { ev.stopPropagation(); ctrls.classList.add("show"); clearTimeout(hideTimer); });
+    ["pointerdown", "click", "dblclick"].forEach((t) => ctrls.addEventListener(t, (ev) => ev.stopPropagation()));
   }
   // Tocando: só as fotos trocam (sem redesenhar tudo a cada passo)
   function csMatchSwapPhotos() {
