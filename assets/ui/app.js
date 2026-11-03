@@ -2719,6 +2719,7 @@
         '<span class="export-summary"></span><span class="export-diff">Different</span></span>';
       const box = li.querySelector("input");
       box.checked = exp.selected.has(s.name);
+      if (!li.title) li.title = label.date;  // na tela de alinhamento a lista mostra só a miniatura: a data fica na dica
       box.addEventListener("change", () => {
         exp.selectedTouched = true; if (box.checked) exp.selected.add(s.name); else exp.selected.delete(s.name);
         li.classList.toggle("off", !box.checked);
@@ -3437,9 +3438,16 @@
     const layers = el("div", "align-layers");
     const common = el("div", "align-common");
     const ratio = el("div", "crop-frame align-ratio");
+    // Caixa de transformação sobre a foto atual: cantos redimensionam (em volta do centro), a alça de cima gira,
+    // o meio move (como arrastar a prévia)
+    const box = el("div", "align-box");
+    const handles = {};
+    ["tl", "tr", "bl", "br"].forEach((c) => { handles[c] = el("div", "align-handle align-handle-" + c); box.appendChild(handles[c]); });
+    const rotLine = el("div", "align-rot-line"); const rotHandle = el("div", "align-rot-handle");
+    box.append(rotLine, rotHandle);
     const tag = el("span", "crop-tag", pad(item.order || cur + 1) + " · Drag to move · scroll to resize · ⌥ scroll to rotate · ⌘ arrows 1 px (⇧ 10)");
     const wait = el("div", "align-wait", "Measuring the photos…");
-    stage.append(layers, common, ratio, tag, wait);
+    stage.append(layers, common, ratio, box, tag, wait);
     left.appendChild(stage);
     // Fileira de miniaturas, com um ponto da cor da referência
     const stripScroll = el("div", "export-strip-scroll");
@@ -3474,7 +3482,7 @@
     };
     refRow("prev", "Previous photo", cur - 1); refRow("next", "Next photo", cur + 1); refRow("first", "Photo 01", 0);
     const op = el("div", "align-opacity");
-    const opIn = document.createElement("input"); opIn.type = "range"; opIn.min = "5"; opIn.max = "100"; opIn.value = String(Math.round(alignPrefs.opacity * 100));
+    const opIn = document.createElement("input"); opIn.type = "range"; opIn.className = "noct-range"; opIn.min = "5"; opIn.max = "100"; opIn.value = String(Math.round(alignPrefs.opacity * 100));
     const opVal = el("span", "align-opval", opIn.value + "%");
     opIn.addEventListener("input", () => { alignPrefs.opacity = (+opIn.value) / 100; opVal.textContent = opIn.value + "%"; layout(); });
     opIn.addEventListener("change", saveAlignPrefs);
@@ -3484,23 +3492,65 @@
     const self = block("This photo", el("span", "align-cur", pad(item.order || cur + 1)));
     const a = alignOf(st, item.file);
     const fields = {};
-    const control = (key, label, unit, step, bigStep, decimals, get, set) => {
+    // Trava (como o Lightroom ao girar): a foto nunca deixa de cobrir a área útil — o quadro da proporção (ou o quadro
+    // comum, sem proporção) como está no começo do gesto. Um passo que descobriria parte dela é recusado.
+    let lockRect = null;
+    const lockStart = () => { lockRect = usefulRect(); };
+    const covers = (cand) => {
+      const sz = sizes[item.file]; if (!sz || !lockRect) return true;
+      const r = largestInnerRect(sz.w * cand.scale, sz.h * cand.scale, cand.rot);
+      const eps = 0.01;
+      return cand.dx - r.w / 2 <= lockRect.x + eps && cand.dx + r.w / 2 >= lockRect.x + lockRect.w - eps &&
+             cand.dy - r.h / 2 <= lockRect.y + eps && cand.dy + r.h / 2 >= lockRect.y + lockRect.h - eps;
+    };
+    // Tenta aplicar uma mudança; se descobrir a área útil, mantém o que havia (nos movimentos, tenta cada eixo)
+    const tryApply = (change) => {
+      const cand = Object.assign({}, a); change(cand);
+      if (covers(cand)) { Object.assign(a, cand); return true; }
+      if (cand.dx !== a.dx || cand.dy !== a.dy) {
+        const onlyX = Object.assign({}, a, { dx: cand.dx }), onlyY = Object.assign({}, a, { dy: cand.dy });
+        if (cand.scale === a.scale && cand.rot === a.rot) {
+          if (covers(onlyX)) { a.dx = cand.dx; return true; }
+          if (covers(onlyY)) { a.dy = cand.dy; return true; }
+        }
+      }
+      stage.classList.add("locked"); clearTimeout(lockFlash); lockFlash = setTimeout(() => stage.classList.remove("locked"), 300);
+      return false;
+    };
+    let lockFlash = 0;
+    const stepOnce = (change) => { lockStart(); tryApply(change); sync(); layout(); save(); };
+    // Segurar o − ou o + repete o passo (400 ms para começar, depois a cada 60 ms)
+    const holdButton = (icon, title, step, bigStep, apply) => {
+      const b = button("", () => {}, { icon, title, kind: "btn-secondary" });
+      let timer = 0, repeat = 0;
+      const stop = () => { clearTimeout(timer); clearInterval(repeat); timer = repeat = 0; };
+      b.addEventListener("pointerdown", (e) => {
+        if (e.button !== 0) return;
+        e.preventDefault(); b.setPointerCapture(e.pointerId);
+        const amount = e.shiftKey ? bigStep : step;
+        lockStart(); tryApply((c) => apply(c, amount)); sync(); layout();
+        timer = setTimeout(() => { repeat = setInterval(() => { if (!tryApply((c) => apply(c, amount))) stop(); sync(); layout(); }, 60); }, 400);
+      });
+      ["pointerup", "pointercancel", "lostpointercapture"].forEach((ev) => b.addEventListener(ev, () => { if (timer || repeat) { stop(); save(); } }));
+      return b;
+    };
+    const control = (key, label, unit, step, bigStep, decimals, get, apply) => {
       const r = el("div", "align-ctl");
       const inp = document.createElement("input"); inp.type = "text"; inp.className = "lent-num align-num"; inp.value = get().toFixed(decimals);
       inp.setAttribute("aria-label", label);
-      const apply = () => { const v = parseFloat(inp.value.replace(",", ".")); if (!isNaN(v)) set(v); sync(); layout(); save(); };
-      inp.addEventListener("change", apply);
-      inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { apply(); inp.blur(); } if (e.key === "ArrowUp" || e.key === "ArrowDown") { e.preventDefault(); set(get() + (e.key === "ArrowUp" ? 1 : -1) * (e.shiftKey ? bigStep : step)); sync(); layout(); save(); } e.stopPropagation(); });
-      const minus = button("", (e) => { set(get() - (e.shiftKey ? bigStep : step)); sync(); layout(); save(); }, { icon: "minus", title: "−" + step + " (⇧ " + bigStep + ")", kind: "btn-secondary" });
-      const plus = button("", (e) => { set(get() + (e.shiftKey ? bigStep : step)); sync(); layout(); save(); }, { icon: "plus", title: "+" + step + " (⇧ " + bigStep + ")", kind: "btn-secondary" });
+      const typed = () => { const v = parseFloat(inp.value.replace(",", ".")); if (!isNaN(v)) stepOnce((c) => apply(c, v - get())); else sync(); };
+      inp.addEventListener("change", typed);
+      inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { typed(); inp.blur(); } if (e.key === "ArrowUp" || e.key === "ArrowDown") { e.preventDefault(); stepOnce((c) => apply(c, (e.key === "ArrowUp" ? 1 : -1) * (e.shiftKey ? bigStep : step))); } e.stopPropagation(); });
+      const minus = holdButton("minus", "−" + step + " (⇧ " + bigStep + "); hold to repeat", step, bigStep, (c, amt) => apply(c, -amt));
+      const plus = holdButton("plus", "+" + step + " (⇧ " + bigStep + "); hold to repeat", step, bigStep, (c, amt) => apply(c, amt));
       r.append(el("span", "align-lab", label), minus, inp, plus, el("span", "align-unit", unit));
       fields[key] = inp;
       self.appendChild(r);
     };
-    control("dx", "Move X", "px · ⇧ 10", 1, 10, 0, () => a.dx, (v) => { a.dx = v; });
-    control("dy", "Move Y", "px · ⇧ 10", 1, 10, 0, () => a.dy, (v) => { a.dy = v; });
-    control("scale", "Size", "% · 0.1 / ⇧ 1", 0.1, 1, 1, () => a.scale * 100, (v) => { a.scale = Math.max(5, Math.min(2000, v)) / 100; });
-    control("rot", "Rotate", "° · 0.05 / ⇧ 0.5", 0.05, 0.5, 2, () => a.rot, (v) => { a.rot = v; });
+    control("dx", "Move X", "px (⇧ 10)", 1, 10, 0, () => a.dx, (c, d) => { c.dx += d; });
+    control("dy", "Move Y", "px (⇧ 10)", 1, 10, 0, () => a.dy, (c, d) => { c.dy += d; });
+    control("scale", "Size", "% (0.1, ⇧ 1)", 0.1, 1, 1, () => a.scale * 100, (c, d) => { c.scale = Math.max(0.05, Math.min(20, c.scale + d / 100)); });
+    control("rot", "Rotate", "° (0.05, ⇧ 0.5)", 0.05, 0.5, 2, () => a.rot, (c, d) => { c.rot = Math.round((c.rot + d) * 1000) / 1000; });
     const resets = el("div", "align-resets");
     resets.appendChild(button("Reset photo", () => { st.align.byFile[item.file] = ALIGN_ID(); save(); rerender(); }, { kind: "btn-secondary" }));
     resets.appendChild(button("Reset all", () => { st.align.byFile = {}; save(); rerender(); }, { kind: "btn-secondary" }));
@@ -3536,6 +3586,14 @@
     order.forEach((o) => { layerOf[o.k] = makeLayer(items[o.k], o.key); layers.appendChild(layerOf[o.k]); });
     layerOf[cur] = makeLayer(item, ""); layers.appendChild(layerOf[cur]);
 
+    // A área útil: o quadro da proporção (ou o quadro comum, em "As shot"), em px do canvas
+    const usefulRect = () => {
+      const frame = commonFrame(items, sizes, st); if (!frame) return null;
+      const r = st.crop.ratio !== "asshot" ? RATIOS[st.crop.ratio] : 0;
+      let fw = frame.w, fh = frame.h;
+      if (r) { const t = frame.w >= frame.h ? r : 1 / r; if (frame.w / frame.h > t) fw = frame.h * t; else fh = frame.w / t; }
+      return { x: frame.x + (frame.w - fw) * st.crop.x, y: frame.y + (frame.h - fh) * st.crop.y, w: fw, h: fh };
+    };
     const layout = () => {
       const W = stage.clientWidth, H = stage.clientHeight;
       if (!W || !H || !sizes[item.file]) return;
@@ -3551,6 +3609,9 @@
         l.style.left = (cx + al.dx * scaleK - w / 2) + "px"; l.style.top = (cy + al.dy * scaleK - h / 2) + "px";
         l.style.transform = "scale(" + al.scale + ") rotate(" + al.rot + "deg)";
         if (l.classList.contains("align-ref")) l.style.opacity = alignPrefs.opacity;
+        if (+k === cur) { box.style.display = ""; box.style.width = w + "px"; box.style.height = h + "px"; box.style.left = l.style.left; box.style.top = l.style.top; box.style.transform = l.style.transform;
+          // alças com o mesmo tamanho na tela, seja qual for o zoom da foto
+          const inv = 1 / al.scale; [...box.children].forEach((hd) => { hd.style.setProperty("--inv", inv); }); }
       });
       const frame = commonFrame(items, sizes, st);
       if (!frame) { common.style.display = "none"; ratio.style.display = "none"; cf.textContent = "The photos do not overlap: move them closer, or Reset."; cf.classList.add("exp-warn"); return; }
@@ -3575,29 +3636,42 @@
     });
     if (window.ResizeObserver) new ResizeObserver(layout).observe(stage);
 
-    // Gestos na prévia
+    // Gestos na prévia: mover (arrastar a prévia ou o meio da caixa), redimensionar (cantos da caixa ou a roda),
+    // girar (alça de cima ou ⌥ + roda). Todos presos à área útil (lockStart/tryApply).
     let drag = null;
+    const centerOnScreen = () => { const r = stage.getBoundingClientRect(); return { x: r.left + cx + a.dx * scaleK, y: r.top + cy + a.dy * scaleK }; };
     stage.addEventListener("pointerdown", (e) => {
       if (e.button !== 0 || e.target.closest("button") || !sizes[item.file]) return;
-      drag = { x: e.clientX, y: e.clientY, dx: a.dx, dy: a.dy }; stage.setPointerCapture(e.pointerId); e.preventDefault();
-      stage.classList.add("dragging");
+      e.preventDefault(); stage.setPointerCapture(e.pointerId); lockStart();
+      const c = centerOnScreen();
+      if (e.target === rotHandle) {
+        drag = { kind: "rot", rot: a.rot, angle: Math.atan2(e.clientY - c.y, e.clientX - c.x) }; stage.classList.add("rotating");
+      } else if (e.target.classList.contains("align-handle")) {
+        drag = { kind: "scale", scale: a.scale, dist: Math.max(1, Math.hypot(e.clientX - c.x, e.clientY - c.y)) }; stage.classList.add("resizing");
+      } else {
+        drag = { kind: "move", x: e.clientX, y: e.clientY, dx: a.dx, dy: a.dy }; stage.classList.add("dragging");
+      }
     });
     stage.addEventListener("pointermove", (e) => {
       if (!drag) return;
-      a.dx = drag.dx + (e.clientX - drag.x) / scaleK; a.dy = drag.dy + (e.clientY - drag.y) / scaleK;
+      const c = centerOnScreen();
+      if (drag.kind === "move") tryApply((cand) => { cand.dx = drag.dx + (e.clientX - drag.x) / scaleK; cand.dy = drag.dy + (e.clientY - drag.y) / scaleK; });
+      else if (drag.kind === "scale") tryApply((cand) => { cand.scale = Math.max(0.05, Math.min(20, drag.scale * Math.max(1, Math.hypot(e.clientX - c.x, e.clientY - c.y)) / drag.dist)); });
+      else { const ang = Math.atan2(e.clientY - c.y, e.clientX - c.x); let d = (ang - drag.angle) * 180 / Math.PI; if (e.shiftKey) d = Math.round(d / 15) * 15; tryApply((cand) => { cand.rot = Math.round((drag.rot + d) * 100) / 100; }); }
       sync(); layout();
     });
-    const endDrag = () => { if (!drag) return; drag = null; stage.classList.remove("dragging"); a.dx = Math.round(a.dx); a.dy = Math.round(a.dy); sync(); layout(); save(); };
+    const endDrag = () => { if (!drag) return; drag = null; stage.classList.remove("dragging", "resizing", "rotating"); a.dx = Math.round(a.dx); a.dy = Math.round(a.dy); sync(); layout(); save(); };
     stage.addEventListener("pointerup", endDrag); stage.addEventListener("pointercancel", endDrag);
     stage.addEventListener("wheel", (e) => {
       if (!sizes[item.file]) return;
       e.preventDefault();
       const d = Math.max(-40, Math.min(40, e.deltaY));
-      if (e.altKey) a.rot = Math.round((a.rot - d * 0.01) * 100) / 100;
-      else a.scale = Math.max(0.05, Math.min(20, a.scale * (1 - d * 0.001)));
+      lockStart();
+      if (e.altKey) tryApply((cand) => { cand.rot = Math.round((cand.rot - d * 0.01) * 100) / 100; });
+      else tryApply((cand) => { cand.scale = Math.max(0.05, Math.min(20, cand.scale * (1 - d * 0.001))); });
       sync(); layout(); save();
     }, { passive: false });
-    exp.keyMove = (ddx, ddy, big) => { const step = big ? 10 : 1; a.dx += ddx * step; a.dy += ddy * step; sync(); layout(); save(); };
+    exp.keyMove = (ddx, ddy, big) => { const step = big ? 10 : 1; stepOnce((cand) => { cand.dx += ddx * step; cand.dy += ddy * step; }); };
   }
 
   function lentSizeRow(l, box, rerender, label) {
@@ -3748,6 +3822,8 @@
     // Tela "Align photos" (pedaço 2 do Framing): toma a coluna inteira no lugar das abas
     if (exp.mode !== "framing") exp.aligning = false;
     outer.classList.toggle("aligning", !!exp.aligning);
+    const body = document.querySelector(".export-body");
+    if (body) body.classList.toggle("aligning", !!exp.aligning);  // lista de sessões só com as miniaturas (como a barra da tela cheia)
     if (exp.aligning) { exp.keyNav = null; alignScreen(session, items, st, outer, rows, top, rerender); return; }
 
     // Monta a prévia (só a da seção em foco entra na tela) e as configurações de uma saída

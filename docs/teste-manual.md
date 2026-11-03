@@ -1403,6 +1403,16 @@ direita; a lista de sessões continua à esquerda da janela.
       quadro comum encolhe conforme ela sai de cima das outras, e o texto "Common frame" mostra o tamanho novo.
 - [ ] Gestos na prévia: arrastar move a 04 (os campos Move X/Y acompanham, arredondados ao pixel ao soltar); a roda do
       mouse/trackpad muda o Size; ⌥ + roda muda o Rotate; ⌘ + ← → ↑ ↓ movem 1 px (⇧ 10); ← → sozinhas trocam de foto.
+- [ ] Caixa de transformação sobre a foto atual (contorno fino, quatro alças quadradas nos cantos e uma alça redonda
+      acima do meio): arrastar um canto muda o Size em volta do centro; arrastar a alça redonda gira (⇧ trava em
+      passos de 15°); a caixa gira junto com a foto e as alças ficam do mesmo tamanho em qualquer zoom.
+- [ ] Trava da área útil (como no Lightroom): com "Aspect ratio" em 16:9, tentar mover, encolher ou girar a 04 até
+      descobrir parte do quadro âmbar: o movimento para no limite (num eixo só, quando dá) e o quadro âmbar pisca
+      âmbar; o campo digitado volta ao valor que havia. Em "As shot" a área útil é o quadro comum.
+- [ ] Segurar o − ou o + de qualquer campo: repete o passo (começa depois de 0,4 s); com ⇧ segurado, o passo grande.
+- [ ] A lista de sessões, à esquerda, mostra só as miniaturas (a data na dica ao passar o mouse; sessão desmarcada
+      apagada); "Back to Framing" traz a lista completa de volta. A barra "Opacity" tem o visual do app (trilho fino,
+      cursor quadrado verde). A coluna de controles não rola para o lado.
 - [ ] Afastar muito uma foto (Move X 7000): o quadro comum some e "Common frame" avisa em âmbar "The photos do not
       overlap: move them closer, or Reset." "Reset photo" volta a 04 a zero; "Reset all" zera todas.
 - [ ] "Aspect ratio" na coluna (As shot · 3:2 · 4:3 · 16:9 · 1:1, "Same size for all photos") e "Position": o quadro
