@@ -3550,8 +3550,8 @@
           const slot = el("div", "export-strip-slot");
           slot.appendChild(stripScroll);
           outer.insertBefore(slot, rows);
-          box.appendChild(el("div", "export-note", "The settings are next to the preview above. Everything here is saved with the session and used by every output."));
-        } else framingRows(session, st, box, rerender);  // (prévia escondida, ou outra seção em foco: as linhas ficam no corpo)
+          rows.classList.add("hidden");  // a coluna ao lado da prévia tem tudo: sem área de baixo, a prévia ocupa a altura
+        } else framingRows(session, st, box, rerender);  // (prévia escondida: as linhas ficam no corpo)
       } else if (kind === "photos") {
       const s = st.photos;
       // A fileira (ul) fica dentro de uma caixa que rola (div): o WebKit do Mac pintava os
@@ -3983,9 +3983,11 @@
       const always = kind === "framing";
       const on = always || !!st.outputs[kind];
       const body = el("div", "export-tab-body");
-      const sum = el("div", "export-tab-sum");
-      setWarnText(sum, on ? outputText(session, kind) : "Off · tick the box in the tab to export it");
-      body.appendChild(sum);
+      if (!always) {
+        const sum = el("div", "export-tab-sum");
+        setWarnText(sum, on ? outputText(session, kind) : "Off · tick the box in the tab to export it");
+        body.appendChild(sum);
+      }
       buildKind(kind, body, true);
       rows.appendChild(body);
     }
