@@ -899,7 +899,7 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
 .cs-head { padding: 16px 22px; border-bottom: 1px solid var(--noct-border); }
 .cs-head h3 { display: flex; align-items: center; gap: 10px; }
 .cs-head p { margin: 6px 0 0; color: var(--noct-text-muted); font-size: 15px; }
-.cs-body { padding: 0 16px 12px; overflow: auto; min-height: 0; overflow-anchor: none; }
+.cs-body { padding: 0 16px 12px; overflow: auto; min-height: 0; overflow-anchor: none; will-change: transform; }  /* camada própria: o recorte da rolagem e o cabeçalho preso arredondam para o mesmo pixel (sem fresta de subpixel) */
 /* A linha divisória acima das colunas é a borda de cima do cabeçalho preso (anda com ele): o bloco de cima não tem
    borda embaixo, senão sobrava uma fresta de subpixel entre as duas por onde as linhas que rolam apareciam */
 .cs-head:has(+ .cs-test.hidden) { border-bottom: 0; }
