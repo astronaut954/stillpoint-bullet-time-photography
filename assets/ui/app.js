@@ -137,8 +137,9 @@
     // Modo teatro, como no YouTube: tela com barra embaixo e dois ângulos dentro
     // (para fora = entrar; para dentro = sair)
     // Modo teatro: só as setas (para fora = entrar; para dentro = sair), no botão igual ao da janela Project
-    theaterIn: '<path d="M4.5 4L1.5 7l3 3M9.5 4l3 3-3 3"/>',
-    theaterOut: '<path d="M1.5 4l3 3-3 3M12.5 4l-3 3 3 3"/>',
+    // Teatro: ⤢ (setas em diagonal para fora = ampliar) e ⤡ (para dentro = voltar)
+    theaterIn: '<path d="M8 2.5h3.5V6M11.5 2.5L7.5 6.5M6 11.5H2.5V8M2.5 11.5L6.5 7.5"/>',
+    theaterOut: '<path d="M11.5 2.5L7.5 6.5M7.5 3.5v3h3M2.5 11.5L6.5 7.5M6.5 10.5v-3h-3"/>',
     up: '<path d="M3 9l4-4 4 4"/>',
     down: '<path d="M3 5l4 4 4-4"/>',
     left: '<path d="M9 3L5 7l4 4"/>',
