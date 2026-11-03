@@ -899,10 +899,12 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
 .cs-head { padding: 16px 22px; border-bottom: 1px solid var(--noct-border); }
 .cs-head h3 { display: flex; align-items: center; gap: 10px; }
 .cs-head p { margin: 6px 0 0; color: var(--noct-text-muted); font-size: 15px; }
-.cs-body { padding: 0 16px 12px; overflow: auto; min-height: 0; }
+.cs-body { padding: 0 16px 12px; overflow: auto; min-height: 0; overflow-anchor: none; }
+/* Cabeçalho da tabela preso: o grupo inteiro (thead) com fundo, para não sobrar fresta entre a linha de cima e as colunas */
+table.cs thead { position: sticky; top: 0; z-index: 2; background: var(--noct-surface); }
 .cs-empty { padding: 28px 0; color: var(--noct-text-muted); }
 table.cs { width: 100%; border-collapse: separate; border-spacing: 0; font: 12px var(--noct-font-mono); }
-table.cs th { position: sticky; top: 0; z-index: 2; background: var(--noct-surface); box-shadow: 0 -2px 0 0 var(--noct-surface); text-align: left; padding: 12px 3px 8px; border-bottom: 1px solid var(--noct-border);
+table.cs th { position: sticky; top: 0; z-index: 2; background: var(--noct-surface); box-shadow: 0 -2px 0 0 var(--noct-surface); outline: 1px solid var(--noct-surface); text-align: left; padding: 12px 3px 8px; border-bottom: 1px solid var(--noct-border);
   font: 700 10px var(--noct-font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--noct-text-muted); white-space: nowrap; }
 table.cs td { height: 44px; box-sizing: border-box; padding: 0 3px; border-bottom: 1px solid var(--noct-border); color: var(--noct-text); vertical-align: middle; white-space: nowrap; }
 table.cs td.name { font: 600 15px var(--noct-font-sans); }

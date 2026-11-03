@@ -857,6 +857,8 @@
         index = Math.min(selectIndex || 0, Math.max(0, items.length - 1));
         el.img.removeAttribute("src");
         render();
+        // Outra sessão (começa da primeira foto): a fileira volta ao início, mesmo que a anterior tivesse sido rolada
+        if (!selectIndex) el.carousel.scrollTo({ left: 0, behavior: "instant" });
         showLarge();
         if (!items.length) message("");
       },
@@ -5550,7 +5552,9 @@
     const head = document.createElement("tr");
     head.appendChild(document.createElement("th"));
     CS_COLS.forEach(([, label]) => head.appendChild(el("th", "", label)));
-    table.appendChild(head);
+    const thead = document.createElement("thead");  // (o grupo inteiro fica preso, com fundo: sem fresta acima das colunas)
+    thead.appendChild(head);
+    table.appendChild(thead);
 
     const all = document.createElement("tr");
     all.className = "all";

@@ -1300,6 +1300,8 @@ projeto num HD externo.
 - [ ] Tela cheia: ao entrar, os controles sobre a foto já estão visíveis e só começam a sumir uns 4 s depois; no
       passo 3 do Match, o mesmo ao chegar no passo. Tab até o botão de sair da tela cheia: o contorno aparece
       inteiro, com a linha da direita.
+- [ ] Trocar de sessão (janela principal e tela cheia) depois de rolar a fileira de miniaturas para o lado: a
+      fileira da sessão nova começa do início.
 - [ ] Fileira de miniaturas (sessão, tela cheia e passo 3): o trilho da rolagem está sempre lá, com ou sem
       miniaturas sobrando; o espaço até a foto grande nunca muda.
 - [ ] Fileira de miniaturas (sessão e passo 3 do Match): o espaço até a foto grande não muda quando a barra de
