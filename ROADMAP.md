@@ -730,8 +730,9 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      linhas do Framing à vista (a fileira, Aspect ratio, Same size, Position); o teatro "< >" que esconde tudo é só
      do Lenticular, que não mudou. **Pedaço 2 feito em 2026-11-03** (`docs/teste-manual.md`, seção 37; protótipo X2):
      o botão do canto da prévia virou "Align photos" (texto + ícone de dois quadros) e abre a tela de alinhamento no
-     lugar das abas: prévia grande com as referências tingidas (Previous azul, Next laranja, Photo 01 verde; uma
-     opacidade; guardadas na memória do app), quadro comum aceso, quadro da proporção âmbar, fileira de miniaturas com
+     lugar das abas: prévia grande com as referências tingidas por baixo da foto atual (Previous azul, Next laranja;
+     a referência "Photo 01" foi retirada em 2026-11-03), cada camada com a sua opacidade (a barra da Current photo
+     move as três; guardadas na memória do app), quadro comum aceso, quadro da proporção âmbar, fileira de miniaturas com
      o ponto da referência; coluna com References, This photo (Move X/Y, Size, Rotate, Reset photo/Reset all), Common
      frame e Aspect ratio/Position; gestos como decidido. `session.json` ganha "align" (arquivo:dx,dy,scale,rot); o
      programa (`Export::Align`, `ComputeCommonFrame`, `ApplyAlign`) transforma cada foto e corta ao quadro comum antes
