@@ -6713,10 +6713,24 @@
     const h = headRow.getBoundingClientRect().height;
     if (h > 0) table.querySelectorAll("tr.all td").forEach((td) => { td.style.top = h + "px"; });
   }
+  // A área que rola é encaixada num pixel inteiro da tela: a janela é centrada e pode cair em meio pixel, e aí o
+  // recorte da rolagem e o cabeçalho preso arredondam para pixels diferentes (uma fresta por onde as linhas passam)
+  function csSnapBody() {
+    const body = $("csBody");
+    if ($("camSettingsOverlay").classList.contains("hidden")) return;
+    body.style.top = "0px";
+    const r = body.getBoundingClientRect();
+    const dy = Math.round(r.top) - r.top;
+    body.style.top = (Math.abs(dy) < 0.01 ? 0 : dy) + "px";
+  }
+  window.addEventListener("resize", () => requestAnimationFrame(csSnapBody));
+  if (window.ResizeObserver) new ResizeObserver(() => csSnapBody()).observe($("csBody"));
   $("camSettingsBtn").addEventListener("click", () => {
     renderCamSettings();
     $("camSettingsOverlay").classList.remove("hidden");
     csStickAllRow();
+    requestAnimationFrame(csSnapBody);
+    setTimeout(csSnapBody, 260);  // depois da animação de entrada da janela
     window.readCameraSettings();
     clearInterval(csPoll);
     csPoll = setInterval(csPollTick, 3000);
