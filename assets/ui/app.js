@@ -2593,7 +2593,8 @@
   function openExport(projectNames) {
     if (exportPrefs && (OUTPUT_KINDS.includes(exportPrefs.mode) || exportPrefs.mode === "framing")) exp.mode = exportPrefs.mode;
     if (exportPrefs && exportPrefs.collapsed) exp.collapsed = Object.assign({}, exportPrefs.collapsed);
-    if (exportPrefs && typeof exportPrefs.previewHidden === "boolean") exp.previewHidden = exportPrefs.previewHidden;
+    exp.previewHidden = false;  // a prévia abre sempre visível; "Hide preview" vale até fechar a janela (decisão do dono, 2026-11-03)
+    exp.framingTheater = false;
     exp.project = Array.isArray(projectNames);
     const all = exportable();
     // Salvando para fechar: só as que ainda não foram salvas (as já salvas ficam marcadas fora)
@@ -3303,6 +3304,28 @@
     box.relayout = layout;
     return box;
   }
+  // Coluna ao lado da prévia da Framing (protótipo W1): blocos "Aspect ratio" e "Position"; "References" e
+  // "This photo" chegam no pedaço 2
+  function framingSide(session, st, side, rerender) {
+    const info = ratioInfoCached(session.name);
+    const block = (title) => { const b = el("div", "framing-block"); b.appendChild(el("span", "export-label", title)); side.appendChild(b); return b; };
+    const a = block("Aspect ratio");
+    a.appendChild(segmented(CROP_RATIOS, st.crop.ratio, (v) => { st.crop.ratio = v; cropSave(session, st); rerender(); }));
+    if (st.crop.ratio !== "asshot" && info && info.keep && info.keep[st.crop.ratio] != null) a.appendChild(el("span", "export-note", "keeps " + info.keep[st.crop.ratio] + "% of the photos on average"));
+    a.appendChild(checkOption("Same size for all photos", !!st.photos.sameSize, (v) => { st.photos.sameSize = v; rerender(); }));
+    if (info && info.mixed) a.appendChild(el("div", "export-note exp-warn", "Mixed ratios · " + ratioText(info).replace(/^Camera/, "camera") + ' "As shot" keeps each photo as it is; the sequence will jump.'));
+    if (st.crop.ratio !== "asshot") {
+      const pos = block("Position");
+      const dots = el("div", "crop-dots");
+      const names = ["Top left", "Top", "Top right", "Left", "Center", "Right", "Bottom left", "Bottom", "Bottom right"];
+      [0, 0.5, 1].forEach((y, yi) => [0, 0.5, 1].forEach((x, xi) => {
+        const d = el("button", "crop-dot" + (Math.abs(x - st.crop.x) < 0.01 && Math.abs(y - st.crop.y) < 0.01 ? " on" : "")); d.type = "button"; d.title = names[yi * 3 + xi];
+        d.addEventListener("click", () => { st.crop.x = x; st.crop.y = y; cropSave(session, st); rerender(); });
+        dots.appendChild(d);
+      }));
+      pos.append(dots, el("div", "export-note", "Or drag the frame. One crop for the whole session: the sequence cannot jump."));
+    }
+  }
   // Seção "Framing" do Export (decisão do dono, 2026-11-03, protótipo W1): proporção + Same size (pedaço 1);
   // o alinhamento das fotos (referências, Move/Size/Rotate) vem no pedaço 2
   function framingRows(session, st, box, rerender) {
@@ -3474,6 +3497,7 @@
     // Foco da prévia: a seção clicada por último, se marcada; senão a primeira marcada
     if (exp.mode !== "framing" && !st.outputs[exp.mode]) exp.mode = OUTPUTS.map(([k]) => k).find((k) => st.outputs[k]) || "framing";
     if (exp.mode !== "lenticular") { exp.lentTheater = false; outer.classList.remove("theater"); }
+    if (exp.mode !== "framing") exp.framingTheater = false;
 
     // Monta a prévia (só a da seção em foco entra na tela) e as configurações de uma saída
     exp.keyNav = null;
@@ -3494,12 +3518,23 @@
       };
       if (kind === "framing") {
         cropLoad(session, st);
-        // Prévia: o recorte sobre a foto escolhida (← → trocam); a fileira de miniaturas é a mesma de Photos
+        // Em foco: a prévia grande (o recorte sobre a foto) com a coluna de controles ao lado, como no protótipo
+        // W1; ⤢ amplia (a prévia ocupa a janela, como o teatro do Lenticular). A fileira de miniaturas embaixo.
         if (focused && !exp.previewHidden) {
           preview.remove();
           const stage = cropStage(session, items, st, st.crop.ratio !== "asshot" ? RATIOS[st.crop.ratio] : 0, (changed) => { cropSave(session, st); if (changed) rerender(); });
-          stage.classList.add("export-preview");
-          outer.insertBefore(stage, rows);
+          stage.classList.add("export-preview", "framing-stage");
+          const theater = button("", () => { exp.framingTheater = !exp.framingTheater; rerender(); },
+            { icon: exp.framingTheater ? "theaterOut" : "theaterIn", title: exp.framingTheater ? "Back to the Export window" : "Enlarge: the preview fills the window", kind: "btn-secondary" });
+          theater.classList.add("lent-theater-btn", "framing-theater-btn");
+          theater.addEventListener("pointerdown", (e) => e.stopPropagation());
+          stage.appendChild(theater);
+          const side = el("div", "framing-side");
+          framingSide(session, st, side, rerender);
+          const top = el("div", "framing-top");
+          top.append(stage, side);
+          outer.classList.toggle("theater", !!exp.framingTheater);
+          outer.insertBefore(top, rows);
           const stripScroll = el("div", "export-strip-scroll");
           const strip = el("ul", "export-strip");
           stripScroll.appendChild(strip);
@@ -3515,8 +3550,8 @@
           const slot = el("div", "export-strip-slot");
           slot.appendChild(stripScroll);
           outer.insertBefore(slot, rows);
-        }
-        framingRows(session, st, box, rerender);
+          box.appendChild(el("div", "export-note", "The settings are next to the preview above. Everything here is saved with the session and used by every output."));
+        } else framingRows(session, st, box, rerender);  // (prévia escondida, ou outra seção em foco: as linhas ficam no corpo)
       } else if (kind === "photos") {
       const s = st.photos;
       // A fileira (ul) fica dentro de uma caixa que rola (div): o WebKit do Mac pintava os

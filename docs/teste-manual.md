@@ -1349,17 +1349,21 @@ proporção. O alinhamento — referências, Move/Size/Rotate — vem no pedaço
 - [ ] A primeira seção da coluna é "Framing · aspect ratio and alignment, for every output", sem interruptor
       (vale para todas as saídas); o resumo à direita diz "As shot ⚠ mixed ratios" numa sessão misturada. As
       seções Photos, Sequence e Lenticular não têm mais as linhas "Aspect ratio"/"Crop"/"Same size".
-- [ ] Clicar em "Preview" na seção Framing: a prévia de cima vira o recorte sobre a foto (a foto inteira; com
-      "As shot" a etiqueta diz "As shot: nothing is cut · choose a ratio below"); embaixo, a fileira de miniaturas
-      (clique ou ← → trocam a foto da prévia).
-- [ ] Linha "Aspect ratio": As shot · 3:2 · 4:3 · 16:9 · 1:1, "keeps n%" ao lado quando não é As shot, e a caixa
-      "Same size for all photos" na mesma linha. O "?" explica. Sessão misturada: nota âmbar embaixo ("Mixed
-      ratios · cameras 02 and 04 shot 16:9; the others 3:2. …"); se a janela "Mixed ratios" já escolheu 3:2, a
-      linha abre em 3:2 e a nota diz que já está marcada.
+- [ ] Ao abrir o Export a prévia está sempre visível (mesmo que da última vez tenha ficado escondida); "Hide
+      preview" esconde e assim fica ao trocar de seção, até fechar e abrir a janela de novo.
+- [ ] Clicar em "Preview" na seção Framing: em cima, a prévia grande (320 px) com o recorte sobre a foto (com
+      "As shot" a etiqueta diz "As shot: nothing is cut · choose a ratio below") e, à direita dela, a coluna com
+      "Aspect ratio" (As shot · 3:2 · 4:3 · 16:9 · 1:1, "keeps n%", a caixa "Same size for all photos", a nota
+      âmbar de mistura) e "Position" (nove pontos). Embaixo, a fileira de miniaturas (clique ou ← → trocam a
+      foto da prévia). O corpo da seção diz só que os controles estão ao lado da prévia.
+- [ ] Botão ⤢ no canto da prévia: a prévia ocupa a janela, a coluna fica ao lado, a fileira embaixo; as seções
+      somem; ⤡ volta. Trocar para outra seção também volta.
+- [ ] Com a prévia escondida (ou outra seção em foco), a seção Framing mostra as mesmas opções em linhas no
+      corpo ("Aspect ratio" com a caixa "Same size", nota de mistura, "Position").
 - [ ] Escolher 3:2: na prévia, o quadro aceso e o resto escuro; na foto 02 o quadro é mais estreito e arrasta
       para os lados (etiqueta "Drag the frame to choose the part that stays · ← → other photos"); nas 3:2 o quadro
-      tracejado cobre tudo ("Nothing to cut"). Aparece a linha "Position" com as nove posições; clicar numa move o
-      quadro; o ponto aceso acompanha o arraste. Uma posição para a sessão inteira.
+      tracejado cobre tudo ("Nothing to cut"). "Position": clicar num ponto move o quadro; o ponto aceso
+      acompanha o arraste. Uma posição para a sessão inteira.
 - [ ] Exportar (Photos convertidas em JPG + Sequence MP4) com 3:2: no Finder, as fotos 02 e 04 convertidas saem
       3:2 (cortadas nas laterais), as outras inteiras; os Originals continuam 16:9; o MP4 não pula. Com "Same
       size" ligado: todas as convertidas com o mesmo tamanho em pixels (o da menor). Com "As shot": nada é

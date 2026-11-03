@@ -796,6 +796,7 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
 .export-preview .lent-theater-btn { position: absolute; left: 10px; top: 10px; }
 /* Modo teatro: a prévia toma a coluna e as configurações somem */
 .export-settings.theater .export-rows, .export-settings.theater .export-scope { display: none; }
+.export-settings.theater .export-strip-slot:not(:has(+ .export-rows)) { display: none; }
 .export-settings.theater .export-preview { height: auto; flex: 1 1 auto; min-height: 0; }
 /* No teatro a foto (e o canvas) preenchem a área, não o tamanho natural do arquivo de prévia */
 .export-settings.theater .export-preview img, .export-settings.theater .export-preview .lent-canvas { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; object-fit: contain; }
@@ -1529,6 +1530,16 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .export-keep { font: 11px var(--noct-font-mono); color: var(--noct-text-dim); margin-left: 6px; }
 .export-note.exp-warn { color: var(--noct-pending); }
 .export-note-inline { font: 11px var(--noct-font-mono); color: var(--noct-text-dim); margin-left: 8px; }
+/* Seção Framing em foco: prévia grande + coluna ao lado (protótipo W1); ⤢ amplia (teatro) */
+.framing-top { display: flex; gap: 18px; flex: 0 0 auto; min-height: 0; }
+.framing-top .framing-stage { flex: 1 1 auto; min-width: 0; height: 320px; }
+.framing-side { flex: 0 0 280px; display: flex; flex-direction: column; overflow: auto; }
+.framing-block { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--noct-border); }
+.framing-block > .export-label { min-width: auto; }
+.framing-block .export-note { margin: 0; }
+.framing-theater-btn { position: absolute; left: 10px; top: 10px; z-index: 2; }
+.export-settings.theater .framing-top { flex: 1 1 auto; }
+.export-settings.theater .framing-top .framing-stage { height: auto; }
 /* Seção Framing: a prévia de cima é o recorte sobre a foto (crop-stage), no tamanho da prévia do Export */
 .crop-box { position: relative; width: 100%; background: var(--noct-surface-inner); border: 1px solid var(--noct-border); overflow: hidden; cursor: grab; user-select: none; -webkit-user-select: none; touch-action: none; }
 .exp-sec-framing .exp-sec-head { padding-left: 12px; }
