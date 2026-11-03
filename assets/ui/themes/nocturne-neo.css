@@ -1579,7 +1579,7 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .lent-paper img { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; object-fit: cover; display: block; }
 .lent-paper.place-fit img { object-fit: contain; }
 .export-preview.lent-preview.interlaced .lent-paper { display: none; }
-.export-settings.theater .export-preview .lent-paper { height: 100%; }
+/* (o tamanho do papel é calculado em app.js, fitPaper: cabe na prévia mantendo a proporção) */
 .export-settings.theater .export-preview .lent-paper img { position: absolute; inset: 0; width: 100%; height: 100%; }
 /* Proporções misturadas na sessão (Parte 3 da Proporção) */
 .missing-tag.mixed-tag { border-style: dashed; cursor: help; }

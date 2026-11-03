@@ -3615,6 +3615,18 @@
       paper.style.background = lentBand === "white" ? "#fff" : "#000";
       paper.classList.toggle("place-fit", (l.placement || "fill") === "fit");
       img.remove(); paper.appendChild(img); preview.insertBefore(paper, caption);
+      // O papel cabe inteiro na prévia mantendo a proporção da impressão, no tamanho normal e no teatro (como o
+      // Interlaced): só CSS deformava o papel quando a prévia era mais estreita do que ele pedia
+      const fitPaper = () => {
+        const W = preview.clientWidth, H = preview.clientHeight;
+        if (!W || !H) return;
+        const r = l.widthCm / l.heightCm;
+        let w = W, h = W / r;
+        if (h > H) { h = H; w = H * r; }
+        paper.style.width = Math.floor(w) + "px"; paper.style.height = Math.floor(h) + "px";
+      };
+      fitPaper();
+      new ResizeObserver(fitPaper).observe(preview);
       img.style.objectPosition = Math.round(st.crop.x * 100) + "% " + Math.round(st.crop.y * 100) + "%";
       const order = l.reverse ? items.map((_, i) => n - 1 - i) : items.map((_, i) => i);
       let frameAt = Math.min(exp.frame >= 0 ? exp.frame : 0, Math.max(0, n - 1));
