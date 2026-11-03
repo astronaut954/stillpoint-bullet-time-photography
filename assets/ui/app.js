@@ -2016,6 +2016,27 @@
   sideAside.addEventListener("pointerout", (e) => { if (railTipOn && !(e.relatedTarget && railTipOn.contains(e.relatedTarget))) hideRailTip(); });
   sideAside.addEventListener("pointerdown", hideRailTip);
   sideAside.addEventListener("scroll", hideRailTip);
+  // A mesma legenda na lista de sessões do Export quando ela está só com miniaturas (tela "Align photos")
+  {
+    const list = $("exportList");
+    list.addEventListener("pointerover", (e) => {
+      if (!list.closest(".export-body").classList.contains("aligning") || e.pointerType === "touch") return;
+      const t = e.target.closest(".export-item");
+      if (!t || t === railTipOn || !t.dataset.tip) return;
+      hideRailTip();
+      if (t.hasAttribute("title")) { t.dataset.savedTitle = t.title; t.removeAttribute("title"); }
+      railTipOn = t;
+      railTip.textContent = t.dataset.tip;
+      if (t.dataset.tipWarn) { railTip.appendChild(document.createTextNode(" · ")); railTip.appendChild(el("span", "warn", t.dataset.tipWarn)); }
+      const r = t.getBoundingClientRect();
+      railTip.style.left = (list.getBoundingClientRect().right + 8) + "px";
+      railTip.style.top = (r.top + r.height / 2) + "px";
+      railTip.classList.remove("hidden");
+    });
+    list.addEventListener("pointerout", (e) => { if (railTipOn && list.contains(railTipOn) && !(e.relatedTarget && railTipOn.contains(e.relatedTarget))) hideRailTip(); });
+    list.addEventListener("pointerdown", hideRailTip);
+    list.addEventListener("scroll", hideRailTip);
+  }
   // Explicação instantânea ([data-itip]): uma caixa no visual do app, embaixo do elemento, sem a espera da
   // legenda do sistema. Usada no ícone de alerta da proporção (Camera settings).
   const itip = el("div", "itip hidden");
@@ -2720,6 +2741,9 @@
       const box = li.querySelector("input");
       box.checked = exp.selected.has(s.name);
       if (!li.title) li.title = label.date;  // na tela de alinhamento a lista mostra só a miniatura: a data fica na dica
+      // legenda instantânea (como a barra da tela cheia): data, fotos e o que vai sair
+      li.dataset.tip = [s.label || "", label.date, plural(sessionItems(s).length, "photo", "photos"), label.detail].filter(Boolean).join(" · ");
+      { const r = ratioInfoCached(s.name); const warns = []; if (s.missing) warns.push(s.missing + " missing"); if (r && r.mixed) warns.push("Mixed ratios"); if (warns.length) li.dataset.tipWarn = warns.join(" · "); }
       box.addEventListener("change", () => {
         exp.selectedTouched = true; if (box.checked) exp.selected.add(s.name); else exp.selected.delete(s.name);
         li.classList.toggle("off", !box.checked);
@@ -3434,6 +3458,7 @@
     rows.classList.add("hidden");
     const wrap = el("div", "align-wrap");
     const left = el("div", "align-left");
+    const keepPanel = alignScreen.panelScroll || 0;  // a coluna é redesenhada a cada mudança: mantém a rolagem
     const stage = el("div", "export-preview align-stage");
     const layers = el("div", "align-layers");
     const common = el("div", "align-common");
@@ -3472,22 +3497,42 @@
     const panel = el("div", "align-panel");
     const block = (title, extra) => { const b = el("div", "align-block"); const h = el("h3", "", title); if (extra) h.appendChild(extra); b.appendChild(h); panel.appendChild(b); return b; };
     const refs = block("References");
+    // Opacidade: uma barra por referência; a barra "All" move as três juntas (decisão do dono, 2026-11-03)
+    if (!alignPrefs.op) alignPrefs.op = {};
+    const opOf = (key) => (alignPrefs.op[key] != null ? alignPrefs.op[key] : alignPrefs.opacity);
+    const slider = (value, onInput) => {
+      const r = el("div", "align-opacity");
+      const inp = document.createElement("input"); inp.type = "range"; inp.className = "noct-range"; inp.min = "5"; inp.max = "100"; inp.value = String(Math.round(value * 100));
+      const val = el("span", "align-opval", inp.value + "%");
+      inp.addEventListener("input", () => { val.textContent = inp.value + "%"; onInput((+inp.value) / 100); layout(); });
+      inp.addEventListener("change", saveAlignPrefs);
+      r.append(inp, val);
+      return { row: r, input: inp, val };
+    };
+    const refSliders = {};
     const refRow = (key, label, k) => {
-      const r = el("label", "align-ref" + (k < 0 || k >= n || k === cur ? " dimmed" : ""));
+      const r = el("div", "align-ref" + (k < 0 || k >= n || k === cur ? " dimmed" : ""));
+      const head = el("label", "align-ref-head");
       const c = document.createElement("input"); c.type = "checkbox"; c.className = "cs-check"; c.checked = !!alignPrefs[key];
       c.addEventListener("change", () => { alignPrefs[key] = c.checked; saveAlignPrefs(); rerender(); });
       const sw = el("span", "align-sw"); sw.style.background = REF_COLORS[key];
-      r.append(c, sw, document.createTextNode(label), el("span", "align-who", k >= 0 && k < n && k !== cur ? pad(items[k].order || k + 1) : "—"));
+      head.append(c, sw, document.createTextNode(label), el("span", "align-who", k >= 0 && k < n && k !== cur ? pad(items[k].order || k + 1) : "—"));
+      const sl = slider(opOf(key), (v) => { alignPrefs.op[key] = v; });
+      sl.input.title = "Opacity of this reference";
+      refSliders[key] = sl;
+      r.append(head, sl.row);
       refs.appendChild(r);
     };
     refRow("prev", "Previous photo", cur - 1); refRow("next", "Next photo", cur + 1); refRow("first", "Photo 01", 0);
-    const op = el("div", "align-opacity");
-    const opIn = document.createElement("input"); opIn.type = "range"; opIn.className = "noct-range"; opIn.min = "5"; opIn.max = "100"; opIn.value = String(Math.round(alignPrefs.opacity * 100));
-    const opVal = el("span", "align-opval", opIn.value + "%");
-    opIn.addEventListener("input", () => { alignPrefs.opacity = (+opIn.value) / 100; opVal.textContent = opIn.value + "%"; layout(); });
-    opIn.addEventListener("change", saveAlignPrefs);
-    op.append(el("span", "align-lab", "Opacity"), opIn, opVal);
-    refs.appendChild(op);
+    const all = el("div", "align-ref align-ref-all");
+    all.appendChild(el("span", "align-lab", "All references"));
+    const allSl = slider(alignPrefs.opacity, (v) => {
+      alignPrefs.opacity = v; alignPrefs.op = {};  // volta a valer para as três
+      Object.keys(refSliders).forEach((key) => { refSliders[key].input.value = String(Math.round(v * 100)); refSliders[key].val.textContent = Math.round(v * 100) + "%"; });
+    });
+    allSl.input.title = "Opacity of every reference at once";
+    all.appendChild(allSl.row);
+    refs.appendChild(all);
 
     const self = block("This photo", el("span", "align-cur", pad(item.order || cur + 1)));
     const a = alignOf(st, item.file);
@@ -3507,6 +3552,14 @@
     const tryApply = (change) => {
       const cand = Object.assign({}, a); change(cand);
       if (covers(cand)) { Object.assign(a, cand); return true; }
+      // Girar: em vez de travar, a foto cresce o mínimo para continuar cobrindo a área (como o Lightroom)
+      if (cand.rot !== a.rot && cand.dx === a.dx && cand.dy === a.dy && cand.scale === a.scale) {
+        let lo = cand.scale, hi = Math.min(20, cand.scale * 4);
+        if (covers(Object.assign({}, cand, { scale: hi }))) {
+          for (let i = 0; i < 24; i++) { const mid = (lo + hi) / 2; if (covers(Object.assign({}, cand, { scale: mid }))) hi = mid; else lo = mid; }
+          cand.scale = hi; Object.assign(a, cand); return true;
+        }
+      }
       if (cand.dx !== a.dx || cand.dy !== a.dy) {
         const onlyX = Object.assign({}, a, { dx: cand.dx }), onlyY = Object.assign({}, a, { dy: cand.dy });
         if (cand.scale === a.scale && cand.rot === a.rot) {
@@ -3543,14 +3596,15 @@
       inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { typed(); inp.blur(); } if (e.key === "ArrowUp" || e.key === "ArrowDown") { e.preventDefault(); stepOnce((c) => apply(c, (e.key === "ArrowUp" ? 1 : -1) * (e.shiftKey ? bigStep : step))); } e.stopPropagation(); });
       const minus = holdButton("minus", "−" + step + " (⇧ " + bigStep + "); hold to repeat", step, bigStep, (c, amt) => apply(c, -amt));
       const plus = holdButton("plus", "+" + step + " (⇧ " + bigStep + "); hold to repeat", step, bigStep, (c, amt) => apply(c, amt));
-      r.append(el("span", "align-lab", label), minus, inp, plus, el("span", "align-unit", unit));
+      inp.title = unit;  // a unidade e os passos ficam na dica (sem legenda ao lado; decisão do dono, 2026-11-03)
+      r.append(el("span", "align-lab", label), minus, inp, plus);
       fields[key] = inp;
       self.appendChild(r);
     };
-    control("dx", "Move X", "px (⇧ 10)", 1, 10, 0, () => a.dx, (c, d) => { c.dx += d; });
-    control("dy", "Move Y", "px (⇧ 10)", 1, 10, 0, () => a.dy, (c, d) => { c.dy += d; });
-    control("scale", "Size", "% (0.1, ⇧ 1)", 0.1, 1, 1, () => a.scale * 100, (c, d) => { c.scale = Math.max(0.05, Math.min(20, c.scale + d / 100)); });
-    control("rot", "Rotate", "° (0.05, ⇧ 0.5)", 0.05, 0.5, 2, () => a.rot, (c, d) => { c.rot = Math.round((c.rot + d) * 1000) / 1000; });
+    control("dx", "Move X", "Pixels of the original · steps of 1 (⇧ 10)", 1, 10, 0, () => a.dx, (c, d) => { c.dx += d; });
+    control("dy", "Move Y", "Pixels of the original · steps of 1 (⇧ 10)", 1, 10, 0, () => a.dy, (c, d) => { c.dy += d; });
+    control("scale", "Size", "Percent of the original · steps of 0.1 (⇧ 1)", 0.1, 1, 1, () => a.scale * 100, (c, d) => { c.scale = Math.max(0.05, Math.min(20, c.scale + d / 100)); });
+    control("rot", "Rotate", "Degrees, clockwise · steps of 0.05 (⇧ 0.5)", 0.05, 0.5, 2, () => a.rot, (c, d) => { c.rot = Math.round((c.rot + d) * 1000) / 1000; });
     const resets = el("div", "align-resets");
     resets.appendChild(button("Reset photo", () => { st.align.byFile[item.file] = ALIGN_ID(); save(); rerender(); }, { kind: "btn-secondary" }));
     resets.appendChild(button("Reset all", () => { st.align.byFile = {}; save(); rerender(); }, { kind: "btn-secondary" }));
@@ -3564,6 +3618,8 @@
     ar.appendChild(arRows);
     wrap.appendChild(panel);
     outer.insertBefore(wrap, rows);
+    panel.addEventListener("scroll", () => { alignScreen.panelScroll = panel.scrollTop; });
+    if (keepPanel) { panel.scrollTop = keepPanel; requestAnimationFrame(() => { panel.scrollTop = keepPanel; }); }
 
     const sync = () => { fields.dx.value = a.dx.toFixed(0); fields.dy.value = a.dy.toFixed(0); fields.scale.value = (a.scale * 100).toFixed(1); fields.rot.value = a.rot.toFixed(2); };
     let saveTimer = 0;
@@ -3581,10 +3637,12 @@
       sessionPhoto(session.name, it.file, 1600).then((url) => { if (url) im.src = url; });
       return l;
     };
+    // A foto atual embaixo, nítida; as referências por cima, tingidas e com a sua transparência (onion skin)
     const order = [];
     ["first", "prev", "next"].forEach((key) => { const k = refIndex[key]; if (alignPrefs[key] && k >= 0 && k < n && k !== cur && !order.some((o) => o.k === k)) order.push({ k, key }); });
-    order.forEach((o) => { layerOf[o.k] = makeLayer(items[o.k], o.key); layers.appendChild(layerOf[o.k]); });
     layerOf[cur] = makeLayer(item, ""); layers.appendChild(layerOf[cur]);
+    const refKeyOf = {};
+    order.forEach((o) => { layerOf[o.k] = makeLayer(items[o.k], o.key); refKeyOf[o.k] = o.key; layers.appendChild(layerOf[o.k]); });
 
     // A área útil: o quadro da proporção (ou o quadro comum, em "As shot"), em px do canvas
     const usefulRect = () => {
@@ -3608,7 +3666,7 @@
         l.style.display = ""; l.style.width = w + "px"; l.style.height = h + "px";
         l.style.left = (cx + al.dx * scaleK - w / 2) + "px"; l.style.top = (cy + al.dy * scaleK - h / 2) + "px";
         l.style.transform = "scale(" + al.scale + ") rotate(" + al.rot + "deg)";
-        if (l.classList.contains("align-ref")) l.style.opacity = alignPrefs.opacity;
+        if (l.classList.contains("align-ref")) l.style.opacity = opOf(refKeyOf[k]);
         if (+k === cur) { box.style.display = ""; box.style.width = w + "px"; box.style.height = h + "px"; box.style.left = l.style.left; box.style.top = l.style.top; box.style.transform = l.style.transform;
           // alças com o mesmo tamanho na tela, seja qual for o zoom da foto
           const inv = 1 / al.scale; [...box.children].forEach((hd) => { hd.style.setProperty("--inv", inv); }); }
@@ -3782,7 +3840,7 @@
     outer.innerHTML = "";
     const rows = el("div", "export-rows");
     outer.appendChild(rows);
-    renderExportSettings.restoreScroll = () => { if (keepScroll) rows.scrollTop = keepScroll; };
+    renderExportSettings.restoreScroll = () => { if (keepScroll) { rows.scrollTop = keepScroll; requestAnimationFrame(() => { rows.scrollTop = keepScroll; }); } };
     // As caixas terminam no mesmo ponto que a prévia: o espaço da direita (18 px) é dividido
     // entre a barra de rolagem, quando ela existe e ocupa lugar, e um respiro até as caixas
     const fitRows = () => {
@@ -4063,7 +4121,7 @@
         theater.title = exp.lentTheater ? "Leave theater mode" : "Theater mode: larger preview, settings hidden";
         if (exp.lentView === "interlaced") requestAnimationFrame(fitCanvas);
       };
-      if (window.ResizeObserver) { const ro = new ResizeObserver(() => { if (full && exp.lentView === "interlaced") fitCanvas(); }); ro.observe(preview); }
+      if (window.ResizeObserver) { let lastSize = ""; const ro = new ResizeObserver(() => { const now = preview.clientWidth + "x" + preview.clientHeight; if (now === lastSize) return; lastSize = now; if (full && exp.lentView === "interlaced") fitCanvas(); }); ro.observe(preview); }
       const fitCanvas = () => {
         if (!full) return;
         // Cabe na prévia mantendo a proporção do arquivo (com margem e marcas); o navegador reduz
@@ -4081,6 +4139,17 @@
       };
       const drawInterlaced = () => {
         const horizontal = l.effect !== "3d";
+        // A imagem inteira é cara de montar: fica guardada enquanto nada que entra nela muda (sessão, fotos,
+        // lâmina, tamanho, marcas, recorte, Placement, faixa)
+        const cacheKey = [session.name, items.map((i) => i.file).join(","), JSON.stringify(l), st.crop.x, st.crop.y, lentBand].join("|");
+        const cached = exp.lentFull;
+        if (cached && cached.key === cacheKey && cached.full) {
+          full = cached.full; lentBuiltAt = cached.builtAt; setLoupeTag();
+          caption.innerHTML = ""; caption.append(el("b", "", "Interlaced"), interCaptionText(), interCaptionMore());
+          fitCanvas();
+          if (!cached.ready) cached.waiters.push(fitCanvas);  // as fotos ainda estão entrando na imagem guardada
+          return;
+        }
         // Imagem inteira em pixels reais; acima de ~24 Mpx monta reduzida (a lupa avisa)
         const limit = 24e6;
         const f = plan.fileW * plan.fileH > limit ? Math.sqrt(limit / (plan.fileW * plan.fileH)) : 1;
@@ -4101,9 +4170,9 @@
         lentBuiltAt = f;
         setLoupeTag();
         caption.innerHTML = "";
-        caption.append(el("b", "", "Interlaced"), document.createTextNode(" the whole file as it prints · " + plan.fileW + " × " + plan.fileH + " px · " + lentSizeText(l) + " · " +
-          (plan.cols ? plan.cols.toFixed(2).replace(/\.?0+$/, "") : "—") + " px per lens · strips " + (horizontal ? "horizontal" : "vertical") + " · move the mouse for a close-up, scroll to zoom, hold the left button to hide the crosshair"));
+        caption.append(el("b", "", "Interlaced"), interCaptionText(), interCaptionMore());
         fitCanvas();
+        const cacheEntry = exp.lentFull = { key: cacheKey, full, builtAt: f, ready: false, waiters: [] };
         // Faixas de cada foto: desenha a foto (cobrindo o papel) só nas linhas/colunas dela
         const lines = horizontal ? H : W;
         const runs = [];  // [início, comprimento, foto]
@@ -4124,10 +4193,22 @@
                 else fctx.drawImage(im, (ox + start) / s, oy / s, len / s, H / s, off + start, off, len, H);
               });
             }
-            if (++loaded === n) fitCanvas();
+            if (++loaded === n) { fitCanvas(); cacheEntry.ready = true; cacheEntry.waiters.forEach((fn) => { try { fn(); } catch (e) {} }); cacheEntry.waiters = []; }
           });
         });
       };
+      // Legenda do Interlaced recolhida (decisão do dono, 2026-11-03): uma linha curta; clicar nela mostra o resto
+      const interCaptionText = () => document.createTextNode(" " + plan.fileW + " × " + plan.fileH + " px · " + lentSizeText(l));
+      const interCaptionMore = () => {
+        const horizontal = l.effect !== "3d";
+        const more = el("span", "caption-more", " · " + (plan.cols ? plan.cols.toFixed(2).replace(/\.?0+$/, "") : "—") + " px per lens · strips " + (horizontal ? "horizontal" : "vertical") +
+          " · move the mouse for a close-up, scroll to zoom, hold the left button to hide the crosshair");
+        return more;
+      };
+      caption.classList.add("collapsible");
+      caption.title = "Click for details";
+      caption.addEventListener("pointerdown", (e) => e.stopPropagation());
+      caption.addEventListener("click", (e) => { e.stopPropagation(); caption.classList.toggle("open"); });
       // Lupa: segue o mouse; mostra o ponto em pixels reais ampliados (2× de início; a roda do
       // mouse aproxima e afasta, de 1× a 8×)
       let lentBuiltAt = 1, lastMove = null;
