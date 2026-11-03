@@ -1346,11 +1346,11 @@ Com `STILLPOINT_FAKE_CAMERAS=9` (02 e 04 em 16:9). Abrir "Export sessions" com u
 (Decisão do dono, 2026-11-03: a proporção e o alinhamento ficam juntos na seção "Framing"; este pedaço é só a
 proporção. O alinhamento — referências, Move/Size/Rotate — vem no pedaço 2.)
 
-- [ ] A coluna da direita tem abas: Framing · Photos · Sequence · Lenticular (decisão do dono, 2026-11-03; antes
-      eram seções empilhadas). Photos, Sequence e Lenticular têm a caixa de ligar/desligar dentro da aba; Framing
-      não tem (vale para todas as saídas). Embaixo do nome de cada aba, o resumo ("Originals + JPG · High", "Off",
-      "As shot ⚠ mixed ratios"). Só o conteúdo da aba atual aparece; uma aba desligada abre com a nota "This
-      output is off: tick the box in the tab to export it.".
+- [ ] A coluna da direita tem abas no topo, acima da prévia: Framing · Photos · Sequence · Lenticular (chips; a
+      atual em verde). Photos, Sequence e Lenticular têm um quadrado dentro da aba: cheio = exportada, vazio = não
+      (clicar nele liga/desliga; aba desligada fica tracejada); Framing não tem (vale para todas). ← → trocam de
+      aba pelo teclado. Abaixo da prévia, só o conteúdo da aba atual, começando pelo resumo ("Originals + JPG ·
+      High", "3:2 · same size", ou "Off · tick the box in the tab to export it").
 - [ ] Ao abrir o Export a prévia está sempre visível (mesmo que da última vez tenha ficado escondida); "Hide
       preview" esconde e assim fica ao trocar de seção, até fechar e abrir a janela de novo.
 - [ ] Aba Framing: em cima, a prévia grande (320 px) com o recorte sobre a foto (com

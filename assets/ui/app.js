@@ -3950,42 +3950,42 @@
           }
     };
 
-    // Abas (decisão do dono, 2026-11-03, protótipo W1): Framing · Photos · Sequence · Lenticular. Cada saída tem a
-    // caixa de ligar/desligar dentro da aba; só o conteúdo da aba atual aparece. A prévia de cima é a da aba atual.
+    // Abas (decisão do dono, 2026-11-03, protótipo W1): Framing · Photos · Sequence · Lenticular, no topo da coluna,
+    // acima da prévia; chips, com a caixa de ligar/desligar dentro da aba de cada saída. Só o conteúdo da aba atual
+    // aparece, abaixo da prévia.
     const tabs = el("div", "export-tabs");
+    tabs.setAttribute("role", "tablist");
     [["framing", "Framing", "aspect ratio and alignment, for every output"]].concat(OUTPUTS).forEach(([kind, title, sub]) => {
       const always = kind === "framing";
       const on = always || !!st.outputs[kind];
       const current = kind === exp.mode;
-      const tab = el("div", "export-tab" + (current ? " on" : "") + (on ? "" : " off"));
+      const tab = el("button", "export-tab" + (current ? " on" : "") + (on ? "" : " off"), ""); tab.type = "button";
       tab.setAttribute("role", "tab"); tab.setAttribute("aria-selected", current ? "true" : "false"); tab.tabIndex = current ? 0 : -1;
       if (!always) {
-        const check = el("label", "export-check exp-sec-check");
-        const input = document.createElement("input");
-        input.type = "checkbox"; input.checked = on; input.setAttribute("aria-label", "Export " + title);
-        check.append(input, el("span", "save-check"));
-        check.addEventListener("click", (e) => e.stopPropagation());
-        input.addEventListener("change", () => { st.outputs[kind] = input.checked; if (input.checked) exp.mode = kind; rerender(); });
+        const check = el("span", "export-tab-check" + (on ? " on" : ""));
+        check.title = on ? "Exported · click to turn off" : "Not exported · click to turn on";
+        check.addEventListener("click", (e) => { e.stopPropagation(); st.outputs[kind] = !on; if (!on) exp.mode = kind; rerender(); });
         tab.appendChild(check);
       }
-      const name = el("span", "export-tab-name");
-      name.append(el("b", "export-tab-title", title));
-      const sum = el("span", "export-tab-sum");
-      setWarnText(sum, on ? outputText(session, kind) : "Off");
-      name.appendChild(sum);
-      tab.appendChild(name);
-      tab.title = sub;
+      tab.appendChild(document.createTextNode(title));
+      tab.title = sub + (always ? "" : on ? " · exported" : " · not exported");
       tab.addEventListener("click", () => { if (!current) { exp.mode = kind; rerender(); } });
-      tab.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); tab.click(); } });
+      tab.addEventListener("keydown", (e) => {
+        if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+        const all = [...tabs.children]; const i = all.indexOf(tab); const n = all[(i + (e.key === "ArrowRight" ? 1 : -1) + all.length) % all.length];
+        if (n) { e.preventDefault(); n.click(); setTimeout(() => { const t = outer.querySelector(".export-tab.on"); if (t) t.focus(); }, 0); }
+      });
       tabs.appendChild(tab);
     });
-    rows.appendChild(tabs);
+    outer.insertBefore(tabs, rows);
     {
       const kind = exp.mode;
       const always = kind === "framing";
       const on = always || !!st.outputs[kind];
-      const body = el("div", "exp-sec-body export-tab-body");
-      if (!on) body.appendChild(el("div", "export-note exp-none", "This output is off: tick the box in the tab to export it."));
+      const body = el("div", "export-tab-body");
+      const sum = el("div", "export-tab-sum");
+      setWarnText(sum, on ? outputText(session, kind) : "Off · tick the box in the tab to export it");
+      body.appendChild(sum);
       buildKind(kind, body, true);
       rows.appendChild(body);
     }

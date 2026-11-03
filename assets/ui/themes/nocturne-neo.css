@@ -735,20 +735,22 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
    fazia o WebKit do Mac pintar as miniaturas deslocadas da caixa */
 /* Janela de salvar com três saídas (opção A): cada saída é uma seção com interruptor;
    desmarcada fica recolhida (só o cabeçalho), marcada abre as configurações */
-/* Abas do Export (Framing · Photos · Sequence · Lenticular), com a caixa de ligar/desligar dentro da aba */
-.export-tabs { display: flex; gap: 0; flex: 0 0 auto; border-bottom: 1px solid var(--noct-border-strong); }
-.export-tab { display: flex; align-items: center; gap: 10px; padding: 10px 14px; margin-bottom: -1px; border: 1px solid transparent; border-bottom-color: var(--noct-border-strong); cursor: pointer; user-select: none; -webkit-user-select: none; }
-.export-tab:hover .export-tab-title { color: var(--noct-primary); }
-.export-tab.on { border-color: var(--noct-border-strong); border-bottom-color: var(--noct-surface); background: var(--noct-surface); cursor: default; }
-.export-tab.on .export-tab-title { color: var(--noct-primary); }
-.export-tab.off .export-tab-title { color: var(--noct-text-dim); }
-.export-tab:focus-visible { outline: 1px solid var(--noct-primary); outline-offset: -1px; }
-.export-tab-name { display: flex; flex-direction: column; gap: 2px; }
-.export-tab-title { font: 700 14px var(--noct-font-sans); color: var(--noct-text); }
-.export-tab-sum { font: 500 10px var(--noct-font-mono); letter-spacing: .04em; color: var(--noct-text-muted); white-space: nowrap; }
-.export-tab.off .export-tab-sum { color: var(--noct-text-dim); }
-.export-tab-body { border: 1px solid var(--noct-border-strong); border-top: 0; background: var(--noct-surface); flex: 0 0 auto; }
-.export-tab-body.exp-sec-body { border-top: 0; padding-top: 12px; }
+/* Abas do Export (Framing · Photos · Sequence · Lenticular): chips no topo da coluna, acima da prévia; a caixa de
+   ligar/desligar de cada saída dentro da aba (protótipo W1) */
+.export-tabs { display: flex; gap: 6px; flex: 0 0 auto; }
+.export-tab { display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; background: transparent; border: 1px solid var(--noct-border);
+  color: var(--noct-text-dim); font: 700 10px var(--noct-font-mono); letter-spacing: .12em; text-transform: uppercase; cursor: pointer; white-space: nowrap;
+  transition: color .15s ease, border-color .15s ease, background .15s ease; }
+.export-tab:hover { color: var(--noct-primary); border-color: var(--noct-border-strong); }
+.export-tab.on { background: var(--noct-primary); border-color: var(--noct-primary); color: var(--noct-on-primary); cursor: default; }
+.export-tab.off:not(.on) { color: var(--noct-text-dim); border-style: dashed; }
+.export-tab:focus-visible { outline: 2px solid var(--noct-primary); outline-offset: 2px; }
+/* A caixa dentro da aba: quadrado cheio = exportada; vazio = não */
+.export-tab-check { width: 12px; height: 12px; box-sizing: border-box; border: 1px solid currentColor; flex: none; cursor: pointer; }
+.export-tab-check.on { background: currentColor; box-shadow: inset 0 0 0 2px var(--noct-surface); }
+.export-tab.on .export-tab-check.on { box-shadow: inset 0 0 0 2px var(--noct-primary); }
+.export-tab-body { flex: 0 0 auto; display: flex; flex-direction: column; gap: 12px; }
+.export-tab-body > .export-tab-sum { font: 500 11px var(--noct-font-mono); letter-spacing: .04em; color: var(--noct-text-muted); }
 .exp-sec { border: 1px solid var(--noct-border); background: var(--noct-surface-inner); flex: 0 0 auto; }
 .exp-sec.on { border-color: var(--noct-border-strong); }
 .exp-sec.focus { border-color: var(--noct-primary); }
@@ -1546,7 +1548,7 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .export-note-inline { font: 11px var(--noct-font-mono); color: var(--noct-text-dim); margin-left: 8px; }
 /* Seção Framing em foco: prévia grande + coluna ao lado (protótipo W1); ⤢ amplia (teatro) */
 .framing-top { display: flex; gap: 18px; flex: 0 0 auto; min-height: 0; }
-.framing-top .framing-stage { flex: 1 1 auto; min-width: 0; height: 320px; }
+.framing-top .framing-stage { flex: 1 1 auto; min-width: 0; height: 380px; }
 .framing-side { flex: 0 0 280px; display: flex; flex-direction: column; overflow: auto; }
 .framing-block { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--noct-border); }
 .framing-block > .export-label { min-width: auto; }
