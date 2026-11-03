@@ -902,7 +902,6 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
 .cs-body { padding: 0 16px 12px; overflow: auto; min-height: 0; overflow-anchor: none; }
 /* A linha divisória acima das colunas é a borda de cima do cabeçalho preso (anda com ele): o bloco de cima não tem
    borda embaixo, senão sobrava uma fresta de subpixel entre as duas por onde as linhas que rolam apareciam */
-.cs-test { border-bottom: 0; }
 .cs-head:has(+ .cs-test.hidden) { border-bottom: 0; }
 /* Cabeçalho da tabela preso: o grupo inteiro (thead) com fundo, para não sobrar fresta entre a linha de cima e as colunas */
 table.cs thead { position: sticky; top: 0; z-index: 2; background: var(--noct-surface); }
@@ -983,7 +982,7 @@ table.cs tr.has-note td { border-bottom-color: transparent; }
 /* Teste rápido dentro do Camera settings */
 /* Só a fileira de miniaturas (foto inteira); a foto grande abre por cima da janela */
 .cs-sheet { position: relative; }
-.cs-test { flex: none; display: flex; padding: 10px 22px; border-bottom: 1px solid var(--noct-border); }
+.cs-test { flex: none; display: flex; padding: 10px 22px; }  /* (sem borda embaixo: a linha divisória é a do cabeçalho preso da tabela) */
 .cs-test .gallery { gap: 8px; min-width: 0; }  /* min-width: a fileira rola dentro da janela em vez de vazar (9 câmeras) */
 .cs-test .carousel-wrap { min-width: 0; }
 .cs-test .gallery-head { align-items: flex-end; }
