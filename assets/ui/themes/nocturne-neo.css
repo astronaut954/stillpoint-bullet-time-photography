@@ -899,12 +899,16 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
 .cs-head { padding: 16px 22px; border-bottom: 1px solid var(--noct-border); }
 .cs-head h3 { display: flex; align-items: center; gap: 10px; }
 .cs-head p { margin: 6px 0 0; color: var(--noct-text-muted); font-size: 15px; }
-.cs-body { padding: 3px 16px 12px; overflow: auto; min-height: 0; overflow-anchor: none; }  /* 3px em cima: o cabeçalho preso (top -3px) tapa a fresta de subpixel sem cortar nada */
+.cs-body { padding: 0 16px 12px; overflow: auto; min-height: 0; overflow-anchor: none; }
+/* A linha divisória acima das colunas é a borda de cima do cabeçalho preso (anda com ele): o bloco de cima não tem
+   borda embaixo, senão sobrava uma fresta de subpixel entre as duas por onde as linhas que rolam apareciam */
+.cs-test { border-bottom: 0; }
+.cs-head:has(+ .cs-test.hidden) { border-bottom: 0; }
 /* Cabeçalho da tabela preso: o grupo inteiro (thead) com fundo, para não sobrar fresta entre a linha de cima e as colunas */
-table.cs thead { position: sticky; top: -3px; z-index: 2; background: var(--noct-surface); }  /* (-3px: cobre a fresta de subpixel entre a linha de cima e as colunas) */
+table.cs thead { position: sticky; top: 0; z-index: 2; background: var(--noct-surface); }
 .cs-empty { padding: 28px 0; color: var(--noct-text-muted); }
 table.cs { width: 100%; border-collapse: separate; border-spacing: 0; font: 12px var(--noct-font-mono); }
-table.cs th { position: sticky; top: -3px; z-index: 2; background: var(--noct-surface); box-shadow: 0 -4px 0 0 var(--noct-surface); outline: 1px solid var(--noct-surface); text-align: left; padding: 10px 3px 10px; border-bottom: 1px solid var(--noct-border);
+table.cs th { position: sticky; top: 0; z-index: 2; background: var(--noct-surface); text-align: left; padding: 10px 3px 10px; border-top: 1px solid var(--noct-border); border-bottom: 1px solid var(--noct-border);
   font: 700 10px var(--noct-font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--noct-text-muted); white-space: nowrap; }
 table.cs td { height: 44px; box-sizing: border-box; padding: 0 3px; border-bottom: 1px solid var(--noct-border); color: var(--noct-text); vertical-align: middle; white-space: nowrap; }
 table.cs td.name { font: 600 15px var(--noct-font-sans); }
@@ -914,7 +918,7 @@ table.cs td.name { height: 52px; max-width: 132px; overflow: hidden; text-overfl
 .cs-focus-tag.warn { border-color: var(--noct-pending); color: var(--noct-pending); }
 .cs-pop-row.cs-pop-sep { margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--noct-border); }
 table.cs td.name small { display: block; overflow: hidden; text-overflow: ellipsis; font: 10px var(--noct-font-mono); color: var(--noct-text-dim); letter-spacing: .08em; text-transform: uppercase; }
-table.cs tr.all td { position: sticky; top: 34px; z-index: 1; background: var(--noct-surface-inner); box-shadow: 0 -2px 0 0 var(--noct-surface-inner); }  /* (top: medido em csStickAllRow, altura do cabeçalho menos os 3px; a sombra fecha a emenda com ele) */
+table.cs tr.all td { position: sticky; top: 37px; z-index: 1; background: var(--noct-surface-inner); box-shadow: 0 -2px 0 0 var(--noct-surface-inner); }  /* (top: medido em csStickAllRow; a sombra fecha a emenda com o cabeçalho) */
 table.cs tr.all td.name { color: var(--noct-primary); }
 table.cs tr.locked td { color: var(--noct-text-dim); }
 table.cs td.msg { color: var(--noct-pending); font: 13px var(--noct-font-sans); white-space: normal; }
