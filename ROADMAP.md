@@ -702,7 +702,10 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      em 16:9 → marca as 16:9); o aviso volta ao reabrir o app e quando a combinação de câmeras/
      proporções muda; só a proporção conta (tamanho de sensor não). Em aberto: o botão "Crop on
      export" antes da linha "Aspect ratio" do Export existir, o texto com três proporções e o botão
-     "Keep as shot". Toda sessão com aviso âmbar (fotos que faltaram, proporções misturadas) deixa o
+     "Keep as shot" — resolvidos em 2026-11-03: botões ficam e guardam a escolha por sessão (hoje na
+     memória do app, `localStorage`; passa para a sessão quando o Export a usar), texto com três
+     proporções aprovado, "Keep as shot" fica. **Feito em 2026-11-03** (`docs/teste-manual.md`, seção 35):
+     o app mede a proporção na prévia de cada foto da sessão (como o Test shot simples). Toda sessão com aviso âmbar (fotos que faltaram, proporções misturadas) deixa o
      ícone dela âmbar na barra só de ícones da tela cheia (feito para "n missing" em 2026-11-02).
    - **Export sessions:** linha "Aspect ratio" (As shot, 3:2, 4:3, 16:9, 1:1) para Photos e Sequence;
      "As shot" com proporções misturadas avisa. Recorte único por sessão (a sequência não pode pular),

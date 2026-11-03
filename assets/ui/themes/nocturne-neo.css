@@ -1151,7 +1151,7 @@ body.timing-open .app { --controls-h: clamp(320px, 64vh, 720px); }
 .session-ghost .folder-add { display: none; }
 .session-ghost.stack { box-shadow: 4px 4px 0 -1px var(--noct-elevated), 4px 4px 0 0 var(--noct-border-strong), 8px 8px 0 -1px var(--noct-elevated), 8px 8px 0 0 var(--noct-border-strong), 0 12px 32px rgba(0, 0, 0, .55); }
 .session-ghost-count { position: absolute; bottom: 8px; right: 10px; padding: 3px 8px; background: var(--noct-primary); color: var(--noct-bg, #000); font: 700 10px var(--noct-font-mono); text-transform: uppercase; letter-spacing: .1em; white-space: nowrap; }
-body.session-drag { cursor: grabbing; user-select: none; -webkit-user-select: none; }
+body.session-drag, body.session-drag * { cursor: grabbing !important; user-select: none !important; -webkit-user-select: none !important; }  /* a mão fechada vale sobre o cursor de cada item */
 /* Área do projeto na lista enquanto se arrasta uma sessão de fora */
 .session-folders { position: relative; }
 .session-drop-zone { position: absolute; z-index: 1; pointer-events: none; box-sizing: border-box; border: 1px dashed var(--noct-border-strong); background: rgba(var(--noct-primary-rgb), .04); display: flex; align-items: flex-end; justify-content: center; padding: 6px; }
@@ -1377,6 +1377,7 @@ body.photo-drag, body.photo-drag * { cursor: grabbing !important; user-select: n
 body.mod-keys .folder-add:hover:not(:disabled) { background: none; border-color: transparent; }
 body.mod-keys .folder-add { cursor: default; }
 /* Legenda da barra só de ícones (tela cheia): aparece na hora, ao lado do ícone */
+.rail-tip .warn { color: var(--noct-pending); }  /* a parte do aviso (ex.: "5 missing") em âmbar */
 .rail-tip {
   position: fixed; z-index: 95; transform: translateY(-50%); pointer-events: none; white-space: nowrap;
   padding: 6px 10px; background: var(--noct-surface); border: 1px solid var(--noct-border-strong);
@@ -1493,6 +1494,18 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
   background: rgba(var(--noct-bg-rgb), .85); border: 1px solid var(--noct-pending); color: var(--noct-pending); cursor: help; }
 .frame-alert svg, .cs-ratio-alert svg { display: block; width: 13px; height: 13px; }
 .frame-alert:focus-visible { outline: 1px dashed var(--noct-pending); outline-offset: 2px; }
+/* Proporções misturadas na sessão (Parte 3 da Proporção) */
+.missing-tag.mixed-tag { border-style: dashed; cursor: help; }
+.gallery-title .mixed-tag { display: inline-block; margin: 0 0 0 10px; vertical-align: 2px; }
+.frame.ratio-warn { border-color: var(--noct-pending); border-style: dashed; }
+.frame.ratio-warn.selected { box-shadow: 0 0 16px rgba(var(--noct-pending-rgb), .25); }
+.frame.ratio-warn.selected .frame-badge { background: var(--noct-pending); border-color: var(--noct-pending); color: var(--noct-on-primary); }
+.frame-ratio { position: absolute; right: 3px; bottom: 3px; padding: 0 4px; background: rgba(var(--noct-bg-rgb), .85); border: 1px solid var(--noct-pending);
+  color: var(--noct-pending); font: 700 9px/14px var(--noct-font-mono); letter-spacing: .08em; }
+.dialog .dialog-extra.ratio-others { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 0 18px 14px; }
+.ratio-others-label { width: 100%; font: 700 10px var(--noct-font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--noct-text-dim); margin-bottom: 2px; }
+.ratio-chip .dim { color: var(--noct-text-dim); text-transform: none; letter-spacing: 0; }
+.dialog-actions .btn-left { margin-right: auto; }
 /* Explicação instantânea (data-itip) */
 .itip {
   position: fixed; z-index: 96; pointer-events: none; max-width: 300px;

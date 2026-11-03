@@ -113,6 +113,7 @@
   let busyAction = "";
   let shootCancelling = false;   // pediu para cancelar, esperando o núcleo parar
   let shootCancelled = false;    // o bullet time atual foi cancelado
+  let lastShootAt = 0;           // quando o último disparo começou/terminou (as sessões que chegam logo depois são dele)
   let shootPlan = null;          // plano enviado no último disparo (para explicar recusas)
   let shootMissing = [];         // fotos recusadas no disparo atual: { camera, index, gap }
   let camSettings = [];          // configurações de cada câmera (evento cameraSettings)
@@ -425,13 +426,17 @@
     if (e.key === "y" || e.shiftKey) doRedo(); else doUndo();
   }, true);
 
-  function dialog(title, text, actions) {
+  function dialog(title, text, actions, extra) {
     ui.dialogTitle.textContent = title;
     ui.dialogText.textContent = text;
     ui.dialogActions.innerHTML = "";
+    // Conteúdo extra abaixo do texto (ex.: as outras proporções no aviso "Mixed ratios")
+    const oldExtra = ui.dialogText.parentElement.querySelector(".dialog-extra");
+    if (oldExtra) oldExtra.remove();
+    if (extra) { extra.classList.add("dialog-extra"); ui.dialogText.after(extra); }
     actions.forEach((a) => {
       const b = document.createElement("button");
-      b.className = "btn " + (a.danger ? "btn-danger" : a.primary ? "btn-primary" : a.link ? "btn-link" : "btn-secondary");
+      b.className = "btn " + (a.danger ? "btn-danger" : a.primary ? "btn-primary" : a.link ? "btn-link" : "btn-secondary") + (a.left ? " btn-left" : "");
       b.textContent = a.label;
       b.addEventListener("click", () => { ui.dialogOverlay.classList.add("hidden"); a.onClick && a.onClick(); });
       ui.dialogActions.appendChild(b);
@@ -589,6 +594,12 @@
           }
           if (warn) { const why = opts.warnTip ? opts.warnTip(items[i]) : ""; a.dataset.itip = why; a.setAttribute("aria-label", why); }
           else if (a) a.remove();
+          // Etiqueta de texto no canto (ex.: "16:9" na sessão com proporções misturadas)
+          const text = warn && opts.warnLabel ? opts.warnLabel(items[i]) : "";
+          let lab = li.querySelector(".frame-ratio");
+          if (text && !lab) { lab = document.createElement("span"); lab.className = "frame-ratio"; li.querySelector(".frame-img").appendChild(lab); }
+          if (text) lab.textContent = text; else if (lab) lab.remove();
+          if (a && text) a.remove();  // a etiqueta substitui o ícone
         }
       });
       const active = el.carousel.children[index];
@@ -831,7 +842,7 @@
         root.classList.toggle("draggable", draggable);
         render();
       },
-      setHead(title, sub) { el.title.textContent = title || ""; el.sub.textContent = sub || ""; },
+      setHead(title, sub, tag) { el.title.textContent = title || ""; if (tag) el.title.appendChild(tag); el.sub.textContent = sub || ""; },
       refreshMarks() { markSelected(false); },  // (a proporção medida chegou depois das fotos)
       setActions(nodes) { el.actions.innerHTML = ""; nodes.forEach((n) => el.actions.appendChild(n)); },
       // Botões sobre a foto grande (canto superior direito)
@@ -1192,6 +1203,10 @@
   let photoKeys = false;
   const sessionGallery = Gallery(ui.sessionGallery, {
     multi: true,
+    // Proporções misturadas na sessão (Parte 3 da Proporção): as fotos fora da proporção mais comum ganham
+    // borda âmbar tracejada e a proporção no canto
+    warnItem: (item) => { const r = ratioInfoCached(item.session); return !!(r && r.mixed && r.marked.includes(item.group)); },
+    warnLabel: (item) => { const r = ratioInfoCached(item.session); return r ? r.byGroup[item.group] || "" : ""; },
     onPick: () => { photoKeys = true; },
     // Arrastar uma miniatura: para o lado muda a ordem; até o botão da lixeira apaga
     freeDrag: true,
@@ -1339,6 +1354,11 @@
     const known = sessions.map((x) => x.name);
     sessions = list || [];
     updateButtons();
+    // Proporções: sessões novas de um disparo são medidas já (e avisam se misturadas); o resto na fila
+    const fresh = known.length ? sessions.filter((x) => !known.includes(x.name)) : [];
+    const afterShoot = busyAction === "shoot" || Date.now() - lastShootAt < 20000;
+    if (afterShoot) fresh.forEach((x) => measureSessionRatios(x).then((info) => maybeWarnMixed(x, info)));
+    setTimeout(measureAllSessions, 0);
 
     const newest = sessions[0] || null;
     const current = currentSession && sessions.find((x) => x.name === currentSession.name);
@@ -1497,13 +1517,16 @@
       li.className = "folder" + (currentSession && currentSession.name === s.name ? " active" : "");
       li.dataset.name = s.name;
       li.dataset.tip = (s.label ? s.label + " · " : "") + label.date;  // legenda da barra só de ícones (tela cheia)
-      if (s.missing > 0) { li.classList.add("warn"); li.dataset.tip += " · " + s.missing + " missing"; }  // aviso âmbar: o ícone da barra só de ícones também fica âmbar
+      const mixed = ratioInfoCached(s.name) && ratioInfoCached(s.name).mixed;
+      const warns = [s.missing > 0 ? s.missing + " missing" : "", mixed ? "Mixed ratios" : ""].filter(Boolean);
+      if (warns.length) { li.classList.add("warn"); li.dataset.tipWarn = warns.join(" · "); }  // aviso âmbar: o ícone da barra só de ícones também fica âmbar
       if (projectOpen && !s.inProject && !notInProjectOpen) li.classList.add("hidden");
       li.innerHTML = icon("session", 16) + '<div><div class="folder-date"></div><div class="folder-meta"></div></div>';
       if (sessSel.has(s.name) && selectionActive()) li.classList.add("multi");
       li.querySelector(".folder-date").textContent = s.label ? s.label + " · " + label.date : label.date;
       li.querySelector(".folder-meta").textContent = [plural(count, "photo", "photos"), label.detail].filter(Boolean).join(" · ");
       if (s.missing > 0) li.querySelector(".folder-meta").after(missingTag(s.missing));
+      if (mixed) li.querySelector(".folder-meta").after(mixedTag(s.name, ratioInfoCached(s.name)));
       if (projectOpen) {
         // Só a etiqueta de editadas (estar no projeto é a posição na lista)
         if (s.inProject && s.edited > 0) li.querySelector(".folder-meta").after(projectTag(s));
@@ -1643,9 +1666,134 @@
 
   function sessionHead(session) {
     const label = sessionLabel(session.name);
+    const r = ratioInfoCached(session.name);
+    const mixed = r && r.mixed;
     sessionGallery.setHead(label.date,  // a data já tem os segundos
       editing.on ? "Drag the photos, or select and use the arrows (Shift+click or " + (upd.info && upd.info.os === "windows" ? "Ctrl" : "Cmd") + "+click selects several). Then save the order."
-                 : label.detail);
+                 : [mixed ? ratioShortText(r) : "", label.detail].filter(Boolean).join(" · "),
+      mixed ? mixedTag(session.name, r) : null);
+  }
+
+  // =================== Proporções misturadas numa sessão (Parte 3 da Proporção) ===================
+  // O app mede a proporção de cada foto na prévia (como o Test shot) e compara entre as câmeras da sessão.
+  // Fotos fora da proporção mais comum ganham a marca; a sessão ganha a etiqueta "Mixed ratios" (lista,
+  // cabeçalho, barra de ícones) e, no primeiro disparo com mistura, uma janela com o que fazer.
+  const RATIOS = { "3:2": 3 / 2, "4:3": 4 / 3, "16:9": 16 / 9, "1:1": 1 };
+  const RATIO_ORDER = ["3:2", "4:3", "16:9", "1:1"];
+  const ratioInfo = {};          // sessão → { key, byGroup, mixed, common, marked, keep, suggest, counts }
+  const ratioPending = {};       // sessão → Promise da medida em andamento
+  let ratioWarned = {};          // sessão → assinatura já avisada (só em memória: ao reabrir o app avisa de novo)
+  const ratioLogged = new Set(); // sessões já anotadas na Activity neste uso do app
+  let sessionCrop = {};          // sessão → proporção escolhida para o Export ("Crop on export")
+  try { sessionCrop = JSON.parse(localStorage.getItem("stillpoint.sessionCrop") || "{}") || {}; } catch (e) {}
+  function saveSessionCrop() { try { localStorage.setItem("stillpoint.sessionCrop", JSON.stringify(sessionCrop)); } catch (e) {} }
+  function ratioKey(session) { return session.photos.map((p) => p.file).join("|"); }
+  function ratioInfoCached(name) { const r = ratioInfo[name]; return r && r.done ? r : null; }
+  // Quanto da foto sobra ao recortar da proporção a para a b (fração da área)
+  function keepFraction(a, b) { const ra = RATIOS[a], rb = RATIOS[b]; if (!ra || !rb) return 1; return rb < ra ? rb / ra : ra / rb; }
+  function measureSessionRatios(session) {
+    const key = ratioKey(session);
+    const have = ratioInfo[session.name];
+    if (have && have.key === key) return ratioPending[session.name] || Promise.resolve(have);
+    const items = sessionItems(session);
+    const found = {};
+    const probes = items.filter((i) => i.file && i.previewable).map((item) => sessionPhoto(session.name, item.file, 320).then((url) => new Promise((done) => {
+      if (!url) return done();
+      const probe = new Image();
+      probe.onload = () => { found[item.group] = ratioName(probe.naturalWidth, probe.naturalHeight); done(); };
+      probe.onerror = () => done();
+      probe.src = url;
+    })));
+    const pending = Promise.all(probes).then(() => {
+      delete ratioPending[session.name];
+      const groups = Object.keys(found);
+      const counts = {};
+      groups.forEach((g) => { counts[found[g]] = (counts[found[g]] || 0) + 1; });
+      const present = Object.keys(counts);
+      // Proporção mais comum; em empate, a de menor área (decisão do dono, 2026-11-02)
+      // (a "comum" em empate é a de maior área num sensor 3:2, ex.: 3 em 3:2 e 3 em 16:9 → comum 3:2, marcadas as 16:9)
+      const common = present.slice().sort((a, b) => counts[b] - counts[a] || keepFraction("3:2", b) - keepFraction("3:2", a) || RATIO_ORDER.indexOf(a) - RATIO_ORDER.indexOf(b))[0] || "";
+      const marked = groups.filter((g) => found[g] !== common);
+      // Quanto sobra, em média por foto, ao recortar tudo para cada proporção
+      const keep = {};
+      RATIO_ORDER.forEach((t) => { keep[t] = groups.length ? Math.round(groups.reduce((sum, g) => sum + keepFraction(found[g], t), 0) / groups.length * 100) : 100; });
+      // Sugestão: a proporção presente na sessão que perde menos pixels
+      const suggest = present.slice().sort((a, b) => keep[b] - keep[a] || counts[b] - counts[a])[0] || common;
+      const info = { key, done: true, byGroup: found, counts, present, common, marked, keep, suggest, mixed: present.length > 1 };
+      ratioInfo[session.name] = info;
+      if (info.mixed && !ratioLogged.has(session.name)) { ratioLogged.add(session.name); log("Mixed ratios: " + ratioText(info, session), "warn", "Open Camera settings to match the cameras, or crop on export."); }
+      // Na tela: miniaturas, cabeçalho e lista
+      if (currentSession && currentSession.name === session.name) { sessionGallery.refreshMarks(); if (!playTimer) sessionHead(session); }
+      if (!sessDrag) renderSessionList();
+      return info;
+    });
+    ratioInfo[session.name] = { key, done: false };
+    ratioPending[session.name] = pending;
+    return pending;
+  }
+  // Mede as sessões ainda sem medida, uma de cada vez (as etiquetas da lista aparecem conforme ficam prontas)
+  let ratioQueueRunning = false;
+  function measureAllSessions() {
+    if (ratioQueueRunning) return;
+    const next = sessions.find((s) => { const r = ratioInfo[s.name]; return !r || r.key !== ratioKey(s); });
+    if (!next) return;
+    ratioQueueRunning = true;
+    measureSessionRatios(next).then(() => { ratioQueueRunning = false; measureAllSessions(); }, () => { ratioQueueRunning = false; });
+  }
+  // Número da câmera na sessão ("02"), a partir do grupo "02_T7_1"
+  function groupNumber(g) { return g.replace(/_.*$/, ""); }
+  // "Cameras 02 and 04 shot 16:9; the others 3:2." (três proporções: "Camera 02 shot 16:9, camera 04 shot 4:3; the others 3:2.")
+  function ratioText(info) {
+    const parts = info.present.filter((r) => r !== info.common).map((r) => {
+      const cams = Object.keys(info.byGroup).filter((g) => info.byGroup[g] === r).map(groupNumber).sort();
+      const who = cams.length === 1 ? cams[0] : cams.slice(0, -1).join(", ") + " and " + cams[cams.length - 1];
+      return { plural: cams.length > 1, text: who + " shot " + r };
+    });
+    const list = parts.map((p, i) => (i === 0 ? (p.plural ? "Cameras " : "Camera ") : (p.plural ? "cameras " : "camera ")) + p.text).join(", ");
+    return list + "; the others " + info.common + ".";
+  }
+  // "2 shot 16:9" (subtítulo da sessão)
+  function ratioShortText(info) {
+    return info.present.filter((r) => r !== info.common).map((r) => Object.keys(info.byGroup).filter((g) => info.byGroup[g] === r).length + " shot " + r).join(", ");
+  }
+  function mixedTipText(name, info) {
+    return ratioText(info) + (sessionCrop[name] ? " Crop on export: " + sessionCrop[name] + " (keeps " + info.keep[sessionCrop[name]] + "%)." : "");
+  }
+  function mixedTag(name, info) {
+    const t = el("span", "missing-tag mixed-tag", "Mixed ratios");
+    t.dataset.itip = mixedTipText(name, info);
+    return t;
+  }
+  function ratioButtonLabel(r, info) { return "Crop on export to " + r + " (keeps " + info.keep[r] + "%)"; }
+  function chooseSessionCrop(name, r, info) {
+    sessionCrop[name] = r;
+    saveSessionCrop();
+    log("Crop on export: " + r + " for " + sessionLabel(name).date, "ok", "Keeps " + info.keep[r] + "% of the photos on average. The photos are not changed; Export sessions will use it.");
+    if (currentSession && currentSession.name === name) sessionHead(currentSession);
+  }
+  // Aviso (janela), uma vez por combinação de câmeras/proporções por uso do app
+  function maybeWarnMixed(session, info) {
+    if (!info.mixed) return;
+    const sig = Object.keys(info.byGroup).sort().map((g) => g + "=" + info.byGroup[g]).join(",");
+    if (ratioWarned[sig]) return;
+    ratioWarned[sig] = true;
+    // Linha do disparo em âmbar
+    if (/^Done/.test(ui.progress.textContent) && !/Mixed ratios/.test(ui.progress.textContent)) { ui.progress.textContent += " · Mixed ratios"; ui.progress.classList.add("warn"); }
+    const others = el("div", "ratio-others");
+    others.appendChild(el("span", "ratio-others-label", "Other ratios on export"));
+    RATIO_ORDER.filter((r) => r !== info.suggest).forEach((r) => {
+      const b = el("button", "btn btn-secondary btn-small ratio-chip"); b.type = "button";
+      b.appendChild(document.createTextNode(r + " "));
+      b.appendChild(el("span", "dim", "· keeps " + info.keep[r] + "%"));
+      b.addEventListener("click", () => { ui.dialogOverlay.classList.add("hidden"); chooseSessionCrop(session.name, r, info); });
+      others.appendChild(b);
+    });
+    dialog("Mixed ratios",
+      ratioText(info) + "\n\nThe photos in this session do not all have the same shape. You can match the cameras, or crop every photo to one ratio when you export (the photos are not changed).",
+      [{ label: "Keep as shot", link: true, left: true },
+       { label: "Open Camera settings", onClick: () => $("camSettingsBtn").click() },
+       { label: ratioButtonLabel(info.suggest, info), primary: true, onClick: () => chooseSessionCrop(session.name, info.suggest, info) }],
+      others);
   }
 
   function showSession(session, keepIndex) {
@@ -1666,6 +1814,7 @@
     const items = sessionItems(session);
     sessionTitles = items.map((i) => i.title).join("|");
     sessionGallery.setItems(items, keepIndex ? sessionGallery.index : 0);
+    measureSessionRatios(session);  // (as marcas de proporção aparecem quando a medida fica pronta)
     if (resume && isFullscreen() && !editing.on) togglePlay();
   }
 
@@ -1791,6 +1940,8 @@
     if (t.hasAttribute("title")) { t.dataset.savedTitle = t.title; t.removeAttribute("title"); }
     railTipOn = t;
     railTip.textContent = text;
+    // A parte do aviso (data-tip-warn) em âmbar
+    if (t.dataset.tipWarn) { railTip.appendChild(document.createTextNode(" · ")); railTip.appendChild(el("span", "warn", t.dataset.tipWarn)); }
     const r = t.getBoundingClientRect();
     railTip.style.left = (sideAside.getBoundingClientRect().right + 8) + "px";
     railTip.style.top = (r.top + r.height / 2) + "px";
@@ -3855,7 +4006,7 @@
     busy(e) {
       busy = e.busy;
       busyAction = e.busy ? e.action : "";
-      if (e.busy && e.action === "shoot") { shootCancelling = false; shootCancelled = false; ui.progress.classList.remove("warn"); }
+      if (e.busy && e.action === "shoot") { shootCancelling = false; shootCancelled = false; ui.progress.classList.remove("warn"); lastShootAt = Date.now(); }
       activity.busyText = "";
       renderActivity();
       if (busy) {
@@ -3996,6 +4147,7 @@
     },
     sequenceFinished(e) {
       if (orderCapture()) return;
+      lastShootAt = Date.now();
       if (shootCancelled) return;  // já avisado em sequenceCancelled
       ui.progress.classList.remove("warn");
       if (e.completed && shootMissing.length) {

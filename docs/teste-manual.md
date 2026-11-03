@@ -1281,6 +1281,35 @@ projeto num HD externo.
       verde); passar o mouse mostra a data e "· n missing".
 - [ ] Esc fecha a janela (no passo 2, cancela o teste antes).
 
+## 35. Aviso "Mixed ratios" na sessão (2.16.0, Parte 3 da Proporção)
+
+Com `STILLPOINT_FAKE_CAMERAS=9` as câmeras 02 e 04 estão em 16:9 e as outras em 3:2, então todo disparo sai misturado.
+
+- [ ] Disparar "It's bullet time". Quando a sessão nova aparece, abre uma janela "Mixed ratios" por cima da tela:
+      texto "Cameras 02 and 04 shot 16:9; the others 3:2." e a explicação; embaixo, "Other ratios on export" com os
+      botões "4:3 · keeps 86%", "16:9 · keeps 88%", "1:1 · keeps 64%" (os três que não são a sugestão); no rodapé,
+      à esquerda o link "Keep as shot", à direita "Open Camera settings" e o verde "Crop on export to 3:2 (keeps
+      97%)". Esc ou clicar fora = "Keep as shot".
+- [ ] Marcas na sessão (ficam para sempre): na lista Sessions, etiqueta tracejada âmbar "Mixed ratios" abaixo de
+      "9 photos"; no cabeçalho, a mesma etiqueta ao lado da data e o subtítulo "2 shot 16:9"; as miniaturas 02 e 04
+      com borda âmbar tracejada e "16:9" no canto de baixo à direita; selecionada, a etiqueta do número fica âmbar.
+      Passar o mouse na etiqueta "Mixed ratios" abre na hora a caixa com o texto completo.
+- [ ] Linha embaixo do botão de disparo: "Done. The new session is shown above · Mixed ratios" em âmbar. Activity:
+      "Mixed ratios: cameras 02 and 04 shot 16:9; the others 3:2." em âmbar.
+- [ ] "Crop on export to 3:2 (keeps 97%)" (ou um dos botões menores): a janela fecha, o Activity diz "Crop on
+      export: 3:2 for …" e a caixa da etiqueta "Mixed ratios" passa a terminar com "Crop on export: 3:2 (keeps
+      97%)." A escolha fica guardada por sessão para o Export (a linha "Aspect ratio" do Export é a Parte 4).
+- [ ] "Open Camera settings": a janela fecha e o Camera settings abre.
+- [ ] Disparar de novo sem mudar nada: a sessão nova ganha as marcas, mas a janela não abre. Mudar a 04 para 3:2
+      no Camera settings e disparar: só a 02 fica diferente, a janela abre de novo ("Camera 02 shot 16:9; the
+      others 3:2."). Fechar e abrir o app e disparar: a janela abre de novo.
+- [ ] Tela cheia com a barra só de ícones: o ícone da sessão misturada fica âmbar; a legenda ao passar o mouse
+      mostra a data e "· Mixed ratios" em âmbar (com fotos que faltaram, "· 5 missing · Mixed ratios").
+- [ ] Sessões antigas misturadas (já existentes ao abrir o app): ganham as marcas conforme o app mede as fotos
+      (lista, cabeçalho, miniaturas), sem janela.
+- [ ] Sessão com todas as fotos iguais (todas as câmeras em 3:2 e a 02 em 16:9 no Ratio? não: a 02 sempre sai
+      16:9): para ver uma sessão sem marca, apagar a foto 02 da sessão (Delete) → a etiqueta some.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |
