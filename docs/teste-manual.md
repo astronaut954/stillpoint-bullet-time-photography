@@ -1354,7 +1354,7 @@ proporção. O alinhamento — referências, Move/Size/Rotate — vem no pedaço
       resumo ("Originals + JPG · High" ou "Off · tick the box in the tab to export it").
 - [ ] Ao abrir o Export a prévia está sempre visível (mesmo que da última vez tenha ficado escondida); "Hide
       preview" esconde e assim fica ao trocar de seção, até fechar e abrir a janela de novo.
-- [ ] Aba Framing: em cima, a prévia (260 px) com o recorte sobre a foto (com "As shot" a etiqueta diz "As shot:
+- [ ] Aba Framing: em cima, a prévia (200 px, a mesma altura das outras abas) com o recorte sobre a foto (com "As shot" a etiqueta diz "As shot:
       nothing is cut · choose a ratio below"); embaixo, a fileira de miniaturas (clique ou ← → trocam a foto da
       prévia); embaixo dela, as linhas "Aspect ratio" (As shot · 3:2 · 4:3 · 16:9 · 1:1, "keeps n%", a caixa "Same
       size for all photos"), a nota âmbar de mistura e "Position" (nove pontos). Mesma estrutura das outras abas.
