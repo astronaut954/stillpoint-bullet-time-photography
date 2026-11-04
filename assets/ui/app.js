@@ -2878,7 +2878,7 @@
       const box = li.querySelector("input");
       box.checked = exp.selected.has(s.name);
       if (!li.title) li.title = label.date;  // na tela de alinhamento a lista mostra só a miniatura: a data fica na dica
-      li.tabIndex = exp.aligning && s.name === exp.active ? 0 : -1;
+      if (exp.step !== 2) li.tabIndex = exp.aligning && s.name === exp.active ? 0 : -1;
       // legenda instantânea (como a barra da tela cheia): data, fotos e o que vai sair
       li.dataset.tip = [s.label || "", label.date, plural(sessionItems(s).length, "photo", "photos"), label.detail].filter(Boolean).join(" · ");
       { const r = ratioInfoCached(s.name); const warns = []; if (s.missing) warns.push(s.missing + " missing"); if (r && r.mixed) warns.push("Mixed ratios"); if (warns.length) li.dataset.tipWarn = warns.join(" · "); }
@@ -4284,7 +4284,8 @@
     if (body) body.classList.toggle("aligning", !!exp.aligning);  // lista de sessões só com as miniaturas (como a barra da tela cheia)
     // Na tela de alinhamento a caixa de cada sessão some: a lista vira uma parada só do Tab (a sessão aberta) e
     // ↑ ↓ trocam de sessão (decisão do dono, 2026-11-03)
-    [...$("exportList").children].forEach((li) => { li.tabIndex = exp.aligning && li.dataset.name === exp.active ? 0 : -1; });
+    // (no passo 2 a linha da lista é o próprio controle do Tab: quem cuida é o exportRoving)
+    if (exp.step !== 2) [...$("exportList").children].forEach((li) => { li.tabIndex = exp.aligning && li.dataset.name === exp.active ? 0 : -1; });
     // Entrar ou sair da tela de alinhamento: a coluna surge num fade curto (a lista estreita/alarga com transição no CSS)
     if (exp.aligningShown !== !!exp.aligning) {
       exp.aligningShown = !!exp.aligning;

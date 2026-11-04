@@ -1526,6 +1526,9 @@ Com `STILLPOINT_FAKE_CAMERAS=9` e algumas sessões. Abrir "Export sessions".
       lenticular print the subject changes size between photos. Choose a ratio to give every photo the same frame."
       Escolhendo uma proporção (ou alinhando uma foto), vira uma nota comum: "… Every photo goes through the same frame,
       so nothing jumps."
+- [ ] Anel de foco (Tab): inteiro em volta da caixa "Same framing for all ticked sessions" (não cortado à esquerda) e
+      dentro de cada botão de "Aspect ratio" e dos outros grupos de botões (não comido em cima). No passo 2, o Tab para
+      na lista de sessões (anel em volta da linha) e ↑ ↓ trocam de sessão.
 - [ ] Fechar ("Cancel" → "Leave") e abrir de novo: abre no passo onde parou, com tudo como estava. Desfazer (⌘Z) vale nos
       três passos.
 

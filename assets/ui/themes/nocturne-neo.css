@@ -726,7 +726,9 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
 /* As linhas de configuração rolam sozinhas (a foto grande e a fileira ficam fixas acima) */
 /* A barra de rolagem fica num espaço reservado, afastada 8 px das caixas e sem estreitar nada
    quando aparece */
-.export-rows { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 14px; padding-right: 18px; margin-right: -18px; }
+.export-rows { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 14px; padding-right: 18px; margin-right: -18px;
+  /* folga para o anel de foco das caixas e botões encostados na borda (a área que rola cortava o anel) */
+  padding-left: 5px; margin-left: -5px; padding-top: 5px; margin-top: -5px; padding-bottom: 5px; }
 .export-preview { position: relative; height: 200px; flex: 0 0 auto; background: #000; border: 1px solid var(--noct-border); display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .export-preview img { max-width: 100%; max-height: 100%; object-fit: contain; }
 .export-preview .stage-caption b { margin-right: 6px; }
@@ -1820,3 +1822,11 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 html.kbd-focus .export-tab .export-tab-check input:focus + .save-check { outline: 2px solid var(--noct-primary); outline-offset: 3px; }
 .export-tab.on .export-tab-check input:focus-visible + .save-check,
 html.kbd-focus .export-tab.on .export-tab-check input:focus + .save-check { outline-color: var(--noct-on-primary); box-shadow: 0 0 0 5px var(--noct-primary); }
+
+/* Anel de foco dos botões de um grupo (proporções, formatos…) por dentro do botão: por fora ele ficava escondido sob o
+   vizinho e a borda do grupo */
+.segmented button:focus-visible, html.kbd-focus .segmented button:focus { outline-offset: -4px; }
+.segmented button.on:focus-visible, html.kbd-focus .segmented button.on:focus { outline-color: var(--noct-on-primary); }
+/* Linha da lista no passo 2 (sem caixa): o anel em volta da linha */
+.export-body.step-2 .export-item:focus-visible, html.kbd-focus .export-body.step-2 .export-item:focus { outline: 2px solid var(--noct-primary); outline-offset: 2px; }
+.export-list { padding-left: 14px; padding-right: 14px; }
