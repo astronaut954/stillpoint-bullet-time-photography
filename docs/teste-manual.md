@@ -1340,7 +1340,7 @@ Com `STILLPOINT_FAKE_CAMERAS=9` as câmeras 02 e 04 estão em 16:9 e as outras e
 - [ ] Sessão sem mistura: com a 04 em 3:2, apagar a foto 02 de uma sessão (Delete) → as marcas e a etiqueta somem
       (a simulada 02 sempre sai 16:9, então é o único jeito de ter uma sessão toda igual).
 
-## 36. Export: seção Framing (proporção, posição, Same size) e Placement do Lenticular (2.16.0, Parte 4)
+## 36. Export: seção Framing (proporção e posição) e Placement do Lenticular (2.16.0, Parte 4)
 
 Com `STILLPOINT_FAKE_CAMERAS=9` (02 e 04 em 16:9). Abrir "Export sessions" com uma sessão misturada marcada.
 (Decisão do dono, 2026-11-03: a proporção e o alinhamento ficam juntos na seção "Framing"; este pedaço é só a
@@ -1356,8 +1356,9 @@ proporção. O alinhamento — referências, Move/Size/Rotate — vem no pedaço
       preview" esconde e assim fica ao trocar de seção, até fechar e abrir a janela de novo.
 - [ ] Aba Framing: em cima, a prévia (200 px, a mesma altura das outras abas) com o recorte sobre a foto (com "As shot" a etiqueta diz "As shot:
       nothing is cut · choose a ratio below"); embaixo, a fileira de miniaturas (clique ou ← → trocam a foto da
-      prévia); embaixo dela, as linhas "Aspect ratio" (As shot · 3:2 · 4:3 · 16:9 · 1:1, "keeps n%", a caixa "Same
-      size for all photos"), a nota âmbar de mistura e "Position" (nove pontos). Mesma estrutura das outras abas.
+      prévia); embaixo dela, as linhas "Aspect ratio" (As shot · 3:2 · 4:3 · 16:9 · 1:1, "keeps n%"; sem a caixa "Same size":
+      todas as fotos convertidas saem sempre no mesmo tamanho, decisão do dono de 2026-11-03), a nota âmbar de mistura
+      e "Position" (nove pontos). Mesma estrutura das outras abas.
 - [ ] Aba Framing: no canto superior esquerdo da prévia, o botão "Align photos" (ícone de dois quadros sobrepostos
       e o texto; dica "Align photos: move, resize and rotate each photo over the others"). Não há modo teatro nesta
       aba (o botão "< >" é só do Lenticular, que não mudou). Com alguma foto alinhada, uma etiqueta "Aligned" no
@@ -1367,9 +1368,8 @@ proporção. O alinhamento — referências, Move/Size/Rotate — vem no pedaço
       tracejado cobre tudo ("Nothing to cut"). "Position": clicar num ponto move o quadro; o ponto aceso
       acompanha o arraste. Uma posição para a sessão inteira.
 - [ ] Exportar (Photos convertidas em JPG + Sequence MP4) com 3:2: no Finder, as fotos 02 e 04 convertidas saem
-      3:2 (cortadas nas laterais), as outras inteiras; os Originals continuam 16:9; o MP4 não pula. Com "Same
-      size" ligado: todas as convertidas com o mesmo tamanho em pixels (o da menor). Com "As shot": nada é
-      cortado.
+      3:2 (cortadas nas laterais), as outras inteiras; os Originals continuam 16:9; o MP4 não pula; todas as convertidas saem com o mesmo tamanho em pixels (o da
+      menor câmera, sempre). Com "As shot": nada é cortado.
 - [ ] Fechar e abrir o Export (e o app): a proporção e a posição voltam para essa sessão (session.json). A caixa
       da etiqueta "Mixed ratios" (mouse em cima) mostra a escolha.
 - [ ] Lenticular: ao entrar na aba, a prévia abre em "Interlaced" (o seletor é Interlaced · Tilt, nessa ordem).
@@ -1424,16 +1424,20 @@ direita; a lista de sessões continua à esquerda da janela.
       miniatura mostra na hora, ao lado, a legenda no visual do app (data, fotos, aviso âmbar se houver), como na barra
       da tela cheia. "Back to Framing" traz a lista completa de volta. As barras de opacidade têm o visual do app
       (trilho fino, cursor quadrado verde). A coluna de controles não rola para o lado.
-- [ ] Rolar a coluna de controles até "Aspect ratio" e clicar em "Same size for all photos" (ou em 3:2): a coluna fica
-      onde estava, sem subir. O mesmo na aba Framing normal, com as linhas roladas.
+- [ ] Rolar a coluna de controles até "Aspect ratio" e clicar em 3:2: a coluna fica onde estava, sem subir. O mesmo na
+      aba Framing normal, com as linhas roladas.
 - [ ] Aba Lenticular, "Interlaced": a legenda de baixo é uma linha curta ("Interlaced 18500 × 12831 px · 30 × 20 cm ▸");
       clicar nela abre o resto (px por lente, faixas, instruções) e clicar de novo recolhe. "Hide preview" e "Show
       preview" com o Interlaced: volta na hora, sem travar (a imagem entrelaçada fica guardada enquanto nada muda).
 - [ ] Afastar muito uma foto (Move X 7000): o quadro comum some e "Common frame" avisa em âmbar "The photos do not
       overlap: move them closer, or Reset." "Reset photo" volta a 04 a zero; "Reset all" zera todas.
-- [ ] "Aspect ratio" na coluna (As shot · 3:2 · 4:3 · 16:9 · 1:1, "Same size for all photos") e "Position": o quadro
-      âmbar corta o quadro comum (não cada foto) e segue os nove pontos; a mesma escolha aparece na aba Framing ao
-      voltar ("Back to Framing"), e a prévia do Framing ganha a etiqueta "Aligned".
+- [ ] Último bloco da coluna (sem título repetido): "Aspect ratio" (As shot · 3:2 · 4:3 · 16:9 · 1:1) é a mesma escolha
+      da aba Framing e vale para a sessão inteira; o quadro neon fica onde a aba Framing o deixou (a posição do recorte
+      só muda lá). "Position" (nove pontos) aqui move a foto atual dentro da folga que ela tem sobre a área útil: com
+      a 04 em Size 120%, o ponto da esquerda cola o lado esquerdo da foto no da área, o do meio centra; arrastar
+      também move só a foto. Ao voltar ("Back to Framing") a prévia do Framing ganha a etiqueta "Aligned".
+- [ ] Entrar em "Align photos" e voltar: a lista de sessões estreita/alarga com transição e a coluna surge num fade
+      curto.
 - [ ] Fechar e abrir o Export, e fechar e abrir o app: o alinhamento volta (session.json tem "align").
 - [ ] Exportar (Photos convertidas em JPG + Sequence MP4 + Lenticular Fill) uma sessão com a 04 movida 300 px para a
       direita e girada 2°: no Finder, todas as JPG convertidas têm o mesmo tamanho em pixels (o quadro comum, menor que

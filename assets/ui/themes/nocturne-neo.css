@@ -1633,7 +1633,12 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .align-rows .export-label { min-width: 0; }
 /* Na tela de alinhamento a lista de sessões fica só com as miniaturas, como a barra da tela cheia; a data aparece
    ao passar o mouse (title) */
+.export-body { transition: grid-template-columns .28s ease; }
 .export-body.aligning { grid-template-columns: 92px minmax(0, 1fr); }
+/* Entrar/sair da tela de alinhamento: a coluna da direita surge num fade curto */
+@keyframes export-layout-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.export-settings.layout-change > * { animation: export-layout-in .28s ease both; }
+@media (prefers-reduced-motion: reduce) { .export-settings.layout-change > * { animation: none; } .export-body { transition: none; } }
 .export-body.aligning .export-sessions .save-tools { display: none; }
 .export-body.aligning .export-list { padding: 12px 8px; gap: 8px; align-items: center; }
 .export-body.aligning .export-item { grid-template-columns: 64px; gap: 0; padding: 4px; }

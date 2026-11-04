@@ -2461,7 +2461,7 @@
   function sameKind(a, b, kind) {
     const x = settingsFor(a), y = settingsFor(b);
     const keys = kind === "framing" ? ["crop"] : kind === "photos" ? ["photos"] : kind === "sequence" ? ["seq"] : ["lent"];
-    const pick = (st) => keys.map((k) => { const v = Object.assign({}, st[k]); delete v.loaded; return v; }).concat(kind === "framing" ? [!!st.photos.sameSize] : []);
+    const pick = (st) => keys.map((k) => { const v = Object.assign({}, st[k]); delete v.loaded; return v; });
     return JSON.stringify(pick(x)) === JSON.stringify(pick(y)) && (kind === "framing" || !!x.outputs[kind] === !!y.outputs[kind]);
   }
   function sameAsActive(name) {
@@ -2486,7 +2486,8 @@
     const base = { naming: { kind: "date", text: "", date: true, position: "after" },
                    outputs: { photos: true, sequence: false, lenticular: false },
                    // original: copiar como a câmera salvou; convert + format: uma cópia convertida (os dois podem)
-                   photos: { original: true, convert: false, format: "jpg", quality: "high", sameSize: false },
+                   // sameSize sempre ligado (decisão do dono, 2026-11-03): um recorte para a sessão inteira, todas as fotos no mesmo tamanho
+                   photos: { original: true, convert: false, format: "jpg", quality: "high", sameSize: true },
                    // Parte 4 da Proporção: um recorte por sessão (Converted e Sequence; Lenticular usa só a posição)
                    crop: { ratio: "asshot", x: 0.5, y: 0.5, loaded: false },
                    // Pedaço 2 do Framing: alinhamento por foto (arquivo → { dx, dy, scale, rot }), em session.json
@@ -2602,7 +2603,7 @@
     if (kind === "framing") {
       const info = ratioInfoCached(session.name);
       const r = st.crop.ratio === "asshot" || !st.crop.ratio ? "As shot" : st.crop.ratio;
-      return r + (info && info.mixed && r === "As shot" ? " ⚠ mixed ratios" : "") + (st.photos.sameSize ? " · same size" : "");
+      return r + (info && info.mixed && r === "As shot" ? " ⚠ mixed ratios" : "");
     }
     if (kind === "photos") {
       const p = st.photos;
@@ -2629,7 +2630,7 @@
     if (exportPrefs && (OUTPUT_KINDS.includes(exportPrefs.mode) || exportPrefs.mode === "framing")) exp.mode = exportPrefs.mode;
     if (exportPrefs && exportPrefs.collapsed) exp.collapsed = Object.assign({}, exportPrefs.collapsed);
     exp.previewHidden = false;  // a prévia abre sempre visível; "Hide preview" vale até fechar a janela (decisão do dono, 2026-11-03)
-    exp.aligning = false;
+    exp.aligning = false; exp.aligningShown = false;
     exp.project = Array.isArray(projectNames);
     const all = exportable();
     // Salvando para fechar: só as que ainda não foram salvas (as já salvas ficam marcadas fora)
@@ -3355,12 +3356,11 @@
     const r = row("Aspect ratio");
     r.appendChild(segmented(CROP_RATIOS, st.crop.ratio, (v) => { st.crop.ratio = v; cropSave(session, st); rerender(); }));
     if (st.crop.ratio !== "asshot" && info && info.keep && info.keep[st.crop.ratio] != null) r.appendChild(el("span", "export-keep", "keeps " + info.keep[st.crop.ratio] + "%"));
-    r.appendChild(checkOption("Same size for all photos", !!st.photos.sameSize, (v) => { st.photos.sameSize = v; rerender(); }));
     box.appendChild(r);
     if (info && info.mixed) box.appendChild(el("div", "export-note exp-warn", "Mixed ratios · " + ratioText(info).replace(/^Camera/, "camera") +
       ' "As shot" keeps each photo as it is; the sequence will jump.' + (sessionCrop[session.name] ? " The ratio chosen in the Mixed ratios window is already selected." : "")));
     addTip(box, "The shape every export gets: converted photos, the sequence and the lenticular print (Fill) are cut to it; the originals are never cropped. " +
-      "Same size: every converted photo is reduced to the size of the smallest camera, so all files have the same pixel size.", "Aspect ratio");
+      "One crop for the whole session, and every converted photo comes out with the same pixel size (the smallest camera's).", "Aspect ratio");
     if (st.crop.ratio !== "asshot") {
       const pos = row("Position");
       const dots = el("div", "crop-dots");
@@ -3496,7 +3496,7 @@
 
     // Coluna de controles
     const panel = el("div", "align-panel");
-    const block = (title, extra) => { const b = el("div", "align-block"); const h = el("h3", "", title); if (extra) h.appendChild(extra); b.appendChild(h); panel.appendChild(b); return b; };
+    const block = (title, extra) => { const b = el("div", "align-block"); if (title) { const h = el("h3", "", title); if (extra) h.appendChild(extra); b.appendChild(h); } panel.appendChild(b); return b; };
     const refs = block("References");
     // Opacidade: uma barra por referência; a barra "All" move as três juntas (decisão do dono, 2026-11-03)
     if (!alignPrefs.op) alignPrefs.op = {};
@@ -3592,6 +3592,22 @@
     };
     let lockFlash = 0;
     const stepOnce = (change) => { lockStart(); tryApply(change); sync(); layout(); save(); };
+    // Até onde a foto pode ir num eixo sem descobrir a área útil (procura a partir de onde está)
+    const reach = (axis, dir) => {
+      const sz = sizes[item.file]; if (!sz) return a[axis];
+      let lo = a[axis], hi = a[axis] + dir * Math.max(sz.w, sz.h) * a.scale;
+      if (!covers(Object.assign({}, a, { [axis]: lo }))) return a[axis];
+      if (covers(Object.assign({}, a, { [axis]: hi }))) return hi;
+      for (let i = 0; i < 30; i++) { const mid = (lo + hi) / 2; if (covers(Object.assign({}, a, { [axis]: mid }))) lo = mid; else hi = mid; }
+      return lo;
+    };
+    const placePhoto = (x, y) => {
+      lockStart();
+      const minX = reach("dx", -1), maxX = reach("dx", 1), minY = reach("dy", -1), maxY = reach("dy", 1);
+      // Ponto da esquerda = a foto empurrada para a esquerda até o limite (o seu lado esquerdo cola no da área)
+      a.dx = Math.round(minX + (maxX - minX) * x); a.dy = Math.round(minY + (maxY - minY) * y);
+      sync(); layout(); save();
+    };
     // Segurar o − ou o + repete o passo (400 ms para começar, depois a cada 60 ms)
     const holdButton = (icon, title, step, bigStep, apply) => {
       const b = button("", () => {}, { icon, title, kind: "btn-secondary" });
@@ -3631,9 +3647,28 @@
     self.appendChild(resets);
     const cf = el("div", "align-cf", "Measuring the photos…");  // o quadro comum numa linha, aqui mesmo
     self.appendChild(cf);
-    const ar = block("Aspect ratio");
+    // Proporção (a mesma da aba Framing; vale para a sessão inteira) e a posição da foto atual dentro da folga que
+    // ela tem sobre a área útil (decisão do dono, 2026-11-03: o recorte não se move aqui; a foto, sim)
+    const ar = block("");
     const arRows = el("div", "align-rows");
-    framingRows(session, st, arRows, rerender);
+    {
+      const info = ratioInfoCached(session.name);
+      const r = row("Aspect ratio");
+      r.appendChild(segmented(CROP_RATIOS, st.crop.ratio, (v) => { st.crop.ratio = v; cropSave(session, st); rerender(); }));
+      if (st.crop.ratio !== "asshot" && info && info.keep && info.keep[st.crop.ratio] != null) r.appendChild(el("span", "export-keep", "keeps " + info.keep[st.crop.ratio] + "%"));
+      arRows.appendChild(r);
+      addTip(arRows, "The shape every export gets, for the whole session; the crop frame stays where the Framing tab put it.", "Aspect ratio");
+      const pos = row("Position");
+      const dots = el("div", "crop-dots");
+      const names = ["Top left", "Top", "Top right", "Left", "Center", "Right", "Bottom left", "Bottom", "Bottom right"];
+      [0, 0.5, 1].forEach((y, yi) => [0, 0.5, 1].forEach((x, xi) => {
+        const d = el("button", "crop-dot"); d.type = "button"; d.title = names[yi * 3 + xi];
+        d.addEventListener("click", () => placePhoto(x, y));
+        dots.appendChild(d);
+      }));
+      pos.append(dots, el("span", "export-note-inline", "Where this photo sits in the room it has over the frame."));
+      arRows.appendChild(pos);
+    }
     ar.appendChild(arRows);
     wrap.appendChild(panel);
     outer.insertBefore(wrap, rows);
@@ -3903,6 +3938,12 @@
     outer.classList.toggle("aligning", !!exp.aligning);
     const body = document.querySelector(".export-body");
     if (body) body.classList.toggle("aligning", !!exp.aligning);  // lista de sessões só com as miniaturas (como a barra da tela cheia)
+    // Entrar ou sair da tela de alinhamento: a coluna surge num fade curto (a lista estreita/alarga com transição no CSS)
+    if (exp.aligningShown !== !!exp.aligning) {
+      exp.aligningShown = !!exp.aligning;
+      outer.classList.remove("layout-change"); void outer.offsetWidth; outer.classList.add("layout-change");
+      setTimeout(() => outer.classList.remove("layout-change"), 400);
+    }
     if (exp.aligning) { exp.keyNav = null; alignScreen(session, items, st, outer, rows, top, rerender); return; }
 
     // Monta a prévia (só a da seção em foco entra na tela) e as configurações de uma saída
@@ -4520,7 +4561,7 @@
       o.lenticular ? 1 : 0, lentPitch(l), l.dpi, (l.widthCm / CM_PER_IN).toFixed(4), (l.heightCm / CM_PER_IN).toFixed(4), l.effect, l.reverse ? 1 : 0,
       l.cropMarks ? 1 : 0, l.alignMarks ? 1 : 0, l.bleedMm || 0, l.lpi,
       // Parte 4 da Proporção: 25 proporção | 26 posição x | 27 posição y | 28 same size | 29 placement | 30 faixa
-      st.crop.ratio || "asshot", st.crop.x.toFixed(3), st.crop.y.toFixed(3), st.photos.sameSize ? 1 : 0, l.placement || "fill", lentBand].join("|");
+      st.crop.ratio || "asshot", st.crop.x.toFixed(3), st.crop.y.toFixed(3), 1, l.placement || "fill", lentBand].join("|");
   }
 
   function runExport(deleteRest) {
