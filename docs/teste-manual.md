@@ -1523,6 +1523,9 @@ Com `STILLPOINT_FAKE_CAMERAS=9` e algumas sessões. Abrir "Export sessions".
       cabe na parte comum às 16:9, 759 × 506 nas simuladas), e o passo 2 mostra exatamente essa parte. Trocar 3:2 · 4:3 ·
       16:9 · 1:1 e "Position" e comparar foto a foto nos dois passos (inclusive as 16:9). Com fotos alinhadas, o quadro
       do passo 1 aparece deslocado (e girado) sobre a foto como ela vai sair.
+- [ ] Lenticular (passo 2), vista "Interlaced": as faixas de cada foto já com o Framing do passo 1 (com 3:2 numa sessão
+      misturada, sem as bordas que o canvas corta; com fotos alinhadas, deslocadas e giradas). Trocar a proporção no
+      passo 1 e voltar: o Interlaced é montado de novo.
 - [ ] Passo 1 sem "Hide preview" (a prévia fica sempre à vista; no passo 2 continua na linha das abas).
 - [ ] Alinhar exige uma proporção (decisão do dono, 2026-11-04, opção B): numa sessão em "As shot", "Align photos" continua
       ativo; clicar abre a janela "Choose a ratio first" com os botões 3:2 · 4:3 · 16:9 · 1:1 ("keeps n%"; o que perde

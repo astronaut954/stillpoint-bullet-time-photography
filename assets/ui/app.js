@@ -4580,7 +4580,7 @@
         const horizontal = l.effect !== "3d";
         // A imagem inteira é cara de montar: fica guardada enquanto nada que entra nela muda (sessão, fotos,
         // lâmina, tamanho, marcas, recorte, Placement, faixa)
-        const cacheKey = [session.name, items.map((i) => i.file).join(","), JSON.stringify(l), st.crop.x, st.crop.y, lentBand].join("|");
+        const cacheKey = [session.name, items.map((i) => i.file).join(","), JSON.stringify(l), st.crop.ratio, st.crop.x, st.crop.y, alignText(st), lentBand].join("|");
         const cached = exp.lentFull;
         if (cached && cached.key === cacheKey && cached.full) {
           full = cached.full; lentBuiltAt = cached.builtAt; setLoupeTag();
@@ -4618,7 +4618,8 @@
         for (let i = 0; i < lines;) { const k = ownerOf(i); let j = i + 1; while (j < lines && ownerOf(j) === k) j++; runs.push([i, j - i, k]); i = j; }
         let loaded = 0;
         items.forEach((item, k) => {
-          sessionPhoto(session.name, item.file, 1600).then((url) => new Promise((res) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = url || ""; })).then((im) => {
+          // Cada foto já com o Framing do passo 1 (canvas, posição e alinhamento), como no arquivo exportado
+          sessionPhoto(session.name, item.file, 1600).then((url) => (url ? framedUrl(session, items, st, item, url) : url)).then((url) => new Promise((res) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = url || ""; })).then((im) => {
             if (token !== drawInterlaced.token) return;
             if (im) {
               const s = fitPlace ? Math.min(W / im.naturalWidth, H / im.naturalHeight) : Math.max(W / im.naturalWidth, H / im.naturalHeight);
