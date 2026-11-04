@@ -1488,21 +1488,31 @@ Com `STILLPOINT_FAKE_CAMERAS=9` e algumas sessões. Abrir "Export sessions".
 - [ ] Passo 1 · Sessions: à esquerda a lista com as caixas, "Select all" e "Unselect all"; cada sessão com um selo do
       Framing ("As shot", "3:2", "3:2 · aligned"; "As shot · mixed ratios" tracejado âmbar). À direita, "Framing · <data>"
       e "Hide preview" no topo; a prévia com "Align photos"; a fileira; "Aspect ratio", a nota de mistura e "Position";
-      e o link "Use this framing on all ticked sessions" (copia proporção e posição para as outras marcadas; o
-      alinhamento fica). Não há abas nem "Name". Rodapé: "3 of 5 sessions · 1 with mixed ratios on As shot", "Cancel"
+      e a caixa "Same framing for all ticked sessions" (ligada por padrão): marcada, mudar a proporção ou a posição de
+      uma sessão muda as outras marcadas (o alinhamento fica em cada sessão). Desmarcada, cada sessão tem o seu; quando
+      alguma fica diferente, a caixa mostra um traço (algumas diferentes) e clicar nela iguala todas à sessão aberta.
+      Se as sessões já chegam com Framings diferentes, a caixa abre com o traço (nada é igualado sozinho). Não há abas
+      nem "Name". Rodapé: "3 of 5 sessions · 1 with mixed ratios on As shot", "Cancel"
       e o verde "Outputs →" (apagado sem sessão marcada).
 - [ ] Passo 2 · Outputs: a lista mostra só as sessões marcadas, sem caixas, com o resumo do que sai de cada uma (o Tab
-      para na lista e ↑ ↓ trocam de sessão). No topo, "Same settings for all sessions" e "Hide preview"; as abas Photos ·
-      Sequence · Lenticular (sem Framing). O resumo da aba termina com "cut to 3:2 (step 1)" quando há proporção. Na aba
+      para na lista e ↑ ↓ trocam de sessão). Sem barra no topo: as abas Photos · Sequence · Lenticular (sem
+      Framing) e, na mesma linha, encostado à direita, "Hide preview". Cada aba tem a sua caixa "Same settings for all
+      sessions" (logo abaixo do resumo, ligada por padrão): desligar a de Sequence, por exemplo, deixa só a sequência
+      diferente por sessão, com "Apply to all sessions" no fim da aba. O resumo da aba termina com "cut to 3:2 (step 1)" quando há proporção. Na aba
       Lenticular, embaixo, o botão "Print pitch test" (saiu do rodapé). Rodapé: "← Sessions", "Cancel" e "Review →"
       (apagado com o aviso em âmbar se faltar uma saída, um formato ou um valor do lenticular).
 - [ ] Passo 3 · Review: sem a lista de sessões; uma tabela com uma linha por sessão marcada (miniatura, data e fotos,
-      Framing com a posição e "n photos aligned", as saídas, o nome final da pasta). Em "As shot" com mistura, "As shot ·
-      mixed ratios: the sequence will jump" em âmbar. "Edit" no Framing leva ao passo 1 com aquela sessão aberta; "Edit"
+      Framing com a posição e "n photos aligned", as saídas, o nome final da pasta). Em "As shot" com mistura, o aviso âmbar com o ícone de alerta "As
+      shot · mixed ratios: the sequence will jump and the lenticular subject changes size". "Edit" no Framing leva ao passo 1 com aquela sessão aberta; "Edit"
       nas saídas leva ao passo 2 na aba certa. Embaixo, a caixa "Name" (Date + time · Number · Custom; o nome vale para
       todas as marcadas e a coluna "Folder" acompanha enquanto se digita) e a caixa "Export to" (caminho, "Choose
       another folder…", "Reset to default" depois de trocar). Rodapé: "← Outputs", "Cancel" e "Export n sessions". No
       Project, "Use edited photos when available" aparece só neste passo.
+- [ ] Passo 1, sessão em "As shot" com proporções misturadas: a nota de mistura vira um aviso âmbar tracejado com o ícone
+      de alerta: "… "As shot" keeps each photo as it is: the sequence will jump (black bands come and go), and in the
+      lenticular print the subject changes size between photos. Choose a ratio to give every photo the same frame."
+      Escolhendo uma proporção (ou alinhando uma foto), vira uma nota comum: "… Every photo goes through the same frame,
+      so nothing jumps."
 - [ ] Fechar ("Cancel" → "Leave") e abrir de novo: abre no passo onde parou, com tudo como estava. Desfazer (⌘Z) vale nos
       três passos.
 

@@ -1776,7 +1776,7 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .export-body.step-2 .export-sessions .save-tools { display: none; }
 .export-body.step-2 .export-item { grid-template-columns: 64px 1fr; }
 .export-body.step-2 .export-item > .export-check { display: none; }
-.export-body.step-3 { grid-template-columns: 0 minmax(0, 1fr); }
+.export-body.step-3 { grid-template-columns: minmax(0, 1fr); }  /* a lista some: a coluna única é a do Review */
 .export-body.step-3 .export-sessions { display: none; }
 /* Selo do Framing de cada sessão (passo 1) */
 .export-chip { display: inline-block; margin-top: 4px; padding: 1px 5px; border: 1px solid var(--noct-border-strong); font: 700 9px var(--noct-font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--noct-text-muted); }
@@ -1798,3 +1798,11 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .export-review-box h4 { margin: 0; font: 700 10px var(--noct-font-mono); letter-spacing: .16em; text-transform: uppercase; color: var(--noct-text-muted); }
 .export-review-box .export-dest { word-break: break-all; }
 .export-pitch-row { display: flex; align-items: center; gap: 12px; }
+
+/* "Hide preview" na linha das abas (passo 2), encostado à direita */
+.export-tabs .export-tabs-end { margin-left: auto; align-self: center; }
+/* Aviso de proporções misturadas em "As shot": ícone de alerta âmbar, bem visível */
+.mixed-warn { display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px; border: 1px dashed var(--noct-pending); background: rgba(var(--noct-pending-rgb), .06); color: var(--noct-pending); line-height: 1.5; }
+.mixed-warn-icon { flex: none; color: var(--noct-pending); }
+.mixed-warn-icon svg { width: 18px; height: 18px; display: block; }
+.export-review .mixed-warn { display: inline-flex; padding: 4px 8px; font-size: 12px; }

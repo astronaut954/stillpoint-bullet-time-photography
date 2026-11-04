@@ -2454,7 +2454,11 @@
   const OUTPUT_KINDS = OUTPUTS.map(([k]) => k);
   const OUTPUT_KEYS = ["outputs", "photos", "seq", "lent", "naming"];
   const exp = { step: 1, mode: "photos", exitAfter: false, selected: new Set(), active: "", settings: {}, heic: { ok: true, reason: "" },
-                timer: null, frame: 0, photo: 0, sameForAll: true, project: false };
+                timer: null, frame: 0, photo: 0, project: false,
+                // "Same settings for all sessions", uma por saída (decisão do dono, 2026-11-04); o nome é sempre comum
+                same: { photos: true, sequence: true, lenticular: true }, sameFraming: true };
+  const OUTPUT_KEY_OF = { photos: "photos", sequence: "seq", lenticular: "lent" };
+  function anyPerSession() { return OUTPUT_KINDS.some((k) => !exp.same[k]); }
 
   // Configuração da sessão aberta igual nas outras (saídas ligadas, as três configurações e o nome)
   // As duas sessões têm a mesma configuração numa saída (framing: proporção, posição e Same size)
@@ -2470,12 +2474,14 @@
   }
   // "Same settings for all sessions" ligado: o que muda na sessão aberta vale para todas
   function syncAll() {
-    if (!exp.sameForAll || !exp.active) return;
+    if (!exp.active) return;
     const st = settingsFor(exp.active);
     sessions.forEach((o) => {
       if (o.name === exp.active) return;
       const t = settingsFor(o.name);
-      OUTPUT_KEYS.forEach((k) => { t[k] = JSON.parse(JSON.stringify(st[k])); });
+      // Cada saída com "Same settings for all sessions" ligado é copiada (configurações e a caixa da aba); o nome sempre
+      OUTPUT_KINDS.forEach((k) => { if (!exp.same[k]) return; t[OUTPUT_KEY_OF[k]] = JSON.parse(JSON.stringify(st[OUTPUT_KEY_OF[k]])); t.outputs[k] = st.outputs[k]; });
+      t.naming = JSON.parse(JSON.stringify(st.naming));
     });
   }
 
@@ -2521,7 +2527,7 @@
   let exportPrefsTimer = null;
   function rememberExportPrefs() {
     if (!exp.active || typeof window.savePref !== "function") return;
-    exportPrefs = { mode: exp.mode, sameForAll: exp.sameForAll, collapsed: exp.collapsed || {}, previewHidden: !!exp.previewHidden, settings: JSON.parse(JSON.stringify(settingsFor(exp.active))) };
+    exportPrefs = { mode: exp.mode, same: exp.same, sameFraming: exp.sameFraming, collapsed: exp.collapsed || {}, previewHidden: !!exp.previewHidden, settings: JSON.parse(JSON.stringify(settingsFor(exp.active))) };
     clearTimeout(exportPrefsTimer);
     exportPrefsTimer = setTimeout(() => window.savePref("export", JSON.stringify(exportPrefs)), 300);
   }
@@ -2529,7 +2535,9 @@
   function loadPrefs(info) {
     const prefs = (info && info.prefs) || {};
     try { exportPrefs = prefs.export ? JSON.parse(prefs.export) : null; } catch (e) { exportPrefs = null; }
-    if (exportPrefs && typeof exportPrefs.sameForAll === "boolean") exp.sameForAll = exportPrefs.sameForAll;
+    if (exportPrefs && exportPrefs.same && typeof exportPrefs.same === "object") exp.same = Object.assign({ photos: true, sequence: true, lenticular: true }, exportPrefs.same);
+    else if (exportPrefs && typeof exportPrefs.sameForAll === "boolean") exp.same = { photos: exportPrefs.sameForAll, sequence: exportPrefs.sameForAll, lenticular: exportPrefs.sameForAll };
+    if (exportPrefs && typeof exportPrefs.sameFraming === "boolean") exp.sameFraming = exportPrefs.sameFraming;
     pitchAsk = prefs.pitchAsk !== "off";
     startPrefs.splash = prefs.splash !== "off";
     lentBand = prefs.lentBand === "white" ? "white" : "black";
@@ -2645,6 +2653,7 @@
       $("exportEdited").checked = project.exportDefaults.useEdited !== false;
     }
     exp.photo = 0;
+    if (exp.sameFraming && !framingAllSame()) exp.sameFraming = false;  // Framings já diferentes: não iguala sozinho
     exp.dest = null;  // outra pasta escolhida vale só para uma vez
     expSnap = null;
     if (typeof window.exportDestination === "function")
@@ -2725,7 +2734,7 @@
     // Recorte e alinhamento carregados da sessão antes da foto (senão o primeiro passo desfaria para os padrões), e
     // o alinhamento só com as fotos ajustadas (uma entrada vazia não é uma mudança)
     exportable().forEach((x) => { const st = settingsFor(x.name); cropLoad(x, st); alignLoad(x, st); });
-    return JSON.stringify({ s: exportable().map((x) => [x.name, settingsFor(x.name)]), same: exp.sameForAll,
+    return JSON.stringify({ s: exportable().map((x) => [x.name, settingsFor(x.name)]), same: exp.same, sameFraming: exp.sameFraming,
       sel: [...exp.selected].sort(), dest: exp.dest || null, edited: $("exportEdited").checked },
       (key, v) => (key === "byFile" && v ? Object.fromEntries(Object.entries(v).filter(([, al]) => !alignIsIdentity(al))) : v));
   }
@@ -2749,7 +2758,7 @@
       if (st.align && alignText(st) !== (session.align || "")) alignSave(session, st);
       if (st.crop && (st.crop.ratio + "|" + st.crop.x.toFixed(3) + "|" + st.crop.y.toFixed(3)) !== (session.crop || "")) cropSave(session, st);
     });
-    exp.sameForAll = o.same; exp.selected = new Set(o.sel); exp.dest = o.dest; $("exportEdited").checked = o.edited;
+    exp.same = o.same; exp.sameFraming = o.sameFraming !== false; exp.selected = new Set(o.sel); exp.dest = o.dest; $("exportEdited").checked = o.edited;
     expSnap = snap;
     renderExport();
   }
@@ -2867,7 +2876,7 @@
           (asShot ? "As shot" : sst.crop.ratio) + (aligned ? " · aligned" : asShot && r && r.mixed ? " · mixed ratios" : ""));
         li.querySelector(".export-summary").replaceWith(chip);
       } else setWarnText(li.querySelector(".export-summary"), settingsText(s));
-      li.classList.toggle("different", !exp.sameForAll && s.name !== exp.active && !sameAsActive(s.name));
+      li.classList.toggle("different", exp.step === 2 && anyPerSession() && s.name !== exp.active && !sameAsActive(s.name));
       const first = sessionItems(s).find((i) => i.previewable);
       if (first) sessionPhoto(s.name, first.file, 320).then((url) => { if (url) li.querySelector(".export-thumb").style.backgroundImage = "url(" + url + ")"; });
       li.addEventListener("click", () => {
@@ -2930,12 +2939,13 @@
   function sessionTitle(s) { const l = sessionLabel(s.name); return s.label ? s.label + " · " + l.date : l.date; }
 
   function refreshSummaries() {
+    if (exp.step === 1) { renderExportList(); updateExportCount(); return; }  // os selos do Framing mudam com a sessão
     [...$("exportList").children].forEach((li) => {
       const s = sessions.find((x) => x.name === li.dataset.name);
       if (!s) return;
       const sum = li.querySelector(".export-summary");  // no passo 1 a linha mostra o selo do Framing
       if (sum) setWarnText(sum, settingsText(s));
-      li.classList.toggle("different", !exp.sameForAll && s.name !== exp.active && !sameAsActive(s.name));
+      li.classList.toggle("different", exp.step === 2 && anyPerSession() && s.name !== exp.active && !sameAsActive(s.name));
     });
     updateExportCount();
   }
@@ -3429,6 +3439,17 @@
     if (y !== undefined && !isNaN(+y)) st.crop.y = Math.max(0, Math.min(1, +y));
   }
   // Uma fonte só: a sessão (o programa grava em session.json) e a memória do app (a etiqueta "Mixed ratios" usa)
+  // Framing igual em todas as sessões marcadas (caixa no passo 1, ligada por padrão): a mudança na sessão aberta vai
+  // para as outras (proporção e posição; o alinhamento é por foto e fica em cada sessão)
+  function cropShare(session, st) {
+    cropSave(session, st);
+    if (!exp.sameFraming || $("exportOverlay").classList.contains("hidden") || !exp.selected.has(session.name)) return;
+    chosenSessions().forEach((o) => { if (o.name === session.name) return; const ost = settingsFor(o.name); cropLoad(o, ost); ost.crop = Object.assign({}, st.crop, { loaded: true }); cropSave(o, ost); });
+  }
+  function framingAllSame() {
+    const list = chosenSessions().map((o) => { const ost = settingsFor(o.name); cropLoad(o, ost); return ost.crop.ratio + "|" + ost.crop.x.toFixed(3) + "|" + ost.crop.y.toFixed(3); });
+    return list.every((x) => x === list[0]);
+  }
   function cropSave(session, st) {
     const text = st.crop.ratio + "|" + st.crop.x.toFixed(3) + "|" + st.crop.y.toFixed(3);
     if (st.crop.ratio !== "asshot") sessionCrop[session.name] = st.crop.ratio; else delete sessionCrop[session.name];
@@ -3481,15 +3502,24 @@
   }
   // Seção "Framing" do Export (decisão do dono, 2026-11-03, protótipo W1): proporção + Same size (pedaço 1);
   // o alinhamento das fotos (referências, Move/Size/Rotate) vem no pedaço 2
+  // O que acontece em "As shot" com proporções misturadas (decisão do dono, 2026-11-04: cobrir a sequência e o
+  // lenticular, com o ícone de alerta âmbar)
+  const MIXED_EFFECT = '"As shot" keeps each photo as it is: the sequence will jump (black bands come and go), and in the lenticular print the subject changes size between photos. Choose a ratio to give every photo the same frame.';
+  function mixedWarn(text) {
+    const d = el("div", "export-note exp-warn mixed-warn");
+    const ic = el("span", "mixed-warn-icon"); ic.innerHTML = icon("alert"); ic.setAttribute("aria-hidden", "true");
+    d.append(ic, el("span", "", text));
+    return d;
+  }
   function framingRows(session, st, box, rerender) {
     cropLoad(session, st);
     const info = ratioInfoCached(session.name);
     const r = row("Aspect ratio");
-    r.appendChild(segmented(CROP_RATIOS, st.crop.ratio, (v) => { st.crop.ratio = v; cropSave(session, st); rerender(); }));
+    r.appendChild(segmented(CROP_RATIOS, st.crop.ratio, (v) => { st.crop.ratio = v; cropShare(session, st); rerender(); }));
     if (st.crop.ratio !== "asshot" && info && info.keep && info.keep[st.crop.ratio] != null) r.appendChild(el("span", "export-keep", "keeps " + info.keep[st.crop.ratio] + "%"));
     box.appendChild(r);
-    if (info && info.mixed) box.appendChild(el("div", "export-note exp-warn", "Mixed ratios · " + ratioText(info).replace(/^Camera/, "camera") +
-      ' "As shot" keeps each photo as it is; the sequence will jump.' + (sessionCrop[session.name] ? " The ratio chosen in the Mixed ratios window is already selected." : "")));
+    if (info && info.mixed && st.crop.ratio === "asshot" && !sessionAligned(session, st)) box.appendChild(mixedWarn("Mixed ratios · " + ratioText(info).replace(/^Camera/, "camera") + " " + MIXED_EFFECT));
+    else if (info && info.mixed) box.appendChild(el("div", "export-note", "Mixed ratios · " + ratioText(info).replace(/^Camera/, "camera") + " Every photo goes through the same frame, so nothing jumps."));
     addTip(box, "The shape every export gets: converted photos, the sequence and the lenticular print (Fill) are cut to it; the originals are never cropped. " +
       "One crop for the whole session, and every converted photo comes out with the same pixel size (the smallest camera's).", "Aspect ratio");
     if (st.crop.ratio !== "asshot") {
@@ -3498,7 +3528,7 @@
       const names = ["Top left", "Top", "Top right", "Left", "Center", "Right", "Bottom left", "Bottom", "Bottom right"];
       [0, 0.5, 1].forEach((y, yi) => [0, 0.5, 1].forEach((x, xi) => {
         const d = el("button", "crop-dot" + (Math.abs(x - st.crop.x) < 0.01 && Math.abs(y - st.crop.y) < 0.01 ? " on" : "")); d.type = "button"; d.title = names[yi * 3 + xi];
-        d.addEventListener("click", () => { st.crop.x = x; st.crop.y = y; cropSave(session, st); rerender(); });
+        d.addEventListener("click", () => { st.crop.x = x; st.crop.y = y; cropShare(session, st); rerender(); });
         dots.appendChild(d);
       }));
       pos.append(dots, el("span", "export-note-inline", "Or drag the frame in the preview. One crop for the whole session."));
@@ -3826,7 +3856,7 @@
     {
       const info = ratioInfoCached(session.name);
       const r = row("Aspect ratio");
-      r.appendChild(segmented(CROP_RATIOS, st.crop.ratio, (v) => { st.crop.ratio = v; cropSave(session, st); rerender(); }));
+      r.appendChild(segmented(CROP_RATIOS, st.crop.ratio, (v) => { st.crop.ratio = v; cropShare(session, st); rerender(); }));
       if (st.crop.ratio !== "asshot" && info && info.keep && info.keep[st.crop.ratio] != null) r.appendChild(el("span", "export-keep", "keeps " + info.keep[st.crop.ratio] + "%"));
       arRows.appendChild(r);
       addTip(arRows, "The shape every export gets, for the whole session; the crop frame stays where the Framing tab put it.", "Aspect ratio");
@@ -4135,7 +4165,6 @@
     // sessão; nos dois, mostrar/esconder a prévia (foto grande e miniaturas)
     const top = el("div", "export-scope");
     if (exp.step === 1) top.appendChild(el("span", "export-step1-title", "Framing · " + label));
-    else if (sessions.length > 1) top.appendChild(checkOption("Same settings for all sessions", exp.sameForAll, (v) => { exp.sameForAll = v; rerender(); }));
     top.appendChild(el("span", "spacer"));
     const pv = button(exp.previewHidden ? "Show preview" : "Hide preview", () => {
       exp.previewHidden = !exp.previewHidden;
@@ -4143,8 +4172,8 @@
       rerender();
     }, { kind: "btn-link", icon: exp.previewHidden ? "down" : "up", title: exp.previewHidden ? "Show the photo and the thumbnails" : "Hide the photo and the thumbnails: more room for the settings" });
     pv.classList.add("export-preview-toggle");
-    top.appendChild(pv);
-    outer.insertBefore(top, rows);
+    // Passo 2: sem barra de cima; "Hide preview" vai para a linha das abas, encostado à direita (decisão do dono, 2026-11-04)
+    if (exp.step === 1) { top.appendChild(pv); outer.insertBefore(top, rows); }
     // (o modo de cada passo já foi fixado acima)
     if (exp.mode !== "lenticular") { exp.lentTheater = false; outer.classList.remove("theater"); }
     exp.keyMove = null;
@@ -4189,7 +4218,7 @@
         // (Aspect ratio, Same size, Position) continuam à vista; o resto da janela (Name etc.) some. ⤡ volta.
         if (focused && !exp.previewHidden) {
           preview.remove();
-          const stage = cropStage(session, items, st, st.crop.ratio !== "asshot" ? RATIOS[st.crop.ratio] : 0, (changed) => { cropSave(session, st); if (changed) rerender(); });
+          const stage = cropStage(session, items, st, st.crop.ratio !== "asshot" ? RATIOS[st.crop.ratio] : 0, (changed) => { cropShare(session, st); if (changed) rerender(); });
           stage.classList.add("export-preview", "framing-stage");
           // "Align photos" (pedaço 2): abre a tela de alinhamento no lugar do ⤢ (decisão do dono, 2026-11-03, protótipo X1)
           const alignBtn = button("Align photos", () => { exp.aligning = true; rerender(); },
@@ -4678,7 +4707,7 @@
       }
       tab.appendChild(document.createTextNode(title));
       // Esta sessão difere das outras nesta saída (só com "Same settings for all sessions" desligado): marca na aba
-      const differs = !exp.sameForAll && sessions.some((o) => exp.selected.has(o.name) && o.name !== session.name && !sameKind(session.name, o.name, kind));
+      const differs = !exp.same[kind] && sessions.some((o) => exp.selected.has(o.name) && o.name !== session.name && !sameKind(session.name, o.name, kind));
       if (differs) { tab.classList.add("different"); tab.appendChild(el("span", "export-tab-diff", "")); }
       tab.title = sub + (always ? "" : on ? " · exported" : " · not exported") + (differs ? " · different from the other sessions" : "");
       tab.addEventListener("click", () => { if (!current) { exp.mode = kind; rerender(); } });
@@ -4689,7 +4718,7 @@
       });
       tabs.appendChild(tab);
     });
-    if (exp.step === 2) outer.insertBefore(tabs, rows);
+    if (exp.step === 2) { pv.classList.add("export-tabs-end"); tabs.appendChild(pv); outer.insertBefore(tabs, rows); }
     {
       const kind = exp.mode;
       const always = kind === "framing";
@@ -4701,6 +4730,9 @@
         const cut = st.crop.ratio !== "asshot" && kind !== "lenticular" ? " · cut to " + st.crop.ratio + " (step 1)" : "";
         setWarnText(sum, on ? outputText(session, kind) + cut : "Off · tick the box in the tab to export it");
         body.appendChild(sum);
+        // Uma caixa por saída: esta saída igual em todas as sessões marcadas (ligada por padrão)
+        if (chosenSessions().length > 1)
+          body.appendChild(checkOption("Same settings for all sessions", exp.same[kind], (v) => { exp.same[kind] = v; rerender(); }));
       }
       buildKind(kind, body, true);
       if (kind === "lenticular") {
@@ -4712,18 +4744,28 @@
         pr.append(b, el("span", "export-note", "Measure the real LPI of your lens sheet with your printer."));
         body.appendChild(pr);
       }
-      if (always) {
-        // Passo 1: copiar proporção e posição desta sessão para as outras marcadas (o alinhamento é por foto: fica)
-        const others = chosenSessions().filter((o) => o.name !== session.name);
-        if (others.length) {
-          const r = row("");
-          r.appendChild(button("Use this framing on all ticked sessions", () => {
-            others.forEach((o) => { const ost = settingsFor(o.name); cropLoad(o, ost); ost.crop = Object.assign({}, st.crop, { loaded: true }); cropSave(o, ost); });
-            rerender();
-            toast("Framing " + (st.crop.ratio === "asshot" ? "As shot" : st.crop.ratio) + " on " + plural(others.length + 1, "session", "sessions"));
-          }, { kind: "btn-link", title: "Copies the aspect ratio and the crop position to the other ticked sessions. The photo alignment stays per session." }));
-          body.appendChild(r);
-        }
+      if (always && chosenSessions().length > 1) {
+        // Passo 1: "Same framing for all ticked sessions" (ligada por padrão): marcada, mudar o Framing da sessão aberta
+        // muda o das outras; com sessões diferentes, a caixa mostra o traço (algumas diferentes); clicar nela iguala
+        // todas a esta sessão. O alinhamento é por foto e não é copiado.
+        const same = exp.sameFraming && framingAllSame();
+        const r = row("");
+        const l = el("label", "log-option");
+        const c = document.createElement("input"); c.type = "checkbox"; c.className = "cs-check";
+        c.checked = same; c.indeterminate = !same && !framingAllSame();
+        c.title = c.indeterminate ? "Some ticked sessions have a different framing: tick to give all of them this one" : "";
+        c.addEventListener("change", () => {
+          if (c.checked) {
+            exp.sameFraming = true;
+            chosenSessions().forEach((o) => { if (o.name === session.name) return; const ost = settingsFor(o.name); cropLoad(o, ost); ost.crop = Object.assign({}, st.crop, { loaded: true }); cropSave(o, ost); });
+            toast("Same framing on " + plural(chosenSessions().length, "session", "sessions"));
+          } else exp.sameFraming = false;
+          rerender();
+        });
+        l.append(c, document.createTextNode(" Same framing for all ticked sessions"));
+        l.title = "The aspect ratio and the crop position. The photo alignment stays per session.";
+        r.appendChild(l);
+        body.appendChild(r);
       }
       rows.appendChild(body);
     }
@@ -4731,23 +4773,17 @@
     slideBlocks(outer, before, rows);
     if (exp.step === 1) return;  // nome e pasta: passo 3; "Apply to all sessions": passo 2
 
-    if (!exp.sameForAll && sessions.length > 1) {
+    const kindNow = exp.mode, keyNow = OUTPUT_KEY_OF[kindNow], chosenNow = chosenSessions();
+    if (keyNow && !exp.same[kindNow] && chosenNow.length > 1) {
       const apply = el("div", "export-apply");
-      const same = sessions.length > 1 && sessions.every((o) => sameAsActive(o.name));
-      const note = el("span", "export-note", sessions.length === 1 ? "" : same
-        ? "All sessions use these settings." : "These settings are only for " + label + ".");
-      apply.appendChild(note);
+      const sameHere = chosenNow.every((o) => o.name === session.name || (JSON.stringify(settingsFor(o.name)[keyNow]) === JSON.stringify(st[keyNow]) && !!settingsFor(o.name).outputs[kindNow] === !!st.outputs[kindNow]));
+      apply.appendChild(el("span", "export-note", sameHere ? "All ticked sessions use these settings." : "These settings are only for " + label + "."));
       apply.appendChild(button("Apply to all sessions", () => {
-        sessions.forEach((other) => {
-          if (other.name === session.name) return;
-          OUTPUT_KEYS.forEach((k) => { settingsFor(other.name)[k] = JSON.parse(JSON.stringify(st[k])); });
-        });
+        chosenNow.forEach((other) => { if (other.name === session.name) return; const t = settingsFor(other.name); t[keyNow] = JSON.parse(JSON.stringify(st[keyNow])); t.outputs[kindNow] = st.outputs[kindNow]; });
         rerender();
-        toast("Applied to all " + plural(sessions.length, "session", "sessions"));
+        toast("Applied to all " + plural(chosenNow.length, "session", "sessions"));
       }));
       rows.appendChild(apply);
-    } else if (sessions.length > 1) {
-      rows.appendChild(el("div", "export-note export-apply", "Changes apply to all sessions. Turn off \"Same settings for all sessions\" to set each one."));
     }
   }
 
@@ -4779,7 +4815,7 @@
       const tdF = document.createElement("td");
       const r = ratioInfoCached(s.name), aligned = Object.keys(st.align.byFile).filter((f) => !alignIsIdentity(st.align.byFile[f])).length;
       const names = { 0: "left", 0.5: "centre", 1: "right" }, vnames = { 0: "top", 0.5: "", 1: "bottom" };
-      if (st.crop.ratio === "asshot" && r && r.mixed && !aligned) tdF.appendChild(el("span", "amb", "As shot · mixed ratios: the sequence will jump"));
+      if (st.crop.ratio === "asshot" && r && r.mixed && !aligned) tdF.appendChild(mixedWarn("As shot · mixed ratios: the sequence will jump and the lenticular subject changes size"));
       else {
         const pos = st.crop.ratio === "asshot" ? "" : " · " + ([vnames[st.crop.y], names[st.crop.x]].filter((x) => x && x !== undefined).join(" ") || "custom position");
         tdF.appendChild(document.createTextNode((st.crop.ratio === "asshot" ? "As shot" : st.crop.ratio) + pos));
