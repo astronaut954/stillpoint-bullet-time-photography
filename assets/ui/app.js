@@ -3619,7 +3619,27 @@
     if (typeof window.setSessionAlign === "function") window.setSessionAlign(session.name, text);
   }
   function alignOf(st, file) { return st.align.byFile[file] || ALIGN_ID(); }  // só lê: uma foto sem ajuste não ganha entrada
-  function sessionAligned(session, st) { alignLoad(session, st); return Object.keys(st.align.byFile).some((f) => !alignIsIdentity(st.align.byFile[f])); }
+  // Alinhamento em uso: só com uma proporção escolhida (decisão do dono, 2026-11-04, opção B: "As shot" é sempre como
+  // saiu; o alinhamento guardado volta a valer quando se escolhe uma proporção)
+  function sessionAligned(session, st) { alignLoad(session, st); cropLoad(session, st); return st.crop.ratio !== "asshot" && Object.keys(st.align.byFile).some((f) => !alignIsIdentity(st.align.byFile[f])); }
+  // "Align photos" com "As shot": pede uma proporção antes (a escolhida aparece depois na tela de alinhamento)
+  function askRatioForAlign(session, st, rerender) {
+    const info = ratioInfoCached(session.name);
+    const box = el("div", "ratio-others");
+    box.appendChild(el("span", "ratio-others-label", "Ratio for the alignment"));
+    RATIO_ORDER.forEach((r) => {
+      const suggested = info && info.suggest === r;
+      const b = el("button", "btn btn-small ratio-chip " + (suggested ? "btn-primary" : "btn-secondary")); b.type = "button";
+      b.appendChild(document.createTextNode(r + " "));
+      if (info && info.keep && info.keep[r] != null) b.appendChild(el("span", "dim", "· keeps " + info.keep[r] + "%"));
+      if (suggested) b.title = "Loses the fewest pixels in this session";
+      b.addEventListener("click", () => { ui.dialogOverlay.classList.add("hidden"); st.crop.ratio = r; cropShare(session, st); exp.aligning = true; rerender(); });
+      box.appendChild(b);
+    });
+    dialog("Choose a ratio first",
+      "Aligning moves and rotates the photos, so they need one frame in the same shape: \"As shot\" keeps each photo as the camera made it and cannot be aligned. Choose the ratio the alignment will use; you can change it later in Align photos.",
+      [{ label: "Cancel" }], box);
+  }
   // A foto (w×h, com o seu tamanho e giro, centrada em dx,dy) cobre inteiro o retângulo reto r? Conferência exata
   // pelos quatro cantos de r levados ao espaço da foto (a mesma conta do programa, Export::Covers)
   function photoCovers(w, h, a, r) {
@@ -3935,7 +3955,8 @@
     {
       const info = ratioInfoCached(session.name);
       const r = row("Aspect ratio");
-      r.appendChild(segmented(CROP_RATIOS, st.crop.ratio, (v) => { st.crop.ratio = v; cropShare(session, st); rerender(); }));
+      r.appendChild(segmented(CROP_RATIOS, st.crop.ratio, (v) => { st.crop.ratio = v; cropShare(session, st); rerender(); },
+        (v) => (v === "asshot" ? "Aligned photos need a ratio. To keep each photo as shot, go back to Framing and choose As shot there (the alignment is kept for later)." : "")));
       if (st.crop.ratio !== "asshot" && info && info.keep && info.keep[st.crop.ratio] != null) r.appendChild(el("span", "export-keep", "keeps " + info.keep[st.crop.ratio] + "%"));
       arRows.appendChild(r);
       addTip(arRows, "The shape every export gets, for the whole session; the crop frame stays where the Framing tab put it.", "Aspect ratio");
@@ -4252,7 +4273,7 @@
     }, { kind: "btn-link", icon: exp.previewHidden ? "down" : "up", title: exp.previewHidden ? "Show the photo and the thumbnails" : "Hide the photo and the thumbnails: more room for the settings" });
     pv.classList.add("export-preview-toggle");
     // Passo 2: sem barra de cima; "Hide preview" vai para a linha das abas, encostado à direita (decisão do dono, 2026-11-04)
-    if (exp.step === 1) { top.appendChild(pv); outer.insertBefore(top, rows); }
+    if (exp.step === 1) outer.insertBefore(top, rows);  // passo 1: sem "Hide preview" (decisão do dono, 2026-11-04)
     // (o modo de cada passo já foi fixado acima)
     if (exp.mode !== "lenticular") { exp.lentTheater = false; outer.classList.remove("theater"); }
     exp.keyMove = null;
@@ -4271,6 +4292,7 @@
       outer.classList.remove("layout-change"); void outer.offsetWidth; outer.classList.add("layout-change");
       setTimeout(() => outer.classList.remove("layout-change"), 400);
     }
+    if (exp.aligning && st.crop.ratio === "asshot") exp.aligning = false;  // sem proporção não há alinhamento (ex.: depois de um ⌘Z)
     if (exp.aligning) { exp.keyNav = null; alignScreen(session, items, st, outer, rows, top, rerender); return; }
 
     // Monta a prévia (só a da seção em foco entra na tela) e as configurações de uma saída
@@ -4281,7 +4303,7 @@
       img.alt = "";
       const caption = el("div", "stage-caption");
       preview.append(img, caption);
-      if (focused && !exp.previewHidden) outer.insertBefore(preview, rows);
+      if (focused && (exp.step === 1 || !exp.previewHidden)) outer.insertBefore(preview, rows);
       const show = (i, text, file) => {
         const item = items[i];
         if (!item) return;
@@ -4297,12 +4319,12 @@
         // Em foco: a prévia (o recorte sobre a foto) em cima, as linhas embaixo, a fileira de miniaturas entre as duas.
         // Sem modo teatro nesta aba (decisão do dono, 2026-11-03): o ⤢ amplia a prévia, mas as linhas do Framing
         // (Aspect ratio, Same size, Position) continuam à vista; o resto da janela (Name etc.) some. ⤡ volta.
-        if (focused && !exp.previewHidden) {
+        if (focused && (exp.step === 1 || !exp.previewHidden)) {  // passo 1: a prévia está sempre à vista
           preview.remove();
           const stage = cropStage(session, items, st, st.crop.ratio !== "asshot" ? RATIOS[st.crop.ratio] : 0, (changed) => { cropShare(session, st); if (changed) rerender(); });
           stage.classList.add("export-preview", "framing-stage");
           // "Align photos" (pedaço 2): abre a tela de alinhamento no lugar do ⤢ (decisão do dono, 2026-11-03, protótipo X1)
-          const alignBtn = button("Align photos", () => { exp.aligning = true; rerender(); },
+          const alignBtn = button("Align photos", () => { if (st.crop.ratio === "asshot") askRatioForAlign(session, st, rerender); else { exp.aligning = true; rerender(); } },
             { icon: "alignPhotos", title: "Align photos: move, resize and rotate each photo over the others", kind: "btn-secondary" });
           alignBtn.classList.add("framing-align-btn");
           alignBtn.addEventListener("pointerdown", (e) => e.stopPropagation());
@@ -4877,7 +4899,7 @@
       const tdS = document.createElement("td");
       tdS.append(document.createTextNode((s.label ? s.label + " · " : "") + label.date), document.createElement("br"), el("span", "dim", plural(sessionItems(s).length, "photo", "photos")));
       const tdF = document.createElement("td");
-      const r = ratioInfoCached(s.name), aligned = Object.keys(st.align.byFile).filter((f) => !alignIsIdentity(st.align.byFile[f])).length;
+      const r = ratioInfoCached(s.name), aligned = st.crop.ratio === "asshot" ? 0 : Object.keys(st.align.byFile).filter((f) => !alignIsIdentity(st.align.byFile[f])).length;
       const names = { 0: "left", 0.5: "centre", 1: "right" }, vnames = { 0: "top", 0.5: "", 1: "bottom" };
       const warned = st.crop.ratio === "asshot" && r && r.mixed && !aligned;
       if (warned) { const w = mixedWarn("As shot · mixed ratios: the sequence will jump and the lenticular subject changes size"); const e = editLink(1, s, "framing"); e.classList.add("in-warn"); w.lastChild.append(" ", e); tdF.appendChild(w); }

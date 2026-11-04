@@ -3365,8 +3365,9 @@ namespace
                             if (!Export::PhotoSize(photoPath(f), w, h)) { w = 0; h = 0; allSizes = false; }
                             sizes.push_back({ w, h });
                         }
-                        // "As shot" sem nenhuma foto ajustada: cada foto sai como é (decisão do dono, 2026-11-02)
-                        if (!framing.Active() && !framing.Aligned())
+                        // "As shot": cada foto sai como é, mesmo com alinhamento guardado (decisão do dono, 2026-11-04,
+                        // opção B: alinhar exige uma proporção)
+                        if (!framing.Active())
                             framing.align.clear();
                         else if (!allSizes || !Export::ComputeCommonFrame(framing, sizes))
                             framing.align.clear();

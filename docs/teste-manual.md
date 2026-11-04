@@ -1513,6 +1513,13 @@ Com `STILLPOINT_FAKE_CAMERAS=9` e algumas sessões. Abrir "Export sessions".
       todas as marcadas e a coluna "Folder" acompanha enquanto se digita) e a caixa "Export to" (caminho, "Choose
       another folder…", "Reset to default" depois de trocar). Rodapé: "← Outputs", "Cancel" e "Export n sessions". No
       Project, "Use edited photos when available" aparece só neste passo.
+- [ ] Passo 1 sem "Hide preview" (a prévia fica sempre à vista; no passo 2 continua na linha das abas).
+- [ ] Alinhar exige uma proporção (decisão do dono, 2026-11-04, opção B): numa sessão em "As shot", "Align photos" continua
+      ativo; clicar abre a janela "Choose a ratio first" com os botões 3:2 · 4:3 · 16:9 · 1:1 ("keeps n%"; o que perde
+      menos pixels em verde) e "Cancel". Escolher um: a sessão passa a essa proporção e a tela "Align photos" abre com
+      ela. Dentro de "Align photos", "As shot" fica desativado (dica: escolher As shot na aba Framing; o alinhamento
+      fica guardado). Voltando para "As shot" no passo 1: o selo da sessão diz só "As shot", o Review não conta fotos
+      alinhadas, e a exportação sai como as fotos foram feitas (o alinhamento só volta a valer com uma proporção).
 - [ ] Passo 1, sessão em "As shot" com proporções misturadas: a nota de mistura vira um aviso âmbar tracejado com o ícone
       de alerta: "… "As shot" keeps each photo as it is: the sequence will jump (black bands come and go), and in the
       lenticular print the subject changes size between photos. Choose a ratio to give every photo the same frame."
