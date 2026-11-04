@@ -1346,7 +1346,8 @@ Com `STILLPOINT_FAKE_CAMERAS=9` (02 e 04 em 16:9). Abrir "Export sessions" com u
 (Decisão do dono, 2026-11-03: a proporção e o alinhamento ficam juntos na seção "Framing"; este pedaço é só a
 proporção. O alinhamento — referências, Move/Size/Rotate — vem no pedaço 2.)
 
-- [ ] A coluna da direita tem abas no topo, acima da prévia: Framing · Photos · Sequence · Lenticular (chips; a
+- [ ] (A partir da seção 38, o Framing é o passo 1 e as abas são só Photos · Sequence · Lenticular, no passo 2.)
+      A coluna da direita tem abas no topo, acima da prévia: Framing · Photos · Sequence · Lenticular (chips; a
       atual em verde). Photos, Sequence e Lenticular têm a caixa de marcar do app dentro da aba (liga/desliga a
       saída; aba desligada fica tracejada); Framing não tem (vale para todas). Com "Same settings for all
       sessions" desligado, a aba ganha um ponto âmbar quando esta sessão difere das outras nessa saída (mouse
@@ -1476,6 +1477,34 @@ direita; a lista de sessões continua à esquerda da janela.
       fotos; os Originals continuam intactos; o settings.txt do lenticular tem a linha "Alignment: photos aligned in
       Stillpoint (canvas … px)". Sessão em "As shot" sem nenhuma foto ajustada: cada foto sai como é (seção 36); em
       "As shot" com alguma foto ajustada, todas saem no canvas (a interseção).
+
+## 38. Export sessions em três passos (2.16.0; protótipo "Export em três passos" aprovado em 2026-11-04)
+
+Com `STILLPOINT_FAKE_CAMERAS=9` e algumas sessões. Abrir "Export sessions".
+
+- [ ] Cabeçalho: à direita, "1 Sessions — 2 Outputs — 3 Review" (o passo atual em verde; os anteriores com "✓"). O
+      subtítulo muda a cada passo. Clicar num passo anterior volta a ele; um passo seguinte só abre se o atual estiver
+      pronto (sem sessão marcada, "2 Outputs" fica apagado e a dica diz "Tick at least one session").
+- [ ] Passo 1 · Sessions: à esquerda a lista com as caixas, "Select all" e "Unselect all"; cada sessão com um selo do
+      Framing ("As shot", "3:2", "3:2 · aligned"; "As shot · mixed ratios" tracejado âmbar). À direita, "Framing · <data>"
+      e "Hide preview" no topo; a prévia com "Align photos"; a fileira; "Aspect ratio", a nota de mistura e "Position";
+      e o link "Use this framing on all ticked sessions" (copia proporção e posição para as outras marcadas; o
+      alinhamento fica). Não há abas nem "Name". Rodapé: "3 of 5 sessions · 1 with mixed ratios on As shot", "Cancel"
+      e o verde "Outputs →" (apagado sem sessão marcada).
+- [ ] Passo 2 · Outputs: a lista mostra só as sessões marcadas, sem caixas, com o resumo do que sai de cada uma (o Tab
+      para na lista e ↑ ↓ trocam de sessão). No topo, "Same settings for all sessions" e "Hide preview"; as abas Photos ·
+      Sequence · Lenticular (sem Framing). O resumo da aba termina com "cut to 3:2 (step 1)" quando há proporção. Na aba
+      Lenticular, embaixo, o botão "Print pitch test" (saiu do rodapé). Rodapé: "← Sessions", "Cancel" e "Review →"
+      (apagado com o aviso em âmbar se faltar uma saída, um formato ou um valor do lenticular).
+- [ ] Passo 3 · Review: sem a lista de sessões; uma tabela com uma linha por sessão marcada (miniatura, data e fotos,
+      Framing com a posição e "n photos aligned", as saídas, o nome final da pasta). Em "As shot" com mistura, "As shot ·
+      mixed ratios: the sequence will jump" em âmbar. "Edit" no Framing leva ao passo 1 com aquela sessão aberta; "Edit"
+      nas saídas leva ao passo 2 na aba certa. Embaixo, a caixa "Name" (Date + time · Number · Custom; o nome vale para
+      todas as marcadas e a coluna "Folder" acompanha enquanto se digita) e a caixa "Export to" (caminho, "Choose
+      another folder…", "Reset to default" depois de trocar). Rodapé: "← Outputs", "Cancel" e "Export n sessions". No
+      Project, "Use edited photos when available" aparece só neste passo.
+- [ ] Fechar ("Cancel" → "Leave") e abrir de novo: abre no passo onde parou, com tudo como estava. Desfazer (⌘Z) vale nos
+      três passos.
 
 ## Resultado
 

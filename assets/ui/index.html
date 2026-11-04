@@ -375,6 +375,7 @@
     <div class="sheet export-sheet">
       <div class="export-head">
         <h3><span id="exportTitle"></span><small id="exportSub"></small></h3>
+        <div id="exportSteps" class="export-steps" role="tablist" aria-label="Export steps"></div>
       </div>
       <div class="export-body">
         <div class="export-sessions">
@@ -389,8 +390,8 @@
       <div class="export-foot">
         <span id="exportCount" class="save-count"></span><span class="spacer"></span>
         <label id="exportEditedLabel" class="log-option hidden" title="When a session has edited photos in the project's Edited folder, use them instead of the originals"><input id="exportEdited" type="checkbox" checked> Use edited photos when available</label>
+        <button id="exportBack" class="btn btn-secondary hidden">← Back</button>
         <button id="exportCancel" class="btn btn-secondary">Cancel</button>
-        <button id="exportPitch" class="btn btn-secondary" title="A sheet to measure the real LPI of your lens sheet with your printer (Lenticular)">Print pitch test</button>
         <button id="exportConfirm" class="btn btn-primary">Export</button>
       </div>
     </div>

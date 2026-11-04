@@ -748,6 +748,13 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      (chegou-se a fazer as 16:9 crescerem para a altura das 3:2 e voltou-se atrás: ampliar muda o tamanho do objeto
      fotografado entre as câmeras). Um quadro só na tela (o canvas, neon). As fotos convertidas saem no tamanho do
      canvas. "As shot" sem foto ajustada continua saindo cada foto como é.
+   - **Export em três passos (decisão do dono, 2026-11-04, protótipo "Export em três passos" aprovado):** 1 Sessions
+     (escolher as sessões e o Framing de cada uma, com selo por sessão e "Use this framing on all ticked sessions",
+     que copia proporção e posição mas não o alinhamento), 2 Outputs (Photos · Sequence · Lenticular, "Same settings for
+     all sessions"; "Print pitch test" dentro da aba Lenticular), 3 Review (tabela por sessão com "Edit", "Name" valendo
+     para todas as marcadas e "Export to"). Passos no cabeçalho (para trás sempre, para a frente só com o atual pronto);
+     o passo onde a pessoa parou fica guardado ao sair. Cursor de girar no "Align photos": seta em arco preta com
+     contorno branco (opção B). `docs/teste-manual.md`, seção 38.
 5. **Etapa 20 — Edit in Lightroom Classic / Photoshop.** Ida e volta: o app abre os originais
    do Project no Lightroom Classic (o dono do projeto usa o Classic); um plugin do Stillpoint
    (SDK Lua do Classic) agrupa cada sessão como coleção e tem "Export to Stillpoint", que

@@ -2453,7 +2453,7 @@
                    ["lenticular", "Lenticular", "interlaced TIFF for a lens sheet"]];
   const OUTPUT_KINDS = OUTPUTS.map(([k]) => k);
   const OUTPUT_KEYS = ["outputs", "photos", "seq", "lent", "naming"];
-  const exp = { mode: "photos", exitAfter: false, selected: new Set(), active: "", settings: {}, heic: { ok: true, reason: "" },
+  const exp = { step: 1, mode: "photos", exitAfter: false, selected: new Set(), active: "", settings: {}, heic: { ok: true, reason: "" },
                 timer: null, frame: 0, photo: 0, sameForAll: true, project: false };
 
   // Configuração da sessão aberta igual nas outras (saídas ligadas, as três configurações e o nome)
@@ -2754,9 +2754,62 @@
     renderExport();
   }
 
+  // ---- Três passos (decisão do dono, 2026-11-04, protótipo "Export em três passos") ----
+  // 1 Sessions: quais sessões e o Framing de cada uma; 2 Outputs: o que sai; 3 Review: conferir, nome e pasta.
+  const EXPORT_STEPS = [[1, "Sessions"], [2, "Outputs"], [3, "Review"]];
+  const EXPORT_SUBS = {
+    1: "Tick the sessions to export and set the framing of each one: the aspect ratio, where the crop sits, and the photo alignment.",
+    2: "Tick what each session should become: photos, a sequence, a lenticular print, or several.",
+    3: "Check what will be exported, name the folders and choose where they go.",
+  };
+  function chosenSessions() { return exportable().filter((s) => exp.selected.has(s.name)); }
+  // O que impede avançar de cada passo ("" = pode)
+  function exportStepProblem(step) {
+    const chosen = chosenSessions();
+    if (step >= 1 && !chosen.length) return "Tick at least one session";
+    if (step >= 2) {
+      const sts = chosen.map((s) => settingsFor(s.name));
+      if (sts.some((st) => !OUTPUT_KINDS.some((k) => st.outputs[k]))) return "Tick at least one output for each selected session";
+      if (sts.some((st) => st.outputs.photos && !st.photos.original && !st.photos.convert)) return "Photos: choose the originals, a format, or both";
+      if (sts.some((st) => st.outputs.lenticular && !lentValid(st.lent))) return "Check the lens, printer and size values";
+      if (sts.some((st) => st.outputs.sequence && !st.seq.formats.length)) return "Choose at least one sequence format for each selected session";
+    }
+    return "";
+  }
+  function goExportStep(step) {
+    if (step === exp.step) return;
+    if (step > exp.step && exportStepProblem(step - 1)) return;  // para a frente só com o passo atual pronto
+    exp.step = step;
+    exp.aligning = false;
+    if (step === 2 && !OUTPUT_KINDS.includes(exp.mode)) exp.mode = OUTPUT_KINDS.find((k) => settingsFor(exp.active).outputs[k]) || "photos";
+    if (step === 2 && !exp.selected.has(exp.active)) { const first = chosenSessions()[0]; if (first) exp.active = first.name; }
+    renderExport();
+  }
+  function renderExportSteps() {
+    const box = $("exportSteps");
+    box.innerHTML = "";
+    EXPORT_STEPS.forEach(([n, name], i) => {
+      if (i) box.appendChild(el("span", "export-step-sep", "—"));
+      const done = n < exp.step;
+      const b = el("button", "export-step" + (n === exp.step ? " on" : done ? " done" : ""), n + " " + name + (done ? " ✓" : ""));
+      b.type = "button"; b.setAttribute("role", "tab"); b.setAttribute("aria-selected", n === exp.step ? "true" : "false");
+      const blocked = n > exp.step && !!exportStepProblem(n - 1);
+      b.disabled = blocked;
+      if (blocked) b.title = exportStepProblem(n - 1);
+      b.addEventListener("click", () => goExportStep(n));
+      box.appendChild(b);
+    });
+  }
+
   function renderExport() {
+    // Reaberto sem nenhuma sessão marcada: volta ao passo 1; no passo 2 a sessão aberta é uma das marcadas
+    if (exp.step > 1 && exportStepProblem(1)) exp.step = 1;
+    if (exp.step === 2 && !exp.selected.has(exp.active)) { const f = chosenSessions()[0]; if (f) exp.active = f.name; }
     $("exportTitle").textContent = "Export sessions";
-    $("exportSub").textContent = "Tick what each session should become: photos, a sequence, a lenticular print, or several. Each session is exported to one folder.";
+    $("exportSub").textContent = EXPORT_SUBS[exp.step];
+    renderExportSteps();
+    const body = document.querySelector(".export-body");
+    if (body) { body.classList.toggle("step-2", exp.step === 2); body.classList.toggle("step-3", exp.step === 3); }
     renderExportList();
     renderExportSettings();
     if (renderExportSettings.restoreScroll) renderExportSettings.restoreScroll();  // já com o conteúdo montado
@@ -2774,13 +2827,14 @@
   function exportable() { return exp.project ? sessions.filter((s) => s.inProject) : sessions; }
   // Teclado: o Tab para numa sessão só; ↑ ↓ trocam de sessão (e mostram as opções dela, como o clique)
   const exportRoving = makeRoving({ root: () => $("exportList"), rows: (r) => [...r.querySelectorAll("li.export-item")],
-    controls: (row) => [row.querySelector("input")], id: (row) => row.dataset.name,
+    controls: (row) => (exp.step === 2 ? [row] : [row.querySelector("input")]), id: (row) => row.dataset.name,  // passo 2: sem caixa, a linha é o controle
     onMove: (name, i) => { if (exp.active === name) return; exp.active = name; exp.photo = 0; renderExportList(); renderExportSettings(); exportRoving.focusAt(name, i); } });
   function renderExportList() {
     const list = $("exportList");
     const focusWas = exportRoving.where(document.activeElement);
     list.innerHTML = "";
-    exportable().forEach((s) => {
+    // Passo 2: só as sessões marcadas no passo 1
+    exportable().filter((s) => exp.step !== 2 || exp.selected.has(s.name)).forEach((s) => {
       const label = sessionLabel(s.name);
       const li = document.createElement("li");
       li.className = "export-item" + (s.name === exp.active ? " active" : "") + (exp.selected.has(s.name) ? "" : " off");
@@ -2805,7 +2859,14 @@
       if (s.missing > 0) li.querySelector(".folder-meta").after(missingTag(s.missing));
       if (s.inProject && s.edited > 0) li.querySelector(".folder-meta").after(projectTag(s));  // "Edited n / m" também aqui
       if (s.saved) li.querySelector(".folder-meta").after(savedTag());
-      setWarnText(li.querySelector(".export-summary"), summaryText(s));
+      if (exp.step === 1) {
+        // Passo 1: o selo com o Framing da sessão ("3:2 · aligned", "As shot · mixed ratios" em âmbar)
+        const sst = settingsFor(s.name); cropLoad(s, sst);
+        const r = ratioInfoCached(s.name), asShot = sst.crop.ratio === "asshot", aligned = sessionAligned(s, sst);
+        const chip = el("span", "export-chip" + (asShot && r && r.mixed && !aligned ? " warn" : !asShot || aligned ? " ok" : ""),
+          (asShot ? "As shot" : sst.crop.ratio) + (aligned ? " · aligned" : asShot && r && r.mixed ? " · mixed ratios" : ""));
+        li.querySelector(".export-summary").replaceWith(chip);
+      } else setWarnText(li.querySelector(".export-summary"), settingsText(s));
       li.classList.toggle("different", !exp.sameForAll && s.name !== exp.active && !sameAsActive(s.name));
       const first = sessionItems(s).find((i) => i.previewable);
       if (first) sessionPhoto(s.name, first.file, 320).then((url) => { if (url) li.querySelector(".export-thumb").style.backgroundImage = "url(" + url + ")"; });
@@ -2834,27 +2895,47 @@
     // Project: sessão com só parte das fotos editadas misturaria editadas e originais
     const partial = exp.project && $("exportEdited").checked
       ? all.filter((s) => exp.selected.has(s.name) && s.edited > 0 && s.edited < s.photos.length) : [];
-    $("exportCount").textContent = noOutput ? "Tick at least one output for each selected session" : photosEmpty ? "Photos: choose the originals, a format, or both" : lentBad ? "Check the lens, printer and size values" : seqEmpty ? "Choose at least one sequence format for each selected session"
-      : partial.length ? (partial.length === 1 ? sessionTitle(partial[0]) + " has" : partial.length + " sessions have") + " only some photos edited: edited and original frames would be mixed."
-      : chosen + " of " + plural(all.length, "session", "sessions") + " selected";
-    // Aviso que impede salvar (ou que pede atenção): em amarelo
-    $("exportCount").classList.toggle("warn", partial.length > 0 || noOutput || photosEmpty || lentBad || seqEmpty);
-    $("exportConfirm").disabled = chosen === 0 || noOutput || seqEmpty || lentBad || photosEmpty;
-    // Folha de teste: só com o Lenticular marcado em alguma sessão escolhida
-    $("exportPitch").disabled = !lentSession();
-    $("exportConfirm").textContent = chosen ? "Export " + plural(chosen, "session", "sessions") : "Export";
+    // Sessões em "As shot" com proporções misturadas e sem alinhamento (a sequência pula)
+    const mixedAsShot = all.filter((s) => { if (!exp.selected.has(s.name)) return false; const st = settingsFor(s.name); const r = ratioInfoCached(s.name); return st.crop.ratio === "asshot" && r && r.mixed && !sessionAligned(s, st); }).length;
+    const mixedText = mixedAsShot ? plural(mixedAsShot, "session", "sessions") + " with mixed ratios on As shot" : "";
+    const block = noOutput || photosEmpty || lentBad || seqEmpty;
+    let text = "", warn = false;
+    if (exp.step === 1) {
+      text = chosen + " of " + plural(all.length, "session", "sessions") + (mixedAsShot ? " · " + mixedAsShot + " with mixed ratios on As shot" : "");
+      warn = !chosen;
+    } else if (exp.step === 2) {
+      const kinds = OUTPUTS.filter(([k]) => chosenSt.some((st) => st.outputs[k])).map(([, t]) => t);
+      text = noOutput ? "Tick at least one output for each selected session" : photosEmpty ? "Photos: choose the originals, a format, or both" : lentBad ? "Check the lens, printer and size values" : seqEmpty ? "Choose at least one sequence format for each selected session"
+        : plural(chosen, "session", "sessions") + (kinds.length ? " · " + kinds.join(", ").replace(/, ([^,]*)$/, " and $1") : "");
+      warn = block;
+    } else {
+      text = partial.length ? (partial.length === 1 ? sessionTitle(partial[0]) + " has" : partial.length + " sessions have") + " only some photos edited: edited and original frames would be mixed."
+        : block ? exportStepProblem(2) : mixedText;
+      warn = !!text;
+    }
+    $("exportCount").textContent = text;
+    $("exportCount").classList.toggle("warn", warn);
+    // Botão verde: avança ("Outputs →", "Review →") e, no passo 3, exporta
+    const next = exp.step === 1 ? "Outputs →" : exp.step === 2 ? "Review →" : chosen ? "Export " + plural(chosen, "session", "sessions") : "Export";
+    $("exportConfirm").textContent = next;
+    $("exportConfirm").disabled = exp.step === 1 ? chosen === 0 : chosen === 0 || block;
+    $("exportBack").classList.toggle("hidden", exp.step === 1);
+    $("exportBack").textContent = exp.step === 3 ? "← Outputs" : "← Sessions";
     $("exportSelectAll").disabled = chosen === all.length;
     $("exportUnselectAll").disabled = chosen === 0;
-    $("exportEditedLabel").classList.toggle("hidden", !exp.project);
+    $("exportEditedLabel").classList.toggle("hidden", !exp.project || exp.step !== 3);
+    renderExportSteps();
     setTimeout(expTrack, 0);  // depois de a mudança terminar (pode haver mais de um redesenho)
   }
   function sessionTitle(s) { const l = sessionLabel(s.name); return s.label ? s.label + " · " + l.date : l.date; }
 
   function refreshSummaries() {
-    [...$("exportList").children].forEach((li, i) => {
-      if (!sessions[i]) return;
-      setWarnText(li.querySelector(".export-summary"), summaryText(sessions[i]));
-      li.classList.toggle("different", !exp.sameForAll && sessions[i].name !== exp.active && !sameAsActive(sessions[i].name));
+    [...$("exportList").children].forEach((li) => {
+      const s = sessions.find((x) => x.name === li.dataset.name);
+      if (!s) return;
+      const sum = li.querySelector(".export-summary");  // no passo 1 a linha mostra o selo do Framing
+      if (sum) setWarnText(sum, settingsText(s));
+      li.classList.toggle("different", !exp.sameForAll && s.name !== exp.active && !sameAsActive(s.name));
     });
     updateExportCount();
   }
@@ -4046,10 +4127,15 @@
     const label = sessionLabel(session.name).date;
     const rerender = () => { syncAll(); renderExportSettings(); if (renderExportSettings.restoreScroll) renderExportSettings.restoreScroll(); refreshSummaries(); rememberExportPrefs(); };
 
-    // Barra de cima: mesma configuração para todas (padrão) ou uma por sessão, e mostrar/esconder
-    // a prévia (foto grande e miniaturas), para sobrar espaço para as configurações
+    // Passo 3 (Review): tabela, nome e pasta; sem prévia nem lista
+    if (exp.step === 3) { exp.keyNav = null; exp.aligning = false; outer.classList.remove("aligning", "theater"); renderReview(outer, rows, rerender); return; }
+    if (exp.step === 1) exp.mode = "framing";
+    else if (!OUTPUT_KINDS.includes(exp.mode)) exp.mode = OUTPUT_KINDS.find((k) => st.outputs[k]) || "photos";
+    // Barra de cima: no passo 1 o nome da sessão aberta; no 2, mesma configuração para todas (padrão) ou uma por
+    // sessão; nos dois, mostrar/esconder a prévia (foto grande e miniaturas)
     const top = el("div", "export-scope");
-    if (sessions.length > 1) top.appendChild(checkOption("Same settings for all sessions", exp.sameForAll, (v) => { exp.sameForAll = v; rerender(); }));
+    if (exp.step === 1) top.appendChild(el("span", "export-step1-title", "Framing · " + label));
+    else if (sessions.length > 1) top.appendChild(checkOption("Same settings for all sessions", exp.sameForAll, (v) => { exp.sameForAll = v; rerender(); }));
     top.appendChild(el("span", "spacer"));
     const pv = button(exp.previewHidden ? "Show preview" : "Hide preview", () => {
       exp.previewHidden = !exp.previewHidden;
@@ -4059,8 +4145,7 @@
     pv.classList.add("export-preview-toggle");
     top.appendChild(pv);
     outer.insertBefore(top, rows);
-    // Foco da prévia: a seção clicada por último, se marcada; senão a primeira marcada
-    if (!OUTPUT_KINDS.includes(exp.mode) && exp.mode !== "framing") exp.mode = "framing";
+    // (o modo de cada passo já foi fixado acima)
     if (exp.mode !== "lenticular") { exp.lentTheater = false; outer.classList.remove("theater"); }
     exp.keyMove = null;
     // Tela "Align photos" (pedaço 2 do Framing): toma a coluna inteira no lugar das abas
@@ -4575,7 +4660,8 @@
     // aparece, abaixo da prévia.
     const tabs = el("div", "export-tabs");
     tabs.setAttribute("role", "tablist");
-    [["framing", "Framing", "aspect ratio and alignment, for every output"]].concat(OUTPUTS).forEach(([kind, title, sub]) => {
+    // Passo 2: Photos · Sequence · Lenticular (o Framing é o passo 1)
+    (exp.step === 2 ? OUTPUTS : []).forEach(([kind, title, sub]) => {
       const always = kind === "framing";
       const on = always || !!st.outputs[kind];
       const current = kind === exp.mode;
@@ -4603,7 +4689,7 @@
       });
       tabs.appendChild(tab);
     });
-    outer.insertBefore(tabs, rows);
+    if (exp.step === 2) outer.insertBefore(tabs, rows);
     {
       const kind = exp.mode;
       const always = kind === "framing";
@@ -4611,56 +4697,39 @@
       const body = el("div", "export-tab-body");
       if (!always) {
         const sum = el("div", "export-tab-sum");
-        setWarnText(sum, on ? outputText(session, kind) : "Off · tick the box in the tab to export it");
+        // O resumo lembra o Framing do passo 1 (não muda aqui)
+        const cut = st.crop.ratio !== "asshot" && kind !== "lenticular" ? " · cut to " + st.crop.ratio + " (step 1)" : "";
+        setWarnText(sum, on ? outputText(session, kind) + cut : "Off · tick the box in the tab to export it");
         body.appendChild(sum);
       }
       buildKind(kind, body, true);
+      if (kind === "lenticular") {
+        // "Print pitch test" mora na aba Lenticular (ferramenta dela), não mais no rodapé
+        const pr = el("div", "export-pitch-row");
+        const b = button("Print pitch test", () => { const n = lentSession(); if (n) openPitchTest(settingsFor(n).lent); },
+          { kind: "btn-secondary", title: "A sheet to measure the real LPI of your lens sheet with your printer" });
+        b.disabled = !lentSession();
+        pr.append(b, el("span", "export-note", "Measure the real LPI of your lens sheet with your printer."));
+        body.appendChild(pr);
+      }
+      if (always) {
+        // Passo 1: copiar proporção e posição desta sessão para as outras marcadas (o alinhamento é por foto: fica)
+        const others = chosenSessions().filter((o) => o.name !== session.name);
+        if (others.length) {
+          const r = row("");
+          r.appendChild(button("Use this framing on all ticked sessions", () => {
+            others.forEach((o) => { const ost = settingsFor(o.name); cropLoad(o, ost); ost.crop = Object.assign({}, st.crop, { loaded: true }); cropSave(o, ost); });
+            rerender();
+            toast("Framing " + (st.crop.ratio === "asshot" ? "As shot" : st.crop.ratio) + " on " + plural(others.length + 1, "session", "sessions"));
+          }, { kind: "btn-link", title: "Copies the aspect ratio and the crop position to the other ticked sessions. The photo alignment stays per session." }));
+          body.appendChild(r);
+        }
+      }
       rows.appendChild(body);
     }
-    if (!OUTPUT_KINDS.some((k) => st.outputs[k])) rows.appendChild(el("div", "export-note exp-none", "Tick at least one output: Photos, Sequence or Lenticular."));
+    if (exp.step === 2 && !OUTPUT_KINDS.some((k) => st.outputs[k])) rows.appendChild(el("div", "export-note exp-none", "Tick at least one output: Photos, Sequence or Lenticular."));
     slideBlocks(outer, before, rows);
-
-    // Nome da pasta e dos arquivos
-    const n = st.naming;
-    const nameRow = row("Name");
-    // As opções do Custom ficam embaixo dos botões, alinhadas com eles (na mesma coluna)
-    const nameCol = el("div", "export-name-col");
-    nameCol.appendChild(segmented([["date", "Date + time"], ["number", "Number"], ["custom", "Custom"]], n.kind,
-      (v) => { n.kind = v; rerender(); }));
-    nameRow.appendChild(nameCol);
-    rows.appendChild(nameRow);
-    if (n.kind === "custom") {
-      const custom = el("div", "export-name-custom");
-      const input = document.createElement("input");
-      input.className = "export-name";
-      input.placeholder = "Name, e.g. Studio test";
-      input.maxLength = 80;
-      input.value = n.text;
-      input.addEventListener("input", () => { n.text = input.value.replace(/\|/g, ""); syncAll(); folderLine.textContent = "Folder: " + folderName(session); refreshSummaries(); });
-      custom.appendChild(input);
-      custom.appendChild(checkOption("Add date + time", n.date, (v) => { n.date = v; rerender(); }));
-      if (n.date) custom.appendChild(segmented([["before", "Before"], ["after", "After"]], n.position, (v) => { n.position = v; rerender(); }));
-      nameCol.appendChild(custom);
-    }
-    const folderLine = el("div", "export-note", "Folder: " + folderName(session));
-    rows.appendChild(folderLine);
-    addTip(rows, "Date + time: each session folder is named after when it was shot. Number: 01, 02… continuing from the ones already in the destination folder. " +
-      "Custom: a name you type; sessions with the same name get numbers (01, 02…).", "Name");
-    // Onde salva: com Project aberto, <Project>/Exports; sem, <pasta do Stillpoint>/Exports.
-    // "Choose another folder…" vale só para este salvamento (como no New project)
-    const dest = row("Export to");
-    const where = exp.dest || exp.destDefault || "";
-    // Marcas de direção: o corte é no começo (rtl), mas o caminho continua lido da esquerda para a direita
-    const path = el("span", "export-dest", where ? "\u200E" + where + "\u200E" : "…");
-    path.title = where;
-    dest.appendChild(path);
-    dest.appendChild(button("Choose another folder…", () => {
-      if (typeof window.chooseExportFolder !== "function") { toast("This build cannot do that yet. Build the app again.", 8000); return; }
-      Promise.resolve(window.chooseExportFolder(where)).then((r) => { if (r && r.folder) { exp.dest = r.folder; rerender(); } });
-    }, { kind: "btn-secondary" }));
-    if (exp.dest) dest.appendChild(button("Reset to default", () => { exp.dest = null; rerender(); },
-      { kind: "btn-secondary", title: "Back to " + (exp.destProject ? "the project's Exports folder" : "the default folder") + ": " + (exp.destDefault || "") }));
-    rows.appendChild(dest);
+    if (exp.step === 1) return;  // nome e pasta: passo 3; "Apply to all sessions": passo 2
 
     if (!exp.sameForAll && sessions.length > 1) {
       const apply = el("div", "export-apply");
@@ -4680,6 +4749,100 @@
     } else if (sessions.length > 1) {
       rows.appendChild(el("div", "export-note export-apply", "Changes apply to all sessions. Turn off \"Same settings for all sessions\" to set each one."));
     }
+  }
+
+  // Passo 3 (Review): uma linha por sessão marcada, o nome das pastas e "Export to"
+  function renderReview(outer, rows, rerender) {
+    rows.remove();
+    // O nome vale para todas as marcadas; a sessão "ativa" tem de ser uma delas (syncAll copia dela)
+    if (!exp.selected.has(exp.active)) { const f = chosenSessions()[0]; if (f) exp.active = f.name; }
+    const wrap = el("div", "export-review");
+    const table = document.createElement("table");
+    table.innerHTML = "<thead><tr><th></th><th>Session</th><th>Framing</th><th>Outputs</th><th>Folder</th></tr></thead>";
+    const tbody = document.createElement("tbody");
+    const chosen = chosenSessions();
+    const editLink = (step, s, mode) => {
+      const b = el("button", "review-edit", "Edit"); b.type = "button";
+      b.title = step === 1 ? "Change the framing of this session (step 1)" : "Change the outputs of this session (step 2)";
+      b.addEventListener("click", () => { exp.active = s.name; exp.photo = 0; if (mode) exp.mode = mode; exp.step = step; exp.aligning = false; renderExport(); });
+      return b;
+    };
+    chosen.forEach((s) => {
+      const st = settingsFor(s.name); cropLoad(s, st); alignLoad(s, st);
+      const label = sessionLabel(s.name);
+      const tr = document.createElement("tr");
+      const tdT = document.createElement("td"); const th = el("span", "review-thumb"); tdT.appendChild(th);
+      const first = sessionItems(s).find((i) => i.previewable);
+      if (first) sessionPhoto(s.name, first.file, 320).then((url) => { if (url) th.style.backgroundImage = "url(" + url + ")"; });
+      const tdS = document.createElement("td");
+      tdS.append(document.createTextNode((s.label ? s.label + " · " : "") + label.date), document.createElement("br"), el("span", "dim", plural(sessionItems(s).length, "photo", "photos")));
+      const tdF = document.createElement("td");
+      const r = ratioInfoCached(s.name), aligned = Object.keys(st.align.byFile).filter((f) => !alignIsIdentity(st.align.byFile[f])).length;
+      const names = { 0: "left", 0.5: "centre", 1: "right" }, vnames = { 0: "top", 0.5: "", 1: "bottom" };
+      if (st.crop.ratio === "asshot" && r && r.mixed && !aligned) tdF.appendChild(el("span", "amb", "As shot · mixed ratios: the sequence will jump"));
+      else {
+        const pos = st.crop.ratio === "asshot" ? "" : " · " + ([vnames[st.crop.y], names[st.crop.x]].filter((x) => x && x !== undefined).join(" ") || "custom position");
+        tdF.appendChild(document.createTextNode((st.crop.ratio === "asshot" ? "As shot" : st.crop.ratio) + pos));
+        if (aligned) { tdF.appendChild(document.createElement("br")); tdF.appendChild(el("span", "dim", plural(aligned, "photo", "photos") + " aligned")); }
+      }
+      tdF.appendChild(editLink(1, s, "framing"));
+      const tdO = document.createElement("td");
+      const kinds = OUTPUT_KINDS.filter((k) => st.outputs[k]);
+      if (!kinds.length) tdO.appendChild(el("span", "amb", "No output ticked"));
+      kinds.forEach((k, i) => { if (i) tdO.appendChild(document.createElement("br")); const line = el("span", "", ""); setWarnText(line, outputText(s, k)); tdO.appendChild(line); });
+      tdO.appendChild(editLink(2, s, kinds[0] || "photos"));
+      const tdD = document.createElement("td"); tdD.textContent = folderName(s);
+      tr.append(tdT, tdS, tdF, tdO, tdD);
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+
+    // Nome (vale para todas as sessões marcadas) e pasta
+    const boxes = el("div", "export-review-boxes");
+    const nameBox = el("div", "export-review-box"); nameBox.appendChild(el("h4", "", "Name"));
+    const st = settingsFor(exp.active);
+    const n = st.naming;
+    const setAll = (fn) => { chosen.forEach((s) => fn(settingsFor(s.name).naming)); };
+    const nameRow = row("Folders");
+    const nameCol = el("div", "export-name-col");
+    nameCol.appendChild(segmented([["date", "Date + time"], ["number", "Number"], ["custom", "Custom"]], n.kind, (v) => { setAll((x) => { x.kind = v; }); rerender(); }));
+    nameRow.appendChild(nameCol);
+    nameBox.appendChild(nameRow);
+    if (n.kind === "custom") {
+      const custom = el("div", "export-name-custom");
+      const input = document.createElement("input");
+      input.className = "export-name"; input.placeholder = "Name, e.g. Studio test"; input.maxLength = 80; input.value = n.text;
+      input.addEventListener("input", () => {
+        const v = input.value.replace(/\|/g, ""); setAll((x) => { x.text = v; });
+        [...tbody.children].forEach((tr, i) => { tr.lastChild.textContent = folderName(chosen[i]); });
+        refreshSummaries();
+      });
+      custom.appendChild(input);
+      custom.appendChild(checkOption("Add date + time", n.date, (v) => { setAll((x) => { x.date = v; }); rerender(); }));
+      if (n.date) custom.appendChild(segmented([["before", "Before"], ["after", "After"]], n.position, (v) => { setAll((x) => { x.position = v; }); rerender(); }));
+      nameCol.appendChild(custom);
+    }
+    addTip(nameBox, "Date + time: each session folder is named after when it was shot. Number: 01, 02… continuing from the ones already in the destination folder. " +
+      "Custom: a name you type; sessions with the same name get numbers (01, 02…). The name applies to every ticked session.", "Folders");
+    // Onde salva: com Project aberto, <Project>/Exports; sem, <pasta do Stillpoint>/Exports.
+    // "Choose another folder…" vale só para este salvamento (como no New project)
+    const destBox = el("div", "export-review-box"); destBox.appendChild(el("h4", "", "Export to"));
+    const where = exp.dest || exp.destDefault || "";
+    const path = el("span", "export-dest", where ? "\u200E" + where + "\u200E" : "…"); path.title = where;
+    destBox.appendChild(path);
+    const destBtns = el("div", "export-pitch-row");
+    destBtns.appendChild(button("Choose another folder…", () => {
+      if (typeof window.chooseExportFolder !== "function") { toast("This build cannot do that yet. Build the app again.", 8000); return; }
+      Promise.resolve(window.chooseExportFolder(where)).then((r) => { if (r && r.folder) { exp.dest = r.folder; rerender(); } });
+    }, { kind: "btn-secondary" }));
+    if (exp.dest) destBtns.appendChild(button("Reset to default", () => { exp.dest = null; rerender(); },
+      { kind: "btn-secondary", title: "Back to " + (exp.destProject ? "the project's Exports folder" : "the default folder") + ": " + (exp.destDefault || "") }));
+    destBox.appendChild(destBtns);
+    destBox.appendChild(el("span", "export-note", plural(chosen.length, "folder", "folders") + " · one per session"));
+    boxes.append(nameBox, destBox);
+    wrap.appendChild(boxes);
+    outer.appendChild(wrap);
   }
 
   function exportSpec(name) {
@@ -4769,8 +4932,8 @@
   $("exportSelectAll").addEventListener("click", () => { exp.selectedTouched = true; exp.selected = new Set(exportable().map((s) => s.name)); renderExportList(); updateExportCount(); });
   $("exportUnselectAll").addEventListener("click", () => { exp.selectedTouched = true; exp.selected.clear(); renderExportList(); updateExportCount(); });
   $("exportCancel").addEventListener("click", askCloseExport);
-  $("exportConfirm").addEventListener("click", confirmExport);
-  $("exportPitch").addEventListener("click", () => { const n = lentSession(); if (n) openPitchTest(settingsFor(n).lent); });
+  $("exportConfirm").addEventListener("click", () => { if (exp.step < 3) goExportStep(exp.step + 1); else confirmExport(); });
+  $("exportBack").addEventListener("click", () => goExportStep(exp.step - 1));
   $("progressCancel").addEventListener("click", () => {
     $("progressCancel").disabled = true;
     $("progressStep").textContent = "Cancelling…";

@@ -1572,11 +1572,12 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .align-handle-tr { right: 0; top: 0; cursor: nesw-resize; } .align-handle-bl { left: 0; bottom: 0; cursor: nesw-resize; }
 .align-handle:hover, .align-stage.resizing .align-handle { background: var(--noct-primary); }
 .align-rot-line { position: absolute; left: 50%; top: 0; width: 1px; height: 26px; margin-top: -26px; background: var(--noct-primary); transform: scaleY(var(--inv, 1)); transform-origin: bottom center; }
-/* Cursor de girar (seta em arco), sobre a alça redonda e durante o giro */
+/* Cursor de girar (seta em arco preta com contorno branco, no estilo dos cursores do sistema; decisão do dono, opção B),
+   sobre a alça redonda e durante o giro */
 .align-rot-handle { position: absolute; left: 50%; top: 0; width: 12px; height: 12px; margin: -32px 0 0 -6px; border-radius: 50%; background: var(--noct-bg); border: 1px solid var(--noct-primary); pointer-events: auto; transform: scale(var(--inv, 1));
-  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18.5 12a6.5 6.5 0 1 1-2.2-4.9' stroke='%23000' stroke-width='4.5'/%3E%3Cpath d='M17.5 3.5v4.5H13' stroke='%23000' stroke-width='4.5'/%3E%3Cpath d='M18.5 12a6.5 6.5 0 1 1-2.2-4.9' stroke='%237cff5a' stroke-width='2'/%3E%3Cpath d='M17.5 3.5v4.5H13' stroke='%237cff5a' stroke-width='2'/%3E%3C/g%3E%3C/svg%3E") 12 12, alias; }
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18.5 12a6.5 6.5 0 1 1-2.2-4.9' stroke='%23fff' stroke-width='4.5'/%3E%3Cpath d='M17.5 3.5v4.5H13' stroke='%23fff' stroke-width='4.5'/%3E%3Cpath d='M18.5 12a6.5 6.5 0 1 1-2.2-4.9' stroke='%23000' stroke-width='2'/%3E%3Cpath d='M17.5 3.5v4.5H13' stroke='%23000' stroke-width='2'/%3E%3C/g%3E%3C/svg%3E") 12 12, alias; }
 .align-rot-handle:hover, .align-stage.rotating .align-rot-handle { background: var(--noct-primary); }
-.align-stage.rotating, .align-stage.rotating * { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18.5 12a6.5 6.5 0 1 1-2.2-4.9' stroke='%23000' stroke-width='4.5'/%3E%3Cpath d='M17.5 3.5v4.5H13' stroke='%23000' stroke-width='4.5'/%3E%3Cpath d='M18.5 12a6.5 6.5 0 1 1-2.2-4.9' stroke='%237cff5a' stroke-width='2'/%3E%3Cpath d='M17.5 3.5v4.5H13' stroke='%237cff5a' stroke-width='2'/%3E%3C/g%3E%3C/svg%3E") 12 12, alias; }
+.align-stage.rotating, .align-stage.rotating * { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18.5 12a6.5 6.5 0 1 1-2.2-4.9' stroke='%23fff' stroke-width='4.5'/%3E%3Cpath d='M17.5 3.5v4.5H13' stroke='%23fff' stroke-width='4.5'/%3E%3Cpath d='M18.5 12a6.5 6.5 0 1 1-2.2-4.9' stroke='%23000' stroke-width='2'/%3E%3Cpath d='M17.5 3.5v4.5H13' stroke='%23000' stroke-width='2'/%3E%3C/g%3E%3C/svg%3E") 12 12, alias; }
 /* Espaço segurado: a prévia vira "mão" para deslocar a vista */
 .export-settings.space-pan .align-stage, .export-settings.space-pan .align-stage * { cursor: grab !important; }
 .align-stage.panning, .align-stage.panning * { cursor: grabbing !important; }
@@ -1760,3 +1761,40 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .cs-review-mini.ratio-warn, .cs-review-mini.changed.ratio-warn { border-color: var(--noct-pending); border-style: dashed; }
 .cs-review-mini.current.ratio-warn { outline: 2px solid var(--noct-pending); }
 .cs-review-minilabel { position: absolute; left: 4px; top: 4px; padding: 0 4px; background: #000; color: var(--noct-text); font: 700 9px var(--noct-font-mono); }
+
+/* ---------- Export sessions em três passos (decisão do dono, 2026-11-04: protótipo "Export em três passos") ---------- */
+.export-head { align-items: flex-start; }
+.export-steps { display: flex; align-items: center; gap: 6px; font: 700 10px var(--noct-font-mono); letter-spacing: .12em; text-transform: uppercase; white-space: nowrap; padding-top: 2px; }
+.export-step { padding: 4px 10px; border: 1px solid var(--noct-border); color: var(--noct-text-dim); background: transparent; font: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer; }
+.export-step.done { color: var(--noct-text-muted); border-color: var(--noct-border-strong); }
+.export-step.on { background: var(--noct-primary); border-color: var(--noct-primary); color: var(--noct-on-primary); cursor: default; }
+.export-step:disabled { cursor: default; opacity: .6; }
+.export-step:not(.on):not(:disabled):hover { color: var(--noct-primary); border-color: var(--noct-primary); }
+.export-step-sep { color: var(--noct-text-dim); }
+.export-step:focus-visible { outline: 2px solid var(--noct-primary); outline-offset: 2px; }
+/* Passo 2: a lista mostra só as sessões marcadas, sem caixas; passo 3: sem lista */
+.export-body.step-2 .export-sessions .save-tools { display: none; }
+.export-body.step-2 .export-item { grid-template-columns: 64px 1fr; }
+.export-body.step-2 .export-item > .export-check { display: none; }
+.export-body.step-3 { grid-template-columns: 0 minmax(0, 1fr); }
+.export-body.step-3 .export-sessions { display: none; }
+/* Selo do Framing de cada sessão (passo 1) */
+.export-chip { display: inline-block; margin-top: 4px; padding: 1px 5px; border: 1px solid var(--noct-border-strong); font: 700 9px var(--noct-font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--noct-text-muted); }
+.export-chip.ok { border-color: var(--noct-primary); color: var(--noct-primary); }
+.export-chip.warn { border: 1px dashed var(--noct-pending); color: var(--noct-pending); }
+.export-step1-title { font: 700 11px var(--noct-font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--noct-text); }
+/* Passo 3: a tabela e as duas caixas (nome, pasta) */
+.export-review { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 16px; }
+.export-review table { width: 100%; border-collapse: collapse; font: 12px var(--noct-font-mono); }
+.export-review th { text-align: left; font: 700 10px var(--noct-font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--noct-text-dim); padding: 8px 10px; border-bottom: 1px solid var(--noct-border); }
+.export-review td { padding: 10px; border-bottom: 1px solid var(--noct-border); vertical-align: top; color: var(--noct-text); line-height: 1.5; }
+.export-review td .dim { color: var(--noct-text-dim); }
+.export-review td .amb { color: var(--noct-pending); }
+.export-review .review-thumb { width: 64px; aspect-ratio: 3 / 2; background: #000 center / cover no-repeat; border: 1px solid var(--noct-border); display: block; }
+.export-review .review-edit { margin-left: 6px; padding: 0; border: 0; background: none; color: var(--noct-text-muted); font: inherit; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.export-review .review-edit:hover { color: var(--noct-primary); }
+.export-review-boxes { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+.export-review-box { border: 1px solid var(--noct-border); background: var(--noct-surface-inner); padding: 12px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.export-review-box h4 { margin: 0; font: 700 10px var(--noct-font-mono); letter-spacing: .16em; text-transform: uppercase; color: var(--noct-text-muted); }
+.export-review-box .export-dest { word-break: break-all; }
+.export-pitch-row { display: flex; align-items: center; gap: 12px; }
