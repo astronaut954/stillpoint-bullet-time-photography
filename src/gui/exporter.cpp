@@ -860,31 +860,22 @@ namespace Export
     bool ComputeCommonFrame(Framing& framing, const std::vector<std::pair<int, int>>& sizes)
     {
         if (framing.align.empty() || sizes.size() != framing.align.size()) { framing.align.clear(); return false; }
-        const double r = RatioValue(framing.ratio);
-        double cw = 0, ch = 0;
-        if (r > 0)
+        // A interseção das fotos como saíram da câmera (centradas) e, com proporção escolhida, o maior retângulo
+        // nessa proporção que cabe nela: nenhuma foto é ampliada (decisão do dono, 2026-11-03: ampliar mudaria o
+        // tamanho do objeto fotografado entre as câmeras)
+        double left = -1e18, top = -1e18, right = 1e18, bottom = 1e18;
+        for (const auto& sz : sizes)
         {
-            // O maior retângulo na proporção que cabe em alguma foto
-            for (const auto& sz : sizes)
-            {
-                const double w = sz.first, h = sz.second;
-                if (w <= 0 || h <= 0) continue;
-                const double t = w >= h ? r : 1.0 / r;
-                double fw = w, fh = h;
-                if (w / h > t) fw = h * t; else fh = w / t;
-                if (fw * fh > cw * ch) { cw = fw; ch = fh; }
-            }
+            const double iw = sz.first, ih = sz.second;
+            left = std::max(left, -iw / 2); right = std::min(right, iw / 2);
+            top = std::max(top, -ih / 2); bottom = std::min(bottom, ih / 2);
         }
-        else
+        double cw = right - left, ch = bottom - top;
+        const double r = RatioValue(framing.ratio);
+        if (r > 0 && cw > 0 && ch > 0)
         {
-            double left = -1e18, top = -1e18, right = 1e18, bottom = 1e18;
-            for (const auto& sz : sizes)
-            {
-                const double iw = sz.first, ih = sz.second;
-                left = std::max(left, -iw / 2); right = std::min(right, iw / 2);
-                top = std::max(top, -ih / 2); bottom = std::min(bottom, ih / 2);
-            }
-            cw = right - left; ch = bottom - top;
+            const double t = cw >= ch ? r : 1.0 / r;
+            if (cw / ch > t) cw = ch * t; else ch = cw / t;
         }
         if (cw < 16 || ch < 16) { framing.align.clear(); return false; }
         framing.commonX = -cw / 2; framing.commonY = -ch / 2; framing.commonW = cw; framing.commonH = ch;

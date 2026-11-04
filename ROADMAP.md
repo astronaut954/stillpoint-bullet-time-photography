@@ -743,24 +743,11 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      da proporção não se move (a posição do recorte é só da aba Framing) e "Position" posiciona a foto atual na folga
      que ela tem sobre a área útil; o quadro comum é a interseção das fotos no tamanho escolhido, sem giro (girar só
      faz a foto crescer para seguir cobrindo a área, com conferência exata pelos cantos); quadro da proporção neon
-     sólido, o original tracejado. **Canvas (decisão do dono, 2026-11-03, noite):** com proporção escolhida, o canvas é o
-     maior retângulo nessa proporção que cabe em alguma foto (o da maior), e as fotos em que ele não cabe crescem
-     sozinhas para cobri-lo (as 16:9 aumentam para caber na altura das 3:2); em "As shot", a interseção das fotos como
-     saíram. Um quadro só na tela (o canvas, neon). As fotos convertidas saem no tamanho do canvas (as menores ampliadas).
-     "As shot" sem foto ajustada continua saindo cada foto como é. Em aberto: o campo de visão das 16:9 ampliadas fica
-     mais fechado que o das 3:2 (zoom); se isso incomodar no bullet time, a alternativa é o canvas 16:9 (cortar as 3:2). Linhas: "Aspect ratio" (As shot · 3:2 · 4:3 · 16:9 · 1:1, "keeps n%") com a caixa "Same size for all
-     photos" na mesma linha; "References": Previous photo (azul), Next photo (laranja) e Photo 01 (verde),
-     cada uma com a sua caixa para ligar/desligar, e uma opacidade só; "This photo": Move X, Move Y, Size e
-     Rotate com − +, campo para digitar e passos pequenos (1 px / ⇧ 10; 0,1 % / ⇧ 1; 0,05° / ⇧ 0,5),
-     rotação sem limite; "Reset photo" / "Reset all"; "Common frame" (o que todas as fotos cobrem depois do
-     ajuste, com o tamanho). Prévia: foto atual nítida sobre as referências tingidas; quadro comum aceso;
-     quadro da proporção tracejado âmbar, arrastável (ou nove posições); arrastar move, roda redimensiona,
-     ⌥ + roda gira; ← → trocam de foto, ⌘ + setas movem 1 px (⇧ 10); uma instrução sutil na prévia ensina
-     os gestos. Tudo em session.json (por foto: deslocamento, tamanho, rotação; da sessão: proporção e
-     posição do corte); originais intactos; vale para Converted, Sequence e Lenticular (Fill). A proporção
-     corta o quadro comum, não cada foto. Entrega em dois pedaços: (1) a aba com proporção + Same size no
-     lugar das linhas "Aspect ratio"/"Crop"/"Same size" de 2026-11-03; (2) o alinhamento (transformar cada
-     foto na exportação, no programa).
+     sólido, o original tracejado. **Canvas (decisões do dono, 2026-11-03, noite):** o canvas é a interseção das fotos como saíram
+     e, com proporção escolhida, o maior retângulo nessa proporção que cabe nela; nenhuma foto é ampliada sozinha
+     (chegou-se a fazer as 16:9 crescerem para a altura das 3:2 e voltou-se atrás: ampliar muda o tamanho do objeto
+     fotografado entre as câmeras). Um quadro só na tela (o canvas, neon). As fotos convertidas saem no tamanho do
+     canvas. "As shot" sem foto ajustada continua saindo cada foto como é.
 5. **Etapa 20 — Edit in Lightroom Classic / Photoshop.** Ida e volta: o app abre os originais
    do Project no Lightroom Classic (o dono do projeto usa o Classic); um plugin do Stillpoint
    (SDK Lua do Classic) agrupa cada sessão como coleção e tem "Export to Stillpoint", que

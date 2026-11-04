@@ -61,10 +61,10 @@ namespace Export
     double RatioValue(const std::string& ratio);  // "3:2" -> 1.5; 0 se não for uma das quatro
     // Recorta a foto no lugar (não faz nada se já estiver na proporção, ou sem proporção)
     void ApplyFraming(RgbFrame& frame, const Framing& framing);
-    // O canvas (quadro comum), centrado em 0,0. Com proporção escolhida: o maior retângulo nessa proporção que cabe
-    // em alguma das fotos (o da maior); as fotos em que ele não cabe crescem sozinhas para cobri-lo (decisão do dono,
-    // 2026-11-03: as 16:9 aumentam para caber na altura das 3:2). Sem proporção ("As shot"): a interseção das fotos
-    // como saíram da câmera. Mover, redimensionar ou girar uma foto não muda o canvas; a foto se mexe por trás dele.
+    // O canvas (quadro comum), centrado em 0,0: a interseção das fotos como saíram da câmera e, com proporção
+    // escolhida, o maior retângulo nessa proporção que cabe nela (nenhuma foto é ampliada: ampliar mudaria o tamanho
+    // do objeto entre as câmeras; decisão do dono, 2026-11-03). Mover, redimensionar ou girar uma foto não muda o
+    // canvas; a foto se mexe por trás dele.
     // Tamanhos (largura, altura) na mesma ordem de framing.align. false (e align limpo) se o quadro ficou vazio.
     // Também fixa, em cada Align, o tamanho em uso (o maior entre o escolhido e o necessário para cobrir o canvas) e,
     // nas fotos em que a pessoa não mexeu, a posição dada por posX/posY (a folga que sobra para cada lado).

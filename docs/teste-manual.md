@@ -1392,9 +1392,9 @@ direita; a lista de sessões continua à esquerda da janela.
       prévia escurece. Embaixo, a instrução "01 · Drag to move · scroll to resize · ⌥ scroll to rotate · ⌘ arrows 1 px
       (⇧ 10)".
 - [ ] O canvas (decisão do dono, 2026-11-03): em "As shot", o que todas as fotos cobrem como saíram (900 × 506); com
-      3:2 escolhido, o maior 3:2 que cabe numa foto (900 × 600, o das 3:2), e as fotos 16:9 (02 e 04) crescem sozinhas
-      para cobri-lo: abrir a 02 mostra "Size 118.6" e ela preenchendo o canvas na altura; a 01 fica em 100. Com 16:9,
-      canvas 900 × 506 e nenhuma cresce. Mover o canvas não existe: só as fotos se mexem por trás dele.
+      3:2 escolhido, o maior 3:2 que cabe nisso (759 × 506); com 16:9, 900 × 506. Nenhuma foto cresce sozinha (as
+      16:9 continuam em Size 100): ampliar mudaria o tamanho do objeto fotografado entre as câmeras. Só as fotos se
+      mexem por trás do canvas.
 - [ ] Fileira de miniaturas: a 01 marcada; a 02 com um ponto laranja no canto da miniatura (é a Next photo) — o ponto
       fica dentro da miniatura, nunca solto na tela. As miniaturas 02 e 04 (16:9) com a borda tracejada âmbar e "16:9"
       no canto, como na tela principal. Clicar na 04 (ou → três vezes):
@@ -1435,7 +1435,7 @@ direita; a lista de sessões continua à esquerda da janela.
 - [ ] Aba Lenticular, "Interlaced": a legenda de baixo é uma linha curta ("Interlaced 18500 × 12831 px · 30 × 20 cm ▸");
       clicar nela abre o resto (px por lente, faixas, instruções) e clicar de novo recolhe. "Hide preview" e "Show
       preview" com o Interlaced: volta na hora, sem travar (a imagem entrelaçada fica guardada enquanto nada muda).
-- [ ] "Fit to canvas" (ao lado de "Reset photo"): com a 04 em Size 130% e movida, o botão centra a foto e leva o Size ao
+- [ ] "Fit to canvas", "Reset photo" e "Reset all" cabem na coluna (quebram linha se faltar largura). "Fit to canvas": com a 04 em Size 130% e movida, o botão centra a foto e leva o Size ao
       menor valor que ainda cobre a área útil (100% numa foto sem giro; mais, se estiver girada — o giro fica).
 - [ ] Afastar muito uma foto (Move X 7000): o quadro comum some e "Common frame" avisa em âmbar "The photos do not
       overlap: move them closer, or Reset." "Reset photo" volta a 04 a zero; "Reset all" zera todas.
@@ -1452,8 +1452,8 @@ direita; a lista de sessões continua à esquerda da janela.
       curto.
 - [ ] Fechar e abrir o Export, e fechar e abrir o app: o alinhamento volta (session.json tem "align").
 - [ ] Exportar (Photos convertidas em JPG + Sequence MP4 + Lenticular Fill) uma sessão com 3:2 e a 04 movida 100 px e
-      girada 2°: no Finder, todas as JPG convertidas têm o tamanho do canvas (900 × 600 nas simuladas), as 16:9 (02 e
-      04) saem ampliadas para preencher a altura, a 04 ainda deslocada e girada; o MP4 e o lenticular usam as mesmas
+      girada 2°: no Finder, todas as JPG convertidas têm o tamanho do canvas (759 × 506 nas simuladas), nenhuma
+      ampliada, a 04 deslocada e girada; o MP4 e o lenticular usam as mesmas
       fotos; os Originals continuam intactos; o settings.txt do lenticular tem a linha "Alignment: photos aligned in
       Stillpoint (canvas … px)". Sessão em "As shot" sem nenhuma foto ajustada: cada foto sai como é (seção 36); em
       "As shot" com alguma foto ajustada, todas saem no canvas (a interseção).

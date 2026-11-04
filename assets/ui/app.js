@@ -3437,30 +3437,20 @@
       return Math.abs(ux) <= w / 2 + eps && Math.abs(uy) <= h / 2 + eps;
     });
   }
-  // O canvas (centro em 0,0): com proporção escolhida, o maior retângulo nessa proporção que cabe em alguma das
-  // fotos (o da maior); as fotos em que ele não cabe crescem sozinhas para cobri-lo (decisão do dono, 2026-11-03: as
-  // 16:9 aumentam para caber na altura das 3:2). Em "As shot", a interseção das fotos como saíram da câmera. Mover,
-  // redimensionar ou girar uma foto não muda o canvas (a mesma conta do programa, Export::ComputeCommonFrame)
+  // O canvas (centro em 0,0): a interseção das fotos como saíram da câmera e, com proporção escolhida, o maior
+  // retângulo nessa proporção que cabe nela. Nenhuma foto é ampliada (decisão do dono, 2026-11-03: ampliar mudaria o
+  // tamanho do objeto fotografado entre as câmeras). Mover, redimensionar ou girar uma foto não muda o canvas (a mesma
+  // conta do programa, Export::ComputeCommonFrame)
   function commonFrame(items, sizes, st) {
+    let left = -1e18, top = -1e18, right = 1e18, bottom = 1e18;
+    items.forEach((item) => {
+      const sz = sizes[item.file]; if (!sz) return;
+      left = Math.max(left, -sz.w / 2); right = Math.min(right, sz.w / 2);
+      top = Math.max(top, -sz.h / 2); bottom = Math.min(bottom, sz.h / 2);
+    });
+    let cw = right - left, ch = bottom - top;
     const r = st && st.crop.ratio !== "asshot" ? RATIOS[st.crop.ratio] : 0;
-    let cw = 0, ch = 0;
-    if (r) {
-      items.forEach((item) => {
-        const sz = sizes[item.file]; if (!sz) return;
-        const t = sz.w >= sz.h ? r : 1 / r;
-        let fw = sz.w, fh = sz.h;
-        if (sz.w / sz.h > t) fw = sz.h * t; else fh = sz.w / t;
-        if (fw * fh > cw * ch) { cw = fw; ch = fh; }
-      });
-    } else {
-      let left = -1e18, top = -1e18, right = 1e18, bottom = 1e18;
-      items.forEach((item) => {
-        const sz = sizes[item.file]; if (!sz) return;
-        left = Math.max(left, -sz.w / 2); right = Math.min(right, sz.w / 2);
-        top = Math.max(top, -sz.h / 2); bottom = Math.min(bottom, sz.h / 2);
-      });
-      cw = right - left; ch = bottom - top;
-    }
+    if (r && cw > 0 && ch > 0) { const t = cw >= ch ? r : 1 / r; if (cw / ch > t) cw = ch * t; else ch = cw / t; }
     if (cw < 16 || ch < 16) return null;
     return { x: -cw / 2, y: -ch / 2, w: cw, h: ch };
   }
@@ -3791,7 +3781,7 @@
       ratio.setAttribute("data-size", "Canvas · " + Math.round(frame.w) + " × " + Math.round(frame.h) + " px · " + rn(frame.w, frame.h));
       const sz = sizes[item.file];
       cf.textContent = "Canvas " + Math.round(frame.w) + " × " + Math.round(frame.h) + " px (" + rn(frame.w, frame.h) + ")" + (sz ? " · this photo " + sz.w + " × " + sz.h + " px (" + rn(sz.w, sz.h) + ")" : "");
-      cf.title = "The canvas is what every export gets: with an aspect ratio, the largest frame in that ratio that fits a photo (the others grow to cover it); As shot, what every photo covers. Each photo is moved, resized and rotated behind it.";
+      cf.title = "The canvas is what every export gets: what every photo covers as shot and, with an aspect ratio, the largest frame in that ratio inside it. No photo is enlarged on its own; each one is moved, resized and rotated behind the canvas.";
     };
     Promise.all(items.map((it) => photoSizeOf(session.name, it.file).then((sz) => { if (sz) sizes[it.file] = sz; }))).then(() => {
       wait.remove();
