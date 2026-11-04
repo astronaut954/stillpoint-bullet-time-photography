@@ -3427,16 +3427,15 @@
       return Math.abs(ux) <= w / 2 + eps && Math.abs(uy) <= h / 2 + eps;
     });
   }
-  // Quadro comum (canvas com o centro em 0,0): a interseção das fotos no tamanho escolhido (base), sem giro — o giro
-  // não muda o quadro; ele só obriga a foto a crescer para continuar cobrindo a área (a mesma conta do programa)
-  function commonFrame(items, sizes, st) {
+  // Quadro comum (canvas com o centro em 0,0): a interseção das fotos como saíram da câmera, centradas — o canvas onde
+  // as fotos recortadas caem. Mover, redimensionar ou girar uma foto não muda o canvas (decisão do dono, 2026-11-03):
+  // a foto é que se mexe por trás dele, presa a continuar cobrindo o recorte (a mesma conta do programa)
+  function commonFrame(items, sizes) {
     let left = -1e18, top = -1e18, right = 1e18, bottom = 1e18;
     items.forEach((item) => {
       const sz = sizes[item.file]; if (!sz) return;
-      const a = alignOf(st, item.file);
-      const b = a.base || a.scale, w = sz.w * b, h = sz.h * b;
-      left = Math.max(left, a.dx - w / 2); right = Math.min(right, a.dx + w / 2);
-      top = Math.max(top, a.dy - h / 2); bottom = Math.min(bottom, a.dy + h / 2);
+      left = Math.max(left, -sz.w / 2); right = Math.min(right, sz.w / 2);
+      top = Math.max(top, -sz.h / 2); bottom = Math.min(bottom, sz.h / 2);
     });
     if (right - left < 16 || bottom - top < 16) return null;
     return { x: left, y: top, w: right - left, h: bottom - top };
@@ -3566,13 +3565,7 @@
     // Tenta aplicar uma mudança; se descobrir a área útil, mantém o que havia (nos movimentos, tenta cada eixo)
     const tryApply = (change) => {
       const cand = Object.assign({}, a); change(cand);
-      if (cand.scale !== a.scale) {
-        // Tamanho mexido pela pessoa: vira o novo base. Como o base define o quadro comum, a área útil é a que ficará
-        // depois do passo (a foto pode crescer à vontade; encolher só até a área das outras fotos)
-        cand.base = cand.scale;
-        const keep = a.base; a.base = cand.base; lockRect = usefulRect(); a.base = keep;
-        if (!lockRect) { stage.classList.add("locked"); clearTimeout(lockFlash); lockFlash = setTimeout(() => stage.classList.remove("locked"), 300); return false; }
-      }
+      if (cand.scale !== a.scale) cand.base = cand.scale;  // tamanho mexido pela pessoa: vira o novo base
       // Girar (ou mover com giro): o tamanho em uso é o base, ou o mínimo acima dele que ainda cobre a área (como o
       // Lightroom); ao desfazer o giro ele volta ao base
       if (cand.rot !== a.rot || (cand.scale === a.scale && (cand.dx !== a.dx || cand.dy !== a.dy))) {
@@ -3666,7 +3659,8 @@
         d.addEventListener("click", () => placePhoto(x, y));
         dots.appendChild(d);
       }));
-      pos.append(dots, el("span", "export-note-inline", "Where this photo sits in the room it has over the frame."));
+      pos.appendChild(dots);
+      addTip(arRows, "Moves this photo within the room it has behind the frame (left: its left edge meets the frame's; centre: centred).", "Position");
       arRows.appendChild(pos);
     }
     ar.appendChild(arRows);
@@ -3702,7 +3696,7 @@
     // atual conta com o tamanho escolhido (base) e sem giro: assim o giro não muda a área, só obriga a crescer para
     // cobri-la, e o crescimento se desfaz conforme o giro é desfeito.
     const usefulRect = () => {
-      const frame = commonFrame(items, sizes, st); if (!frame) return null;
+      const frame = commonFrame(items, sizes); if (!frame) return null;
       const r = st.crop.ratio !== "asshot" ? RATIOS[st.crop.ratio] : 0;
       let fw = frame.w, fh = frame.h;
       if (r) { const t = frame.w >= frame.h ? r : 1 / r; if (frame.w / frame.h > t) fw = frame.h * t; else fh = frame.w / t; }
@@ -3727,12 +3721,14 @@
           // alças com o mesmo tamanho na tela, seja qual for o zoom da foto
           const inv = 1 / al.scale; [...box.children].forEach((hd) => { hd.style.setProperty("--inv", inv); }); }
       });
-      const frame = commonFrame(items, sizes, st);
-      if (!frame) { common.style.display = "none"; ratio.style.display = "none"; cf.textContent = "The photos do not overlap: move them closer, or Reset."; cf.classList.add("exp-warn"); return; }
+      const frame = commonFrame(items, sizes);
+      if (!frame) { common.style.display = "none"; ratio.style.display = "none"; cf.textContent = "Could not work out the canvas from the photo sizes."; cf.classList.add("exp-warn"); return; }
       cf.classList.remove("exp-warn");
-      common.style.display = ""; common.style.left = (cx + frame.x * scaleK) + "px"; common.style.top = (cy + frame.y * scaleK) + "px";
+      const r0 = st.crop.ratio !== "asshot" ? RATIOS[st.crop.ratio] : 0;
+      common.style.display = r0 ? "" : "none";  // em "As shot" o recorte é o canvas inteiro: só o quadro neon
+      common.style.left = (cx + frame.x * scaleK) + "px"; common.style.top = (cy + frame.y * scaleK) + "px";
       common.style.width = (frame.w * scaleK) + "px"; common.style.height = (frame.h * scaleK) + "px";
-      common.setAttribute("data-size", "Original · " + Math.round(frame.w) + " × " + Math.round(frame.h) + " px");
+      common.setAttribute("data-size", "Canvas · " + Math.round(frame.w) + " × " + Math.round(frame.h) + " px");
       const r = st.crop.ratio !== "asshot" ? RATIOS[st.crop.ratio] : 0;
       let fw = frame.w, fh = frame.h;
       if (r) { const t = frame.w >= frame.h ? r : 1 / r; if (frame.w / frame.h > t) fw = frame.h * t; else fh = frame.w / t; }
@@ -3740,8 +3736,8 @@
       ratio.style.display = ""; ratio.classList.toggle("free", r && (frame.w - fw > 1 || frame.h - fh > 1));
       ratio.style.left = (cx + fx * scaleK) + "px"; ratio.style.top = (cy + fy * scaleK) + "px"; ratio.style.width = (fw * scaleK) + "px"; ratio.style.height = (fh * scaleK) + "px";
       const sz = sizes[item.file];
-      cf.textContent = "Common frame " + Math.round(frame.w) + " × " + Math.round(frame.h) + " px" + (r ? " · " + st.crop.ratio + " cut " + Math.round(fw) + " × " + Math.round(fh) + " px" : "") + (sz ? " · this photo " + sz.w + " × " + sz.h : "");
-      cf.title = "What every photo covers after the alignment (the common frame); the aspect ratio cuts this frame, not each photo.";
+      cf.textContent = "Canvas " + Math.round(frame.w) + " × " + Math.round(frame.h) + " px" + (r ? " · " + st.crop.ratio + " cut " + Math.round(fw) + " × " + Math.round(fh) + " px" : "") + (sz ? " · this photo " + sz.w + " × " + sz.h : "");
+      cf.title = "The canvas: what every photo covers as shot, centred. The aspect ratio cuts this canvas, and each photo is moved, resized and rotated behind it.";
     };
     Promise.all(items.map((it) => photoSizeOf(session.name, it.file).then((sz) => { if (sz) sizes[it.file] = sz; }))).then(() => {
       wait.remove();

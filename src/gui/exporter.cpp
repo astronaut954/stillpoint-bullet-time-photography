@@ -836,10 +836,10 @@ namespace Export
         double left = -1e18, top = -1e18, right = 1e18, bottom = 1e18;
         for (size_t k = 0; k < sizes.size(); ++k)
         {
-            const Align& a = framing.align[k];
-            const double iw = sizes[k].first * a.base, ih = sizes[k].second * a.base;
-            left = std::max(left, a.dx - iw / 2); right = std::min(right, a.dx + iw / 2);
-            top = std::max(top, a.dy - ih / 2); bottom = std::min(bottom, a.dy + ih / 2);
+            // O canvas: a interseção das fotos como saíram da câmera, centradas; o alinhamento não muda o canvas
+            const double iw = sizes[k].first, ih = sizes[k].second;
+            left = std::max(left, -iw / 2); right = std::min(right, iw / 2);
+            top = std::max(top, -ih / 2); bottom = std::min(bottom, ih / 2);
         }
         if (right - left < 16 || bottom - top < 16) { framing.align.clear(); return false; }
         framing.commonX = left; framing.commonY = top; framing.commonW = right - left; framing.commonH = bottom - top;

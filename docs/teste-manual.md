@@ -1388,8 +1388,9 @@ direita; a lista de sessões continua à esquerda da janela.
 
 - [ ] Ao abrir: no topo, o botão "Back to Framing" e "Photo 01 of 09 · ← → other photos". Na prévia, "Measuring the
       photos…" por um instante, depois a foto 01 nítida; por baixo dela, tingida de laranja e transparente, a foto 02
-      (Next photo). Quadro tracejado cinza ("Original · 900 × 506 px" no canto) em volta do que todas cobrem; quadro
-      neon sólido verde na proporção escolhida (com 1:1, 506 × 506 no meio), e fora dele a prévia escurece. Embaixo,
+      (Next photo). Quadro neon sólido verde na proporção escolhida, e fora dele a prévia escurece; com uma proporção
+      diferente de "As shot", também o canvas tracejado cinza ("Canvas · 900 × 506 px" no canto: o que todas cobrem
+      como saíram da câmera); em "As shot" só o quadro neon (o recorte é o canvas inteiro). Embaixo,
       a instrução "01 · Drag to move · scroll to resize · ⌥ scroll to rotate · ⌘ arrows 1 px (⇧ 10)".
 - [ ] Fileira de miniaturas: a 01 marcada; a 02 com um ponto laranja (é a Next photo). Clicar na 04 (ou → três vezes):
       "Photo 04 of 09", a 03 com ponto azul (Previous photo), a 05 com ponto laranja; na prévia a 04 nítida sobre a 03
@@ -1403,9 +1404,8 @@ direita; a lista de sessões continua à esquerda da janela.
       para as próximas aberturas (memória do app).
 - [ ] "This photo 04": "Move X", "Move Y" (px; − + andam 1, com ⇧ 10), "Size" (%; 0,1, ⇧ 1), "Rotate" (°; 0,05, ⇧ 0,5;
       sem limite). Sem legenda ao lado dos campos; − e + à mesma distância do campo. Digitar um valor e Enter aplica;
-      ↑ ↓ no campo também andam. A foto 04 se mexe na prévia na hora; o quadro tracejado encolhe conforme ela sai de
-      cima das outras, e a linha "Common frame … px" no fim do bloco mostra o tamanho novo (não há mais um bloco só
-      para isso).
+      ↑ ↓ no campo também andam. A foto 04 se mexe na prévia na hora por trás dos quadros; o canvas e o recorte não se
+      movem nem mudam de tamanho (a linha "Canvas … px" no fim do bloco não muda).
 - [ ] Gestos na prévia: arrastar move a 04 (os campos Move X/Y acompanham, arredondados ao pixel ao soltar); a roda do
       mouse/trackpad muda o Size; ⌥ + roda muda o Rotate; ⌘ + ← → ↑ ↓ movem 1 px (⇧ 10); ← → sozinhas trocam de foto.
 - [ ] Caixa de transformação sobre a foto atual (contorno fino, quatro alças quadradas nos cantos e uma alça redonda
@@ -1415,8 +1415,8 @@ direita; a lista de sessões continua à esquerda da janela.
       parte do quadro âmbar: o movimento para no limite (num eixo só, quando dá) e o quadro âmbar pisca; o campo
       digitado volta ao valor que havia. Girar é diferente: quando o giro descobriria um canto, a foto cresce o mínimo
       necessário (o "Size" sobe sozinho) para continuar cobrindo a área, e ao desfazer o giro ela volta a encolher até
-      o tamanho que você tinha escolhido (girar 5° e voltar a 0° termina no Size de antes). O giro não muda os
-      quadros (tracejado e neon): só a foto cresce. Conferir com giros grandes (15°, 25°): o crescimento continua
+      o tamanho que você tinha escolhido (girar 5° e voltar a 0° termina no Size de antes). Nenhum gesto muda os
+      quadros (tracejado e neon): só a foto. Conferir com giros grandes (15°, 25°): o crescimento continua
       suave, sem salto. Em "As shot" a área útil é o quadro comum.
 - [ ] Os botões − e + de cada campo ficam à mesma distância do campo, dos dois lados.
 - [ ] Segurar o − ou o + de qualquer campo: repete o passo (começa depois de 0,4 s); com ⇧ segurado, o passo grande.
@@ -1433,9 +1433,9 @@ direita; a lista de sessões continua à esquerda da janela.
       overlap: move them closer, or Reset." "Reset photo" volta a 04 a zero; "Reset all" zera todas.
 - [ ] Último bloco da coluna (sem título repetido): "Aspect ratio" (As shot · 3:2 · 4:3 · 16:9 · 1:1) é a mesma escolha
       da aba Framing e vale para a sessão inteira; o quadro neon fica onde a aba Framing o deixou (a posição do recorte
-      só muda lá). "Position" (nove pontos) aqui move a foto atual dentro da folga que ela tem sobre a área útil: com
-      a 04 em Size 120%, o ponto da esquerda cola o lado esquerdo da foto no da área, o do meio centra; arrastar
-      também move só a foto. Ao voltar ("Back to Framing") a prévia do Framing ganha a etiqueta "Aligned".
+      só muda lá). "Position" (nove pontos, sem texto embaixo; a explicação está no "?") move a foto atual dentro da
+      folga que ela tem atrás do quadro: com a 04 em Size 120%, o ponto da esquerda cola o lado esquerdo da foto no do
+      quadro, o do meio centra; arrastar também move só a foto. Ao voltar ("Back to Framing") a prévia do Framing ganha a etiqueta "Aligned".
 - [ ] Entrar em "Align photos" e voltar: a lista de sessões estreita/alarga com transição e a coluna surge num fade
       curto.
 - [ ] Fechar e abrir o Export, e fechar e abrir o app: o alinhamento volta (session.json tem "align").

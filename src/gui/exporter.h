@@ -58,9 +58,10 @@ namespace Export
     double RatioValue(const std::string& ratio);  // "3:2" -> 1.5; 0 se não for uma das quatro
     // Recorta a foto no lugar (não faz nada se já estiver na proporção, ou sem proporção)
     void ApplyFraming(RgbFrame& frame, const Framing& framing);
-    // Quadro comum: a interseção das fotos no tamanho escolhido (base), sem giro — o giro não muda o quadro, só
-    // obriga a foto a crescer para continuar cobrindo a área (a tela garante isso). Tamanhos (largura, altura) na
-    // mesma ordem de framing.align. false (e align limpo) se não há alinhamento ou se o quadro ficou vazio.
+    // Quadro comum (o canvas): a interseção das fotos como saíram da câmera, centradas. Mover, redimensionar ou girar
+    // uma foto não muda o canvas; a foto se mexe por trás dele e a tela garante que continua cobrindo o recorte.
+    // Tamanhos (largura, altura) na mesma ordem de framing.align. false (e align limpo) se não há alinhamento ou se o
+    // quadro ficou vazio.
     bool ComputeCommonFrame(Framing& framing, const std::vector<std::pair<int, int>>& sizes);
     // Transforma a foto k (move, redimensiona, gira) e corta ao quadro comum; nada sem alinhamento
     void ApplyAlign(RgbFrame& frame, const Framing& framing, size_t k);
