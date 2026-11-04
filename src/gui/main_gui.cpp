@@ -3365,9 +3365,15 @@ namespace
                             if (!Export::PhotoSize(photoPath(f), w, h)) { w = 0; h = 0; allSizes = false; }
                             sizes.push_back({ w, h });
                         }
-                        // "As shot": cada foto sai como é, mesmo com alinhamento guardado (decisão do dono, 2026-11-04,
-                        // opção B: alinhar exige uma proporção)
-                        if (!framing.Active())
+                        // "As shot" (decisão do dono, 2026-11-04, revista no mesmo dia): numa sessão com proporções
+                        // misturadas cada foto sai como é, mesmo com alinhamento guardado (alinhar exige uma proporção);
+                        // numa sessão toda na mesma forma, o alinhamento vale e o canvas é a parte comum às fotos.
+                        bool sameShape = allSizes && !sizes.empty() && sizes[0].second > 0;
+                        for (const auto& sz : sizes)
+                            if (!sameShape || sz.second <= 0 ||
+                                std::abs(static_cast<double>(sz.first) / sz.second - static_cast<double>(sizes[0].first) / sizes[0].second) > 0.02)
+                                sameShape = false;
+                        if (!framing.Active() && (!sameShape || !framing.Aligned()))
                             framing.align.clear();
                         else if (!allSizes || !Export::ComputeCommonFrame(framing, sizes))
                             framing.align.clear();

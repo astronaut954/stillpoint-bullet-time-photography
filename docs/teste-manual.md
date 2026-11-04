@@ -1537,8 +1537,9 @@ Com `STILLPOINT_FAKE_CAMERAS=9` e algumas sessões. Abrir "Export sessions".
 - [ ] Review › "Export to": o botão "Use the default folder" sempre à vista, apagado na pasta padrão; depois de "Choose
       another folder…", ativo e volta para a pasta padrão.
 - [ ] Passo 1 sem "Hide preview" (a prévia fica sempre à vista; no passo 2 continua na linha das abas).
-- [ ] Alinhar exige uma proporção (decisão do dono, 2026-11-04, opção B): numa sessão em "As shot", "Align photos" continua
-      ativo; clicar abre a janela "Choose a ratio first" com os botões 3:2 · 4:3 · 16:9 · 1:1 ("keeps n%"; o que perde
+- [ ] Alinhar exige uma proporção só na sessão com mixed ratios (decisão do dono, 2026-11-04, revista): numa sessão
+      sem mistura em "As shot", "Align photos" abre direto (o canvas é a própria foto) e o alinhamento sai na exportação.
+      Numa sessão misturada em "As shot", "Align photos" continua ativo; clicar abre a janela "Choose a ratio first" com os botões 3:2 · 4:3 · 16:9 · 1:1 ("keeps n%"; o que perde
       menos pixels em verde) e "Cancel". Escolher um: a sessão passa a essa proporção e a tela "Align photos" abre com
       ela. Dentro de "Align photos", "As shot" fica desativado (dica: escolher As shot na aba Framing; o alinhamento
       fica guardado). Voltando para "As shot" no passo 1: o selo da sessão diz só "As shot", o Review não conta fotos
@@ -1551,8 +1552,38 @@ Com `STILLPOINT_FAKE_CAMERAS=9` e algumas sessões. Abrir "Export sessions".
 - [ ] Anel de foco (Tab): inteiro em volta da caixa "Same framing for all ticked sessions" (não cortado à esquerda) e
       dentro de cada botão de "Aspect ratio" e dos outros grupos de botões (não comido em cima). No passo 2, o Tab para
       na lista de sessões (anel em volta da linha) e ↑ ↓ trocam de sessão.
-- [ ] Fechar ("Cancel" → "Leave") e abrir de novo: abre no passo onde parou, com tudo como estava. Desfazer (⌘Z) vale nos
-      três passos.
+- [ ] Fechar ("Cancel" → "Leave") e abrir de novo: abre sempre no passo 1 · Sessions (decisão do dono, 2026-11-04), com
+      as escolhas como estavam. Desfazer (⌘Z) vale nos três passos.
+
+## 38 B. Ajustes depois do teste de 2026-11-04 (2.16.0)
+
+Com `STILLPOINT_FAKE_CAMERAS=9`.
+
+- [ ] Tela principal, painel "Bullet time": "Sessions" em 3 e "It's bullet time". A janela "Mixed ratios" abre uma vez e
+      diz "The photos in the 3 sessions of this shoot…"; "Crop on export to 3:2 (keeps 97%)" (ou um dos botões menores)
+      vale para as três sessões (Activity: uma linha "Crop on export: 3:2 for …" por sessão; o mouse sobre a etiqueta
+      "Mixed ratios" de cada uma mostra a escolha).
+- [ ] Tela principal: disparar, fechar a janela "Mixed ratios" com "Keep as shot" (ou Esc, ou clique fora), mudar qualquer
+      coisa no "Camera settings" (painel "Cameras") e disparar de novo: a janela abre de novo.
+- [ ] Export, passo 1, prévia com uma proporção: segurar o botão do mouse e arrastar para fora da prévia (com e sem a
+      barra de espaço em "Align photos"): a mão fechada continua em toda a janela e a foto segue o mouse até o limite.
+- [ ] Export, passo 2, aba Lenticular, "Placement" em Fit: na nota "Band: black · change it in Settings › Lenticular",
+      "Settings › Lenticular" é um link sublinhado; clicar abre o Settings por cima do Export, na linha "Lenticular".
+- [ ] Settings › "Lenticular": trocar Black → White e dar ⌘Z: volta a Black (aviso "Undo: Lenticular band: black"); ⇧⌘Z
+      volta a White. A nota e as prévias do Export acompanham.
+- [ ] Settings por cima de qualquer janela: com o Export aberto no passo 2, abrir "Settings" pelo menu (ou ⌘, / Ctrl+,):
+      aparece por cima; "Done", Esc ou clique fora fecham só o Settings e o Export continua no passo 2, como estava.
+      O mesmo com o Camera settings e a janela Project abertos.
+- [ ] ⌘Z / ⇧⌘Z com uma confirmação ou aviso aberto (ex.: "Leave Export sessions?", "Choose a ratio first", "Mixed
+      ratios"): nada acontece. Depois de fechar a janela, ⌘Z desfaz normalmente e não faz a janela voltar.
+- [ ] Export, passo 1, sessão misturada em "As shot": "Align photos" → "Choose a ratio first" → 3:2: abre "Align photos".
+      ⌘Z: volta para a tela do Framing em "As shot" ("Undo: Ratio 3:2 for Align photos"). ⇧⌘Z: abre "Align photos"
+      de novo em 3:2.
+- [ ] Dentro de "Align photos" numa sessão sem mistura, clicar (ou ↑ ↓) numa sessão misturada em "As shot" (com "Same
+      framing for all ticked sessions" desligado): abre "Choose a ratio first". "Cancel", Esc ou clique fora: continua em
+      "Align photos" na sessão de antes. Escolher uma proporção: "Align photos" passa para a sessão misturada.
+- [ ] Janela Project (botão ao lado do título "Sessions", com um projeto aberto): as sessões misturadas têm a etiqueta
+      "Mixed ratios" (mouse em cima mostra o texto), como na lista Sessions.
 
 ## Resultado
 

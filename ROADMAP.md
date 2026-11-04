@@ -758,7 +758,12 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      uma proporção ("Choose a ratio first") e abre com ela; dentro da tela, "As shot" fica desativado. **Lenticular × Framing (2026-11-04, opção A):** em Fill o papel
      manda (o canvas é cortado de novo para a forma do papel), com aviso âmbar quando as formas diferem; Fit põe o
      Framing inteiro no papel com faixa. Modo teatro também em Photos (com as miniaturas) e Sequence; reabrir o Export
-     nunca volta em teatro. "Use the default folder" sempre à vista no Review. Cursor de girar no "Align photos": seta em arco preta com
+     nunca volta em teatro. "Use the default folder" sempre à vista no Review.
+     **Revisão da opção B (2026-11-04, tarde):** só a sessão com mixed ratios precisa de uma proporção para alinhar; numa
+     sessão toda na mesma forma, "As shot" alinha e exporta pelo canvas (a parte comum). O Export reabre sempre no passo 1.
+     Settings e About abrem por cima de qualquer janela. ⌘Z não age com uma confirmação aberta; a cor da faixa do
+     Lenticular entra no desfazer. A escolha da janela "Mixed ratios" vale para todas as sessões do disparo; mudar o
+     Camera settings faz o aviso voltar. Cursor de girar no "Align photos": seta em arco preta com
      contorno branco (opção B). `docs/teste-manual.md`, seção 38.
 5. **Etapa 20 — Edit in Lightroom Classic / Photoshop.** Ida e volta: o app abre os originais
    do Project no Lightroom Classic (o dono do projeto usa o Classic); um plugin do Stillpoint

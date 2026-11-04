@@ -380,6 +380,7 @@
   // Cada ação registrada tem um texto e as duas funções (podem devolver uma Promise; false = não deu).
   const history = { undo: [], redo: [] };
   function recordAction(action) {
+    if (action.camera) ratioWarned = {};  // câmeras mudaram: o aviso "Mixed ratios" pode aparecer de novo
     history.undo.push(action);
     if (history.undo.length > 50) history.undo.shift();
     history.redo.length = 0;
@@ -396,6 +397,7 @@
     if (camerasBusyFor(a)) return;
     history.undo.pop();
     if (!a) { toast("Nothing to undo", TOAST_MS, { silent: true }); return; }
+    if (a.camera) ratioWarned = {};
     Promise.resolve(a.undo()).then((ok) => {
       if (ok === false) return;
       history.redo.push(a);
@@ -407,6 +409,7 @@
     if (camerasBusyFor(a)) return;
     history.redo.pop();
     if (!a) { toast("Nothing to redo", TOAST_MS, { silent: true }); return; }
+    if (a.camera) ratioWarned = {};
     Promise.resolve(a.redo()).then((ok) => {
       if (ok === false) return;
       history.undo.push(a);
@@ -422,6 +425,8 @@
   }, true);
   document.addEventListener("keydown", (e) => {
     if (!(e.metaKey || e.ctrlKey) || e.altKey || (e.key !== "z" && e.key !== "Z" && e.key !== "y")) return;
+    // Uma confirmação ou um aviso aberto: nada é desfeito até a janela sumir (decisão do dono, 2026-11-04)
+    if (!ui.dialogOverlay.classList.contains("hidden")) { e.preventDefault(); e.stopImmediatePropagation(); return; }
     const tag = e.target.tagName;
     // Dentro de um campo de texto, o desfazer é o do texto (caixas de marcar e botões não)
     if (tag === "TEXTAREA" || (tag === "INPUT" && !["checkbox", "radio", "button", "range"].includes(e.target.type))) return;
@@ -1418,7 +1423,7 @@
     sessions.forEach((x) => { const r = String(x.crop || "").split("|")[0]; if (RATIOS[r]) sessionCrop[x.name] = r; });
     const fresh = known.length ? sessions.filter((x) => !known.includes(x.name)) : [];
     const afterShoot = busyAction === "shoot" || Date.now() - lastShootAt < 20000;
-    if (afterShoot) fresh.forEach((x) => measureSessionRatios(x).then((info) => maybeWarnMixed(x, info)));
+    if (afterShoot) fresh.forEach((x) => measureSessionRatios(x).then((info) => maybeWarnMixed(x, info, fresh.map((f) => f.name))));
     setTimeout(measureAllSessions, 0);
 
     const newest = sessions[0] || null;
@@ -1786,6 +1791,7 @@
       // Na tela: miniaturas, cabeçalho e lista
       if (currentSession && currentSession.name === session.name) { sessionGallery.refreshMarks(); if (!playTimer) sessionHead(session); }
       if (!sessDrag) renderSessionList();
+      if (!$("projectOverlay").classList.contains("hidden") && !(document.activeElement && document.activeElement.closest && document.activeElement.closest("#projectList input[type=text]"))) renderProjectWindow();  // (não no meio de digitar um rótulo)
       return info;
     });
     ratioInfo[session.name] = { key, done: false };
@@ -1836,8 +1842,15 @@
     if (currentSession && currentSession.name === name) sessionHead(currentSession);
   }
   // Aviso (janela), uma vez por combinação de câmeras/proporções por uso do app
-  function maybeWarnMixed(session, info) {
+  // batch: as sessões do mesmo disparo ("Sessions" > 1); a escolha feita na janela vale para todas as misturadas
+  function maybeWarnMixed(session, info, batch) {
     if (!info.mixed) return;
+    const names = batch && batch.length ? batch : [session.name];
+    const chooseAll = (r) => names.forEach((n) => {
+      const s2 = sessions.find((x) => x.name === n);
+      if (!s2) return;
+      measureSessionRatios(s2).then((i2) => { if (i2 && i2.mixed) chooseSessionCrop(n, r, i2); });
+    });
     const sig = Object.keys(info.byGroup).sort().map((g) => g + "=" + info.byGroup[g]).join(",");
     if (ratioWarned[sig]) return;
     ratioWarned[sig] = true;
@@ -1849,14 +1862,14 @@
       const b = el("button", "btn btn-secondary btn-small ratio-chip"); b.type = "button";
       b.appendChild(document.createTextNode(r + " "));
       b.appendChild(el("span", "dim", "· keeps " + info.keep[r] + "%"));
-      b.addEventListener("click", () => { ui.dialogOverlay.classList.add("hidden"); chooseSessionCrop(session.name, r, info); });
+      b.addEventListener("click", () => { ui.dialogOverlay.classList.add("hidden"); chooseAll(r); });
       others.appendChild(b);
     });
     dialog("Mixed ratios",
-      ratioText(info) + "\n\nThe photos in this session do not all have the same shape. You can match the cameras, or crop every photo to one ratio when you export (the photos are not changed).",
+      ratioText(info) + "\n\nThe photos in " + (names.length > 1 ? "the " + names.length + " sessions of this shoot" : "this session") + " do not all have the same shape. You can match the cameras, or crop every photo to one ratio when you export (the photos are not changed).",
       [{ label: "Keep as shot", link: true, left: true },
        { label: "Open Camera settings", onClick: () => $("camSettingsBtn").click() },
-       { label: ratioButtonLabel(info.suggest, info), primary: true, onClick: () => chooseSessionCrop(session.name, info.suggest, info) }],
+       { label: ratioButtonLabel(info.suggest, info), primary: true, onClick: () => chooseAll(info.suggest) }],
       others);
   }
 
@@ -2662,6 +2675,7 @@
     exp.previewHidden = false;  // a prévia abre sempre visível; "Hide preview" vale até fechar a janela (decisão do dono, 2026-11-03)
     exp.aligning = false; exp.aligningShown = false;
     exp.theater = false;  // reabrir o Export nunca volta em modo teatro (decisão do dono, 2026-11-04)
+    exp.step = 1;         // reabrir o Export volta sempre ao passo 1 · Sessions (decisão do dono, 2026-11-04)
     exp.project = Array.isArray(projectNames);
     const all = exportable();
     // Salvando para fechar: só as que ainda não foram salvas (as já salvas ficam marcadas fora)
@@ -2906,6 +2920,10 @@
       const first = sessionItems(s).find((i) => i.previewable);
       if (first) sessionPhoto(s.name, first.file, 320).then((url) => { if (url) li.querySelector(".export-thumb").style.backgroundImage = "url(" + url + ")"; });
       li.addEventListener("click", () => {
+        if (exp.aligning && s.name !== exp.active) {
+          const tst = settingsFor(s.name);
+          if (needsRatio(s, tst)) { askRatioForAlign(s, tst, renderExport); return; }  // Cancel: continua na sessão de antes
+        }
         exp.active = s.name;
         exp.photo = 0;
         renderExportList();
@@ -3518,7 +3536,7 @@
       if (!nat) return;
       const bw = box.clientWidth, bh = box.clientHeight;
       img.style.transform = ""; img.style.transformOrigin = "center center";
-      const sz = sizesAll && sizesAll[item.file], canvas = targetRatio && sz && commonFrame(items, sizesAll, st);
+      const sz = sizesAll && sizesAll[item.file], canvas = (targetRatio || sessionAligned(session, st)) && sz && commonFrame(items, sizesAll, st);
       if (canvas) {
         // O quadro (o canvas da exportação) fica parado, do mesmo tamanho em todas as fotos; cada foto aparece atrás
         // dele como vai sair (posição, tamanho e giro). Decisão do dono, 2026-11-04: a prévia não muda o tamanho do canvas.
@@ -3555,7 +3573,8 @@
     });
     if (window.ResizeObserver) new ResizeObserver(layout).observe(box);
     let drag = null;
-    box.addEventListener("pointerdown", (e) => { if (!slack || e.target.closest("button")) return; drag = { x: e.clientX, y: e.clientY, cx: st.crop.x, cy: st.crop.y }; box.setPointerCapture(e.pointerId); e.preventDefault(); });
+    box.addEventListener("dragstart", (e) => e.preventDefault());  // sem o arraste nativo da imagem (prendia o mouse)
+    box.addEventListener("pointerdown", (e) => { if (!slack || e.target.closest("button")) return; drag = { x: e.clientX, y: e.clientY, cx: st.crop.x, cy: st.crop.y }; box.setPointerCapture(e.pointerId); document.body.classList.add("photo-drag"); e.preventDefault(); });
     box.addEventListener("pointermove", (e) => {
       if (!drag || !slack) return;
       // A foto acompanha o mouse: arrastar para a direita mostra mais do lado esquerdo dela
@@ -3563,8 +3582,8 @@
       if (slack.y > 1) st.crop.y = Math.max(0, Math.min(1, drag.cy - (e.clientY - drag.y) / slack.y));
       layout();
     });
-    const endDrag = () => { if (!drag) return; drag = null; onChange(true); };
-    box.addEventListener("pointerup", endDrag); box.addEventListener("pointercancel", endDrag);
+    const endDrag = () => { if (!drag) return; drag = null; document.body.classList.remove("photo-drag"); onChange(true); };
+    box.addEventListener("pointerup", endDrag); box.addEventListener("pointercancel", endDrag); box.addEventListener("lostpointercapture", endDrag);
     box.relayout = layout;
     return box;
   }
@@ -3647,9 +3666,17 @@
   function alignOf(st, file) { return st.align.byFile[file] || ALIGN_ID(); }  // só lê: uma foto sem ajuste não ganha entrada
   // Alinhamento em uso: só com uma proporção escolhida (decisão do dono, 2026-11-04, opção B: "As shot" é sempre como
   // saiu; o alinhamento guardado volta a valer quando se escolhe uma proporção)
-  function sessionAligned(session, st) { alignLoad(session, st); cropLoad(session, st); return st.crop.ratio !== "asshot" && Object.keys(st.align.byFile).some((f) => !alignIsIdentity(st.align.byFile[f])); }
+  // Revisto em 2026-11-04 (decisão do dono): só a sessão com proporções misturadas precisa de uma proporção para
+  // alinhar; numa sessão toda igual, "As shot" já é uma forma só (o canvas é a própria foto) e o alinhamento vale.
+  function sessionMixed(session) { const r = ratioInfoCached(session.name); return !!(r && r.mixed); }
+  function needsRatio(session, st) { cropLoad(session, st); return st.crop.ratio === "asshot" && sessionMixed(session); }
+  function sessionAligned(session, st) { alignLoad(session, st); cropLoad(session, st); return !needsRatio(session, st) && Object.keys(st.align.byFile).some((f) => !alignIsIdentity(st.align.byFile[f])); }
   // "Align photos" com "As shot": pede uma proporção antes (a escolhida aparece depois na tela de alinhamento)
+  // Escolher: a sessão passa a essa proporção e a tela "Align photos" abre nela (vinda da aba Framing ou de outra
+  // sessão, já dentro de "Align photos"). Cancel: nada muda. ⌘Z desfaz a escolha e volta para onde estava; ⇧⌘Z abre
+  // a tela de novo.
   function askRatioForAlign(session, st, rerender) {
+    const fromActive = exp.active, fromAligning = !!exp.aligning, fromPhoto = exp.photo;
     const info = ratioInfoCached(session.name);
     const box = el("div", "ratio-others");
     box.appendChild(el("span", "ratio-others-label", "Ratio for the alignment"));
@@ -3659,7 +3686,22 @@
       b.appendChild(document.createTextNode(r + " "));
       if (info && info.keep && info.keep[r] != null) b.appendChild(el("span", "dim", "· keeps " + info.keep[r] + "%"));
       if (suggested) b.title = "Loses the fewest pixels in this session";
-      b.addEventListener("click", () => { ui.dialogOverlay.classList.add("hidden"); st.crop.ratio = r; cropShare(session, st); exp.aligning = true; rerender(); });
+      b.addEventListener("click", () => {
+        ui.dialogOverlay.classList.add("hidden");
+        expTrack();  // o que estava antes da escolha
+        st.crop.ratio = r; cropShare(session, st);
+        exp.active = session.name; if (fromActive !== session.name) exp.photo = 0; exp.aligning = true;
+        renderExport();
+        expTrack();
+        const top = history.undo[history.undo.length - 1];
+        if (top && top.exportWin && !top.alignRatio) {
+          const u0 = top.undo, r0 = top.redo;
+          top.alignRatio = true;
+          top.label = "Ratio " + r + " for Align photos";
+          top.undo = () => { exp.active = fromActive; exp.photo = fromPhoto; exp.aligning = fromAligning; return u0(); };
+          top.redo = () => { exp.active = session.name; exp.photo = 0; exp.aligning = true; return r0(); };
+        }
+      });
       box.appendChild(b);
     });
     dialog("Choose a ratio first",
@@ -3982,7 +4024,7 @@
       const info = ratioInfoCached(session.name);
       const r = row("Aspect ratio");
       r.appendChild(segmented(CROP_RATIOS, st.crop.ratio, (v) => { st.crop.ratio = v; cropShare(session, st); rerender(); },
-        (v) => (v === "asshot" ? "Aligned photos need a ratio. To keep each photo as shot, go back to Framing and choose As shot there (the alignment is kept for later)." : "")));
+        (v) => (v === "asshot" && sessionMixed(session) ? "Aligned photos need a ratio. To keep each photo as shot, go back to Framing and choose As shot there (the alignment is kept for later)." : "")));
       if (st.crop.ratio !== "asshot" && info && info.keep && info.keep[st.crop.ratio] != null) r.appendChild(el("span", "export-keep", "keeps " + info.keep[st.crop.ratio] + "%"));
       arRows.appendChild(r);
       addTip(arRows, "The shape every export gets, for the whole session; the crop frame stays where the Framing tab put it.", "Aspect ratio");
@@ -4106,6 +4148,7 @@
     stage.addEventListener("pointerdown", (e) => {
       if (e.button !== 0 || e.target.closest("button") || !sizes[item.file]) return;
       e.preventDefault(); stage.setPointerCapture(e.pointerId);
+      document.body.classList.add("photo-drag");  // a mão fechada continua fora da prévia
       if (exp.spaceDown) { drag = { kind: "pan", x: e.clientX, y: e.clientY, px: view.px, py: view.py }; stage.classList.add("panning"); return; }
       lockStart();
       const c = centerOnScreen();
@@ -4129,11 +4172,12 @@
     const endDrag = () => {
       if (!drag) return;
       const pan = drag.kind === "pan";
-      drag = null; stage.classList.remove("dragging", "resizing", "rotating", "panning");
+      drag = null; stage.classList.remove("dragging", "resizing", "rotating", "panning"); document.body.classList.remove("photo-drag");
       if (pan) return;  // deslocar a vista não muda a foto
       a.dx = Math.round(a.dx); a.dy = Math.round(a.dy); sync(); layout(); save();
     };
-    stage.addEventListener("pointerup", endDrag); stage.addEventListener("pointercancel", endDrag);
+    stage.addEventListener("pointerup", endDrag); stage.addEventListener("pointercancel", endDrag); stage.addEventListener("lostpointercapture", endDrag);
+    stage.addEventListener("dragstart", (e) => e.preventDefault());
     stage.addEventListener("wheel", (e) => {
       if (!sizes[item.file]) return;
       e.preventDefault();
@@ -4321,7 +4365,7 @@
       outer.classList.remove("layout-change"); void outer.offsetWidth; outer.classList.add("layout-change");
       setTimeout(() => outer.classList.remove("layout-change"), 400);
     }
-    if (exp.aligning && st.crop.ratio === "asshot") exp.aligning = false;  // sem proporção não há alinhamento (ex.: depois de um ⌘Z)
+    if (exp.aligning && needsRatio(session, st)) exp.aligning = false;  // sessão misturada sem proporção não alinha (ex.: depois de um ⌘Z)
     if (exp.aligning) { exp.keyNav = null; alignScreen(session, items, st, outer, rows, top, rerender); return; }
 
     // Monta a prévia (só a da seção em foco entra na tela) e as configurações de uma saída
@@ -4370,7 +4414,7 @@
           const stage = cropStage(session, items, st, st.crop.ratio !== "asshot" ? RATIOS[st.crop.ratio] : 0, (changed) => { cropShare(session, st); if (changed) rerender(); });
           stage.classList.add("export-preview", "framing-stage");
           // "Align photos" (pedaço 2): abre a tela de alinhamento no lugar do ⤢ (decisão do dono, 2026-11-03, protótipo X1)
-          const alignBtn = button("Align photos", () => { if (st.crop.ratio === "asshot") askRatioForAlign(session, st, rerender); else { exp.aligning = true; rerender(); } },
+          const alignBtn = button("Align photos", () => { if (needsRatio(session, st)) askRatioForAlign(session, st, rerender); else { exp.aligning = true; rerender(); } },
             { icon: "alignPhotos", title: "Align photos: move, resize and rotate each photo over the others", kind: "btn-secondary" });
           alignBtn.classList.add("framing-align-btn");
           alignBtn.addEventListener("pointerdown", (e) => e.stopPropagation());
@@ -4744,7 +4788,14 @@
       cropLoad(session, st);
       const place = row("Placement");
       place.appendChild(segmented([["fill", "Fill"], ["fit", "Fit"]], l.placement || "fill", (v) => { l.placement = v; rerender(); }));
-      if ((l.placement || "fill") === "fit") place.appendChild(el("span", "export-note-inline", "Band: " + lentBand + " · change it in Settings › Lenticular"));
+      if ((l.placement || "fill") === "fit") {
+        const note = el("span", "export-note-inline", "Band: " + lentBand + " · change it in ");
+        const go = el("button", "note-link", "Settings › Lenticular"); go.type = "button";
+        go.title = "Open Settings at the Lenticular band color";
+        go.addEventListener("click", () => { openSettings(); const r = $("settingsLentBand"); if (r) r.scrollIntoView({ block: "center" }); });
+        note.appendChild(go);
+        place.appendChild(note);
+      }
       box.appendChild(place);
       // Framing e papel com formas diferentes (decisão do dono, 2026-11-04, opção A): em Fill o papel manda e corta
       // o Framing de novo; o aviso diz isso e lembra o Fit (o Framing inteiro, com faixa)
@@ -4959,7 +5010,7 @@
       const tdS = document.createElement("td");
       tdS.append(document.createTextNode((s.label ? s.label + " · " : "") + label.date), document.createElement("br"), el("span", "dim", plural(sessionItems(s).length, "photo", "photos")));
       const tdF = document.createElement("td");
-      const r = ratioInfoCached(s.name), aligned = st.crop.ratio === "asshot" ? 0 : Object.keys(st.align.byFile).filter((f) => !alignIsIdentity(st.align.byFile[f])).length;
+      const r = ratioInfoCached(s.name), aligned = needsRatio(s, st) ? 0 : Object.keys(st.align.byFile).filter((f) => !alignIsIdentity(st.align.byFile[f])).length;
       const names = { 0: "left", 0.5: "centre", 1: "right" }, vnames = { 0: "top", 0.5: "", 1: "bottom" };
       const warned = st.crop.ratio === "asshot" && r && r.mixed && !aligned;
       if (warned) { const w = mixedWarn("As shot · mixed ratios: the sequence will jump and the lenticular subject changes size"); const e = editLink(1, s, "framing"); e.classList.add("in-warn"); w.lastChild.append(" ", e); tdF.appendChild(w); }
@@ -5860,10 +5911,10 @@
     if ($("settingsLentBand")) {
       $("settingsLentBand").innerHTML = "";
       $("settingsLentBand").appendChild(segmented([["black", "Black"], ["white", "White"]], lentBand, (v) => {
-        lentBand = v;
-        Promise.resolve(window.savePref("lentBand", v)).then(() => log("Lenticular band: " + v, "tech"));
-        renderSettings();
-        if (!$("exportOverlay").classList.contains("hidden")) renderExport();
+        const before = lentBand;
+        if (v === before) return;
+        setLentBand(v);
+        recordAction({ label: "Lenticular band: " + v, undo: () => setLentBand(before), redo: () => setLentBand(v) });
       }));
     }
     // Modo debug: vale na hora
@@ -5879,6 +5930,12 @@
         showDebugSize(r);
       });
     }));
+  }
+  function setLentBand(v) {
+    lentBand = v;
+    Promise.resolve(window.savePref("lentBand", v)).then(() => log("Lenticular band: " + v, "tech"));
+    if (!$("settingsOverlay").classList.contains("hidden")) renderSettings();
+    if (!$("exportOverlay").classList.contains("hidden")) renderExport();
   }
   $("settingsDebugFolder").addEventListener("click", () => window.openDebugFolder());
   // Espaço ocupado pelos dados de debug
@@ -7966,6 +8023,8 @@
     const open = ["promptOverlay", "dialogOverlay", "projectPickOverlay", "projectOverlay", "exportOverlay", "orderOverlay"]
       .find((id) => !$(id).classList.contains("hidden"));
     if (!open) return false;
+    // Settings ou About por cima (de qualquer janela): o Esc é deles; a janela de baixo continua como estava
+    if (open !== "promptOverlay" && open !== "dialogOverlay" && ["settingsOverlay", "aboutOverlay"].some((id) => !$(id).classList.contains("hidden"))) return false;
     if (e.key === "Escape") {
       if (open === "promptOverlay") return false;  // o campo já trata Enter/Esc
       e.overlayHandled = true;
@@ -9055,6 +9114,7 @@
       if (s.edited > 0) { const t = projectTag(s); ed.appendChild(t); }
       else { const t = document.createElement("span"); t.className = "project-tag dim"; t.textContent = "originals"; ed.appendChild(t); }
       if (s.missing > 0) ed.appendChild(missingTag(s.missing));
+      { const ri = ratioInfoCached(s.name); if (ri && ri.mixed) ed.appendChild(mixedTag(s.name, ri)); }  // como na lista Sessions
       const first = s.photos.find((p) => p.previewable);
       if (first) sessionPhoto(s.name, first.file, 320).then((url) => { if (url) li.querySelector(".export-thumb").style.backgroundImage = "url(" + url + ")"; });
       li.querySelector(".project-row-play").addEventListener("click", () => { closeProjectWindow(); showSession(s); });
