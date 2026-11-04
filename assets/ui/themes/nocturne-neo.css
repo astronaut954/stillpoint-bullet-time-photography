@@ -1629,8 +1629,8 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .align-opacity input[type=range] { width: 100%; }
 .align-opval { text-align: right; font: 12px var(--noct-font-mono); color: var(--noct-text); }
 /* − e + com a largura natural do botão (30 px) e a mesma distância dos dois lados do campo */
-.align-ctl { display: grid; grid-template-columns: 62px 30px minmax(0, 1fr) 30px; align-items: center; gap: 6px; }
-.align-ctl .align-num { width: 100%; }
+.align-ctl { display: grid; grid-template-columns: 62px 30px 72px 30px; align-items: center; gap: 6px; }
+.align-ctl .align-num { width: 72px; text-align: left; }
 .align-ctl .btn { margin: 0; }
 .align-cf { margin-top: 2px; }
 .align-unit { font: 9px var(--noct-font-mono); color: var(--noct-text-dim); letter-spacing: .04em; min-width: 0; line-height: 1.3; }
