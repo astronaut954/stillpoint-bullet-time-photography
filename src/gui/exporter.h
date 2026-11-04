@@ -36,9 +36,10 @@ namespace Export
     struct Align
     {
         double dx = 0, dy = 0, scale = 1, rot = 0;
+        double base = 1;  // o tamanho escolhido pela pessoa; scale pode ser maior (cresce para cobrir a área ao girar)
         bool Identity() const { return std::abs(dx) < 1e-6 && std::abs(dy) < 1e-6 && std::abs(scale - 1) < 1e-9 && std::abs(rot) < 1e-9; }
     };
-    // Texto guardado em session.json ("align"): "<arquivo>:dx,dy,scale,rot;<arquivo>:..."
+    // Texto guardado em session.json ("align"): "<arquivo>:dx,dy,scale,rot[,base];<arquivo>:..."
     std::map<std::string, Align> ParseAlign(const std::string& text);
 
     struct Framing
@@ -57,8 +58,9 @@ namespace Export
     double RatioValue(const std::string& ratio);  // "3:2" -> 1.5; 0 se não for uma das quatro
     // Recorta a foto no lugar (não faz nada se já estiver na proporção, ou sem proporção)
     void ApplyFraming(RgbFrame& frame, const Framing& framing);
-    // Quadro comum a partir do tamanho (largura, altura) de cada foto, na mesma ordem de framing.align.
-    // false (e align limpo) se não há alinhamento ou se o quadro ficou vazio.
+    // Quadro comum: a interseção das fotos no tamanho escolhido (base), sem giro — o giro não muda o quadro, só
+    // obriga a foto a crescer para continuar cobrindo a área (a tela garante isso). Tamanhos (largura, altura) na
+    // mesma ordem de framing.align. false (e align limpo) se não há alinhamento ou se o quadro ficou vazio.
     bool ComputeCommonFrame(Framing& framing, const std::vector<std::pair<int, int>>& sizes);
     // Transforma a foto k (move, redimensiona, gira) e corta ao quadro comum; nada sem alinhamento
     void ApplyAlign(RgbFrame& frame, const Framing& framing, size_t k);

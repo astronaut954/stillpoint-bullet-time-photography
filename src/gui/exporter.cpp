@@ -806,15 +806,16 @@ namespace Export
             const size_t colon = item.rfind(':');
             if (colon == std::string::npos || colon == 0) continue;
             Align a;
-            double v[4] = { 0, 0, 1, 0 };
+            double v[5] = { 0, 0, 1, 0, 0 };
             std::stringstream nums(item.substr(colon + 1));
             size_t k = 0;
-            for (std::string n; k < 4 && std::getline(nums, n, ',');)
+            for (std::string n; k < 5 && std::getline(nums, n, ',');)
             {
                 try { v[k] = std::stod(n); } catch (...) {}
                 ++k;
             }
             a.dx = v[0]; a.dy = v[1]; a.scale = std::clamp(v[2], 0.05, 20.0); a.rot = v[3];
+            a.base = v[4] > 0 ? std::clamp(v[4], 0.05, 20.0) : a.scale;
             out[item.substr(0, colon)] = a;
         }
         return out;
@@ -828,27 +829,6 @@ namespace Export
     namespace
     {
         constexpr double kPi = 3.14159265358979323846;
-        // O maior retângulo reto (lados na horizontal e na vertical) que cabe dentro de um retângulo w×h girado
-        // de `radians`, centrado no mesmo ponto
-        void LargestInnerRect(double w, double h, double radians, double& outW, double& outH)
-        {
-            const double s = std::abs(std::sin(radians)), c = std::abs(std::cos(radians));
-            if (w <= 0 || h <= 0) { outW = outH = 0; return; }
-            const bool widthLonger = w >= h;
-            const double shortSide = std::min(w, h), longSide = std::max(w, h);
-            if (shortSide <= 2 * s * c * longSide || std::abs(s - c) < 1e-10)
-            {
-                const double x = 0.5 * shortSide;
-                if (widthLonger) { outW = s > 1e-12 ? x / s : w; outH = c > 1e-12 ? x / c : h; }
-                else { outW = c > 1e-12 ? x / c : w; outH = s > 1e-12 ? x / s : h; }
-            }
-            else
-            {
-                const double cos2 = c * c - s * s;
-                outW = (w * c - h * s) / cos2;
-                outH = (h * c - w * s) / cos2;
-            }
-        }
     }
     bool ComputeCommonFrame(Framing& framing, const std::vector<std::pair<int, int>>& sizes)
     {
@@ -857,8 +837,7 @@ namespace Export
         for (size_t k = 0; k < sizes.size(); ++k)
         {
             const Align& a = framing.align[k];
-            double iw = 0, ih = 0;
-            LargestInnerRect(sizes[k].first * a.scale, sizes[k].second * a.scale, a.rot * kPi / 180.0, iw, ih);
+            const double iw = sizes[k].first * a.base, ih = sizes[k].second * a.base;
             left = std::max(left, a.dx - iw / 2); right = std::min(right, a.dx + iw / 2);
             top = std::max(top, a.dy - ih / 2); bottom = std::min(bottom, a.dy + ih / 2);
         }

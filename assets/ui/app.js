@@ -3417,27 +3417,26 @@
   }
   function alignOf(st, file) { if (!st.align.byFile[file]) st.align.byFile[file] = ALIGN_ID(); return st.align.byFile[file]; }
   function sessionAligned(session, st) { alignLoad(session, st); return Object.keys(st.align.byFile).some((f) => !alignIsIdentity(st.align.byFile[f])); }
-  // O maior retângulo reto que cabe num retângulo w×h girado (a mesma conta do programa, Export::ComputeCommonFrame)
-  function largestInnerRect(w, h, degrees) {
-    const rad = degrees * Math.PI / 180, sn = Math.abs(Math.sin(rad)), cs = Math.abs(Math.cos(rad));
-    if (w <= 0 || h <= 0) return { w: 0, h: 0 };
-    const shortSide = Math.min(w, h), longSide = Math.max(w, h), widthLonger = w >= h;
-    if (shortSide <= 2 * sn * cs * longSide || Math.abs(sn - cs) < 1e-10) {
-      const x = 0.5 * shortSide;
-      return widthLonger ? { w: sn > 1e-12 ? x / sn : w, h: cs > 1e-12 ? x / cs : h } : { w: cs > 1e-12 ? x / cs : w, h: sn > 1e-12 ? x / sn : h };
-    }
-    const cos2 = cs * cs - sn * sn;
-    return { w: (w * cs - h * sn) / cos2, h: (h * cs - w * sn) / cos2 };
+  // A foto (w×h, com o seu tamanho e giro, centrada em dx,dy) cobre inteiro o retângulo reto r? Conferência exata
+  // pelos quatro cantos de r levados ao espaço da foto (a mesma conta do programa, Export::Covers)
+  function photoCovers(w, h, a, r) {
+    const rad = a.rot * Math.PI / 180, cs = Math.cos(rad), sn = Math.sin(rad), eps = 0.01;
+    return [[r.x, r.y], [r.x + r.w, r.y], [r.x, r.y + r.h], [r.x + r.w, r.y + r.h]].every(([px, py]) => {
+      const x = px - a.dx, y = py - a.dy;
+      const ux = (x * cs + y * sn) / a.scale, uy = (-x * sn + y * cs) / a.scale;
+      return Math.abs(ux) <= w / 2 + eps && Math.abs(uy) <= h / 2 + eps;
+    });
   }
-  // Quadro comum (canvas com o centro em 0,0): a interseção do que cada foto cobre depois do ajuste
-  function commonFrame(items, sizes, st, override) {
+  // Quadro comum (canvas com o centro em 0,0): a interseção das fotos no tamanho escolhido (base), sem giro — o giro
+  // não muda o quadro; ele só obriga a foto a crescer para continuar cobrindo a área (a mesma conta do programa)
+  function commonFrame(items, sizes, st) {
     let left = -1e18, top = -1e18, right = 1e18, bottom = 1e18;
     items.forEach((item) => {
       const sz = sizes[item.file]; if (!sz) return;
-      const a = override && override.file === item.file ? override.align : alignOf(st, item.file);
-      const r = largestInnerRect(sz.w * a.scale, sz.h * a.scale, a.rot);
-      left = Math.max(left, a.dx - r.w / 2); right = Math.min(right, a.dx + r.w / 2);
-      top = Math.max(top, a.dy - r.h / 2); bottom = Math.min(bottom, a.dy + r.h / 2);
+      const a = alignOf(st, item.file);
+      const b = a.base || a.scale, w = sz.w * b, h = sz.h * b;
+      left = Math.max(left, a.dx - w / 2); right = Math.min(right, a.dx + w / 2);
+      top = Math.max(top, a.dy - h / 2); bottom = Math.min(bottom, a.dy + h / 2);
     });
     if (right - left < 16 || bottom - top < 16) return null;
     return { x: left, y: top, w: right - left, h: bottom - top };
@@ -3527,7 +3526,7 @@
         head.appendChild(c);
       }
       const sw = el("span", "align-sw" + (isCur ? " align-sw-me" : "")); if (!isCur) sw.style.background = REF_COLORS[key];
-      head.append(sw, document.createTextNode(label), el("span", "align-who", isCur ? "#" + pad(item.order || cur + 1) : !off ? pad(items[k].order || k + 1) : "none"));
+      head.append(sw, document.createTextNode(label), el("span", "align-who", isCur ? pad(item.order || cur + 1) : !off ? pad(items[k].order || k + 1) : "none"));
       const sl = slider(isCur ? alignPrefs.opacity : opOf(key), (v) => {
         if (isCur) {
           alignPrefs.opacity = v; alignPrefs.op = {};  // as três juntas
@@ -3550,7 +3549,7 @@
     // Trava (como o Lightroom ao girar): a foto nunca deixa de cobrir a área útil — o quadro da proporção (ou o quadro
     // comum, sem proporção) como está no começo do gesto. Um passo que descobriria parte dela é recusado.
     let lockRect = null;
-    const lockStart = () => { lockRect = usefulRect(true); };
+    const lockStart = () => { lockRect = usefulRect(); };
     // O menor tamanho (a partir de from) com que a foto cobre a área útil nessa posição e giro; null se nem 4× basta
     const minCoverScale = (cand, from) => {
       if (covers(Object.assign({}, cand, { scale: from }))) return from;
@@ -3561,15 +3560,19 @@
     };
     const covers = (cand) => {
       const sz = sizes[item.file]; if (!sz || !lockRect) return true;
-      const r = largestInnerRect(sz.w * cand.scale, sz.h * cand.scale, cand.rot);
-      const eps = 0.01;
-      return cand.dx - r.w / 2 <= lockRect.x + eps && cand.dx + r.w / 2 >= lockRect.x + lockRect.w - eps &&
-             cand.dy - r.h / 2 <= lockRect.y + eps && cand.dy + r.h / 2 >= lockRect.y + lockRect.h - eps;
+      // A área útil de referência não depende do tamanho desta foto: para a trava, ela é calculada com a foto no base
+      return photoCovers(sz.w, sz.h, cand, lockRect);
     };
     // Tenta aplicar uma mudança; se descobrir a área útil, mantém o que havia (nos movimentos, tenta cada eixo)
     const tryApply = (change) => {
       const cand = Object.assign({}, a); change(cand);
-      if (cand.scale !== a.scale) cand.base = cand.scale;  // tamanho mexido pela pessoa: vira o novo base
+      if (cand.scale !== a.scale) {
+        // Tamanho mexido pela pessoa: vira o novo base. Como o base define o quadro comum, a área útil é a que ficará
+        // depois do passo (a foto pode crescer à vontade; encolher só até a área das outras fotos)
+        cand.base = cand.scale;
+        const keep = a.base; a.base = cand.base; lockRect = usefulRect(); a.base = keep;
+        if (!lockRect) { stage.classList.add("locked"); clearTimeout(lockFlash); lockFlash = setTimeout(() => stage.classList.remove("locked"), 300); return false; }
+      }
       // Girar (ou mover com giro): o tamanho em uso é o base, ou o mínimo acima dele que ainda cobre a área (como o
       // Lightroom); ao desfazer o giro ele volta ao base
       if (cand.rot !== a.rot || (cand.scale === a.scale && (cand.dx !== a.dx || cand.dy !== a.dy))) {
@@ -3626,9 +3629,8 @@
     resets.appendChild(button("Reset photo", () => { st.align.byFile[item.file] = ALIGN_ID(); save(); rerender(); }, { kind: "btn-secondary" }));
     resets.appendChild(button("Reset all", () => { st.align.byFile = {}; save(); rerender(); }, { kind: "btn-secondary" }));
     self.appendChild(resets);
-    const cfBlock = block("Common frame");
-    const cf = el("div", "align-cf", "Measuring the photos…");
-    cfBlock.appendChild(cf);
+    const cf = el("div", "align-cf", "Measuring the photos…");  // o quadro comum numa linha, aqui mesmo
+    self.appendChild(cf);
     const ar = block("Aspect ratio");
     const arRows = el("div", "align-rows");
     framingRows(session, st, arRows, rerender);
@@ -3664,8 +3666,8 @@
     // A área útil: o quadro da proporção (ou o quadro comum, em "As shot"), em px do canvas. Para a trava, a foto
     // atual conta com o tamanho escolhido (base) e sem giro: assim o giro não muda a área, só obriga a crescer para
     // cobri-la, e o crescimento se desfaz conforme o giro é desfeito.
-    const usefulRect = (forLock) => {
-      const frame = commonFrame(items, sizes, st, forLock ? { file: item.file, align: Object.assign({}, a, { scale: a.base || a.scale, rot: 0 }) } : null); if (!frame) return null;
+    const usefulRect = () => {
+      const frame = commonFrame(items, sizes, st); if (!frame) return null;
       const r = st.crop.ratio !== "asshot" ? RATIOS[st.crop.ratio] : 0;
       let fw = frame.w, fh = frame.h;
       if (r) { const t = frame.w >= frame.h ? r : 1 / r; if (frame.w / frame.h > t) fw = frame.h * t; else fh = frame.w / t; }
@@ -3695,7 +3697,7 @@
       cf.classList.remove("exp-warn");
       common.style.display = ""; common.style.left = (cx + frame.x * scaleK) + "px"; common.style.top = (cy + frame.y * scaleK) + "px";
       common.style.width = (frame.w * scaleK) + "px"; common.style.height = (frame.h * scaleK) + "px";
-      common.setAttribute("data-size", "Common frame · " + Math.round(frame.w) + " × " + Math.round(frame.h) + " px");
+      common.setAttribute("data-size", "Original · " + Math.round(frame.w) + " × " + Math.round(frame.h) + " px");
       const r = st.crop.ratio !== "asshot" ? RATIOS[st.crop.ratio] : 0;
       let fw = frame.w, fh = frame.h;
       if (r) { const t = frame.w >= frame.h ? r : 1 / r; if (frame.w / frame.h > t) fw = frame.h * t; else fh = frame.w / t; }
@@ -3703,8 +3705,8 @@
       ratio.style.display = ""; ratio.classList.toggle("free", r && (frame.w - fw > 1 || frame.h - fh > 1));
       ratio.style.left = (cx + fx * scaleK) + "px"; ratio.style.top = (cy + fy * scaleK) + "px"; ratio.style.width = (fw * scaleK) + "px"; ratio.style.height = (fh * scaleK) + "px";
       const sz = sizes[item.file];
-      cf.textContent = "What every photo covers after the alignment: " + Math.round(frame.w) + " × " + Math.round(frame.h) + " px" +
-        (sz ? " (this photo: " + sz.w + " × " + sz.h + ")" : "") + ". " + (r ? "The " + st.crop.ratio + " frame cuts " + Math.round(fw) + " × " + Math.round(fh) + " px of it." : "The aspect ratio cuts this frame, not each photo.");
+      cf.textContent = "Common frame " + Math.round(frame.w) + " × " + Math.round(frame.h) + " px" + (r ? " · " + st.crop.ratio + " cut " + Math.round(fw) + " × " + Math.round(fh) + " px" : "") + (sz ? " · this photo " + sz.w + " × " + sz.h : "");
+      cf.title = "What every photo covers after the alignment (the common frame); the aspect ratio cuts this frame, not each photo.";
     };
     Promise.all(items.map((it) => photoSizeOf(session.name, it.file).then((sz) => { if (sz) sizes[it.file] = sz; }))).then(() => {
       wait.remove();

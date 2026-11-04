@@ -1387,14 +1387,14 @@ prévia). Protótipo X2 (2026-11-03): prévia grande à esquerda com a fileira d
 direita; a lista de sessões continua à esquerda da janela.
 
 - [ ] Ao abrir: no topo, o botão "Back to Framing" e "Photo 01 of 09 · ← → other photos". Na prévia, "Measuring the
-      photos…" por um instante, depois a foto 01 nítida; por cima dela, em transparência, a foto 02 tingida de laranja
-      (Next photo). Quadro aceso (verde, "Common frame · 6000 × 4000 px" no canto) em volta do que todas cobrem; com
-      "Aspect ratio" em 3:2 e fotos 3:2, o quadro da proporção (âmbar) cobre o quadro comum; fora dele a prévia escurece.
-      Embaixo, a instrução "01 · Drag to move · scroll to resize · ⌥ scroll to rotate · ⌘ arrows 1 px (⇧ 10)".
+      photos…" por um instante, depois a foto 01 nítida; por baixo dela, tingida de laranja e transparente, a foto 02
+      (Next photo). Quadro tracejado cinza ("Original · 900 × 506 px" no canto) em volta do que todas cobrem; quadro
+      neon sólido verde na proporção escolhida (com 1:1, 506 × 506 no meio), e fora dele a prévia escurece. Embaixo,
+      a instrução "01 · Drag to move · scroll to resize · ⌥ scroll to rotate · ⌘ arrows 1 px (⇧ 10)".
 - [ ] Fileira de miniaturas: a 01 marcada; a 02 com um ponto laranja (é a Next photo). Clicar na 04 (ou → três vezes):
       "Photo 04 of 09", a 03 com ponto azul (Previous photo), a 05 com ponto laranja; na prévia a 04 nítida sobre a 03
       azulada e a 05 alaranjada.
-- [ ] Coluna "References", nesta ordem: "Previous photo" (azul, "03"), "Current photo" (sem caixa, "#04", a própria
+- [ ] Coluna "References", nesta ordem: "Previous photo" (azul, "03"), "Current photo" (sem caixa, "04", a própria
       foto) e "Next photo" (laranja, "05"). Na foto 01, "Previous photo" fica desativada ("none"); na 09, "Next photo".
       Na prévia, a foto atual fica por cima, nítida, e as referências por baixo, tingidas. Com todas as barras em 100%
       vê-se só a atual. Cada linha tem a sua barra de opacidade: a da "Current photo" move as três juntas (baixar para
@@ -1402,9 +1402,10 @@ direita; a lista de sessões continua à esquerda da janela.
       ela, até a próxima vez que a da "Current photo" for usada. Desligar "Next photo": a 05 some. As escolhas ficam
       para as próximas aberturas (memória do app).
 - [ ] "This photo 04": "Move X", "Move Y" (px; − + andam 1, com ⇧ 10), "Size" (%; 0,1, ⇧ 1), "Rotate" (°; 0,05, ⇧ 0,5;
-      sem limite). Sem legenda ao lado dos campos: a unidade e os passos estão na dica do campo. Digitar um valor e
-      Enter aplica; ↑ ↓ no campo também andam. A foto 04 se mexe na prévia na hora; o quadro comum encolhe conforme
-      ela sai de cima das outras, e o texto "Common frame" mostra o tamanho novo.
+      sem limite). Sem legenda ao lado dos campos; − e + à mesma distância do campo. Digitar um valor e Enter aplica;
+      ↑ ↓ no campo também andam. A foto 04 se mexe na prévia na hora; o quadro tracejado encolhe conforme ela sai de
+      cima das outras, e a linha "Common frame … px" no fim do bloco mostra o tamanho novo (não há mais um bloco só
+      para isso).
 - [ ] Gestos na prévia: arrastar move a 04 (os campos Move X/Y acompanham, arredondados ao pixel ao soltar); a roda do
       mouse/trackpad muda o Size; ⌥ + roda muda o Rotate; ⌘ + ← → ↑ ↓ movem 1 px (⇧ 10); ← → sozinhas trocam de foto.
 - [ ] Caixa de transformação sobre a foto atual (contorno fino, quatro alças quadradas nos cantos e uma alça redonda
@@ -1414,7 +1415,9 @@ direita; a lista de sessões continua à esquerda da janela.
       parte do quadro âmbar: o movimento para no limite (num eixo só, quando dá) e o quadro âmbar pisca; o campo
       digitado volta ao valor que havia. Girar é diferente: quando o giro descobriria um canto, a foto cresce o mínimo
       necessário (o "Size" sobe sozinho) para continuar cobrindo a área, e ao desfazer o giro ela volta a encolher até
-      o tamanho que você tinha escolhido (girar 5° e voltar a 0° termina no Size de antes). Em "As shot" a área útil é o quadro comum.
+      o tamanho que você tinha escolhido (girar 5° e voltar a 0° termina no Size de antes). O giro não muda os
+      quadros (tracejado e neon): só a foto cresce. Conferir com giros grandes (15°, 25°): o crescimento continua
+      suave, sem salto. Em "As shot" a área útil é o quadro comum.
 - [ ] Os botões − e + de cada campo ficam à mesma distância do campo, dos dois lados.
 - [ ] Segurar o − ou o + de qualquer campo: repete o passo (começa depois de 0,4 s); com ⇧ segurado, o passo grande.
 - [ ] A lista de sessões, à esquerda, mostra só as miniaturas (sessão desmarcada apagada); passar o mouse numa
