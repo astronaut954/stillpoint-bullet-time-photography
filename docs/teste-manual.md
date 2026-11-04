@@ -1526,6 +1526,16 @@ Com `STILLPOINT_FAKE_CAMERAS=9` e algumas sessões. Abrir "Export sessions".
 - [ ] Lenticular (passo 2), vista "Interlaced": as faixas de cada foto já com o Framing do passo 1 (com 3:2 numa sessão
       misturada, sem as bordas que o canvas corta; com fotos alinhadas, deslocadas e giradas). Trocar a proporção no
       passo 1 e voltar: o Interlaced é montado de novo.
+- [ ] Modo teatro em Photos e Sequence (passo 2): o botão "< >" no canto superior esquerdo da prévia, como no Lenticular.
+      Em Photos, no teatro, a prévia cresce e as miniaturas continuam embaixo; em Sequence, só a prévia (o play/pause
+      continua). Trocar de aba desliga o teatro. Sair do Export (Cancel → Leave) com o teatro ligado e abrir de novo:
+      abre sem teatro.
+- [ ] Lenticular em Fill com o Framing numa forma diferente do papel (ex.: 16:9 no passo 1 e papel 15 × 10 cm): aviso âmbar
+      com o ícone de alerta "Framing 16:9 · paper 15 × 10 cm (3:2): in Fill the paper shape wins, so the sides of the
+      framing are cut. Choose Fit to keep the whole framing, with a band." Em Fit o aviso some e o TIFF sai com o
+      Framing inteiro e a faixa.
+- [ ] Review › "Export to": o botão "Use the default folder" sempre à vista, apagado na pasta padrão; depois de "Choose
+      another folder…", ativo e volta para a pasta padrão.
 - [ ] Passo 1 sem "Hide preview" (a prévia fica sempre à vista; no passo 2 continua na linha das abas).
 - [ ] Alinhar exige uma proporção (decisão do dono, 2026-11-04, opção B): numa sessão em "As shot", "Align photos" continua
       ativo; clicar abre a janela "Choose a ratio first" com os botões 3:2 · 4:3 · 16:9 · 1:1 ("keeps n%"; o que perde

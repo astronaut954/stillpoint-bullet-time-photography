@@ -755,7 +755,10 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      para todas as marcadas e "Export to"). Passos no cabeçalho (para trás sempre, para a frente só com o atual pronto);
      o passo onde a pessoa parou fica guardado ao sair. **Alinhar exige proporção (2026-11-04, opção B):**
      "As shot" é sempre como saiu (a exportação ignora o alinhamento guardado); "Align photos" em "As shot" pede antes
-     uma proporção ("Choose a ratio first") e abre com ela; dentro da tela, "As shot" fica desativado. Cursor de girar no "Align photos": seta em arco preta com
+     uma proporção ("Choose a ratio first") e abre com ela; dentro da tela, "As shot" fica desativado. **Lenticular × Framing (2026-11-04, opção A):** em Fill o papel
+     manda (o canvas é cortado de novo para a forma do papel), com aviso âmbar quando as formas diferem; Fit põe o
+     Framing inteiro no papel com faixa. Modo teatro também em Photos (com as miniaturas) e Sequence; reabrir o Export
+     nunca volta em teatro. "Use the default folder" sempre à vista no Review. Cursor de girar no "Align photos": seta em arco preta com
      contorno branco (opção B). `docs/teste-manual.md`, seção 38.
 5. **Etapa 20 — Edit in Lightroom Classic / Photoshop.** Ida e volta: o app abre os originais
    do Project no Lightroom Classic (o dono do projeto usa o Classic); um plugin do Stillpoint

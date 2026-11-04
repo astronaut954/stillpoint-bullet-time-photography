@@ -2661,6 +2661,7 @@
     if (exportPrefs && exportPrefs.collapsed) exp.collapsed = Object.assign({}, exportPrefs.collapsed);
     exp.previewHidden = false;  // a prévia abre sempre visível; "Hide preview" vale até fechar a janela (decisão do dono, 2026-11-03)
     exp.aligning = false; exp.aligningShown = false;
+    exp.theater = false;  // reabrir o Export nunca volta em modo teatro (decisão do dono, 2026-11-04)
     exp.project = Array.isArray(projectNames);
     const all = exportable();
     // Salvando para fechar: só as que ainda não foram salvas (as já salvas ficam marcadas fora)
@@ -4293,14 +4294,16 @@
     top.appendChild(el("span", "spacer"));
     const pv = button(exp.previewHidden ? "Show preview" : "Hide preview", () => {
       exp.previewHidden = !exp.previewHidden;
-      if (exp.previewHidden) { exp.lentTheater = false; }
+      if (exp.previewHidden) { exp.theater = false; }
       rerender();
     }, { kind: "btn-link", icon: exp.previewHidden ? "down" : "up", title: exp.previewHidden ? "Show the photo and the thumbnails" : "Hide the photo and the thumbnails: more room for the settings" });
     pv.classList.add("export-preview-toggle");
     // Passo 2: sem barra de cima; "Hide preview" vai para a linha das abas, encostado à direita (decisão do dono, 2026-11-04)
     if (exp.step === 1) outer.insertBefore(top, rows);  // passo 1: sem "Hide preview" (decisão do dono, 2026-11-04)
     // (o modo de cada passo já foi fixado acima)
-    if (exp.mode !== "lenticular") { exp.lentTheater = false; outer.classList.remove("theater"); }
+    // Modo teatro (Photos, Sequence e Lenticular): vale para a aba onde foi ligado; trocar de aba ou de passo desliga
+    if (exp.theaterKind !== exp.mode || exp.step !== 2) exp.theater = false;
+    if (!exp.theater) outer.classList.remove("theater", "theater-strip");
     exp.keyMove = null;
     // Tela "Align photos" (pedaço 2 do Framing): toma a coluna inteira no lugar das abas
     if (exp.mode !== "framing") exp.aligning = false;
@@ -4330,6 +4333,23 @@
       const caption = el("div", "stage-caption");
       preview.append(img, caption);
       if (focused && (exp.step === 1 || !exp.previewHidden)) outer.insertBefore(preview, rows);
+      if (focused && exp.step === 2 && (kind === "photos" || kind === "sequence")) {
+        // Modo teatro também em Photos e Sequence (decisão do dono, 2026-11-04); em Photos as miniaturas ficam
+        const tb = button("", () => { const from = preview.offsetHeight; exp.theater = !exp.theater; exp.theaterKind = kind; applyT(); slideHeight(preview, from);
+          if (!exp.theater) { const n = outer.querySelector(".export-rows"); if (n && n.animate) n.animate([{ opacity: 0 }, { opacity: 1 }], { duration: EASE_MS, easing: "ease" }); } },
+          { icon: "theaterIn", title: "Theater mode: larger preview, settings hidden", kind: "btn-secondary" });
+        tb.classList.add("lent-theater-btn");
+        tb.addEventListener("pointerdown", (e) => e.stopPropagation());
+        preview.appendChild(tb);
+        const applyT = () => {
+          outer.classList.toggle("theater", !!exp.theater);
+          outer.classList.toggle("theater-strip", !!exp.theater && kind === "photos");
+          tb.classList.toggle("on", !!exp.theater);
+          tb.innerHTML = icon(exp.theater ? "theaterOut" : "theaterIn");
+          tb.title = exp.theater ? "Leave theater mode" : "Theater mode: larger preview, settings hidden";
+        };
+        applyT();
+      }
       const show = (i, text, file) => {
         const item = items[i];
         if (!item) return;
@@ -4544,20 +4564,20 @@
       // Modo teatro: a prévia ocupa a coluna toda e as configurações somem; o botão de novo volta
       const theater = button("", () => {
         const from = preview.offsetHeight;
-        exp.lentTheater = !exp.lentTheater;
+        exp.theater = !exp.theater; exp.theaterKind = "lenticular";
         applyTheater();
         slideHeight(preview, from);
-        if (!exp.lentTheater) [outer.querySelector(".export-rows"), outer.querySelector(".export-scope")].forEach((n) => n && n.animate && n.animate([{ opacity: 0 }, { opacity: 1 }], { duration: EASE_MS, easing: "ease" }));
+        if (!exp.theater) [outer.querySelector(".export-rows"), outer.querySelector(".export-scope")].forEach((n) => n && n.animate && n.animate([{ opacity: 0 }, { opacity: 1 }], { duration: EASE_MS, easing: "ease" }));
         if (exp.lentView === "interlaced") setTimeout(() => requestAnimationFrame(fitCanvas), EASE_MS + 20);
       }, { icon: "theaterIn", title: "Theater mode: larger preview, settings hidden", kind: "btn-secondary" });
       theater.classList.add("lent-theater-btn");
       theater.addEventListener("pointerdown", (e) => e.stopPropagation());
       preview.insertBefore(theater, views);  // à esquerda na tela: vem antes de Tilt / Interlaced no Tab
       const applyTheater = () => {
-        outer.classList.toggle("theater", !!exp.lentTheater);
-        theater.classList.toggle("on", !!exp.lentTheater);
-        theater.innerHTML = icon(exp.lentTheater ? "theaterOut" : "theaterIn");  // ângulos para fora = entrar; para dentro = sair
-        theater.title = exp.lentTheater ? "Leave theater mode" : "Theater mode: larger preview, settings hidden";
+        outer.classList.toggle("theater", !!exp.theater);
+        theater.classList.toggle("on", !!exp.theater);
+        theater.innerHTML = icon(exp.theater ? "theaterOut" : "theaterIn");  // ângulos para fora = entrar; para dentro = sair
+        theater.title = exp.theater ? "Leave theater mode" : "Theater mode: larger preview, settings hidden";
         if (exp.lentView === "interlaced") requestAnimationFrame(fitCanvas);
       };
       if (window.ResizeObserver) { let lastSize = ""; const ro = new ResizeObserver(() => { const now = preview.clientWidth + "x" + preview.clientHeight; if (now === lastSize) return; lastSize = now; if (full && exp.lentView === "interlaced") fitCanvas(); }); ro.observe(preview); }
@@ -4726,6 +4746,19 @@
       place.appendChild(segmented([["fill", "Fill"], ["fit", "Fit"]], l.placement || "fill", (v) => { l.placement = v; rerender(); }));
       if ((l.placement || "fill") === "fit") place.appendChild(el("span", "export-note-inline", "Band: " + lentBand + " · change it in Settings › Lenticular"));
       box.appendChild(place);
+      // Framing e papel com formas diferentes (decisão do dono, 2026-11-04, opção A): em Fill o papel manda e corta
+      // o Framing de novo; o aviso diz isso e lembra o Fit (o Framing inteiro, com faixa)
+      if (st.crop.ratio !== "asshot" && (l.placement || "fill") === "fill" && l.widthCm > 0 && l.heightCm > 0) {
+        const fr = RATIOS[st.crop.ratio], pr = l.widthCm / l.heightCm;
+        const prL = Math.max(pr, 1 / pr), landscapePaper = pr >= 1;
+        const off = Math.abs(prL - fr) / fr > 0.01 || (fr > 1.001 && !landscapePaper);
+        if (off) {
+          const paperName = ratioName(l.widthCm, l.heightCm);
+          const cut = !landscapePaper || prL < fr ? "the sides" : "the top and bottom";
+          box.appendChild(mixedWarn("Framing " + st.crop.ratio + " · paper " + lentSizeText(l) + " (" + (Math.abs(Math.max(l.widthCm, l.heightCm) / Math.min(l.widthCm, l.heightCm) - RATIOS[paperName]) < 0.01 ? paperName : "~" + paperName) + (landscapePaper ? "" : ", portrait") +
+            "): in Fill the paper shape wins, so " + cut + " of the framing are cut. Choose Fit to keep the whole framing, with a band."));
+        }
+      }
       addTip(box, "Fill: the photo covers the sheet and is cropped at the position chosen in Framing. Fit: the whole photo, with a band where it does not reach the edge of the sheet.", "Placement");
       // Marcas de impressão (entrega 2)
       const marks = row("Marks");
@@ -4989,8 +5022,11 @@
       if (typeof window.chooseExportFolder !== "function") { toast("This build cannot do that yet. Build the app again.", 8000); return; }
       Promise.resolve(window.chooseExportFolder(where)).then((r) => { if (r && r.folder) { exp.dest = r.folder; rerender(); } });
     }, { kind: "btn-secondary" }));
-    if (exp.dest) destBtns.appendChild(button("Reset to default", () => { exp.dest = null; rerender(); },
-      { kind: "btn-secondary", title: "Back to " + (exp.destProject ? "the project's Exports folder" : "the default folder") + ": " + (exp.destDefault || "") }));
+    // Sempre à vista (decisão do dono, 2026-11-04); apagado quando já é a pasta padrão
+    const resetDest = button("Use the default folder", () => { exp.dest = null; rerender(); },
+      { kind: "btn-secondary", title: exp.dest ? "Back to " + (exp.destProject ? "the project's Exports folder" : "the default folder") + ": " + (exp.destDefault || "") : "Already the default folder" });
+    resetDest.disabled = !exp.dest;
+    destBtns.appendChild(resetDest);
     destBox.appendChild(destBtns);
     destBox.appendChild(el("span", "export-note", plural(chosen.length, "folder", "folders") + " · one per session"));
     boxes.append(nameBox, destBox);
