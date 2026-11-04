@@ -3347,35 +3347,30 @@ namespace
                     std::vector<std::string> perCamera;
                     for (const auto& [group, file] : byCamera)
                         perCamera.push_back(file);
-                    // Alinhamento (pedaço 2 do Framing): uma transformação por foto, na ordem de perCamera, e o
-                    // quadro comum calculado a partir do tamanho real de cada foto. Sem foto alinhada, nada muda.
+                    // Canvas e alinhamento (pedaço 2 do Framing): uma transformação por foto, na ordem de perCamera (as que a
+                    // pessoa não mexeu ficam centradas, no menor tamanho que cobre o canvas), e o canvas calculado a partir
+                    // do tamanho real de cada foto. Sem tamanho de alguma foto, cai no recorte simples de cada foto.
                     Export::Framing framing = job.framing;
+                    if (!perCamera.empty())
                     {
                         const auto aligns = Export::ParseAlign(session->align);
-                        bool any = false;
+                        std::vector<std::pair<int, int>> sizes;
+                        bool allSizes = true;
                         for (const auto& f : perCamera)
                         {
                             auto it = aligns.find(f);
                             framing.align.push_back(it == aligns.end() ? Export::Align() : it->second);
-                            if (it != aligns.end() && !it->second.Identity()) any = true;
+                            int w = 0, h = 0;
+                            if (exportCancel) break;
+                            if (!Export::PhotoSize(photoPath(f), w, h)) { w = 0; h = 0; allSizes = false; }
+                            sizes.push_back({ w, h });
                         }
-                        if (any)
-                        {
-                            std::vector<std::pair<int, int>> sizes;
-                            for (const auto& f : perCamera)
-                            {
-                                int w = 0, h = 0;
-                                if (exportCancel) break;
-                                if (!Export::PhotoSize(photoPath(f), w, h)) { w = 0; h = 0; }
-                                sizes.push_back({ w, h });
-                            }
-                            if (!Export::ComputeCommonFrame(framing, sizes))
-                                framing.align.clear();
-                        }
-                        else
+                        // "As shot" sem nenhuma foto ajustada: cada foto sai como é (decisão do dono, 2026-11-02)
+                        if (!framing.Active() && !framing.Aligned())
+                            framing.align.clear();
+                        else if (!allSizes || !Export::ComputeCommonFrame(framing, sizes))
                             framing.align.clear();
                     }
-
                     // Subpastas quando há mais de uma saída: Photos/, Sequence/ e Lenticular/
                     const bool savePhotos = !job.photoFormat.empty();
                     const bool saveSequence = job.sequence && !job.options.formats.empty();
@@ -3451,7 +3446,7 @@ namespace
                             else { std::snprintf(line, sizeof(line), "Placement: Fill (crop at %.0f%% across, %.0f%% down)\n", lent.posX * 100, lent.posY * 100); t += line; }
                             if (framing.Aligned())
                             {
-                                std::snprintf(line, sizeof(line), "Alignment: photos aligned in Stillpoint (common frame %d x %d px)\n",
+                                std::snprintf(line, sizeof(line), "Alignment: photos aligned in Stillpoint (canvas %d x %d px)\n",
                                               static_cast<int>(std::lround(framing.commonW)), static_cast<int>(std::lround(framing.commonH)));
                                 t += line;
                             }
@@ -3507,7 +3502,7 @@ namespace
                             {
                                 if (exportCancel) break;
                                 int w = 0, h = 0;
-                                if (framing.Aligned()) { w = static_cast<int>(std::lround(framing.commonW)); h = static_cast<int>(std::lround(framing.commonH)); }
+                                if (framing.Canvas()) { w = static_cast<int>(std::lround(framing.commonW)); h = static_cast<int>(std::lround(framing.commonH)); }
                                 else if (!Export::PhotoSize(photoPath(f), w, h)) continue;
                                 const double r = Export::RatioValue(job.framing.ratio);
                                 int cw = std::max(w, h), ch = std::min(w, h);  // deitada

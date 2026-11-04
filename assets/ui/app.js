@@ -3437,18 +3437,52 @@
       return Math.abs(ux) <= w / 2 + eps && Math.abs(uy) <= h / 2 + eps;
     });
   }
-  // Quadro comum (canvas com o centro em 0,0): a interseção das fotos como saíram da câmera, centradas — o canvas onde
-  // as fotos recortadas caem. Mover, redimensionar ou girar uma foto não muda o canvas (decisão do dono, 2026-11-03):
-  // a foto é que se mexe por trás dele, presa a continuar cobrindo o recorte (a mesma conta do programa)
-  function commonFrame(items, sizes) {
-    let left = -1e18, top = -1e18, right = 1e18, bottom = 1e18;
-    items.forEach((item) => {
-      const sz = sizes[item.file]; if (!sz) return;
-      left = Math.max(left, -sz.w / 2); right = Math.min(right, sz.w / 2);
-      top = Math.max(top, -sz.h / 2); bottom = Math.min(bottom, sz.h / 2);
-    });
-    if (right - left < 16 || bottom - top < 16) return null;
-    return { x: left, y: top, w: right - left, h: bottom - top };
+  // O canvas (centro em 0,0): com proporção escolhida, o maior retângulo nessa proporção que cabe em alguma das
+  // fotos (o da maior); as fotos em que ele não cabe crescem sozinhas para cobri-lo (decisão do dono, 2026-11-03: as
+  // 16:9 aumentam para caber na altura das 3:2). Em "As shot", a interseção das fotos como saíram da câmera. Mover,
+  // redimensionar ou girar uma foto não muda o canvas (a mesma conta do programa, Export::ComputeCommonFrame)
+  function commonFrame(items, sizes, st) {
+    const r = st && st.crop.ratio !== "asshot" ? RATIOS[st.crop.ratio] : 0;
+    let cw = 0, ch = 0;
+    if (r) {
+      items.forEach((item) => {
+        const sz = sizes[item.file]; if (!sz) return;
+        const t = sz.w >= sz.h ? r : 1 / r;
+        let fw = sz.w, fh = sz.h;
+        if (sz.w / sz.h > t) fw = sz.h * t; else fh = sz.w / t;
+        if (fw * fh > cw * ch) { cw = fw; ch = fh; }
+      });
+    } else {
+      let left = -1e18, top = -1e18, right = 1e18, bottom = 1e18;
+      items.forEach((item) => {
+        const sz = sizes[item.file]; if (!sz) return;
+        left = Math.max(left, -sz.w / 2); right = Math.min(right, sz.w / 2);
+        top = Math.max(top, -sz.h / 2); bottom = Math.min(bottom, sz.h / 2);
+      });
+      cw = right - left; ch = bottom - top;
+    }
+    if (cw < 16 || ch < 16) return null;
+    return { x: -cw / 2, y: -ch / 2, w: cw, h: ch };
+  }
+  // O menor tamanho (a partir de from) com que a foto w×h, nessa posição e giro, cobre o retângulo r; 0 se nem 20× basta
+  function minCoverOf(w, h, al, from, r) {
+    if (photoCovers(w, h, Object.assign({}, al, { scale: from }), r)) return from;
+    let lo = from, hi = 20;
+    if (!photoCovers(w, h, Object.assign({}, al, { scale: hi }), r)) return 0;
+    for (let i = 0; i < 30; i++) { const mid = (lo + hi) / 2; if (photoCovers(w, h, Object.assign({}, al, { scale: mid }), r)) hi = mid; else lo = mid; }
+    return hi;
+  }
+  // O que vale para uma foto na tela e na exportação: sem ajuste da pessoa (entrada igual à identidade), ela fica
+  // centrada no menor tamanho que cobre o canvas, com a posição do recorte (posX/posY) repartindo a folga; com ajuste,
+  // o que a pessoa fez, com o tamanho em uso nunca abaixo do necessário
+  function effectiveAlign(sz, al, frame, st) {
+    if (alignIsIdentity(al)) {
+      const base = { dx: 0, dy: 0, scale: 1, rot: 0, base: 1 };
+      const need = minCoverOf(sz.w, sz.h, base, 1, frame) || 1;
+      return { dx: (0.5 - st.crop.x) * (sz.w * need - frame.w), dy: (0.5 - st.crop.y) * (sz.h * need - frame.h), scale: need, rot: 0, base: 1 };
+    }
+    const need = minCoverOf(sz.w, sz.h, al, Math.max(0.05, al.base || al.scale), frame);
+    return Object.assign({}, al, { scale: need ? Math.max(al.scale, need) : al.scale });
   }
 
   // A tela "Align photos" dentro da janela do Export (protótipo X2, 2026-11-03): prévia grande com as referências
@@ -3661,11 +3695,10 @@
     resets.appendChild(button("Fit to canvas", () => {
       if (!sizes[item.file]) return;
       lockStart();
-      const cand = Object.assign({}, a, { dx: 0, dy: 0 });
-      let lo = 0.05, hi = 20;
-      if (!covers(Object.assign({}, cand, { scale: hi }))) return;
-      for (let i = 0; i < 30; i++) { const mid = (lo + hi) / 2; if (covers(Object.assign({}, cand, { scale: mid }))) hi = mid; else lo = mid; }
-      a.dx = 0; a.dy = 0; a.scale = hi; a.base = hi;
+      const sz = sizes[item.file];
+      const need = minCoverOf(sz.w, sz.h, Object.assign({}, a, { dx: 0, dy: 0 }), 0.05, lockRect);
+      if (!need) return;
+      a.dx = 0; a.dy = 0; a.scale = need; a.base = need;
       sync(); layout(); save();
     }, { kind: "btn-secondary", title: "Centre this photo and make it the smallest size that still covers the canvas (the rotation stays)" }));
     resets.appendChild(button("Reset photo", () => { st.align.byFile[item.file] = ALIGN_ID(); save(); rerender(); }, { kind: "btn-secondary" }));
@@ -3725,16 +3758,8 @@
     order.forEach((o) => { layerOf[o.k] = makeLayer(items[o.k], o.key); refKeyOf[o.k] = o.key; layers.appendChild(layerOf[o.k]); });
     layerOf[cur] = makeLayer(item, ""); layers.appendChild(layerOf[cur]);
 
-    // A área útil: o quadro da proporção (ou o quadro comum, em "As shot"), em px do canvas. Para a trava, a foto
-    // atual conta com o tamanho escolhido (base) e sem giro: assim o giro não muda a área, só obriga a crescer para
-    // cobri-la, e o crescimento se desfaz conforme o giro é desfeito.
-    const usefulRect = () => {
-      const frame = commonFrame(items, sizes); if (!frame) return null;
-      const r = st.crop.ratio !== "asshot" ? RATIOS[st.crop.ratio] : 0;
-      let fw = frame.w, fh = frame.h;
-      if (r) { const t = frame.w >= frame.h ? r : 1 / r; if (frame.w / frame.h > t) fw = frame.h * t; else fh = frame.w / t; }
-      return { x: frame.x + (frame.w - fw) * st.crop.x, y: frame.y + (frame.h - fh) * st.crop.y, w: fw, h: fh };
-    };
+    // A área útil é o canvas (o recorte na proporção escolhida); a foto tem de cobri-lo sempre
+    const usefulRect = () => commonFrame(items, sizes, st);  // o recorte é o canvas inteiro
     const layout = () => {
       const W = stage.clientWidth, H = stage.clientHeight;
       if (!W || !H || !sizes[item.file]) return;
@@ -3742,9 +3767,12 @@
       let maxW = 0, maxH = 0;
       items.forEach((it) => { const sz = sizes[it.file]; if (sz) { maxW = Math.max(maxW, sz.w); maxH = Math.max(maxH, sz.h); } });
       scaleK = Math.min(W / (maxW * 1.12), H / (maxH * 1.12)); cx = W / 2; cy = H / 2;
+      const frame = commonFrame(items, sizes, st);
+      if (!frame) { common.style.display = "none"; ratio.style.display = "none"; box.style.display = "none"; cf.textContent = "Could not work out the canvas from the photo sizes."; cf.classList.add("exp-warn"); return; }
+      cf.classList.remove("exp-warn");
       Object.keys(layerOf).forEach((k) => {
         const it = items[k], sz = sizes[it.file], l = layerOf[k]; if (!sz) { l.style.display = "none"; return; }
-        const al = alignOf(st, it.file);
+        const al = +k === cur ? a : effectiveAlign(sz, alignOf(st, it.file), frame, st);
         const w = sz.w * scaleK, h = sz.h * scaleK;
         l.style.display = ""; l.style.width = w + "px"; l.style.height = h + "px";
         l.style.left = (cx + al.dx * scaleK - w / 2) + "px"; l.style.top = (cy + al.dy * scaleK - h / 2) + "px";
@@ -3754,30 +3782,23 @@
           // alças com o mesmo tamanho na tela, seja qual for o zoom da foto
           const inv = 1 / al.scale; [...box.children].forEach((hd) => { hd.style.setProperty("--inv", inv); }); }
       });
-      const frame = commonFrame(items, sizes);
-      if (!frame) { common.style.display = "none"; ratio.style.display = "none"; cf.textContent = "Could not work out the canvas from the photo sizes."; cf.classList.add("exp-warn"); return; }
-      cf.classList.remove("exp-warn");
       // Proporção de um tamanho: a mais próxima das quatro; "~" quando não é exata
       const rn = (w, h) => { const n = ratioName(w, h); const exact = Math.abs(Math.max(w, h) / Math.min(w, h) - RATIOS[n]) < 0.01; return exact ? n : "~" + n; };
-      const r0 = st.crop.ratio !== "asshot" ? RATIOS[st.crop.ratio] : 0;
-      common.style.display = r0 ? "" : "none";  // em "As shot" o recorte é o canvas inteiro: só o quadro neon
-      common.style.left = (cx + frame.x * scaleK) + "px"; common.style.top = (cy + frame.y * scaleK) + "px";
-      common.style.width = (frame.w * scaleK) + "px"; common.style.height = (frame.h * scaleK) + "px";
-      common.setAttribute("data-size", "Canvas · " + Math.round(frame.w) + " × " + Math.round(frame.h) + " px · " + rn(frame.w, frame.h));
-      const r = st.crop.ratio !== "asshot" ? RATIOS[st.crop.ratio] : 0;
-      let fw = frame.w, fh = frame.h;
-      if (r) { const t = frame.w >= frame.h ? r : 1 / r; if (frame.w / frame.h > t) fw = frame.h * t; else fh = frame.w / t; }
-      const fx = frame.x + (frame.w - fw) * st.crop.x, fy = frame.y + (frame.h - fh) * st.crop.y;
-      ratio.style.display = ""; ratio.classList.toggle("free", r && (frame.w - fw > 1 || frame.h - fh > 1));
-      ratio.style.left = (cx + fx * scaleK) + "px"; ratio.style.top = (cy + fy * scaleK) + "px"; ratio.style.width = (fw * scaleK) + "px"; ratio.style.height = (fh * scaleK) + "px";
+      // Um quadro só: o canvas, que é o recorte (neon, sólido); fora dele a prévia escurece
+      common.style.display = "none";
+      ratio.style.display = ""; ratio.classList.add("free");
+      ratio.style.left = (cx + frame.x * scaleK) + "px"; ratio.style.top = (cy + frame.y * scaleK) + "px"; ratio.style.width = (frame.w * scaleK) + "px"; ratio.style.height = (frame.h * scaleK) + "px";
+      ratio.setAttribute("data-size", "Canvas · " + Math.round(frame.w) + " × " + Math.round(frame.h) + " px · " + rn(frame.w, frame.h));
       const sz = sizes[item.file];
-      cf.textContent = "Canvas " + Math.round(frame.w) + " × " + Math.round(frame.h) + " px (" + rn(frame.w, frame.h) + ")" + (r ? " · " + st.crop.ratio + " cut " + Math.round(fw) + " × " + Math.round(fh) + " px" : "") + (sz ? " · this photo " + sz.w + " × " + sz.h + " px (" + rn(sz.w, sz.h) + ")" : "");
-      cf.title = "The canvas: what every photo covers as shot, centred. The aspect ratio cuts this canvas, and each photo is moved, resized and rotated behind it.";
+      cf.textContent = "Canvas " + Math.round(frame.w) + " × " + Math.round(frame.h) + " px (" + rn(frame.w, frame.h) + ")" + (sz ? " · this photo " + sz.w + " × " + sz.h + " px (" + rn(sz.w, sz.h) + ")" : "");
+      cf.title = "The canvas is what every export gets: with an aspect ratio, the largest frame in that ratio that fits a photo (the others grow to cover it); As shot, what every photo covers. Each photo is moved, resized and rotated behind it.";
     };
     Promise.all(items.map((it) => photoSizeOf(session.name, it.file).then((sz) => { if (sz) sizes[it.file] = sz; }))).then(() => {
       wait.remove();
       if (!sizes[item.file]) { cf.textContent = "Could not read the size of this photo."; cf.classList.add("exp-warn"); return; }
-      layout(); markPosDots();
+      const frame0 = commonFrame(items, sizes, st);
+      if (frame0) Object.assign(a, effectiveAlign(sizes[item.file], a, frame0, st));  // o que vale para esta foto (só grava quando a pessoa mexer)
+      sync(); layout(); markPosDots();
     });
     if (window.ResizeObserver) new ResizeObserver(layout).observe(stage);
 

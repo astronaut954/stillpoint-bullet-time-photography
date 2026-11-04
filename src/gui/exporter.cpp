@@ -816,6 +816,7 @@ namespace Export
             }
             a.dx = v[0]; a.dy = v[1]; a.scale = std::clamp(v[2], 0.05, 20.0); a.rot = v[3];
             a.base = v[4] > 0 ? std::clamp(v[4], 0.05, 20.0) : a.scale;
+            a.touched = true;
             out[item.substr(0, colon)] = a;
         }
         return out;
@@ -823,31 +824,98 @@ namespace Export
     bool Framing::Aligned() const
     {
         for (const Align& a : align)
-            if (!a.Identity()) return true;
+            if (a.touched && !a.Identity()) return true;
         return false;
     }
     namespace
     {
         constexpr double kPi = 3.14159265358979323846;
     }
+    namespace
+    {
+        // A foto (w×h, com tamanho `scale`, giro `rot` em graus e o centro em dx,dy) cobre inteiro o retângulo reto r?
+        // Conferência exata pelos quatro cantos de r levados ao espaço da foto (a mesma conta da tela)
+        bool Covers(double w, double h, const Align& a, double scale, double rx, double ry, double rw, double rh)
+        {
+            const double rad = a.rot * kPi / 180.0, cs = std::cos(rad), sn = std::sin(rad), eps = 0.01;
+            const double corners[4][2] = { { rx, ry }, { rx + rw, ry }, { rx, ry + rh }, { rx + rw, ry + rh } };
+            for (const auto& c : corners)
+            {
+                const double x = c[0] - a.dx, y = c[1] - a.dy;
+                const double ux = (x * cs + y * sn) / scale, uy = (-x * sn + y * cs) / scale;
+                if (std::abs(ux) > w / 2 + eps || std::abs(uy) > h / 2 + eps) return false;
+            }
+            return true;
+        }
+        // O menor tamanho (a partir de `from`) com que a foto cobre o canvas nessa posição e giro; 0 se nem 20× basta
+        double MinCover(double w, double h, const Align& a, double from, const Framing& f)
+        {
+            if (Covers(w, h, a, from, f.commonX, f.commonY, f.commonW, f.commonH)) return from;
+            double lo = from, hi = 20.0;
+            if (!Covers(w, h, a, hi, f.commonX, f.commonY, f.commonW, f.commonH)) return 0;
+            for (int i = 0; i < 40; ++i) { const double mid = (lo + hi) / 2; if (Covers(w, h, a, mid, f.commonX, f.commonY, f.commonW, f.commonH)) hi = mid; else lo = mid; }
+            return hi;
+        }
+    }
     bool ComputeCommonFrame(Framing& framing, const std::vector<std::pair<int, int>>& sizes)
     {
-        if (!framing.Aligned() || sizes.size() != framing.align.size()) { framing.align.clear(); return false; }
-        double left = -1e18, top = -1e18, right = 1e18, bottom = 1e18;
+        if (framing.align.empty() || sizes.size() != framing.align.size()) { framing.align.clear(); return false; }
+        const double r = RatioValue(framing.ratio);
+        double cw = 0, ch = 0;
+        if (r > 0)
+        {
+            // O maior retângulo na proporção que cabe em alguma foto
+            for (const auto& sz : sizes)
+            {
+                const double w = sz.first, h = sz.second;
+                if (w <= 0 || h <= 0) continue;
+                const double t = w >= h ? r : 1.0 / r;
+                double fw = w, fh = h;
+                if (w / h > t) fw = h * t; else fh = w / t;
+                if (fw * fh > cw * ch) { cw = fw; ch = fh; }
+            }
+        }
+        else
+        {
+            double left = -1e18, top = -1e18, right = 1e18, bottom = 1e18;
+            for (const auto& sz : sizes)
+            {
+                const double iw = sz.first, ih = sz.second;
+                left = std::max(left, -iw / 2); right = std::min(right, iw / 2);
+                top = std::max(top, -ih / 2); bottom = std::min(bottom, ih / 2);
+            }
+            cw = right - left; ch = bottom - top;
+        }
+        if (cw < 16 || ch < 16) { framing.align.clear(); return false; }
+        framing.commonX = -cw / 2; framing.commonY = -ch / 2; framing.commonW = cw; framing.commonH = ch;
+        // Tamanho em uso e posição de cada foto
         for (size_t k = 0; k < sizes.size(); ++k)
         {
-            // O canvas: a interseção das fotos como saíram da câmera, centradas; o alinhamento não muda o canvas
-            const double iw = sizes[k].first, ih = sizes[k].second;
-            left = std::max(left, -iw / 2); right = std::min(right, iw / 2);
-            top = std::max(top, -ih / 2); bottom = std::min(bottom, ih / 2);
+            Align& a = framing.align[k];
+            const double w = sizes[k].first, h = sizes[k].second;
+            if (w <= 0 || h <= 0) continue;
+            if (!a.touched)
+            {
+                // Sem ajuste da pessoa: o menor tamanho que cobre o canvas, centrada, e a posição do recorte (posX/posY)
+                // reparte a folga que sobra
+                a.dx = 0; a.dy = 0; a.rot = 0;
+                const double need = MinCover(w, h, a, 1.0, framing);
+                a.base = 1.0; a.scale = need > 0 ? need : 1.0;
+                a.dx = (0.5 - std::clamp(framing.posX, 0.0, 1.0)) * (w * a.scale - cw);
+                a.dy = (0.5 - std::clamp(framing.posY, 0.0, 1.0)) * (h * a.scale - ch);
+                a.noop = std::abs(a.scale - 1.0) < 1e-9 && std::abs(w - cw) < 0.5 && std::abs(h - ch) < 0.5;
+            }
+            else
+            {
+                const double need = MinCover(w, h, a, std::max(0.05, a.base), framing);
+                a.scale = need > 0 ? std::max(a.scale, need) : a.scale;
+            }
         }
-        if (right - left < 16 || bottom - top < 16) { framing.align.clear(); return false; }
-        framing.commonX = left; framing.commonY = top; framing.commonW = right - left; framing.commonH = bottom - top;
         return true;
     }
     void ApplyAlign(RgbFrame& frame, const Framing& framing, size_t k)
     {
-        if (!framing.Aligned() || k >= framing.align.size() || framing.commonW <= 0 || framing.commonH <= 0) return;
+        if (!framing.Canvas() || k >= framing.align.size() || framing.align[k].noop) return;
         if (frame.width <= 0 || frame.height <= 0) return;
         const Align& a = framing.align[k];
         const int W = std::max(1, static_cast<int>(std::lround(framing.commonW)));
@@ -1187,7 +1255,7 @@ namespace Export
         RgbFrame image;
         // De JPEG para JPG: o próprio arquivo, sem perder qualidade nem os dados da câmera (só quando a foto
         // não vai ser recortada nem reduzida)
-        const bool reframe = framing.Active() || framing.Aligned() || targetWidth > 0;
+        const bool reframe = framing.Active() || (framing.Canvas() && photoIndex < framing.align.size() && !framing.align[photoIndex].noop) || targetWidth > 0;
         if (format == "jpg" && IsJpegPhoto(photo.filename().string()) && !reframe)
         {
             std::error_code ec;

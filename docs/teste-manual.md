@@ -1388,10 +1388,13 @@ direita; a lista de sessões continua à esquerda da janela.
 
 - [ ] Ao abrir: no topo, o botão "Back to Framing" e "Photo 01 of 09 · ← → other photos". Na prévia, "Measuring the
       photos…" por um instante, depois a foto 01 nítida; por baixo dela, tingida de laranja e transparente, a foto 02
-      (Next photo). Quadro neon sólido verde na proporção escolhida, e fora dele a prévia escurece; com uma proporção
-      diferente de "As shot", também o canvas tracejado cinza ("Canvas · 900 × 506 px" no canto: o que todas cobrem
-      como saíram da câmera); em "As shot" só o quadro neon sólido (o recorte é o canvas inteiro). Embaixo,
-      a instrução "01 · Drag to move · scroll to resize · ⌥ scroll to rotate · ⌘ arrows 1 px (⇧ 10)".
+      (Next photo). Um quadro só, neon sólido verde: o canvas ("Canvas · 900 × 506 px · 16:9" no canto); fora dele a
+      prévia escurece. Embaixo, a instrução "01 · Drag to move · scroll to resize · ⌥ scroll to rotate · ⌘ arrows 1 px
+      (⇧ 10)".
+- [ ] O canvas (decisão do dono, 2026-11-03): em "As shot", o que todas as fotos cobrem como saíram (900 × 506); com
+      3:2 escolhido, o maior 3:2 que cabe numa foto (900 × 600, o das 3:2), e as fotos 16:9 (02 e 04) crescem sozinhas
+      para cobri-lo: abrir a 02 mostra "Size 118.6" e ela preenchendo o canvas na altura; a 01 fica em 100. Com 16:9,
+      canvas 900 × 506 e nenhuma cresce. Mover o canvas não existe: só as fotos se mexem por trás dele.
 - [ ] Fileira de miniaturas: a 01 marcada; a 02 com um ponto laranja no canto da miniatura (é a Next photo) — o ponto
       fica dentro da miniatura, nunca solto na tela. As miniaturas 02 e 04 (16:9) com a borda tracejada âmbar e "16:9"
       no canto, como na tela principal. Clicar na 04 (ou → três vezes):
@@ -1407,8 +1410,8 @@ direita; a lista de sessões continua à esquerda da janela.
 - [ ] "This photo 04": "Move X", "Move Y" (px; − + andam 1, com ⇧ 10), "Size" (%; 0,1, ⇧ 1), "Rotate" (°; 0,05, ⇧ 0,5;
       sem limite). Sem legenda ao lado dos campos; − e + à mesma distância do campo. Digitar um valor e Enter aplica;
       ↑ ↓ no campo também andam. A foto 04 se mexe na prévia na hora por trás dos quadros; o canvas e o recorte não se
-      movem nem mudam de tamanho (a linha "Canvas 900 × 506 px (16:9) · this photo 900 × 600 px (3:2)" no fim do bloco não muda; "~" antes
-      da proporção quando o tamanho não bate exatamente com ela).
+      movem nem mudam de tamanho (a linha "Canvas … px (16:9) · this photo 900 × 600 px (3:2)" no fim do bloco não muda; "~" antes da
+      proporção quando o tamanho não bate exatamente com ela).
 - [ ] Gestos na prévia: arrastar move a 04 (os campos Move X/Y acompanham, arredondados ao pixel ao soltar); a roda do
       mouse/trackpad muda o Size; ⌥ + roda muda o Rotate; ⌘ + ← → ↑ ↓ movem 1 px (⇧ 10); ← → sozinhas trocam de foto.
 - [ ] Caixa de transformação sobre a foto atual (contorno fino, quatro alças quadradas nos cantos e uma alça redonda
@@ -1448,12 +1451,12 @@ direita; a lista de sessões continua à esquerda da janela.
 - [ ] Entrar em "Align photos" e voltar: a lista de sessões estreita/alarga com transição e a coluna surge num fade
       curto.
 - [ ] Fechar e abrir o Export, e fechar e abrir o app: o alinhamento volta (session.json tem "align").
-- [ ] Exportar (Photos convertidas em JPG + Sequence MP4 + Lenticular Fill) uma sessão com a 04 movida 300 px para a
-      direita e girada 2°: no Finder, todas as JPG convertidas têm o mesmo tamanho em pixels (o quadro comum, menor que
-      6000 × 4000), a 04 sai deslocada e girada de modo a coincidir com as outras, as demais saem recortadas ao quadro
-      comum; o MP4 e o lenticular usam as mesmas fotos alinhadas; os Originals continuam intactos; o settings.txt do
-      lenticular tem a linha "Alignment: photos aligned in Stillpoint (common frame … px)". Sessão sem alinhamento:
-      a exportação sai exatamente como na seção 36.
+- [ ] Exportar (Photos convertidas em JPG + Sequence MP4 + Lenticular Fill) uma sessão com 3:2 e a 04 movida 100 px e
+      girada 2°: no Finder, todas as JPG convertidas têm o tamanho do canvas (900 × 600 nas simuladas), as 16:9 (02 e
+      04) saem ampliadas para preencher a altura, a 04 ainda deslocada e girada; o MP4 e o lenticular usam as mesmas
+      fotos; os Originals continuam intactos; o settings.txt do lenticular tem a linha "Alignment: photos aligned in
+      Stillpoint (canvas … px)". Sessão em "As shot" sem nenhuma foto ajustada: cada foto sai como é (seção 36); em
+      "As shot" com alguma foto ajustada, todas saem no canvas (a interseção).
 
 ## Resultado
 

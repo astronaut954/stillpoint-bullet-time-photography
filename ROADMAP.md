@@ -743,7 +743,12 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      da proporção não se move (a posição do recorte é só da aba Framing) e "Position" posiciona a foto atual na folga
      que ela tem sobre a área útil; o quadro comum é a interseção das fotos no tamanho escolhido, sem giro (girar só
      faz a foto crescer para seguir cobrindo a área, com conferência exata pelos cantos); quadro da proporção neon
-     sólido, o original tracejado. Linhas: "Aspect ratio" (As shot · 3:2 · 4:3 · 16:9 · 1:1, "keeps n%") com a caixa "Same size for all
+     sólido, o original tracejado. **Canvas (decisão do dono, 2026-11-03, noite):** com proporção escolhida, o canvas é o
+     maior retângulo nessa proporção que cabe em alguma foto (o da maior), e as fotos em que ele não cabe crescem
+     sozinhas para cobri-lo (as 16:9 aumentam para caber na altura das 3:2); em "As shot", a interseção das fotos como
+     saíram. Um quadro só na tela (o canvas, neon). As fotos convertidas saem no tamanho do canvas (as menores ampliadas).
+     "As shot" sem foto ajustada continua saindo cada foto como é. Em aberto: o campo de visão das 16:9 ampliadas fica
+     mais fechado que o das 3:2 (zoom); se isso incomodar no bullet time, a alternativa é o canvas 16:9 (cortar as 3:2). Linhas: "Aspect ratio" (As shot · 3:2 · 4:3 · 16:9 · 1:1, "keeps n%") com a caixa "Same size for all
      photos" na mesma linha; "References": Previous photo (azul), Next photo (laranja) e Photo 01 (verde),
      cada uma com a sua caixa para ligar/desligar, e uma opacidade só; "This photo": Move X, Move Y, Size e
      Rotate com − +, campo para digitar e passos pequenos (1 px / ⇧ 10; 0,1 % / ⇧ 1; 0,05° / ⇧ 0,5),

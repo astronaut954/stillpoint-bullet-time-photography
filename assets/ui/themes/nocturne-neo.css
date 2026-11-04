@@ -1587,6 +1587,7 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .align-layer .align-tint { position: absolute; inset: 0; mix-blend-mode: multiply; }
 /* Quadro da proporção escolhida: neon, sólido, o resto escurecido; o quadro comum (o original, sem corte): tracejado */
 .align-common { position: absolute; border: 1px dashed var(--noct-text-muted); pointer-events: none; z-index: 2; }
+.align-ratio::after { content: attr(data-size); position: absolute; right: 6px; top: 6px; font: 700 9px var(--noct-font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--noct-primary); background: rgba(var(--noct-bg-rgb), .85); padding: 2px 6px; white-space: nowrap; }
 .align-common::after { content: attr(data-size); position: absolute; right: 6px; top: 6px; font: 700 9px var(--noct-font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--noct-text-muted); background: rgba(var(--noct-bg-rgb), .85); padding: 2px 6px; white-space: nowrap; }
 .align-ratio.crop-frame, .align-ratio.crop-frame:not(.free) { z-index: 1; box-shadow: 0 0 0 999px rgba(0, 0, 0, .35); border: 2px solid var(--noct-primary); border-style: solid; }
 .align-stage .crop-tag { z-index: 3; }
