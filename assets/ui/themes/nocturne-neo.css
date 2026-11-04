@@ -1806,3 +1806,14 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .mixed-warn-icon { flex: none; color: var(--noct-pending); }
 .mixed-warn-icon svg { width: 18px; height: 18px; display: block; }
 .export-review .mixed-warn { display: inline-flex; padding: 4px 8px; font-size: 12px; }
+
+/* Caixa "Same … for all sessions": na última linha da opção, com a nota quando há sessões diferentes */
+.same-row { padding-top: 10px; border-top: 1px solid var(--noct-border); }
+.same-note { color: var(--noct-pending); }
+/* "Edit" dentro do aviso âmbar (Review): âmbar e em negrito */
+.export-review .review-edit.in-warn { color: var(--noct-pending); font-weight: 700; margin-left: 0; }
+/* Caixa da aba (Photos/Sequence/Lenticular) com o foco do teclado: um anel bem visível, também na aba acesa */
+.export-tab .export-tab-check input:focus-visible + .save-check,
+html.kbd-focus .export-tab .export-tab-check input:focus + .save-check { outline: 2px solid var(--noct-primary); outline-offset: 3px; }
+.export-tab.on .export-tab-check input:focus-visible + .save-check,
+html.kbd-focus .export-tab.on .export-tab-check input:focus + .save-check { outline-color: var(--noct-on-primary); box-shadow: 0 0 0 5px var(--noct-primary); }

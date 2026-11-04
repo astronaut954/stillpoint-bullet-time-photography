@@ -2459,6 +2459,28 @@
                 same: { photos: true, sequence: true, lenticular: true }, sameFraming: true };
   const OUTPUT_KEY_OF = { photos: "photos", sequence: "seq", lenticular: "lent" };
   function anyPerSession() { return OUTPUT_KINDS.some((k) => !exp.same[k]); }
+  // O que se compara entre as sessões em cada passo: o Framing (passo 1) ou as saídas (passo 2; uma saída ou todas)
+  function stepConfig(name, step, kind) {
+    const st = settingsFor(name);
+    if (step === 1) { const s = sessions.find((x) => x.name === name); if (s) cropLoad(s, st); return st.crop.ratio + "|" + st.crop.x.toFixed(3) + "|" + st.crop.y.toFixed(3); }
+    const kinds = kind ? [kind] : OUTPUT_KINDS;
+    return JSON.stringify(kinds.map((k) => [!!st.outputs[k], st[OUTPUT_KEY_OF[k]]]));
+  }
+  // "Different": as sessões marcadas que fogem da configuração mais comum (empate: a da primeira da lista). Não depende
+  // de qual sessão está aberta, então a etiqueta não muda de lugar ao clicar nas sessões.
+  function differentSessions(step, kind) {
+    const chosen = chosenSessions(); if (chosen.length < 2) return new Set();
+    const keys = chosen.map((o) => stepConfig(o.name, step, kind)), count = {};
+    keys.forEach((k) => { count[k] = (count[k] || 0) + 1; });
+    let common = keys[0]; keys.forEach((k) => { if (count[k] > count[common]) common = k; });
+    return new Set(chosen.filter((o, i) => keys[i] !== common).map((o) => o.name));
+  }
+  // Estado da caixa "Same … for all sessions" (o mesmo nos dois passos): marcada = iguais e ligadas (mudar uma muda
+  // todas); traço = algumas diferentes; vazia = iguais, mas cada uma pode mudar sozinha
+  function sameState(linked, step, kind) {
+    const differs = differentSessions(step, kind).size > 0;
+    return differs ? "mixed" : linked ? "on" : "off";
+  }
 
   // Configuração da sessão aberta igual nas outras (saídas ligadas, as três configurações e o nome)
   // As duas sessões têm a mesma configuração numa saída (framing: proporção, posição e Same size)
@@ -2653,7 +2675,9 @@
       $("exportEdited").checked = project.exportDefaults.useEdited !== false;
     }
     exp.photo = 0;
-    if (exp.sameFraming && !framingAllSame()) exp.sameFraming = false;  // Framings já diferentes: não iguala sozinho
+    // Já diferentes ao abrir: a caixa vem com o traço e nada é igualado sozinho
+    if (exp.sameFraming && differentSessions(1).size) exp.sameFraming = false;
+    OUTPUT_KINDS.forEach((k) => { if (exp.same[k] && differentSessions(2, k).size) exp.same[k] = false; });
     exp.dest = null;  // outra pasta escolhida vale só para uma vez
     expSnap = null;
     if (typeof window.exportDestination === "function")
@@ -2842,6 +2866,7 @@
     const list = $("exportList");
     const focusWas = exportRoving.where(document.activeElement);
     list.innerHTML = "";
+    const diffNow = differentSessions(exp.step);  // etiqueta "Different" (pela configuração mais comum)
     // Passo 2: só as sessões marcadas no passo 1
     exportable().filter((s) => exp.step !== 2 || exp.selected.has(s.name)).forEach((s) => {
       const label = sessionLabel(s.name);
@@ -2876,7 +2901,7 @@
           (asShot ? "As shot" : sst.crop.ratio) + (aligned ? " · aligned" : asShot && r && r.mixed ? " · mixed ratios" : ""));
         li.querySelector(".export-summary").replaceWith(chip);
       } else setWarnText(li.querySelector(".export-summary"), settingsText(s));
-      li.classList.toggle("different", exp.step === 2 && anyPerSession() && s.name !== exp.active && !sameAsActive(s.name));
+      li.classList.toggle("different", exp.step < 3 && diffNow.has(s.name));
       const first = sessionItems(s).find((i) => i.previewable);
       if (first) sessionPhoto(s.name, first.file, 320).then((url) => { if (url) li.querySelector(".export-thumb").style.backgroundImage = "url(" + url + ")"; });
       li.addEventListener("click", () => {
@@ -2940,12 +2965,13 @@
 
   function refreshSummaries() {
     if (exp.step === 1) { renderExportList(); updateExportCount(); return; }  // os selos do Framing mudam com a sessão
+    const diffNow = differentSessions(exp.step);
     [...$("exportList").children].forEach((li) => {
       const s = sessions.find((x) => x.name === li.dataset.name);
       if (!s) return;
       const sum = li.querySelector(".export-summary");  // no passo 1 a linha mostra o selo do Framing
       if (sum) setWarnText(sum, settingsText(s));
-      li.classList.toggle("different", exp.step === 2 && anyPerSession() && s.name !== exp.active && !sameAsActive(s.name));
+      li.classList.toggle("different", exp.step < 3 && diffNow.has(s.name));
     });
     updateExportCount();
   }
@@ -3446,6 +3472,22 @@
     if (!exp.sameFraming || $("exportOverlay").classList.contains("hidden") || !exp.selected.has(session.name)) return;
     chosenSessions().forEach((o) => { if (o.name === session.name) return; const ost = settingsFor(o.name); cropLoad(o, ost); ost.crop = Object.assign({}, st.crop, { loaded: true }); cropSave(o, ost); });
   }
+  // A caixa "Same … for all ticked sessions" (passos 1 e 2): o mesmo desenho e o mesmo comportamento.
+  // Clicar com traço ou vazia: todas passam a usar a configuração da sessão aberta e ficam ligadas (desfaz com ⌘Z);
+  // clicar marcada: desliga (cada sessão guarda o que tem e pode mudar sozinha). Ao lado, quantas diferem.
+  function sameBox(label, state, onLink, onUnlink, nDiff, title) {
+    const r = el("div", "export-row same-row");
+    const l = el("label", "log-option");
+    const c = document.createElement("input"); c.type = "checkbox"; c.className = "cs-check";
+    c.checked = state === "on"; c.indeterminate = state === "mixed";
+    c.setAttribute("aria-checked", state === "mixed" ? "mixed" : state === "on" ? "true" : "false");
+    c.addEventListener("change", () => { if (state === "on") onUnlink(); else onLink(); });
+    l.append(c, document.createTextNode(" " + label));
+    if (title) l.title = title;
+    r.appendChild(l);
+    if (state === "mixed") r.appendChild(el("span", "export-note same-note", plural(nDiff, "session is", "sessions are") + " different · tick to give all of them these settings"));
+    return r;
+  }
   function framingAllSame() {
     const list = chosenSessions().map((o) => { const ost = settingsFor(o.name); cropLoad(o, ost); return ost.crop.ratio + "|" + ost.crop.x.toFixed(3) + "|" + ost.crop.y.toFixed(3); });
     return list.every((x) => x === list[0]);
@@ -3624,6 +3666,43 @@
     }
     const need = minCoverOf(sz.w, sz.h, al, Math.max(0.05, al.base || al.scale), frame);
     return Object.assign({}, al, { scale: need ? Math.max(al.scale, need) : al.scale });
+  }
+
+  // A foto como sai na exportação: cortada ao canvas (com a proporção) e com o alinhamento da sessão. Montada num
+  // canvas a partir da prévia; guardada por foto e Framing. Sem proporção nem alinhamento, a própria prévia.
+  const framedCache = new Map();
+  function framedUrl(session, items, st, item, url) {
+    cropLoad(session, st); alignLoad(session, st);
+    if (st.crop.ratio === "asshot" && !sessionAligned(session, st)) return Promise.resolve(url);
+    const key = [session.name, item.file, st.crop.ratio, st.crop.x, st.crop.y, alignText(st)].join("|");
+    if (framedCache.has(key)) return framedCache.get(key);
+    const p = Promise.all(items.map((it) => photoSizeOf(session.name, it.file).then((sz) => [it.file, sz]))).then((pairs) => {
+      const sizes = {}; pairs.forEach(([f, sz]) => { if (sz) sizes[f] = sz; });
+      const sz = sizes[item.file], frame = sz && commonFrame(items, sizes, st);
+      if (!frame) return url;
+      return new Promise((done) => {
+        const im = new Image();
+        im.onload = () => {
+          const al = effectiveAlign(sz, alignOf(st, item.file), frame, st);
+          const k = Math.min(1, 1600 / Math.max(frame.w, frame.h));
+          const c = document.createElement("canvas");
+          c.width = Math.max(1, Math.round(frame.w * k)); c.height = Math.max(1, Math.round(frame.h * k));
+          const ctx = c.getContext("2d");
+          ctx.imageSmoothingQuality = "high";
+          ctx.translate(c.width / 2, c.height / 2);  // o canvas tem o centro em 0,0
+          ctx.translate(al.dx * k, al.dy * k);
+          ctx.rotate(al.rot * Math.PI / 180);
+          ctx.scale(al.scale, al.scale);
+          ctx.drawImage(im, -sz.w * k / 2, -sz.h * k / 2, sz.w * k, sz.h * k);
+          let out = url; try { out = c.toDataURL("image/jpeg", 0.9); } catch (e) {}
+          done(out);
+        };
+        im.onerror = () => done(url);
+        im.src = url;
+      });
+    });
+    framedCache.set(key, p);
+    return p;
   }
 
   // A tela "Align photos" dentro da janela do Export (protótipo X2, 2026-11-03): prévia grande com as referências
@@ -4206,7 +4285,9 @@
       const show = (i, text, file) => {
         const item = items[i];
         if (!item) return;
-        sessionPhoto(session.name, item.file, 1600).then((url) => { if (url && exp.active === session.name) img.src = url; });
+        // Passo 2: a prévia já com o Framing do passo 1 (proporção, posição e alinhamento), como sai na exportação
+        sessionPhoto(session.name, item.file, 1600).then((url) => (url && exp.step === 2 ? framedUrl(session, items, st, item, url) : url))
+          .then((url) => { if (url && exp.active === session.name) img.src = url; });
         caption.innerHTML = "";
         caption.append(el("b", "", text[0]), document.createTextNode(text[1]));
         if (file) caption.appendChild(el("span", "caption-file", file));
@@ -4707,7 +4788,7 @@
       }
       tab.appendChild(document.createTextNode(title));
       // Esta sessão difere das outras nesta saída (só com "Same settings for all sessions" desligado): marca na aba
-      const differs = !exp.same[kind] && sessions.some((o) => exp.selected.has(o.name) && o.name !== session.name && !sameKind(session.name, o.name, kind));
+      const differs = differentSessions(2, kind).size > 0;
       if (differs) { tab.classList.add("different"); tab.appendChild(el("span", "export-tab-diff", "")); }
       tab.title = sub + (always ? "" : on ? " · exported" : " · not exported") + (differs ? " · different from the other sessions" : "");
       tab.addEventListener("click", () => { if (!current) { exp.mode = kind; rerender(); } });
@@ -4730,9 +4811,6 @@
         const cut = st.crop.ratio !== "asshot" && kind !== "lenticular" ? " · cut to " + st.crop.ratio + " (step 1)" : "";
         setWarnText(sum, on ? outputText(session, kind) + cut : "Off · tick the box in the tab to export it");
         body.appendChild(sum);
-        // Uma caixa por saída: esta saída igual em todas as sessões marcadas (ligada por padrão)
-        if (chosenSessions().length > 1)
-          body.appendChild(checkOption("Same settings for all sessions", exp.same[kind], (v) => { exp.same[kind] = v; rerender(); }));
       }
       buildKind(kind, body, true);
       if (kind === "lenticular") {
@@ -4745,27 +4823,24 @@
         body.appendChild(pr);
       }
       if (always && chosenSessions().length > 1) {
-        // Passo 1: "Same framing for all ticked sessions" (ligada por padrão): marcada, mudar o Framing da sessão aberta
-        // muda o das outras; com sessões diferentes, a caixa mostra o traço (algumas diferentes); clicar nela iguala
-        // todas a esta sessão. O alinhamento é por foto e não é copiado.
-        const same = exp.sameFraming && framingAllSame();
-        const r = row("");
-        const l = el("label", "log-option");
-        const c = document.createElement("input"); c.type = "checkbox"; c.className = "cs-check";
-        c.checked = same; c.indeterminate = !same && !framingAllSame();
-        c.title = c.indeterminate ? "Some ticked sessions have a different framing: tick to give all of them this one" : "";
-        c.addEventListener("change", () => {
-          if (c.checked) {
-            exp.sameFraming = true;
-            chosenSessions().forEach((o) => { if (o.name === session.name) return; const ost = settingsFor(o.name); cropLoad(o, ost); ost.crop = Object.assign({}, st.crop, { loaded: true }); cropSave(o, ost); });
-            toast("Same framing on " + plural(chosenSessions().length, "session", "sessions"));
-          } else exp.sameFraming = false;
+        // Passo 1: "Same framing for all ticked sessions" (ligada por padrão; o alinhamento é por foto e não é copiado)
+        const nd = differentSessions(1).size;
+        body.appendChild(sameBox("Same framing for all ticked sessions", sameState(exp.sameFraming, 1), () => {
+          exp.sameFraming = true;
+          chosenSessions().forEach((o) => { if (o.name === session.name) return; const ost = settingsFor(o.name); cropLoad(o, ost); ost.crop = Object.assign({}, st.crop, { loaded: true }); cropSave(o, ost); });
+          toast("Same framing on " + plural(chosenSessions().length, "session", "sessions") + " · ⌘Z undoes");
           rerender();
-        });
-        l.append(c, document.createTextNode(" Same framing for all ticked sessions"));
-        l.title = "The aspect ratio and the crop position. The photo alignment stays per session.";
-        r.appendChild(l);
-        body.appendChild(r);
+        }, () => { exp.sameFraming = false; rerender(); }, nd, "The aspect ratio and the crop position. The photo alignment stays per session."));
+      }
+      if (!always && chosenSessions().length > 1) {
+        // Passo 2: a mesma caixa, uma por saída, na última linha da aba
+        const kd = kind, key = OUTPUT_KEY_OF[kd], nd = differentSessions(2, kd).size;
+        body.appendChild(sameBox("Same settings for all sessions", sameState(exp.same[kd], 2, kd), () => {
+          exp.same[kd] = true;
+          chosenSessions().forEach((o) => { if (o.name === session.name) return; const t = settingsFor(o.name); t[key] = JSON.parse(JSON.stringify(st[key])); t.outputs[kd] = st.outputs[kd]; });
+          toast(OUTPUTS.find(([k]) => k === kd)[1] + ": same settings on " + plural(chosenSessions().length, "session", "sessions") + " · ⌘Z undoes");
+          rerender();
+        }, () => { exp.same[kd] = false; rerender(); }, nd));
       }
       rows.appendChild(body);
     }
@@ -4773,18 +4848,7 @@
     slideBlocks(outer, before, rows);
     if (exp.step === 1) return;  // nome e pasta: passo 3; "Apply to all sessions": passo 2
 
-    const kindNow = exp.mode, keyNow = OUTPUT_KEY_OF[kindNow], chosenNow = chosenSessions();
-    if (keyNow && !exp.same[kindNow] && chosenNow.length > 1) {
-      const apply = el("div", "export-apply");
-      const sameHere = chosenNow.every((o) => o.name === session.name || (JSON.stringify(settingsFor(o.name)[keyNow]) === JSON.stringify(st[keyNow]) && !!settingsFor(o.name).outputs[kindNow] === !!st.outputs[kindNow]));
-      apply.appendChild(el("span", "export-note", sameHere ? "All ticked sessions use these settings." : "These settings are only for " + label + "."));
-      apply.appendChild(button("Apply to all sessions", () => {
-        chosenNow.forEach((other) => { if (other.name === session.name) return; const t = settingsFor(other.name); t[keyNow] = JSON.parse(JSON.stringify(st[keyNow])); t.outputs[kindNow] = st.outputs[kindNow]; });
-        rerender();
-        toast("Applied to all " + plural(chosenNow.length, "session", "sessions"));
-      }));
-      rows.appendChild(apply);
-    }
+    // ("Apply to all sessions" saiu: a caixa "Same settings for all sessions" da aba faz isso)
   }
 
   // Passo 3 (Review): uma linha por sessão marcada, o nome das pastas e "Export to"
@@ -4815,13 +4879,14 @@
       const tdF = document.createElement("td");
       const r = ratioInfoCached(s.name), aligned = Object.keys(st.align.byFile).filter((f) => !alignIsIdentity(st.align.byFile[f])).length;
       const names = { 0: "left", 0.5: "centre", 1: "right" }, vnames = { 0: "top", 0.5: "", 1: "bottom" };
-      if (st.crop.ratio === "asshot" && r && r.mixed && !aligned) tdF.appendChild(mixedWarn("As shot · mixed ratios: the sequence will jump and the lenticular subject changes size"));
+      const warned = st.crop.ratio === "asshot" && r && r.mixed && !aligned;
+      if (warned) { const w = mixedWarn("As shot · mixed ratios: the sequence will jump and the lenticular subject changes size"); const e = editLink(1, s, "framing"); e.classList.add("in-warn"); w.lastChild.append(" ", e); tdF.appendChild(w); }
       else {
         const pos = st.crop.ratio === "asshot" ? "" : " · " + ([vnames[st.crop.y], names[st.crop.x]].filter((x) => x && x !== undefined).join(" ") || "custom position");
         tdF.appendChild(document.createTextNode((st.crop.ratio === "asshot" ? "As shot" : st.crop.ratio) + pos));
         if (aligned) { tdF.appendChild(document.createElement("br")); tdF.appendChild(el("span", "dim", plural(aligned, "photo", "photos") + " aligned")); }
       }
-      tdF.appendChild(editLink(1, s, "framing"));
+      if (!warned) tdF.appendChild(editLink(1, s, "framing"));
       const tdO = document.createElement("td");
       const kinds = OUTPUT_KINDS.filter((k) => st.outputs[k]);
       if (!kinds.length) tdO.appendChild(el("span", "amb", "No output ticked"));

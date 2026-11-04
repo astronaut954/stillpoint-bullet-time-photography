@@ -1488,22 +1488,27 @@ Com `STILLPOINT_FAKE_CAMERAS=9` e algumas sessões. Abrir "Export sessions".
 - [ ] Passo 1 · Sessions: à esquerda a lista com as caixas, "Select all" e "Unselect all"; cada sessão com um selo do
       Framing ("As shot", "3:2", "3:2 · aligned"; "As shot · mixed ratios" tracejado âmbar). À direita, "Framing · <data>"
       e "Hide preview" no topo; a prévia com "Align photos"; a fileira; "Aspect ratio", a nota de mistura e "Position";
-      e a caixa "Same framing for all ticked sessions" (ligada por padrão): marcada, mudar a proporção ou a posição de
-      uma sessão muda as outras marcadas (o alinhamento fica em cada sessão). Desmarcada, cada sessão tem o seu; quando
-      alguma fica diferente, a caixa mostra um traço (algumas diferentes) e clicar nela iguala todas à sessão aberta.
-      Se as sessões já chegam com Framings diferentes, a caixa abre com o traço (nada é igualado sozinho). Não há abas
+      e, na última linha, a caixa "Same framing for all ticked sessions" (ligada por padrão). Comportamento da caixa
+      (o mesmo no passo 2): marcada = todas iguais e ligadas (mudar a proporção ou a posição de uma muda as outras; o
+      alinhamento fica em cada sessão); clicar nela desliga (cada sessão pode mudar sozinha). Com alguma sessão
+      diferente, a caixa mostra o traço e, ao lado, em âmbar, "1 session is different · tick to give all of them these
+      settings"; clicar iguala todas à sessão aberta (aviso "… · ⌘Z undoes"; ⌘Z volta). As sessões que fogem da
+      configuração mais comum ganham a etiqueta "Different" na lista; a etiqueta fica nas mesmas sessões seja qual for
+      a sessão aberta. Abrindo com Framings já diferentes, a caixa vem com o traço e nada é igualado sozinho. Não há abas
       nem "Name". Rodapé: "3 of 5 sessions · 1 with mixed ratios on As shot", "Cancel"
       e o verde "Outputs →" (apagado sem sessão marcada).
 - [ ] Passo 2 · Outputs: a lista mostra só as sessões marcadas, sem caixas, com o resumo do que sai de cada uma (o Tab
       para na lista e ↑ ↓ trocam de sessão). Sem barra no topo: as abas Photos · Sequence · Lenticular (sem
       Framing) e, na mesma linha, encostado à direita, "Hide preview". Cada aba tem a sua caixa "Same settings for all
-      sessions" (logo abaixo do resumo, ligada por padrão): desligar a de Sequence, por exemplo, deixa só a sequência
-      diferente por sessão, com "Apply to all sessions" no fim da aba. O resumo da aba termina com "cut to 3:2 (step 1)" quando há proporção. Na aba
-      Lenticular, embaixo, o botão "Print pitch test" (saiu do rodapé). Rodapé: "← Sessions", "Cancel" e "Review →"
-      (apagado com o aviso em âmbar se faltar uma saída, um formato ou um valor do lenticular).
+      sessions" na última linha da aba, com o mesmo comportamento da caixa do passo 1 ("Apply to all sessions" saiu); a
+      etiqueta "Different" na lista e o ponto âmbar na aba seguem a configuração mais comum (não mudam de sessão ao
+      clicar). A prévia (Photos, Sequence e o Tilt do Lenticular) já aparece com o Framing do passo 1: com 16:9, a foto
+      cortada em 16:9; com fotos alinhadas, deslocadas e giradas como no "Align photos". Tab até a caixa de uma aba
+      (inclusive a aba acesa, verde): um anel de foco bem visível em volta da caixa.
 - [ ] Passo 3 · Review: sem a lista de sessões; uma tabela com uma linha por sessão marcada (miniatura, data e fotos,
       Framing com a posição e "n photos aligned", as saídas, o nome final da pasta). Em "As shot" com mistura, o aviso âmbar com o ícone de alerta "As
-      shot · mixed ratios: the sequence will jump and the lenticular subject changes size". "Edit" no Framing leva ao passo 1 com aquela sessão aberta; "Edit"
+      shot · mixed ratios: the sequence will jump and the lenticular subject changes size", com o "Edit" dentro do
+      aviso, em âmbar e negrito. "Edit" no Framing leva ao passo 1 com aquela sessão aberta; "Edit"
       nas saídas leva ao passo 2 na aba certa. Embaixo, a caixa "Name" (Date + time · Number · Custom; o nome vale para
       todas as marcadas e a coluna "Folder" acompanha enquanto se digita) e a caixa "Export to" (caminho, "Choose
       another folder…", "Reset to default" depois de trocar). Rodapé: "← Outputs", "Cancel" e "Export n sessions". No
