@@ -1784,7 +1784,10 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .export-chip.warn { border: 1px dashed var(--noct-pending); color: var(--noct-pending); }
 .export-step1-title { font: 700 11px var(--noct-font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--noct-text); }
 /* Passo 3: a tabela e as duas caixas (nome, pasta) */
-.export-review { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 16px; }
+.export-review { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 16px; }
+.export-review-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+.export-review-list thead th { position: sticky; top: 0; z-index: 1; background: var(--noct-surface); }
+.export-review-boxes { flex: none; }
 .export-review table { width: 100%; border-collapse: collapse; font: 12px var(--noct-font-mono); }
 .export-review th { text-align: left; font: 700 10px var(--noct-font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--noct-text-dim); padding: 8px 10px; border-bottom: 1px solid var(--noct-border); }
 .export-review td { padding: 10px; border-bottom: 1px solid var(--noct-border); vertical-align: top; color: var(--noct-text); line-height: 1.5; }

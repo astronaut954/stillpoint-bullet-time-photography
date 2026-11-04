@@ -4919,7 +4919,10 @@
       tbody.appendChild(tr);
     });
     table.appendChild(tbody);
-    wrap.appendChild(table);
+    // Só a lista de sessões rola; "Name" e "Export to" ficam presos embaixo (decisão do dono, 2026-11-04)
+    const listBox = el("div", "export-review-list");
+    listBox.appendChild(table);
+    wrap.appendChild(listBox);
 
     // Nome (vale para todas as sessões marcadas) e pasta
     const boxes = el("div", "export-review-boxes");

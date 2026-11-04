@@ -1509,7 +1509,8 @@ Com `STILLPOINT_FAKE_CAMERAS=9` e algumas sessões. Abrir "Export sessions".
       Framing com a posição e "n photos aligned", as saídas, o nome final da pasta). Em "As shot" com mistura, o aviso âmbar com o ícone de alerta "As
       shot · mixed ratios: the sequence will jump and the lenticular subject changes size", com o "Edit" dentro do
       aviso, em âmbar e negrito. "Edit" no Framing leva ao passo 1 com aquela sessão aberta; "Edit"
-      nas saídas leva ao passo 2 na aba certa. Embaixo, a caixa "Name" (Date + time · Number · Custom; o nome vale para
+      nas saídas leva ao passo 2 na aba certa. Só a tabela rola (o cabeçalho dela fica preso
+      no topo); embaixo, presas e sempre à vista, a caixa "Name" (Date + time · Number · Custom; o nome vale para
       todas as marcadas e a coluna "Folder" acompanha enquanto se digita) e a caixa "Export to" (caminho, "Choose
       another folder…", "Reset to default" depois de trocar). Rodapé: "← Outputs", "Cancel" e "Export n sessions". No
       Project, "Use edited photos when available" aparece só neste passo.
