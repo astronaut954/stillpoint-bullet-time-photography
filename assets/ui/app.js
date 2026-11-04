@@ -2742,6 +2742,8 @@
       const box = li.querySelector("input");
       box.checked = exp.selected.has(s.name);
       if (!li.title) li.title = label.date;  // na tela de alinhamento a lista mostra só a miniatura: a data fica na dica
+      li.tabIndex = exp.aligning ? 0 : -1;
+      li.addEventListener("keydown", (e) => { if (e.target === li && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); li.click(); } });
       // legenda instantânea (como a barra da tela cheia): data, fotos e o que vai sair
       li.dataset.tip = [s.label || "", label.date, plural(sessionItems(s).length, "photo", "photos"), label.detail].filter(Boolean).join(" · ");
       { const r = ratioInfoCached(s.name); const warns = []; if (s.missing) warns.push(s.missing + " missing"); if (r && r.mixed) warns.push("Mixed ratios"); if (warns.length) li.dataset.tipWarn = warns.join(" · "); }
@@ -3465,6 +3467,7 @@
     const ratio = el("div", "crop-frame align-ratio");
     // Caixa de transformação sobre a foto atual: cantos redimensionam (em volta do centro), a alça de cima gira,
     // o meio move (como arrastar a prévia)
+    const ratioLines = el("div", "align-ratio-lines");  // em "As shot": uma linha por proporção presente na sessão
     const box = el("div", "align-box");
     const handles = {};
     ["tl", "tr", "bl", "br"].forEach((c) => { handles[c] = el("div", "align-handle align-handle-" + c); box.appendChild(handles[c]); });
@@ -3472,7 +3475,7 @@
     box.append(rotLine, rotHandle);
     const tag = el("span", "crop-tag", pad(item.order || cur + 1) + " · Drag to move · scroll to resize · ⌥ scroll to rotate · ⌘ arrows 1 px (⇧ 10)");
     const wait = el("div", "align-wait", "Measuring the photos…");
-    stage.append(layers, common, ratio, box, tag, wait);
+    stage.append(layers, common, ratio, ratioLines, box, tag, wait);
     left.appendChild(stage);
     // Fileira de miniaturas, com um ponto da cor da referência
     const stripScroll = el("div", "export-strip-scroll");
@@ -3483,7 +3486,7 @@
       const li = el("li", "frame" + (k === cur ? " selected" : ""));
       li.innerHTML = '<div class="frame-img"><img alt=""><span class="frame-badge"></span></div>';
       li.querySelector(".frame-badge").textContent = pad(it.order || k + 1);
-      ["prev", "next"].forEach((key) => { if (alignPrefs[key] && refIndex[key] === k && k !== cur) { const dot = el("span", "align-refdot"); dot.style.background = REF_COLORS[key]; li.querySelector(".frame-img").appendChild(dot); } });
+      ["prev", "next"].forEach((key) => { if (alignPrefs[key] && refIndex[key] === k && k !== cur) { const dot = el("span", "align-refdot"); dot.style.background = REF_COLORS[key]; li.appendChild(dot); } });
       if (!alignIsIdentity(st.align.byFile[it.file])) li.classList.add("aligned");
       sessionPhoto(session.name, it.file, 320).then((url) => { if (url) li.querySelector("img").src = url; });
       li.addEventListener("click", () => { exp.photo = k; rerender(); });
@@ -3660,7 +3663,6 @@
         dots.appendChild(d);
       }));
       pos.appendChild(dots);
-      addTip(arRows, "Moves this photo within the room it has behind the frame (left: its left edge meets the frame's; centre: centred).", "Position");
       arRows.appendChild(pos);
     }
     ar.appendChild(arRows);
@@ -3726,6 +3728,23 @@
       cf.classList.remove("exp-warn");
       const r0 = st.crop.ratio !== "asshot" ? RATIOS[st.crop.ratio] : 0;
       common.style.display = r0 ? "" : "none";  // em "As shot" o recorte é o canvas inteiro: só o quadro neon
+      // "As shot": as proporções que existem nesta sessão, cada uma como uma linha tracejada dentro do canvas
+      ratioLines.innerHTML = "";
+      if (!r0) {
+        const info = ratioInfoCached(session.name);
+        (info && info.present ? info.present : []).forEach((name) => {
+          const rr = RATIOS[name]; if (!rr) return;
+          const t = frame.w >= frame.h ? rr : 1 / rr;
+          let lw = frame.w, lh = frame.h;
+          if (frame.w / frame.h > t) lw = frame.h * t; else lh = frame.w / t;
+          if (Math.abs(lw - frame.w) < 1 && Math.abs(lh - frame.h) < 1) return;  // a mesma forma do canvas: já é o quadro neon
+          const line = el("div", "align-ratio-line");
+          line.style.left = (cx + (frame.x + (frame.w - lw) * st.crop.x) * scaleK) + "px"; line.style.top = (cy + (frame.y + (frame.h - lh) * st.crop.y) * scaleK) + "px";
+          line.style.width = (lw * scaleK) + "px"; line.style.height = (lh * scaleK) + "px";
+          line.setAttribute("data-name", name);
+          ratioLines.appendChild(line);
+        });
+      }
       common.style.left = (cx + frame.x * scaleK) + "px"; common.style.top = (cy + frame.y * scaleK) + "px";
       common.style.width = (frame.w * scaleK) + "px"; common.style.height = (frame.h * scaleK) + "px";
       common.setAttribute("data-size", "Canvas · " + Math.round(frame.w) + " × " + Math.round(frame.h) + " px");
@@ -3934,6 +3953,8 @@
     outer.classList.toggle("aligning", !!exp.aligning);
     const body = document.querySelector(".export-body");
     if (body) body.classList.toggle("aligning", !!exp.aligning);  // lista de sessões só com as miniaturas (como a barra da tela cheia)
+    // Na tela de alinhamento a caixa de cada sessão some, então o Tab passa pela miniatura (Enter/Espaço abre a sessão)
+    [...$("exportList").children].forEach((li) => { li.tabIndex = exp.aligning ? 0 : -1; });
     // Entrar ou sair da tela de alinhamento: a coluna surge num fade curto (a lista estreita/alarga com transição no CSS)
     if (exp.aligningShown !== !!exp.aligning) {
       exp.aligningShown = !!exp.aligning;
@@ -4442,11 +4463,11 @@
       const on = always || !!st.outputs[kind];
       const current = kind === exp.mode;
       const tab = el("button", "export-tab" + (current ? " on" : "") + (on ? "" : " off"), ""); tab.type = "button";
-      tab.setAttribute("role", "tab"); tab.setAttribute("aria-selected", current ? "true" : "false"); tab.tabIndex = current ? 0 : -1;
+      tab.setAttribute("role", "tab"); tab.setAttribute("aria-selected", current ? "true" : "false"); tab.tabIndex = 0;  // o Tab passa por todas as abas
       if (!always) {
         const check = el("label", "export-check export-tab-check");
         const input = document.createElement("input");
-        input.type = "checkbox"; input.checked = on; input.setAttribute("aria-label", "Export " + title); input.tabIndex = -1;
+        input.type = "checkbox"; input.checked = on; input.setAttribute("aria-label", "Export " + title);
         check.append(input, el("span", "save-check"));
         check.addEventListener("click", (e) => e.stopPropagation());
         input.addEventListener("change", () => { st.outputs[kind] = input.checked; if (input.checked) exp.mode = kind; rerender(); });

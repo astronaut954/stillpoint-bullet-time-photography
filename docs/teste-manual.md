@@ -1390,9 +1390,12 @@ direita; a lista de sessões continua à esquerda da janela.
       photos…" por um instante, depois a foto 01 nítida; por baixo dela, tingida de laranja e transparente, a foto 02
       (Next photo). Quadro neon sólido verde na proporção escolhida, e fora dele a prévia escurece; com uma proporção
       diferente de "As shot", também o canvas tracejado cinza ("Canvas · 900 × 506 px" no canto: o que todas cobrem
-      como saíram da câmera); em "As shot" só o quadro neon (o recorte é o canvas inteiro). Embaixo,
+      como saíram da câmera); em "As shot" só o quadro neon sólido (o recorte é o canvas inteiro), e dentro dele, tracejadas e
+      com o nome no canto, as proporções que existem nesta sessão e têm forma diferente do canvas (com 02 e 04 em
+      16:9 e as outras 3:2, o canvas é 16:9, então aparece a linha "3:2"). Embaixo,
       a instrução "01 · Drag to move · scroll to resize · ⌥ scroll to rotate · ⌘ arrows 1 px (⇧ 10)".
-- [ ] Fileira de miniaturas: a 01 marcada; a 02 com um ponto laranja (é a Next photo). Clicar na 04 (ou → três vezes):
+- [ ] Fileira de miniaturas: a 01 marcada; a 02 com um ponto laranja no canto da miniatura (é a Next photo) — o ponto
+      fica dentro da miniatura, nunca solto na tela. Clicar na 04 (ou → três vezes):
       "Photo 04 of 09", a 03 com ponto azul (Previous photo), a 05 com ponto laranja; na prévia a 04 nítida sobre a 03
       azulada e a 05 alaranjada.
 - [ ] Coluna "References", nesta ordem: "Previous photo" (azul, "03"), "Current photo" (sem caixa, "04", a própria
@@ -1433,9 +1436,12 @@ direita; a lista de sessões continua à esquerda da janela.
       overlap: move them closer, or Reset." "Reset photo" volta a 04 a zero; "Reset all" zera todas.
 - [ ] Último bloco da coluna (sem título repetido): "Aspect ratio" (As shot · 3:2 · 4:3 · 16:9 · 1:1) é a mesma escolha
       da aba Framing e vale para a sessão inteira; o quadro neon fica onde a aba Framing o deixou (a posição do recorte
-      só muda lá). "Position" (nove pontos, sem texto embaixo; a explicação está no "?") move a foto atual dentro da
+      só muda lá). "Position" (nove pontos, sem texto) move a foto atual dentro da
       folga que ela tem atrás do quadro: com a 04 em Size 120%, o ponto da esquerda cola o lado esquerdo da foto no do
       quadro, o do meio centra; arrastar também move só a foto. Ao voltar ("Back to Framing") a prévia do Framing ganha a etiqueta "Aligned".
+- [ ] Tab: na aba Framing, o Tab passa por todas as abas (Framing · Photos · Sequence · Lenticular) e pelas caixas delas,
+      pelo botão "Align photos", pelas proporções e pelos pontos de "Position". Em "Align photos", o Tab passa também
+      pelas miniaturas das sessões à esquerda (Enter ou Espaço abre a sessão) e por todos os controles da coluna.
 - [ ] Entrar em "Align photos" e voltar: a lista de sessões estreita/alarga com transição e a coluna surge num fade
       curto.
 - [ ] Fechar e abrir o Export, e fechar e abrir o app: o alinhamento volta (session.json tem "align").
