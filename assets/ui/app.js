@@ -3657,6 +3657,17 @@
     control("scale", "Size", "Percent of the original · steps of 0.1 (⇧ 1)", 0.1, 1, 1, () => a.scale * 100, (c, d) => { c.scale = Math.max(0.05, Math.min(20, c.scale + d / 100)); });
     control("rot", "Rotate", "Degrees, clockwise · steps of 0.05 (⇧ 0.5)", 0.05, 0.5, 2, () => a.rot, (c, d) => { c.rot = Math.round((c.rot + d) * 1000) / 1000; });
     const resets = el("div", "align-resets");
+    // Fit to canvas: a foto centrada, com o giro que tem, no menor tamanho que ainda cobre a área útil
+    resets.appendChild(button("Fit to canvas", () => {
+      if (!sizes[item.file]) return;
+      lockStart();
+      const cand = Object.assign({}, a, { dx: 0, dy: 0 });
+      let lo = 0.05, hi = 20;
+      if (!covers(Object.assign({}, cand, { scale: hi }))) return;
+      for (let i = 0; i < 30; i++) { const mid = (lo + hi) / 2; if (covers(Object.assign({}, cand, { scale: mid }))) hi = mid; else lo = mid; }
+      a.dx = 0; a.dy = 0; a.scale = hi; a.base = hi;
+      sync(); layout(); save();
+    }, { kind: "btn-secondary", title: "Centre this photo and make it the smallest size that still covers the canvas (the rotation stays)" }));
     resets.appendChild(button("Reset photo", () => { st.align.byFile[item.file] = ALIGN_ID(); save(); rerender(); }, { kind: "btn-secondary" }));
     resets.appendChild(button("Reset all", () => { st.align.byFile = {}; save(); rerender(); }, { kind: "btn-secondary" }));
     self.appendChild(resets);

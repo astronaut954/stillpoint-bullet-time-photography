@@ -1432,6 +1432,8 @@ direita; a lista de sessões continua à esquerda da janela.
 - [ ] Aba Lenticular, "Interlaced": a legenda de baixo é uma linha curta ("Interlaced 18500 × 12831 px · 30 × 20 cm ▸");
       clicar nela abre o resto (px por lente, faixas, instruções) e clicar de novo recolhe. "Hide preview" e "Show
       preview" com o Interlaced: volta na hora, sem travar (a imagem entrelaçada fica guardada enquanto nada muda).
+- [ ] "Fit to canvas" (ao lado de "Reset photo"): com a 04 em Size 130% e movida, o botão centra a foto e leva o Size ao
+      menor valor que ainda cobre a área útil (100% numa foto sem giro; mais, se estiver girada — o giro fica).
 - [ ] Afastar muito uma foto (Move X 7000): o quadro comum some e "Common frame" avisa em âmbar "The photos do not
       overlap: move them closer, or Reset." "Reset photo" volta a 04 a zero; "Reset all" zera todas.
 - [ ] Último bloco da coluna (sem título repetido): "Aspect ratio" (As shot · 3:2 · 4:3 · 16:9 · 1:1) é a mesma escolha
