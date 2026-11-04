@@ -1514,6 +1514,11 @@ Com `STILLPOINT_FAKE_CAMERAS=9` e algumas sessões. Abrir "Export sessions".
       todas as marcadas e a coluna "Folder" acompanha enquanto se digita) e a caixa "Export to" (caminho, "Choose
       another folder…", "Reset to default" depois de trocar). Rodapé: "← Outputs", "Cancel" e "Export n sessions". No
       Project, "Use edited photos when available" aparece só neste passo.
+- [ ] O recorte do passo 1 é o mesmo do passo 2 e do arquivo: numa sessão com 02 e 04 em 16:9 e as outras em 3:2,
+      escolher 3:2 e olhar a foto 01 (3:2) no passo 1: o quadro neon não cobre a foto inteira (o canvas é o 3:2 que
+      cabe na parte comum às 16:9, 759 × 506 nas simuladas), e o passo 2 mostra exatamente essa parte. Trocar 3:2 · 4:3 ·
+      16:9 · 1:1 e "Position" e comparar foto a foto nos dois passos (inclusive as 16:9). Com fotos alinhadas, o quadro
+      do passo 1 aparece deslocado (e girado) sobre a foto como ela vai sair.
 - [ ] Passo 1 sem "Hide preview" (a prévia fica sempre à vista; no passo 2 continua na linha das abas).
 - [ ] Alinhar exige uma proporção (decisão do dono, 2026-11-04, opção B): numa sessão em "As shot", "Align photos" continua
       ativo; clicar abre a janela "Choose a ratio first" com os botões 3:2 · 4:3 · 16:9 · 1:1 ("keeps n%"; o que perde

@@ -3516,16 +3516,34 @@
       const s = Math.min(bw / nat.w, bh / nat.h);
       const iw = nat.w * s, ih = nat.h * s, ix = (bw - iw) / 2, iy = (bh - ih) / 2;
       img.style.width = iw + "px"; img.style.height = ih + "px"; img.style.left = ix + "px"; img.style.top = iy + "px";
-      let fw = iw, fh = ih;
-      if (targetRatio) { const t = nat.w >= nat.h ? targetRatio : 1 / targetRatio; if (iw / ih > t) fw = ih * t; else fh = iw / t; }
+      let fw = iw, fh = ih, fx = ix + (iw - fw) * st.crop.x, fy = iy + (ih - fh) * st.crop.y, rot = 0;
+      if (targetRatio) { const t = nat.w >= nat.h ? targetRatio : 1 / targetRatio; if (iw / ih > t) fw = ih * t; else fh = iw / t; fx = ix + (iw - fw) * st.crop.x; fy = iy + (ih - fh) * st.crop.y; }
+      // O mesmo quadro da exportação (o canvas: a interseção das fotos e, dentro dela, a proporção), levado para cima
+      // desta foto com o alinhamento dela. Antes era a proporção sobre cada foto sozinha, e numa sessão com fotos de
+      // formatos diferentes o recorte da prévia não batia com o do passo 2 e do arquivo (2026-11-04)
+      const sz = sizesAll && sizesAll[item.file], canvas = targetRatio && sz && commonFrame(items, sizesAll, st);
+      if (canvas) {
+        const al = effectiveAlign(sz, alignOf(st, item.file), canvas, st);
+        const k = iw / sz.w, rad = -al.rot * Math.PI / 180;
+        // Centro do canvas no espaço da foto (px do original, centro da foto em 0,0): desfaz deslocamento, giro e tamanho
+        const ux = (-al.dx * Math.cos(rad) - -al.dy * Math.sin(rad)) / al.scale, uy = (-al.dx * Math.sin(rad) + -al.dy * Math.cos(rad)) / al.scale;
+        fw = canvas.w / al.scale * k; fh = canvas.h / al.scale * k; rot = -al.rot;
+        fx = ix + iw / 2 + ux * k - fw / 2; fy = iy + ih / 2 + uy * k - fh / 2;
+      }
       frame.style.width = fw + "px"; frame.style.height = fh + "px";
-      frame.style.left = (ix + (iw - fw) * st.crop.x) + "px"; frame.style.top = (iy + (ih - fh) * st.crop.y) + "px";
-      const free = iw - fw > 1 || ih - fh > 1;
+      frame.style.left = fx + "px"; frame.style.top = fy + "px";
+      frame.style.transform = rot ? "rotate(" + rot + "deg)" : "";
+      const free = iw - fw > 1 || ih - fh > 1 || Math.abs(rot) > 0.001;
       frame.classList.toggle("free", free);
       frame.style.display = free ? "" : "none";  // nada a cortar ("As shot", ou a foto já tem a forma): sem quadro
       tag.textContent = (item ? pad(item.order || 1) + " · " : "") + (targetRatio ? (free ? "Drag the frame to choose the part that stays · ← → other photos" : "Nothing to cut: the photo already has this shape") : "As shot: nothing is cut · choose a ratio below");
     };
     if (item) sessionPhoto(session.name, item.file, 1600).then((url) => { if (!url) return; img.onload = () => { nat = { w: img.naturalWidth, h: img.naturalHeight }; layout(); }; img.src = url; });
+    // Tamanho real de todas as fotos (o canvas depende delas)
+    let sizesAll = null;
+    Promise.all(items.map((it) => photoSizeOf(session.name, it.file).then((sz) => [it.file, sz]))).then((pairs) => {
+      sizesAll = {}; pairs.forEach(([f, sz]) => { if (sz) sizesAll[f] = sz; }); layout();
+    });
     if (window.ResizeObserver) new ResizeObserver(layout).observe(box);
     let drag = null;
     box.addEventListener("pointerdown", (e) => { if (!nat || !targetRatio || e.target.closest("button")) return; drag = { x: e.clientX, y: e.clientY, cx: st.crop.x, cy: st.crop.y }; box.setPointerCapture(e.pointerId); e.preventDefault(); });
