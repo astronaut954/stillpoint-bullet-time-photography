@@ -2685,7 +2685,7 @@
   // Espaço segurado na tela "Align photos": arrastar desloca a vista (como no Photoshop/Lightroom)
   {
     const isText = (t) => t && (t.tagName === "TEXTAREA" || t.tagName === "SELECT" || (t.tagName === "INPUT" && !["checkbox", "radio", "button", "range"].includes(t.type)));
-    const setSpace = (on) => { exp.spaceDown = on; const o = $("exportSettings"); if (o) o.classList.toggle("space-pan", on); };
+    const setSpace = (on) => { exp.spaceDown = on; const o = $("exportSettings"); if (o) o.classList.toggle("space-pan", on); if (on && exp.alignQuiet) exp.alignQuiet(); };
     document.addEventListener("keydown", (e) => {
       if (e.key !== " " || !exp.aligning || $("exportOverlay").classList.contains("hidden") || isText(e.target)) return;
       e.preventDefault(); e.stopImmediatePropagation();
@@ -2697,6 +2697,19 @@
       setSpace(false);
     }, true);
     window.addEventListener("blur", () => { if (exp.spaceDown) setSpace(false); });
+    // ⌘0 (Ctrl+0 no Windows): a vista volta ao centro e a 100%
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "0" || !(e.metaKey || e.ctrlKey) || !exp.aligning || $("exportOverlay").classList.contains("hidden") || isText(e.target)) return;
+      e.preventDefault(); e.stopImmediatePropagation();
+      if (exp.alignView) Object.assign(exp.alignView, { zoom: 1, px: 0, py: 0 });
+      if (exp.alignLayout) exp.alignLayout();
+    }, true);
+  }
+  // Sair do Export sessions (Cancel, Esc ou clique fora): pergunta antes, avisando que nada se perde
+  function askCloseExport() {
+    dialog("Leave Export sessions?",
+      "Nothing is exported. Your choices are kept: the outputs, the framing and the photo alignment will be here when you open Export sessions again.",
+      [{ label: "Stay" }, { label: "Leave", primary: true, onClick: closeExport }]);
   }
   function closeExport() {
     stopPreview();
@@ -3841,6 +3854,14 @@
     });
     if (window.ResizeObserver) new ResizeObserver(layout).observe(stage);
 
+    // Etiquetas da prévia (o tamanho do canvas e a instrução embaixo): somem enquanto o mouse se mexe sobre a prévia ou
+    // o espaço está seguro, e voltam 2 s depois de parar
+    let quietTimer = 0;
+    const quiet = () => { stage.classList.add("quiet"); clearTimeout(quietTimer); quietTimer = setTimeout(() => { if (exp.spaceDown) quiet(); else stage.classList.remove("quiet"); }, 2000); };
+    stage.addEventListener("pointermove", quiet);
+    stage.addEventListener("wheel", quiet, { passive: true });
+    exp.alignQuiet = quiet;
+    exp.alignLayout = layout;
     // Gestos na prévia: mover (arrastar a prévia ou o meio da caixa), redimensionar (cantos da caixa ou a roda),
     // girar (alça de cima ou ⌥ + roda). Todos presos à área útil (lockStart/tryApply).
     let drag = null;
@@ -4747,7 +4768,7 @@
   ui.saveBtn.addEventListener("click", () => startSave(false));
   $("exportSelectAll").addEventListener("click", () => { exp.selectedTouched = true; exp.selected = new Set(exportable().map((s) => s.name)); renderExportList(); updateExportCount(); });
   $("exportUnselectAll").addEventListener("click", () => { exp.selectedTouched = true; exp.selected.clear(); renderExportList(); updateExportCount(); });
-  $("exportCancel").addEventListener("click", closeExport);
+  $("exportCancel").addEventListener("click", askCloseExport);
   $("exportConfirm").addEventListener("click", confirmExport);
   $("exportPitch").addEventListener("click", () => { const n = lentSession(); if (n) openPitchTest(settingsFor(n).lent); });
   $("progressCancel").addEventListener("click", () => {
@@ -7570,7 +7591,7 @@
     promptOverlay: () => $("promptCancel").click(),
     projectOverlay: () => closeProjectWindow(),
     projectPickOverlay: () => $("projectPickOverlay").classList.add("hidden"),
-    exportOverlay: () => { if (!exp.waiting) closeExport(); },
+    exportOverlay: () => { if (!exp.waiting) askCloseExport(); },
     settingsOverlay: () => $("settingsOverlay").classList.add("hidden"),
     aboutOverlay: () => $("aboutOverlay").classList.add("hidden"),
     orderOverlay: () => ui.orderCancel.click(),

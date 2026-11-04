@@ -1380,6 +1380,13 @@ proporção. O alinhamento — referências, Move/Size/Rotate — vem no pedaço
       e as prévias ficam brancas. Exportar um lenticular em Fit: o TIFF tem a faixa da cor escolhida, e o
       "settings.txt" ao lado diz "Placement: Fit (whole photo, white band)"; em Fill diz a posição do recorte.
 
+## 36 B. Sair do Export sessions (2.16.0)
+
+- [ ] "Cancel" (rodapé), Esc ou clique fora da janela: abre a confirmação "Leave Export sessions?" ("Nothing is
+      exported. Your choices are kept: …") com "Stay" e "Leave". "Stay" (ou Esc, ou clique fora) volta ao Export como
+      estava; "Leave" fecha. Abrir de novo: as saídas, o Framing e o alinhamento continuam como deixados. Depois de
+      exportar, a janela fecha sem perguntar.
+
 ## 37. Export: tela "Align photos" (2.16.0, pedaço 2 do Framing)
 
 Com `STILLPOINT_FAKE_CAMERAS=9`. Abrir "Export sessions", aba Framing, botão "Align photos" (canto superior esquerdo da
@@ -1418,6 +1425,9 @@ direita; a lista de sessões continua à esquerda da janela.
       mouse, de 30% a 800% ("zoom 250%" aparece na instrução embaixo). Segurar a barra de espaço: o cursor vira uma mão;
       arrastar desloca a vista; ao soltar o espaço volta ao normal. O deslocamento para quando sobram 80 px do canvas
       à vista (nunca some). Entrar de novo em "Align photos" começa em 100%.
+- [ ] Etiquetas da prévia ("Canvas · …" no canto e a instrução embaixo): somem num fade ao mexer o mouse sobre a prévia,
+      ao rolar ou com o espaço seguro, e voltam num fade 2 s depois de parar.
+- [ ] ⌘0 (Ctrl+0 no Windows): a vista volta ao centro e a 100% (a foto não muda).
 - [ ] Cursor da alça redonda (girar): uma seta em arco verde; o mesmo cursor durante o giro.
 - [ ] Desfazer/refazer (⌘Z / ⇧⌘Z) dentro de "Align photos": cada gesto terminado (arrastar, alça, − +, campo, Position,
       Fit to canvas, Reset photo, Reset all, uma sequência de ⌥ + roda) é um passo; abrir a tela, trocar de foto ou dar

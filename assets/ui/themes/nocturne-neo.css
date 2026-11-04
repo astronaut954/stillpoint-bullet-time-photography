@@ -1596,6 +1596,9 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .align-common::after { content: attr(data-size); position: absolute; right: 6px; top: 6px; font: 700 9px var(--noct-font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--noct-text-muted); background: rgba(var(--noct-bg-rgb), .85); padding: 2px 6px; white-space: nowrap; }
 .align-ratio.crop-frame, .align-ratio.crop-frame:not(.free) { z-index: 1; box-shadow: 0 0 0 999px rgba(0, 0, 0, .35); border: 2px solid var(--noct-primary); border-style: solid; }
 .align-stage .crop-tag { z-index: 3; }
+/* Mouse em movimento ou espaço seguro: as etiquetas somem; voltam 2 s depois */
+.align-stage .crop-tag, .align-stage .align-ratio::after { transition: opacity .25s ease; }
+.align-stage.quiet .crop-tag, .align-stage.quiet .align-ratio::after { opacity: 0; }
 .align-wait { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font: 700 10px var(--noct-font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--noct-text-dim); }
 .align-panel { display: flex; flex-direction: column; gap: 12px; min-height: 0; min-width: 0; overflow-y: auto; overflow-x: hidden; padding-right: 2px; }
 .align-block { border: 1px solid var(--noct-border); background: var(--noct-surface-inner); padding: 10px 12px; display: flex; flex-direction: column; gap: 9px; flex: 0 0 auto; }
