@@ -1589,10 +1589,6 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .align-common { position: absolute; border: 1px dashed var(--noct-text-muted); pointer-events: none; z-index: 2; }
 .align-common::after { content: attr(data-size); position: absolute; right: 6px; top: 6px; font: 700 9px var(--noct-font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--noct-text-muted); background: rgba(var(--noct-bg-rgb), .85); padding: 2px 6px; white-space: nowrap; }
 .align-ratio.crop-frame, .align-ratio.crop-frame:not(.free) { z-index: 1; box-shadow: 0 0 0 999px rgba(0, 0, 0, .35); border: 2px solid var(--noct-primary); border-style: solid; }
-/* "As shot": as proporções presentes na sessão, tracejadas, com o nome no canto */
-.align-ratio-lines { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
-.align-ratio-line { position: absolute; border: 1px dashed var(--noct-text-muted); box-sizing: border-box; }
-.align-ratio-line::after { content: attr(data-name); position: absolute; left: 4px; top: 4px; font: 700 9px var(--noct-font-mono); letter-spacing: .1em; color: var(--noct-text-muted); background: rgba(var(--noct-bg-rgb), .85); padding: 1px 5px; }
 .align-stage .crop-tag { z-index: 3; }
 .align-wait { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font: 700 10px var(--noct-font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--noct-text-dim); }
 .align-panel { display: flex; flex-direction: column; gap: 12px; min-height: 0; min-width: 0; overflow-y: auto; overflow-x: hidden; padding-right: 2px; }
@@ -1656,6 +1652,7 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .export-strip .frame { position: relative; }
 .align-refdot { position: absolute; right: 6px; top: 6px; width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 0 1px #000; z-index: 2; }
 .export-body.aligning .export-item:focus-visible { outline: 2px solid var(--noct-primary); outline-offset: 2px; }
+.export-strip .frame .frame-ratio { z-index: 2; }
 .frame.aligned .frame-badge { border-color: var(--noct-primary); }
 /* Seção Framing: a prévia de cima é o recorte sobre a foto (crop-stage), no tamanho da prévia do Export */
 .crop-box { position: relative; width: 100%; background: var(--noct-surface-inner); border: 1px solid var(--noct-border); overflow: hidden; cursor: grab; user-select: none; -webkit-user-select: none; touch-action: none; }

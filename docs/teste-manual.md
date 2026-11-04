@@ -1364,8 +1364,8 @@ proporção. O alinhamento — referências, Move/Size/Rotate — vem no pedaço
       aba (o botão "< >" é só do Lenticular, que não mudou). Com alguma foto alinhada, uma etiqueta "Aligned" no
       canto superior direito da prévia. A tela que o botão abre é a seção 37.
 - [ ] Escolher 3:2: na prévia, o quadro aceso e o resto escuro; na foto 02 o quadro é mais estreito e arrasta
-      para os lados (etiqueta "Drag the frame to choose the part that stays · ← → other photos"); nas 3:2 o quadro
-      tracejado cobre tudo ("Nothing to cut"). "Position": clicar num ponto move o quadro; o ponto aceso
+      para os lados (etiqueta "Drag the frame to choose the part that stays · ← → other photos"); nas 3:2 não há quadro
+      ("Nothing to cut"). "Position": clicar num ponto move o quadro; o ponto aceso
       acompanha o arraste. Uma posição para a sessão inteira.
 - [ ] Exportar (Photos convertidas em JPG + Sequence MP4) com 3:2: no Finder, as fotos 02 e 04 convertidas saem
       3:2 (cortadas nas laterais), as outras inteiras; os Originals continuam 16:9; o MP4 não pula; todas as convertidas saem com o mesmo tamanho em pixels (o da
@@ -1390,12 +1390,11 @@ direita; a lista de sessões continua à esquerda da janela.
       photos…" por um instante, depois a foto 01 nítida; por baixo dela, tingida de laranja e transparente, a foto 02
       (Next photo). Quadro neon sólido verde na proporção escolhida, e fora dele a prévia escurece; com uma proporção
       diferente de "As shot", também o canvas tracejado cinza ("Canvas · 900 × 506 px" no canto: o que todas cobrem
-      como saíram da câmera); em "As shot" só o quadro neon sólido (o recorte é o canvas inteiro), e dentro dele, tracejadas e
-      com o nome no canto, as proporções que existem nesta sessão e têm forma diferente do canvas (com 02 e 04 em
-      16:9 e as outras 3:2, o canvas é 16:9, então aparece a linha "3:2"). Embaixo,
+      como saíram da câmera); em "As shot" só o quadro neon sólido (o recorte é o canvas inteiro). Embaixo,
       a instrução "01 · Drag to move · scroll to resize · ⌥ scroll to rotate · ⌘ arrows 1 px (⇧ 10)".
 - [ ] Fileira de miniaturas: a 01 marcada; a 02 com um ponto laranja no canto da miniatura (é a Next photo) — o ponto
-      fica dentro da miniatura, nunca solto na tela. Clicar na 04 (ou → três vezes):
+      fica dentro da miniatura, nunca solto na tela. As miniaturas 02 e 04 (16:9) com a borda tracejada âmbar e "16:9"
+      no canto, como na tela principal. Clicar na 04 (ou → três vezes):
       "Photo 04 of 09", a 03 com ponto azul (Previous photo), a 05 com ponto laranja; na prévia a 04 nítida sobre a 03
       azulada e a 05 alaranjada.
 - [ ] Coluna "References", nesta ordem: "Previous photo" (azul, "03"), "Current photo" (sem caixa, "04", a própria
@@ -1438,10 +1437,11 @@ direita; a lista de sessões continua à esquerda da janela.
       da aba Framing e vale para a sessão inteira; o quadro neon fica onde a aba Framing o deixou (a posição do recorte
       só muda lá). "Position" (nove pontos, sem texto) move a foto atual dentro da
       folga que ela tem atrás do quadro: com a 04 em Size 120%, o ponto da esquerda cola o lado esquerdo da foto no do
-      quadro, o do meio centra; arrastar também move só a foto. Ao voltar ("Back to Framing") a prévia do Framing ganha a etiqueta "Aligned".
+      quadro, o do meio centra; o ponto aceso mostra onde a foto está (sem folga, o do meio); arrastar também move só
+      a foto e o ponto acompanha. Ao voltar ("Back to Framing") a prévia do Framing ganha a etiqueta "Aligned".
 - [ ] Tab: na aba Framing, o Tab passa por todas as abas (Framing · Photos · Sequence · Lenticular) e pelas caixas delas,
-      pelo botão "Align photos", pelas proporções e pelos pontos de "Position". Em "Align photos", o Tab passa também
-      pelas miniaturas das sessões à esquerda (Enter ou Espaço abre a sessão) e por todos os controles da coluna.
+      pelo botão "Align photos", pelas proporções e pelos pontos de "Position". Em "Align photos", a lista de sessões é uma parada
+      só do Tab (a sessão aberta); ↑ ↓ trocam de sessão (em qualquer lugar da tela, fora de um campo de texto).
 - [ ] Entrar em "Align photos" e voltar: a lista de sessões estreita/alarga com transição e a coluna surge num fade
       curto.
 - [ ] Fechar e abrir o Export, e fechar e abrir o app: o alinhamento volta (session.json tem "align").

@@ -2668,8 +2668,16 @@
     if ($("exportOverlay").classList.contains("hidden") || tabScope() !== $("exportOverlay")) return;
     const t = e.target;
     if (t && (t.tagName === "TEXTAREA" || t.tagName === "SELECT" || (t.tagName === "INPUT" && !["checkbox", "radio", "button"].includes(t.type)))) return;
-    // Tela de alinhamento: ⌘ + setas movem a foto 1 px (⇧ 10)
+    // Tela de alinhamento: ⌘ + setas movem a foto 1 px (⇧ 10); ↑ ↓ sozinhas trocam de sessão
     if (exp.keyMove && (e.metaKey || e.ctrlKey)) { e.preventDefault(); e.stopImmediatePropagation(); exp.keyMove(arrows[e.key][0], arrows[e.key][1], e.shiftKey); return; }
+    if (exp.aligning && (e.key === "ArrowUp" || e.key === "ArrowDown") && !e.shiftKey && !e.altKey) {
+      const items = [...$("exportList").children];
+      const i = items.findIndex((li) => li.dataset.name === exp.active);
+      const n = items[i + (e.key === "ArrowDown" ? 1 : -1)];
+      e.preventDefault(); e.stopImmediatePropagation();
+      if (n) { const inList = document.activeElement && document.activeElement.closest("#exportList"); n.click(); if (inList) { const again = [...$("exportList").children].find((li) => li.dataset.name === exp.active); if (again) again.focus(); } }
+      return;
+    }
     if ((e.key !== "ArrowLeft" && e.key !== "ArrowRight") || !exp.keyNav) return;
     e.preventDefault(); e.stopImmediatePropagation();
     exp.keyNav(e.key === "ArrowRight" ? 1 : -1);
@@ -2742,8 +2750,7 @@
       const box = li.querySelector("input");
       box.checked = exp.selected.has(s.name);
       if (!li.title) li.title = label.date;  // na tela de alinhamento a lista mostra só a miniatura: a data fica na dica
-      li.tabIndex = exp.aligning ? 0 : -1;
-      li.addEventListener("keydown", (e) => { if (e.target === li && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); li.click(); } });
+      li.tabIndex = exp.aligning && s.name === exp.active ? 0 : -1;
       // legenda instantânea (como a barra da tela cheia): data, fotos e o que vai sair
       li.dataset.tip = [s.label || "", label.date, plural(sessionItems(s).length, "photo", "photos"), label.detail].filter(Boolean).join(" · ");
       { const r = ratioInfoCached(s.name); const warns = []; if (s.missing) warns.push(s.missing + " missing"); if (r && r.mixed) warns.push("Mixed ratios"); if (warns.length) li.dataset.tipWarn = warns.join(" · "); }
@@ -3331,6 +3338,7 @@
       frame.style.left = (ix + (iw - fw) * st.crop.x) + "px"; frame.style.top = (iy + (ih - fh) * st.crop.y) + "px";
       const free = iw - fw > 1 || ih - fh > 1;
       frame.classList.toggle("free", free);
+      frame.style.display = free ? "" : "none";  // nada a cortar ("As shot", ou a foto já tem a forma): sem quadro
       tag.textContent = (item ? pad(item.order || 1) + " · " : "") + (targetRatio ? (free ? "Drag the frame to choose the part that stays · ← → other photos" : "Nothing to cut: the photo already has this shape") : "As shot: nothing is cut · choose a ratio below");
     };
     if (item) sessionPhoto(session.name, item.file, 1600).then((url) => { if (!url) return; img.onload = () => { nat = { w: img.naturalWidth, h: img.naturalHeight }; layout(); }; img.src = url; });
@@ -3467,7 +3475,6 @@
     const ratio = el("div", "crop-frame align-ratio");
     // Caixa de transformação sobre a foto atual: cantos redimensionam (em volta do centro), a alça de cima gira,
     // o meio move (como arrastar a prévia)
-    const ratioLines = el("div", "align-ratio-lines");  // em "As shot": uma linha por proporção presente na sessão
     const box = el("div", "align-box");
     const handles = {};
     ["tl", "tr", "bl", "br"].forEach((c) => { handles[c] = el("div", "align-handle align-handle-" + c); box.appendChild(handles[c]); });
@@ -3475,19 +3482,22 @@
     box.append(rotLine, rotHandle);
     const tag = el("span", "crop-tag", pad(item.order || cur + 1) + " · Drag to move · scroll to resize · ⌥ scroll to rotate · ⌘ arrows 1 px (⇧ 10)");
     const wait = el("div", "align-wait", "Measuring the photos…");
-    stage.append(layers, common, ratio, ratioLines, box, tag, wait);
+    stage.append(layers, common, ratio, box, tag, wait);
     left.appendChild(stage);
     // Fileira de miniaturas, com um ponto da cor da referência
     const stripScroll = el("div", "export-strip-scroll");
     const strip = el("ul", "export-strip");
     stripScroll.appendChild(strip);
     const refIndex = { prev: cur - 1, next: cur + 1 };
+    const mixedInfo = ratioInfoCached(session.name);
     items.forEach((it, k) => {
       const li = el("li", "frame" + (k === cur ? " selected" : ""));
       li.innerHTML = '<div class="frame-img"><img alt=""><span class="frame-badge"></span></div>';
       li.querySelector(".frame-badge").textContent = pad(it.order || k + 1);
       ["prev", "next"].forEach((key) => { if (alignPrefs[key] && refIndex[key] === k && k !== cur) { const dot = el("span", "align-refdot"); dot.style.background = REF_COLORS[key]; li.appendChild(dot); } });
       if (!alignIsIdentity(st.align.byFile[it.file])) li.classList.add("aligned");
+      // Proporções misturadas: a mesma marca da tela principal (borda tracejada âmbar e a proporção no canto)
+      if (mixedInfo && mixedInfo.mixed && mixedInfo.marked.includes(it.group)) { li.classList.add("ratio-warn"); li.appendChild(el("span", "frame-ratio", mixedInfo.byGroup[it.group] || "")); }
       sessionPhoto(session.name, it.file, 320).then((url) => { if (url) li.querySelector("img").src = url; });
       li.addEventListener("click", () => { exp.photo = k; rerender(); });
       strip.appendChild(li);
@@ -3604,6 +3614,15 @@
       a.dx = Math.round(minX + (maxX - minX) * x); a.dy = Math.round(minY + (maxY - minY) * y);
       sync(); layout(); save();
     };
+    // O ponto aceso é onde a foto está dentro da folga (sem folga num eixo, conta como o meio)
+    let posDots = null;
+    const markPosDots = () => {
+      if (!posDots || !sizes[item.file]) return;
+      lockStart();
+      const minX = reach("dx", -1), maxX = reach("dx", 1), minY = reach("dy", -1), maxY = reach("dy", 1);
+      const fx = maxX - minX > 1 ? (a.dx - minX) / (maxX - minX) : 0.5, fy = maxY - minY > 1 ? (a.dy - minY) / (maxY - minY) : 0.5;
+      [...posDots.children].forEach((d) => d.classList.toggle("on", Math.abs(+d.dataset.x - fx) < 0.02 && Math.abs(+d.dataset.y - fy) < 0.02));
+    };
     // Segurar o − ou o + repete o passo (400 ms para começar, depois a cada 60 ms)
     const holdButton = (icon, title, step, bigStep, apply) => {
       const b = button("", () => {}, { icon, title, kind: "btn-secondary" });
@@ -3658,11 +3677,12 @@
       const dots = el("div", "crop-dots");
       const names = ["Top left", "Top", "Top right", "Left", "Center", "Right", "Bottom left", "Bottom", "Bottom right"];
       [0, 0.5, 1].forEach((y, yi) => [0, 0.5, 1].forEach((x, xi) => {
-        const d = el("button", "crop-dot"); d.type = "button"; d.title = names[yi * 3 + xi];
+        const d = el("button", "crop-dot"); d.type = "button"; d.title = names[yi * 3 + xi]; d.dataset.x = x; d.dataset.y = y;
         d.addEventListener("click", () => placePhoto(x, y));
         dots.appendChild(d);
       }));
       pos.appendChild(dots);
+      posDots = dots;
       arRows.appendChild(pos);
     }
     ar.appendChild(arRows);
@@ -3671,7 +3691,7 @@
     panel.addEventListener("scroll", () => { alignScreen.panelScroll = panel.scrollTop; });
     if (keepPanel) { panel.scrollTop = keepPanel; requestAnimationFrame(() => { panel.scrollTop = keepPanel; }); }
 
-    const sync = () => { fields.dx.value = a.dx.toFixed(0); fields.dy.value = a.dy.toFixed(0); fields.scale.value = (a.scale * 100).toFixed(1); fields.rot.value = a.rot.toFixed(2); };
+    const sync = () => { fields.dx.value = a.dx.toFixed(0); fields.dy.value = a.dy.toFixed(0); fields.scale.value = (a.scale * 100).toFixed(1); fields.rot.value = a.rot.toFixed(2); markPosDots(); };
     let saveTimer = 0;
     const save = () => { clearTimeout(saveTimer); saveTimer = setTimeout(() => alignSave(session, st), 150); };
 
@@ -3728,23 +3748,6 @@
       cf.classList.remove("exp-warn");
       const r0 = st.crop.ratio !== "asshot" ? RATIOS[st.crop.ratio] : 0;
       common.style.display = r0 ? "" : "none";  // em "As shot" o recorte é o canvas inteiro: só o quadro neon
-      // "As shot": as proporções que existem nesta sessão, cada uma como uma linha tracejada dentro do canvas
-      ratioLines.innerHTML = "";
-      if (!r0) {
-        const info = ratioInfoCached(session.name);
-        (info && info.present ? info.present : []).forEach((name) => {
-          const rr = RATIOS[name]; if (!rr) return;
-          const t = frame.w >= frame.h ? rr : 1 / rr;
-          let lw = frame.w, lh = frame.h;
-          if (frame.w / frame.h > t) lw = frame.h * t; else lh = frame.w / t;
-          if (Math.abs(lw - frame.w) < 1 && Math.abs(lh - frame.h) < 1) return;  // a mesma forma do canvas: já é o quadro neon
-          const line = el("div", "align-ratio-line");
-          line.style.left = (cx + (frame.x + (frame.w - lw) * st.crop.x) * scaleK) + "px"; line.style.top = (cy + (frame.y + (frame.h - lh) * st.crop.y) * scaleK) + "px";
-          line.style.width = (lw * scaleK) + "px"; line.style.height = (lh * scaleK) + "px";
-          line.setAttribute("data-name", name);
-          ratioLines.appendChild(line);
-        });
-      }
       common.style.left = (cx + frame.x * scaleK) + "px"; common.style.top = (cy + frame.y * scaleK) + "px";
       common.style.width = (frame.w * scaleK) + "px"; common.style.height = (frame.h * scaleK) + "px";
       common.setAttribute("data-size", "Canvas · " + Math.round(frame.w) + " × " + Math.round(frame.h) + " px");
@@ -3761,7 +3764,7 @@
     Promise.all(items.map((it) => photoSizeOf(session.name, it.file).then((sz) => { if (sz) sizes[it.file] = sz; }))).then(() => {
       wait.remove();
       if (!sizes[item.file]) { cf.textContent = "Could not read the size of this photo."; cf.classList.add("exp-warn"); return; }
-      layout();
+      layout(); markPosDots();
     });
     if (window.ResizeObserver) new ResizeObserver(layout).observe(stage);
 
@@ -3953,8 +3956,9 @@
     outer.classList.toggle("aligning", !!exp.aligning);
     const body = document.querySelector(".export-body");
     if (body) body.classList.toggle("aligning", !!exp.aligning);  // lista de sessões só com as miniaturas (como a barra da tela cheia)
-    // Na tela de alinhamento a caixa de cada sessão some, então o Tab passa pela miniatura (Enter/Espaço abre a sessão)
-    [...$("exportList").children].forEach((li) => { li.tabIndex = exp.aligning ? 0 : -1; });
+    // Na tela de alinhamento a caixa de cada sessão some: a lista vira uma parada só do Tab (a sessão aberta) e
+    // ↑ ↓ trocam de sessão (decisão do dono, 2026-11-03)
+    [...$("exportList").children].forEach((li) => { li.tabIndex = exp.aligning && li.dataset.name === exp.active ? 0 : -1; });
     // Entrar ou sair da tela de alinhamento: a coluna surge num fade curto (a lista estreita/alarga com transição no CSS)
     if (exp.aligningShown !== !!exp.aligning) {
       exp.aligningShown = !!exp.aligning;
