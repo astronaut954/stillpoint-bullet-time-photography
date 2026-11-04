@@ -1830,3 +1830,4 @@ html.kbd-focus .export-tab.on .export-tab-check input:focus + .save-check { outl
 /* Linha da lista no passo 2 (sem caixa): o anel em volta da linha */
 .export-body.step-2 .export-item:focus-visible, html.kbd-focus .export-body.step-2 .export-item:focus { outline: 2px solid var(--noct-primary); outline-offset: 2px; }
 .export-list { padding-left: 14px; padding-right: 14px; }
+.crop-stage.export-preview img { max-width: none; max-height: none; object-fit: fill; }  /* a foto é posicionada à mão atrás do quadro */

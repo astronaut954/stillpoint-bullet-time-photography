@@ -3509,54 +3509,61 @@
     const tag = el("span", "crop-tag");
     box.append(img, frame, tag);
     const item = items[Math.max(0, Math.min(items.length - 1, exp.photo || 0))] || items[0];
-    let nat = null;  // largura/altura natural da foto
+    let nat = null;      // largura/altura natural da prévia
+    let sizesAll = null; // tamanho real de cada foto (o canvas depende delas)
+    let slack = null;    // folga da foto atrás do quadro, em px da tela (para arrastar)
+    const label = (text) => { tag.textContent = (item ? pad(item.order || 1) + " · " : "") + text; };
     const layout = () => {
       if (!nat) return;
       const bw = box.clientWidth, bh = box.clientHeight;
-      const s = Math.min(bw / nat.w, bh / nat.h);
-      const iw = nat.w * s, ih = nat.h * s, ix = (bw - iw) / 2, iy = (bh - ih) / 2;
-      img.style.width = iw + "px"; img.style.height = ih + "px"; img.style.left = ix + "px"; img.style.top = iy + "px";
-      let fw = iw, fh = ih, fx = ix + (iw - fw) * st.crop.x, fy = iy + (ih - fh) * st.crop.y, rot = 0;
-      if (targetRatio) { const t = nat.w >= nat.h ? targetRatio : 1 / targetRatio; if (iw / ih > t) fw = ih * t; else fh = iw / t; fx = ix + (iw - fw) * st.crop.x; fy = iy + (ih - fh) * st.crop.y; }
-      // O mesmo quadro da exportação (o canvas: a interseção das fotos e, dentro dela, a proporção), levado para cima
-      // desta foto com o alinhamento dela. Antes era a proporção sobre cada foto sozinha, e numa sessão com fotos de
-      // formatos diferentes o recorte da prévia não batia com o do passo 2 e do arquivo (2026-11-04)
+      img.style.transform = ""; img.style.transformOrigin = "center center";
       const sz = sizesAll && sizesAll[item.file], canvas = targetRatio && sz && commonFrame(items, sizesAll, st);
       if (canvas) {
+        // O quadro (o canvas da exportação) fica parado, do mesmo tamanho em todas as fotos; cada foto aparece atrás
+        // dele como vai sair (posição, tamanho e giro). Decisão do dono, 2026-11-04: a prévia não muda o tamanho do canvas.
+        let maxW = 0, maxH = 0;
+        items.forEach((it) => { const z = sizesAll[it.file]; if (z) { maxW = Math.max(maxW, z.w); maxH = Math.max(maxH, z.h); } });
+        const K = Math.min(bw / (maxW * 1.04), bh / (maxH * 1.04)), cx = bw / 2, cy = bh / 2;
         const al = effectiveAlign(sz, alignOf(st, item.file), canvas, st);
-        const k = iw / sz.w, rad = -al.rot * Math.PI / 180;
-        // Centro do canvas no espaço da foto (px do original, centro da foto em 0,0): desfaz deslocamento, giro e tamanho
-        const ux = (-al.dx * Math.cos(rad) - -al.dy * Math.sin(rad)) / al.scale, uy = (-al.dx * Math.sin(rad) + -al.dy * Math.cos(rad)) / al.scale;
-        fw = canvas.w / al.scale * k; fh = canvas.h / al.scale * k; rot = -al.rot;
-        fx = ix + iw / 2 + ux * k - fw / 2; fy = iy + ih / 2 + uy * k - fh / 2;
+        const w = sz.w * K, h = sz.h * K;
+        img.style.width = w + "px"; img.style.height = h + "px";
+        img.style.left = (cx + al.dx * K - w / 2) + "px"; img.style.top = (cy + al.dy * K - h / 2) + "px";
+        img.style.transform = "scale(" + al.scale + ") rotate(" + al.rot + "deg)";
+        frame.style.transform = "";
+        frame.style.width = canvas.w * K + "px"; frame.style.height = canvas.h * K + "px";
+        frame.style.left = (cx + canvas.x * K) + "px"; frame.style.top = (cy + canvas.y * K) + "px";
+        frame.style.display = ""; frame.classList.add("free");
+        // Arrastar só vale para fotos sem alinhamento próprio: elas seguem a posição do recorte da sessão
+        const touched = !alignIsIdentity(alignOf(st, item.file)) && sessionAligned(session, st);
+        slack = touched ? null : { x: (sz.w * al.scale - canvas.w) * K, y: (sz.h * al.scale - canvas.h) * K };
+        const free = slack && (slack.x > 1 || slack.y > 1);
+        label(free ? "Drag the photo to choose the part that stays · ← → other photos" : touched ? "This photo is aligned: move it in Align photos · ← → other photos" : "Nothing to cut: the photo fills the frame · ← → other photos");
+        return;
       }
-      frame.style.width = fw + "px"; frame.style.height = fh + "px";
-      frame.style.left = fx + "px"; frame.style.top = fy + "px";
-      frame.style.transform = rot ? "rotate(" + rot + "deg)" : "";
-      const free = iw - fw > 1 || ih - fh > 1 || Math.abs(rot) > 0.001;
-      frame.classList.toggle("free", free);
-      frame.style.display = free ? "" : "none";  // nada a cortar ("As shot", ou a foto já tem a forma): sem quadro
-      tag.textContent = (item ? pad(item.order || 1) + " · " : "") + (targetRatio ? (free ? "Drag the frame to choose the part that stays · ← → other photos" : "Nothing to cut: the photo already has this shape") : "As shot: nothing is cut · choose a ratio below");
+      // Sem proporção ("As shot") ou antes de saber os tamanhos: a foto inteira, sem quadro
+      slack = null;
+      const s = Math.min(bw / nat.w, bh / nat.h);
+      const iw = nat.w * s, ih = nat.h * s;
+      img.style.width = iw + "px"; img.style.height = ih + "px"; img.style.left = (bw - iw) / 2 + "px"; img.style.top = (bh - ih) / 2 + "px";
+      frame.style.display = "none";
+      label(targetRatio ? "Measuring the photos…" : "As shot: nothing is cut · choose a ratio below");
     };
     if (item) sessionPhoto(session.name, item.file, 1600).then((url) => { if (!url) return; img.onload = () => { nat = { w: img.naturalWidth, h: img.naturalHeight }; layout(); }; img.src = url; });
-    // Tamanho real de todas as fotos (o canvas depende delas)
-    let sizesAll = null;
     Promise.all(items.map((it) => photoSizeOf(session.name, it.file).then((sz) => [it.file, sz]))).then((pairs) => {
       sizesAll = {}; pairs.forEach(([f, sz]) => { if (sz) sizesAll[f] = sz; }); layout();
     });
     if (window.ResizeObserver) new ResizeObserver(layout).observe(box);
     let drag = null;
-    box.addEventListener("pointerdown", (e) => { if (!nat || !targetRatio || e.target.closest("button")) return; drag = { x: e.clientX, y: e.clientY, cx: st.crop.x, cy: st.crop.y }; box.setPointerCapture(e.pointerId); e.preventDefault(); });
+    box.addEventListener("pointerdown", (e) => { if (!slack || e.target.closest("button")) return; drag = { x: e.clientX, y: e.clientY, cx: st.crop.x, cy: st.crop.y }; box.setPointerCapture(e.pointerId); e.preventDefault(); });
     box.addEventListener("pointermove", (e) => {
-      if (!drag || !nat) return;
-      const iw = parseFloat(img.style.width), ih = parseFloat(img.style.height), fw = parseFloat(frame.style.width), fh = parseFloat(frame.style.height);
-      if (iw - fw > 1) st.crop.x = Math.max(0, Math.min(1, drag.cx + (e.clientX - drag.x) / (iw - fw)));
-      if (ih - fh > 1) st.crop.y = Math.max(0, Math.min(1, drag.cy + (e.clientY - drag.y) / (ih - fh)));
-      layout(); markDots();
+      if (!drag || !slack) return;
+      // A foto acompanha o mouse: arrastar para a direita mostra mais do lado esquerdo dela
+      if (slack.x > 1) st.crop.x = Math.max(0, Math.min(1, drag.cx - (e.clientX - drag.x) / slack.x));
+      if (slack.y > 1) st.crop.y = Math.max(0, Math.min(1, drag.cy - (e.clientY - drag.y) / slack.y));
+      layout();
     });
     const endDrag = () => { if (!drag) return; drag = null; onChange(true); };
     box.addEventListener("pointerup", endDrag); box.addEventListener("pointercancel", endDrag);
-    const markDots = () => {};
     box.relayout = layout;
     return box;
   }
@@ -3591,7 +3598,7 @@
         d.addEventListener("click", () => { st.crop.x = x; st.crop.y = y; cropShare(session, st); rerender(); });
         dots.appendChild(d);
       }));
-      pos.append(dots, el("span", "export-note-inline", "Or drag the frame in the preview. One crop for the whole session."));
+      pos.append(dots, el("span", "export-note-inline", "Or drag the photo in the preview. One crop for the whole session."));
       box.appendChild(pos);
     }
   }

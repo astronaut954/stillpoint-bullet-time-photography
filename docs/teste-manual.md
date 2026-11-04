@@ -1514,6 +1514,10 @@ Com `STILLPOINT_FAKE_CAMERAS=9` e algumas sessões. Abrir "Export sessions".
       todas as marcadas e a coluna "Folder" acompanha enquanto se digita) e a caixa "Export to" (caminho, "Choose
       another folder…", "Reset to default" depois de trocar). Rodapé: "← Outputs", "Cancel" e "Export n sessions". No
       Project, "Use edited photos when available" aparece só neste passo.
+- [ ] Com uma proporção escolhida, o quadro neon do passo 1 fica parado e do mesmo tamanho ao trocar de foto (← → ou
+      clique nas miniaturas), inclusive entre fotos 3:2 e 16:9: é a foto que muda atrás dele. Arrastar a prévia move a
+      foto ("Drag the photo to choose the part that stays"); o ponto de "Position" acompanha. Foto com alinhamento
+      próprio: a instrução diz "This photo is aligned: move it in Align photos" e o arraste não age nela.
 - [ ] O recorte do passo 1 é o mesmo do passo 2 e do arquivo: numa sessão com 02 e 04 em 16:9 e as outras em 3:2,
       escolher 3:2 e olhar a foto 01 (3:2) no passo 1: o quadro neon não cobre a foto inteira (o canvas é o 3:2 que
       cabe na parte comum às 16:9, 759 × 506 nas simuladas), e o passo 2 mostra exatamente essa parte. Trocar 3:2 · 4:3 ·
