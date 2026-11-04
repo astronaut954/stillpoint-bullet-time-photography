@@ -3886,10 +3886,10 @@
         sync(); layout(); saveSoon();
         return;
       }
-      // Roda: zoom da vista (100% a 800%), em volta do ponto sob o mouse
+      // Roda: zoom da vista (30% a 800%), em volta do ponto sob o mouse
       const r = stage.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
       const ux = (mx - cx) / scaleK, uy = (my - cy) / scaleK;
-      view.zoom = Math.max(1, Math.min(8, view.zoom * Math.exp(-d * 0.004)));
+      view.zoom = Math.max(0.3, Math.min(8, view.zoom * Math.exp(-d * 0.004)));
       const k = baseK * view.zoom, W = stage.clientWidth, H = stage.clientHeight;
       view.px = mx - W / 2 - ux * k; view.py = my - H / 2 - uy * k;
       layout();

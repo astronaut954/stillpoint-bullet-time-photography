@@ -1415,7 +1415,7 @@ direita; a lista de sessões continua à esquerda da janela.
 - [ ] Gestos na prévia: arrastar move a 04 (os campos Move X/Y acompanham, arredondados ao pixel ao soltar); ⌥ + roda
       muda o Rotate; ⌘ + ← → ↑ ↓ movem 1 px (⇧ 10); ← → sozinhas trocam de foto.
 - [ ] Zoom e deslocamento da vista (não mexem na foto, nem no Size): a roda aproxima e afasta em volta do ponto sob o
-      mouse, de 100% a 800% ("zoom 250%" aparece na instrução embaixo). Segurar a barra de espaço: o cursor vira uma mão;
+      mouse, de 30% a 800% ("zoom 250%" aparece na instrução embaixo). Segurar a barra de espaço: o cursor vira uma mão;
       arrastar desloca a vista; ao soltar o espaço volta ao normal. O deslocamento para quando sobram 80 px do canvas
       à vista (nunca some). Entrar de novo em "Align photos" começa em 100%.
 - [ ] Cursor da alça redonda (girar): uma seta em arco verde; o mesmo cursor durante o giro.
