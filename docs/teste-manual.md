@@ -1407,7 +1407,8 @@ direita; a lista de sessões continua à esquerda da janela.
 - [ ] "This photo 04": "Move X", "Move Y" (px; − + andam 1, com ⇧ 10), "Size" (%; 0,1, ⇧ 1), "Rotate" (°; 0,05, ⇧ 0,5;
       sem limite). Sem legenda ao lado dos campos; − e + à mesma distância do campo. Digitar um valor e Enter aplica;
       ↑ ↓ no campo também andam. A foto 04 se mexe na prévia na hora por trás dos quadros; o canvas e o recorte não se
-      movem nem mudam de tamanho (a linha "Canvas … px" no fim do bloco não muda).
+      movem nem mudam de tamanho (a linha "Canvas 900 × 506 px (16:9) · this photo 900 × 600 px (3:2)" no fim do bloco não muda; "~" antes
+      da proporção quando o tamanho não bate exatamente com ela).
 - [ ] Gestos na prévia: arrastar move a 04 (os campos Move X/Y acompanham, arredondados ao pixel ao soltar); a roda do
       mouse/trackpad muda o Size; ⌥ + roda muda o Rotate; ⌘ + ← → ↑ ↓ movem 1 px (⇧ 10); ← → sozinhas trocam de foto.
 - [ ] Caixa de transformação sobre a foto atual (contorno fino, quatro alças quadradas nos cantos e uma alça redonda

@@ -3746,11 +3746,13 @@
       const frame = commonFrame(items, sizes);
       if (!frame) { common.style.display = "none"; ratio.style.display = "none"; cf.textContent = "Could not work out the canvas from the photo sizes."; cf.classList.add("exp-warn"); return; }
       cf.classList.remove("exp-warn");
+      // Proporção de um tamanho: a mais próxima das quatro; "~" quando não é exata
+      const rn = (w, h) => { const n = ratioName(w, h); const exact = Math.abs(Math.max(w, h) / Math.min(w, h) - RATIOS[n]) < 0.01; return exact ? n : "~" + n; };
       const r0 = st.crop.ratio !== "asshot" ? RATIOS[st.crop.ratio] : 0;
       common.style.display = r0 ? "" : "none";  // em "As shot" o recorte é o canvas inteiro: só o quadro neon
       common.style.left = (cx + frame.x * scaleK) + "px"; common.style.top = (cy + frame.y * scaleK) + "px";
       common.style.width = (frame.w * scaleK) + "px"; common.style.height = (frame.h * scaleK) + "px";
-      common.setAttribute("data-size", "Canvas · " + Math.round(frame.w) + " × " + Math.round(frame.h) + " px");
+      common.setAttribute("data-size", "Canvas · " + Math.round(frame.w) + " × " + Math.round(frame.h) + " px · " + rn(frame.w, frame.h));
       const r = st.crop.ratio !== "asshot" ? RATIOS[st.crop.ratio] : 0;
       let fw = frame.w, fh = frame.h;
       if (r) { const t = frame.w >= frame.h ? r : 1 / r; if (frame.w / frame.h > t) fw = frame.h * t; else fh = frame.w / t; }
@@ -3758,7 +3760,7 @@
       ratio.style.display = ""; ratio.classList.toggle("free", r && (frame.w - fw > 1 || frame.h - fh > 1));
       ratio.style.left = (cx + fx * scaleK) + "px"; ratio.style.top = (cy + fy * scaleK) + "px"; ratio.style.width = (fw * scaleK) + "px"; ratio.style.height = (fh * scaleK) + "px";
       const sz = sizes[item.file];
-      cf.textContent = "Canvas " + Math.round(frame.w) + " × " + Math.round(frame.h) + " px" + (r ? " · " + st.crop.ratio + " cut " + Math.round(fw) + " × " + Math.round(fh) + " px" : "") + (sz ? " · this photo " + sz.w + " × " + sz.h : "");
+      cf.textContent = "Canvas " + Math.round(frame.w) + " × " + Math.round(frame.h) + " px (" + rn(frame.w, frame.h) + ")" + (r ? " · " + st.crop.ratio + " cut " + Math.round(fw) + " × " + Math.round(fh) + " px" : "") + (sz ? " · this photo " + sz.w + " × " + sz.h + " px (" + rn(sz.w, sz.h) + ")" : "");
       cf.title = "The canvas: what every photo covers as shot, centred. The aspect ratio cuts this canvas, and each photo is moved, resized and rotated behind it.";
     };
     Promise.all(items.map((it) => photoSizeOf(session.name, it.file).then((sz) => { if (sz) sizes[it.file] = sz; }))).then(() => {
