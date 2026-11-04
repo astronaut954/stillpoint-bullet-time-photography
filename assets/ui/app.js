@@ -2682,6 +2682,22 @@
     e.preventDefault(); e.stopImmediatePropagation();
     exp.keyNav(e.key === "ArrowRight" ? 1 : -1);
   }, true);
+  // Espaço segurado na tela "Align photos": arrastar desloca a vista (como no Photoshop/Lightroom)
+  {
+    const isText = (t) => t && (t.tagName === "TEXTAREA" || t.tagName === "SELECT" || (t.tagName === "INPUT" && !["checkbox", "radio", "button", "range"].includes(t.type)));
+    const setSpace = (on) => { exp.spaceDown = on; const o = $("exportSettings"); if (o) o.classList.toggle("space-pan", on); };
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== " " || !exp.aligning || $("exportOverlay").classList.contains("hidden") || isText(e.target)) return;
+      e.preventDefault(); e.stopImmediatePropagation();
+      if (!exp.spaceDown) setSpace(true);
+    }, true);
+    document.addEventListener("keyup", (e) => {
+      if (e.key !== " " || !exp.spaceDown) return;
+      e.preventDefault(); e.stopImmediatePropagation();
+      setSpace(false);
+    }, true);
+    window.addEventListener("blur", () => { if (exp.spaceDown) setSpace(false); });
+  }
   function closeExport() {
     stopPreview();
     $("exportOverlay").classList.add("hidden");
@@ -2693,8 +2709,12 @@
   // Desfazer no Save sessions: cada mudança (saídas, formatos, nome, seleção, pasta) vira um passo
   let expSnap = null;
   function expSnapshot() {
+    // Recorte e alinhamento carregados da sessão antes da foto (senão o primeiro passo desfaria para os padrões), e
+    // o alinhamento só com as fotos ajustadas (uma entrada vazia não é uma mudança)
+    exportable().forEach((x) => { const st = settingsFor(x.name); cropLoad(x, st); alignLoad(x, st); });
     return JSON.stringify({ s: exportable().map((x) => [x.name, settingsFor(x.name)]), same: exp.sameForAll,
-      sel: [...exp.selected].sort(), dest: exp.dest || null, edited: $("exportEdited").checked });
+      sel: [...exp.selected].sort(), dest: exp.dest || null, edited: $("exportEdited").checked },
+      (key, v) => (key === "byFile" && v ? Object.fromEntries(Object.entries(v).filter(([, al]) => !alignIsIdentity(al))) : v));
   }
   function expTrack() {
     if ($("exportOverlay").classList.contains("hidden")) return;
@@ -2708,7 +2728,14 @@
   function expApply(snap) {
     if ($("exportOverlay").classList.contains("hidden")) return false;
     const o = JSON.parse(snap);
-    o.s.forEach(([name, st]) => { exp.settings[name] = st; });
+    o.s.forEach(([name, st]) => {
+      exp.settings[name] = st;
+      // O recorte e o alinhamento moram também em session.json: desfazer/refazer grava lá
+      const session = sessions.find((x) => x.name === name);
+      if (!session) return;
+      if (st.align && alignText(st) !== (session.align || "")) alignSave(session, st);
+      if (st.crop && (st.crop.ratio + "|" + st.crop.x.toFixed(3) + "|" + st.crop.y.toFixed(3)) !== (session.crop || "")) cropSave(session, st);
+    });
     exp.sameForAll = o.same; exp.selected = new Set(o.sel); exp.dest = o.dest; $("exportEdited").checked = o.edited;
     expSnap = snap;
     renderExport();
@@ -3425,7 +3452,7 @@
     session.align = text;
     if (typeof window.setSessionAlign === "function") window.setSessionAlign(session.name, text);
   }
-  function alignOf(st, file) { if (!st.align.byFile[file]) st.align.byFile[file] = ALIGN_ID(); return st.align.byFile[file]; }
+  function alignOf(st, file) { return st.align.byFile[file] || ALIGN_ID(); }  // só lê: uma foto sem ajuste não ganha entrada
   function sessionAligned(session, st) { alignLoad(session, st); return Object.keys(st.align.byFile).some((f) => !alignIsIdentity(st.align.byFile[f])); }
   // A foto (w×h, com o seu tamanho e giro, centrada em dx,dy) cobre inteiro o retângulo reto r? Conferência exata
   // pelos quatro cantos de r levados ao espaço da foto (a mesma conta do programa, Export::Covers)
@@ -3504,7 +3531,8 @@
     ["tl", "tr", "bl", "br"].forEach((c) => { handles[c] = el("div", "align-handle align-handle-" + c); box.appendChild(handles[c]); });
     const rotLine = el("div", "align-rot-line"); const rotHandle = el("div", "align-rot-handle");
     box.append(rotLine, rotHandle);
-    const tag = el("span", "crop-tag", pad(item.order || cur + 1) + " · Drag to move · scroll to resize · ⌥ scroll to rotate · ⌘ arrows 1 px (⇧ 10)");
+    const tagText = pad(item.order || cur + 1) + " · Drag to move · scroll to zoom · hold space and drag to pan · ⌥ scroll to rotate · ⌘ arrows 1 px (⇧ 10)";
+    const tag = el("span", "crop-tag", tagText);
     const wait = el("div", "align-wait", "Measuring the photos…");
     stage.append(layers, common, ratio, box, tag, wait);
     left.appendChild(stage);
@@ -3580,7 +3608,8 @@
     refRow("next", "Next photo", cur + 1);
 
     const self = block("This photo", el("span", "align-cur", pad(item.order || cur + 1)));
-    const a = alignOf(st, item.file);
+    // Cópia de trabalho: só vai para a sessão (e para o desfazer) quando a pessoa termina uma mudança (save)
+    const a = Object.assign({}, alignOf(st, item.file));
     const fields = {};
     // Trava (como o Lightroom ao girar): a foto nunca deixa de cobrir a área útil — o quadro da proporção (ou o quadro
     // comum, sem proporção) como está no começo do gesto. Um passo que descobriria parte dela é recusado.
@@ -3691,8 +3720,8 @@
       a.dx = 0; a.dy = 0; a.scale = need; a.base = need;
       sync(); layout(); save();
     }, { kind: "btn-secondary", title: "Centre this photo and make it the smallest size that still covers the canvas (the rotation stays)" }));
-    resets.appendChild(button("Reset photo", () => { st.align.byFile[item.file] = ALIGN_ID(); save(); rerender(); }, { kind: "btn-secondary" }));
-    resets.appendChild(button("Reset all", () => { st.align.byFile = {}; save(); rerender(); }, { kind: "btn-secondary" }));
+    resets.appendChild(button("Reset photo", () => { delete st.align.byFile[item.file]; alignSave(session, st); expTrack(); rerender(); }, { kind: "btn-secondary" }));
+    resets.appendChild(button("Reset all", () => { st.align.byFile = {}; alignSave(session, st); expTrack(); rerender(); }, { kind: "btn-secondary" }));
     self.appendChild(resets);
     const cf = el("div", "align-cf", "Measuring the photos…");  // o quadro comum numa linha, aqui mesmo
     self.appendChild(cf);
@@ -3727,11 +3756,23 @@
 
     const sync = () => { fields.dx.value = a.dx.toFixed(0); fields.dy.value = a.dy.toFixed(0); fields.scale.value = (a.scale * 100).toFixed(1); fields.rot.value = a.rot.toFixed(2); markPosDots(); };
     let saveTimer = 0;
-    const save = () => { clearTimeout(saveTimer); saveTimer = setTimeout(() => alignSave(session, st), 150); };
+    // Fim de uma mudança: vai para a sessão, para session.json (logo em seguida) e vira um passo do desfazer
+    const save = () => {
+      clearTimeout(saveSoonTimer);
+      if (alignIsIdentity(a)) delete st.align.byFile[item.file]; else st.align.byFile[item.file] = Object.assign({}, a);
+      clearTimeout(saveTimer); saveTimer = setTimeout(() => alignSave(session, st), 150);
+      expTrack();
+    };
+    // Para gestos contínuos (roda): um passo só depois de parar
+    let saveSoonTimer = 0;
+    const saveSoon = () => { clearTimeout(saveSoonTimer); saveSoonTimer = setTimeout(save, 350); };
 
     // Tamanhos reais e as imagens das camadas
     const sizes = {};
-    let scaleK = 1, cx = 0, cy = 0;  // canvas (px do original) → tela
+    let scaleK = 1, cx = 0, cy = 0, baseK = 1;  // canvas (px do original) → tela; baseK: a escala com zoom 100%
+    // Zoom e deslocamento da prévia (só a vista; não mexe nas fotos): a roda aproxima e afasta, espaço + arrastar desloca
+    if (!exp.alignView) exp.alignView = { zoom: 1, px: 0, py: 0 };
+    const view = exp.alignView;
     const layerOf = {};
     const makeLayer = (it, key) => {
       const l = el("div", "align-layer" + (key ? " align-ref" : " align-current"));
@@ -3753,11 +3794,19 @@
     const layout = () => {
       const W = stage.clientWidth, H = stage.clientHeight;
       if (!W || !H || !sizes[item.file]) return;
-      // Escala da tela: a maior foto (com margem) cabe inteira
+      // Escala da tela: a maior foto (com margem) cabe inteira com zoom 100%
       let maxW = 0, maxH = 0;
       items.forEach((it) => { const sz = sizes[it.file]; if (sz) { maxW = Math.max(maxW, sz.w); maxH = Math.max(maxH, sz.h); } });
-      scaleK = Math.min(W / (maxW * 1.12), H / (maxH * 1.12)); cx = W / 2; cy = H / 2;
+      baseK = Math.min(W / (maxW * 1.12), H / (maxH * 1.12)); scaleK = baseK * view.zoom;
       const frame = commonFrame(items, sizes, st);
+      // Limite do deslocamento: sempre ao menos 80 px do canvas (ou metade dele, se for menor) à vista
+      if (frame) {
+        const fw = frame.w * scaleK, fh = frame.h * scaleK, mx = Math.min(80, fw / 2), my = Math.min(80, fh / 2);
+        view.px = Math.max(mx - W / 2 - (frame.x * scaleK + fw), Math.min(W / 2 - mx - frame.x * scaleK, view.px));
+        view.py = Math.max(my - H / 2 - (frame.y * scaleK + fh), Math.min(H / 2 - my - frame.y * scaleK, view.py));
+      }
+      cx = W / 2 + view.px; cy = H / 2 + view.py;
+      tag.textContent = tagText + (Math.abs(view.zoom - 1) > 0.001 ? " · zoom " + Math.round(view.zoom * 100) + "%" : "");
       if (!frame) { common.style.display = "none"; ratio.style.display = "none"; box.style.display = "none"; cf.textContent = "Could not work out the canvas from the photo sizes."; cf.classList.add("exp-warn"); return; }
       cf.classList.remove("exp-warn");
       Object.keys(layerOf).forEach((k) => {
@@ -3798,7 +3847,9 @@
     const centerOnScreen = () => { const r = stage.getBoundingClientRect(); return { x: r.left + cx + a.dx * scaleK, y: r.top + cy + a.dy * scaleK }; };
     stage.addEventListener("pointerdown", (e) => {
       if (e.button !== 0 || e.target.closest("button") || !sizes[item.file]) return;
-      e.preventDefault(); stage.setPointerCapture(e.pointerId); lockStart();
+      e.preventDefault(); stage.setPointerCapture(e.pointerId);
+      if (exp.spaceDown) { drag = { kind: "pan", x: e.clientX, y: e.clientY, px: view.px, py: view.py }; stage.classList.add("panning"); return; }
+      lockStart();
       const c = centerOnScreen();
       if (e.target === rotHandle) {
         drag = { kind: "rot", rot: a.rot, angle: Math.atan2(e.clientY - c.y, e.clientX - c.x) }; stage.classList.add("rotating");
@@ -3810,22 +3861,38 @@
     });
     stage.addEventListener("pointermove", (e) => {
       if (!drag) return;
+      if (drag.kind === "pan") { view.px = drag.px + e.clientX - drag.x; view.py = drag.py + e.clientY - drag.y; layout(); return; }
       const c = centerOnScreen();
       if (drag.kind === "move") tryApply((cand) => { cand.dx = drag.dx + (e.clientX - drag.x) / scaleK; cand.dy = drag.dy + (e.clientY - drag.y) / scaleK; });
       else if (drag.kind === "scale") tryApply((cand) => { cand.scale = Math.max(0.05, Math.min(20, drag.scale * Math.max(1, Math.hypot(e.clientX - c.x, e.clientY - c.y)) / drag.dist)); });
       else { const ang = Math.atan2(e.clientY - c.y, e.clientX - c.x); let d = (ang - drag.angle) * 180 / Math.PI; if (e.shiftKey) d = Math.round(d / 15) * 15; tryApply((cand) => { cand.rot = Math.round((drag.rot + d) * 100) / 100; }); }
       sync(); layout();
     });
-    const endDrag = () => { if (!drag) return; drag = null; stage.classList.remove("dragging", "resizing", "rotating"); a.dx = Math.round(a.dx); a.dy = Math.round(a.dy); sync(); layout(); save(); };
+    const endDrag = () => {
+      if (!drag) return;
+      const pan = drag.kind === "pan";
+      drag = null; stage.classList.remove("dragging", "resizing", "rotating", "panning");
+      if (pan) return;  // deslocar a vista não muda a foto
+      a.dx = Math.round(a.dx); a.dy = Math.round(a.dy); sync(); layout(); save();
+    };
     stage.addEventListener("pointerup", endDrag); stage.addEventListener("pointercancel", endDrag);
     stage.addEventListener("wheel", (e) => {
       if (!sizes[item.file]) return;
       e.preventDefault();
       const d = Math.max(-40, Math.min(40, e.deltaY));
-      lockStart();
-      if (e.altKey) tryApply((cand) => { cand.rot = Math.round((cand.rot - d * 0.01) * 100) / 100; });
-      else tryApply((cand) => { cand.scale = Math.max(0.05, Math.min(20, cand.scale * (1 - d * 0.001))); });
-      sync(); layout(); save();
+      if (e.altKey) {  // ⌥ + roda: gira a foto
+        lockStart();
+        tryApply((cand) => { cand.rot = Math.round((cand.rot - d * 0.01) * 100) / 100; });
+        sync(); layout(); saveSoon();
+        return;
+      }
+      // Roda: zoom da vista (100% a 800%), em volta do ponto sob o mouse
+      const r = stage.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
+      const ux = (mx - cx) / scaleK, uy = (my - cy) / scaleK;
+      view.zoom = Math.max(1, Math.min(8, view.zoom * Math.exp(-d * 0.004)));
+      const k = baseK * view.zoom, W = stage.clientWidth, H = stage.clientHeight;
+      view.px = mx - W / 2 - ux * k; view.py = my - H / 2 - uy * k;
+      layout();
     }, { passive: false });
     exp.keyMove = (ddx, ddy, big) => { const step = big ? 10 : 1; stepOnce((cand) => { cand.dx += ddx * step; cand.dy += ddy * step; }); };
   }
@@ -3986,6 +4053,7 @@
     // Entrar ou sair da tela de alinhamento: a coluna surge num fade curto (a lista estreita/alarga com transição no CSS)
     if (exp.aligningShown !== !!exp.aligning) {
       exp.aligningShown = !!exp.aligning;
+      exp.alignView = { zoom: 1, px: 0, py: 0 };  // cada entrada começa sem zoom
       outer.classList.remove("layout-change"); void outer.offsetWidth; outer.classList.add("layout-change");
       setTimeout(() => outer.classList.remove("layout-change"), 400);
     }

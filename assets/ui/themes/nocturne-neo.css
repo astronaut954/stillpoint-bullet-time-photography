@@ -1572,9 +1572,14 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .align-handle-tr { right: 0; top: 0; cursor: nesw-resize; } .align-handle-bl { left: 0; bottom: 0; cursor: nesw-resize; }
 .align-handle:hover, .align-stage.resizing .align-handle { background: var(--noct-primary); }
 .align-rot-line { position: absolute; left: 50%; top: 0; width: 1px; height: 26px; margin-top: -26px; background: var(--noct-primary); transform: scaleY(var(--inv, 1)); transform-origin: bottom center; }
-.align-rot-handle { position: absolute; left: 50%; top: 0; width: 12px; height: 12px; margin: -32px 0 0 -6px; border-radius: 50%; background: var(--noct-bg); border: 1px solid var(--noct-primary); pointer-events: auto; cursor: grab; transform: scale(var(--inv, 1)); }
+/* Cursor de girar (seta em arco), sobre a alça redonda e durante o giro */
+.align-rot-handle { position: absolute; left: 50%; top: 0; width: 12px; height: 12px; margin: -32px 0 0 -6px; border-radius: 50%; background: var(--noct-bg); border: 1px solid var(--noct-primary); pointer-events: auto; transform: scale(var(--inv, 1));
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18.5 12a6.5 6.5 0 1 1-2.2-4.9' stroke='%23000' stroke-width='4.5'/%3E%3Cpath d='M17.5 3.5v4.5H13' stroke='%23000' stroke-width='4.5'/%3E%3Cpath d='M18.5 12a6.5 6.5 0 1 1-2.2-4.9' stroke='%237cff5a' stroke-width='2'/%3E%3Cpath d='M17.5 3.5v4.5H13' stroke='%237cff5a' stroke-width='2'/%3E%3C/g%3E%3C/svg%3E") 12 12, alias; }
 .align-rot-handle:hover, .align-stage.rotating .align-rot-handle { background: var(--noct-primary); }
-.align-stage.rotating { cursor: grabbing; }
+.align-stage.rotating, .align-stage.rotating * { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18.5 12a6.5 6.5 0 1 1-2.2-4.9' stroke='%23000' stroke-width='4.5'/%3E%3Cpath d='M17.5 3.5v4.5H13' stroke='%23000' stroke-width='4.5'/%3E%3Cpath d='M18.5 12a6.5 6.5 0 1 1-2.2-4.9' stroke='%237cff5a' stroke-width='2'/%3E%3Cpath d='M17.5 3.5v4.5H13' stroke='%237cff5a' stroke-width='2'/%3E%3C/g%3E%3C/svg%3E") 12 12, alias; }
+/* Espaço segurado: a prévia vira "mão" para deslocar a vista */
+.export-settings.space-pan .align-stage, .export-settings.space-pan .align-stage * { cursor: grab !important; }
+.align-stage.panning, .align-stage.panning * { cursor: grabbing !important; }
 /* Trava: um passo que descobriria a área útil é recusado e a área pisca âmbar */
 .align-stage.locked .align-ratio.crop-frame { border-color: var(--noct-pending); box-shadow: 0 0 0 2px var(--noct-pending), 0 0 0 999px rgba(0, 0, 0, .35); }
 .align-left { display: flex; flex-direction: column; gap: 12px; min-width: 0; min-height: 0; }

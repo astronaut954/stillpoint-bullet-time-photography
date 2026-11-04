@@ -1389,8 +1389,8 @@ direita; a lista de sessões continua à esquerda da janela.
 - [ ] Ao abrir: no topo, o botão "Back to Framing" e "Photo 01 of 09 · ← → other photos". Na prévia, "Measuring the
       photos…" por um instante, depois a foto 01 nítida; por baixo dela, tingida de laranja e transparente, a foto 02
       (Next photo). Um quadro só, neon sólido verde: o canvas ("Canvas · 900 × 506 px · 16:9" no canto); fora dele a
-      prévia escurece. Embaixo, a instrução "01 · Drag to move · scroll to resize · ⌥ scroll to rotate · ⌘ arrows 1 px
-      (⇧ 10)".
+      prévia escurece. Embaixo, a instrução "01 · Drag to move · scroll to zoom · hold space and drag to pan · ⌥ scroll
+      to rotate · ⌘ arrows 1 px (⇧ 10)".
 - [ ] O canvas (decisão do dono, 2026-11-03): em "As shot", o que todas as fotos cobrem como saíram (900 × 506); com
       3:2 escolhido, o maior 3:2 que cabe nisso (759 × 506); com 16:9, 900 × 506. Nenhuma foto cresce sozinha (as
       16:9 continuam em Size 100): ampliar mudaria o tamanho do objeto fotografado entre as câmeras. Só as fotos se
@@ -1412,8 +1412,17 @@ direita; a lista de sessões continua à esquerda da janela.
       ↑ ↓ no campo também andam. A foto 04 se mexe na prévia na hora por trás dos quadros; o canvas e o recorte não se
       movem nem mudam de tamanho (a linha "Canvas … px (16:9) · this photo 900 × 600 px (3:2)" no fim do bloco não muda; "~" antes da
       proporção quando o tamanho não bate exatamente com ela).
-- [ ] Gestos na prévia: arrastar move a 04 (os campos Move X/Y acompanham, arredondados ao pixel ao soltar); a roda do
-      mouse/trackpad muda o Size; ⌥ + roda muda o Rotate; ⌘ + ← → ↑ ↓ movem 1 px (⇧ 10); ← → sozinhas trocam de foto.
+- [ ] Gestos na prévia: arrastar move a 04 (os campos Move X/Y acompanham, arredondados ao pixel ao soltar); ⌥ + roda
+      muda o Rotate; ⌘ + ← → ↑ ↓ movem 1 px (⇧ 10); ← → sozinhas trocam de foto.
+- [ ] Zoom e deslocamento da vista (não mexem na foto, nem no Size): a roda aproxima e afasta em volta do ponto sob o
+      mouse, de 100% a 800% ("zoom 250%" aparece na instrução embaixo). Segurar a barra de espaço: o cursor vira uma mão;
+      arrastar desloca a vista; ao soltar o espaço volta ao normal. O deslocamento para quando sobram 80 px do canvas
+      à vista (nunca some). Entrar de novo em "Align photos" começa em 100%.
+- [ ] Cursor da alça redonda (girar): uma seta em arco verde; o mesmo cursor durante o giro.
+- [ ] Desfazer/refazer (⌘Z / ⇧⌘Z) dentro de "Align photos": cada gesto terminado (arrastar, alça, − +, campo, Position,
+      Fit to canvas, Reset photo, Reset all, uma sequência de ⌥ + roda) é um passo; abrir a tela, trocar de foto ou dar
+      zoom não criam passos. Desfazer volta a foto na prévia e grava em session.json (fechar e abrir o Export mostra o
+      estado desfeito).
 - [ ] Caixa de transformação sobre a foto atual (contorno fino, quatro alças quadradas nos cantos e uma alça redonda
       acima do meio): arrastar um canto muda o Size em volta do centro; arrastar a alça redonda gira (⇧ trava em
       passos de 15°); a caixa gira junto com a foto e as alças ficam do mesmo tamanho em qualquer zoom.
