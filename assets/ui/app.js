@@ -588,6 +588,13 @@
       return li;
     }
 
+    // Canto de baixo à direita da miniatura: as etiquetas ficam lado a lado ("LR" à esquerda da proporção)
+    function frameCorner(li) {
+      const img = li.querySelector(".frame-img");
+      let c = img.querySelector(".frame-corner");
+      if (!c) { c = document.createElement("span"); c.className = "frame-corner"; img.appendChild(c); }
+      return c;
+    }
     // Etapa 20: "LR" / "PS" no canto da miniatura enquanto a foto está no Lightroom Classic ou no Photoshop
     function appBadge(li, item) {
       if (!opts.appBadge) return;
@@ -599,7 +606,7 @@
       b.className = "frame-app";
       b.textContent = v;
       b.title = v === "PS" ? "Open in Photoshop" : "In Lightroom Classic";
-      if (!old) img.appendChild(b);
+      if (!old) frameCorner(li).prepend(b);
     }
     function markSelected(scroll) {
       [...el.carousel.children].forEach((li, i) => {
@@ -623,7 +630,7 @@
           // Etiqueta de texto no canto (ex.: "16:9" na sessão com proporções misturadas)
           const text = warn && opts.warnLabel ? opts.warnLabel(items[i]) : "";
           let lab = li.querySelector(".frame-ratio");
-          if (text && !lab) { lab = document.createElement("span"); lab.className = "frame-ratio"; li.querySelector(".frame-img").appendChild(lab); }
+          if (text && !lab) { lab = document.createElement("span"); lab.className = "frame-ratio"; frameCorner(li).appendChild(lab); }
           if (text) lab.textContent = text; else if (lab) lab.remove();
           if (a && text) a.remove();  // a etiqueta substitui o ícone
         }
@@ -1506,7 +1513,10 @@
     const lr = v.filter((x) => x === "lr").length, ps = v.length - lr;
     const t = document.createElement("span");
     t.className = "missing-tag edit-tag";
-    t.textContent = lr ? "In Lightroom" : "In Photoshop";
+    const dot = document.createElement("span");
+    dot.className = "edit-dot";
+    t.appendChild(dot);
+    t.appendChild(document.createTextNode(lr ? "In Lightroom" : "In Photoshop"));
     t.dataset.itip = (lr ? plural(lr, "photo of this session is", "photos of this session are") + " being edited in Lightroom Classic" : "")
       + (lr && ps ? "; " : "") + (ps ? plural(ps, "photo is", "photos are") + " open in Photoshop" : "")
       + ". Right-click a photo › Done editing when you finish.";

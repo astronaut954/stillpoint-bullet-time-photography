@@ -13,6 +13,11 @@ local folderPath = nil
 local pluginVersion = nil
 local lastAlive = 0
 local lastId = nil
+-- Quando o plugin começou. Logo depois de abrir, o Lightroom ainda volta para a coleção e o módulo da última
+-- vez: um pedido que chega nesse começo espera um pouco e a coleção é mostrada de novo depois (teste de 2026-11-05:
+-- o Lightroom aberto pelo Stillpoint mostrava a sessão anterior).
+local startedAt = os.time()
+local STARTUP_WAIT = 8
 
 local function trim(text)
 	return (text or ''):gsub('^%s+', ''):gsub('%s+$', '')
@@ -158,14 +163,22 @@ local function handle(request)
 	-- Mostra a coleção, seleciona as fotos (a ativa primeiro) e abre o Develop
 	-- (cada passo à parte: se um não der, os outros ainda acontecem e as fotos já estão na coleção)
 	local LrTasks = import 'LrTasks'
-	if collection then LrTasks.pcall(function() catalog:setActiveSources({ collection }) end) end
 	focus = focus or selected[1] or photos[1]
 	local others = {}
 	for _, photo in ipairs(selected) do
 		if photo ~= focus then table.insert(others, photo) end
 	end
-	LrTasks.pcall(function() catalog:setSelectedPhotos(focus, others) end)
-	LrTasks.pcall(function() LrApplicationView.switchToModule('develop') end)
+	local function show()
+		if collection then LrTasks.pcall(function() catalog:setActiveSources({ collection }) end) end
+		LrTasks.pcall(function() catalog:setSelectedPhotos(focus, others) end)
+		LrTasks.pcall(function() LrApplicationView.switchToModule('develop') end)
+	end
+	show()
+	-- Lightroom recém-aberto: mostra de novo depois de alguns segundos, por cima do que ele restaurou
+	if os.time() - startedAt < 60 then
+		LrTasks.sleep(3)
+		show()
+	end
 	Bridge.note('request ' .. request.id .. ': done, ' .. added .. ' new in the catalog, ' .. missing .. ' missing')
 	writeStatus(request.id, 'done', { added = added, missing = missing, catalog = catalog:getPath() })
 end
@@ -177,6 +190,7 @@ function Bridge.tick()
 		lastAlive = os.time()
 		writeAlive()
 	end
+	if os.time() - startedAt < STARTUP_WAIT then return end  -- Lightroom acabando de abrir
 	local requestFile = bridgeFile('request.txt')
 	local text = readAll(requestFile)
 	if not text or not text:find('\nend=1') then return end
