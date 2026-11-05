@@ -6084,8 +6084,9 @@
     if (!lr.found) lrParts.push(dot(false, "Not found"));
     else if (lr.tooOld) lrParts.push(dot(false, "Found: Lightroom Classic " + lr.version + ", too old (needs " + lr.minimum + " or newer)"));
     else lrParts.push(dot(true, "Found: Lightroom Classic " + (lr.version || "")));
+    const short = (v) => String(v || "").split("+")[0];  // "2.17.0+1a2b3c4d" -> "2.17.0" (o código só serve para trocar o plugin)
     if (lr.found) lrParts.push(el("span", "", "· " + (!pl.installed ? "Stillpoint plugin not installed yet (it installs the first time you use Edit in Lightroom Classic)"
-      : pl.upToDate ? "Stillpoint plugin " + pl.version + ", up to date" : "Stillpoint plugin " + pl.version + ", updates to " + pl.current + " the next time you use it")));
+      : pl.upToDate ? "Stillpoint plugin " + short(pl.version) + ", up to date" : "Stillpoint plugin " + short(pl.version) + ", updates the next time you use it")));
     if (lr.found && lr.path) lrParts[0].title = lr.path;
     status("settingsLrStatus", lrParts);
     const lrBtns = [];

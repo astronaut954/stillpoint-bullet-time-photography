@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdio>
 #include <cstdlib>
 #include <ctime>
 #include <fstream>
@@ -234,6 +235,30 @@ namespace Adobe
         if (!version.empty() && version.back() == '\r')
             version.pop_back();
         return version.empty() ? "unknown" : version;
+    }
+
+    std::string BundledPluginVersion(const fs::path& source, const std::string& appVersion)
+    {
+        // FNV-1a dos nomes e do conteúdo dos .lua, em ordem de nome
+        std::vector<fs::path> files;
+        std::error_code ec;
+        for (fs::directory_iterator it(source, ec), end; !ec && it != end; it.increment(ec))
+            if (it->path().extension() == ".lua")
+                files.push_back(it->path());
+        std::sort(files.begin(), files.end());
+        unsigned long long hash = 1469598103934665603ull;
+        auto mix = [&](const std::string& text) { for (const unsigned char c : text) { hash ^= c; hash *= 1099511628211ull; } };
+        for (const auto& f : files)
+        {
+            mix(Utf8(f.filename()));
+            std::ifstream in(f, std::ios::binary);
+            std::ostringstream text;
+            text << in.rdbuf();
+            mix(text.str());
+        }
+        char code[24];
+        std::snprintf(code, sizeof(code), "%08llx", hash & 0xffffffffull);
+        return appVersion + "+" + code;
     }
 
     bool InstallPlugin(const fs::path& source, const std::string& version, std::string& error)

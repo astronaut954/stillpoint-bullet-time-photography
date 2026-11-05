@@ -18,6 +18,11 @@ local function trim(text)
 	return (text or ''):gsub('^%s+', ''):gsub('%s+$', '')
 end
 
+-- O Lua do Lightroom não tem os.remove nem os.rename: apagar e trocar de nome pelo LrFileUtils
+local function removeFile(path)
+	if LrFileUtils.exists(path) then LrFileUtils.delete(path) end
+end
+
 local function readAll(path)
 	local file = io.open(path, 'rb')
 	if not file then return nil end
@@ -33,8 +38,8 @@ local function writeWhole(path, text)
 	if not file then return false end
 	file:write(text)
 	file:close()
-	os.remove(path)
-	return os.rename(temp, path)
+	removeFile(path)
+	return LrFileUtils.move(temp, path)
 end
 
 function Bridge.folder()
@@ -174,7 +179,7 @@ function Bridge.tick()
 	local request = parse(text)
 	if not request.id or request.id == lastId then return end
 	lastId = request.id
-	os.remove(requestFile)
+	removeFile(requestFile)
 	writeStatus(request.id, 'working')
 	if request.action == 'edit' then
 		local LrTasks = import 'LrTasks'
@@ -196,7 +201,7 @@ function Bridge.problem(problem)
 end
 
 function Bridge.goodbye()
-	if Bridge.folder() then os.remove(bridgeFile('alive.txt')) end
+	if Bridge.folder() then removeFile(bridgeFile('alive.txt')) end
 end
 
 return Bridge

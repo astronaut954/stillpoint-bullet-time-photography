@@ -40,7 +40,10 @@ namespace Adobe
     std::filesystem::path ModulesFolder();
     std::filesystem::path InstalledPlugin();       // <Modules>/Stillpoint.lrplugin
     std::string InstalledPluginVersion();          // "" = não instalado
-    // Copia o plugin (assets/lightroom/Stillpoint.lrplugin) para a pasta de plugins, com a versão do app e o
+    // Versão do plugin que vem com o app: a do app + um código dos arquivos do plugin ("2.17.0+1a2b3c4d").
+    // Muda quando um arquivo do plugin muda, mesmo sem versão nova do app: o plugin instalado é trocado.
+    std::string BundledPluginVersion(const std::filesystem::path& source, const std::string& appVersion);
+    // Copia o plugin (assets/lightroom/Stillpoint.lrplugin) para a pasta de plugins, com a versão e o
     // caminho da pasta da conversa. Substitui o que estiver lá.
     bool InstallPlugin(const std::filesystem::path& source, const std::string& version, std::string& error);
 

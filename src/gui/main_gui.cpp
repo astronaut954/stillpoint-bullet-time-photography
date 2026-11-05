@@ -2318,8 +2318,9 @@ namespace
             const std::string installed = Adobe::InstalledPluginVersion();
             const auto alive = Adobe::ReadAlive();
             Json plugin;
-            plugin.Add("installed", !installed.empty()).Add("version", installed).Add("current", AppVersion())
-                  .Add("upToDate", installed == AppVersion()).Add("running", alive.fresh).Add("runningVersion", alive.version);
+            const std::string bundled = Adobe::BundledPluginVersion(Platform::ResourcesDirectory() / "assets" / "lightroom" / "Stillpoint.lrplugin", AppVersion());
+            plugin.Add("installed", !installed.empty()).Add("version", installed).Add("current", bundled)
+                  .Add("upToDate", installed == bundled).Add("running", alive.fresh).Add("runningVersion", alive.version);
             return Json("adobeInfo").Raw("lightroom", adobeProgramJson(lr, true)).Raw("photoshop", adobeProgramJson(ps, false))
                 .Raw("plugin", plugin.Str()).Add("catalog", adobeCatalogMode()).Add("project", project.Available()).Str();
         };
@@ -2369,7 +2370,8 @@ namespace
         window.bind("adobeInstallPlugin", [&](const std::string&) -> std::string
         {
             std::string error;
-            const bool ok = Adobe::InstallPlugin(Platform::ResourcesDirectory() / "assets" / "lightroom" / "Stillpoint.lrplugin", AppVersion(), error);
+            const auto source = Platform::ResourcesDirectory() / "assets" / "lightroom" / "Stillpoint.lrplugin";
+            const bool ok = Adobe::InstallPlugin(source, Adobe::BundledPluginVersion(source, AppVersion()), error);
             Log(ok ? "Lightroom plugin installed in " + PathToUtf8(Adobe::InstalledPlugin()) : "Lightroom plugin install failed: " + error);
             return Json("adobeInstall").Add("ok", ok).Add("error", error).Add("folder", PathToUtf8(Adobe::InstalledPlugin()))
                 .Raw("info", adobeInfoJson()).Str();
@@ -2430,10 +2432,12 @@ namespace
                 return Json("adobeEdit").Add("ok", false).Add("problem", "error").Add("error", "The session is no longer there.").Str();
             // Plugin: instala na primeira vez e quando o app muda de versão
             bool justInstalled = false;
-            if (Adobe::InstalledPluginVersion() != AppVersion())
+            const auto pluginSource = Platform::ResourcesDirectory() / "assets" / "lightroom" / "Stillpoint.lrplugin";
+            const std::string bundledPlugin = Adobe::BundledPluginVersion(pluginSource, AppVersion());
+            if (Adobe::InstalledPluginVersion() != bundledPlugin)
             {
                 std::string error;
-                if (!Adobe::InstallPlugin(Platform::ResourcesDirectory() / "assets" / "lightroom" / "Stillpoint.lrplugin", AppVersion(), error))
+                if (!Adobe::InstallPlugin(pluginSource, bundledPlugin, error))
                 {
                     Log("Lightroom plugin install failed: " + error);
                     return Json("adobeEdit").Add("ok", false).Add("problem", "install").Add("error", error).Str();
