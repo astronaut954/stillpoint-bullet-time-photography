@@ -3832,10 +3832,11 @@
   // A foto como sai na exportação: cortada ao canvas (com a proporção) e com o alinhamento da sessão. Montada num
   // canvas a partir da prévia; guardada por foto e Framing. Sem proporção nem alinhamento, a própria prévia.
   const framedCache = new Map();
-  function framedUrl(session, items, st, item, url) {
+  function framedUrl(session, items, st, item, url, maxPx) {
+    const px = maxPx || 1600;
     cropLoad(session, st); alignLoad(session, st);
     if (st.crop.ratio === "asshot" && !sessionAligned(session, st)) return Promise.resolve(url);
-    const key = [session.name, item.file, st.crop.ratio, st.crop.x, st.crop.y, alignText(st)].join("|");
+    const key = [session.name, item.file, st.crop.ratio, st.crop.x, st.crop.y, alignText(st), px].join("|");
     if (framedCache.has(key)) return framedCache.get(key);
     const p = Promise.all(items.map((it) => photoSizeOf(session.name, it.file).then((sz) => [it.file, sz]))).then((pairs) => {
       const sizes = {}; pairs.forEach(([f, sz]) => { if (sz) sizes[f] = sz; });
@@ -3845,7 +3846,7 @@
         const im = new Image();
         im.onload = () => {
           const al = effectiveAlign(sz, alignOf(st, item.file), frame, st);
-          const k = Math.min(1, 1600 / Math.max(frame.w, frame.h));
+          const k = Math.min(1, px / Math.max(frame.w, frame.h));
           const c = document.createElement("canvas");
           c.width = Math.max(1, Math.round(frame.w * k)); c.height = Math.max(1, Math.round(frame.h * k));
           const ctx = c.getContext("2d");
@@ -4549,7 +4550,9 @@
         thumb.appendChild(pic);
         thumb.appendChild(el("span", "frame-badge", pad(item.order)));
         li.appendChild(thumb);
-        sessionPhoto(session.name, item.file, 320).then((url) => { if (url) pic.src = url; });
+        // Passo 2: a miniatura também com o Framing do passo 1, inteira na caixa (sem cortar de novo)
+        sessionPhoto(session.name, item.file, 320).then((url) => (url && exp.step === 2 ? framedUrl(session, items, st, item, url, 320) : url))
+          .then((url) => { if (!url) return; pic.classList.toggle("framed", exp.step === 2 && !(st.crop.ratio === "asshot" && !sessionAligned(session, st))); pic.src = url; });
         li.addEventListener("click", () => { exp.photo = k; showPhoto(); });
         strip.appendChild(li);
       });

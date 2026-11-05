@@ -1612,6 +1612,9 @@ Com `STILLPOINT_FAKE_CAMERAS=9`.
 - [ ] Janela Project: "Mixed ratios", "n missing" e "n deleted" ficam na coluna Session, embaixo da data; a coluna
       Edited fica só com "Originals" / "Edited n / m".
 - [ ] Janela de digitar um nome aberta (ex.: renomear): ⌘Z fora do campo não desfaz nada do app.
+- [ ] Export, passo 2, aba Photos: as miniaturas embaixo da prévia já mostram o recorte do Framing (proporção, posição e
+      alinhamento), iguais à prévia grande. Com 16:9 ou 1:1 no passo 1, a miniatura mostra essa forma inteira, com faixa
+      preta na caixa (não é cortada de novo). Em "As shot" sem alinhamento: a foto inteira, como antes.
 - [ ] Align photos: a barra de cima não tem mais o botão "Back to Framing" (ficava repetido); começa direto em "Photo 01
       of 09 · ← → other photos". Sair: "Done aligning" (rodapé) ou Esc.
 - [ ] Align photos: Esc volta à tela do Framing (como "Done aligning"); o Export continua aberto. Fora do Align photos, o
