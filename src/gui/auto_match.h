@@ -21,6 +21,7 @@
 #include "color_match.h"
 
 #include <array>
+#include <atomic>
 #include <filesystem>
 #include <functional>
 #include <map>
@@ -41,6 +42,9 @@ namespace AutoMatch
     {
         std::string camera;
         std::vector<std::array<std::string, 3>> items;  // configuração, antes, depois
+        // Os valores de "depois", prontos para aplicar (chave do app, valor): só no modo revisão,
+        // em que as câmeras voltam ao "antes" no fim e a pessoa escolhe aplicar ou não
+        std::vector<std::pair<std::string, long long>> apply;
     };
 
     struct Result
@@ -51,7 +55,13 @@ namespace AutoMatch
         std::string error;
         std::vector<Change> changes;
         std::vector<std::string> notes;
+        // Proporção real de cada foto de teste contra a que a câmera informa (Parte 2 da
+        // Proporção): "16:9" medido no arquivo; differs = a câmera entregou outra proporção
+        struct Ratio { std::string camera, shot, reported; bool differs = false; };
+        std::vector<Ratio> ratios;
     };
+    // Nome da proporção de uma foto (3:2, 4:3, 16:9, 1:1), a mais perto de largura/altura
+    std::string RatioName(int width, int height);
 
     // Como o ajuste fino de um modelo mexe na foto, medido pelo app (2 fotos de teste nos
     // extremos) e guardado no computador: sentido de cada eixo (1 = + âmbar / + verde,
@@ -67,6 +77,25 @@ namespace AutoMatch
     struct Options
     {
         bool grayCard = false;  // as medidas são do cartão cinza: cor certa = cinza neutro
+        // O que igualar (a pessoa escolhe no passo 1 da janela Match automatically)
+        bool exposure = true;    // shutter, aperture, exposure comp.: o mesmo valor em todas
+        bool iso = true;         // ISO: o mesmo valor em todas
+        bool brightness = true;  // ajuste fino do brilho pela foto (ISO ou exp. comp.)
+        bool whiteBalance = true;// um balanço de branco comum
+        bool color = true;       // ajuste fino da cor pela foto (WB fine-tune)
+        bool style = true;       // Picture Style e os ajustes dele
+        bool format = true;      // tamanho e formato do arquivo (Image quality)
+        bool aspect = true;      // proporção; iguala as que aceitam mudar às que não aceitam
+        // Revisão: no fim, uma foto a mais com o resultado, as câmeras voltam ao "antes" e cada
+        // Change traz os valores para aplicar depois (o app pergunta antes de aplicar)
+        bool review = false;
+        // Valores escolhidos no passo 1 (chave → código da Canon): tv, av, expcomp, iso, style, quality,
+        // aspect, wb; "kelvin" com a temperatura. Com valor, o app põe esse em todas as câmeras que o
+        // aceitam em vez de calcular; "wb" ou "kelvin" fixa o balanço (a foto só faz o ajuste fino).
+        std::map<std::string, long long> targets;
+        // Cartão cinza pulado pela pessoa na conferência (depois da primeira foto): o resto do
+        // ajuste segue sem o cartão, medindo a foto inteira
+        const std::atomic<bool>* grayCardSkipped = nullptr;
         // Calibração com a cartela (LoadChartCalibration): com modelos misturados, cada modelo
         // recebe o Contrast/Saturation/Color tone que o deixa parecido com os outros
         std::filesystem::path chartFile;

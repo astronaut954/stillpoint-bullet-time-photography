@@ -1170,11 +1170,469 @@ projeto num HD externo.
 - [ ] Pausar (espaço ou o botão de pausa) e clicar em outra sessão: a nova fica parada.
 - [ ] Sair da tela cheia: para de tocar.
 
+## 33. Camera settings reorganizado: Format, Ratio e o painel Color (2.16.0)
+
+- [ ] Colunas da tabela: ISO, Shutter, Aperture, Exp. comp., Metering, Format (antes "Quality", no ±), Ratio
+      (nova: 3:2, 4:3, 16:9, 1:1) e Color (o botão ± à esquerda e, ao lado, duas linhas: "· balanço de branco"
+      e "· estilo", na altura do botão). A tabela cabe sem
+      rolagem lateral.
+- [ ] Botão "±" abre o painel "Color": White balance (com Kelvin quando a câmera tem), WB fine-tune A/B e
+      G/M, Picture Style, Contrast, Saturation e Color tone. Nas câmeras do fim da lista, o painel abre para cima.
+- [ ] Com câmeras simuladas (`STILLPOINT_FAKE_CAMERAS=9`): as câmeras 2 e 4 vêm em 16:9 e as outras em 3:2;
+      a célula Ratio delas fica âmbar e a lista de câmeras mostra "Settings differ".
+- [ ] Câmera 6 simulada: Ratio aparece dentro do tracejado (fixa); ao parar o ponteiro, a explicação diz que a
+      câmera não aceita mudar pelo USB. Format aparece fixo em todas as simuladas, com a mesma explicação.
+- [ ] Linha "All cameras", Ratio: mostra "Different"; escolher 3:2 muda só as câmeras que aceitam (a 6 fica);
+      o aviso some das câmeras 2 e 4; Cmd+Z volta uma a uma. Ao parar o ponteiro na lista, a explicação diz
+      quais câmeras ficam de fora.
+- [ ] Coluna Color: o resumo e o ± ficam âmbar quando algo de cor difere (balanço de branco, fine-tune, estilo
+      ou os ajustes dele); em "All cameras", "Different" no que difere.
+- [ ] "Copy from camera" leva Format e Ratio da câmera escolhida às outras que aceitam.
+- [ ] Câmeras de verdade: anotar para cada modelo se Ratio vem com opções ou fixa (a SL3 e a T7 precisam ser
+      conferidas; a Canon não garante essa propriedade em todos os modelos).
+
+## 34. Match automatically em três passos (2.16.0)
+
+- [ ] Camera settings: a caixa "Match automatically" e "Use gray card" saíram do rodapé; o botão
+      "Match automatically" (verde, ao lado de "Test shot") abre uma janela por cima da tabela.
+- [ ] Passo 1, "Choose": duas colunas. "Set the same value on every camera": Shutter/aperture/exposure comp.,
+      ISO, White balance, Picture Style, Format, Aspect ratio. "Measure in the test shot…": Brightness, Color,
+      Use the gray card. Desmarcar um item muda "n of 8 settings selected"; as escolhas ficam guardadas para a
+      próxima vez. "Take the test shot →" segue; "Cancel" fecha.
+- [ ] Passo 1, valores: cada item de "Set the same value…" é uma linha só, sem rolagem: título e explicação à
+      esquerda, a lista com o valor que o app poria em todas à direita (na linha Shutter/aperture/exp. comp.,
+      três listas lado a lado) e o porquê no texto cinza
+      ("Closest to the average of the cameras", "The most common style; Auto is never used", "The value of 1 camera
+      that cannot change it (…)", "Already the same on every camera"). White balance começa em "Let the test shot
+      choose". Trocar um valor na lista: a borda fica verde e o texto diz "Shutter: your choice"; clicar na lista
+      não desmarca o item; desmarcar o item apaga a lista. No passo 3, o "depois" das câmeras é o valor escolhido.
+      Fechar e abrir a janela volta aos valores calculados.
+- [ ] Passo 2, "Test shot": barra de progresso e "Photo n of up to m" com a etapa; o botão vira "Cancel the test
+      shot". (Os avisos de ISO Auto e Metering differ aparecem por cima, como antes.) Com o cartão cinza, a
+      conferência do cartão aparece por cima da janela.
+- [ ] Passo 3, "Review": à esquerda, uma linha por câmera com a caixa, as mudanças (antes riscado → depois em
+      verde) e a miniatura do depois; à direita, a câmera da linha clicada em Split (divisor arrastável; arrastar
+      não seleciona texto), Side by side ou Flip (clique troca). Os controles ‹ ▶ ›, Speed − + e Reverse loop
+      ficam dentro da prévia, no canto de cima à direita: aparecem (fade) quando o mouse se mexe sobre a prévia
+      ou ao chegar neles pelo Tab; somem 2 s depois que o mouse para (mexer de novo traz de volta) ou quando
+      ele sai da prévia; em cima dos controles não somem. Embaixo, uma fileira só de miniaturas: cada foto cortada ao
+      meio, a metade esquerda do antes e a direita do depois (linha verde fina no meio), sem rótulo. O texto de cima diz "n cameras would
+      change · nothing has been changed on the cameras yet". O botão do passo 1 é "Take the test shot" (sem seta).
+- [ ] Caixas do passo 3: desmarcar uma linha deixa a caixa de cima com um traço (algumas) e muda "Apply to n
+      cameras"; a caixa de cima marca ou desmarca todas as que mudariam. Clicar na caixa não troca a câmera
+      mostrada; clicar no resto da linha troca. Câmera desmarcada (ou sem mudança): a miniatura de baixo mostra
+      só a foto de antes, inteira; marcada: cortada ao meio (antes | depois).
+- [ ] Teclado nas caixas: no passo 1, Tab até uma caixa e Enter (ou Espaço) marca/desmarca; no passo 3, Enter
+      ou Espaço na linha da câmera marca/desmarca, e Enter na caixa de cima também.
+- [ ] Desfazer dentro da janela: nos passos 1 e 3, Cmd+Z (Ctrl+Z no Windows) desfaz a última mudança feita na
+      janela (caixa marcada/desmarcada, valor trocado numa lista, câmera marcada/desmarcada, a caixa de cima);
+      Cmd+Shift+Z refaz; a Activity mostra "Undo: ISO off", "Undo: Shutter → 1/250" etc. Esse desfazer não
+      mexe nas câmeras nem no histórico geral do app; fechar a janela zera a lista.
+- [ ] Sair no meio: no passo 2 ou 3, Esc, clicar fora da janela ou "Done" perguntam antes ("Leave Match
+      automatically?" com "Keep matching" / "Leave and cancel"; "Leave without applying?" com "Stay" / "Leave
+      without applying"). No passo 1, Esc fecha direto.
+- [ ] Passo 1 com modelos misturados (ex.: SL3 + T7): bloco "Camera models" na coluna da direita, abaixo de
+      "Use the gray card". Sem calibração da cartela: caixa âmbar "EOS Rebel SL3 and EOS Rebel T7 have not been
+      calibrated with the chart…" com o botão "Calibrate with chart", que abre a explicação da calibração por
+      cima da janela Match (ela continua no fundo); "Cancel" só fecha a explicação. "Start" guarda a janela
+      Match durante a calibração e, no fim (OK em "Cameras calibrated", ou cancelar no meio), ela volta no
+      passo 1. Já calibrados: linha "… are calibrated with the chart: Match automatically uses
+      it…" com o botão "Recalibrate". Com um modelo só, o bloco não aparece. O botão "Calibrate with chart" do
+      rodapé do Camera settings continua.
+- [ ] Passo 3, Split: dois cliques na prévia devolvem a cortina ao centro.
+- [ ] "Use the gray card" começa desmarcado toda vez que a janela abre (as outras escolhas ficam lembradas).
+- [ ] Com o cartão: na conferência do cartão há "Skip the gray card" ao lado de "Continue"; ele segue o Match
+      medindo a foto inteira (Activity: "Gray card skipped: matching with the whole photo"). Na conferência da
+      cartela (Calibrate with chart) o botão não aparece.
+- [ ] Passo 3, linha atual: com o foco na linha (Tab ou clique), passar o mouse na linha de baixo escurece só
+      ela, sem cobrir o contorno verde da linha atual.
+- [ ] Tab: nos passos 1 e 3 o Tab anda só pelos controles da janela Match (não chega na tabela do Camera
+      settings atrás). No passo 3 a lista de câmeras é um ponto só do Tab (a linha atual) e as miniaturas
+      ficam fora dele; na linha, ↑ ↓ trocam de câmera e Espaço marca/desmarca; ← → trocam de câmera em
+      qualquer lugar da janela.
+- [ ] Depois de "Discard changes" ou "Apply", a fileira "Test shot · matched" no Camera settings rola
+      dentro da janela (com 9 câmeras não vaza pela direita) e mostra "Hide photos".
+- [ ] Na tabela do Camera settings atrás da janela, nada mudou (as câmeras voltaram ao "antes").
+- [ ] Desmarcar uma câmera muda "Apply to n cameras"; "Apply" muda só as marcadas; a janela fecha; um Cmd+Z
+      volta todas; Cmd+Shift+Z refaz. "Discard changes" fecha sem mudar nada. "← Back" volta ao passo 1.
+- [ ] Com câmeras simuladas (`STILLPOINT_FAKE_CAMERAS=9`): as câmeras 2 e 4 (16:9) aparecem com "16:9 → 3:2"
+      e a 6 (fixa) não muda de proporção.
+- [ ] Proporção real da foto (Parte 2): as fotos simuladas saem na proporção que a câmera informa (no Test
+      shot, as miniaturas 02 e 04 são mais largas, 16:9). A fileira do Test shot não marca proporção (só o número
+      nas etiquetas; decisão do dono, 2026-11-02). A câmera simulada 02 entrega sempre 16:9, o que for que esteja
+      marcado, de propósito (etiqueta âmbar "always 16:9" ao lado do nome dela na tabela, com a explicação
+      ao passar o mouse): no passo 3 do Match, a linha 02 ganha a etiqueta amarela tracejada "Shot 16:9 ·
+      camera reports 3:2", a miniatura da linha e a da fileira de baixo ficam com borda âmbar tracejada (não
+      verde, mesmo com mudanças), e ao chegar na 02 com ← → o contorno de seleção da miniatura de baixo fica
+      âmbar (cheio, não tracejado); o Activity diz "Aspect ratio: T7_1 shot 16:9 but reports 3:2". Depois de Apply (ou
+      Discard), na tabela do Camera settings a célula Ratio da 02 fica tracejada âmbar com "16:9" e um ícone
+      de alerta (triângulo) ao lado: passar o mouse no ícone abre na hora uma caixa âmbar com a explicação
+      (sem a espera da legenda do sistema; Tab até o ícone também abre). Na fileira do Test shot (em cima),
+      a miniatura da 02 tem a borda âmbar tracejada e o mesmo ícone de alerta no canto de cima à direita (mouse
+      em cima abre a mesma caixa); selecionada (clique ou ← →), a etiqueta "02" fica âmbar. A etiqueta continua
+      só com o número. As outras câmeras não ganham marca.
+- [ ] "Test shot" simples (botão do rodapé, sem Match): o app mede a proporção de cada foto na prévia e compara
+      com a coluna Ratio. Com a simulada 02 (sempre 16:9) em "3:2": a célula Ratio dela fica tracejada âmbar com
+      "16:9" e o ícone de alerta, a seleção dela na fileira fica âmbar tracejada e o Activity diz "Aspect ratio:
+      T7_1 shot 16:9 but reports 3:2". Mudar a 02 para 16:9 na lista e repetir o Test shot: a marca some.
+- [ ] Caixa de explicação do alerta (miniatura do Test shot e célula Ratio): enquanto ela está aberta, a
+      legenda do sistema (nome da câmera) não aparece por cima dela.
+- [ ] Tela cheia com a barra só de ícones: uma sessão com "n missing" tem o ícone âmbar na barra (as outras,
+      verde); passar o mouse mostra a data e "· n missing".
+- [ ] Passo 3 com muitas câmeras (`STILLPOINT_FAKE_CAMERAS=18`): a janela não cresce; a lista de câmeras rola
+      dentro da tabela (o texto "Click a row…" fica fixo embaixo); a prévia à direita respeita a altura da janela; a
+      fileira de miniaturas mantém o tamanho de cada uma e rola para o lado; o play só anda a marca, sem rolar.
+- [ ] Esc fecha a janela (no passo 2, cancela o teste antes).
+
+- [ ] Play na sessão (janela principal e tela cheia): a fileira de miniaturas não rola sozinha; só a marca da foto
+      atual anda. Clicar numa miniatura ou usar ← → continua rolando até ela.
+- [ ] Tela cheia: ‹ ▶ › , "Speed − 1.0x +" e "Reverse loop" ficam sobre a foto grande, no canto de cima à direita,
+      como no passo 3 do Match: aparecem quando o mouse se mexe sobre a foto, somem 2 s depois de parado (ou ao
+      sair da foto), em cima deles não somem; Tab chega neles (depois das miniaturas) e eles ficam visíveis
+      enquanto têm o foco. Clicar neles não entra nem sai da tela cheia. Na barra de cima ficam só a data, as
+      etiquetas, a lixeira, "Reorder", "Delete session" e o botão de sair.
+- [ ] Tela cheia, janela estreita: quando "Reorder"/"Delete session"/sair encostam no botão da lixeira, eles descem
+      para uma linha abaixo da data (a barra cresce com uma animação curta, sem pulo); alargando, voltam.
+      Estreitando mais, some o tamanho da lixeira, depois "Reorder" e "Delete session" viram só ícone (setas
+      trocadas e lixeira), depois o subtítulo ("2 shot 16:9"), e por fim a data fica menor. Nada se sobrepõe.
+- [ ] Camera settings, rolando a tabela (com e sem fotos do Test shot): a linha "All cameras" fica presa logo abaixo
+      do cabeçalho, sem fresta acima do cabeçalho nem entre ele e a linha.
+- [ ] Tela cheia: ao entrar, os controles sobre a foto já estão visíveis e só começam a sumir uns 4 s depois; no
+      passo 3 do Match, o mesmo ao chegar no passo. Tab até o botão de sair da tela cheia: o contorno aparece
+      inteiro, com a linha da direita.
+- [ ] Trocar de sessão (janela principal e tela cheia) depois de rolar a fileira de miniaturas para o lado: a
+      fileira da sessão nova começa do início.
+- [ ] Fileira de miniaturas (sessão, tela cheia e passo 3): o trilho da rolagem está sempre lá, com ou sem
+      miniaturas sobrando; o espaço até a foto grande nunca muda.
+- [ ] Fileira de miniaturas (sessão e passo 3 do Match): o espaço até a foto grande não muda quando a barra de
+      rolagem aparece ou some (o lugar dela fica reservado).
+- [ ] Match, passo 3: ‹ › e ← → rolam a fileira de miniaturas até a câmera atual; o play não rola.
+- [ ] Match, passo 3, tocando: − + mudam a velocidade na hora (o play continua, no ritmo novo) e os controles não
+      piscam nem mudam de altura; ‹ › e ← → param o play e andam uma câmera; a fileira de miniaturas mostra as
+      fotos inteiras (sem cortar o topo).
+
+## 35. Aviso "Mixed ratios" na sessão (2.16.0, Parte 3 da Proporção)
+
+Com `STILLPOINT_FAKE_CAMERAS=9` as câmeras 02 e 04 estão em 16:9 e as outras em 3:2, então todo disparo sai misturado.
+
+- [ ] Disparar "It's bullet time". Quando a sessão nova aparece, abre uma janela "Mixed ratios" por cima da tela
+      (mais larga que as outras, opção N): texto "Cameras 02 and 04 shot 16:9; the others 3:2." e a explicação;
+      embaixo, "Other ratios on export" com os botões "4:3 · keeps 86%", "16:9 · keeps 88%", "1:1 · keeps 64%" (os
+      três que não são a sugestão); no rodapé, numa linha só, à esquerda o link "Keep as shot", à direita "Open
+      Camera settings" e o verde "Crop on export to 3:2 (keeps 97%)". Esc ou clicar fora = "Keep as shot".
+- [ ] Marcas na sessão (ficam para sempre): na lista Sessions, etiqueta tracejada âmbar "Mixed ratios" abaixo de
+      "9 photos"; no cabeçalho, a mesma etiqueta ao lado da data e o subtítulo "2 shot 16:9"; as miniaturas 02 e 04
+      com borda âmbar tracejada e "16:9" no canto de baixo à direita; selecionada, a etiqueta do número fica âmbar.
+      Passar o mouse na etiqueta "Mixed ratios" abre na hora a caixa com o texto completo.
+- [ ] Linha embaixo do botão de disparo: "Done. The new session is shown above · Mixed ratios" em âmbar. Activity:
+      "Mixed ratios: cameras 02 and 04 shot 16:9; the others 3:2." em âmbar.
+- [ ] "Crop on export to 3:2 (keeps 97%)" (ou um dos botões menores): a janela fecha, o Activity diz "Crop on
+      export: 3:2 for …" e a caixa da etiqueta "Mixed ratios" passa a terminar com "Crop on export: 3:2 (keeps
+      97%)." A escolha fica guardada por sessão para o Export (a linha "Aspect ratio" do Export é a Parte 4).
+- [ ] "Open Camera settings": a janela fecha e o Camera settings abre.
+- [ ] Disparar de novo sem mudar nada: a sessão nova ganha as marcas, mas a janela não abre. Mudar a 04 para 3:2
+      no Camera settings e disparar: só a 02 fica diferente, a janela abre de novo ("Camera 02 shot 16:9; the
+      others 3:2."). Fechar e abrir o app e disparar: a janela abre de novo.
+- [ ] Tela cheia com a barra só de ícones: o ícone da sessão misturada fica âmbar; a legenda ao passar o mouse
+      mostra a data e "· Mixed ratios" em âmbar (com fotos que faltaram, "· 5 missing · Mixed ratios").
+- [ ] Sessões antigas misturadas (já existentes ao abrir o app): ganham as marcas conforme o app mede as fotos
+      (lista, cabeçalho, miniaturas), sem janela.
+- [ ] Sessão sem mistura: com a 04 em 3:2, apagar a foto 02 de uma sessão (Delete) → as marcas e a etiqueta somem
+      (a simulada 02 sempre sai 16:9, então é o único jeito de ter uma sessão toda igual).
+
+## 36. Export: seção Framing (proporção e posição) e Placement do Lenticular (2.16.0, Parte 4)
+
+Com `STILLPOINT_FAKE_CAMERAS=9` (02 e 04 em 16:9). Abrir "Export sessions" com uma sessão misturada marcada.
+(Decisão do dono, 2026-11-03: a proporção e o alinhamento ficam juntos na seção "Framing"; este pedaço é só a
+proporção. O alinhamento — referências, Move/Size/Rotate — vem no pedaço 2.)
+
+- [ ] (A partir da seção 38, o Framing é o passo 1 e as abas são só Photos · Sequence · Lenticular, no passo 2.)
+      A coluna da direita tem abas no topo, acima da prévia: Framing · Photos · Sequence · Lenticular (chips; a
+      atual em verde). Photos, Sequence e Lenticular têm a caixa de marcar do app dentro da aba (liga/desliga a
+      saída; aba desligada fica tracejada); Framing não tem (vale para todas). Com "Same settings for all
+      sessions" desligado, a aba ganha um ponto âmbar quando esta sessão difere das outras nessa saída (mouse
+      em cima explica). ← → trocam de aba pelo teclado. Abaixo da prévia, o conteúdo da aba atual, começando pelo
+      resumo ("Originals + JPG · High" ou "Off · tick the box in the tab to export it").
+- [ ] Ao abrir o Export a prévia está sempre visível (mesmo que da última vez tenha ficado escondida); "Hide
+      preview" esconde e assim fica ao trocar de seção, até fechar e abrir a janela de novo.
+- [ ] Aba Framing: em cima, a prévia (200 px, a mesma altura das outras abas) com o recorte sobre a foto (com "As shot" a etiqueta diz "As shot:
+      nothing is cut · choose a ratio below"); embaixo, a fileira de miniaturas (clique ou ← → trocam a foto da
+      prévia); embaixo dela, as linhas "Aspect ratio" (As shot · 3:2 · 4:3 · 16:9 · 1:1, "keeps n%"; sem a caixa "Same size":
+      todas as fotos convertidas saem sempre no mesmo tamanho, decisão do dono de 2026-11-03), a nota âmbar de mistura
+      e "Position" (nove pontos). Mesma estrutura das outras abas.
+- [ ] Aba Framing: no canto superior esquerdo da prévia, o botão "Align photos" (ícone de dois quadros sobrepostos
+      e o texto; dica "Align photos: move, resize and rotate each photo over the others"). Não há modo teatro nesta
+      aba (o botão "< >" é só do Lenticular, que não mudou). Com alguma foto alinhada, uma etiqueta "Aligned" no
+      canto superior direito da prévia. A tela que o botão abre é a seção 37.
+- [ ] Escolher 3:2: na prévia, o quadro aceso e o resto escuro; na foto 02 o quadro é mais estreito e arrasta
+      para os lados (etiqueta "Drag the frame to choose the part that stays · ← → other photos"); nas 3:2 não há quadro
+      ("Nothing to cut"). "Position": clicar num ponto move o quadro; o ponto aceso
+      acompanha o arraste. Uma posição para a sessão inteira.
+- [ ] Exportar (Photos convertidas em JPG + Sequence MP4) com 3:2: no Finder, as fotos 02 e 04 convertidas saem
+      3:2 (cortadas nas laterais), as outras inteiras; os Originals continuam 16:9; o MP4 não pula; todas as convertidas saem com o mesmo tamanho em pixels (o da
+      menor câmera, sempre). Com "As shot": nada é cortado.
+- [ ] Fechar e abrir o Export (e o app): a proporção e a posição voltam para essa sessão (session.json). A caixa
+      da etiqueta "Mixed ratios" (mouse em cima) mostra a escolha.
+- [ ] Lenticular: ao entrar na aba, a prévia abre em "Interlaced" (o seletor é Interlaced · Tilt, nessa ordem).
+- [ ] Lenticular: linha "Placement" (Fill · Fit) depois do tamanho. Fill: as prévias Tilt e Interlaced mostram a
+      parte escolhida na seção Framing (Position). Fit: nota "Band: black · change it in Settings › Lenticular";
+      prévias com a foto inteira e a faixa.
+- [ ] Settings (menu, ou Ctrl+,): linha "Lenticular" com Black / White; mudar para White e voltar ao Export: a nota
+      e as prévias ficam brancas. Exportar um lenticular em Fit: o TIFF tem a faixa da cor escolhida, e o
+      "settings.txt" ao lado diz "Placement: Fit (whole photo, white band)"; em Fill diz a posição do recorte.
+
+## 36 B. Sair do Export sessions (2.16.0)
+
+- [ ] "Cancel" (rodapé), Esc ou clique fora da janela: abre a confirmação "Leave Export sessions?" ("Nothing is
+      exported. Your choices are kept: …") com "Stay" e "Leave". "Stay" (ou Esc, ou clique fora) volta ao Export como
+      estava; "Leave" fecha. Abrir de novo: as saídas, o Framing e o alinhamento continuam como deixados. Depois de
+      exportar, a janela fecha sem perguntar.
+
+## 37. Export: tela "Align photos" (2.16.0, pedaço 2 do Framing)
+
+Com `STILLPOINT_FAKE_CAMERAS=9`. Abrir "Export sessions", aba Framing, botão "Align photos" (canto superior esquerdo da
+prévia). Protótipo X2 (2026-11-03): prévia grande à esquerda com a fileira de miniaturas embaixo; coluna de controles à
+direita; a lista de sessões continua à esquerda da janela.
+
+- [ ] Ao abrir: no topo, o botão "Back to Framing" e "Photo 01 of 09 · ← → other photos". Na prévia, "Measuring the
+      photos…" por um instante, depois a foto 01 nítida; por baixo dela, tingida de laranja e transparente, a foto 02
+      (Next photo). Um quadro só, neon sólido verde: o canvas ("Canvas · 900 × 506 px · 16:9" no canto); fora dele a
+      prévia escurece. Embaixo, a instrução "01 · Drag to move · scroll to zoom · hold space and drag to pan · ⌥ scroll
+      to rotate · ⌘ arrows 1 px (⇧ 10)".
+- [ ] O canvas (decisão do dono, 2026-11-03): em "As shot", o que todas as fotos cobrem como saíram (900 × 506); com
+      3:2 escolhido, o maior 3:2 que cabe nisso (759 × 506); com 16:9, 900 × 506. Nenhuma foto cresce sozinha (as
+      16:9 continuam em Size 100): ampliar mudaria o tamanho do objeto fotografado entre as câmeras. Só as fotos se
+      mexem por trás do canvas.
+- [ ] Fileira de miniaturas: a 01 marcada; a 02 com um ponto laranja no canto da miniatura (é a Next photo) — o ponto
+      fica dentro da miniatura, nunca solto na tela. As miniaturas 02 e 04 (16:9) com a borda tracejada âmbar e "16:9"
+      no canto, como na tela principal. Clicar na 04 (ou → três vezes):
+      "Photo 04 of 09", a 03 com ponto azul (Previous photo), a 05 com ponto laranja; na prévia a 04 nítida sobre a 03
+      azulada e a 05 alaranjada.
+- [ ] Coluna "References", nesta ordem: "Previous photo" (azul, "03"), "Current photo" (sem caixa, "04", a própria
+      foto) e "Next photo" (laranja, "05"). Na foto 01, "Previous photo" fica desativada ("none"); na 09, "Next photo".
+      Na prévia, a foto atual fica por cima, nítida, e as referências por baixo, tingidas. Com todas as barras em 100%
+      vê-se só a atual. Cada linha tem a sua barra de opacidade: a da "Current photo" move as três juntas (baixar para
+      60%: a atual fica transparente e as referências aparecem através dela); mexer na barra de uma referência muda só
+      ela, até a próxima vez que a da "Current photo" for usada. Desligar "Next photo": a 05 some. As escolhas ficam
+      para as próximas aberturas (memória do app).
+- [ ] "This photo 04": "Move X", "Move Y" (px; − + andam 1, com ⇧ 10), "Size" (%; 0,1, ⇧ 1), "Rotate" (°; 0,05, ⇧ 0,5;
+      sem limite). Sem legenda ao lado dos campos; − e + à mesma distância do campo. Digitar um valor e Enter aplica;
+      ↑ ↓ no campo também andam. A foto 04 se mexe na prévia na hora por trás dos quadros; o canvas e o recorte não se
+      movem nem mudam de tamanho (a linha "Canvas … px (16:9) · this photo 900 × 600 px (3:2)" no fim do bloco não muda; "~" antes da
+      proporção quando o tamanho não bate exatamente com ela).
+- [ ] Gestos na prévia: arrastar move a 04 (os campos Move X/Y acompanham, arredondados ao pixel ao soltar); ⌥ + roda
+      muda o Rotate; ⌘ + ← → ↑ ↓ movem 1 px (⇧ 10); ← → sozinhas trocam de foto.
+- [ ] Zoom e deslocamento da vista (não mexem na foto, nem no Size): a roda aproxima e afasta em volta do ponto sob o
+      mouse, de 30% a 800% ("zoom 250%" aparece na instrução embaixo). Segurar a barra de espaço: o cursor vira uma mão;
+      arrastar desloca a vista; ao soltar o espaço volta ao normal. O deslocamento para quando sobram 80 px do canvas
+      à vista (nunca some). Entrar de novo em "Align photos" começa em 100%.
+- [ ] Etiquetas da prévia ("Canvas · …" no canto e a instrução embaixo): somem num fade ao mexer o mouse sobre a prévia,
+      ao rolar ou com o espaço seguro, e voltam num fade 2 s depois de parar.
+- [ ] ⌘0 (Ctrl+0 no Windows): a vista volta ao centro e a 100% (a foto não muda).
+- [ ] Cursor da alça redonda (girar): uma seta em arco verde; o mesmo cursor durante o giro.
+- [ ] Desfazer/refazer (⌘Z / ⇧⌘Z) dentro de "Align photos": cada gesto terminado (arrastar, alça, − +, campo, Position,
+      Fit to canvas, Reset photo, Reset all, uma sequência de ⌥ + roda) é um passo; abrir a tela, trocar de foto ou dar
+      zoom não criam passos. Desfazer volta a foto na prévia e grava em session.json (fechar e abrir o Export mostra o
+      estado desfeito).
+- [ ] Caixa de transformação sobre a foto atual (contorno fino, quatro alças quadradas nos cantos e uma alça redonda
+      acima do meio): arrastar um canto muda o Size em volta do centro; arrastar a alça redonda gira (⇧ trava em
+      passos de 15°); a caixa gira junto com a foto e as alças ficam do mesmo tamanho em qualquer zoom.
+- [ ] Trava da área útil (como no Lightroom): com "Aspect ratio" em 16:9, tentar mover ou encolher a 04 até descobrir
+      parte do quadro âmbar: o movimento para no limite (num eixo só, quando dá) e o quadro âmbar pisca; o campo
+      digitado volta ao valor que havia. Girar é diferente: quando o giro descobriria um canto, a foto cresce o mínimo
+      necessário (o "Size" sobe sozinho) para continuar cobrindo a área, e ao desfazer o giro ela volta a encolher até
+      o tamanho que você tinha escolhido (girar 5° e voltar a 0° termina no Size de antes). Nenhum gesto muda os
+      quadros (tracejado e neon): só a foto. Conferir com giros grandes (15°, 25°): o crescimento continua
+      suave, sem salto. Em "As shot" a área útil é o quadro comum.
+- [ ] Os botões − e + de cada campo ficam à mesma distância do campo, dos dois lados.
+- [ ] Segurar o − ou o + de qualquer campo: repete o passo (começa depois de 0,4 s); com ⇧ segurado, o passo grande.
+- [ ] A lista de sessões, à esquerda, mostra só as miniaturas (sessão desmarcada apagada); passar o mouse numa
+      miniatura mostra na hora, ao lado, a legenda no visual do app (data, fotos, aviso âmbar se houver), como na barra
+      da tela cheia. "Back to Framing" traz a lista completa de volta. As barras de opacidade têm o visual do app
+      (trilho fino, cursor quadrado verde). A coluna de controles não rola para o lado.
+- [ ] Rolar a coluna de controles até "Aspect ratio" e clicar em 3:2: a coluna fica onde estava, sem subir. O mesmo na
+      aba Framing normal, com as linhas roladas.
+- [ ] Aba Lenticular, "Interlaced": a legenda de baixo é uma linha curta ("Interlaced 18500 × 12831 px · 30 × 20 cm ▸");
+      clicar nela abre o resto (px por lente, faixas, instruções) e clicar de novo recolhe. "Hide preview" e "Show
+      preview" com o Interlaced: volta na hora, sem travar (a imagem entrelaçada fica guardada enquanto nada muda).
+- [ ] "Fit to canvas", "Reset photo" e "Reset all" cabem na coluna (quebram linha se faltar largura). "Fit to canvas": com a 04 em Size 130% e movida, o botão centra a foto e leva o Size ao
+      menor valor que ainda cobre a área útil (100% numa foto sem giro; mais, se estiver girada — o giro fica).
+- [ ] Coluna da direita › "This photo" › campo "Move X": digitar 7000 e Enter. A foto não sai da área útil: vai só até
+      encostar na borda do canvas (a borda pisca laranja) e o campo mostra o valor máximo possível. "Reset photo" volta a
+      foto a zero; "Reset all" zera todas. (O aviso antigo "The photos do not overlap" não existe mais: a trava impede.)
+- [ ] Último bloco da coluna (sem título repetido): "Aspect ratio" (As shot · 3:2 · 4:3 · 16:9 · 1:1) é a mesma escolha
+      da aba Framing e vale para a sessão inteira; o quadro neon fica onde a aba Framing o deixou (a posição do recorte
+      só muda lá). "Position" (nove pontos, sem texto) move a foto atual dentro da
+      folga que ela tem atrás do quadro: com a 04 em Size 120%, o ponto da esquerda cola o lado esquerdo da foto no do
+      quadro, o do meio centra; o ponto aceso mostra onde a foto está (sem folga, o do meio); arrastar também move só
+      a foto e o ponto acompanha. Ao voltar ("Back to Framing") a prévia do Framing ganha a etiqueta "Aligned".
+- [ ] Tab: na aba Framing, o Tab passa por todas as abas (Framing · Photos · Sequence · Lenticular) e pelas caixas delas,
+      pelo botão "Align photos", pelas proporções e pelos pontos de "Position". Em "Align photos", a lista de sessões é uma parada
+      só do Tab (a sessão aberta); ↑ ↓ trocam de sessão (em qualquer lugar da tela, fora de um campo de texto).
+- [ ] Entrar em "Align photos" e voltar: a lista de sessões estreita/alarga com transição e a coluna surge num fade
+      curto.
+- [ ] Fechar e abrir o Export, e fechar e abrir o app: o alinhamento volta (session.json tem "align").
+- [ ] Exportar (Photos convertidas em JPG + Sequence MP4 + Lenticular Fill) uma sessão com 3:2 e a 04 movida 100 px e
+      girada 2°: no Finder, todas as JPG convertidas têm o tamanho do canvas (759 × 506 nas simuladas), nenhuma
+      ampliada, a 04 deslocada e girada; o MP4 e o lenticular usam as mesmas
+      fotos; os Originals continuam intactos; o settings.txt do lenticular tem a linha "Alignment: photos aligned in
+      Stillpoint (canvas … px)". Sessão em "As shot" sem nenhuma foto ajustada: cada foto sai como é (seção 36); em
+      "As shot" com alguma foto ajustada, todas saem no canvas (a interseção).
+
+## 38. Export sessions em três passos (2.16.0; protótipo "Export em três passos" aprovado em 2026-11-04)
+
+Com `STILLPOINT_FAKE_CAMERAS=9` e algumas sessões. Abrir "Export sessions".
+
+- [ ] Cabeçalho: à direita, "1 Sessions — 2 Outputs — 3 Review" (o passo atual em verde; os anteriores com "✓"). O
+      subtítulo muda a cada passo. Clicar num passo anterior volta a ele; um passo seguinte só abre se o atual estiver
+      pronto (sem sessão marcada, "2 Outputs" fica apagado e a dica diz "Tick at least one session").
+- [ ] Passo 1 · Sessions: à esquerda a lista com as caixas, "Select all" e "Unselect all"; cada sessão com um selo do
+      Framing ("As shot", "3:2", "3:2 · aligned"; "As shot · mixed ratios" tracejado âmbar). À direita, "Framing · <data>"
+      e "Hide preview" no topo; a prévia com "Align photos"; a fileira; "Aspect ratio", a nota de mistura e "Position";
+      e, na última linha, a caixa "Same framing for all ticked sessions" (ligada por padrão). Comportamento da caixa
+      (o mesmo no passo 2): marcada = todas iguais e ligadas (mudar a proporção ou a posição de uma muda as outras; o
+      alinhamento fica em cada sessão); clicar nela desliga (cada sessão pode mudar sozinha). Com alguma sessão
+      diferente, a caixa mostra o traço e, ao lado, em âmbar, "1 session is different · tick to give all of them these
+      settings"; clicar iguala todas à sessão aberta (aviso "… · ⌘Z undoes"; ⌘Z volta). As sessões que fogem da
+      configuração mais comum ganham a etiqueta "Different" na lista; a etiqueta fica nas mesmas sessões seja qual for
+      a sessão aberta. Abrindo com Framings já diferentes, a caixa vem com o traço e nada é igualado sozinho. Não há abas
+      nem "Name". Rodapé: "3 of 5 sessions · 1 with mixed ratios on As shot", "Cancel"
+      e o verde "Outputs →" (apagado sem sessão marcada).
+- [ ] Passo 2 · Outputs: a lista mostra só as sessões marcadas, sem caixas, com o resumo do que sai de cada uma (o Tab
+      para na lista e ↑ ↓ trocam de sessão). Sem barra no topo: as abas Photos · Sequence · Lenticular (sem
+      Framing) e, na mesma linha, encostado à direita, "Hide preview". Cada aba tem a sua caixa "Same settings for all
+      sessions" na última linha da aba, com o mesmo comportamento da caixa do passo 1 ("Apply to all sessions" saiu); a
+      etiqueta "Different" na lista e o ponto âmbar na aba seguem a configuração mais comum (não mudam de sessão ao
+      clicar). A prévia (Photos, Sequence e o Tilt do Lenticular) já aparece com o Framing do passo 1: com 16:9, a foto
+      cortada em 16:9; com fotos alinhadas, deslocadas e giradas como no "Align photos". Tab até a caixa de uma aba
+      (inclusive a aba acesa, verde): um anel de foco bem visível em volta da caixa.
+- [ ] Passo 3 · Review: sem a lista de sessões; uma tabela com uma linha por sessão marcada (miniatura, data e fotos,
+      Framing com a posição e "n photos aligned", as saídas, o nome final da pasta). Em "As shot" com mistura, o aviso âmbar com o ícone de alerta "As
+      shot · mixed ratios: the sequence will jump and the lenticular subject changes size", com o "Edit" dentro do
+      aviso, em âmbar e negrito. "Edit" no Framing leva ao passo 1 com aquela sessão aberta; "Edit"
+      nas saídas leva ao passo 2 na aba certa. Só a tabela rola (o cabeçalho dela fica preso
+      no topo); embaixo, presas e sempre à vista, a caixa "Name" (Date + time · Number · Custom; o nome vale para
+      todas as marcadas e a coluna "Folder" acompanha enquanto se digita) e a caixa "Export to" (caminho, "Choose
+      another folder…", "Reset to default" depois de trocar). Rodapé: "← Outputs", "Cancel" e "Export n sessions". No
+      Project, "Use edited photos when available" aparece só neste passo.
+- [ ] Com uma proporção escolhida, o retângulo de borda verde neon sobre a prévia grande do passo 1 (a área que vai
+      ser exportada) fica parado e do mesmo tamanho ao trocar de foto (← → ou
+      clique nas miniaturas), inclusive entre fotos 3:2 e 16:9: é a foto que muda atrás dele. Arrastar a prévia move a
+      foto ("Drag the photo to choose the part that stays"); o ponto de "Position" acompanha. Foto com alinhamento
+      próprio: a instrução diz "This photo is aligned: move it in Align photos" e o arraste não age nela.
+- [ ] O recorte do passo 1 é o mesmo do passo 2 e do arquivo: numa sessão com 02 e 04 em 16:9 e as outras em 3:2,
+      escolher 3:2 e olhar a foto 01 (3:2) no passo 1: o quadro neon não cobre a foto inteira (o canvas é o 3:2 que
+      cabe na parte comum às 16:9, 759 × 506 nas simuladas), e o passo 2 mostra exatamente essa parte. Trocar 3:2 · 4:3 ·
+      16:9 · 1:1 e "Position" e comparar foto a foto nos dois passos (inclusive as 16:9). Com fotos alinhadas, o quadro
+      do passo 1 aparece deslocado (e girado) sobre a foto como ela vai sair.
+- [ ] Lenticular (passo 2), vista "Interlaced": as faixas de cada foto já com o Framing do passo 1 (com 3:2 numa sessão
+      misturada, sem as bordas que o canvas corta; com fotos alinhadas, deslocadas e giradas). Trocar a proporção no
+      passo 1 e voltar: o Interlaced é montado de novo.
+- [ ] Modo teatro em Photos e Sequence (passo 2): o botão "< >" no canto superior esquerdo da prévia, como no Lenticular.
+      Em Photos, no teatro, a prévia cresce e as miniaturas continuam embaixo; em Sequence, só a prévia (o play/pause
+      continua). Trocar de aba desliga o teatro. Sair do Export (Cancel → Leave) com o teatro ligado e abrir de novo:
+      abre sem teatro.
+- [ ] Lenticular em Fill com o Framing numa forma diferente do papel (ex.: 16:9 no passo 1 e papel 15 × 10 cm): aviso âmbar
+      com o ícone de alerta "Framing 16:9 · paper 15 × 10 cm (3:2): in Fill the paper shape wins, so the sides of the
+      framing are cut. Choose Fit to keep the whole framing, with a band." Em Fit o aviso some e o TIFF sai com o
+      Framing inteiro e a faixa.
+- [ ] Review › "Export to": o botão "Use the default folder" sempre à vista, apagado na pasta padrão; depois de "Choose
+      another folder…", ativo e volta para a pasta padrão.
+- [ ] Passo 1 sem "Hide preview" (a prévia fica sempre à vista; no passo 2 continua na linha das abas).
+- [ ] Alinhar exige uma proporção só na sessão com mixed ratios (decisão do dono, 2026-11-04, revista): numa sessão
+      sem mistura em "As shot", "Align photos" abre direto (o canvas é a própria foto) e o alinhamento sai na exportação.
+      Numa sessão misturada em "As shot", "Align photos" continua ativo; clicar abre a janela "Choose a ratio first" com os botões 3:2 · 4:3 · 16:9 · 1:1 ("keeps n%"; o que perde
+      menos pixels em verde) e "Cancel". Escolher um: a sessão passa a essa proporção e a tela "Align photos" abre com
+      ela. Dentro de "Align photos", "As shot" fica desativado (dica: escolher As shot na aba Framing; o alinhamento
+      fica guardado). Voltando para "As shot" no passo 1: o selo da sessão diz só "As shot", o Review não conta fotos
+      alinhadas, e a exportação sai como as fotos foram feitas (o alinhamento só volta a valer com uma proporção).
+- [ ] Passo 1, sessão em "As shot" com proporções misturadas: a nota de mistura vira um aviso âmbar tracejado com o ícone
+      de alerta: "… "As shot" keeps each photo as it is: the sequence will jump (black bands come and go), and in the
+      lenticular print the subject changes size between photos. Choose a ratio to give every photo the same frame."
+      Escolhendo uma proporção (ou alinhando uma foto), vira uma nota comum: "… Every photo goes through the same frame,
+      so nothing jumps."
+- [ ] Anel de foco (Tab): inteiro em volta da caixa "Same framing for all ticked sessions" (não cortado à esquerda) e
+      dentro de cada botão de "Aspect ratio" e dos outros grupos de botões (não comido em cima). No passo 2, o Tab para
+      na lista de sessões (anel em volta da linha) e ↑ ↓ trocam de sessão.
+- [ ] Fechar ("Cancel" → "Leave") e abrir de novo: abre sempre no passo 1 · Sessions (decisão do dono, 2026-11-04), com
+      as escolhas como estavam. Desfazer (⌘Z) vale nos três passos.
+
+## 38 B. Ajustes depois do teste de 2026-11-04 (2.16.0)
+
+Com `STILLPOINT_FAKE_CAMERAS=9`.
+
+- [ ] Tela principal, painel "Bullet time": "Sessions" em 3 e "It's bullet time". A janela "Mixed ratios" abre uma vez e
+      diz "The photos in the 3 sessions of this shoot…"; "Crop on export to 3:2 (keeps 97%)" (ou um dos botões menores)
+      vale para as três sessões (Activity: uma linha "Crop on export: 3:2 for …" por sessão; o mouse sobre a etiqueta
+      "Mixed ratios" de cada uma mostra a escolha).
+- [ ] Tela principal: disparar, fechar a janela "Mixed ratios" com "Keep as shot" (ou Esc, ou clique fora), mudar qualquer
+      coisa no "Camera settings" (painel "Cameras") e disparar de novo: a janela abre de novo.
+- [ ] Export, passo 1, prévia com uma proporção: segurar o botão do mouse e arrastar para fora da prévia (com e sem a
+      barra de espaço em "Align photos"): a mão fechada continua em toda a janela e a foto segue o mouse até o limite.
+- [ ] Export, passo 2, aba Lenticular, "Placement" em Fit: na nota "Band: black · change it in Settings › Lenticular",
+      "Settings › Lenticular" é um link sublinhado; clicar abre o Settings por cima do Export, na linha "Lenticular".
+- [ ] Settings › "Lenticular": trocar Black → White e dar ⌘Z: volta a Black (aviso "Undo: Lenticular band: black"); ⇧⌘Z
+      volta a White. A nota e as prévias do Export acompanham.
+- [ ] Settings por cima de qualquer janela: com o Export aberto no passo 2, abrir "Settings" pelo menu (ou ⌘, / Ctrl+,):
+      aparece por cima; "Done", Esc ou clique fora fecham só o Settings e o Export continua no passo 2, como estava.
+      O mesmo com o Camera settings e a janela Project abertos.
+- [ ] ⌘Z / ⇧⌘Z com uma confirmação ou aviso aberto (ex.: "Leave Export sessions?", "Choose a ratio first", "Mixed
+      ratios"): nada acontece. Depois de fechar a janela, ⌘Z desfaz normalmente e não faz a janela voltar.
+- [ ] Export, passo 1, sessão misturada em "As shot": "Align photos" → "Choose a ratio first" → 3:2: abre "Align photos".
+      ⌘Z: volta para a tela do Framing em "As shot" ("Undo: Ratio 3:2 for Align photos"). ⇧⌘Z: abre "Align photos"
+      de novo em 3:2.
+- [ ] Dentro de "Align photos" numa sessão sem mistura, clicar (ou ↑ ↓) numa sessão misturada em "As shot" (com "Same
+      framing for all ticked sessions" desligado): abre "Choose a ratio first". "Cancel", Esc ou clique fora: continua em
+      "Align photos" na sessão de antes. Escolher uma proporção: "Align photos" passa para a sessão misturada.
+- [ ] Janela Project (botão ao lado do título "Sessions", com um projeto aberto): as sessões misturadas têm a etiqueta
+      "Mixed ratios" (mouse em cima mostra o texto), como na lista Sessions.
+
+## 38 C. Ajustes depois do teste de 2026-11-04 (noite)
+
+Com `STILLPOINT_FAKE_CAMERAS=9`.
+
+- [ ] Tela principal: disparar, escolher 3:2 na janela "Mixed ratios" e disparar de novo (sem mexer no Camera settings):
+      a janela não abre e a sessão nova já vem com 3:2 (Activity: "Crop on export: 3:2 for …"). Com "Keep as shot", a
+      sessão nova fica em As shot.
+- [ ] Tela principal, logo depois de um disparo (com "Sessions" em 2): clicar em outras sessões da lista, devagar e rápido:
+      cada clique abre a sessão clicada, sem marcar várias (a moldura de seleção múltipla só com ⌘ ou ⇧).
+- [ ] Align photos: arrastar a foto rápido contra a borda: ela encosta na borda (não para antes) e o outro eixo continua
+      livre; o movimento acompanha o mouse sem engasgos. O mesmo no passo 1, arrastando a prévia.
+- [ ] Align photos: o rodapé mostra só o botão verde "Done aligning" ("Cancel" e "Outputs →" somem); clicar volta à
+      tela do Framing, com o rodapé normal.
+- [ ] Align photos, com o foco na lista de sessões (Tab): ← → trocam de foto e o anel de foco da sessão fica parado.
+- [ ] Align photos, com o foco na lista (Tab), ↑ ↓ até uma sessão misturada ainda em "As shot" (com "Same framing for
+      all ticked sessions" desligado): abre "Choose a ratio first" antes de trocar; "Cancel" fica na sessão de antes.
+- [ ] "Choose a ratio first": o botão verde "Use 3:2 · keeps 97%" fica à direita do "Cancel"; as outras proporções
+      ficam em "Other ratios", acima.
+- [ ] Etiqueta de fotos apagadas: numa sessão, apagar 2 fotos (miniatura e Delete). Aparece "2 deleted" (mesmo desenho
+      do "n missing") na lista Sessions, no cabeçalho da sessão, na lista do Export e na janela Project; o mouse em cima
+      mostra "2 photos of this session are in the Trash (top bar). Restore brings them back." Restaurar as fotos na
+      lixeira: a etiqueta some. ⌘Z do apagar: também some.
+- [ ] Janela Project: "Mixed ratios", "n missing" e "n deleted" ficam na coluna Session, embaixo da data; a coluna
+      Edited fica só com "Originals" / "Edited n / m".
+- [ ] Janela de digitar um nome aberta (ex.: renomear): ⌘Z fora do campo não desfaz nada do app.
+- [ ] Export, passo 2, aba Photos: as miniaturas embaixo da prévia já mostram o recorte do Framing (proporção, posição e
+      alinhamento), iguais à prévia grande. A caixa de cada miniatura tem a forma do recorte (16:9 mais larga, 1:1
+      quadrada, mesma altura) e a imagem a enche sem cortar nem faixa. Em "As shot" sem alinhamento: como antes.
+- [ ] Align photos: a barra de cima não tem mais o botão "Back to Framing" (ficava repetido); começa direto em "Photo 01
+      of 09 · ← → other photos". Sair: "Done aligning" (rodapé) ou Esc.
+- [ ] Align photos: Esc volta à tela do Framing (como "Done aligning"); o Export continua aberto. Fora do Align photos, o
+      Esc segue perguntando "Leave Export sessions?".
+- [ ] Passos do cabeçalho (caminho B): os de trás ("1 Sessions ✓") voltam com um clique; os da frente não reagem ao
+      clique (mouse em cima: "Continue with the green button below"). Avançar só pelo botão verde do rodapé.
+- [ ] Regra do ⌘Z: mudar a proporção no passo 1 (sessão A), ir ao passo 2 › aba Sequence e mudar o fps, ir ao passo 3.
+      ⌘Z: a janela vai para o passo 2 › Sequence e desfaz o fps (aviso "Undo: Outputs › Sequence · <data de A>"). ⌘Z de
+      novo: vai ao passo 1, sessão A, e desfaz a proporção ("Undo: Framing · <data>"). ⇧⌘Z refaz indo aos mesmos
+      lugares. Mudança feita no "Align photos": desfazer abre o "Align photos" na foto em que foi feita. Trocar de
+      passo, aba, sessão ou foto não entra no desfazer.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |
 | --- | --- | --- | --- | --- | --- |
 | 2026-10 | Windows | v1.3.0 | Canon SL3 + Canon T7 | sim | Teste de referência, antes da migração |
+| 2026-11-04 | Mac (M5, macOS 26) | proporcao (2.16.0) | 9 simuladas | sim | Seções 35, 36, 36 B, 37, 38, 38 B e 38 C aprovadas pelo dono do projeto (Mixed ratios, Framing, Align photos, Export em três passos, exportação real com 3:2 e alinhamento). Pendente: câmeras reais (cartão cinza, Calibrate with chart, RAW, impressão lenticular, Ratio na SL3 e na T7) e Windows |
 | 2026-10-29 | Mac (M5, macOS 26) | etapa-17-project (2.12.0) | 9 simuladas | sim | Roteiro 23 com câmeras simuladas aprovado pelo dono do projeto (projeto, arrastar, botão direito, rótulos, rename, undo/redo, avisos, Activity). Windows: compila; sem teste de uso. Câmeras reais: pendente |
 | 2026-11-01 | Mac (M5, macOS 26) | etapa-19-lenticular (2.14.0) | câmeras reais | sim | Seção 25 inteira aprovada pelo dono do projeto (Camera settings, ordem das câmeras, fotos reais, Save sessions com projeto/Exports/Originals+JPG/Lenticular TIFF) |
 | 2026-10-29 | Mac (M5, macOS 26) | v2.12.0 | Canon T7 + SL3 + T5 | sim | Câmeras reais: sessão em `Originals/` com `session.json`; `.xmp` renomeado junto no Reorder + Cmd+Z; Camera settings com undo/redo (um por segundo, sem travar; valores batem com o LCD; disparo depois OK); Copy from camera + undo; apagar foto/sessão + Cmd+Z com RAW (`Photos/.trash`, vazia ao reabrir); projeto em HD externo (apagar + undo copiando entre discos; reabrir pelos recentes); ordem das câmeras (^ v e Reorder by photo) + undo; foto recusada (Sweep 0,3 s, 1→3→1: "1 MISSING" sobrevive ao reabrir). **Bug:** HD ejetado com o app fechado → ao abrir, "No project" em vez de âmbar "not reachable" (corrigido na 2.12.1). |

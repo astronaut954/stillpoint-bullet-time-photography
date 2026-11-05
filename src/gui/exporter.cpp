@@ -18,7 +18,9 @@
 #include <cstdint>
 #include <cstring>
 #include <fstream>
+#include <sstream>
 #include <functional>
+#include <map>
 #include <thread>
 
 #include "stb_image_resize2.h"
@@ -569,7 +571,8 @@ namespace
 
     // Redimensiona cobrindo w×h inteiro (corta o que sobra, centrado) — para a impressão
     // lenticular, onde a imagem precisa ter exatamente o tamanho do papel
-    std::vector<unsigned char> Cover(const RgbFrame& src, int w, int h)
+    // Cobre w x h com a foto (ampliada/reduzida e cortada); posX/posY (0..1) escolhem a parte que fica
+    std::vector<unsigned char> Cover(const RgbFrame& src, int w, int h, double posX = 0.5, double posY = 0.5)
     {
         const double scale = std::max(static_cast<double>(w) / src.width, static_cast<double>(h) / src.height);
         const int fw = std::max(w, static_cast<int>(std::lround(src.width * scale)));
@@ -577,10 +580,35 @@ namespace
         std::vector<unsigned char> resized(static_cast<size_t>(fw) * fh * 3);
         stbir_resize_uint8_srgb(src.pixels.data(), src.width, src.height, 0, resized.data(), fw, fh, 0, STBIR_RGB);
         std::vector<unsigned char> out(static_cast<size_t>(w) * h * 3);
-        const int ox = (fw - w) / 2, oy = (fh - h) / 2;
+        const int ox = std::clamp(static_cast<int>(std::lround((fw - w) * std::clamp(posX, 0.0, 1.0))), 0, fw - w);
+        const int oy = std::clamp(static_cast<int>(std::lround((fh - h) * std::clamp(posY, 0.0, 1.0))), 0, fh - h);
         for (int y = 0; y < h; ++y)
             std::memcpy(&out[static_cast<size_t>(y) * w * 3], &resized[(static_cast<size_t>(y + oy) * fw + ox) * 3], static_cast<size_t>(w) * 3);
         return out;
+    }
+    // A foto inteira dentro de w x h, com faixa preta ou branca onde não chega à borda (Placement: Fit)
+    std::vector<unsigned char> FitBand(const RgbFrame& src, int w, int h, bool white)
+    {
+        std::vector<unsigned char> out = Fit(src, w, h);
+        if (!white) return out;
+        // Fit pinta de preto: troca pelo branco fora da foto
+        const double scale = std::min(static_cast<double>(w) / src.width, static_cast<double>(h) / src.height);
+        const int fw = std::max(1, std::min(w, static_cast<int>(std::lround(src.width * scale))));
+        const int fh = std::max(1, std::min(h, static_cast<int>(std::lround(src.height * scale))));
+        const int ox = (w - fw) / 2, oy = (h - fh) / 2;
+        for (int y = 0; y < h; ++y)
+            for (int x = 0; x < w; ++x)
+                if (y < oy || y >= oy + fh || x < ox || x >= ox + fw)
+                    std::memset(&out[(static_cast<size_t>(y) * w + x) * 3], 255, 3);
+        return out;
+    }
+    // Reduz a foto para exatamente w x h (mesma proporção: "Same size for all photos")
+    void ResizeTo(RgbFrame& img, int w, int h)
+    {
+        if (w <= 0 || h <= 0 || (img.width == w && img.height == h)) return;
+        std::vector<unsigned char> resized(static_cast<size_t>(w) * h * 3);
+        stbir_resize_uint8_srgb(img.pixels.data(), img.width, img.height, 0, resized.data(), w, h, 0, STBIR_RGB);
+        img.pixels = std::move(resized); img.width = w; img.height = h;
     }
 
     // ---- Lenticular, entrega 2: marcas de impressão e folha de teste ----
@@ -734,6 +762,186 @@ namespace
 
 namespace Export
 {
+    double RatioValue(const std::string& ratio)
+    {
+        if (ratio == "3:2") return 3.0 / 2.0;
+        if (ratio == "4:3") return 4.0 / 3.0;
+        if (ratio == "16:9") return 16.0 / 9.0;
+        if (ratio == "1:1") return 1.0;
+        return 0;
+    }
+    void ApplyFraming(RgbFrame& frame, const Framing& framing)
+    {
+        const double r = RatioValue(framing.ratio);
+        if (r <= 0 || frame.width <= 0 || frame.height <= 0) return;
+        // A proporção vale para o lado maior: foto em pé fica em pé
+        const double target = frame.width >= frame.height ? r : 1.0 / r;
+        const double have = static_cast<double>(frame.width) / frame.height;
+        if (std::abs(have - target) < 0.005) return;
+        int nw = frame.width, nh = frame.height;
+        if (have > target) nw = std::max(1, static_cast<int>(std::lround(frame.height * target)));
+        else nh = std::max(1, static_cast<int>(std::lround(frame.width / target)));
+        const int x0 = std::clamp(static_cast<int>(std::lround((frame.width - nw) * std::clamp(framing.posX, 0.0, 1.0))), 0, frame.width - nw);
+        const int y0 = std::clamp(static_cast<int>(std::lround((frame.height - nh) * std::clamp(framing.posY, 0.0, 1.0))), 0, frame.height - nh);
+        std::vector<unsigned char> out(static_cast<size_t>(nw) * nh * 3);
+        for (int y = 0; y < nh; ++y)
+            std::memcpy(&out[static_cast<size_t>(y) * nw * 3], &frame.pixels[(static_cast<size_t>(y + y0) * frame.width + x0) * 3], static_cast<size_t>(nw) * 3);
+        frame.pixels = std::move(out); frame.width = nw; frame.height = nh;
+    }
+    bool PhotoSize(const fs::path& photo, int& width, int& height)
+    {
+        RgbFrame frame;
+        if (!LoadPhotoRgb(photo, frame)) return false;
+        width = frame.width; height = frame.height;
+        return true;
+    }
+
+    // ---- Alinhamento (pedaço 2 do Framing) ----
+    std::map<std::string, Align> ParseAlign(const std::string& text)
+    {
+        std::map<std::string, Align> out;
+        std::stringstream items(text);
+        for (std::string item; std::getline(items, item, ';');)
+        {
+            const size_t colon = item.rfind(':');
+            if (colon == std::string::npos || colon == 0) continue;
+            Align a;
+            double v[5] = { 0, 0, 1, 0, 0 };
+            std::stringstream nums(item.substr(colon + 1));
+            size_t k = 0;
+            for (std::string n; k < 5 && std::getline(nums, n, ',');)
+            {
+                try { v[k] = std::stod(n); } catch (...) {}
+                ++k;
+            }
+            a.dx = v[0]; a.dy = v[1]; a.scale = std::clamp(v[2], 0.05, 20.0); a.rot = v[3];
+            a.base = v[4] > 0 ? std::clamp(v[4], 0.05, 20.0) : a.scale;
+            a.touched = true;
+            out[item.substr(0, colon)] = a;
+        }
+        return out;
+    }
+    bool Framing::Aligned() const
+    {
+        for (const Align& a : align)
+            if (a.touched && !a.Identity()) return true;
+        return false;
+    }
+    namespace
+    {
+        constexpr double kPi = 3.14159265358979323846;
+    }
+    namespace
+    {
+        // A foto (w×h, com tamanho `scale`, giro `rot` em graus e o centro em dx,dy) cobre inteiro o retângulo reto r?
+        // Conferência exata pelos quatro cantos de r levados ao espaço da foto (a mesma conta da tela)
+        bool Covers(double w, double h, const Align& a, double scale, double rx, double ry, double rw, double rh)
+        {
+            const double rad = a.rot * kPi / 180.0, cs = std::cos(rad), sn = std::sin(rad), eps = 0.01;
+            const double corners[4][2] = { { rx, ry }, { rx + rw, ry }, { rx, ry + rh }, { rx + rw, ry + rh } };
+            for (const auto& c : corners)
+            {
+                const double x = c[0] - a.dx, y = c[1] - a.dy;
+                const double ux = (x * cs + y * sn) / scale, uy = (-x * sn + y * cs) / scale;
+                if (std::abs(ux) > w / 2 + eps || std::abs(uy) > h / 2 + eps) return false;
+            }
+            return true;
+        }
+        // O menor tamanho (a partir de `from`) com que a foto cobre o canvas nessa posição e giro; 0 se nem 20× basta
+        double MinCover(double w, double h, const Align& a, double from, const Framing& f)
+        {
+            if (Covers(w, h, a, from, f.commonX, f.commonY, f.commonW, f.commonH)) return from;
+            double lo = from, hi = 20.0;
+            if (!Covers(w, h, a, hi, f.commonX, f.commonY, f.commonW, f.commonH)) return 0;
+            for (int i = 0; i < 40; ++i) { const double mid = (lo + hi) / 2; if (Covers(w, h, a, mid, f.commonX, f.commonY, f.commonW, f.commonH)) hi = mid; else lo = mid; }
+            return hi;
+        }
+    }
+    bool ComputeCommonFrame(Framing& framing, const std::vector<std::pair<int, int>>& sizes)
+    {
+        if (framing.align.empty() || sizes.size() != framing.align.size()) { framing.align.clear(); return false; }
+        // A interseção das fotos como saíram da câmera (centradas) e, com proporção escolhida, o maior retângulo
+        // nessa proporção que cabe nela: nenhuma foto é ampliada (decisão do dono, 2026-11-03: ampliar mudaria o
+        // tamanho do objeto fotografado entre as câmeras)
+        double left = -1e18, top = -1e18, right = 1e18, bottom = 1e18;
+        for (const auto& sz : sizes)
+        {
+            const double iw = sz.first, ih = sz.second;
+            left = std::max(left, -iw / 2); right = std::min(right, iw / 2);
+            top = std::max(top, -ih / 2); bottom = std::min(bottom, ih / 2);
+        }
+        double cw = right - left, ch = bottom - top;
+        const double r = RatioValue(framing.ratio);
+        if (r > 0 && cw > 0 && ch > 0)
+        {
+            const double t = cw >= ch ? r : 1.0 / r;
+            if (cw / ch > t) cw = ch * t; else ch = cw / t;
+        }
+        if (cw < 16 || ch < 16) { framing.align.clear(); return false; }
+        framing.commonX = -cw / 2; framing.commonY = -ch / 2; framing.commonW = cw; framing.commonH = ch;
+        // Tamanho em uso e posição de cada foto
+        for (size_t k = 0; k < sizes.size(); ++k)
+        {
+            Align& a = framing.align[k];
+            const double w = sizes[k].first, h = sizes[k].second;
+            if (w <= 0 || h <= 0) continue;
+            if (!a.touched)
+            {
+                // Sem ajuste da pessoa: o menor tamanho que cobre o canvas, centrada, e a posição do recorte (posX/posY)
+                // reparte a folga que sobra
+                a.dx = 0; a.dy = 0; a.rot = 0;
+                const double need = MinCover(w, h, a, 1.0, framing);
+                a.base = 1.0; a.scale = need > 0 ? need : 1.0;
+                a.dx = (0.5 - std::clamp(framing.posX, 0.0, 1.0)) * (w * a.scale - cw);
+                a.dy = (0.5 - std::clamp(framing.posY, 0.0, 1.0)) * (h * a.scale - ch);
+                a.noop = std::abs(a.scale - 1.0) < 1e-9 && std::abs(w - cw) < 0.5 && std::abs(h - ch) < 0.5;
+            }
+            else
+            {
+                const double need = MinCover(w, h, a, std::max(0.05, a.base), framing);
+                a.scale = need > 0 ? std::max(a.scale, need) : a.scale;
+            }
+        }
+        return true;
+    }
+    void ApplyAlign(RgbFrame& frame, const Framing& framing, size_t k)
+    {
+        if (!framing.Canvas() || k >= framing.align.size() || framing.align[k].noop) return;
+        if (frame.width <= 0 || frame.height <= 0) return;
+        const Align& a = framing.align[k];
+        const int W = std::max(1, static_cast<int>(std::lround(framing.commonW)));
+        const int H = std::max(1, static_cast<int>(std::lround(framing.commonH)));
+        const double rad = a.rot * kPi / 180.0, cs = std::cos(rad), sn = std::sin(rad);
+        const double cx = frame.width / 2.0, cy = frame.height / 2.0;
+        const int sw = frame.width, sh = frame.height;
+        std::vector<unsigned char> out(static_cast<size_t>(W) * H * 3);
+        for (int y = 0; y < H; ++y)
+        {
+            const double py = framing.commonY + y + 0.5 - a.dy;
+            for (int x = 0; x < W; ++x)
+            {
+                // Do canvas para a foto: desfaz o deslocamento, o giro e o tamanho
+                const double px = framing.commonX + x + 0.5 - a.dx;
+                const double ux = (px * cs + py * sn) / a.scale, uy = (-px * sn + py * cs) / a.scale;
+                const double fx = std::clamp(cx + ux - 0.5, 0.0, sw - 1.0), fy = std::clamp(cy + uy - 0.5, 0.0, sh - 1.0);
+                const int x0 = static_cast<int>(fx), y0 = static_cast<int>(fy);
+                const int x1 = std::min(x0 + 1, sw - 1), y1 = std::min(y0 + 1, sh - 1);
+                const double tx = fx - x0, ty = fy - y0;
+                const unsigned char* p00 = &frame.pixels[(static_cast<size_t>(y0) * sw + x0) * 3];
+                const unsigned char* p01 = &frame.pixels[(static_cast<size_t>(y0) * sw + x1) * 3];
+                const unsigned char* p10 = &frame.pixels[(static_cast<size_t>(y1) * sw + x0) * 3];
+                const unsigned char* p11 = &frame.pixels[(static_cast<size_t>(y1) * sw + x1) * 3];
+                unsigned char* o = &out[(static_cast<size_t>(y) * W + x) * 3];
+                for (int c = 0; c < 3; ++c)
+                {
+                    const double v = (p00[c] * (1 - tx) + p01[c] * tx) * (1 - ty) + (p10[c] * (1 - tx) + p11[c] * tx) * ty;
+                    o[c] = static_cast<unsigned char>(std::clamp(static_cast<int>(std::lround(v)), 0, 255));
+                }
+            }
+        }
+        frame.pixels = std::move(out); frame.width = W; frame.height = H;
+    }
+
     Quality ParseQuality(const std::string& text)
     {
         if (text == "standard") return Quality::Standard;
@@ -789,6 +997,8 @@ namespace Export
                 error = "Could not read " + photos[i].filename().string();
                 return false;
             }
+            ApplyAlign(frame, options.framing, i);
+            ApplyFraming(frame, options.framing);
             decoded.push_back(std::move(frame));
             if (progress)
                 progress(static_cast<double>(i + 1) / photos.size(), "photos");
@@ -906,7 +1116,8 @@ namespace Export
             if (progress) progress(static_cast<double>(k) / (n + 1), "lenticular");
             RgbFrame frame;
             if (!LoadPhotoRgb(photos[static_cast<size_t>(k)], frame)) { error = "Could not read " + photos[static_cast<size_t>(k)].filename().string(); return false; }
-            const std::vector<unsigned char> fitted = Cover(frame, W, H);
+            ApplyAlign(frame, o.framing, static_cast<size_t>(k));
+            const std::vector<unsigned char> fitted = o.fit ? FitBand(frame, W, H, o.whiteBand) : Cover(frame, W, H, o.posX, o.posY);
             if (o.horizontalLenses)
             {
                 for (int y = 0; y < H; ++y)
@@ -1028,13 +1239,15 @@ namespace Export
     }
 
     bool ConvertPhoto(const fs::path& photo, const fs::path& dest, const std::string& format, Quality quality,
-                      std::string& error)
+                      std::string& error, const Framing& framing, int targetWidth, int targetHeight, size_t photoIndex)
     {
         const fs::path file = fs::path(dest).concat("." + format);
         std::string jpeg;
         RgbFrame image;
-        // De JPEG para JPG: o próprio arquivo, sem perder qualidade nem os dados da câmera
-        if (format == "jpg" && IsJpegPhoto(photo.filename().string()))
+        // De JPEG para JPG: o próprio arquivo, sem perder qualidade nem os dados da câmera (só quando a foto
+        // não vai ser recortada nem reduzida)
+        const bool reframe = framing.Active() || (framing.Canvas() && photoIndex < framing.align.size() && !framing.align[photoIndex].noop) || targetWidth > 0;
+        if (format == "jpg" && IsJpegPhoto(photo.filename().string()) && !reframe)
         {
             std::error_code ec;
             fs::copy_file(photo, file, fs::copy_options::overwrite_existing, ec);
@@ -1045,6 +1258,14 @@ namespace Export
         {
             error = "Could not read " + photo.filename().string();
             return false;
+        }
+        ApplyAlign(image, framing, photoIndex);
+        ApplyFraming(image, framing);
+        if (targetWidth > 0 && targetHeight > 0 && (image.width > targetWidth || image.height > targetHeight))
+        {
+            // Mesmo tamanho para todas: reduz mantendo a proporção (as fotos em pé ficam no tamanho trocado)
+            const bool portrait = image.height > image.width;
+            ResizeTo(image, portrait ? targetHeight : targetWidth, portrait ? targetWidth : targetHeight);
         }
         bool ok = false;
         if (format == "jpg")

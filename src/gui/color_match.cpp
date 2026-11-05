@@ -257,8 +257,17 @@ namespace ColorMatch
         RgbFrame frame;
         if (!LoadPhotoRgb(photo, frame) || frame.width < 8 || frame.height < 8)
             return out;
+        out.width = frame.width;
+        out.height = frame.height;
         if (region)
-            return region->found ? MeasureRegion(frame, *region) : out;
+            {
+            if (!region->found)
+                return out;
+            Stats r = MeasureRegion(frame, *region);
+            r.width = frame.width;
+            r.height = frame.height;
+            return r;
+        }
         const double* linear = Linear();
 
         // Brilho como o olho vê a foto: claridade média (L*, escala perceptiva) da foto

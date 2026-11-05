@@ -113,11 +113,12 @@
   let busyAction = "";
   let shootCancelling = false;   // pediu para cancelar, esperando o núcleo parar
   let shootCancelled = false;    // o bullet time atual foi cancelado
+  let lastShootAt = 0;           // quando o último disparo começou/terminou (as sessões que chegam logo depois são dele)
   let shootPlan = null;          // plano enviado no último disparo (para explicar recusas)
   let shootMissing = [];         // fotos recusadas no disparo atual: { camera, index, gap }
   let camSettings = [];          // configurações de cada câmera (evento cameraSettings)
   const csPending = new Set();   // "câmera|chave" enviados e ainda sem resposta ("*" = todas)
-  const csTest = { capturing: false, has: false };  // teste rápido do Camera settings
+  const csTest = { capturing: false, has: false, ratios: {} };  // teste rápido do Camera settings; ratios: proporção real medida por câmera no último Match
   let csPoll = 0;                // releitura a cada 3 s com a janela aberta
   let csRenderLater = false;     // chegou leitura nova com uma lista aberta: redesenha ao sair dela
   let cameras = [];              // última lista recebida (inclui as que estão conectando)
@@ -136,6 +137,11 @@
     // Modo teatro, como no YouTube: tela com barra embaixo e dois ângulos dentro
     // (para fora = entrar; para dentro = sair)
     // Modo teatro: só as setas (para fora = entrar; para dentro = sair), no botão igual ao da janela Project
+    // Framing: ⤢ (setas em diagonal para fora) amplia a prévia; ⤡ (para dentro) volta
+    // Align photos (pedaço 2 do Framing): dois quadros sobrepostos, um deles tracejado
+    alignPhotos: '<rect x="1.5" y="4.5" width="8" height="6"/><path d="M5 1.5h7.5V7" stroke-dasharray="2 1.5"/>',
+    enlargeIn: '<path d="M8 2.5h3.5V6M11.5 2.5L7.5 6.5M6 11.5H2.5V8M2.5 11.5L6.5 7.5"/>',
+    enlargeOut: '<path d="M11.5 2.5L7.5 6.5M7.5 3.5v3h3M2.5 11.5L6.5 7.5M6.5 10.5v-3h-3"/>',
     theaterIn: '<path d="M4.5 4L1.5 7l3 3M9.5 4l3 3-3 3"/>',
     theaterOut: '<path d="M1.5 4l3 3-3 3M12.5 4l-3 3 3 3"/>',
     up: '<path d="M3 9l4-4 4 4"/>',
@@ -153,6 +159,8 @@
     photo: '<rect x="1.5" y="2.5" width="11" height="9" rx="1"/><path d="M1.5 10l3.2-3.2 2.3 2.3 1.6-1.6 3.9 3.9"/><circle cx="9.6" cy="5.4" r="1"/>',
     menu: '<path d="M2.5 4h9M2.5 7h9M2.5 10h9"/>',
     close: '<path d="M3.5 3.5l7 7M10.5 3.5l-7 7"/>',
+    // Cortina do Split (Match, passo 3): duas setas, para os dois lados
+    curtain: '<path d="M4.5 4.5L2 7l2.5 2.5M9.5 4.5L12 7l-2.5 2.5M2 7h10"/>',
   };
   function icon(name, size) {
     const s = size || 14;
@@ -372,6 +380,7 @@
   // Cada ação registrada tem um texto e as duas funções (podem devolver uma Promise; false = não deu).
   const history = { undo: [], redo: [] };
   function recordAction(action) {
+    if (action.camera) ratioWarned = {};  // câmeras mudaram: o aviso "Mixed ratios" pode aparecer de novo
     history.undo.push(action);
     if (history.undo.length > 50) history.undo.shift();
     history.redo.length = 0;
@@ -388,6 +397,7 @@
     if (camerasBusyFor(a)) return;
     history.undo.pop();
     if (!a) { toast("Nothing to undo", TOAST_MS, { silent: true }); return; }
+    if (a.camera) ratioWarned = {};
     Promise.resolve(a.undo()).then((ok) => {
       if (ok === false) return;
       history.redo.push(a);
@@ -399,6 +409,7 @@
     if (camerasBusyFor(a)) return;
     history.redo.pop();
     if (!a) { toast("Nothing to redo", TOAST_MS, { silent: true }); return; }
+    if (a.camera) ratioWarned = {};
     Promise.resolve(a.redo()).then((ok) => {
       if (ok === false) return;
       history.undo.push(a);
@@ -414,20 +425,30 @@
   }, true);
   document.addEventListener("keydown", (e) => {
     if (!(e.metaKey || e.ctrlKey) || e.altKey || (e.key !== "z" && e.key !== "Z" && e.key !== "y")) return;
+    // Uma confirmação ou um aviso aberto: nada é desfeito até a janela sumir (decisão do dono, 2026-11-04)
+    if (!ui.dialogOverlay.classList.contains("hidden")) { e.preventDefault(); e.stopImmediatePropagation(); return; }
     const tag = e.target.tagName;
     // Dentro de um campo de texto, o desfazer é o do texto (caixas de marcar e botões não)
     if (tag === "TEXTAREA" || (tag === "INPUT" && !["checkbox", "radio", "button", "range"].includes(e.target.type))) return;
     e.preventDefault(); e.stopImmediatePropagation();
+    // Janela de digitar um nome aberta (fora do campo): também não desfaz nada do app
+    if (!$("promptOverlay").classList.contains("hidden")) return;
+    // Janela Match automatically (passos 1 e 3): desfaz as escolhas feitas nela (caixas e valores)
+    if (typeof csMatchHistoryActive === "function" && csMatchHistoryActive()) { if (e.key === "y" || e.shiftKey) csMatchRedo(); else csMatchUndo(); return; }
     if (e.key === "y" || e.shiftKey) doRedo(); else doUndo();
   }, true);
 
-  function dialog(title, text, actions) {
+  function dialog(title, text, actions, extra) {
     ui.dialogTitle.textContent = title;
     ui.dialogText.textContent = text;
     ui.dialogActions.innerHTML = "";
+    // Conteúdo extra abaixo do texto (ex.: as outras proporções no aviso "Mixed ratios")
+    const oldExtra = ui.dialogText.parentElement.querySelector(".dialog-extra");
+    if (oldExtra) oldExtra.remove();
+    if (extra) { extra.classList.add("dialog-extra"); ui.dialogText.after(extra); }
     actions.forEach((a) => {
       const b = document.createElement("button");
-      b.className = "btn " + (a.danger ? "btn-danger" : a.primary ? "btn-primary" : a.link ? "btn-link" : "btn-secondary");
+      b.className = "btn " + (a.danger ? "btn-danger" : a.primary ? "btn-primary" : a.link ? "btn-link" : "btn-secondary") + (a.left ? " btn-left" : "");
       b.textContent = a.label;
       b.addEventListener("click", () => { ui.dialogOverlay.classList.add("hidden"); a.onClick && a.onClick(); });
       ui.dialogActions.appendChild(b);
@@ -479,6 +500,12 @@
   // =================== Galeria: carrossel + foto grande ===================
   // Usada nas sessões e no "Reorder by photo". Com draggable, as miniaturas podem
   // ser arrastadas para mudar a ordem.
+  // Triângulo de alerta (proporção da foto diferente da informada)
+  const ALERT_SVG = "<svg width='14' height='14' viewBox='0 0 16 16' aria-hidden='true'><path d='M8 1.5 15 14H1z' fill='none' stroke='currentColor' stroke-width='1.5' stroke-linejoin='round'/><path d='M8 6v4' stroke='currentColor' stroke-width='1.6' stroke-linecap='round'/><circle cx='8' cy='12' r='.9' fill='currentColor'/></svg>";
+  // Texto da explicação do alerta de proporção (o mesmo na célula Ratio e na miniatura)
+  function ratioWhy(ratio) {
+    return "The last test shot from this camera came out " + ratio.shot + ", but the camera reports " + ratio.reported + ". The app sets what the camera accepts over USB; a setting in the camera menu may still change the shape of the photo. Check the aspect ratio in the camera menu, then take a new test shot.";
+  }
   function Gallery(root, opts) {
     root.innerHTML =
       '<div class="gallery-head"><div><div class="gallery-title"></div><div class="gallery-sub"></div></div><div class="gallery-actions"></div></div>' +
@@ -525,7 +552,9 @@
           // Miniatura com a proporção da foto (foto inteira, em pé ou deitada)
           if (opts.fitThumbs) {
             const probe = new Image();
-            probe.onload = () => img.style.setProperty("--ar", probe.naturalWidth + " / " + probe.naturalHeight);
+            probe.onload = () => {
+              img.style.setProperty("--ar", probe.naturalWidth + " / " + probe.naturalHeight);
+            };
             probe.src = url;
           }
         });
@@ -559,7 +588,32 @@
     }
 
     function markSelected(scroll) {
-      [...el.carousel.children].forEach((li, i) => { li.classList.toggle("selected", i === index); li.classList.toggle("multi", multi.size > 1 && multi.has(i)); });
+      [...el.carousel.children].forEach((li, i) => {
+        li.classList.toggle("selected", i === index); li.classList.toggle("multi", multi.size > 1 && multi.has(i));
+        // Foto que saiu numa proporção diferente da informada: a seleção fica âmbar tracejada (a etiqueta continua só o número)
+        if (opts.warnItem) {
+          const warn = !!opts.warnItem(items[i]);
+          li.classList.toggle("ratio-warn", warn);
+          // Ícone de alerta no canto da miniatura, com a explicação instantânea (data-itip)
+          let a = li.querySelector(".frame-alert");
+          if (warn && !a) {
+            a = document.createElement("span");
+            a.className = "frame-alert";
+            a.innerHTML = ALERT_SVG;
+            a.tabIndex = 0;
+            a.setAttribute("role", "img");
+            li.querySelector(".frame-img").appendChild(a);
+          }
+          if (warn) { const why = opts.warnTip ? opts.warnTip(items[i]) : ""; a.dataset.itip = why; a.setAttribute("aria-label", why); }
+          else if (a) a.remove();
+          // Etiqueta de texto no canto (ex.: "16:9" na sessão com proporções misturadas)
+          const text = warn && opts.warnLabel ? opts.warnLabel(items[i]) : "";
+          let lab = li.querySelector(".frame-ratio");
+          if (text && !lab) { lab = document.createElement("span"); lab.className = "frame-ratio"; li.querySelector(".frame-img").appendChild(lab); }
+          if (text) lab.textContent = text; else if (lab) lab.remove();
+          if (a && text) a.remove();  // a etiqueta substitui o ícone
+        }
+      });
       const active = el.carousel.children[index];
       if (scroll && active) active.scrollIntoView({ block: "nearest", inline: "nearest" });
     }
@@ -602,11 +656,11 @@
     }
 
     if (opts.onContext) root.querySelector(".stage img").addEventListener("contextmenu", (e) => { if (items[index]) { e.preventDefault(); opts.onContext(e); } });
-    function select(i) {
+    function select(i, scroll) {
       if (!items.length) return;
       index = (i + items.length) % items.length;
       multi = new Set(); anchor = index;
-      markSelected(true);
+      markSelected(scroll !== false);  // (o play passa false: marca a miniatura sem rolar a fileira)
       showLarge();
     }
     function extendTo(i) {
@@ -800,7 +854,8 @@
         root.classList.toggle("draggable", draggable);
         render();
       },
-      setHead(title, sub) { el.title.textContent = title || ""; el.sub.textContent = sub || ""; },
+      setHead(title, sub, tag) { el.title.textContent = title || ""; if (tag) el.title.appendChild(tag); el.sub.textContent = sub || ""; },
+      refreshMarks() { markSelected(false); },  // (a proporção medida chegou depois das fotos)
       setActions(nodes) { el.actions.innerHTML = ""; nodes.forEach((n) => el.actions.appendChild(n)); },
       // Botões sobre a foto grande (canto superior direito)
       setStageTools(nodes) {
@@ -814,13 +869,15 @@
         index = Math.min(selectIndex || 0, Math.max(0, items.length - 1));
         el.img.removeAttribute("src");
         render();
+        // Outra sessão (começa da primeira foto): a fileira volta ao início, mesmo que a anterior tivesse sido rolada
+        if (!selectIndex) el.carousel.scrollTo({ left: 0, behavior: "instant" });
         showLarge();
         if (!items.length) message("");
       },
       message,
       select,
-      next() { select(index + 1); },
-      prev() { select(index - 1); },
+      next(scroll) { select(index + 1, scroll); },
+      prev(scroll) { select(index - 1, scroll); },
       extendTo,
       get selection() { return multi.size > 1 ? [...multi].sort((a, b) => a - b) : [index]; },
       get dragging() { return !!free; },
@@ -1160,6 +1217,10 @@
   let photoKeys = false;
   const sessionGallery = Gallery(ui.sessionGallery, {
     multi: true,
+    // Proporções misturadas na sessão (Parte 3 da Proporção): as fotos fora da proporção mais comum ganham
+    // borda âmbar tracejada e a proporção no canto
+    warnItem: (item) => { const r = ratioInfoCached(item.session); return !!(r && r.mixed && r.marked.includes(item.group)); },
+    warnLabel: (item) => { const r = ratioInfoCached(item.session); return r ? r.byGroup[item.group] || "" : ""; },
     onPick: () => { photoKeys = true; },
     // Arrastar uma miniatura: para o lado muda a ordem; até o botão da lixeira apaga
     freeDrag: true,
@@ -1212,12 +1273,21 @@
   const exitFullBtn = button("", () => setFullscreen(false), { icon: "shrink", title: "Exit full screen (Esc)" });
   // Na tela cheia a lixeira apaga a sessão (como fora dela); uma foto: botão direito ou a tecla Delete
   const fullTrashBtn = button("Delete session", deleteCurrentSession, { title: "Delete this session (a photo: right-click it, or the Delete key)" });
+  // Sem espaço na barra da tela cheia (fitHead), os botões com texto viram só o ícone
+  function withShortIcon(b, name) {
+    const text = b.lastChild;
+    const full = el("span", "hd-full"); full.appendChild(text);
+    const short = el("span", "hd-short"); short.innerHTML = icon(name);
+    b.append(full, short);
+    return b;
+  }
+  withShortIcon(fullTrashBtn, "trash");
   // "Reverse loop" (ligado por padrão): o play vai e volta (1, 2, 3, 2, 1...);
   // desligado, recomeça do início (1, 2, 3, 1, 2, 3...)
   const reverseLoopOption = document.createElement("label");
   reverseLoopOption.className = "log-option play-option";
   reverseLoopOption.title = "Play back and forth (1, 2, 3, 2, 1...)";
-  reverseLoopOption.innerHTML = '<input type="checkbox" checked> Reverse loop';
+  reverseLoopOption.innerHTML = '<input type="checkbox" checked> <span class="hd-full">Reverse loop</span><span class="hd-short">Loop</span>';
   const reverseLoop = reverseLoopOption.querySelector("input");
 
   // Velocidade do play: de 0,25x a 5x; 1x = 220 ms por foto
@@ -1258,13 +1328,19 @@
   fullTrashOpenBtn.type = "button";
   fullTrashOpenBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 4h9M5.5 4V2.5h3V4M3.5 4l.6 7.5h5.8l.6-7.5"/></svg><span class="trash-count-full"></span><span class="trash-size trash-size-full"></span>';
   fullTrashOpenBtn.addEventListener("click", () => openTrash());
-  const viewActions = [
+  // Na tela cheia, ‹ ▶ › Speed e Reverse loop ficam sobre a foto grande, no canto de cima à direita, e aparecem
+  // quando o mouse se mexe sobre a foto (somem 2 s depois; com o foco do teclado neles, ficam), como no passo 3
+  // do Match. Na barra de cima ficam só Reorder, Delete session e sair da tela cheia.
+  const stageCtrls = el("div", "cs-review-ctrls stage-ctrls");
+  stageCtrls.append(
     button("", () => { stopPlay(); sessionGallery.prev(); }, { icon: "left", title: "Previous photo" }),
     playBtn,
     button("", () => { stopPlay(); sessionGallery.next(); }, { icon: "right", title: "Next photo" }),
     speedGroup,
-    reverseLoopOption,
-    button("Reorder", startReorder, { title: "Change the order of the photos in this session" }),
+    reverseLoopOption);
+  const showStageCtrls = fadeControls(ui.sessionGallery.querySelector(".stage"), stageCtrls);
+  const viewActions = [
+    withShortIcon(button("Reorder", startReorder, { title: "Change the order of the photos in this session" }), "swap"),
     fullTrashBtn,
     exitFullBtn,
   ];
@@ -1275,6 +1351,44 @@
     title.replaceWith(row);
     row.append(title, fullTrashOpenBtn);
   }
+  // Barra da tela cheia: nada quebra linha; sem espaço, some primeiro o que importa menos (como fitTopbar)
+  const HEAD_FIT_STEPS = 5;
+  let headFitQueued = false;
+  let headFitting = false;
+  function fitHead() {
+    headFitQueued = false;
+    const head = ui.sessionGallery.querySelector(".gallery-head");
+    if (!head || headFitting) return;
+    headFitting = true;
+    const wasWrap = head.classList.contains("wrap");
+    const before = head.offsetHeight;
+    head.style.height = "";
+    head.classList.remove("wrap");
+    for (let k = 1; k <= HEAD_FIT_STEPS; k++) head.classList.remove("fit-" + k);
+    if (isFullscreen()) {
+      const overflows = () => head.scrollWidth > head.clientWidth + 1;
+      // 1) Os controles encostaram na lixeira: linha nova abaixo. 2) Ainda sem espaço: some o que importa menos
+      if (overflows()) head.classList.add("wrap");
+      const actions = head.querySelector(".gallery-actions");
+      const actionsOverflow = () => actions && actions.scrollWidth > actions.clientWidth + 1;
+      for (let k = 1; k <= HEAD_FIT_STEPS && (head.classList.contains("wrap") ? actionsOverflow() : overflows()); k++) head.classList.add("fit-" + k);
+    }
+    // A mudança de uma para duas linhas (e volta) anima a altura em vez de pular
+    const nowWrap = head.classList.contains("wrap");
+    if (nowWrap !== wasWrap && before) {
+      const after = head.offsetHeight;
+      head.style.height = before + "px";
+      void head.offsetHeight;
+      head.style.height = after + "px";
+      setTimeout(() => { head.style.height = ""; }, 200);
+    }
+    headFitting = false;
+  }
+  function queueHeadFit() { if (!headFitQueued) { headFitQueued = true; requestAnimationFrame(fitHead); } }
+  window.addEventListener("resize", queueHeadFit);
+  // (as classes que o próprio fitHead põe na barra não contam, senão ele rodaria sem parar)
+  new MutationObserver((list) => { if (list.some((m) => !m.target.classList || !m.target.classList.contains("gallery-head"))) queueHeadFit(); })
+    .observe(ui.sessionGallery, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ["class"] });
   const editActions = [
     button("", () => sessionGallery.moveSelected(-1), { icon: "left", title: "Move the selected photo earlier" }),
     button("", () => sessionGallery.moveSelected(1), { icon: "right", title: "Move the selected photo later" }),
@@ -1307,6 +1421,12 @@
     const known = sessions.map((x) => x.name);
     sessions = list || [];
     updateButtons();
+    // Proporções: sessões novas de um disparo são medidas já (e avisam se misturadas); o resto na fila
+    sessions.forEach((x) => { const r = String(x.crop || "").split("|")[0]; if (RATIOS[r]) sessionCrop[x.name] = r; });
+    const fresh = known.length ? sessions.filter((x) => !known.includes(x.name)) : [];
+    const afterShoot = busyAction === "shoot" || Date.now() - lastShootAt < 20000;
+    if (afterShoot) fresh.forEach((x) => measureSessionRatios(x).then((info) => maybeWarnMixed(x, info, fresh.map((f) => f.name))));
+    setTimeout(measureAllSessions, 0);
 
     const newest = sessions[0] || null;
     const current = currentSession && sessions.find((x) => x.name === currentSession.name);
@@ -1350,6 +1470,29 @@
     return t;
   }
   // Etiqueta de sessão com fotos que a câmera recusou no disparo (arquivo ".missing")
+  // Fotos apagadas de uma sessão (estão na lixeira): etiqueta "n deleted", no desenho do "n missing"
+  // (decisão do dono, 2026-11-04). Some quando as fotos voltam da lixeira ou a lixeira as descarta.
+  let deletedBySession = {};
+  function deletedTag(count) {
+    const t = document.createElement("span");
+    t.className = "missing-tag deleted-tag";
+    t.textContent = count + " deleted";
+    t.dataset.itip = plural(count, "photo of this session is", "photos of this session are") + " in the Trash (top bar). Restore brings " + (count === 1 ? "it" : "them") + " back.";
+    return t;
+  }
+  function refreshDeleted() {
+    if (typeof window.trashList !== "function") return;
+    Promise.resolve(window.trashList()).then((r) => {
+      const map = {};
+      (r && r.items || []).forEach((i) => { if (!i.whole && !i.restored && !i.isProject && i.session && (+i.photos || 0) > 0) map[i.session] = (map[i.session] || 0) + (+i.photos || 0); });
+      if (JSON.stringify(map) === JSON.stringify(deletedBySession)) return;
+      deletedBySession = map;
+      renderSessionListSoon();
+      if (currentSession) sessionHead(currentSession);
+      if (!$("projectOverlay").classList.contains("hidden") && !(document.activeElement && document.activeElement.closest && document.activeElement.closest("#projectList input[type=text]"))) renderProjectWindow();
+      if (!$("exportOverlay").classList.contains("hidden")) renderExportList();
+    }, () => {});
+  }
   function missingTag(count) {
     const t = document.createElement("span");
     t.className = "missing-tag";
@@ -1425,6 +1568,13 @@
     ui.sessionList.querySelectorAll("li.folder").forEach((x) => { x.tabIndex = x === row ? 0 : -1; });
     row.focus();
   }
+  // Redesenho "de fundo" (medição das proporções, lista nova vinda do programa): com o botão do mouse apertado na
+  // lista, espera soltar. Redesenhar no meio do clique trocava a linha e o clique se perdia (Record 1, 2026-11-04).
+  let listHeld = false, listRenderPending = false;
+  ui.sessionList.addEventListener("pointerdown", () => { listHeld = true; }, true);
+  window.addEventListener("pointerup", () => { listHeld = false; if (listRenderPending) { listRenderPending = false; setTimeout(() => { if (!sessDrag) renderSessionList(); }, 0); } }, true);
+  window.addEventListener("pointercancel", () => { listHeld = false; }, true);
+  function renderSessionListSoon() { if (listHeld || sessDrag) { listRenderPending = true; return; } renderSessionList(); }
   function renderSessionList() {
     if (sessDrag) sessEndDrag(null);
     pruneSelection();  // a linha arrastada vai sumir: termina o arraste
@@ -1465,12 +1615,17 @@
       li.className = "folder" + (currentSession && currentSession.name === s.name ? " active" : "");
       li.dataset.name = s.name;
       li.dataset.tip = (s.label ? s.label + " · " : "") + label.date;  // legenda da barra só de ícones (tela cheia)
+      const mixed = ratioInfoCached(s.name) && ratioInfoCached(s.name).mixed;
+      const warns = [s.missing > 0 ? s.missing + " missing" : "", deletedBySession[s.name] ? deletedBySession[s.name] + " deleted" : "", mixed ? "Mixed ratios" : ""].filter(Boolean);
+      if (warns.length) { li.classList.add("warn"); li.dataset.tipWarn = warns.join(" · "); }  // aviso âmbar: o ícone da barra só de ícones também fica âmbar
       if (projectOpen && !s.inProject && !notInProjectOpen) li.classList.add("hidden");
       li.innerHTML = icon("session", 16) + '<div><div class="folder-date"></div><div class="folder-meta"></div></div>';
       if (sessSel.has(s.name) && selectionActive()) li.classList.add("multi");
       li.querySelector(".folder-date").textContent = s.label ? s.label + " · " + label.date : label.date;
       li.querySelector(".folder-meta").textContent = [plural(count, "photo", "photos"), label.detail].filter(Boolean).join(" · ");
+      if (deletedBySession[s.name]) li.querySelector(".folder-meta").after(deletedTag(deletedBySession[s.name]));
       if (s.missing > 0) li.querySelector(".folder-meta").after(missingTag(s.missing));
+      if (mixed) li.querySelector(".folder-meta").after(mixedTag(s.name, ratioInfoCached(s.name)));
       if (projectOpen) {
         // Só a etiqueta de editadas (estar no projeto é a posição na lista)
         if (s.inProject && s.edited > 0) li.querySelector(".folder-meta").after(projectTag(s));
@@ -1610,9 +1765,154 @@
 
   function sessionHead(session) {
     const label = sessionLabel(session.name);
+    const r = ratioInfoCached(session.name);
+    const mixed = r && r.mixed;
     sessionGallery.setHead(label.date,  // a data já tem os segundos
       editing.on ? "Drag the photos, or select and use the arrows (Shift+click or " + (upd.info && upd.info.os === "windows" ? "Ctrl" : "Cmd") + "+click selects several). Then save the order."
-                 : label.detail);
+                 : [mixed ? ratioShortText(r) : "", label.detail].filter(Boolean).join(" · "),
+      headTags(session, r));
+  }
+  function headTags(session, r) {
+    const f = document.createDocumentFragment();
+    if (r && r.mixed) f.appendChild(mixedTag(session.name, r));
+    if (deletedBySession[session.name]) f.appendChild(deletedTag(deletedBySession[session.name]));
+    return f.childNodes.length ? f : null;
+  }
+
+  // =================== Proporções misturadas numa sessão (Parte 3 da Proporção) ===================
+  // O app mede a proporção de cada foto na prévia (como o Test shot) e compara entre as câmeras da sessão.
+  // Fotos fora da proporção mais comum ganham a marca; a sessão ganha a etiqueta "Mixed ratios" (lista,
+  // cabeçalho, barra de ícones) e, no primeiro disparo com mistura, uma janela com o que fazer.
+  const RATIOS = { "3:2": 3 / 2, "4:3": 4 / 3, "16:9": 16 / 9, "1:1": 1 };
+  const RATIO_ORDER = ["3:2", "4:3", "16:9", "1:1"];
+  const ratioInfo = {};          // sessão → { key, byGroup, mixed, common, marked, keep, suggest, counts }
+  const ratioPending = {};       // sessão → Promise da medida em andamento
+  let ratioWarned = {};          // sessão → assinatura já avisada (só em memória: ao reabrir o app avisa de novo)
+  const ratioLogged = new Set(); // sessões já anotadas na Activity neste uso do app
+  let sessionCrop = {};          // sessão → proporção escolhida para o Export ("Crop on export")
+  try { sessionCrop = JSON.parse(localStorage.getItem("stillpoint.sessionCrop") || "{}") || {}; } catch (e) {}
+  function saveSessionCrop() { try { localStorage.setItem("stillpoint.sessionCrop", JSON.stringify(sessionCrop)); } catch (e) {} }
+  function ratioKey(session) { return session.photos.map((p) => p.file).join("|"); }
+  function ratioInfoCached(name) { const r = ratioInfo[name]; return r && r.done ? r : null; }
+  // Quanto da foto sobra ao recortar da proporção a para a b (fração da área)
+  function keepFraction(a, b) { const ra = RATIOS[a], rb = RATIOS[b]; if (!ra || !rb) return 1; return rb < ra ? rb / ra : ra / rb; }
+  function measureSessionRatios(session) {
+    const key = ratioKey(session);
+    const have = ratioInfo[session.name];
+    if (have && have.key === key) return ratioPending[session.name] || Promise.resolve(have);
+    const items = sessionItems(session);
+    const found = {};
+    const probes = items.filter((i) => i.file && i.previewable).map((item) => sessionPhoto(session.name, item.file, 320).then((url) => new Promise((done) => {
+      if (!url) return done();
+      const probe = new Image();
+      probe.onload = () => { found[item.group] = ratioName(probe.naturalWidth, probe.naturalHeight); done(); };
+      probe.onerror = () => done();
+      probe.src = url;
+    })));
+    const pending = Promise.all(probes).then(() => {
+      delete ratioPending[session.name];
+      const groups = Object.keys(found);
+      const counts = {};
+      groups.forEach((g) => { counts[found[g]] = (counts[found[g]] || 0) + 1; });
+      const present = Object.keys(counts);
+      // Proporção mais comum; em empate, a de menor área (decisão do dono, 2026-11-02)
+      // (a "comum" em empate é a de maior área num sensor 3:2, ex.: 3 em 3:2 e 3 em 16:9 → comum 3:2, marcadas as 16:9)
+      const common = present.slice().sort((a, b) => counts[b] - counts[a] || keepFraction("3:2", b) - keepFraction("3:2", a) || RATIO_ORDER.indexOf(a) - RATIO_ORDER.indexOf(b))[0] || "";
+      const marked = groups.filter((g) => found[g] !== common);
+      // Quanto sobra, em média por foto, ao recortar tudo para cada proporção
+      const keep = {};
+      RATIO_ORDER.forEach((t) => { keep[t] = groups.length ? Math.round(groups.reduce((sum, g) => sum + keepFraction(found[g], t), 0) / groups.length * 100) : 100; });
+      // Sugestão: a proporção presente na sessão que perde menos pixels
+      const suggest = present.slice().sort((a, b) => keep[b] - keep[a] || counts[b] - counts[a])[0] || common;
+      const info = { key, done: true, byGroup: found, counts, present, common, marked, keep, suggest, mixed: present.length > 1 };
+      ratioInfo[session.name] = info;
+      if (info.mixed && !ratioLogged.has(session.name)) { ratioLogged.add(session.name); log("Mixed ratios: " + ratioText(info, session), "warn", "Open Camera settings to match the cameras, or crop on export."); }
+      // Na tela: miniaturas, cabeçalho e lista
+      if (currentSession && currentSession.name === session.name) { sessionGallery.refreshMarks(); if (!playTimer) sessionHead(session); }
+      renderSessionListSoon();
+      if (!$("projectOverlay").classList.contains("hidden") && !(document.activeElement && document.activeElement.closest && document.activeElement.closest("#projectList input[type=text]"))) renderProjectWindow();  // (não no meio de digitar um rótulo)
+      return info;
+    });
+    ratioInfo[session.name] = { key, done: false };
+    ratioPending[session.name] = pending;
+    return pending;
+  }
+  // Mede as sessões ainda sem medida, uma de cada vez (as etiquetas da lista aparecem conforme ficam prontas)
+  let ratioQueueRunning = false;
+  function measureAllSessions() {
+    if (ratioQueueRunning) return;
+    const next = sessions.find((s) => { const r = ratioInfo[s.name]; return !r || r.key !== ratioKey(s); });
+    if (!next) return;
+    ratioQueueRunning = true;
+    measureSessionRatios(next).then(() => { ratioQueueRunning = false; measureAllSessions(); }, () => { ratioQueueRunning = false; });
+  }
+  // Número da câmera na sessão ("02"), a partir do grupo "02_T7_1"
+  function groupNumber(g) { return g.replace(/_.*$/, ""); }
+  // "Cameras 02 and 04 shot 16:9; the others 3:2." (três proporções: "Camera 02 shot 16:9, camera 04 shot 4:3; the others 3:2.")
+  function ratioText(info) {
+    const parts = info.present.filter((r) => r !== info.common).map((r) => {
+      const cams = Object.keys(info.byGroup).filter((g) => info.byGroup[g] === r).map(groupNumber).sort();
+      const who = cams.length === 1 ? cams[0] : cams.slice(0, -1).join(", ") + " and " + cams[cams.length - 1];
+      return { plural: cams.length > 1, text: who + " shot " + r };
+    });
+    const list = parts.map((p, i) => (i === 0 ? (p.plural ? "Cameras " : "Camera ") : (p.plural ? "cameras " : "camera ")) + p.text).join(", ");
+    return list + "; the others " + info.common + ".";
+  }
+  // "2 shot 16:9" (subtítulo da sessão)
+  function ratioShortText(info) {
+    return info.present.filter((r) => r !== info.common).map((r) => Object.keys(info.byGroup).filter((g) => info.byGroup[g] === r).length + " shot " + r).join(", ");
+  }
+  function mixedTipText(name, info) {
+    return ratioText(info) + (sessionCrop[name] ? " Crop on export: " + sessionCrop[name] + " (keeps " + info.keep[sessionCrop[name]] + "%)." : "");
+  }
+  function mixedTag(name, info) {
+    const t = el("span", "missing-tag mixed-tag", "Mixed ratios");
+    t.dataset.itip = mixedTipText(name, info);
+    return t;
+  }
+  function ratioButtonLabel(r, info) { return "Crop on export to " + r + " (keeps " + info.keep[r] + "%)"; }
+  function chooseSessionCrop(name, r, info) {
+    sessionCrop[name] = r;
+    saveSessionCrop();
+    const s = sessions.find((x) => x.name === name);
+    if (s) { s.crop = r + "|0.500|0.500"; if (typeof window.setSessionCrop === "function") window.setSessionCrop(name, s.crop); }
+    if (exp.settings[name]) exp.settings[name].crop.loaded = false;  // o Export relê a escolha
+    log("Crop on export: " + r + " for " + sessionLabel(name).date, "ok", "Keeps " + info.keep[r] + "% of the photos on average. The photos are not changed; Export sessions will use it.");
+    if (currentSession && currentSession.name === name) sessionHead(currentSession);
+  }
+  // Aviso (janela), uma vez por combinação de câmeras/proporções por uso do app
+  // batch: as sessões do mesmo disparo ("Sessions" > 1); a escolha feita na janela vale para todas as misturadas
+  function maybeWarnMixed(session, info, batch) {
+    if (!info.mixed) return;
+    const names = batch && batch.length ? batch : [session.name];
+    let memo = null;
+    const chooseAll = (r) => { if (memo) memo.choice = r; names.forEach((n) => {
+      const s2 = sessions.find((x) => x.name === n);
+      if (!s2) return;
+      measureSessionRatios(s2).then((i2) => { if (i2 && i2.mixed && !sessionCrop[n]) chooseSessionCrop(n, r, i2); });
+    }); };
+    const sig = Object.keys(info.byGroup).sort().map((g) => g + "=" + info.byGroup[g]).join(",");
+    // Já avisado nesta combinação: a escolha feita na janela vale também para os disparos seguintes (até mudar o
+    // Camera settings, que faz o aviso voltar). "Keep as shot" não guarda nada.
+    if (ratioWarned[sig]) { const c = ratioWarned[sig].choice; if (c && !sessionCrop[session.name]) chooseSessionCrop(session.name, c, info); return; }
+    memo = ratioWarned[sig] = { choice: null };
+    // Linha do disparo em âmbar
+    if (/^Done/.test(ui.progress.textContent) && !/Mixed ratios/.test(ui.progress.textContent)) { ui.progress.textContent += " · Mixed ratios"; ui.progress.classList.add("warn"); }
+    const others = el("div", "ratio-others");
+    others.appendChild(el("span", "ratio-others-label", "Other ratios on export"));
+    RATIO_ORDER.filter((r) => r !== info.suggest).forEach((r) => {
+      const b = el("button", "btn btn-secondary btn-small ratio-chip"); b.type = "button";
+      b.appendChild(document.createTextNode(r + " "));
+      b.appendChild(el("span", "dim", "· keeps " + info.keep[r] + "%"));
+      b.addEventListener("click", () => { ui.dialogOverlay.classList.add("hidden"); chooseAll(r); });
+      others.appendChild(b);
+    });
+    dialog("Mixed ratios",
+      ratioText(info) + "\n\nThe photos in " + (names.length > 1 ? "the " + names.length + " sessions of this shoot" : "this session") + " do not all have the same shape. You can match the cameras, or crop every photo to one ratio when you export (the photos are not changed).",
+      [{ label: "Keep as shot", link: true, left: true },
+       { label: "Open Camera settings", onClick: () => $("camSettingsBtn").click() },
+       { label: ratioButtonLabel(info.suggest, info), primary: true, onClick: () => chooseAll(info.suggest) }],
+      others);
   }
 
   function showSession(session, keepIndex) {
@@ -1633,6 +1933,7 @@
     const items = sessionItems(session);
     sessionTitles = items.map((i) => i.title).join("|");
     sessionGallery.setItems(items, keepIndex ? sessionGallery.index : 0);
+    measureSessionRatios(session);  // (as marcas de proporção aparecem quando a medida fica pronta)
     if (resume && isFullscreen() && !editing.on) togglePlay();
   }
 
@@ -1718,6 +2019,8 @@
     if (!on) setSideWide(false);
     hideRailTip();
     sessionGallery.setActions(currentActions());
+    queueHeadFit();
+    if (entering) showStageCtrls(CTRLS_REVEAL_MS);  // os controles sobre a foto já aparecem ao entrar
     // Entrar na tela cheia já toca a sessão
     if (entering && !playTimer && !editing.on) togglePlay();
   }
@@ -1758,6 +2061,8 @@
     if (t.hasAttribute("title")) { t.dataset.savedTitle = t.title; t.removeAttribute("title"); }
     railTipOn = t;
     railTip.textContent = text;
+    // A parte do aviso (data-tip-warn) em âmbar
+    if (t.dataset.tipWarn) { railTip.appendChild(document.createTextNode(" · ")); railTip.appendChild(el("span", "warn", t.dataset.tipWarn)); }
     const r = t.getBoundingClientRect();
     railTip.style.left = (sideAside.getBoundingClientRect().right + 8) + "px";
     railTip.style.top = (r.top + r.height / 2) + "px";
@@ -1766,6 +2071,59 @@
   sideAside.addEventListener("pointerout", (e) => { if (railTipOn && !(e.relatedTarget && railTipOn.contains(e.relatedTarget))) hideRailTip(); });
   sideAside.addEventListener("pointerdown", hideRailTip);
   sideAside.addEventListener("scroll", hideRailTip);
+  // A mesma legenda na lista de sessões do Export quando ela está só com miniaturas (tela "Align photos")
+  {
+    const list = $("exportList");
+    list.addEventListener("pointerover", (e) => {
+      if (!list.closest(".export-body").classList.contains("aligning") || e.pointerType === "touch") return;
+      const t = e.target.closest(".export-item");
+      if (!t || t === railTipOn || !t.dataset.tip) return;
+      hideRailTip();
+      if (t.hasAttribute("title")) { t.dataset.savedTitle = t.title; t.removeAttribute("title"); }
+      railTipOn = t;
+      railTip.textContent = t.dataset.tip;
+      if (t.dataset.tipWarn) { railTip.appendChild(document.createTextNode(" · ")); railTip.appendChild(el("span", "warn", t.dataset.tipWarn)); }
+      const r = t.getBoundingClientRect();
+      railTip.style.left = (list.getBoundingClientRect().right + 8) + "px";
+      railTip.style.top = (r.top + r.height / 2) + "px";
+      railTip.classList.remove("hidden");
+    });
+    list.addEventListener("pointerout", (e) => { if (railTipOn && list.contains(railTipOn) && !(e.relatedTarget && railTipOn.contains(e.relatedTarget))) hideRailTip(); });
+    list.addEventListener("pointerdown", hideRailTip);
+    list.addEventListener("scroll", hideRailTip);
+  }
+  // Explicação instantânea ([data-itip]): uma caixa no visual do app, embaixo do elemento, sem a espera da
+  // legenda do sistema. Usada no ícone de alerta da proporção (Camera settings).
+  const itip = el("div", "itip hidden");
+  document.body.appendChild(itip);
+  let itipOn = null, itipTitles = [];
+  function hideItip() {
+    itip.classList.add("hidden"); itipOn = null;
+    itipTitles.forEach(([n, title]) => n.setAttribute("title", title)); itipTitles = [];
+  }
+  function showItip(t) {
+    if (!t || t === itipOn) return;
+    hideItip();
+    itipOn = t;
+    // Sem a legenda do sistema (ex.: o nome da câmera na miniatura) por cima da caixa
+    for (let n = t; n && n.nodeType === 1; n = n.parentElement) if (n.hasAttribute("title")) { itipTitles.push([n, n.getAttribute("title")]); n.removeAttribute("title"); }
+    itip.textContent = t.dataset.itip;
+    itip.classList.remove("hidden");
+    const r = t.getBoundingClientRect();
+    const w = itip.offsetWidth, h = itip.offsetHeight;
+    let left = r.left + r.width / 2 - w / 2;
+    left = Math.max(8, Math.min(left, window.innerWidth - w - 8));
+    let top = r.bottom + 8;
+    if (top + h > window.innerHeight - 8) top = r.top - h - 8;
+    itip.style.left = left + "px";
+    itip.style.top = top + "px";
+  }
+  document.addEventListener("pointerover", (e) => { if (e.pointerType !== "touch") showItip(e.target.closest("[data-itip]")); });
+  document.addEventListener("pointerout", (e) => { if (itipOn && !(e.relatedTarget && itipOn.contains(e.relatedTarget))) hideItip(); });
+  document.addEventListener("focusin", (e) => showItip(e.target.closest("[data-itip]")));
+  document.addEventListener("focusout", hideItip);
+  document.addEventListener("pointerdown", hideItip, true);
+  document.addEventListener("scroll", hideItip, true);
   // Teclas de seleção apertadas: o botão "Add to project" não reage ao ponteiro (o clique só marca)
   const modKeys = (e) => document.body.classList.toggle("mod-keys", e.metaKey || e.ctrlKey || e.shiftKey);
   document.addEventListener("keydown", modKeys, true);
@@ -1947,11 +2305,11 @@
   let playDirection = 1;
   function playStep() {
     const count = sessionGallery.items.length;
-    if (count < 2 || !reverseLoop.checked) return sessionGallery.next();
+    if (count < 2 || !reverseLoop.checked) return sessionGallery.next(false);
     let i = sessionGallery.index + playDirection;
     if (i >= count) { playDirection = -1; i = count - 2; }
     else if (i < 0) { playDirection = 1; i = 1; }
-    sessionGallery.select(i);
+    sessionGallery.select(i, false);  // sem rolar a fileira: só a marca da miniatura anda
   }
 
   function stopPlay() {
@@ -1986,6 +2344,9 @@
   const csGallery = Gallery($("csGallery"), {
     draggable: false,
     fitThumbs: true,
+    // Foto que saiu numa proporção diferente da que a câmera informa (medida pelo Match): seleção âmbar tracejada
+    warnItem: (item) => !!(csTest.ratios[item.name] && csTest.ratios[item.name].differs),
+    warnTip: (item) => ratioWhy(csTest.ratios[item.name]),
     load: (item, size) => orderPhoto(item.session, item.file, size),
   });
   // Só a fileira de miniaturas (maiores); clicar numa abre a foto grande por cima da
@@ -2147,22 +2508,57 @@
                    ["lenticular", "Lenticular", "interlaced TIFF for a lens sheet"]];
   const OUTPUT_KINDS = OUTPUTS.map(([k]) => k);
   const OUTPUT_KEYS = ["outputs", "photos", "seq", "lent", "naming"];
-  const exp = { mode: "photos", exitAfter: false, selected: new Set(), active: "", settings: {}, heic: { ok: true, reason: "" },
-                timer: null, frame: 0, photo: 0, sameForAll: true, project: false };
+  const exp = { step: 1, mode: "photos", exitAfter: false, selected: new Set(), active: "", settings: {}, heic: { ok: true, reason: "" },
+                timer: null, frame: 0, photo: 0, project: false,
+                // "Same settings for all sessions", uma por saída (decisão do dono, 2026-11-04); o nome é sempre comum
+                same: { photos: true, sequence: true, lenticular: true }, sameFraming: true };
+  const OUTPUT_KEY_OF = { photos: "photos", sequence: "seq", lenticular: "lent" };
+  function anyPerSession() { return OUTPUT_KINDS.some((k) => !exp.same[k]); }
+  // O que se compara entre as sessões em cada passo: o Framing (passo 1) ou as saídas (passo 2; uma saída ou todas)
+  function stepConfig(name, step, kind) {
+    const st = settingsFor(name);
+    if (step === 1) { const s = sessions.find((x) => x.name === name); if (s) cropLoad(s, st); return st.crop.ratio + "|" + st.crop.x.toFixed(3) + "|" + st.crop.y.toFixed(3); }
+    const kinds = kind ? [kind] : OUTPUT_KINDS;
+    return JSON.stringify(kinds.map((k) => [!!st.outputs[k], st[OUTPUT_KEY_OF[k]]]));
+  }
+  // "Different": as sessões marcadas que fogem da configuração mais comum (empate: a da primeira da lista). Não depende
+  // de qual sessão está aberta, então a etiqueta não muda de lugar ao clicar nas sessões.
+  function differentSessions(step, kind) {
+    const chosen = chosenSessions(); if (chosen.length < 2) return new Set();
+    const keys = chosen.map((o) => stepConfig(o.name, step, kind)), count = {};
+    keys.forEach((k) => { count[k] = (count[k] || 0) + 1; });
+    let common = keys[0]; keys.forEach((k) => { if (count[k] > count[common]) common = k; });
+    return new Set(chosen.filter((o, i) => keys[i] !== common).map((o) => o.name));
+  }
+  // Estado da caixa "Same … for all sessions" (o mesmo nos dois passos): marcada = iguais e ligadas (mudar uma muda
+  // todas); traço = algumas diferentes; vazia = iguais, mas cada uma pode mudar sozinha
+  function sameState(linked, step, kind) {
+    const differs = differentSessions(step, kind).size > 0;
+    return differs ? "mixed" : linked ? "on" : "off";
+  }
 
   // Configuração da sessão aberta igual nas outras (saídas ligadas, as três configurações e o nome)
+  // As duas sessões têm a mesma configuração numa saída (framing: proporção, posição e Same size)
+  function sameKind(a, b, kind) {
+    const x = settingsFor(a), y = settingsFor(b);
+    const keys = kind === "framing" ? ["crop"] : kind === "photos" ? ["photos"] : kind === "sequence" ? ["seq"] : ["lent"];
+    const pick = (st) => keys.map((k) => { const v = Object.assign({}, st[k]); delete v.loaded; return v; });
+    return JSON.stringify(pick(x)) === JSON.stringify(pick(y)) && (kind === "framing" || !!x.outputs[kind] === !!y.outputs[kind]);
+  }
   function sameAsActive(name) {
     const a = settingsFor(exp.active), o = settingsFor(name);
     return OUTPUT_KEYS.every((k) => JSON.stringify(a[k]) === JSON.stringify(o[k]));
   }
   // "Same settings for all sessions" ligado: o que muda na sessão aberta vale para todas
   function syncAll() {
-    if (!exp.sameForAll || !exp.active) return;
+    if (!exp.active) return;
     const st = settingsFor(exp.active);
     sessions.forEach((o) => {
       if (o.name === exp.active) return;
       const t = settingsFor(o.name);
-      OUTPUT_KEYS.forEach((k) => { t[k] = JSON.parse(JSON.stringify(st[k])); });
+      // Cada saída com "Same settings for all sessions" ligado é copiada (configurações e a caixa da aba); o nome sempre
+      OUTPUT_KINDS.forEach((k) => { if (!exp.same[k]) return; t[OUTPUT_KEY_OF[k]] = JSON.parse(JSON.stringify(st[OUTPUT_KEY_OF[k]])); t.outputs[k] = st.outputs[k]; });
+      t.naming = JSON.parse(JSON.stringify(st.naming));
     });
   }
 
@@ -2173,13 +2569,18 @@
     const base = { naming: { kind: "date", text: "", date: true, position: "after" },
                    outputs: { photos: true, sequence: false, lenticular: false },
                    // original: copiar como a câmera salvou; convert + format: uma cópia convertida (os dois podem)
-                   photos: { original: true, convert: false, format: "jpg", quality: "high" },
+                   // sameSize sempre ligado (decisão do dono, 2026-11-03): um recorte para a sessão inteira, todas as fotos no mesmo tamanho
+                   photos: { original: true, convert: false, format: "jpg", quality: "high", sameSize: true },
+                   // Parte 4 da Proporção: um recorte por sessão (Converted e Sequence; Lenticular usa só a posição)
+                   crop: { ratio: "asshot", x: 0.5, y: 0.5, loaded: false },
+                   // Pedaço 2 do Framing: alinhamento por foto (arquivo → { dx, dy, scale, rot }), em session.json
+                   align: { byFile: {}, loaded: false },
                    seq: { formats: ["mp4"], fps: 6, loops: 3, reverse: true, height: 1080, alsoPhotos: true, quality: "high" },
                    // lpi: lâmina; pitch: medido na folha de teste (0 = usar o nominal); dpi: impressora;
                    // tamanho em cm (unit "cm"|"in" só muda a exibição); effect "flip" (animação) | "3d"
                    lent: { lpi: 60, pitch: 0, dpi: 720, widthCm: 15, heightCm: 10, unit: "cm", effect: "flip", reverse: false,
                            // marcas (entrega 2, decisão do dono em 2026-10-30): corte e alinhamento ligados, sangria 3 mm
-                           cropMarks: true, alignMarks: true, bleedMm: 3 } };
+                           cropMarks: true, alignMarks: true, bleedMm: 3, placement: "fill" } };
     const p = exportPrefs && exportPrefs.settings;
     if (p) ["naming", "outputs", "photos", "seq", "lent"].forEach((k) => { if (p[k] && typeof p[k] === "object") Object.assign(base[k], JSON.parse(JSON.stringify(p[k]))); });
     // Preferências de antes da 2.14 (um modo só): o modo vira a saída ligada; Sequence com
@@ -2203,7 +2604,7 @@
   let exportPrefsTimer = null;
   function rememberExportPrefs() {
     if (!exp.active || typeof window.savePref !== "function") return;
-    exportPrefs = { mode: exp.mode, sameForAll: exp.sameForAll, collapsed: exp.collapsed || {}, previewHidden: !!exp.previewHidden, settings: JSON.parse(JSON.stringify(settingsFor(exp.active))) };
+    exportPrefs = { mode: exp.mode, same: exp.same, sameFraming: exp.sameFraming, collapsed: exp.collapsed || {}, previewHidden: !!exp.previewHidden, settings: JSON.parse(JSON.stringify(settingsFor(exp.active))) };
     clearTimeout(exportPrefsTimer);
     exportPrefsTimer = setTimeout(() => window.savePref("export", JSON.stringify(exportPrefs)), 300);
   }
@@ -2211,10 +2612,14 @@
   function loadPrefs(info) {
     const prefs = (info && info.prefs) || {};
     try { exportPrefs = prefs.export ? JSON.parse(prefs.export) : null; } catch (e) { exportPrefs = null; }
-    if (exportPrefs && typeof exportPrefs.sameForAll === "boolean") exp.sameForAll = exportPrefs.sameForAll;
+    if (exportPrefs && exportPrefs.same && typeof exportPrefs.same === "object") exp.same = Object.assign({ photos: true, sequence: true, lenticular: true }, exportPrefs.same);
+    else if (exportPrefs && typeof exportPrefs.sameForAll === "boolean") exp.same = { photos: exportPrefs.sameForAll, sequence: exportPrefs.sameForAll, lenticular: exportPrefs.sameForAll };
+    if (exportPrefs && typeof exportPrefs.sameFraming === "boolean") exp.sameFraming = exportPrefs.sameFraming;
     pitchAsk = prefs.pitchAsk !== "off";
     startPrefs.splash = prefs.splash !== "off";
+    lentBand = prefs.lentBand === "white" ? "white" : "black";
   }
+  let lentBand = "black";  // Lenticular, Placement Fit: cor da faixa (ajuste geral do app; decisão do dono, 2026-11-03)
   function settingsFor(name) {
     if (!exp.settings[name]) exp.settings[name] = defaultSettings();
     return exp.settings[name];
@@ -2280,6 +2685,11 @@
   // Cabeçalho de cada seção: o resumo daquela saída
   function outputText(session, kind) {
     const st = settingsFor(session.name);
+    if (kind === "framing") {
+      const info = ratioInfoCached(session.name);
+      const r = st.crop.ratio === "asshot" || !st.crop.ratio ? "As shot" : st.crop.ratio;
+      return r + (info && info.mixed && r === "As shot" ? " ⚠ mixed ratios" : "");
+    }
     if (kind === "photos") {
       const p = st.photos;
       if (!p.original && !p.convert) return "Choose originals or a format";
@@ -2302,9 +2712,12 @@
   }
 
   function openExport(projectNames) {
-    if (exportPrefs && OUTPUT_KINDS.includes(exportPrefs.mode)) exp.mode = exportPrefs.mode;
+    if (exportPrefs && (OUTPUT_KINDS.includes(exportPrefs.mode) || exportPrefs.mode === "framing")) exp.mode = exportPrefs.mode;
     if (exportPrefs && exportPrefs.collapsed) exp.collapsed = Object.assign({}, exportPrefs.collapsed);
-    if (exportPrefs && typeof exportPrefs.previewHidden === "boolean") exp.previewHidden = exportPrefs.previewHidden;
+    exp.previewHidden = false;  // a prévia abre sempre visível; "Hide preview" vale até fechar a janela (decisão do dono, 2026-11-03)
+    exp.aligning = false; exp.aligningShown = false;
+    exp.theater = false;  // reabrir o Export nunca volta em modo teatro (decisão do dono, 2026-11-04)
+    exp.step = 1;         // reabrir o Export volta sempre ao passo 1 · Sessions (decisão do dono, 2026-11-04)
     exp.project = Array.isArray(projectNames);
     const all = exportable();
     // Salvando para fechar: só as que ainda não foram salvas (as já salvas ficam marcadas fora)
@@ -2319,6 +2732,9 @@
       $("exportEdited").checked = project.exportDefaults.useEdited !== false;
     }
     exp.photo = 0;
+    // Já diferentes ao abrir: a caixa vem com o traço e nada é igualado sozinho
+    if (exp.sameFraming && differentSessions(1).size) exp.sameFraming = false;
+    OUTPUT_KINDS.forEach((k) => { if (exp.same[k] && differentSessions(2, k).size) exp.same[k] = false; });
     exp.dest = null;  // outra pasta escolhida vale só para uma vez
     expSnap = null;
     if (typeof window.exportDestination === "function")
@@ -2337,13 +2753,54 @@
 
   // ← → no Save sessions: trocam a foto da prévia (Photos) e a do Tilt (Lenticular)
   document.addEventListener("keydown", (e) => {
-    if ((e.key !== "ArrowLeft" && e.key !== "ArrowRight") || selectMenu || openMenu || !exp.keyNav) return;
+    const arrows = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+    if (!arrows[e.key] || selectMenu || openMenu) return;
     if ($("exportOverlay").classList.contains("hidden") || tabScope() !== $("exportOverlay")) return;
     const t = e.target;
     if (t && (t.tagName === "TEXTAREA" || t.tagName === "SELECT" || (t.tagName === "INPUT" && !["checkbox", "radio", "button"].includes(t.type)))) return;
+    // Tela de alinhamento: ⌘ + setas movem a foto 1 px (⇧ 10); ↑ ↓ sozinhas trocam de sessão
+    if (exp.keyMove && (e.metaKey || e.ctrlKey)) { e.preventDefault(); e.stopImmediatePropagation(); exp.keyMove(arrows[e.key][0], arrows[e.key][1], e.shiftKey); return; }
+    if (exp.aligning && (e.key === "ArrowUp" || e.key === "ArrowDown") && !e.shiftKey && !e.altKey) {
+      const items = [...$("exportList").children];
+      const i = items.findIndex((li) => li.dataset.name === exp.active);
+      const n = items[i + (e.key === "ArrowDown" ? 1 : -1)];
+      e.preventDefault(); e.stopImmediatePropagation();
+      if (n) { const inList = document.activeElement && document.activeElement.closest("#exportList"); n.click(); if (inList) { const again = [...$("exportList").children].find((li) => li.dataset.name === exp.active); if (again) again.focus(); } }
+      return;
+    }
+    if ((e.key !== "ArrowLeft" && e.key !== "ArrowRight") || !exp.keyNav) return;
     e.preventDefault(); e.stopImmediatePropagation();
     exp.keyNav(e.key === "ArrowRight" ? 1 : -1);
   }, true);
+  // Espaço segurado na tela "Align photos": arrastar desloca a vista (como no Photoshop/Lightroom)
+  {
+    const isText = (t) => t && (t.tagName === "TEXTAREA" || t.tagName === "SELECT" || (t.tagName === "INPUT" && !["checkbox", "radio", "button", "range"].includes(t.type)));
+    const setSpace = (on) => { exp.spaceDown = on; const o = $("exportSettings"); if (o) o.classList.toggle("space-pan", on); if (on && exp.alignQuiet) exp.alignQuiet(); };
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== " " || !exp.aligning || $("exportOverlay").classList.contains("hidden") || isText(e.target)) return;
+      e.preventDefault(); e.stopImmediatePropagation();
+      if (!exp.spaceDown) setSpace(true);
+    }, true);
+    document.addEventListener("keyup", (e) => {
+      if (e.key !== " " || !exp.spaceDown) return;
+      e.preventDefault(); e.stopImmediatePropagation();
+      setSpace(false);
+    }, true);
+    window.addEventListener("blur", () => { if (exp.spaceDown) setSpace(false); });
+    // ⌘0 (Ctrl+0 no Windows): a vista volta ao centro e a 100%
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "0" || !(e.metaKey || e.ctrlKey) || !exp.aligning || $("exportOverlay").classList.contains("hidden") || isText(e.target)) return;
+      e.preventDefault(); e.stopImmediatePropagation();
+      if (exp.alignView) Object.assign(exp.alignView, { zoom: 1, px: 0, py: 0 });
+      if (exp.alignLayout) exp.alignLayout();
+    }, true);
+  }
+  // Sair do Export sessions (Cancel, Esc ou clique fora): pergunta antes, avisando que nada se perde
+  function askCloseExport() {
+    dialog("Leave Export sessions?",
+      "Nothing is exported. Your choices are kept: the outputs, the framing and the photo alignment will be here when you open Export sessions again.",
+      [{ label: "Stay" }, { label: "Leave", primary: true, onClick: closeExport }]);
+  }
   function closeExport() {
     stopPreview();
     $("exportOverlay").classList.add("hidden");
@@ -2355,30 +2812,106 @@
   // Desfazer no Save sessions: cada mudança (saídas, formatos, nome, seleção, pasta) vira um passo
   let expSnap = null;
   function expSnapshot() {
-    return JSON.stringify({ s: exportable().map((x) => [x.name, settingsFor(x.name)]), same: exp.sameForAll,
-      sel: [...exp.selected].sort(), dest: exp.dest || null, edited: $("exportEdited").checked });
+    // Recorte e alinhamento carregados da sessão antes da foto (senão o primeiro passo desfaria para os padrões), e
+    // o alinhamento só com as fotos ajustadas (uma entrada vazia não é uma mudança)
+    exportable().forEach((x) => { const st = settingsFor(x.name); cropLoad(x, st); alignLoad(x, st); });
+    return JSON.stringify({ s: exportable().map((x) => [x.name, settingsFor(x.name)]), same: exp.same, sameFraming: exp.sameFraming,
+      sel: [...exp.selected].sort(), dest: exp.dest || null, edited: $("exportEdited").checked },
+      (key, v) => (key === "byFile" && v ? Object.fromEntries(Object.entries(v).filter(([, al]) => !alignIsIdentity(al))) : v));
   }
   function expTrack() {
     if ($("exportOverlay").classList.contains("hidden")) return;
     const now = expSnapshot();
     if (expSnap !== null && now !== expSnap) {
       const before = expSnap;
-      recordAction({ label: "Export settings", exportWin: true, undo: () => expApply(before), redo: () => expApply(now) });
+      // Regra do ⌘Z (decisão do dono, 2026-11-04): desfazer e refazer levam até onde a mudança aconteceu (passo,
+      // sessão, aba, foto, "Align photos") antes de aplicar, e o aviso diz o quê e onde. Navegar não é um passo.
+      const where = expWhere();
+      const go = (snap) => { if ($("exportOverlay").classList.contains("hidden")) return false; Object.assign(exp, where); return expApply(snap); };
+      recordAction({ label: expWhereText(where), exportWin: true, where, undo: () => go(before), redo: () => go(now) });
     }
     expSnap = now;
+  }
+  function expWhere() { return { step: exp.step, active: exp.active, mode: exp.mode, photo: exp.photo || 0, aligning: exp.step === 1 && !!exp.aligning }; }
+  function expWhereText(w) {
+    const date = sessionLabel(w.active || "").date;
+    const place = w.step === 1 ? (w.aligning ? "Align photos" : "Framing") : w.step === 2 ? "Outputs › " + ((OUTPUTS.find(([k]) => k === w.mode) || [, "Photos"])[1]) : "Review";
+    return place + (w.step === 3 || !date ? "" : " · " + date);
   }
   function expApply(snap) {
     if ($("exportOverlay").classList.contains("hidden")) return false;
     const o = JSON.parse(snap);
-    o.s.forEach(([name, st]) => { exp.settings[name] = st; });
-    exp.sameForAll = o.same; exp.selected = new Set(o.sel); exp.dest = o.dest; $("exportEdited").checked = o.edited;
+    o.s.forEach(([name, st]) => {
+      exp.settings[name] = st;
+      // O recorte e o alinhamento moram também em session.json: desfazer/refazer grava lá
+      const session = sessions.find((x) => x.name === name);
+      if (!session) return;
+      if (st.align && alignText(st) !== (session.align || "")) alignSave(session, st);
+      if (st.crop && (st.crop.ratio + "|" + st.crop.x.toFixed(3) + "|" + st.crop.y.toFixed(3)) !== (session.crop || "")) cropSave(session, st);
+    });
+    exp.same = o.same; exp.sameFraming = o.sameFraming !== false; exp.selected = new Set(o.sel); exp.dest = o.dest; $("exportEdited").checked = o.edited;
     expSnap = snap;
     renderExport();
   }
 
+  // ---- Três passos (decisão do dono, 2026-11-04, protótipo "Export em três passos") ----
+  // 1 Sessions: quais sessões e o Framing de cada uma; 2 Outputs: o que sai; 3 Review: conferir, nome e pasta.
+  const EXPORT_STEPS = [[1, "Sessions"], [2, "Outputs"], [3, "Review"]];
+  const EXPORT_SUBS = {
+    1: "Tick the sessions to export and set the framing of each one: the aspect ratio, where the crop sits, and the photo alignment.",
+    2: "Tick what each session should become: photos, a sequence, a lenticular print, or several.",
+    3: "Check what will be exported, name the folders and choose where they go.",
+  };
+  function chosenSessions() { return exportable().filter((s) => exp.selected.has(s.name)); }
+  // O que impede avançar de cada passo ("" = pode)
+  function exportStepProblem(step) {
+    const chosen = chosenSessions();
+    if (step >= 1 && !chosen.length) return "Tick at least one session";
+    if (step >= 2) {
+      const sts = chosen.map((s) => settingsFor(s.name));
+      if (sts.some((st) => !OUTPUT_KINDS.some((k) => st.outputs[k]))) return "Tick at least one output for each selected session";
+      if (sts.some((st) => st.outputs.photos && !st.photos.original && !st.photos.convert)) return "Photos: choose the originals, a format, or both";
+      if (sts.some((st) => st.outputs.lenticular && !lentValid(st.lent))) return "Check the lens, printer and size values";
+      if (sts.some((st) => st.outputs.sequence && !st.seq.formats.length)) return "Choose at least one sequence format for each selected session";
+    }
+    return "";
+  }
+  function goExportStep(step) {
+    if (step === exp.step) return;
+    if (step > exp.step && exportStepProblem(step - 1)) return;  // para a frente só com o passo atual pronto
+    exp.step = step;
+    exp.aligning = false;
+    if (step === 2 && !OUTPUT_KINDS.includes(exp.mode)) exp.mode = OUTPUT_KINDS.find((k) => settingsFor(exp.active).outputs[k]) || "photos";
+    if (step === 2 && !exp.selected.has(exp.active)) { const first = chosenSessions()[0]; if (first) exp.active = first.name; }
+    renderExport();
+  }
+  function renderExportSteps() {
+    const box = $("exportSteps");
+    box.innerHTML = "";
+    EXPORT_STEPS.forEach(([n, name], i) => {
+      if (i) box.appendChild(el("span", "export-step-sep", "—"));
+      const done = n < exp.step;
+      const b = el("button", "export-step" + (n === exp.step ? " on" : done ? " done" : ""), n + " " + name + (done ? " ✓" : ""));
+      b.type = "button"; b.setAttribute("role", "tab"); b.setAttribute("aria-selected", n === exp.step ? "true" : "false");
+      // Caminho B (decisão do dono, 2026-11-04): os passos de trás voltam com um clique; os da frente são só
+      // indicação (avança-se pelo botão verde do rodapé, que confere o passo aberto)
+      const ahead = n > exp.step;
+      b.disabled = ahead;
+      if (ahead) { b.classList.add("ahead"); b.title = "Continue with the green button below"; }
+      b.addEventListener("click", () => { if (n < exp.step) goExportStep(n); });
+      box.appendChild(b);
+    });
+  }
+
   function renderExport() {
+    // Reaberto sem nenhuma sessão marcada: volta ao passo 1; no passo 2 a sessão aberta é uma das marcadas
+    if (exp.step > 1 && exportStepProblem(1)) exp.step = 1;
+    if (exp.step === 2 && !exp.selected.has(exp.active)) { const f = chosenSessions()[0]; if (f) exp.active = f.name; }
     $("exportTitle").textContent = "Export sessions";
-    $("exportSub").textContent = "Tick what each session should become: photos, a sequence, a lenticular print, or several. Each session is exported to one folder.";
+    $("exportSub").textContent = EXPORT_SUBS[exp.step];
+    renderExportSteps();
+    const body = document.querySelector(".export-body");
+    if (body) { body.classList.toggle("step-2", exp.step === 2); body.classList.toggle("step-3", exp.step === 3); }
     renderExportList();
     renderExportSettings();
     if (renderExportSettings.restoreScroll) renderExportSettings.restoreScroll();  // já com o conteúdo montado
@@ -2396,13 +2929,18 @@
   function exportable() { return exp.project ? sessions.filter((s) => s.inProject) : sessions; }
   // Teclado: o Tab para numa sessão só; ↑ ↓ trocam de sessão (e mostram as opções dela, como o clique)
   const exportRoving = makeRoving({ root: () => $("exportList"), rows: (r) => [...r.querySelectorAll("li.export-item")],
-    controls: (row) => [row.querySelector("input")], id: (row) => row.dataset.name,
-    onMove: (name, i) => { if (exp.active === name) return; exp.active = name; exp.photo = 0; renderExportList(); renderExportSettings(); exportRoving.focusAt(name, i); } });
+    controls: (row) => (exp.step === 2 ? [row] : [row.querySelector("input")]), id: (row) => row.dataset.name,  // passo 2: sem caixa, a linha é o controle
+    onMove: (name, i) => {
+      if (exp.active === name) return;
+      if (exp.aligning) { const s = sessions.find((x) => x.name === name), tst = s && settingsFor(name); if (s && needsRatio(s, tst)) { askRatioForAlign(s, tst, renderExport); return; } }
+      exp.active = name; exp.photo = 0; renderExportList(); renderExportSettings(); exportRoving.focusAt(name, i); } });
   function renderExportList() {
     const list = $("exportList");
     const focusWas = exportRoving.where(document.activeElement);
     list.innerHTML = "";
-    exportable().forEach((s) => {
+    const diffNow = differentSessions(exp.step);  // etiqueta "Different" (pela configuração mais comum)
+    // Passo 2: só as sessões marcadas no passo 1
+    exportable().filter((s) => exp.step !== 2 || exp.selected.has(s.name)).forEach((s) => {
       const label = sessionLabel(s.name);
       const li = document.createElement("li");
       li.className = "export-item" + (s.name === exp.active ? " active" : "") + (exp.selected.has(s.name) ? "" : " off");
@@ -2411,6 +2949,11 @@
         '<span class="export-summary"></span><span class="export-diff">Different</span></span>';
       const box = li.querySelector("input");
       box.checked = exp.selected.has(s.name);
+      if (!li.title) li.title = label.date;  // na tela de alinhamento a lista mostra só a miniatura: a data fica na dica
+      if (exp.step !== 2) li.tabIndex = exp.aligning && s.name === exp.active ? 0 : -1;
+      // legenda instantânea (como a barra da tela cheia): data, fotos e o que vai sair
+      li.dataset.tip = [s.label || "", label.date, plural(sessionItems(s).length, "photo", "photos"), label.detail].filter(Boolean).join(" · ");
+      { const r = ratioInfoCached(s.name); const warns = []; if (s.missing) warns.push(s.missing + " missing"); if (r && r.mixed) warns.push("Mixed ratios"); if (warns.length) li.dataset.tipWarn = warns.join(" · "); }
       box.addEventListener("change", () => {
         exp.selectedTouched = true; if (box.checked) exp.selected.add(s.name); else exp.selected.delete(s.name);
         li.classList.toggle("off", !box.checked);
@@ -2419,14 +2962,26 @@
       li.querySelector(".export-check").addEventListener("click", (e) => e.stopPropagation());
       li.querySelector(".folder-date").textContent = label.date;
       li.querySelector(".folder-meta").textContent = [plural(sessionItems(s).length, "photo", "photos"), label.detail].filter(Boolean).join(" · ");
+      if (deletedBySession[s.name]) li.querySelector(".folder-meta").after(deletedTag(deletedBySession[s.name]));
       if (s.missing > 0) li.querySelector(".folder-meta").after(missingTag(s.missing));
       if (s.inProject && s.edited > 0) li.querySelector(".folder-meta").after(projectTag(s));  // "Edited n / m" também aqui
       if (s.saved) li.querySelector(".folder-meta").after(savedTag());
-      setWarnText(li.querySelector(".export-summary"), summaryText(s));
-      li.classList.toggle("different", !exp.sameForAll && s.name !== exp.active && !sameAsActive(s.name));
+      if (exp.step === 1) {
+        // Passo 1: o selo com o Framing da sessão ("3:2 · aligned", "As shot · mixed ratios" em âmbar)
+        const sst = settingsFor(s.name); cropLoad(s, sst);
+        const r = ratioInfoCached(s.name), asShot = sst.crop.ratio === "asshot", aligned = sessionAligned(s, sst);
+        const chip = el("span", "export-chip" + (asShot && r && r.mixed && !aligned ? " warn" : !asShot || aligned ? " ok" : ""),
+          (asShot ? "As shot" : sst.crop.ratio) + (aligned ? " · aligned" : asShot && r && r.mixed ? " · mixed ratios" : ""));
+        li.querySelector(".export-summary").replaceWith(chip);
+      } else setWarnText(li.querySelector(".export-summary"), settingsText(s));
+      li.classList.toggle("different", exp.step < 3 && diffNow.has(s.name));
       const first = sessionItems(s).find((i) => i.previewable);
       if (first) sessionPhoto(s.name, first.file, 320).then((url) => { if (url) li.querySelector(".export-thumb").style.backgroundImage = "url(" + url + ")"; });
       li.addEventListener("click", () => {
+        if (exp.aligning && s.name !== exp.active) {
+          const tst = settingsFor(s.name);
+          if (needsRatio(s, tst)) { askRatioForAlign(s, tst, renderExport); return; }  // Cancel: continua na sessão de antes
+        }
         exp.active = s.name;
         exp.photo = 0;
         renderExportList();
@@ -2451,27 +3006,54 @@
     // Project: sessão com só parte das fotos editadas misturaria editadas e originais
     const partial = exp.project && $("exportEdited").checked
       ? all.filter((s) => exp.selected.has(s.name) && s.edited > 0 && s.edited < s.photos.length) : [];
-    $("exportCount").textContent = noOutput ? "Tick at least one output for each selected session" : photosEmpty ? "Photos: choose the originals, a format, or both" : lentBad ? "Check the lens, printer and size values" : seqEmpty ? "Choose at least one sequence format for each selected session"
-      : partial.length ? (partial.length === 1 ? sessionTitle(partial[0]) + " has" : partial.length + " sessions have") + " only some photos edited: edited and original frames would be mixed."
-      : chosen + " of " + plural(all.length, "session", "sessions") + " selected";
-    // Aviso que impede salvar (ou que pede atenção): em amarelo
-    $("exportCount").classList.toggle("warn", partial.length > 0 || noOutput || photosEmpty || lentBad || seqEmpty);
-    $("exportConfirm").disabled = chosen === 0 || noOutput || seqEmpty || lentBad || photosEmpty;
-    // Folha de teste: só com o Lenticular marcado em alguma sessão escolhida
-    $("exportPitch").disabled = !lentSession();
-    $("exportConfirm").textContent = chosen ? "Export " + plural(chosen, "session", "sessions") : "Export";
+    // Sessões em "As shot" com proporções misturadas e sem alinhamento (a sequência pula)
+    const mixedAsShot = all.filter((s) => { if (!exp.selected.has(s.name)) return false; const st = settingsFor(s.name); const r = ratioInfoCached(s.name); return st.crop.ratio === "asshot" && r && r.mixed && !sessionAligned(s, st); }).length;
+    const mixedText = mixedAsShot ? plural(mixedAsShot, "session", "sessions") + " with mixed ratios on As shot" : "";
+    const block = noOutput || photosEmpty || lentBad || seqEmpty;
+    let text = "", warn = false;
+    if (exp.step === 1) {
+      text = chosen + " of " + plural(all.length, "session", "sessions") + (mixedAsShot ? " · " + mixedAsShot + " with mixed ratios on As shot" : "");
+      warn = !chosen;
+    } else if (exp.step === 2) {
+      const kinds = OUTPUTS.filter(([k]) => chosenSt.some((st) => st.outputs[k])).map(([, t]) => t);
+      text = noOutput ? "Tick at least one output for each selected session" : photosEmpty ? "Photos: choose the originals, a format, or both" : lentBad ? "Check the lens, printer and size values" : seqEmpty ? "Choose at least one sequence format for each selected session"
+        : plural(chosen, "session", "sessions") + (kinds.length ? " · " + kinds.join(", ").replace(/, ([^,]*)$/, " and $1") : "");
+      warn = block;
+    } else {
+      text = partial.length ? (partial.length === 1 ? sessionTitle(partial[0]) + " has" : partial.length + " sessions have") + " only some photos edited: edited and original frames would be mixed."
+        : block ? exportStepProblem(2) : mixedText;
+      warn = !!text;
+    }
+    $("exportCount").textContent = text;
+    $("exportCount").classList.toggle("warn", warn);
+    // Botão verde: avança ("Outputs →", "Review →") e, no passo 3, exporta
+    const next = exp.step === 1 ? "Outputs →" : exp.step === 2 ? "Review →" : chosen ? "Export " + plural(chosen, "session", "sessions") : "Export";
+    // Dentro de "Align photos" (decisão do dono, 2026-11-04, caminho A): um botão só, que volta ao Framing
+    const aligningNow = exp.step === 1 && !!exp.aligning;
+    $("exportConfirm").textContent = aligningNow ? "Done aligning" : next;
+    $("exportConfirm").disabled = aligningNow ? false : exp.step === 1 ? chosen === 0 : chosen === 0 || block;
+    $("exportCancel").classList.toggle("hidden", aligningNow);
+    $("exportBack").classList.toggle("hidden", exp.step === 1);
+    $("exportBack").textContent = exp.step === 3 ? "← Outputs" : "← Sessions";
     $("exportSelectAll").disabled = chosen === all.length;
     $("exportUnselectAll").disabled = chosen === 0;
-    $("exportEditedLabel").classList.toggle("hidden", !exp.project);
+    $("exportEditedLabel").classList.toggle("hidden", !exp.project || exp.step !== 3);
+    renderExportSteps();
     setTimeout(expTrack, 0);  // depois de a mudança terminar (pode haver mais de um redesenho)
   }
   function sessionTitle(s) { const l = sessionLabel(s.name); return s.label ? s.label + " · " + l.date : l.date; }
 
+  // Trocar de foto (← → ou clique na miniatura): só a coluna da direita; a lista não muda e não perde o foco
+  function photoRerender() { renderExportSettings(); if (renderExportSettings.restoreScroll) renderExportSettings.restoreScroll(); }
   function refreshSummaries() {
-    [...$("exportList").children].forEach((li, i) => {
-      if (!sessions[i]) return;
-      setWarnText(li.querySelector(".export-summary"), summaryText(sessions[i]));
-      li.classList.toggle("different", !exp.sameForAll && sessions[i].name !== exp.active && !sameAsActive(sessions[i].name));
+    if (exp.step === 1) { renderExportList(); updateExportCount(); return; }  // os selos do Framing mudam com a sessão
+    const diffNow = differentSessions(exp.step);
+    [...$("exportList").children].forEach((li) => {
+      const s = sessions.find((x) => x.name === li.dataset.name);
+      if (!s) return;
+      const sum = li.querySelector(".export-summary");  // no passo 1 a linha mostra o selo do Framing
+      if (sum) setWarnText(sum, settingsText(s));
+      li.classList.toggle("different", exp.step < 3 && diffNow.has(s.name));
     });
     updateExportCount();
   }
@@ -2953,6 +3535,758 @@
       box.appendChild(printer);
       addTip(box, PRINTER_HELP, "Printer");
   }
+  // ---- Parte 4 da Proporção: linha "Aspect ratio", recorte (um por sessão), "Same size" e Placement ----
+  const CROP_RATIOS = [["asshot", "As shot"], ["3:2", "3:2"], ["4:3", "4:3"], ["16:9", "16:9"], ["1:1", "1:1"]];
+  // A escolha guardada na sessão (session.json, também fora do Project) entra uma vez por abertura
+  function cropLoad(session, st) {
+    if (st.crop.loaded) return;
+    st.crop.loaded = true;
+    const [ratio, x, y] = String(session.crop || (sessionCrop[session.name] ? sessionCrop[session.name] + "|0.5|0.5" : "")).split("|");
+    if (ratio === "asshot" || RATIOS[ratio]) st.crop.ratio = ratio;
+    if (x !== undefined && !isNaN(+x)) st.crop.x = Math.max(0, Math.min(1, +x));
+    if (y !== undefined && !isNaN(+y)) st.crop.y = Math.max(0, Math.min(1, +y));
+  }
+  // Uma fonte só: a sessão (o programa grava em session.json) e a memória do app (a etiqueta "Mixed ratios" usa)
+  // Framing igual em todas as sessões marcadas (caixa no passo 1, ligada por padrão): a mudança na sessão aberta vai
+  // para as outras (proporção e posição; o alinhamento é por foto e fica em cada sessão)
+  function cropShare(session, st) {
+    cropSave(session, st);
+    if (!exp.sameFraming || $("exportOverlay").classList.contains("hidden") || !exp.selected.has(session.name)) return;
+    chosenSessions().forEach((o) => { if (o.name === session.name) return; const ost = settingsFor(o.name); cropLoad(o, ost); ost.crop = Object.assign({}, st.crop, { loaded: true }); cropSave(o, ost); });
+  }
+  // A caixa "Same … for all ticked sessions" (passos 1 e 2): o mesmo desenho e o mesmo comportamento.
+  // Clicar com traço ou vazia: todas passam a usar a configuração da sessão aberta e ficam ligadas (desfaz com ⌘Z);
+  // clicar marcada: desliga (cada sessão guarda o que tem e pode mudar sozinha). Ao lado, quantas diferem.
+  function sameBox(label, state, onLink, onUnlink, nDiff, title) {
+    const r = el("div", "export-row same-row");
+    const l = el("label", "log-option");
+    const c = document.createElement("input"); c.type = "checkbox"; c.className = "cs-check";
+    c.checked = state === "on"; c.indeterminate = state === "mixed";
+    c.setAttribute("aria-checked", state === "mixed" ? "mixed" : state === "on" ? "true" : "false");
+    c.addEventListener("change", () => { if (state === "on") onUnlink(); else onLink(); });
+    l.append(c, document.createTextNode(" " + label));
+    if (title) l.title = title;
+    r.appendChild(l);
+    if (state === "mixed") r.appendChild(el("span", "export-note same-note", plural(nDiff, "session is", "sessions are") + " different · tick to give all of them these settings"));
+    return r;
+  }
+  function framingAllSame() {
+    const list = chosenSessions().map((o) => { const ost = settingsFor(o.name); cropLoad(o, ost); return ost.crop.ratio + "|" + ost.crop.x.toFixed(3) + "|" + ost.crop.y.toFixed(3); });
+    return list.every((x) => x === list[0]);
+  }
+  function cropSave(session, st) {
+    const text = st.crop.ratio + "|" + st.crop.x.toFixed(3) + "|" + st.crop.y.toFixed(3);
+    if (st.crop.ratio !== "asshot") sessionCrop[session.name] = st.crop.ratio; else delete sessionCrop[session.name];
+    saveSessionCrop();
+    session.crop = text;
+    if (typeof window.setSessionCrop === "function") window.setSessionCrop(session.name, text);
+    if (currentSession && currentSession.name === session.name) sessionHead(currentSession);
+  }
+  // Prévia do recorte (seção Framing): a foto escolhida apagada fora do quadro, o quadro aceso e arrastável.
+  // onPick(i): trocar de foto; a instrução dos gestos fica na etiqueta de baixo.
+  function cropStage(session, items, st, targetRatio, onChange) {
+    const box = el("div", "crop-box crop-stage");
+    const img = document.createElement("img"); img.alt = "";
+    const frame = el("div", "crop-frame");
+    const tag = el("span", "crop-tag");
+    box.append(img, frame, tag);
+    const item = items[Math.max(0, Math.min(items.length - 1, exp.photo || 0))] || items[0];
+    let nat = null;      // largura/altura natural da prévia
+    let sizesAll = null; // tamanho real de cada foto (o canvas depende delas)
+    let slack = null;    // folga da foto atrás do quadro, em px da tela (para arrastar)
+    const label = (text) => { tag.textContent = (item ? pad(item.order || 1) + " · " : "") + text; };
+    const layout = () => {
+      if (!nat) return;
+      const bw = box.clientWidth, bh = box.clientHeight;
+      img.style.transform = ""; img.style.transformOrigin = "center center";
+      const sz = sizesAll && sizesAll[item.file], canvas = (targetRatio || sessionAligned(session, st)) && sz && commonFrame(items, sizesAll, st);
+      if (canvas) {
+        // O quadro (o canvas da exportação) fica parado, do mesmo tamanho em todas as fotos; cada foto aparece atrás
+        // dele como vai sair (posição, tamanho e giro). Decisão do dono, 2026-11-04: a prévia não muda o tamanho do canvas.
+        let maxW = 0, maxH = 0;
+        items.forEach((it) => { const z = sizesAll[it.file]; if (z) { maxW = Math.max(maxW, z.w); maxH = Math.max(maxH, z.h); } });
+        const K = Math.min(bw / (maxW * 1.04), bh / (maxH * 1.04)), cx = bw / 2, cy = bh / 2;
+        const al = effectiveAlign(sz, alignOf(st, item.file), canvas, st);
+        const w = sz.w * K, h = sz.h * K;
+        img.style.width = w + "px"; img.style.height = h + "px";
+        img.style.left = (cx + al.dx * K - w / 2) + "px"; img.style.top = (cy + al.dy * K - h / 2) + "px";
+        img.style.transform = "scale(" + al.scale + ") rotate(" + al.rot + "deg)";
+        frame.style.transform = "";
+        frame.style.width = canvas.w * K + "px"; frame.style.height = canvas.h * K + "px";
+        frame.style.left = (cx + canvas.x * K) + "px"; frame.style.top = (cy + canvas.y * K) + "px";
+        frame.style.display = ""; frame.classList.add("free");
+        // Arrastar só vale para fotos sem alinhamento próprio: elas seguem a posição do recorte da sessão
+        const touched = !alignIsIdentity(alignOf(st, item.file)) && sessionAligned(session, st);
+        slack = touched ? null : { x: (sz.w * al.scale - canvas.w) * K, y: (sz.h * al.scale - canvas.h) * K };
+        const free = slack && (slack.x > 1 || slack.y > 1);
+        label(free ? "Drag the photo to choose the part that stays · ← → other photos" : touched ? "This photo is aligned: move it in Align photos · ← → other photos" : "Nothing to cut: the photo fills the frame · ← → other photos");
+        return;
+      }
+      // Sem proporção ("As shot") ou antes de saber os tamanhos: a foto inteira, sem quadro
+      slack = null;
+      const s = Math.min(bw / nat.w, bh / nat.h);
+      const iw = nat.w * s, ih = nat.h * s;
+      img.style.width = iw + "px"; img.style.height = ih + "px"; img.style.left = (bw - iw) / 2 + "px"; img.style.top = (bh - ih) / 2 + "px";
+      frame.style.display = "none";
+      label(targetRatio ? "Measuring the photos…" : "As shot: nothing is cut · choose a ratio below");
+    };
+    if (item) sessionPhoto(session.name, item.file, 1600).then((url) => { if (!url) return; img.onload = () => { nat = { w: img.naturalWidth, h: img.naturalHeight }; layout(); }; img.src = url; });
+    Promise.all(items.map((it) => photoSizeOf(session.name, it.file).then((sz) => [it.file, sz]))).then((pairs) => {
+      sizesAll = {}; pairs.forEach(([f, sz]) => { if (sz) sizesAll[f] = sz; }); layout();
+    });
+    if (window.ResizeObserver) new ResizeObserver(layout).observe(box);
+    let drag = null;
+    box.addEventListener("dragstart", (e) => e.preventDefault());  // sem o arraste nativo da imagem (prendia o mouse)
+    box.addEventListener("pointerdown", (e) => { if (!slack || e.target.closest("button")) return; drag = { x: e.clientX, y: e.clientY, cx: st.crop.x, cy: st.crop.y }; box.setPointerCapture(e.pointerId); document.body.classList.add("photo-drag"); e.preventDefault(); });
+    let cropRaf = 0;
+    box.addEventListener("pointermove", (e) => {
+      if (!drag || !slack) return;
+      const ev = e;
+      if (cropRaf) cancelAnimationFrame(cropRaf);
+      cropRaf = requestAnimationFrame(() => { cropRaf = 0; cropMove(ev); });
+    });
+    const cropMove = (e) => {
+      if (!drag || !slack) return;
+      // A foto acompanha o mouse: arrastar para a direita mostra mais do lado esquerdo dela
+      if (slack.x > 1) st.crop.x = Math.max(0, Math.min(1, drag.cx - (e.clientX - drag.x) / slack.x));
+      if (slack.y > 1) st.crop.y = Math.max(0, Math.min(1, drag.cy - (e.clientY - drag.y) / slack.y));
+      layout();
+    };
+    const endDrag = () => { if (!drag) return; drag = null; document.body.classList.remove("photo-drag"); onChange(true); };
+    box.addEventListener("pointerup", endDrag); box.addEventListener("pointercancel", endDrag); box.addEventListener("lostpointercapture", endDrag);
+    box.relayout = layout;
+    return box;
+  }
+  // Seção "Framing" do Export (decisão do dono, 2026-11-03, protótipo W1): proporção + Same size (pedaço 1);
+  // o alinhamento das fotos (referências, Move/Size/Rotate) vem no pedaço 2
+  // O que acontece em "As shot" com proporções misturadas (decisão do dono, 2026-11-04: cobrir a sequência e o
+  // lenticular, com o ícone de alerta âmbar)
+  const MIXED_EFFECT = '"As shot" keeps each photo as it is: the sequence will jump (black bands come and go), and in the lenticular print the subject changes size between photos. Choose a ratio to give every photo the same frame.';
+  function mixedWarn(text) {
+    const d = el("div", "export-note exp-warn mixed-warn");
+    const ic = el("span", "mixed-warn-icon"); ic.innerHTML = icon("alert"); ic.setAttribute("aria-hidden", "true");
+    d.append(ic, el("span", "", text));
+    return d;
+  }
+  function framingRows(session, st, box, rerender) {
+    cropLoad(session, st);
+    const info = ratioInfoCached(session.name);
+    const r = row("Aspect ratio");
+    r.appendChild(segmented(CROP_RATIOS, st.crop.ratio, (v) => { st.crop.ratio = v; cropShare(session, st); rerender(); }));
+    if (st.crop.ratio !== "asshot" && info && info.keep && info.keep[st.crop.ratio] != null) r.appendChild(el("span", "export-keep", "keeps " + info.keep[st.crop.ratio] + "%"));
+    box.appendChild(r);
+    if (info && info.mixed && st.crop.ratio === "asshot" && !sessionAligned(session, st)) box.appendChild(mixedWarn("Mixed ratios · " + ratioText(info).replace(/^Camera/, "camera") + " " + MIXED_EFFECT));
+    else if (info && info.mixed) box.appendChild(el("div", "export-note", "Mixed ratios · " + ratioText(info).replace(/^Camera/, "camera") + " Every photo goes through the same frame, so nothing jumps."));
+    addTip(box, "The shape every export gets: converted photos, the sequence and the lenticular print (Fill) are cut to it; the originals are never cropped. " +
+      "One crop for the whole session, and every converted photo comes out with the same pixel size (the smallest camera's).", "Aspect ratio");
+    if (st.crop.ratio !== "asshot") {
+      const pos = row("Position");
+      const dots = el("div", "crop-dots");
+      const names = ["Top left", "Top", "Top right", "Left", "Center", "Right", "Bottom left", "Bottom", "Bottom right"];
+      [0, 0.5, 1].forEach((y, yi) => [0, 0.5, 1].forEach((x, xi) => {
+        const d = el("button", "crop-dot" + (Math.abs(x - st.crop.x) < 0.01 && Math.abs(y - st.crop.y) < 0.01 ? " on" : "")); d.type = "button"; d.title = names[yi * 3 + xi];
+        d.addEventListener("click", () => { st.crop.x = x; st.crop.y = y; cropShare(session, st); rerender(); });
+        dots.appendChild(d);
+      }));
+      pos.append(dots, el("span", "export-note-inline", "Or drag the photo in the preview. One crop for the whole session."));
+      box.appendChild(pos);
+    }
+  }
+  // =================== Alinhamento das fotos (pedaço 2 do Framing) ===================
+  // Cada foto pode ser movida, redimensionada e girada sobre as outras ("Align photos", no Export). Unidades: pixels
+  // do original (dx, dy), fração do tamanho (scale) e graus (rot, sentido horário). Guardado em session.json
+  // ("align": "arquivo:dx,dy,scale,rot;..."); os originais não mudam; o programa aplica na exportação (Converted,
+  // Sequence e Lenticular Fill) e corta tudo ao "quadro comum" (o que todas as fotos cobrem depois do ajuste).
+  const photoSizes = {};  // "sessão/arquivo" → Promise<{ w, h }> (tamanho real da foto, pelo programa)
+  function photoSizeOf(sessionName, file) {
+    const key = sessionName + "/" + file;
+    if (!photoSizes[key]) {
+      photoSizes[key] = (typeof window.photoSize === "function" ? window.photoSize(sessionName, file) : Promise.resolve(null))
+        .then((r) => (r && r.width > 0 ? { w: r.width, h: r.height } : null)).catch(() => null);
+    }
+    return photoSizes[key];
+  }
+  let alignPrefs = { prev: true, next: true, opacity: 0.6 };
+  try { Object.assign(alignPrefs, JSON.parse(localStorage.getItem("stillpoint.alignPrefs") || "{}") || {}); } catch (e) {}
+  function saveAlignPrefs() { try { localStorage.setItem("stillpoint.alignPrefs", JSON.stringify(alignPrefs)); } catch (e) {} }
+  // base: o tamanho escolhido pela pessoa; scale: o tamanho em uso (o base, ou mais, quando o giro obriga a crescer
+  // para continuar cobrindo a área útil; volta ao base conforme o giro é desfeito)
+  const ALIGN_ID = () => ({ dx: 0, dy: 0, scale: 1, rot: 0, base: 1 });
+  function alignIsIdentity(a) { return !a || (Math.abs(a.dx) < 1e-6 && Math.abs(a.dy) < 1e-6 && Math.abs(a.scale - 1) < 1e-9 && Math.abs(a.rot) < 1e-9); }
+  function alignLoad(session, st) {
+    if (st.align.loaded) return;
+    st.align.loaded = true;
+    st.align.byFile = {};
+    String(session.align || "").split(";").forEach((item) => {
+      const colon = item.lastIndexOf(":");
+      if (colon <= 0) return;
+      const [dx, dy, scale, rot, base] = item.slice(colon + 1).split(",").map(Number);
+      st.align.byFile[item.slice(0, colon)] = { dx: dx || 0, dy: dy || 0, scale: scale > 0 ? scale : 1, rot: rot || 0, base: base > 0 ? base : (scale > 0 ? scale : 1) };
+    });
+  }
+  function alignText(st) {
+    return Object.keys(st.align.byFile).filter((f) => !alignIsIdentity(st.align.byFile[f]))
+      .map((f) => { const a = st.align.byFile[f]; return f + ":" + a.dx.toFixed(2) + "," + a.dy.toFixed(2) + "," + a.scale.toFixed(5) + "," + a.rot.toFixed(3) + "," + (a.base || a.scale).toFixed(5); }).join(";");
+  }
+  function alignSave(session, st) {
+    const text = alignText(st);
+    session.align = text;
+    if (typeof window.setSessionAlign === "function") window.setSessionAlign(session.name, text);
+  }
+  function alignOf(st, file) { return st.align.byFile[file] || ALIGN_ID(); }  // só lê: uma foto sem ajuste não ganha entrada
+  // Alinhamento em uso: só com uma proporção escolhida (decisão do dono, 2026-11-04, opção B: "As shot" é sempre como
+  // saiu; o alinhamento guardado volta a valer quando se escolhe uma proporção)
+  // Revisto em 2026-11-04 (decisão do dono): só a sessão com proporções misturadas precisa de uma proporção para
+  // alinhar; numa sessão toda igual, "As shot" já é uma forma só (o canvas é a própria foto) e o alinhamento vale.
+  function sessionMixed(session) { const r = ratioInfoCached(session.name); return !!(r && r.mixed); }
+  function needsRatio(session, st) { cropLoad(session, st); return st.crop.ratio === "asshot" && sessionMixed(session); }
+  function sessionAligned(session, st) { alignLoad(session, st); cropLoad(session, st); return !needsRatio(session, st) && Object.keys(st.align.byFile).some((f) => !alignIsIdentity(st.align.byFile[f])); }
+  // "Align photos" com "As shot": pede uma proporção antes (a escolhida aparece depois na tela de alinhamento)
+  // Escolher: a sessão passa a essa proporção e a tela "Align photos" abre nela (vinda da aba Framing ou de outra
+  // sessão, já dentro de "Align photos"). Cancel: nada muda. ⌘Z desfaz a escolha e volta para onde estava; ⇧⌘Z abre
+  // a tela de novo.
+  function askRatioForAlign(session, st, rerender) {
+    const fromActive = exp.active, fromAligning = !!exp.aligning, fromPhoto = exp.photo;
+    const info = ratioInfoCached(session.name);
+    const suggest = info && info.suggest && RATIO_ORDER.includes(info.suggest) ? info.suggest : "";
+    const choose = (r) => {
+        ui.dialogOverlay.classList.add("hidden");
+        expTrack();  // o que estava antes da escolha
+        st.crop.ratio = r; cropShare(session, st);
+        exp.active = session.name; if (fromActive !== session.name) exp.photo = 0; exp.aligning = true;
+        renderExport();
+        expTrack();
+        const top = history.undo[history.undo.length - 1];
+        if (top && top.exportWin && !top.alignRatio) {
+          const u0 = top.undo, r0 = top.redo;
+          top.alignRatio = true;
+          top.label = "Ratio " + r + " for Align photos";
+          top.undo = () => { const r = u0(); if (r === false) return false; exp.active = fromActive; exp.photo = fromPhoto; exp.aligning = fromAligning; renderExport(); };
+          top.redo = () => r0();  // o lugar guardado já é "Align photos" na sessão escolhida
+        }
+    };
+    const box = el("div", "ratio-others");
+    box.appendChild(el("span", "ratio-others-label", suggest ? "Other ratios" : "Ratio for the alignment"));
+    RATIO_ORDER.filter((r) => r !== suggest).forEach((r) => {
+      const b = el("button", "btn btn-small ratio-chip btn-secondary"); b.type = "button";
+      b.appendChild(document.createTextNode(r + " "));
+      if (info && info.keep && info.keep[r] != null) b.appendChild(el("span", "dim", "· keeps " + info.keep[r] + "%"));
+      b.addEventListener("click", () => choose(r));
+      box.appendChild(b);
+    });
+    // A sugerida (a que perde menos) é o botão verde, ao lado direito do Cancel (decisão do dono, 2026-11-04)
+    const buttons = [{ label: "Cancel" }];
+    if (suggest) buttons.push({ label: "Use " + suggest + (info.keep && info.keep[suggest] != null ? " · keeps " + info.keep[suggest] + "%" : ""), primary: true, onClick: () => choose(suggest) });
+    dialog("Choose a ratio first",
+      "Aligning moves and rotates the photos, so they need one frame in the same shape: \"As shot\" keeps each photo as the camera made it and cannot be aligned. Choose the ratio the alignment will use; you can change it later in Align photos.",
+      buttons, box);
+  }
+  // A foto (w×h, com o seu tamanho e giro, centrada em dx,dy) cobre inteiro o retângulo reto r? Conferência exata
+  // pelos quatro cantos de r levados ao espaço da foto (a mesma conta do programa, Export::Covers)
+  function photoCovers(w, h, a, r) {
+    const rad = a.rot * Math.PI / 180, cs = Math.cos(rad), sn = Math.sin(rad), eps = 0.01;
+    return [[r.x, r.y], [r.x + r.w, r.y], [r.x, r.y + r.h], [r.x + r.w, r.y + r.h]].every(([px, py]) => {
+      const x = px - a.dx, y = py - a.dy;
+      const ux = (x * cs + y * sn) / a.scale, uy = (-x * sn + y * cs) / a.scale;
+      return Math.abs(ux) <= w / 2 + eps && Math.abs(uy) <= h / 2 + eps;
+    });
+  }
+  // O canvas (centro em 0,0): a interseção das fotos como saíram da câmera e, com proporção escolhida, o maior
+  // retângulo nessa proporção que cabe nela. Nenhuma foto é ampliada (decisão do dono, 2026-11-03: ampliar mudaria o
+  // tamanho do objeto fotografado entre as câmeras). Mover, redimensionar ou girar uma foto não muda o canvas (a mesma
+  // conta do programa, Export::ComputeCommonFrame)
+  function commonFrame(items, sizes, st) {
+    let left = -1e18, top = -1e18, right = 1e18, bottom = 1e18;
+    items.forEach((item) => {
+      const sz = sizes[item.file]; if (!sz) return;
+      left = Math.max(left, -sz.w / 2); right = Math.min(right, sz.w / 2);
+      top = Math.max(top, -sz.h / 2); bottom = Math.min(bottom, sz.h / 2);
+    });
+    let cw = right - left, ch = bottom - top;
+    const r = st && st.crop.ratio !== "asshot" ? RATIOS[st.crop.ratio] : 0;
+    if (r && cw > 0 && ch > 0) { const t = cw >= ch ? r : 1 / r; if (cw / ch > t) cw = ch * t; else ch = cw / t; }
+    if (cw < 16 || ch < 16) return null;
+    return { x: -cw / 2, y: -ch / 2, w: cw, h: ch };
+  }
+  // O menor tamanho (a partir de from) com que a foto w×h, nessa posição e giro, cobre o retângulo r; 0 se nem 20× basta
+  function minCoverOf(w, h, al, from, r) {
+    if (photoCovers(w, h, Object.assign({}, al, { scale: from }), r)) return from;
+    let lo = from, hi = 20;
+    if (!photoCovers(w, h, Object.assign({}, al, { scale: hi }), r)) return 0;
+    for (let i = 0; i < 30; i++) { const mid = (lo + hi) / 2; if (photoCovers(w, h, Object.assign({}, al, { scale: mid }), r)) hi = mid; else lo = mid; }
+    return hi;
+  }
+  // O que vale para uma foto na tela e na exportação: sem ajuste da pessoa (entrada igual à identidade), ela fica
+  // centrada no menor tamanho que cobre o canvas, com a posição do recorte (posX/posY) repartindo a folga; com ajuste,
+  // o que a pessoa fez, com o tamanho em uso nunca abaixo do necessário
+  function effectiveAlign(sz, al, frame, st) {
+    if (alignIsIdentity(al)) {
+      const base = { dx: 0, dy: 0, scale: 1, rot: 0, base: 1 };
+      const need = minCoverOf(sz.w, sz.h, base, 1, frame) || 1;
+      return { dx: (0.5 - st.crop.x) * (sz.w * need - frame.w), dy: (0.5 - st.crop.y) * (sz.h * need - frame.h), scale: need, rot: 0, base: 1 };
+    }
+    const need = minCoverOf(sz.w, sz.h, al, Math.max(0.05, al.base || al.scale), frame);
+    return Object.assign({}, al, { scale: need ? Math.max(al.scale, need) : al.scale });
+  }
+
+  // A foto como sai na exportação: cortada ao canvas (com a proporção) e com o alinhamento da sessão. Montada num
+  // canvas a partir da prévia; guardada por foto e Framing. Sem proporção nem alinhamento, a própria prévia.
+  const framedCache = new Map();
+  function framedUrl(session, items, st, item, url, maxPx) {
+    const px = maxPx || 1600;
+    cropLoad(session, st); alignLoad(session, st);
+    if (st.crop.ratio === "asshot" && !sessionAligned(session, st)) return Promise.resolve(url);
+    const key = [session.name, item.file, st.crop.ratio, st.crop.x, st.crop.y, alignText(st), px].join("|");
+    if (framedCache.has(key)) return framedCache.get(key);
+    const p = Promise.all(items.map((it) => photoSizeOf(session.name, it.file).then((sz) => [it.file, sz]))).then((pairs) => {
+      const sizes = {}; pairs.forEach(([f, sz]) => { if (sz) sizes[f] = sz; });
+      const sz = sizes[item.file], frame = sz && commonFrame(items, sizes, st);
+      if (!frame) return url;
+      return new Promise((done) => {
+        const im = new Image();
+        im.onload = () => {
+          const al = effectiveAlign(sz, alignOf(st, item.file), frame, st);
+          const k = Math.min(1, px / Math.max(frame.w, frame.h));
+          const c = document.createElement("canvas");
+          c.width = Math.max(1, Math.round(frame.w * k)); c.height = Math.max(1, Math.round(frame.h * k));
+          const ctx = c.getContext("2d");
+          ctx.imageSmoothingQuality = "high";
+          ctx.translate(c.width / 2, c.height / 2);  // o canvas tem o centro em 0,0
+          ctx.translate(al.dx * k, al.dy * k);
+          ctx.rotate(al.rot * Math.PI / 180);
+          ctx.scale(al.scale, al.scale);
+          ctx.drawImage(im, -sz.w * k / 2, -sz.h * k / 2, sz.w * k, sz.h * k);
+          let out = url; try { out = c.toDataURL("image/jpeg", 0.9); } catch (e) {}
+          done(out);
+        };
+        im.onerror = () => done(url);
+        im.src = url;
+      });
+    });
+    framedCache.set(key, p);
+    return p;
+  }
+
+  // A tela "Align photos" dentro da janela do Export (protótipo X2, 2026-11-03): prévia grande com as referências
+  // tingidas por cima, a fileira de miniaturas embaixo e, numa coluna à direita, References, This photo, Common frame e
+  // Aspect ratio/Position. Arrastar move a foto, a roda redimensiona, ⌥ + roda gira, ← → trocam de foto, ⌘ + setas
+  // movem 1 px (⇧ 10).
+  function alignScreen(session, items, st, outer, rows, top, rerender) {
+    alignLoad(session, st); cropLoad(session, st);
+    const REF_COLORS = { prev: "#4da3ff", next: "#ff8a3d" };
+    const n = items.length;
+    let cur = Math.max(0, Math.min(n - 1, exp.photo || 0));
+    const item = items[cur];
+    top.innerHTML = "";
+    // Sem "Back to Framing" aqui: sair é pelo "Done aligning" do rodapé ou pelo Esc (decisão do dono, 2026-11-04)
+    const where = el("span", "align-where", "Photo " + pad(item.order || cur + 1) + " of " + pad(n) + " · ← → other photos");
+    top.appendChild(where);
+    rows.classList.add("hidden");
+    const wrap = el("div", "align-wrap");
+    const left = el("div", "align-left");
+    const keepPanel = alignScreen.panelScroll || 0;  // a coluna é redesenhada a cada mudança: mantém a rolagem
+    const stage = el("div", "export-preview align-stage");
+    const layers = el("div", "align-layers");
+    const common = el("div", "align-common");
+    const ratio = el("div", "crop-frame align-ratio");
+    // Caixa de transformação sobre a foto atual: cantos redimensionam (em volta do centro), a alça de cima gira,
+    // o meio move (como arrastar a prévia)
+    const box = el("div", "align-box");
+    const handles = {};
+    ["tl", "tr", "bl", "br"].forEach((c) => { handles[c] = el("div", "align-handle align-handle-" + c); box.appendChild(handles[c]); });
+    const rotLine = el("div", "align-rot-line"); const rotHandle = el("div", "align-rot-handle");
+    box.append(rotLine, rotHandle);
+    const tagText = pad(item.order || cur + 1) + " · Drag to move · scroll to zoom · hold space and drag to pan · ⌥ scroll to rotate · ⌘ arrows 1 px (⇧ 10)";
+    const tag = el("span", "crop-tag", tagText);
+    const wait = el("div", "align-wait", "Measuring the photos…");
+    stage.append(layers, common, ratio, box, tag, wait);
+    left.appendChild(stage);
+    // Fileira de miniaturas, com um ponto da cor da referência
+    const stripScroll = el("div", "export-strip-scroll");
+    const strip = el("ul", "export-strip");
+    stripScroll.appendChild(strip);
+    const refIndex = { prev: cur - 1, next: cur + 1 };
+    const mixedInfo = ratioInfoCached(session.name);
+    items.forEach((it, k) => {
+      const li = el("li", "frame" + (k === cur ? " selected" : ""));
+      li.innerHTML = '<div class="frame-img"><img alt=""><span class="frame-badge"></span></div>';
+      li.querySelector(".frame-badge").textContent = pad(it.order || k + 1);
+      ["prev", "next"].forEach((key) => { if (alignPrefs[key] && refIndex[key] === k && k !== cur) { const dot = el("span", "align-refdot"); dot.style.background = REF_COLORS[key]; li.appendChild(dot); } });
+      if (!alignIsIdentity(st.align.byFile[it.file])) li.classList.add("aligned");
+      // Proporções misturadas: a mesma marca da tela principal (borda tracejada âmbar e a proporção no canto)
+      if (mixedInfo && mixedInfo.mixed && mixedInfo.marked.includes(it.group)) { li.classList.add("ratio-warn"); li.appendChild(el("span", "frame-ratio", mixedInfo.byGroup[it.group] || "")); }
+      sessionPhoto(session.name, it.file, 320).then((url) => { if (url) li.querySelector("img").src = url; });
+      li.addEventListener("click", () => { exp.photo = k; photoRerender(); });
+      strip.appendChild(li);
+    });
+    const slot = el("div", "export-strip-slot"); slot.appendChild(stripScroll); left.appendChild(slot);
+    exp.keyNav = (d) => { const k = Math.max(0, Math.min(n - 1, cur + d)); if (k === cur) return; exp.photo = k; photoRerender(); };
+    wrap.appendChild(left);
+
+    // Coluna de controles
+    const panel = el("div", "align-panel");
+    const block = (title, extra) => { const b = el("div", "align-block"); if (title) { const h = el("h3", "", title); if (extra) h.appendChild(extra); b.appendChild(h); } panel.appendChild(b); return b; };
+    const refs = block("References");
+    // Opacidade: uma barra por referência; a barra "All" move as três juntas (decisão do dono, 2026-11-03)
+    if (!alignPrefs.op) alignPrefs.op = {};
+    const opOf = (key) => (alignPrefs.op[key] != null ? alignPrefs.op[key] : alignPrefs.opacity);
+    const slider = (value, onInput) => {
+      const r = el("div", "align-opacity");
+      const inp = document.createElement("input"); inp.type = "range"; inp.className = "noct-range"; inp.min = "5"; inp.max = "100"; inp.value = String(Math.round(value * 100));
+      const val = el("span", "align-opval", inp.value + "%");
+      inp.addEventListener("input", () => { val.textContent = inp.value + "%"; onInput((+inp.value) / 100); layout(); });
+      inp.addEventListener("change", saveAlignPrefs);
+      r.append(inp, val);
+      return { row: r, input: inp, val };
+    };
+    const refSliders = {};
+    // Ordem (decisão do dono, 2026-11-03): Previous photo, Current photo (#n, a própria foto, sem caixa), Next photo.
+    // Cada uma com a sua barra de opacidade; a barra da Current photo move as três juntas, e mexer numa referência a
+    // desprende até a próxima vez que a da Current photo for usada. Nas pontas, a referência que não existe fica
+    // desativada.
+    const refRow = (key, label, k) => {
+      const isCur = key === "cur";
+      const off = !isCur && (k < 0 || k >= n);
+      const r = el("div", "align-ref" + (off ? " dimmed" : "") + (isCur ? " align-ref-me" : ""));
+      const head = el(isCur ? "div" : "label", "align-ref-head");
+      if (!isCur) {
+        const c = document.createElement("input"); c.type = "checkbox"; c.className = "cs-check"; c.checked = !!alignPrefs[key]; c.disabled = off;
+        c.addEventListener("change", () => { alignPrefs[key] = c.checked; saveAlignPrefs(); rerender(); });
+        head.appendChild(c);
+      }
+      const sw = el("span", "align-sw" + (isCur ? " align-sw-me" : "")); if (!isCur) sw.style.background = REF_COLORS[key];
+      head.append(sw, document.createTextNode(label), el("span", "align-who", isCur ? pad(item.order || cur + 1) : !off ? pad(items[k].order || k + 1) : "none"));
+      const sl = slider(isCur ? alignPrefs.opacity : opOf(key), (v) => {
+        if (isCur) {
+          alignPrefs.opacity = v; alignPrefs.op = {};  // as três juntas
+          Object.keys(refSliders).forEach((o) => { refSliders[o].input.value = String(Math.round(v * 100)); refSliders[o].val.textContent = Math.round(v * 100) + "%"; });
+        } else alignPrefs.op[key] = v;
+      });
+      sl.input.title = isCur ? "Opacity of every photo at once (the current photo and the references)" : "Opacity of this reference only";
+      sl.input.disabled = off;
+      if (!isCur) refSliders[key] = sl;
+      r.append(head, sl.row);
+      refs.appendChild(r);
+    };
+    refRow("prev", "Previous photo", cur - 1);
+    refRow("cur", "Current photo", cur);
+    refRow("next", "Next photo", cur + 1);
+
+    const self = block("This photo", el("span", "align-cur", pad(item.order || cur + 1)));
+    // Cópia de trabalho: só vai para a sessão (e para o desfazer) quando a pessoa termina uma mudança (save)
+    const a = Object.assign({}, alignOf(st, item.file));
+    const fields = {};
+    // Trava (como o Lightroom ao girar): a foto nunca deixa de cobrir a área útil — o quadro da proporção (ou o quadro
+    // comum, sem proporção) como está no começo do gesto. Um passo que descobriria parte dela é recusado.
+    let lockRect = null;
+    const lockStart = () => { lockRect = usefulRect(); };
+    // O menor tamanho (a partir de from) com que a foto cobre a área útil nessa posição e giro; null se nem 4× basta
+    const minCoverScale = (cand, from) => {
+      if (covers(Object.assign({}, cand, { scale: from }))) return from;
+      let lo = from, hi = Math.min(20, from * 4);
+      if (!covers(Object.assign({}, cand, { scale: hi }))) return null;
+      for (let i = 0; i < 24; i++) { const mid = (lo + hi) / 2; if (covers(Object.assign({}, cand, { scale: mid }))) hi = mid; else lo = mid; }
+      return hi;
+    };
+    const covers = (cand) => {
+      const sz = sizes[item.file]; if (!sz || !lockRect) return true;
+      // A área útil de referência não depende do tamanho desta foto: para a trava, ela é calculada com a foto no base
+      return photoCovers(sz.w, sz.h, cand, lockRect);
+    };
+    // Tenta aplicar uma mudança; se descobrir a área útil, mantém o que havia (nos movimentos, tenta cada eixo)
+    const tryApply = (change) => {
+      const cand = Object.assign({}, a); change(cand);
+      if (cand.scale !== a.scale) cand.base = cand.scale;  // tamanho mexido pela pessoa: vira o novo base
+      // Girar (ou mover com giro): o tamanho em uso é o base, ou o mínimo acima dele que ainda cobre a área (como o
+      // Lightroom); ao desfazer o giro ele volta ao base
+      if (cand.rot !== a.rot || (cand.scale === a.scale && (cand.dx !== a.dx || cand.dy !== a.dy))) {
+        const need = minCoverScale(cand, cand.base || cand.scale);
+        if (need != null && cand.rot !== a.rot) { cand.scale = need; Object.assign(a, cand); return true; }
+      }
+      if (covers(cand)) { Object.assign(a, cand); return true; }
+      if ((cand.dx !== a.dx || cand.dy !== a.dy) && cand.scale === a.scale && cand.rot === a.rot) {
+        // Mover além do limite: cada eixo vai até onde ainda cobre a área útil (a foto encosta na borda, sem parar
+        // antes) e o outro eixo continua livre
+        const before = { dx: a.dx, dy: a.dy };
+        ["dx", "dy"].forEach((axis) => {
+          if (cand[axis] === a[axis]) return;
+          const t = Object.assign({}, a, { [axis]: cand[axis] });
+          if (covers(t)) { a[axis] = cand[axis]; return; }
+          let lo = a[axis], hi = cand[axis];
+          for (let i = 0; i < 18; i++) { const mid = (lo + hi) / 2; t[axis] = mid; if (covers(t)) lo = mid; else hi = mid; }
+          a[axis] = lo;
+        });
+        stage.classList.add("locked"); clearTimeout(lockFlash); lockFlash = setTimeout(() => stage.classList.remove("locked"), 300);
+        return a.dx !== before.dx || a.dy !== before.dy;
+      }
+      stage.classList.add("locked"); clearTimeout(lockFlash); lockFlash = setTimeout(() => stage.classList.remove("locked"), 300);
+      return false;
+    };
+    let lockFlash = 0;
+    const stepOnce = (change) => { lockStart(); tryApply(change); sync(); layout(); save(); };
+    // Até onde a foto pode ir num eixo sem descobrir a área útil (procura a partir de onde está)
+    const reach = (axis, dir) => {
+      const sz = sizes[item.file]; if (!sz) return a[axis];
+      let lo = a[axis], hi = a[axis] + dir * Math.max(sz.w, sz.h) * a.scale;
+      if (!covers(Object.assign({}, a, { [axis]: lo }))) return a[axis];
+      if (covers(Object.assign({}, a, { [axis]: hi }))) return hi;
+      for (let i = 0; i < 30; i++) { const mid = (lo + hi) / 2; if (covers(Object.assign({}, a, { [axis]: mid }))) lo = mid; else hi = mid; }
+      return lo;
+    };
+    const placePhoto = (x, y) => {
+      lockStart();
+      const minX = reach("dx", -1), maxX = reach("dx", 1), minY = reach("dy", -1), maxY = reach("dy", 1);
+      // Ponto da esquerda = a foto empurrada para a esquerda até o limite (o seu lado esquerdo cola no da área)
+      a.dx = Math.round(minX + (maxX - minX) * x); a.dy = Math.round(minY + (maxY - minY) * y);
+      sync(); layout(); save();
+    };
+    // O ponto aceso é onde a foto está dentro da folga (sem folga num eixo, conta como o meio)
+    let posDots = null;
+    const markPosDots = () => {
+      if (!posDots || !sizes[item.file]) return;
+      lockStart();
+      const minX = reach("dx", -1), maxX = reach("dx", 1), minY = reach("dy", -1), maxY = reach("dy", 1);
+      const fx = maxX - minX > 1 ? (a.dx - minX) / (maxX - minX) : 0.5, fy = maxY - minY > 1 ? (a.dy - minY) / (maxY - minY) : 0.5;
+      [...posDots.children].forEach((d) => d.classList.toggle("on", Math.abs(+d.dataset.x - fx) < 0.02 && Math.abs(+d.dataset.y - fy) < 0.02));
+    };
+    // Segurar o − ou o + repete o passo (400 ms para começar, depois a cada 60 ms)
+    const holdButton = (icon, title, step, bigStep, apply) => {
+      const b = button("", () => {}, { icon, title, kind: "btn-secondary" });
+      let timer = 0, repeat = 0;
+      const stop = () => { clearTimeout(timer); clearInterval(repeat); timer = repeat = 0; };
+      b.addEventListener("pointerdown", (e) => {
+        if (e.button !== 0) return;
+        e.preventDefault(); b.setPointerCapture(e.pointerId);
+        const amount = e.shiftKey ? bigStep : step;
+        lockStart(); tryApply((c) => apply(c, amount)); sync(); layout();
+        timer = setTimeout(() => { repeat = setInterval(() => { if (!tryApply((c) => apply(c, amount))) stop(); sync(); layout(); }, 60); }, 400);
+      });
+      ["pointerup", "pointercancel", "lostpointercapture"].forEach((ev) => b.addEventListener(ev, () => { if (timer || repeat) { stop(); save(); } }));
+      return b;
+    };
+    const control = (key, label, unit, step, bigStep, decimals, get, apply) => {
+      const r = el("div", "align-ctl");
+      const inp = document.createElement("input"); inp.type = "text"; inp.className = "lent-num align-num"; inp.value = get().toFixed(decimals);
+      inp.setAttribute("aria-label", label);
+      const typed = () => { const v = parseFloat(inp.value.replace(",", ".")); if (!isNaN(v)) stepOnce((c) => apply(c, v - get())); else sync(); };
+      inp.addEventListener("change", typed);
+      inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { typed(); inp.blur(); } if (e.key === "ArrowUp" || e.key === "ArrowDown") { e.preventDefault(); stepOnce((c) => apply(c, (e.key === "ArrowUp" ? 1 : -1) * (e.shiftKey ? bigStep : step))); } e.stopPropagation(); });
+      const minus = holdButton("minus", "−" + step + " (⇧ " + bigStep + "); hold to repeat", step, bigStep, (c, amt) => apply(c, -amt));
+      const plus = holdButton("plus", "+" + step + " (⇧ " + bigStep + "); hold to repeat", step, bigStep, (c, amt) => apply(c, amt));
+      inp.title = unit;  // a unidade e os passos ficam na dica (sem legenda ao lado; decisão do dono, 2026-11-03)
+      r.append(el("span", "align-lab", label), minus, inp, plus);
+      fields[key] = inp;
+      self.appendChild(r);
+    };
+    control("dx", "Move X", "Pixels of the original · steps of 1 (⇧ 10)", 1, 10, 0, () => a.dx, (c, d) => { c.dx += d; });
+    control("dy", "Move Y", "Pixels of the original · steps of 1 (⇧ 10)", 1, 10, 0, () => a.dy, (c, d) => { c.dy += d; });
+    control("scale", "Size", "Percent of the original · steps of 0.1 (⇧ 1)", 0.1, 1, 1, () => a.scale * 100, (c, d) => { c.scale = Math.max(0.05, Math.min(20, c.scale + d / 100)); });
+    control("rot", "Rotate", "Degrees, clockwise · steps of 0.05 (⇧ 0.5)", 0.05, 0.5, 2, () => a.rot, (c, d) => { c.rot = Math.round((c.rot + d) * 1000) / 1000; });
+    const resets = el("div", "align-resets");
+    // Fit to canvas: a foto centrada, com o giro que tem, no menor tamanho que ainda cobre a área útil
+    resets.appendChild(button("Fit to canvas", () => {
+      if (!sizes[item.file]) return;
+      lockStart();
+      const sz = sizes[item.file];
+      const need = minCoverOf(sz.w, sz.h, Object.assign({}, a, { dx: 0, dy: 0 }), 0.05, lockRect);
+      if (!need) return;
+      a.dx = 0; a.dy = 0; a.scale = need; a.base = need;
+      sync(); layout(); save();
+    }, { kind: "btn-secondary", title: "Centre this photo and make it the smallest size that still covers the canvas (the rotation stays)" }));
+    resets.appendChild(button("Reset photo", () => { delete st.align.byFile[item.file]; alignSave(session, st); expTrack(); rerender(); }, { kind: "btn-secondary" }));
+    resets.appendChild(button("Reset all", () => { st.align.byFile = {}; alignSave(session, st); expTrack(); rerender(); }, { kind: "btn-secondary" }));
+    self.appendChild(resets);
+    const cf = el("div", "align-cf", "Measuring the photos…");  // o quadro comum numa linha, aqui mesmo
+    self.appendChild(cf);
+    // Proporção (a mesma da aba Framing; vale para a sessão inteira) e a posição da foto atual dentro da folga que
+    // ela tem sobre a área útil (decisão do dono, 2026-11-03: o recorte não se move aqui; a foto, sim)
+    const ar = block("");
+    const arRows = el("div", "align-rows");
+    {
+      const info = ratioInfoCached(session.name);
+      const r = row("Aspect ratio");
+      r.appendChild(segmented(CROP_RATIOS, st.crop.ratio, (v) => { st.crop.ratio = v; cropShare(session, st); rerender(); },
+        (v) => (v === "asshot" && sessionMixed(session) ? "Aligned photos need a ratio. To keep each photo as shot, go back to Framing and choose As shot there (the alignment is kept for later)." : "")));
+      if (st.crop.ratio !== "asshot" && info && info.keep && info.keep[st.crop.ratio] != null) r.appendChild(el("span", "export-keep", "keeps " + info.keep[st.crop.ratio] + "%"));
+      arRows.appendChild(r);
+      addTip(arRows, "The shape every export gets, for the whole session; the crop frame stays where the Framing tab put it.", "Aspect ratio");
+      const pos = row("Position");
+      const dots = el("div", "crop-dots");
+      const names = ["Top left", "Top", "Top right", "Left", "Center", "Right", "Bottom left", "Bottom", "Bottom right"];
+      [0, 0.5, 1].forEach((y, yi) => [0, 0.5, 1].forEach((x, xi) => {
+        const d = el("button", "crop-dot"); d.type = "button"; d.title = names[yi * 3 + xi]; d.dataset.x = x; d.dataset.y = y;
+        d.addEventListener("click", () => placePhoto(x, y));
+        dots.appendChild(d);
+      }));
+      pos.appendChild(dots);
+      posDots = dots;
+      arRows.appendChild(pos);
+    }
+    ar.appendChild(arRows);
+    wrap.appendChild(panel);
+    outer.insertBefore(wrap, rows);
+    panel.addEventListener("scroll", () => { alignScreen.panelScroll = panel.scrollTop; });
+    if (keepPanel) { panel.scrollTop = keepPanel; requestAnimationFrame(() => { panel.scrollTop = keepPanel; }); }
+
+    const sync = () => { fields.dx.value = a.dx.toFixed(0); fields.dy.value = a.dy.toFixed(0); fields.scale.value = (a.scale * 100).toFixed(1); fields.rot.value = a.rot.toFixed(2); markPosDots(); };
+    let saveTimer = 0;
+    // Fim de uma mudança: vai para a sessão, para session.json (logo em seguida) e vira um passo do desfazer
+    const save = () => {
+      clearTimeout(saveSoonTimer);
+      if (alignIsIdentity(a)) delete st.align.byFile[item.file]; else st.align.byFile[item.file] = Object.assign({}, a);
+      clearTimeout(saveTimer); saveTimer = setTimeout(() => alignSave(session, st), 150);
+      expTrack();
+    };
+    // Para gestos contínuos (roda): um passo só depois de parar
+    let saveSoonTimer = 0;
+    const saveSoon = () => { clearTimeout(saveSoonTimer); saveSoonTimer = setTimeout(save, 350); };
+
+    // Tamanhos reais e as imagens das camadas
+    const sizes = {};
+    let scaleK = 1, cx = 0, cy = 0, baseK = 1;  // canvas (px do original) → tela; baseK: a escala com zoom 100%
+    // Zoom e deslocamento da prévia (só a vista; não mexe nas fotos): a roda aproxima e afasta, espaço + arrastar desloca
+    if (!exp.alignView) exp.alignView = { zoom: 1, px: 0, py: 0 };
+    const view = exp.alignView;
+    const layerOf = {};
+    const makeLayer = (it, key) => {
+      const l = el("div", "align-layer" + (key ? " align-ref" : " align-current"));
+      const im = document.createElement("img"); im.alt = "";
+      l.appendChild(im);
+      if (key) { const tint = el("div", "align-tint"); tint.style.background = REF_COLORS[key]; l.appendChild(tint); }
+      sessionPhoto(session.name, it.file, 1600).then((url) => { if (url) im.src = url; });
+      return l;
+    };
+    // As referências embaixo, tingidas; a foto atual por cima. Cada camada com a sua opacidade (onion skin)
+    const order = [];
+    ["prev", "next"].forEach((key) => { const k = refIndex[key]; if (alignPrefs[key] && k >= 0 && k < n && k !== cur && !order.some((o) => o.k === k)) order.push({ k, key }); });
+    const refKeyOf = {};
+    order.forEach((o) => { layerOf[o.k] = makeLayer(items[o.k], o.key); refKeyOf[o.k] = o.key; layers.appendChild(layerOf[o.k]); });
+    layerOf[cur] = makeLayer(item, ""); layers.appendChild(layerOf[cur]);
+
+    // A área útil é o canvas (o recorte na proporção escolhida); a foto tem de cobri-lo sempre
+    const usefulRect = () => commonFrame(items, sizes, st);  // o recorte é o canvas inteiro
+    const layout = () => {
+      const W = stage.clientWidth, H = stage.clientHeight;
+      if (!W || !H || !sizes[item.file]) return;
+      // Escala da tela: a maior foto (com margem) cabe inteira com zoom 100%
+      let maxW = 0, maxH = 0;
+      items.forEach((it) => { const sz = sizes[it.file]; if (sz) { maxW = Math.max(maxW, sz.w); maxH = Math.max(maxH, sz.h); } });
+      baseK = Math.min(W / (maxW * 1.12), H / (maxH * 1.12)); scaleK = baseK * view.zoom;
+      const frame = commonFrame(items, sizes, st);
+      // Limite do deslocamento: sempre ao menos 80 px do canvas (ou metade dele, se for menor) à vista
+      if (frame) {
+        const fw = frame.w * scaleK, fh = frame.h * scaleK, mx = Math.min(80, fw / 2), my = Math.min(80, fh / 2);
+        view.px = Math.max(mx - W / 2 - (frame.x * scaleK + fw), Math.min(W / 2 - mx - frame.x * scaleK, view.px));
+        view.py = Math.max(my - H / 2 - (frame.y * scaleK + fh), Math.min(H / 2 - my - frame.y * scaleK, view.py));
+      }
+      cx = W / 2 + view.px; cy = H / 2 + view.py;
+      tag.textContent = tagText + (Math.abs(view.zoom - 1) > 0.001 ? " · zoom " + Math.round(view.zoom * 100) + "%" : "");
+      if (!frame) { common.style.display = "none"; ratio.style.display = "none"; box.style.display = "none"; cf.textContent = "Could not work out the canvas from the photo sizes."; cf.classList.add("exp-warn"); return; }
+      cf.classList.remove("exp-warn");
+      Object.keys(layerOf).forEach((k) => {
+        const it = items[k], sz = sizes[it.file], l = layerOf[k]; if (!sz) { l.style.display = "none"; return; }
+        const al = +k === cur ? a : effectiveAlign(sz, alignOf(st, it.file), frame, st);
+        const w = sz.w * scaleK, h = sz.h * scaleK;
+        l.style.display = ""; l.style.width = w + "px"; l.style.height = h + "px";
+        l.style.left = (cx + al.dx * scaleK - w / 2) + "px"; l.style.top = (cy + al.dy * scaleK - h / 2) + "px";
+        l.style.transform = "scale(" + al.scale + ") rotate(" + al.rot + "deg)";
+        l.style.opacity = l.classList.contains("align-ref") ? opOf(refKeyOf[k]) : alignPrefs.opacity;
+        if (+k === cur) { box.style.display = ""; box.style.width = w + "px"; box.style.height = h + "px"; box.style.left = l.style.left; box.style.top = l.style.top; box.style.transform = l.style.transform;
+          // alças com o mesmo tamanho na tela, seja qual for o zoom da foto
+          const inv = 1 / al.scale; [...box.children].forEach((hd) => { hd.style.setProperty("--inv", inv); }); }
+      });
+      // Proporção de um tamanho: a mais próxima das quatro; "~" quando não é exata
+      const rn = (w, h) => { const n = ratioName(w, h); const exact = Math.abs(Math.max(w, h) / Math.min(w, h) - RATIOS[n]) < 0.01; return exact ? n : "~" + n; };
+      // Um quadro só: o canvas, que é o recorte (neon, sólido); fora dele a prévia escurece
+      common.style.display = "none";
+      ratio.style.display = ""; ratio.classList.add("free");
+      ratio.style.left = (cx + frame.x * scaleK) + "px"; ratio.style.top = (cy + frame.y * scaleK) + "px"; ratio.style.width = (frame.w * scaleK) + "px"; ratio.style.height = (frame.h * scaleK) + "px";
+      ratio.setAttribute("data-size", "Canvas · " + Math.round(frame.w) + " × " + Math.round(frame.h) + " px · " + rn(frame.w, frame.h));
+      const sz = sizes[item.file];
+      cf.textContent = "Canvas " + Math.round(frame.w) + " × " + Math.round(frame.h) + " px (" + rn(frame.w, frame.h) + ")" + (sz ? " · this photo " + sz.w + " × " + sz.h + " px (" + rn(sz.w, sz.h) + ")" : "");
+      cf.title = "The canvas is what every export gets: what every photo covers as shot and, with an aspect ratio, the largest frame in that ratio inside it. No photo is enlarged on its own; each one is moved, resized and rotated behind the canvas.";
+    };
+    Promise.all(items.map((it) => photoSizeOf(session.name, it.file).then((sz) => { if (sz) sizes[it.file] = sz; }))).then(() => {
+      wait.remove();
+      if (!sizes[item.file]) { cf.textContent = "Could not read the size of this photo."; cf.classList.add("exp-warn"); return; }
+      const frame0 = commonFrame(items, sizes, st);
+      if (frame0) Object.assign(a, effectiveAlign(sizes[item.file], a, frame0, st));  // o que vale para esta foto (só grava quando a pessoa mexer)
+      sync(); layout(); markPosDots();
+    });
+    if (window.ResizeObserver) new ResizeObserver(layout).observe(stage);
+
+    // Etiquetas da prévia (o tamanho do canvas e a instrução embaixo): somem enquanto o mouse se mexe sobre a prévia ou
+    // o espaço está seguro, e voltam 2 s depois de parar
+    let quietTimer = 0;
+    const quiet = () => { stage.classList.add("quiet"); clearTimeout(quietTimer); quietTimer = setTimeout(() => { if (exp.spaceDown) quiet(); else stage.classList.remove("quiet"); }, 2000); };
+    stage.addEventListener("pointermove", quiet);
+    stage.addEventListener("wheel", quiet, { passive: true });
+    exp.alignQuiet = quiet;
+    exp.alignLayout = layout;
+    // Gestos na prévia: mover (arrastar a prévia ou o meio da caixa), redimensionar (cantos da caixa ou a roda),
+    // girar (alça de cima ou ⌥ + roda). Todos presos à área útil (lockStart/tryApply).
+    let drag = null;
+    const centerOnScreen = () => { const r = stage.getBoundingClientRect(); return { x: r.left + cx + a.dx * scaleK, y: r.top + cy + a.dy * scaleK }; };
+    stage.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0 || e.target.closest("button") || !sizes[item.file]) return;
+      e.preventDefault(); stage.setPointerCapture(e.pointerId);
+      document.body.classList.add("photo-drag");  // a mão fechada continua fora da prévia
+      if (exp.spaceDown) { drag = { kind: "pan", x: e.clientX, y: e.clientY, px: view.px, py: view.py }; stage.classList.add("panning"); return; }
+      lockStart();
+      const c = centerOnScreen();
+      if (e.target === rotHandle) {
+        drag = { kind: "rot", rot: a.rot, angle: Math.atan2(e.clientY - c.y, e.clientX - c.x) }; stage.classList.add("rotating");
+      } else if (e.target.classList.contains("align-handle")) {
+        drag = { kind: "scale", scale: a.scale, dist: Math.max(1, Math.hypot(e.clientX - c.x, e.clientY - c.y)) }; stage.classList.add("resizing");
+      } else {
+        drag = { kind: "move", x: e.clientX, y: e.clientY, dx: a.dx, dy: a.dy }; stage.classList.add("dragging");
+      }
+    });
+    let moveEv = null, moveRaf = 0;
+    stage.addEventListener("pointermove", (e) => {
+      if (!drag) return;
+      moveEv = e;
+      if (!moveRaf) moveRaf = requestAnimationFrame(() => { moveRaf = 0; if (drag && moveEv) dragMove(moveEv); });
+    });
+    const dragMove = (e) => {
+      if (drag.kind === "pan") { view.px = drag.px + e.clientX - drag.x; view.py = drag.py + e.clientY - drag.y; layout(); return; }
+      const c = centerOnScreen();
+      if (drag.kind === "move") tryApply((cand) => { cand.dx = drag.dx + (e.clientX - drag.x) / scaleK; cand.dy = drag.dy + (e.clientY - drag.y) / scaleK; });
+      else if (drag.kind === "scale") tryApply((cand) => { cand.scale = Math.max(0.05, Math.min(20, drag.scale * Math.max(1, Math.hypot(e.clientX - c.x, e.clientY - c.y)) / drag.dist)); });
+      else { const ang = Math.atan2(e.clientY - c.y, e.clientX - c.x); let d = (ang - drag.angle) * 180 / Math.PI; if (e.shiftKey) d = Math.round(d / 15) * 15; tryApply((cand) => { cand.rot = Math.round((drag.rot + d) * 100) / 100; }); }
+      sync(); layout();
+    };
+    const endDrag = (e) => {
+      if (!drag) return;
+      if (moveRaf) { cancelAnimationFrame(moveRaf); moveRaf = 0; if (moveEv) dragMove(moveEv); }  // a última posição do mouse vale
+      const pan = drag.kind === "pan";
+      drag = null; stage.classList.remove("dragging", "resizing", "rotating", "panning"); document.body.classList.remove("photo-drag");
+      if (pan) return;  // deslocar a vista não muda a foto
+      a.dx = Math.round(a.dx); a.dy = Math.round(a.dy); sync(); layout(); save();
+    };
+    stage.addEventListener("pointerup", endDrag); stage.addEventListener("pointercancel", endDrag); stage.addEventListener("lostpointercapture", endDrag);
+    stage.addEventListener("dragstart", (e) => e.preventDefault());
+    stage.addEventListener("wheel", (e) => {
+      if (!sizes[item.file]) return;
+      e.preventDefault();
+      const d = Math.max(-40, Math.min(40, e.deltaY));
+      if (e.altKey) {  // ⌥ + roda: gira a foto
+        lockStart();
+        tryApply((cand) => { cand.rot = Math.round((cand.rot - d * 0.01) * 100) / 100; });
+        sync(); layout(); saveSoon();
+        return;
+      }
+      // Roda: zoom da vista (30% a 800%), em volta do ponto sob o mouse
+      const r = stage.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
+      const ux = (mx - cx) / scaleK, uy = (my - cy) / scaleK;
+      view.zoom = Math.max(0.3, Math.min(8, view.zoom * Math.exp(-d * 0.004)));
+      const k = baseK * view.zoom, W = stage.clientWidth, H = stage.clientHeight;
+      view.px = mx - W / 2 - ux * k; view.py = my - H / 2 - uy * k;
+      layout();
+    }, { passive: false });
+    exp.keyMove = (ddx, ddy, big) => { const step = big ? 10 : 1; stepOnce((cand) => { cand.dx += ddx * step; cand.dy += ddy * step; }); };
+  }
+
   function lentSizeRow(l, box, rerender, label) {
       const size = row(label || "Print size");
       const unitIn = l.unit === "in";
@@ -3061,7 +4395,7 @@
     outer.innerHTML = "";
     const rows = el("div", "export-rows");
     outer.appendChild(rows);
-    renderExportSettings.restoreScroll = () => { if (keepScroll) rows.scrollTop = keepScroll; };
+    renderExportSettings.restoreScroll = () => { if (keepScroll) { rows.scrollTop = keepScroll; requestAnimationFrame(() => { rows.scrollTop = keepScroll; }); } };
     // As caixas terminam no mesmo ponto que a prévia: o espaço da direita (18 px) é dividido
     // entre a barra de rolagem, quando ela existe e ocupa lugar, e um respiro até as caixas
     const fitRows = () => {
@@ -3081,22 +4415,46 @@
     const label = sessionLabel(session.name).date;
     const rerender = () => { syncAll(); renderExportSettings(); if (renderExportSettings.restoreScroll) renderExportSettings.restoreScroll(); refreshSummaries(); rememberExportPrefs(); };
 
-    // Barra de cima: mesma configuração para todas (padrão) ou uma por sessão, e mostrar/esconder
-    // a prévia (foto grande e miniaturas), para sobrar espaço para as configurações
+    // Passo 3 (Review): tabela, nome e pasta; sem prévia nem lista
+    if (exp.step === 3) { exp.keyNav = null; exp.aligning = false; outer.classList.remove("aligning", "theater"); renderReview(outer, rows, rerender); return; }
+    if (exp.step === 1) exp.mode = "framing";
+    else if (!OUTPUT_KINDS.includes(exp.mode)) exp.mode = OUTPUT_KINDS.find((k) => st.outputs[k]) || "photos";
+    // Barra de cima: no passo 1 o nome da sessão aberta; no 2, mesma configuração para todas (padrão) ou uma por
+    // sessão; nos dois, mostrar/esconder a prévia (foto grande e miniaturas)
     const top = el("div", "export-scope");
-    if (sessions.length > 1) top.appendChild(checkOption("Same settings for all sessions", exp.sameForAll, (v) => { exp.sameForAll = v; rerender(); }));
+    if (exp.step === 1) top.appendChild(el("span", "export-step1-title", "Framing · " + label));
     top.appendChild(el("span", "spacer"));
     const pv = button(exp.previewHidden ? "Show preview" : "Hide preview", () => {
       exp.previewHidden = !exp.previewHidden;
-      if (exp.previewHidden) { exp.lentTheater = false; }
+      if (exp.previewHidden) { exp.theater = false; }
       rerender();
     }, { kind: "btn-link", icon: exp.previewHidden ? "down" : "up", title: exp.previewHidden ? "Show the photo and the thumbnails" : "Hide the photo and the thumbnails: more room for the settings" });
     pv.classList.add("export-preview-toggle");
-    top.appendChild(pv);
-    outer.insertBefore(top, rows);
-    // Foco da prévia: a seção clicada por último, se marcada; senão a primeira marcada
-    if (!st.outputs[exp.mode]) exp.mode = OUTPUTS.map(([k]) => k).find((k) => st.outputs[k]) || "photos";
-    if (exp.mode !== "lenticular") { exp.lentTheater = false; outer.classList.remove("theater"); }
+    // Passo 2: sem barra de cima; "Hide preview" vai para a linha das abas, encostado à direita (decisão do dono, 2026-11-04)
+    if (exp.step === 1) outer.insertBefore(top, rows);  // passo 1: sem "Hide preview" (decisão do dono, 2026-11-04)
+    // (o modo de cada passo já foi fixado acima)
+    // Modo teatro (Photos, Sequence e Lenticular): vale para a aba onde foi ligado; trocar de aba ou de passo desliga
+    if (exp.theaterKind !== exp.mode || exp.step !== 2) exp.theater = false;
+    if (!exp.theater) outer.classList.remove("theater", "theater-strip");
+    exp.keyMove = null;
+    // Tela "Align photos" (pedaço 2 do Framing): toma a coluna inteira no lugar das abas
+    if (exp.mode !== "framing") exp.aligning = false;
+    outer.classList.toggle("aligning", !!exp.aligning);
+    const body = document.querySelector(".export-body");
+    if (body) body.classList.toggle("aligning", !!exp.aligning);  // lista de sessões só com as miniaturas (como a barra da tela cheia)
+    // Na tela de alinhamento a caixa de cada sessão some: a lista vira uma parada só do Tab (a sessão aberta) e
+    // ↑ ↓ trocam de sessão (decisão do dono, 2026-11-03)
+    // (no passo 2 a linha da lista é o próprio controle do Tab: quem cuida é o exportRoving)
+    if (exp.step !== 2) [...$("exportList").children].forEach((li) => { li.tabIndex = exp.aligning && li.dataset.name === exp.active ? 0 : -1; });
+    // Entrar ou sair da tela de alinhamento: a coluna surge num fade curto (a lista estreita/alarga com transição no CSS)
+    if (exp.aligningShown !== !!exp.aligning) {
+      exp.aligningShown = !!exp.aligning;
+      exp.alignView = { zoom: 1, px: 0, py: 0 };  // cada entrada começa sem zoom
+      outer.classList.remove("layout-change"); void outer.offsetWidth; outer.classList.add("layout-change");
+      setTimeout(() => outer.classList.remove("layout-change"), 400);
+    }
+    if (exp.aligning && needsRatio(session, st)) exp.aligning = false;  // sessão misturada sem proporção não alinha (ex.: depois de um ⌘Z)
+    if (exp.aligning) { exp.keyNav = null; alignScreen(session, items, st, outer, rows, top, rerender); return; }
 
     // Monta a prévia (só a da seção em foco entra na tela) e as configurações de uma saída
     exp.keyNav = null;
@@ -3106,16 +4464,69 @@
       img.alt = "";
       const caption = el("div", "stage-caption");
       preview.append(img, caption);
-      if (focused && !exp.previewHidden) outer.insertBefore(preview, rows);
+      if (focused && (exp.step === 1 || !exp.previewHidden)) outer.insertBefore(preview, rows);
+      if (focused && exp.step === 2 && (kind === "photos" || kind === "sequence")) {
+        // Modo teatro também em Photos e Sequence (decisão do dono, 2026-11-04); em Photos as miniaturas ficam
+        const tb = button("", () => { const from = preview.offsetHeight; exp.theater = !exp.theater; exp.theaterKind = kind; applyT(); slideHeight(preview, from);
+          if (!exp.theater) { const n = outer.querySelector(".export-rows"); if (n && n.animate) n.animate([{ opacity: 0 }, { opacity: 1 }], { duration: EASE_MS, easing: "ease" }); } },
+          { icon: "theaterIn", title: "Theater mode: larger preview, settings hidden", kind: "btn-secondary" });
+        tb.classList.add("lent-theater-btn");
+        tb.addEventListener("pointerdown", (e) => e.stopPropagation());
+        preview.appendChild(tb);
+        const applyT = () => {
+          outer.classList.toggle("theater", !!exp.theater);
+          outer.classList.toggle("theater-strip", !!exp.theater && kind === "photos");
+          tb.classList.toggle("on", !!exp.theater);
+          tb.innerHTML = icon(exp.theater ? "theaterOut" : "theaterIn");
+          tb.title = exp.theater ? "Leave theater mode" : "Theater mode: larger preview, settings hidden";
+        };
+        applyT();
+      }
       const show = (i, text, file) => {
         const item = items[i];
         if (!item) return;
-        sessionPhoto(session.name, item.file, 1600).then((url) => { if (url && exp.active === session.name) img.src = url; });
+        // Passo 2: a prévia já com o Framing do passo 1 (proporção, posição e alinhamento), como sai na exportação
+        sessionPhoto(session.name, item.file, 1600).then((url) => (url && exp.step === 2 ? framedUrl(session, items, st, item, url) : url))
+          .then((url) => { if (url && exp.active === session.name) img.src = url; });
         caption.innerHTML = "";
         caption.append(el("b", "", text[0]), document.createTextNode(text[1]));
         if (file) caption.appendChild(el("span", "caption-file", file));
       };
-      if (kind === "photos") {
+      if (kind === "framing") {
+        cropLoad(session, st);
+        // Em foco: a prévia (o recorte sobre a foto) em cima, as linhas embaixo, a fileira de miniaturas entre as duas.
+        // Sem modo teatro nesta aba (decisão do dono, 2026-11-03): o ⤢ amplia a prévia, mas as linhas do Framing
+        // (Aspect ratio, Same size, Position) continuam à vista; o resto da janela (Name etc.) some. ⤡ volta.
+        if (focused && (exp.step === 1 || !exp.previewHidden)) {  // passo 1: a prévia está sempre à vista
+          preview.remove();
+          const stage = cropStage(session, items, st, st.crop.ratio !== "asshot" ? RATIOS[st.crop.ratio] : 0, (changed) => { cropShare(session, st); if (changed) rerender(); });
+          stage.classList.add("export-preview", "framing-stage");
+          // "Align photos" (pedaço 2): abre a tela de alinhamento no lugar do ⤢ (decisão do dono, 2026-11-03, protótipo X1)
+          const alignBtn = button("Align photos", () => { if (needsRatio(session, st)) askRatioForAlign(session, st, rerender); else { exp.aligning = true; rerender(); } },
+            { icon: "alignPhotos", title: "Align photos: move, resize and rotate each photo over the others", kind: "btn-secondary" });
+          alignBtn.classList.add("framing-align-btn");
+          alignBtn.addEventListener("pointerdown", (e) => e.stopPropagation());
+          stage.appendChild(alignBtn);
+          if (sessionAligned(session, st)) stage.appendChild(el("span", "framing-aligned-tag", "Aligned"));
+          outer.insertBefore(stage, rows);
+          const stripScroll = el("div", "export-strip-scroll");
+          const strip = el("ul", "export-strip");
+          stripScroll.appendChild(strip);
+          items.forEach((item, k) => {
+            const li = el("li", "frame" + (k === (exp.photo || 0) ? " selected" : ""));
+            li.innerHTML = '<div class="frame-img"><img alt=""><span class="frame-badge"></span></div>';
+            li.querySelector(".frame-badge").textContent = pad(item.order || k + 1);
+            sessionPhoto(session.name, item.file, 320).then((url) => { if (url) li.querySelector("img").src = url; });
+            li.addEventListener("click", () => { exp.photo = k; photoRerender(); });
+            strip.appendChild(li);
+          });
+          exp.keyNav = (d) => { const k = Math.max(0, Math.min(items.length - 1, (exp.photo || 0) + d)); if (k === exp.photo) return; exp.photo = k; photoRerender(); };
+          const slot = el("div", "export-strip-slot");
+          slot.appendChild(stripScroll);
+          outer.insertBefore(slot, rows);
+        }
+        framingRows(session, st, box, rerender);  // as configurações embaixo da prévia, em linhas (decisão do dono, 2026-11-03)
+      } else if (kind === "photos") {
       const s = st.photos;
       // A fileira (ul) fica dentro de uma caixa que rola (div): o WebKit do Mac pintava os
       // filhos diretos da área de rolagem deslocados (sem a borda e o espaço interno deles)
@@ -3139,7 +4550,19 @@
         thumb.appendChild(pic);
         thumb.appendChild(el("span", "frame-badge", pad(item.order)));
         li.appendChild(thumb);
-        sessionPhoto(session.name, item.file, 320).then((url) => { if (url) pic.src = url; });
+        // Passo 2: a miniatura também com o Framing do passo 1, inteira na caixa (sem cortar de novo)
+        sessionPhoto(session.name, item.file, 320).then((url) => (url && exp.step === 2 ? framedUrl(session, items, st, item, url, 320) : url))
+          .then((url) => {
+            if (!url) return;
+            const framed = exp.step === 2 && !(st.crop.ratio === "asshot" && !sessionAligned(session, st));
+            // A caixa da miniatura acompanha a forma do recorte (decisão do dono, 2026-11-04): a mesma altura de
+            // sempre, a largura pela proporção da imagem recortada; a imagem enche a caixa sem cortar
+            if (framed) pic.onload = () => {
+              const r = pic.naturalWidth / Math.max(1, pic.naturalHeight), h = 47, w = Math.max(24, Math.round(h * r));
+              thumb.style.width = w + "px"; li.style.width = (w + 6) + "px"; li.style.flexBasis = (w + 6) + "px"; li.style.setProperty("--frame-w", (w + 6) + "px");
+            };
+            pic.src = url;
+          });
         li.addEventListener("click", () => { exp.photo = k; showPhoto(); });
         strip.appendChild(li);
       });
@@ -3190,6 +4613,26 @@
       // baixo; 3D: lentes em pé, girando para os lados
       const vertical = l.effect !== "3d";
       preview.classList.toggle("tilt-vertical", vertical);
+      // Tilt: a foto dentro de um "papel" com a proporção da impressão (cabe na prévia); Fill cobre o papel na
+      // posição do recorte da Framing, Fit mostra inteira com a faixa
+      const paper = el("div", "lent-paper");
+      paper.style.aspectRatio = l.widthCm + " / " + l.heightCm;
+      paper.style.background = lentBand === "white" ? "#fff" : "#000";
+      paper.classList.toggle("place-fit", (l.placement || "fill") === "fit");
+      img.remove(); paper.appendChild(img); preview.insertBefore(paper, caption);
+      // O papel cabe inteiro na prévia mantendo a proporção da impressão, no tamanho normal e no teatro (como o
+      // Interlaced): só CSS deformava o papel quando a prévia era mais estreita do que ele pedia
+      const fitPaper = () => {
+        const W = preview.clientWidth, H = preview.clientHeight;
+        if (!W || !H) return;
+        const r = l.widthCm / l.heightCm;
+        let w = W, h = W / r;
+        if (h > H) { h = H; w = H * r; }
+        paper.style.width = Math.floor(w) + "px"; paper.style.height = Math.floor(h) + "px";
+      };
+      fitPaper();
+      new ResizeObserver(fitPaper).observe(preview);
+      img.style.objectPosition = Math.round(st.crop.x * 100) + "% " + Math.round(st.crop.y * 100) + "%";
       const order = l.reverse ? items.map((_, i) => n - 1 - i) : items.map((_, i) => i);
       let frameAt = Math.min(exp.frame >= 0 ? exp.frame : 0, Math.max(0, n - 1));
       const showFrame = (k) => {
@@ -3255,7 +4698,7 @@
         preview.classList.toggle("interlaced", inter);
         if (inter) drawInterlaced(); else showFrame(frameAt);
       };
-      [["tilt", "Tilt"], ["interlaced", "Interlaced"]].forEach(([v, t]) => {
+      [["interlaced", "Interlaced"], ["tilt", "Tilt"]].forEach(([v, t]) => {  // Interlaced primeiro e padrão (decisão do dono, 2026-11-03)
         const b = el("button", "", t); b.dataset.view = v; b.title = v === "tilt" ? "Drag to see the photos change, as when tilting the print" : "The whole interlaced file, as it prints; move the mouse over it for a close-up";
         b.addEventListener("click", (e) => { e.stopPropagation(); setView(v); });
         views.appendChild(b);
@@ -3265,22 +4708,23 @@
       // Modo teatro: a prévia ocupa a coluna toda e as configurações somem; o botão de novo volta
       const theater = button("", () => {
         const from = preview.offsetHeight;
-        exp.lentTheater = !exp.lentTheater;
+        exp.theater = !exp.theater; exp.theaterKind = "lenticular";
         applyTheater();
         slideHeight(preview, from);
-        if (!exp.lentTheater) [outer.querySelector(".export-rows"), outer.querySelector(".export-scope")].forEach((n) => n && n.animate && n.animate([{ opacity: 0 }, { opacity: 1 }], { duration: EASE_MS, easing: "ease" }));
+        if (!exp.theater) [outer.querySelector(".export-rows"), outer.querySelector(".export-scope")].forEach((n) => n && n.animate && n.animate([{ opacity: 0 }, { opacity: 1 }], { duration: EASE_MS, easing: "ease" }));
         if (exp.lentView === "interlaced") setTimeout(() => requestAnimationFrame(fitCanvas), EASE_MS + 20);
       }, { icon: "theaterIn", title: "Theater mode: larger preview, settings hidden", kind: "btn-secondary" });
       theater.classList.add("lent-theater-btn");
       theater.addEventListener("pointerdown", (e) => e.stopPropagation());
       preview.insertBefore(theater, views);  // à esquerda na tela: vem antes de Tilt / Interlaced no Tab
       const applyTheater = () => {
-        outer.classList.toggle("theater", !!exp.lentTheater);
-        theater.classList.toggle("on", !!exp.lentTheater);
-        theater.innerHTML = icon(exp.lentTheater ? "theaterOut" : "theaterIn");  // ângulos para fora = entrar; para dentro = sair
-        theater.title = exp.lentTheater ? "Leave theater mode" : "Theater mode: larger preview, settings hidden";
+        outer.classList.toggle("theater", !!exp.theater);
+        theater.classList.toggle("on", !!exp.theater);
+        theater.innerHTML = icon(exp.theater ? "theaterOut" : "theaterIn");  // ângulos para fora = entrar; para dentro = sair
+        theater.title = exp.theater ? "Leave theater mode" : "Theater mode: larger preview, settings hidden";
         if (exp.lentView === "interlaced") requestAnimationFrame(fitCanvas);
       };
+      if (window.ResizeObserver) { let lastSize = ""; const ro = new ResizeObserver(() => { const now = preview.clientWidth + "x" + preview.clientHeight; if (now === lastSize) return; lastSize = now; if (full && exp.lentView === "interlaced") fitCanvas(); }); ro.observe(preview); }
       const fitCanvas = () => {
         if (!full) return;
         // Cabe na prévia mantendo a proporção do arquivo (com margem e marcas); o navegador reduz
@@ -3298,6 +4742,17 @@
       };
       const drawInterlaced = () => {
         const horizontal = l.effect !== "3d";
+        // A imagem inteira é cara de montar: fica guardada enquanto nada que entra nela muda (sessão, fotos,
+        // lâmina, tamanho, marcas, recorte, Placement, faixa)
+        const cacheKey = [session.name, items.map((i) => i.file).join(","), JSON.stringify(l), st.crop.ratio, st.crop.x, st.crop.y, alignText(st), lentBand].join("|");
+        const cached = exp.lentFull;
+        if (cached && cached.key === cacheKey && cached.full) {
+          full = cached.full; lentBuiltAt = cached.builtAt; setLoupeTag();
+          caption.innerHTML = ""; caption.append(el("b", "", "Interlaced"), interCaptionText(), interCaptionMore());
+          fitCanvas();
+          if (!cached.ready) cached.waiters.push(fitCanvas);  // as fotos ainda estão entrando na imagem guardada
+          return;
+        }
         // Imagem inteira em pixels reais; acima de ~24 Mpx monta reduzida (a lupa avisa)
         const limit = 24e6;
         const f = plan.fileW * plan.fileH > limit ? Math.sqrt(limit / (plan.fileW * plan.fileH)) : 1;
@@ -3312,26 +4767,29 @@
         full = document.createElement("canvas"); full.width = FW; full.height = FH;
         const fctx = full.getContext("2d");
         fctx.fillStyle = "#fff"; fctx.fillRect(0, 0, FW, FH);
-        fctx.fillStyle = "#000"; fctx.fillRect(off, off, W, H);
+        const fitPlace = (l.placement || "fill") === "fit";
+        fctx.fillStyle = fitPlace && lentBand === "white" ? "#fff" : "#000"; fctx.fillRect(off, off, W, H);
         drawPrintMarks(fctx, l, f, { fw: FW, fh: FH, margin: margin * f, bleed: b, w: plan.w * f, h: plan.h * f });
         lentBuiltAt = f;
         setLoupeTag();
         caption.innerHTML = "";
-        caption.append(el("b", "", "Interlaced"), document.createTextNode(" the whole file as it prints · " + plan.fileW + " × " + plan.fileH + " px · " + lentSizeText(l) + " · " +
-          (plan.cols ? plan.cols.toFixed(2).replace(/\.?0+$/, "") : "—") + " px per lens · strips " + (horizontal ? "horizontal" : "vertical") + " · move the mouse for a close-up, scroll to zoom, hold the left button to hide the crosshair"));
+        caption.append(el("b", "", "Interlaced"), interCaptionText(), interCaptionMore());
         fitCanvas();
+        const cacheEntry = exp.lentFull = { key: cacheKey, full, builtAt: f, ready: false, waiters: [] };
         // Faixas de cada foto: desenha a foto (cobrindo o papel) só nas linhas/colunas dela
         const lines = horizontal ? H : W;
         const runs = [];  // [início, comprimento, foto]
         for (let i = 0; i < lines;) { const k = ownerOf(i); let j = i + 1; while (j < lines && ownerOf(j) === k) j++; runs.push([i, j - i, k]); i = j; }
         let loaded = 0;
         items.forEach((item, k) => {
-          sessionPhoto(session.name, item.file, 1600).then((url) => new Promise((res) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = url || ""; })).then((im) => {
+          // Cada foto já com o Framing do passo 1 (canvas, posição e alinhamento), como no arquivo exportado
+          sessionPhoto(session.name, item.file, 1600).then((url) => (url ? framedUrl(session, items, st, item, url) : url)).then((url) => new Promise((res) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = url || ""; })).then((im) => {
             if (token !== drawInterlaced.token) return;
             if (im) {
-              const s = Math.max(W / im.naturalWidth, H / im.naturalHeight);
+              const s = fitPlace ? Math.min(W / im.naturalWidth, H / im.naturalHeight) : Math.max(W / im.naturalWidth, H / im.naturalHeight);
               const fw = im.naturalWidth * s, fh = im.naturalHeight * s;
-              const ox = (fw - W) / 2, oy = (fh - H) / 2;
+              // Fill: a parte escolhida (posição do recorte da sessão); Fit: centrada (sobra a faixa)
+              const ox = fitPlace ? (fw - W) / 2 : (fw - W) * st.crop.x, oy = fitPlace ? (fh - H) / 2 : (fh - H) * st.crop.y;
               fctx.imageSmoothingEnabled = true;
               runs.forEach(([start, len, owner]) => {
                 if (owner !== k) return;
@@ -3339,10 +4797,22 @@
                 else fctx.drawImage(im, (ox + start) / s, oy / s, len / s, H / s, off + start, off, len, H);
               });
             }
-            if (++loaded === n) fitCanvas();
+            if (++loaded === n) { fitCanvas(); cacheEntry.ready = true; cacheEntry.waiters.forEach((fn) => { try { fn(); } catch (e) {} }); cacheEntry.waiters = []; }
           });
         });
       };
+      // Legenda do Interlaced recolhida (decisão do dono, 2026-11-03): uma linha curta; clicar nela mostra o resto
+      const interCaptionText = () => document.createTextNode(" " + plan.fileW + " × " + plan.fileH + " px · " + lentSizeText(l));
+      const interCaptionMore = () => {
+        const horizontal = l.effect !== "3d";
+        const more = el("span", "caption-more", " · " + (plan.cols ? plan.cols.toFixed(2).replace(/\.?0+$/, "") : "—") + " px per lens · strips " + (horizontal ? "horizontal" : "vertical") +
+          " · move the mouse for a close-up, scroll to zoom, hold the left button to hide the crosshair");
+        return more;
+      };
+      caption.classList.add("collapsible");
+      caption.title = "Click for details";
+      caption.addEventListener("pointerdown", (e) => e.stopPropagation());
+      caption.addEventListener("click", (e) => { e.stopPropagation(); caption.classList.toggle("open"); });
       // Lupa: segue o mouse; mostra o ponto em pixels reais ampliados (2× de início; a roda do
       // mouse aproxima e afasta, de 1× a 8×)
       let lentBuiltAt = 1, lastMove = null;
@@ -3390,7 +4860,7 @@
       preview.addEventListener("pointerleave", () => { loupe.classList.add("hidden"); loupeTag.classList.add("hidden"); });
       if (focused) {
         applyTheater();
-        setView(exp.lentView === "interlaced" ? "interlaced" : "tilt");
+        setView(exp.lentView === "tilt" ? "tilt" : "interlaced");
       }
 
       // Leitura: o que a combinação lâmina + impressora dá para esta sessão
@@ -3413,6 +4883,34 @@
       lentLensRows(l, box, rerender, { measured: true });
       lentPrinterRows(l, box, rerender);
       lentSizeRow(l, box, rerender);
+      // Placement (Parte 4 da Proporção): Fill cobre o papel e corta (a posição escolhe a parte); Fit mostra a foto
+      // inteira com uma faixa (cor em Settings, igual para todas as sessões)
+      cropLoad(session, st);
+      const place = row("Placement");
+      place.appendChild(segmented([["fill", "Fill"], ["fit", "Fit"]], l.placement || "fill", (v) => { l.placement = v; rerender(); }));
+      if ((l.placement || "fill") === "fit") {
+        const note = el("span", "export-note-inline", "Band: " + lentBand + " · change it in ");
+        const go = el("button", "note-link", "Settings › Lenticular"); go.type = "button";
+        go.title = "Open Settings at the Lenticular band color";
+        go.addEventListener("click", () => { openSettings(); const r = $("settingsLentBand"); if (r) r.scrollIntoView({ block: "center" }); });
+        note.appendChild(go);
+        place.appendChild(note);
+      }
+      box.appendChild(place);
+      // Framing e papel com formas diferentes (decisão do dono, 2026-11-04, opção A): em Fill o papel manda e corta
+      // o Framing de novo; o aviso diz isso e lembra o Fit (o Framing inteiro, com faixa)
+      if (st.crop.ratio !== "asshot" && (l.placement || "fill") === "fill" && l.widthCm > 0 && l.heightCm > 0) {
+        const fr = RATIOS[st.crop.ratio], pr = l.widthCm / l.heightCm;
+        const prL = Math.max(pr, 1 / pr), landscapePaper = pr >= 1;
+        const off = Math.abs(prL - fr) / fr > 0.01 || (fr > 1.001 && !landscapePaper);
+        if (off) {
+          const paperName = ratioName(l.widthCm, l.heightCm);
+          const cut = !landscapePaper || prL < fr ? "the sides" : "the top and bottom";
+          box.appendChild(mixedWarn("Framing " + st.crop.ratio + " · paper " + lentSizeText(l) + " (" + (Math.abs(Math.max(l.widthCm, l.heightCm) / Math.min(l.widthCm, l.heightCm) - RATIOS[paperName]) < 0.01 ? paperName : "~" + paperName) + (landscapePaper ? "" : ", portrait") +
+            "): in Fill the paper shape wins, so " + cut + " of the framing are cut. Choose Fit to keep the whole framing, with a band."));
+        }
+      }
+      addTip(box, "Fill: the photo covers the sheet and is cropped at the position chosen in Framing. Fit: the whole photo, with a band where it does not reach the edge of the sheet.", "Placement");
       // Marcas de impressão (entrega 2)
       const marks = row("Marks");
       marks.appendChild(checkOption("Crop marks", !!l.cropMarks, (v) => { l.cropMarks = v; rerender(); }));
@@ -3500,122 +4998,191 @@
           }
     };
 
-    OUTPUTS.forEach(([kind, title, sub]) => {
-      const on = !!st.outputs[kind];
-      const focused = on && kind === exp.mode;
-      const sec = el("section", "exp-sec" + (on ? " on" : "") + (focused ? " focus" : ""));
-      const head = el("div", "exp-sec-head");
-      const check = el("label", "export-check exp-sec-check");
-      const input = document.createElement("input");
-      input.type = "checkbox";
-      input.checked = on;
-      input.setAttribute("aria-label", title);
-      check.append(input, el("span", "save-check"));
-      check.addEventListener("click", (e) => e.stopPropagation());
-      input.addEventListener("change", () => {
-        st.outputs[kind] = input.checked;
-        if (input.checked) exp.mode = kind;  // a que acabou de ligar vira a prévia
-        rerender();
+    // Abas (decisão do dono, 2026-11-03, protótipo W1): Framing · Photos · Sequence · Lenticular, no topo da coluna,
+    // acima da prévia; chips, com a caixa de ligar/desligar dentro da aba de cada saída. Só o conteúdo da aba atual
+    // aparece, abaixo da prévia.
+    const tabs = el("div", "export-tabs");
+    tabs.setAttribute("role", "tablist");
+    // Passo 2: Photos · Sequence · Lenticular (o Framing é o passo 1)
+    (exp.step === 2 ? OUTPUTS : []).forEach(([kind, title, sub]) => {
+      const always = kind === "framing";
+      const on = always || !!st.outputs[kind];
+      const current = kind === exp.mode;
+      const tab = el("button", "export-tab" + (current ? " on" : "") + (on ? "" : " off"), ""); tab.type = "button";
+      tab.setAttribute("role", "tab"); tab.setAttribute("aria-selected", current ? "true" : "false"); tab.tabIndex = 0;  // o Tab passa por todas as abas
+      if (!always) {
+        const check = el("label", "export-check export-tab-check");
+        const input = document.createElement("input");
+        input.type = "checkbox"; input.checked = on; input.setAttribute("aria-label", "Export " + title);
+        check.append(input, el("span", "save-check"));
+        check.addEventListener("click", (e) => e.stopPropagation());
+        input.addEventListener("change", () => { st.outputs[kind] = input.checked; if (input.checked) exp.mode = kind; rerender(); });
+        tab.appendChild(check);
+      }
+      tab.appendChild(document.createTextNode(title));
+      // Esta sessão difere das outras nesta saída (só com "Same settings for all sessions" desligado): marca na aba
+      const differs = differentSessions(2, kind).size > 0;
+      if (differs) { tab.classList.add("different"); tab.appendChild(el("span", "export-tab-diff", "")); }
+      tab.title = sub + (always ? "" : on ? " · exported" : " · not exported") + (differs ? " · different from the other sessions" : "");
+      tab.addEventListener("click", () => { if (!current) { exp.mode = kind; rerender(); } });
+      tab.addEventListener("keydown", (e) => {
+        if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+        const all = [...tabs.children]; const i = all.indexOf(tab); const n = all[(i + (e.key === "ArrowRight" ? 1 : -1) + all.length) % all.length];
+        if (n) { e.preventDefault(); n.click(); setTimeout(() => { const t = outer.querySelector(".export-tab.on"); if (t) t.focus(); }, 0); }
       });
-      // Ligar (se desligada) e levar a prévia para esta saída
-      const pick = (e) => { e.stopPropagation(); st.outputs[kind] = true; exp.mode = kind; rerender(); };
-      const name = el("span", "exp-sec-name");
-      name.append(el("b", "exp-sec-title", title), el("span", "exp-sec-sub", sub));
-      if (!on) { head.classList.add("pick"); head.title = "Turn on " + title; head.addEventListener("click", pick); }
-      head.append(check, name);
-      const sum = el("span", "exp-sec-sum");
-      setWarnText(sum, on ? outputText(session, kind) : "Off");
-      head.appendChild(sum);
-      if (on) {
-        // Fica nas seções ligadas; na que está na prévia, aceso
-        const hint = el("button", "exp-sec-hint" + (focused ? " on" : ""), "Preview");
-        hint.type = "button";
-        hint.title = focused ? "This output is in the preview" : "Show the " + title + " preview";
-        hint.setAttribute("aria-pressed", focused ? "true" : "false");
-        hint.addEventListener("click", (e) => { e.stopPropagation(); if (!focused) pick(e); });
-        head.appendChild(hint);
-      }
-      // Recolher / abrir as configurações (a saída continua ligada); vale para todas as sessões
-      exp.collapsed = exp.collapsed || {};
-      const folded = on && !!exp.collapsed[kind];
-      if (on) {
-        const fold = button("", (e) => { e.stopPropagation(); exp.collapsed[kind] = !folded; rerender(); },
-          { icon: folded ? "down" : "up", title: folded ? "Show the " + title + " settings" : "Hide the " + title + " settings" });
-        fold.classList.add("exp-sec-fold");
-        head.appendChild(fold);
-      }
-      if (folded) sec.classList.add("folded");
-      sec.appendChild(head);
-      if (on) {
-        const body = el("div", "exp-sec-body" + (folded ? " hidden" : ""));
-        sec.appendChild(body);
-        buildKind(kind, body, focused);
-      }
-      rows.appendChild(sec);
+      tabs.appendChild(tab);
     });
-    if (!OUTPUT_KINDS.some((k) => st.outputs[k])) rows.appendChild(el("div", "export-note exp-none", "Tick at least one output: Photos, Sequence or Lenticular."));
+    if (exp.step === 2) { pv.classList.add("export-tabs-end"); tabs.appendChild(pv); outer.insertBefore(tabs, rows); }
+    {
+      const kind = exp.mode;
+      const always = kind === "framing";
+      const on = always || !!st.outputs[kind];
+      const body = el("div", "export-tab-body");
+      if (!always) {
+        const sum = el("div", "export-tab-sum");
+        // O resumo lembra o Framing do passo 1 (não muda aqui)
+        const cut = st.crop.ratio !== "asshot" && kind !== "lenticular" ? " · cut to " + st.crop.ratio + " (step 1)" : "";
+        setWarnText(sum, on ? outputText(session, kind) + cut : "Off · tick the box in the tab to export it");
+        body.appendChild(sum);
+      }
+      buildKind(kind, body, true);
+      if (kind === "lenticular") {
+        // "Print pitch test" mora na aba Lenticular (ferramenta dela), não mais no rodapé
+        const pr = el("div", "export-pitch-row");
+        const b = button("Print pitch test", () => { const n = lentSession(); if (n) openPitchTest(settingsFor(n).lent); },
+          { kind: "btn-secondary", title: "A sheet to measure the real LPI of your lens sheet with your printer" });
+        b.disabled = !lentSession();
+        pr.append(b, el("span", "export-note", "Measure the real LPI of your lens sheet with your printer."));
+        body.appendChild(pr);
+      }
+      if (always && chosenSessions().length > 1) {
+        // Passo 1: "Same framing for all ticked sessions" (ligada por padrão; o alinhamento é por foto e não é copiado)
+        const nd = differentSessions(1).size;
+        body.appendChild(sameBox("Same framing for all ticked sessions", sameState(exp.sameFraming, 1), () => {
+          exp.sameFraming = true;
+          chosenSessions().forEach((o) => { if (o.name === session.name) return; const ost = settingsFor(o.name); cropLoad(o, ost); ost.crop = Object.assign({}, st.crop, { loaded: true }); cropSave(o, ost); });
+          toast("Same framing on " + plural(chosenSessions().length, "session", "sessions") + " · ⌘Z undoes");
+          rerender();
+        }, () => { exp.sameFraming = false; rerender(); }, nd, "The aspect ratio and the crop position. The photo alignment stays per session."));
+      }
+      if (!always && chosenSessions().length > 1) {
+        // Passo 2: a mesma caixa, uma por saída, na última linha da aba
+        const kd = kind, key = OUTPUT_KEY_OF[kd], nd = differentSessions(2, kd).size;
+        body.appendChild(sameBox("Same settings for all sessions", sameState(exp.same[kd], 2, kd), () => {
+          exp.same[kd] = true;
+          chosenSessions().forEach((o) => { if (o.name === session.name) return; const t = settingsFor(o.name); t[key] = JSON.parse(JSON.stringify(st[key])); t.outputs[kd] = st.outputs[kd]; });
+          toast(OUTPUTS.find(([k]) => k === kd)[1] + ": same settings on " + plural(chosenSessions().length, "session", "sessions") + " · ⌘Z undoes");
+          rerender();
+        }, () => { exp.same[kd] = false; rerender(); }, nd));
+      }
+      rows.appendChild(body);
+    }
+    if (exp.step === 2 && !OUTPUT_KINDS.some((k) => st.outputs[k])) rows.appendChild(el("div", "export-note exp-none", "Tick at least one output: Photos, Sequence or Lenticular."));
     slideBlocks(outer, before, rows);
+    if (exp.step === 1) return;  // nome e pasta: passo 3; "Apply to all sessions": passo 2
 
-    // Nome da pasta e dos arquivos
+    // ("Apply to all sessions" saiu: a caixa "Same settings for all sessions" da aba faz isso)
+  }
+
+  // Passo 3 (Review): uma linha por sessão marcada, o nome das pastas e "Export to"
+  function renderReview(outer, rows, rerender) {
+    rows.remove();
+    // O nome vale para todas as marcadas; a sessão "ativa" tem de ser uma delas (syncAll copia dela)
+    if (!exp.selected.has(exp.active)) { const f = chosenSessions()[0]; if (f) exp.active = f.name; }
+    const wrap = el("div", "export-review");
+    const table = document.createElement("table");
+    table.innerHTML = "<thead><tr><th></th><th>Session</th><th>Framing</th><th>Outputs</th><th>Folder</th></tr></thead>";
+    const tbody = document.createElement("tbody");
+    const chosen = chosenSessions();
+    const editLink = (step, s, mode) => {
+      const b = el("button", "review-edit", "Edit"); b.type = "button";
+      b.title = step === 1 ? "Change the framing of this session (step 1)" : "Change the outputs of this session (step 2)";
+      b.addEventListener("click", () => { exp.active = s.name; exp.photo = 0; if (mode) exp.mode = mode; exp.step = step; exp.aligning = false; renderExport(); });
+      return b;
+    };
+    chosen.forEach((s) => {
+      const st = settingsFor(s.name); cropLoad(s, st); alignLoad(s, st);
+      const label = sessionLabel(s.name);
+      const tr = document.createElement("tr");
+      const tdT = document.createElement("td"); const th = el("span", "review-thumb"); tdT.appendChild(th);
+      const first = sessionItems(s).find((i) => i.previewable);
+      if (first) sessionPhoto(s.name, first.file, 320).then((url) => { if (url) th.style.backgroundImage = "url(" + url + ")"; });
+      const tdS = document.createElement("td");
+      tdS.append(document.createTextNode((s.label ? s.label + " · " : "") + label.date), document.createElement("br"), el("span", "dim", plural(sessionItems(s).length, "photo", "photos")));
+      const tdF = document.createElement("td");
+      const r = ratioInfoCached(s.name), aligned = needsRatio(s, st) ? 0 : Object.keys(st.align.byFile).filter((f) => !alignIsIdentity(st.align.byFile[f])).length;
+      const names = { 0: "left", 0.5: "centre", 1: "right" }, vnames = { 0: "top", 0.5: "", 1: "bottom" };
+      const warned = st.crop.ratio === "asshot" && r && r.mixed && !aligned;
+      if (warned) { const w = mixedWarn("As shot · mixed ratios: the sequence will jump and the lenticular subject changes size"); const e = editLink(1, s, "framing"); e.classList.add("in-warn"); w.lastChild.append(" ", e); tdF.appendChild(w); }
+      else {
+        const pos = st.crop.ratio === "asshot" ? "" : " · " + ([vnames[st.crop.y], names[st.crop.x]].filter((x) => x && x !== undefined).join(" ") || "custom position");
+        tdF.appendChild(document.createTextNode((st.crop.ratio === "asshot" ? "As shot" : st.crop.ratio) + pos));
+        if (aligned) { tdF.appendChild(document.createElement("br")); tdF.appendChild(el("span", "dim", plural(aligned, "photo", "photos") + " aligned")); }
+      }
+      if (!warned) tdF.appendChild(editLink(1, s, "framing"));
+      const tdO = document.createElement("td");
+      const kinds = OUTPUT_KINDS.filter((k) => st.outputs[k]);
+      if (!kinds.length) tdO.appendChild(el("span", "amb", "No output ticked"));
+      kinds.forEach((k, i) => { if (i) tdO.appendChild(document.createElement("br")); const line = el("span", "", ""); setWarnText(line, outputText(s, k)); tdO.appendChild(line); });
+      tdO.appendChild(editLink(2, s, kinds[0] || "photos"));
+      const tdD = document.createElement("td"); tdD.textContent = folderName(s);
+      tr.append(tdT, tdS, tdF, tdO, tdD);
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    // Só a lista de sessões rola; "Name" e "Export to" ficam presos embaixo (decisão do dono, 2026-11-04)
+    const listBox = el("div", "export-review-list");
+    listBox.appendChild(table);
+    wrap.appendChild(listBox);
+
+    // Nome (vale para todas as sessões marcadas) e pasta
+    const boxes = el("div", "export-review-boxes");
+    const nameBox = el("div", "export-review-box"); nameBox.appendChild(el("h4", "", "Name"));
+    const st = settingsFor(exp.active);
     const n = st.naming;
-    const nameRow = row("Name");
-    // As opções do Custom ficam embaixo dos botões, alinhadas com eles (na mesma coluna)
+    const setAll = (fn) => { chosen.forEach((s) => fn(settingsFor(s.name).naming)); };
+    const nameRow = row("Folders");
     const nameCol = el("div", "export-name-col");
-    nameCol.appendChild(segmented([["date", "Date + time"], ["number", "Number"], ["custom", "Custom"]], n.kind,
-      (v) => { n.kind = v; rerender(); }));
+    nameCol.appendChild(segmented([["date", "Date + time"], ["number", "Number"], ["custom", "Custom"]], n.kind, (v) => { setAll((x) => { x.kind = v; }); rerender(); }));
     nameRow.appendChild(nameCol);
-    rows.appendChild(nameRow);
+    nameBox.appendChild(nameRow);
     if (n.kind === "custom") {
       const custom = el("div", "export-name-custom");
       const input = document.createElement("input");
-      input.className = "export-name";
-      input.placeholder = "Name, e.g. Studio test";
-      input.maxLength = 80;
-      input.value = n.text;
-      input.addEventListener("input", () => { n.text = input.value.replace(/\|/g, ""); syncAll(); folderLine.textContent = "Folder: " + folderName(session); refreshSummaries(); });
+      input.className = "export-name"; input.placeholder = "Name, e.g. Studio test"; input.maxLength = 80; input.value = n.text;
+      input.addEventListener("input", () => {
+        const v = input.value.replace(/\|/g, ""); setAll((x) => { x.text = v; });
+        [...tbody.children].forEach((tr, i) => { tr.lastChild.textContent = folderName(chosen[i]); });
+        refreshSummaries();
+      });
       custom.appendChild(input);
-      custom.appendChild(checkOption("Add date + time", n.date, (v) => { n.date = v; rerender(); }));
-      if (n.date) custom.appendChild(segmented([["before", "Before"], ["after", "After"]], n.position, (v) => { n.position = v; rerender(); }));
+      custom.appendChild(checkOption("Add date + time", n.date, (v) => { setAll((x) => { x.date = v; }); rerender(); }));
+      if (n.date) custom.appendChild(segmented([["before", "Before"], ["after", "After"]], n.position, (v) => { setAll((x) => { x.position = v; }); rerender(); }));
       nameCol.appendChild(custom);
     }
-    const folderLine = el("div", "export-note", "Folder: " + folderName(session));
-    rows.appendChild(folderLine);
-    addTip(rows, "Date + time: each session folder is named after when it was shot. Number: 01, 02… continuing from the ones already in the destination folder. " +
-      "Custom: a name you type; sessions with the same name get numbers (01, 02…).", "Name");
+    addTip(nameBox, "Date + time: each session folder is named after when it was shot. Number: 01, 02… continuing from the ones already in the destination folder. " +
+      "Custom: a name you type; sessions with the same name get numbers (01, 02…). The name applies to every ticked session.", "Folders");
     // Onde salva: com Project aberto, <Project>/Exports; sem, <pasta do Stillpoint>/Exports.
     // "Choose another folder…" vale só para este salvamento (como no New project)
-    const dest = row("Export to");
+    const destBox = el("div", "export-review-box"); destBox.appendChild(el("h4", "", "Export to"));
     const where = exp.dest || exp.destDefault || "";
-    // Marcas de direção: o corte é no começo (rtl), mas o caminho continua lido da esquerda para a direita
-    const path = el("span", "export-dest", where ? "\u200E" + where + "\u200E" : "…");
-    path.title = where;
-    dest.appendChild(path);
-    dest.appendChild(button("Choose another folder…", () => {
+    const path = el("span", "export-dest", where ? "\u200E" + where + "\u200E" : "…"); path.title = where;
+    destBox.appendChild(path);
+    const destBtns = el("div", "export-pitch-row");
+    destBtns.appendChild(button("Choose another folder…", () => {
       if (typeof window.chooseExportFolder !== "function") { toast("This build cannot do that yet. Build the app again.", 8000); return; }
       Promise.resolve(window.chooseExportFolder(where)).then((r) => { if (r && r.folder) { exp.dest = r.folder; rerender(); } });
     }, { kind: "btn-secondary" }));
-    if (exp.dest) dest.appendChild(button("Reset to default", () => { exp.dest = null; rerender(); },
-      { kind: "btn-secondary", title: "Back to " + (exp.destProject ? "the project's Exports folder" : "the default folder") + ": " + (exp.destDefault || "") }));
-    rows.appendChild(dest);
-
-    if (!exp.sameForAll && sessions.length > 1) {
-      const apply = el("div", "export-apply");
-      const same = sessions.length > 1 && sessions.every((o) => sameAsActive(o.name));
-      const note = el("span", "export-note", sessions.length === 1 ? "" : same
-        ? "All sessions use these settings." : "These settings are only for " + label + ".");
-      apply.appendChild(note);
-      apply.appendChild(button("Apply to all sessions", () => {
-        sessions.forEach((other) => {
-          if (other.name === session.name) return;
-          OUTPUT_KEYS.forEach((k) => { settingsFor(other.name)[k] = JSON.parse(JSON.stringify(st[k])); });
-        });
-        rerender();
-        toast("Applied to all " + plural(sessions.length, "session", "sessions"));
-      }));
-      rows.appendChild(apply);
-    } else if (sessions.length > 1) {
-      rows.appendChild(el("div", "export-note export-apply", "Changes apply to all sessions. Turn off \"Same settings for all sessions\" to set each one."));
-    }
+    // Sempre à vista (decisão do dono, 2026-11-04); apagado quando já é a pasta padrão
+    const resetDest = button("Use the default folder", () => { exp.dest = null; rerender(); },
+      { kind: "btn-secondary", title: exp.dest ? "Back to " + (exp.destProject ? "the project's Exports folder" : "the default folder") + ": " + (exp.destDefault || "") : "Already the default folder" });
+    resetDest.disabled = !exp.dest;
+    destBtns.appendChild(resetDest);
+    destBox.appendChild(destBtns);
+    destBox.appendChild(el("span", "export-note", plural(chosen.length, "folder", "folders") + " · one per session"));
+    boxes.append(nameBox, destBox);
+    wrap.appendChild(boxes);
+    outer.appendChild(wrap);
   }
 
   function exportSpec(name) {
@@ -3629,7 +5196,9 @@
       o.photos ? [st.photos.original ? "original" : "", st.photos.convert ? st.photos.format : ""].filter(Boolean).join(",") : "", st.photos.quality,
       o.sequence ? s.formats.join(",") : "", s.fps, s.loops, s.reverse ? 1 : 0, s.height, s.quality,
       o.lenticular ? 1 : 0, lentPitch(l), l.dpi, (l.widthCm / CM_PER_IN).toFixed(4), (l.heightCm / CM_PER_IN).toFixed(4), l.effect, l.reverse ? 1 : 0,
-      l.cropMarks ? 1 : 0, l.alignMarks ? 1 : 0, l.bleedMm || 0, l.lpi].join("|");
+      l.cropMarks ? 1 : 0, l.alignMarks ? 1 : 0, l.bleedMm || 0, l.lpi,
+      // Parte 4 da Proporção: 25 proporção | 26 posição x | 27 posição y | 28 same size | 29 placement | 30 faixa
+      st.crop.ratio || "asshot", st.crop.x.toFixed(3), st.crop.y.toFixed(3), 1, l.placement || "fill", lentBand].join("|");
   }
 
   function runExport(deleteRest) {
@@ -3702,9 +5271,12 @@
   ui.saveBtn.addEventListener("click", () => startSave(false));
   $("exportSelectAll").addEventListener("click", () => { exp.selectedTouched = true; exp.selected = new Set(exportable().map((s) => s.name)); renderExportList(); updateExportCount(); });
   $("exportUnselectAll").addEventListener("click", () => { exp.selectedTouched = true; exp.selected.clear(); renderExportList(); updateExportCount(); });
-  $("exportCancel").addEventListener("click", closeExport);
-  $("exportConfirm").addEventListener("click", confirmExport);
-  $("exportPitch").addEventListener("click", () => { const n = lentSession(); if (n) openPitchTest(settingsFor(n).lent); });
+  $("exportCancel").addEventListener("click", askCloseExport);
+  $("exportConfirm").addEventListener("click", () => {
+    if (exp.step === 1 && exp.aligning) { exp.aligning = false; renderExport(); return; }  // "Done aligning"
+    if (exp.step < 3) goExportStep(exp.step + 1); else confirmExport();
+  });
+  $("exportBack").addEventListener("click", () => goExportStep(exp.step - 1));
   $("progressCancel").addEventListener("click", () => {
     $("progressCancel").disabled = true;
     $("progressStep").textContent = "Cancelling…";
@@ -3787,7 +5359,7 @@
     busy(e) {
       busy = e.busy;
       busyAction = e.busy ? e.action : "";
-      if (e.busy && e.action === "shoot") { shootCancelling = false; shootCancelled = false; ui.progress.classList.remove("warn"); }
+      if (e.busy && e.action === "shoot") { shootCancelling = false; shootCancelled = false; ui.progress.classList.remove("warn"); lastShootAt = Date.now(); }
       activity.busyText = "";
       renderActivity();
       if (busy) {
@@ -3928,6 +5500,7 @@
     },
     sequenceFinished(e) {
       if (orderCapture()) return;
+      lastShootAt = Date.now();
       if (shootCancelled) return;  // já avisado em sequenceCancelled
       ui.progress.classList.remove("warn");
       if (e.completed && shootMissing.length) {
@@ -3970,6 +5543,7 @@
     autoMatchProgress(e) {
       csGallery.setHead("Test shot · matching", "Photo " + e.shot + " of up to " + e.shots + " · " + e.stage);
       csGallery.message(e.stage);
+      csMatchProgress(e);
     },
     // Cartão cinza: depois da primeira foto, conferir onde está o cartão
     grayCardPick(e) {
@@ -3991,9 +5565,10 @@
       if (e.cancelled) {
         toast("Chart calibration cancelled. The cameras are back to how they were.");
         log("Chart calibration cancelled; camera settings restored", "warn");
+        csMatchReturn();
         return;
       }
-      const actions = [{ label: "OK", primary: true }];
+      const actions = [{ label: "OK", primary: true, onClick: csMatchReturn }];
       if (e.debugFolder) actions.unshift({ label: "Open debug folder", link: true, onClick: () => window.openDebugFolder() });
       if (!e.ok) {
         dialog("Chart calibration did not finish", [e.error || "Try again."].concat(notes).join("\n\n"), actions);
@@ -4012,8 +5587,10 @@
       if (e.cancelled) {
         toast("Test shot cancelled. The cameras are back to how they were.");
         log("Match automatically cancelled; camera settings restored", "warn");
+        csMatchClose();
         return;
       }
+      if (e.review) { csMatchReview(e); return; }
       if (!e.matched) {
         if (!e.ok) toast(e.error || "The photos could not be taken.", 8000);
         if (notes.length) dialog("Not matched automatically", notes.join("\n"), [{ label: "OK", primary: true }]);
@@ -4045,6 +5622,7 @@
     orderPhotos(e) {
       csCardHide();
       if (csTest.capturing && csTest.cancelling) return;  // cancelado: as fotos não são mostradas
+      csTest.sessions = e.sessions || [];
       if (csTest.capturing) showCsTest(e.sessions);
       else if (order.open) showOrderPhotos(e.sessions);
     },
@@ -4432,6 +6010,16 @@
       Promise.resolve(window.savePref("splash", v)).then(() => log("Opening animation " + v, "tech"));
       renderSettings();
     }));
+    // Lenticular (Parte 4 da Proporção): cor da faixa do Placement Fit, igual para todas as sessões
+    if ($("settingsLentBand")) {
+      $("settingsLentBand").innerHTML = "";
+      $("settingsLentBand").appendChild(segmented([["black", "Black"], ["white", "White"]], lentBand, (v) => {
+        const before = lentBand;
+        if (v === before) return;
+        setLentBand(v);
+        recordAction({ label: "Lenticular band: " + v, undo: () => setLentBand(before), redo: () => setLentBand(v) });
+      }));
+    }
     // Modo debug: vale na hora
     $("settingsDebug").innerHTML = "";
     $("settingsDebug").appendChild(segmented([["off", "Off"], ["on", "On"]], prefs.debug ? "on" : "off", (v) => {
@@ -4445,6 +6033,12 @@
         showDebugSize(r);
       });
     }));
+  }
+  function setLentBand(v) {
+    lentBand = v;
+    Promise.resolve(window.savePref("lentBand", v)).then(() => log("Lenticular band: " + v, "tech"));
+    if (!$("settingsOverlay").classList.contains("hidden")) renderSettings();
+    if (!$("exportOverlay").classList.contains("hidden")) renderExport();
   }
   $("settingsDebugFolder").addEventListener("click", () => window.openDebugFolder());
   // Espaço ocupado pelos dados de debug
@@ -4499,9 +6093,14 @@
   // valores que aquela câmera aceita agora.
   // Quality fica no popover "±" (com o Picture Style) e o Focus vira etiqueta ao lado do nome:
   // a tabela cabe sem rolagem lateral (decisão do dono, 2026-10-30)
-  const CS_COLS = [["iso", "ISO"], ["tv", "Shutter"], ["av", "Aperture"], ["expcomp", "Exp. comp."], ["metering", "Metering"], ["wb", "White balance"],
-    ["shift", "WB fine-tune"], ["style", "Picture Style"]];
-  const CS_NAMES = { quality: "Quality", focus: "Focus", kelvin: "Color temperature", shiftab: "WB fine-tune A/B", shiftgm: "WB fine-tune G/M" };
+  // Na tabela, o que define a captura (ISO, Shutter, Aperture, Exp. comp., Metering, Format, Aspect ratio);
+  // a cor (White balance, WB fine-tune, Picture Style e os ajustes dele) fica no painel "Color" (botão ±)
+  // (reorganização pedida pelo dono, 2026-11-02)
+  const CS_COLS = [["iso", "ISO"], ["tv", "Shutter"], ["av", "Aperture"], ["expcomp", "Exp. comp."], ["metering", "Metering"],
+    ["quality", "Format"], ["aspect", "Ratio"], ["color", "Color"]];
+  const CS_NAMES = { quality: "Format", aspect: "Aspect ratio", wb: "White balance", style: "Picture Style", focus: "Focus", kelvin: "Color temperature", shiftab: "WB fine-tune A/B", shiftgm: "WB fine-tune G/M" };
+  // Configurações que ficam no painel "Color" (botão ±), fora das colunas
+  const CS_POP_KEYS = [["wb"], ["shift"], ["style"]];
   const isoText = (l) => String(l).replace(/^ISO\s+/i, "");  // "ISO 400" → "400": o cabeçalho já diz ISO
   // Disparo único (o app põe sozinho; não é escolha). Único silencioso também vale.
   const isSingleShot = (v) => v === 0x00 || v === 0x06 || v === 0x13;
@@ -4521,8 +6120,8 @@
   function csReference() {
     const ref = {};
     const cams = camSettings.filter((c) => c.adjustable);
-    CS_COLS.concat([["quality"]]).forEach(([k]) => {  // quality: no popover ±, mas conta como diferença
-      if (k === "focus" || k === "shift") return;  // ajuste fino: correção por câmera, diferente de propósito
+    CS_COLS.concat(CS_POP_KEYS).forEach(([k]) => {  // wb e style: no painel ±, mas contam como diferença
+      if (k === "focus" || k === "shift" || k === "color") return;  // ajuste fino: correção por câmera, diferente de propósito
       const counts = new Map();
       cams.forEach((c) => { const l = csLabel(c, k); if (l !== null) counts.set(l, (counts.get(l) || 0) + 1); });
       let best = null, n = 0;
@@ -4578,7 +6177,7 @@
       return { cls: "diff", text: "Not on single shot", title: "The camera is on " + drive.label + " and did not accept single shooting. Set it to single shooting on the camera." };
     if (!c.adjustable) return { cls: "locked", text: "Settings on the camera only", title: c.reason };
     const ref = csReference();
-    if (CS_COLS.concat([["quality"]]).some(([k]) => k !== "focus" && csDiffers(c, k, ref)) || csStyleDetailDiffers(c)) return { cls: "diff", text: "Settings differ", title: "Open Camera settings to match the cameras." };
+    if (CS_COLS.concat(CS_POP_KEYS).some(([k]) => k !== "focus" && k !== "color" && csDiffers(c, k, ref)) || csStyleDetailDiffers(c)) return { cls: "diff", text: "Settings differ", title: "Open Camera settings to match the cameras." };
     return null;
   }
 
@@ -4609,7 +6208,11 @@
     const full = document.querySelector(".sessions-panel.fullscreen");
     if (!open.length && full) return full;
     if (!open.length) return ui.log.classList.contains("expanded") ? ui.log : document.body;  // Activity aberto: só ele
-    return open.reduce((top, o) => ((parseInt(getComputedStyle(o).zIndex, 10) || 0) >= (parseInt(getComputedStyle(top).zIndex, 10) || 0) ? o : top));
+    const top = open.reduce((t, o) => ((parseInt(getComputedStyle(o).zIndex, 10) || 0) >= (parseInt(getComputedStyle(t).zIndex, 10) || 0) ? o : t));
+    // Camera settings: a janela Match automatically (ou a conferência do cartão cinza) por cima da tabela fica com o Tab
+    if (top.id === "camSettingsOverlay")
+      for (const id of ["csCardPick", "csMatch"]) { const w = $(id); if (w && !w.classList.contains("hidden")) return w; }
+    return top;
   }
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Tab" || e.metaKey || e.ctrlKey || e.altKey || e.defaultPrevented) return;
@@ -4871,7 +6474,8 @@
   function csIsPending(camera, keys) {
     return keys.some((k) => csPending.has(camera + "|" + k) || csPending.has("*|" + k));
   }
-  const COL_KEYS = { wb: ["wb", "kelvin"], shift: ["shiftab", "shiftgm"], style: ["style", "contrast", "saturation", "colortone"] };
+  const COL_KEYS = { wb: ["wb", "kelvin"], shift: ["shiftab", "shiftgm"], style: ["style", "contrast", "saturation", "colortone"],
+    color: ["wb", "kelvin", "shiftab", "shiftgm", "style", "contrast", "saturation", "colortone"] };
 
   // ----- Ajustes do Picture Style (contraste, saturação, tom de cor), como o INFO da
   // câmera: um botão na célula abre uma caixa com os três -----
@@ -4916,13 +6520,41 @@
       $("camSettingsOverlay").appendChild(pop);
     }
     const all = csStylePop.camera === "*";
-    const styleCams = all ? camSettings.filter((c) => c.adjustable && c.styleDetail) : camSettings.filter((c) => c.camera === csStylePop.camera && c.styleDetail);
-    const qualityCams = (all ? camSettings.filter((c) => c.adjustable) : camSettings.filter((c) => c.camera === csStylePop.camera)).filter(csHasQuality);
+    const target = all ? camSettings.filter((c) => c.adjustable) : camSettings.filter((c) => c.camera === csStylePop.camera);
+    const styleCams = target.filter((c) => c.styleDetail);
     const cams = styleCams;
+    const ref = csReference();
     const wasAt = pop.contains(document.activeElement) ? [...pop.querySelectorAll("select")].indexOf(document.activeElement) : -1;
     if (wasAt >= 0) setTimeout(() => { const p = $("csStylePop"); if (!p || p.contains(document.activeElement)) return; const l = p.querySelectorAll("select"); const t = l[Math.min(wasAt, l.length - 1)]; if (t) t.focus({ preventScroll: true }); }, 0);
     pop.innerHTML = "";
-    pop.appendChild(el("div", "cs-pop-title", (all ? "All cameras" : csStylePop.camera) + " · " + [styleCams.length ? "Picture Style" : "", qualityCams.length ? "Quality" : ""].filter(Boolean).join(" & ")));
+    pop.appendChild(el("div", "cs-pop-title", (all ? "All cameras" : csStylePop.camera) + " · Color"));
+    const popRow = (label, keys, cls) => el("label", "cs-pop-row" + (csIsPending(csStylePop.camera, keys) ? " applying" : "") + (cls ? " " + cls : ""));
+    // White balance (predefinidos e Kelvin): a mesma lista que ficava na coluna
+    {
+      const node = all ? csAllCell("wb", target) : csCell(target[0], "wb", ref);
+      const row = popRow("White balance", ["wb", "kelvin"]);
+      row.appendChild(el("span", "", "White balance"));
+      const ctl = node.firstChild;
+      if (ctl) { if (ctl.tagName === "SELECT") ctl.classList.add("pop-wide"); row.appendChild(ctl); }
+      pop.appendChild(row);
+    }
+    // WB fine-tune A/B e G/M
+    {
+      const node = all ? csAllCell("shift", target) : csCell(target[0], "shift", ref);
+      const row = popRow("WB fine-tune", ["shiftab", "shiftgm"]);
+      row.appendChild(el("span", "", "WB fine-tune"));
+      if (node.firstChild) row.appendChild(node.firstChild);
+      pop.appendChild(row);
+    }
+    // Picture Style
+    {
+      const node = all ? csAllCell("style", target) : csCell(target[0], "style", ref);
+      const row = popRow("Picture Style", ["style"], "cs-pop-sep");
+      row.appendChild(el("span", "", "Picture Style"));
+      const ctl = node.firstChild;
+      if (ctl) { if (ctl.tagName === "SELECT") ctl.classList.add("pop-wide"); row.appendChild(ctl); }
+      pop.appendChild(row);
+    }
     const range = [];
     for (let v = -4; v <= 4; v++) range.push(v);
     if (styleCams.length) STYLE_DETAILS.forEach(([key, label, field]) => {
@@ -4938,26 +6570,17 @@
       pop.appendChild(row);
     });
     if (styleCams.length) pop.appendChild(el("div", "cs-pop-note", "Color tone: − redder, + more yellow (skin tones)."));
-    // Quality (RAW, L fine…): saiu da tabela para ela caber; em All cameras só as opções comuns
-    if (qualityCams.length) {
-      const lists = qualityCams.map((c) => c.settings.quality.choices);
-      const common = lists[0].filter(([v]) => lists.every((l) => l.some(([x]) => x === v)));
-      const values = new Set(qualityCams.map((c) => c.settings.quality.value));
-      const current = values.size === 1 ? String([...values][0]) : "";
-      const options = common.map(([v, l]) => [String(v), l]);
-      if (!current) options.unshift(["", "Different", true]);
-      else if (!options.some(([x]) => x === current)) options.unshift([current, qualityCams[0].settings.quality.label]);
-      const ref = csReference();
-      const off = !all && ref.quality !== undefined && ref.quality !== null && csLabel(qualityCams[0], "quality") !== ref.quality;
-      const row = el("label", "cs-pop-row" + (csIsPending(csStylePop.camera, ["quality"]) ? " applying" : "") + (styleCams.length ? " cs-pop-sep" : ""));
-      row.appendChild(el("span", "", "Quality"));
-      row.appendChild(csSelect(options, current, (v) => csSet(csStylePop.camera, "quality", +v), "pop-wide" + (off || !current ? " diff" : "")));
-      pop.appendChild(row);
-    }
     const r = anchor.getBoundingClientRect();
-    const w = 230;
+    const w = 290;
     pop.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, r.right - w)) + "px";
-    pop.style.top = Math.min(window.innerHeight - 190, r.bottom + 6) + "px";
+    // Abaixo do botão; sem espaço embaixo (câmeras do fim da lista), acima dele; se não couber nem
+    // acima, encostado na borda de baixo da janela, para nenhuma linha ficar escondida
+    pop.style.top = "0px";
+    const h = pop.offsetHeight;
+    let top = r.bottom + 6;
+    if (top + h > window.innerHeight - 8) top = r.top - 6 - h;
+    if (top < 8) top = Math.max(8, window.innerHeight - 8 - h);
+    pop.style.top = top + "px";
   }
   // Clique fora fecha a caixa; escolher numa lista dela (a lista fica fora da caixa) não fecha
   document.addEventListener("click", (e) => {
@@ -5003,13 +6626,23 @@
       else td.appendChild(shiftPair(c.shiftAB, c.shiftGM, (v) => csSet(c.camera, "shiftab", v), (v) => csSet(c.camera, "shiftgm", v), diff, { ab: c.abFlip, gm: c.gmFlip }));
       return td;
     }
+    if (k === "color") {
+      // Resumo (balanço de branco · estilo) e o botão ± que abre o painel Color
+      const wbL = csLabel(c, "wb"), stL = csLabel(c, "style");
+      td.classList.add("cs-color");
+      td.appendChild(csStyleButton(c.camera, csColorLevel(c, ref), c));
+      td.appendChild(csColorSummary(wbL, stL, csDiffers(c, "wb", ref), csDiffers(c, "style", ref) || csStyleDetailDiffers(c)));
+      return td;
+    }
     const st = c.settings[k];
     if (!st || !st.available) { td.appendChild(csText("—", "na", "Not available on this camera")); return td; }
     const current = k === "wb" && st.value === 9 ? "k" + c.kelvin : String(st.value);
     const currentLabel = k === "wb" && st.value === 9 ? c.kelvin + " K" : st.label;
     if (!st.choices.length) {
       // Tem o valor, mas não deixa mudar agora: valor dentro do tracejado
-      td.appendChild(csText(currentLabel, "na" + (diff ? " diff" : ""), "The camera does not allow changing this now."));
+      td.appendChild(csText(currentLabel, "na" + (diff ? " diff" : ""), k === "quality" || k === "aspect"
+        ? "This camera does not allow changing this over USB. Change it in the camera menu." + (k === "aspect" ? " Match automatically sets the other cameras to this ratio." : "")
+        : "The camera does not allow changing this now."));
       return td;
     }
     let options = st.choices.filter(([v]) => !(k === "wb" && v === 9)).map(([v, l]) => [String(v), k === "iso" ? isoText(l) : l]);
@@ -5018,14 +6651,48 @@
       if (st.value === 9 && !KELVINS.includes(c.kelvin)) options.push(["k" + c.kelvin, c.kelvin + " K"]);
     }
     if (!options.some(([v]) => v === current)) options.unshift([current, currentLabel]);
-    td.appendChild(csSelect(options, current, (v) => {
+    const sel = csSelect(options, current, (v) => {
       if (k === "wb" && v.startsWith("k")) csSet(c.camera, "kelvin", +v.slice(1));
       else csSet(c.camera, k, +v);
-    }, diff ? "diff" : ""));
-    if (k === "style" && (c.styleDetail || csHasQuality(c))) td.appendChild(csStyleButton(c.camera, csStyleDetailLevel(c) || (csDiffers(c, "quality", ref) ? "partial" : ""), c));
+    }, diff ? "diff" : "");
+    td.appendChild(sel);
+    // Ratio: a última foto de teste saiu numa proporção diferente da informada → marca amarela
+    const ratio = k === "aspect" && csTest.ratios[c.camera];
+    if (ratio && ratio.differs && ratio.reported === currentLabel) {
+      sel.classList.add("shot-warn");
+      const why = ratioWhy(ratio);
+      sel.title = why;
+      td.appendChild(csText(ratio.shot, "shot-ratio", ""));
+      const alert = el("span", "cs-ratio-alert");
+      alert.innerHTML = ALERT_SVG;
+      alert.setAttribute("role", "img"); alert.setAttribute("aria-label", why);
+      alert.dataset.itip = why;
+      alert.tabIndex = 0;
+      td.appendChild(alert);
+    }
     return td;
   }
+  // Resumo da coluna Color: duas linhas (balanço de branco, estilo), na altura do botão ±
+  function csColorSummary(wb, style, wbDiff, styleDiff) {
+    const box = el("span", "cs-color-sum");
+    if (wb !== null) box.appendChild(el("span", wbDiff ? "diff" : "", "· " + wb));
+    if (style !== null) box.appendChild(el("span", styleDiff ? "diff" : "", "· " + style));
+    return box;
+  }
+  // Quanto da cor difere das outras câmeras: "" nada; "partial" algo; "diff" tudo o que a câmera tem
+  function csColorLevel(c, ref) {
+    const checks = [];
+    if (c.settings && c.settings.wb && c.settings.wb.available) checks.push(csDiffers(c, "wb", ref));
+    if (c.shiftAvailable) checks.push(csDiffers(c, "shift", ref));
+    if (c.settings && c.settings.style && c.settings.style.available) checks.push(csDiffers(c, "style", ref));
+    if (c.styleDetail) checks.push(csStyleDetailDiffers(c));
+    const n = checks.filter(Boolean).length;
+    return n === 0 ? "" : n === checks.length ? "diff" : "partial";
+  }
   function csHasQuality(c) { const q = c.settings && c.settings.quality; return !!(q && q.available && q.choices && q.choices.length); }
+  function csShowsQuality(c) { const q = c.settings && c.settings.quality; return !!(q && q.available); }
+  function csHasAspect(c) { const a = c.settings && c.settings.aspect; return !!(a && a.available); }
+  function csCanChangeAspect(c) { const a = c.settings && c.settings.aspect; return !!(a && a.available && a.choices && a.choices.length); }
 
   // Célula de "All cameras": só os valores que todas as câmeras ajustáveis aceitam
   function csAllCell(k, cams) {
@@ -5044,6 +6711,18 @@
       if (!cams.every((c) => c.shiftAvailable)) { td.appendChild(csText("—", "na", "Not available on every camera")); return td; }
       const one = (key) => (new Set(cams.map((c) => c[key])).size === 1 ? cams[0][key] : null);
       td.appendChild(shiftPair(one("shiftAB"), one("shiftGM"), (v) => csSet("*", "shiftab", v), (v) => csSet("*", "shiftgm", v), false));
+      return td;
+    }
+    if (k === "color") {
+      td.classList.add("cs-color");
+      const refs = csStyleDetailRefs();
+      const anyDiff = ["wb", "style"].some((key) => new Set(cams.map((c) => csLabel(c, key)).filter((l) => l !== null)).size > 1)
+        || (cams.some((c) => c.shiftAvailable) && new Set(cams.filter((c) => c.shiftAvailable).map((c) => c.shiftAB + "/" + c.shiftGM)).size > 1)
+        || STYLE_DETAILS.some(([, , f]) => refs[f] !== null);
+      const wbs = new Set(cams.map((c) => csLabel(c, "wb")).filter((l) => l !== null)), sts = new Set(cams.map((c) => csLabel(c, "style")).filter((l) => l !== null));
+      td.appendChild(csStyleButton("*", anyDiff ? "partial" : "", null));
+      td.appendChild(csColorSummary(wbs.size === 1 ? [...wbs][0] : wbs.size ? "Different" : null, sts.size === 1 ? [...sts][0] : sts.size ? "Different" : null,
+        wbs.size > 1, sts.size > 1 || STYLE_DETAILS.some(([, , f]) => refs[f] !== null)));
       return td;
     }
     if (k === "wb") {
@@ -5072,6 +6751,23 @@
       }, same ? "" : "diff"));
       return td;
     }
+    // Format e Ratio: câmeras que não aceitam mudar pelo USB ficam de fora; a mudança vai às outras
+    if (k === "quality" || k === "aspect") {
+      const can = cams.filter((c) => c.settings[k] && c.settings[k].available && c.settings[k].choices.length);
+      const fixedNames = cams.filter((c) => c.settings[k] && c.settings[k].available && !c.settings[k].choices.length).map((c) => c.camera);
+      if (!can.length) { td.appendChild(csText(same && labels.size ? [...labels][0] : "—", "na" + (same ? "" : " diff"), "No camera allows changing this over USB. Change it in the camera menus.")); return td; }
+      const lists = can.map((c) => c.settings[k].choices);
+      const common = lists[0].filter(([v]) => lists.every((l) => l.some(([x]) => x === v)));
+      if (!common.length) { td.appendChild(csText("—", "na", "The cameras have no value in common")); return td; }
+      const options = common.map(([v, l]) => [String(v), l]);
+      let current = "";
+      if (same) { const v = String(can[0].settings[k].value); if (options.some(([x]) => x === v)) current = v; }
+      if (!current) options.unshift(["", same ? [...labels][0] : "Different", true]);
+      const sel = csSelect(options, current, (v) => can.forEach((c) => { if (c.settings[k].value !== +v) csSet(c.camera, k, +v); }), same ? "" : "diff");
+      if (fixedNames.length) sel.title = fixedNames.join(", ") + (fixedNames.length === 1 ? " does" : " do") + " not allow changing this over USB; the change goes to the other cameras.";
+      td.appendChild(sel);
+      return td;
+    }
     const lists = cams.filter((c) => c.settings[k] && c.settings[k].available).map((c) => c.settings[k].choices);
     // Alguma câmera não deixa mudar agora: "—" tracejado (não dá para aplicar em todas)
     if (!lists.length || lists.some((l) => !l.length)) {
@@ -5089,11 +6785,6 @@
     }
     if (!current) options.unshift(["", same ? [...labels][0] : "Different", true]);
     td.appendChild(csSelect(options, current, (v) => csSet("*", k, +v), same ? "" : "diff"));
-    if (k === "style" && cams.some((c) => c.styleDetail || csHasQuality(c))) {
-      const refs = csStyleDetailRefs();
-      const n = cams.some((c) => c.styleDetail) ? STYLE_DETAILS.filter(([, , f]) => refs[f] !== null).length : 0;
-      td.appendChild(csStyleButton("*", n === 0 ? "" : n === STYLE_DETAILS.length ? "diff" : "partial", null));
-    }
     return td;
   }
 
@@ -5173,7 +6864,9 @@
     const head = document.createElement("tr");
     head.appendChild(document.createElement("th"));
     CS_COLS.forEach(([, label]) => head.appendChild(el("th", "", label)));
-    table.appendChild(head);
+    const thead = document.createElement("thead");  // (o grupo inteiro fica preso, com fundo: sem fresta acima das colunas)
+    thead.appendChild(head);
+    table.appendChild(thead);
 
     const all = document.createElement("tr");
     all.className = "all";
@@ -5195,6 +6888,8 @@
         tag.title = c.focusManual ? "Manual focus" : "Autofocus is on. Turn the lens switch to MF so the camera fires without delay.";
         name.appendChild(tag);
       }
+      // Câmera simulada com comportamento de propósito (ex.: a 02 entrega sempre 16:9): etiqueta âmbar
+      if (c.quirk) { const q = el("span", "cs-focus-tag warn", "always 16:9"); q.title = c.quirk; name.appendChild(q); }
       name.appendChild(el("small", "", c.model + (c.mode ? " · " + c.mode : "")));
       tr.appendChild(name);
       if (!c.adjustable) {
@@ -5225,6 +6920,9 @@
     // Teclado: o Tab passa só pela linha "All cameras"; nas linhas das câmeras chega-se com ↑ ↓
     table.querySelectorAll("tr:not(.all) select, tr:not(.all) button, tr:not(.all) input").forEach((x) => { x.tabIndex = -1; });
     body.appendChild(table);
+    // A linha "All cameras" gruda logo abaixo do cabeçalho, na altura real dele (um valor fixo deixava uma fresta
+    // por onde as linhas de trás apareciam)
+    csStickAllRow();
     body.scrollTop = scroll;
     renderStylePop();
 
@@ -5237,7 +6935,7 @@
   // Deixa todas as câmeras iguais a uma escolhida
   // Retrato das configurações de cada câmera (para desfazer o "Copy from camera")
   function csSnapshot() {
-    const keys = ["iso", "tv", "av", "expcomp", "metering", "style", "quality", "wb"];
+    const keys = ["iso", "tv", "av", "expcomp", "metering", "style", "quality", "aspect", "wb"];
     return camSettings.filter((c) => c.adjustable).map((c) => {
       const snap = { camera: c.camera, values: {} };
       keys.forEach((k) => { const st = c.settings[k]; if (st && st.available && st.choices.length) snap.values[k] = st.value; });
@@ -5291,6 +6989,9 @@
       const st = c.settings[k];
       if (st && st.available && st.choices.length) csSet("*", k, st.value);
     });
+    // Proporção: só para as câmeras que aceitam mudar (a de origem pode ser uma fixa)
+    if (csHasAspect(c)) camSettings.filter((x) => x.adjustable && x.camera !== name && csCanChangeAspect(x) && x.settings.aspect.value !== c.settings.aspect.value)
+      .forEach((x) => csSet(x.camera, "aspect", c.settings.aspect.value));
     const wb = c.settings.wb;
     if (wb && wb.available && wb.choices.length) {
       if (wb.value === 9) csSet("*", "kelvin", c.kelvin);
@@ -5326,7 +7027,7 @@
     }
     const connected = cameras.filter((c) => c.connected).length;
     if (busy || !connected) return;
-    const match = $("csAuto").checked && connected >= 2;
+    const match = $("csAuto").checked && connected >= 2;  // csAuto: ligado só pela janela Match automatically
     // ISO em Auto: o brilho não tem como ser igualado; avisa antes de começar
     const isoAuto = camSettings.filter((c) => c.adjustable && c.settings.iso && c.settings.iso.available && c.settings.iso.value === 0).map((c) => c.camera);
     if (match && isoAuto.length && skipIsoCheck !== true) {
@@ -5365,9 +7066,603 @@
     csGallery.setHead(match ? "Test shot · matching" : "Test shot", "");
     csGallery.message("Taking a photo with each camera");
     csTest.before = match ? csSnapshot() : null;  // para desfazer o Match automatically de uma vez
-    if (match) window.autoMatch(intValue(ui.downloadWait, 1, 10), $("csCard").checked ? 1 : 0);
+    if (match) window.autoMatch(intValue(ui.downloadWait, 1, 10), $("csCard").checked ? 1 : 0, csMatchFlags(), csMatchTargets());
     else window.takeOrderPhotos(intValue(ui.downloadWait, 1, 10));
   }
+  // ----- Match automatically em três passos (decisão do dono, 2026-11-01): 1 Choose (o que igualar),
+  // 2 Test shot (até 5 fotos; nada muda nas câmeras: no fim elas voltam ao "antes"), 3 Review (tabela
+  // por câmera + fotos antes/depois; só o Apply mexe nas câmeras; um ⌘Z desfaz tudo) -----
+  const MATCH_ITEMS = [
+    ["exposure", 1, "Shutter, aperture, exposure comp.", "same value on every camera", "set"],
+    ["iso", 2, "ISO", "same value on every camera", "set"],
+    ["wb", 8, "White balance", "a common white balance", "set"],
+    ["style", 32, "Picture Style", "same style and adjustments", "set"],
+    ["format", 64, "Format", "same size and file format", "set"],
+    ["aspect", 128, "Aspect ratio", "to the cameras that cannot change it", "set"],
+    ["brightness", 4, "Brightness", "ISO fine-tune, measured in the test shot", "measure"],
+    ["color", 16, "Color", "WB fine-tune, measured in the test shot", "measure"],
+  ];
+  const matchWin = { step: 0, choices: null, result: null, cam: null, mode: "split", split: 50, playing: 0, dir: 1, picked: new Set(), before: null, targets: {}, undo: [], redo: [] };
+  // Desfazer dentro da janela (⌘Z / Ctrl+Z nos passos 1 e 3): caixas marcadas e valores escolhidos
+  function csMatchHistoryActive() { return !$("csMatch").classList.contains("hidden") && (matchWin.step === 1 || matchWin.step === 3) && $("dialogOverlay").classList.contains("hidden"); }
+  function csMatchRecord(label, undo, redo) { matchWin.undo.push({ label, undo, redo }); if (matchWin.undo.length > 50) matchWin.undo.shift(); matchWin.redo.length = 0; }
+  function csMatchUndo() {
+    const a = matchWin.undo.pop();
+    if (!a) { toast("Nothing to undo", TOAST_MS, { silent: true }); return; }
+    a.undo(); matchWin.redo.push(a);
+    toast("Undo: " + a.label, TOAST_MS, { kind: "undo" });
+  }
+  function csMatchRedo() {
+    const a = matchWin.redo.pop();
+    if (!a) { toast("Nothing to redo", TOAST_MS, { silent: true }); return; }
+    a.redo(); matchWin.undo.push(a);
+    toast("Redo: " + a.label, TOAST_MS, { kind: "redo" });
+  }
+  // Valores de "Set the same value on every camera" (decisão do dono, 2026-11-02): o passo 1 já calcula o
+  // valor que o Match poria em todas, mostra e deixa trocar. A regra é a mesma do núcleo (auto_match.cpp):
+  // shutter/aperture/exp. comp./ISO: o valor mais perto da média (em stops) que todas aceitam; Picture
+  // Style: o mais comum (nunca Auto); Format e Ratio: o das câmeras que não aceitam mudar, senão o mais
+  // comum; White balance: Daylight e a foto de teste escolhe o predefinido comum mais perto, ou um fixo.
+  const MATCH_SET_KEYS = { exposure: [["tv", "Shutter"], ["av", "Aperture"], ["expcomp", "Exp. comp."]], iso: [["iso", "ISO"]],
+    wb: [["wb", "White balance"]], style: [["style", "Picture Style"]], format: [["quality", "Format"]], aspect: [["aspect", "Aspect ratio"]] };
+  // Escala de luz da Canon (8 = 1 stop); null: sem valor fixo (ISO Auto, Bulb...)
+  function csLightUnits(key, code) {
+    if (key === "iso") return code === 0 ? null : code;
+    if (key === "tv") return code < 0x10 ? null : code;
+    if (key === "av") return code < 0x08 || code === 0x85 ? null : code;
+    if (key === "expcomp") return code < 0 || code > 0xFF ? null : code >= 0x80 ? code - 256 : code;
+    return null;
+  }
+  // Proposta para uma configuração: { options: [[valor, rótulo]], value, note } ou null (nada a igualar)
+  function csMatchPropose(key) {
+    const cams = camSettings.filter((c) => c.adjustable && c.settings[key] && c.settings[key].available);
+    const can = cams.filter((c) => c.settings[key].choices.length);
+    if (can.length < 2 && !(key === "quality" || key === "aspect")) return null;
+    if (!can.length) return null;
+    const accepted = (v) => can.every((c) => c.settings[key].choices.some(([x]) => x === v));
+    const label = (v) => { const ch = can.map((c) => c.settings[key].choices.find(([x]) => x === v)).find(Boolean); return ch ? (key === "iso" ? isoText(ch[1]) : ch[1]) : String(v); };
+    if (key === "wb") {
+      const options = [["auto", "Let the test shot choose"]];
+      can[0].settings.wb.choices.filter(([v]) => v !== 9 && v !== 0 && v !== 23 && accepted(v)).forEach(([v, l]) => options.push([String(v), l]));
+      if (accepted(9)) KELVINS.forEach((kv) => options.push(["k" + kv, kv + " K"]));
+      return { options, value: "auto", note: "Starts at Daylight; the test shot picks the common white balance closest to the scene" };
+    }
+    if (key === "style") {
+      const common = can[0].settings.style.choices.filter(([v]) => v !== 0x87 && accepted(v));
+      if (!common.length) return { options: [["", "No style in common", true]], value: "", note: "" };
+      const counts = new Map();
+      can.forEach((c) => { const v = c.settings.style.value; if (v !== 0x87) counts.set(v, (counts.get(v) || 0) + 1); });
+      let best = null, n = 0;
+      can.forEach((c) => { const v = c.settings.style.value; if (v !== 0x87 && counts.get(v) > n && accepted(v)) { n = counts.get(v); best = v; } });
+      if (best === null) best = accepted(0x81) ? 0x81 : common[0][0];
+      const same = can.every((c) => c.settings.style.value === can[0].settings.style.value) && can[0].settings.style.value !== 0x87;
+      return { options: common.map(([v, l]) => [String(v), l]), value: String(best), note: same ? "Already the same on every camera" : "The most common style; Auto is never used" };
+    }
+    if (key === "quality" || key === "aspect") {
+      const fixed = cams.filter((c) => !c.settings[key].choices.length);
+      const fixedValues = new Set(fixed.map((c) => c.settings[key].value));
+      let target = null, note = "";
+      if (fixed.length && fixedValues.size === 1) { target = [...fixedValues][0]; note = "The value of " + plural(fixed.length, "camera", "cameras") + " that cannot change it (" + fixed.map((c) => c.camera).join(", ") + ")"; }
+      else {
+        if (fixed.length) note = fixed.map((c) => c.camera).join(", ") + ": cannot be changed from the app and disagree. Set it in their menus.";
+        else note = "The most common value";
+        const counts = new Map();
+        cams.forEach((c) => counts.set(c.settings[key].value, (counts.get(c.settings[key].value) || 0) + 1));
+        let n = 0;
+        cams.forEach((c) => { const v = c.settings[key].value; if (counts.get(v) > n) { n = counts.get(v); target = v; } });
+      }
+      const union = [];
+      can.forEach((c) => c.settings[key].choices.forEach(([v, l]) => { if (!union.some(([x]) => x === v)) union.push([v, l]); }));
+      const options = union.map(([v, l]) => [String(v), l + (accepted(v) ? "" : " (not on every camera)")]);
+      if (target !== null && !union.some(([v]) => v === target)) options.unshift([String(target), label(target) + " (no camera can change to it)", true]);
+      if (cams.every((c) => c.settings[key].value === cams[0].settings[key].value)) note = "Already the same on every camera";
+      return { options, value: String(target), note };
+    }
+    // Escala de luz: a média do que as câmeras usam, no valor mais perto que todas aceitam
+    const common = can[0].settings[key].choices.filter(([v]) => csLightUnits(key, v) !== null && accepted(v));
+    if (!common.length) return { options: [["", "No value in common: each camera goes to its closest", true]], value: "", note: "" };
+    let sum = 0, n = 0;
+    can.forEach((c) => { const u = csLightUnits(key, c.settings[key].value); if (u !== null) { sum += u; n++; } });
+    const same = can.every((c) => c.settings[key].value === can[0].settings[key].value);
+    let best = common[0][0], err = 1e9;
+    if (n) { const avg = sum / n; common.forEach(([v]) => { const e = Math.abs(csLightUnits(key, v) - avg); if (e < err - 1e-9) { err = e; best = v; } }); }
+    return { options: common.map(([v]) => [String(v), label(v)]), value: String(best), note: same ? "Already the same on every camera" : n ? "Closest to the average of the cameras" : "" };
+  }
+  // Os valores do passo 1 para o núcleo: "tv=93 av=40 wb=1" ("kelvin=5200" para temperatura; sem wb = a foto escolhe)
+  function csMatchTargets() {
+    const c = csMatchChoices(), out = [];
+    Object.keys(MATCH_SET_KEYS).forEach((item) => {
+      if (!c[item]) return;
+      MATCH_SET_KEYS[item].forEach(([key]) => {
+        const p = csMatchPropose(key);
+        if (!p) return;
+        let v = matchWin.targets[key] !== undefined && p.options.some(([x, , d]) => x === matchWin.targets[key] && !d) ? matchWin.targets[key] : p.value;
+        if (v === "" || v === "auto") return;
+        if (key === "wb" && v.startsWith("k")) out.push("kelvin=" + v.slice(1));
+        else out.push(key + "=" + v);
+      });
+    });
+    return out.join(" ");
+  }
+  function csMatchChoices() {
+    if (matchWin.choices) return matchWin.choices;
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem("stillpoint.matchChoices") || "null"); } catch (e) {}
+    matchWin.choices = Object.assign({ exposure: true, iso: true, wb: true, style: true, format: true, aspect: true, brightness: true, color: true }, saved || {});
+    matchWin.choices.grayCard = false;  // o cartão cinza começa desligado a cada abertura (decisão do dono, 2026-11-02)
+    return matchWin.choices;
+  }
+  function csMatchSaveChoices() { try { const c = Object.assign({}, csMatchChoices()); delete c.grayCard; localStorage.setItem("stillpoint.matchChoices", JSON.stringify(c)); } catch (e) {} }
+  function csMatchFlags() {
+    const c = csMatchChoices();
+    return MATCH_ITEMS.reduce((f, [key, bit]) => f | (c[key] ? bit : 0), 0) | 256;
+  }
+  function csMatchSetStep(n) {
+    matchWin.step = n;
+    [1, 2, 3].forEach((k) => $("csStep" + k).classList.toggle("on", k === n));
+    $("csMatchBack").classList.toggle("hidden", n !== 3);
+    $("csMatchKeep").classList.toggle("hidden", n !== 3);
+    $("csMatchCancel").classList.toggle("hidden", n === 3);
+    $("csMatchGo").textContent = n === 1 ? "Take the test shot" : n === 2 ? "Cancel the test shot" : "Apply";
+    $("csMatchGo").classList.toggle("btn-primary", n !== 2);
+    $("csMatchGo").classList.toggle("btn-secondary", n === 2);
+  }
+  function csMatchOpen() {
+    if (busy || csTest.capturing) return;
+    const connected = cameras.filter((c) => c.connected).length;
+    if (connected < 2) { toast("Match automatically needs at least two connected cameras.", 6000, { warn: true }); return; }
+    matchWin.result = null; matchWin.picked = new Set(); matchWin.before = null; matchWin.targets = {};  // valores: recalculados a cada abertura
+    matchWin.undo = []; matchWin.redo = [];
+    $("csMatch").classList.remove("hidden");
+    $("camSettingsOverlay").querySelector(".cs-sheet").classList.add("matching");
+    csMatchRenderChoose();
+  }
+  // Calibração aberta de dentro do Match: no fim (ou ao desistir), a janela Match volta ao passo 1
+  function csMatchReturn() {
+    if (!matchWin.returnAfterChart) return;
+    matchWin.returnAfterChart = false;
+    if (!$("camSettingsOverlay").classList.contains("hidden")) csMatchOpen();
+  }
+  function csMatchClose() {
+    csMatchStopPlay();
+    $("csMatch").classList.add("hidden");
+    $("camSettingsOverlay").querySelector(".cs-sheet").classList.remove("matching");
+    matchWin.step = 0;
+    $("csAuto").checked = false;
+  }
+  function csMatchRenderChoose() {
+    csMatchSetStep(1);
+    $("csMatchBody").className = "cs-match-body choose";
+    $("csMatchSub").textContent = "Choose what the app may change. The test shot fires every camera (the photos are not kept: up to 5 until the cameras agree, plus one with the result); nothing changes on the cameras before you review it in step 3.";
+    const c = csMatchChoices();
+    const body = $("csMatchBody");
+    body.innerHTML = "";
+    const grid = el("div", "cs-match-grid");
+    const col = (title) => { const d = el("div", "cs-match-col"); d.appendChild(el("div", "cs-match-coltitle", title)); grid.appendChild(d); return d; };
+    const left = col("Set the same value on every camera"), right = col("Measure in the test shot and fine-tune each camera");
+    // Cada item como as saídas do Export sessions: caixa do app, título, explicação e o resumo à direita.
+    // Nos itens "Set", o valor que o app poria em todas, já calculado, numa lista para trocar.
+    const item = (checked, label, hint, sum, onChange, keys) => {
+      const row = el("div", "cs-match-row" + (checked ? " on" : "") + (keys ? " has-vals" : ""));
+      const box = document.createElement("input"); box.type = "checkbox"; box.className = "cs-check"; box.checked = checked;
+      box.addEventListener("change", () => {
+        row.classList.toggle("on", box.checked); onChange(box.checked);
+        const v = box.checked;
+        csMatchRecord(label + (v ? " on" : " off"), () => { onChange(!v); csMatchRenderChoose(); }, () => { onChange(v); csMatchRenderChoose(); });
+      });
+      // A linha inteira marca/desmarca, menos as listas de valor
+      row.addEventListener("click", (e) => { if (e.target === box || (e.target.closest && e.target.closest(".cs-match-vals"))) return; box.checked = !box.checked; box.dispatchEvent(new Event("change")); });
+      const name = el("span", "cs-match-name");
+      const hintEl = el("span", "cs-match-hint", hint);
+      name.append(el("b", "cs-match-label", label), hintEl);
+      if (keys) {
+        // A explicação vira o porquê do valor ("Closest to the average…"); com mais de um valor, cada um com o nome
+        const vals = el("div", "cs-match-vals");
+        const notes = [];
+        keys.forEach(([key, title]) => {
+          const p = csMatchPropose(key);
+          const pair = el("label", "cs-match-val");
+          pair.title = title;
+          if (!p) { pair.appendChild(csText("—", "na", "Not changeable from the app on at least two cameras")); vals.appendChild(pair); return; }
+          const chosen = matchWin.targets[key] !== undefined && p.options.some(([x, , d]) => x === matchWin.targets[key] && !d) ? matchWin.targets[key] : p.value;
+          const sel = csSelect(p.options, chosen, (v) => {
+            const prev = matchWin.targets[key];
+            const text = (x) => (p.options.find(([o]) => o === x) || ["", x])[1];
+            const set = (x) => { if (x === undefined) delete matchWin.targets[key]; else matchWin.targets[key] = x; csMatchRenderChoose(); };
+            set(v);
+            csMatchRecord(title + " → " + text(v), () => set(prev), () => set(v));
+          }, "match-val" + (chosen !== p.value ? " mine" : ""));
+          sel.title = chosen !== p.value ? "Your choice (the app would pick " + (p.options.find(([x]) => x === p.value) || ["", "—"])[1] + ")" : p.note;
+          pair.appendChild(sel);
+          vals.appendChild(pair);
+          if (chosen !== p.value) notes.push(title + ": your choice");
+          else if (p.note && !notes.includes(p.note)) notes.push(p.note);
+        });
+        if (notes.length) hintEl.textContent = notes.join(" · ");
+        // Layout G (decisão do dono, 2026-11-02): uma linha por item, as listas à direita no lugar do "Set"
+        vals.classList.add("aside"); if (keys.length > 1) vals.classList.add("multi"); row.append(box, name, vals); return row;
+      }
+      row.append(box, name, el("span", "cs-match-sum", sum));
+      return row;
+    };
+    MATCH_ITEMS.forEach(([key, , label, hint, kind]) => {
+      (kind === "set" ? left : right).appendChild(item(!!c[key], label, hint, kind === "set" ? "Set" : "Measured", (v) => { c[key] = v; csMatchSaveChoices(); csMatchCount(); }, kind === "set" ? MATCH_SET_KEYS[key] : null));
+    });
+    right.appendChild(item(!!c.grayCard, "Use the gray card", "the app measures only the card; you check where it is after the first photo", "Option", (v) => { c.grayCard = v; csMatchSaveChoices(); }));
+    // Modelos misturados (decisão do dono, 2026-11-02, opção A): bloco "Camera models" na coluna da direita.
+    // Sem calibração da cartela: aviso âmbar com "Calibrate with chart"; calibrados: uma linha com "Recalibrate".
+    // O botão do rodapé do Camera settings continua.
+    {
+      const styleCams = camSettings.filter((c) => c.adjustable && c.styleDetail && cameras.some((x) => x.name === c.camera && x.connected));
+      const models = [...new Set(styleCams.map((c) => c.model))];
+      const missing = models.filter((m) => !styleCams.some((c) => c.model === m && c.chart));
+      if (models.length > 1) {
+        right.appendChild(el("div", "cs-match-coltitle cs-match-models", "Camera models"));
+        const warn = el("div", "cs-match-info" + (missing.length ? " warn" : " done"));
+        const b = el("button", "btn btn-secondary btn-small", missing.length ? "Calibrate with chart" : "Recalibrate"); b.type = "button";
+        // A janela Match fica atrás da explicação; só sai quando a calibração começa (Start) e volta no fim
+        b.addEventListener("click", () => { matchWin.returnAfterChart = true; csChartIntro(() => { matchWin.returnAfterChart = false; }); });
+        const text = el("span", "", missing.length
+          ? (missing.length === models.length ? models : missing).map(shortModel).join(" and ") + (missing.length === 1 ? " has" : " have") + " not been calibrated with the chart. Without it, Contrast, Saturation and Color tone only get the same value on every camera, and different models may still look a little different. It is done once per camera model."
+          : models.map(shortModel).join(" and ") + " are calibrated with the chart: Match automatically uses it for Contrast, Saturation and Color tone.");
+        warn.append(text, b);
+        right.appendChild(warn);
+      }
+    }
+    body.appendChild(grid);
+    csMatchCount();
+  }
+  function csMatchCount() {
+    if (matchWin.step !== 1) return;
+    const c = csMatchChoices();
+    const n = MATCH_ITEMS.filter(([key]) => c[key]).length;
+    $("csMatchNote").textContent = n + " of " + MATCH_ITEMS.length + " settings selected";
+    $("csMatchGo").disabled = n === 0;
+  }
+  function csMatchStart() {
+    csMatchSetStep(2);
+    $("csMatchBody").className = "cs-match-body progress";
+    $("csMatchSub").textContent = "Taking test photos. The cameras are changed only to measure; they go back to how they were before you review.";
+    $("csMatchNote").textContent = "";
+    $("csMatchGo").disabled = false;
+    const body = $("csMatchBody");
+    body.innerHTML = "";
+    const box = el("div", "cs-match-progress");
+    box.appendChild(el("div", "cs-match-stage", "Taking a photo with each camera"));
+    const bar = el("div", "cs-match-bar"); bar.appendChild(el("div", "cs-match-bar-fill")); box.appendChild(bar);
+    box.appendChild(el("div", "cs-match-shot", ""));
+    body.appendChild(box);
+    matchWin.before = csSnapshot();
+    $("csAuto").checked = true;
+    $("csCard").checked = !!csMatchChoices().grayCard;
+    csTakeTest();
+  }
+  function csMatchProgress(e) {
+    if (matchWin.step !== 2) return;
+    const stage = $("csMatchBody").querySelector(".cs-match-stage"), fill = $("csMatchBody").querySelector(".cs-match-bar-fill"), shot = $("csMatchBody").querySelector(".cs-match-shot");
+    if (stage) stage.textContent = e.stage;
+    if (fill) fill.style.width = Math.round((e.shot / Math.max(1, e.shots)) * 100) + "%";
+    if (shot) shot.textContent = "Photo " + e.shot + " of up to " + e.shots;
+  }
+  // Passo 3: o resultado veio, as câmeras já voltaram ao "antes"
+  function csMatchReview(e) {
+    const notes = e.notes || [];
+    matchWin.result = e;
+    if (!e.ok || !e.matched) {
+      dialog(e.matched ? "Matching did not finish" : "Not matched automatically", [e.error || "Try again."].concat(notes).join("\n\n"), [{ label: "OK", primary: true }]);
+      log("Match automatically did not finish", "warn", e.error);
+      csMatchClose();
+      return;
+    }
+    const changes = e.changes || [];
+    // Proporção real de cada foto contra a informada (Parte 2 da Proporção): fica para a tabela do Camera settings
+    csTest.ratios = {};
+    (e.ratios || []).forEach((r) => { csTest.ratios[r.camera] = r; });
+    csGallery.refreshMarks();
+    const wrong = (e.ratios || []).filter((r) => r.differs);
+    if (wrong.length) log("Aspect ratio: " + wrong.map((r) => r.camera + " shot " + r.shot + " but reports " + r.reported).join(" · "), "warn");
+    matchWin.picked = new Set(changes.map((c) => c.camera));
+    matchWin.cam = changes.length ? changes[0].camera : (placedCameras()[0] || {}).name;
+    csMatchSetStep(3);
+    matchWin.revealCtrls = true;
+    $("csMatchBody").className = "cs-match-body review";
+    $("csMatchSub").textContent = changes.length
+      ? plural(changes.length, "camera would change", "cameras would change") + " · nothing has been changed on the cameras yet"
+      : "The cameras already look alike. Nothing to change.";
+    csMatchRenderReview();
+    if (e.debugFolder) log("Debug data saved", "tech", e.debugFolder);
+  }
+  // Fotos do teste: a primeira sessão é o "antes", a última o "depois"
+  function csMatchSessions() {
+    const list = (csTest.sessions || []).slice().sort((a, b) => (a.name < b.name ? -1 : 1));
+    return { before: list[0] || null, after: list[list.length - 1] || null };
+  }
+  function csMatchPhoto(session, camName, size) {
+    if (!session) return Promise.resolve(null);
+    const photos = session.photos.filter((p) => p.camera === camName);
+    const pick = photos.find((p) => /\.jpe?g$/i.test(p.file)) || photos.find((p) => p.previewable) || photos[0];
+    if (!pick) return Promise.resolve(null);
+    return orderPhoto(session.name, pick.file, size);
+  }
+  function csMatchRenderReview() {
+    const e = matchWin.result;
+    const changes = e.changes || [];
+    const body = $("csMatchBody");
+    body.innerHTML = "";
+    const wrap = el("div", "cs-review");
+    // Tabela: uma linha por câmera
+    const table = el("div", "cs-review-table");
+    const head = el("div", "cs-review-head");
+    const allBox = document.createElement("input"); allBox.type = "checkbox"; allBox.className = "cs-check"; allBox.setAttribute("aria-label", "All cameras");
+    const syncAll = () => { const n = changes.filter((c) => matchWin.picked.has(c.camera)).length; allBox.checked = changes.length > 0 && n === changes.length; allBox.indeterminate = n > 0 && n < changes.length; };
+    syncAll();
+    allBox.disabled = !changes.length;
+    allBox.addEventListener("click", (ev) => ev.stopPropagation());
+    allBox.addEventListener("change", () => {
+      const prev = new Set(matchWin.picked), next = new Set(allBox.checked ? changes.map((c) => c.camera) : []);
+      matchWin.picked = next; csMatchRenderReview();
+      csMatchRecord(allBox.checked ? "Apply to all cameras" : "Apply to no camera", () => { matchWin.picked = new Set(prev); csMatchRenderReview(); }, () => { matchWin.picked = new Set(next); csMatchRenderReview(); });
+    });
+    head.append(allBox, el("span", "", "Camera"), el("span", "", "Changes"), el("span", "cs-review-th-after", "After"));
+    table.appendChild(head);
+    const rowsBox = el("div", "cs-review-rows");  // as linhas rolam aqui dentro; a prévia à direita não cresce com elas
+    table.appendChild(rowsBox);
+    const { before, after } = csMatchSessions();
+    placedCameras().filter((c) => c.connected).forEach((cam) => {
+      const ch = changes.find((x) => x.camera === cam.name);
+      const row = el("div", "cs-review-row" + (ch ? "" : " same") + (matchWin.cam === cam.name ? " current" : ""));
+      row.tabIndex = matchWin.cam === cam.name ? 0 : -1;  // o Tab para uma vez na lista; ↑ ↓ andam pelas câmeras
+      row.setAttribute("role", "option"); row.setAttribute("aria-selected", matchWin.cam === cam.name ? "true" : "false");
+      const box = document.createElement("input"); box.type = "checkbox"; box.className = "cs-check"; box.tabIndex = -1;
+      box.checked = !!ch && matchWin.picked.has(cam.name); box.disabled = !ch;
+      box.setAttribute("aria-label", "Apply to " + cam.name);
+      box.addEventListener("click", (ev) => ev.stopPropagation());
+      const pick = (on) => { if (on) matchWin.picked.add(cam.name); else matchWin.picked.delete(cam.name); box.checked = on; syncAll(); csMatchFootNote(); csMatchSyncMinis(); };
+      box.addEventListener("change", () => { const v = box.checked; pick(v); csMatchRecord("Apply to " + cam.name + (v ? " on" : " off"), () => { if (box.isConnected) pick(!v); else { if (v) matchWin.picked.delete(cam.name); else matchWin.picked.add(cam.name); csMatchRenderReview(); } }, () => { if (box.isConnected) pick(v); else { if (v) matchWin.picked.add(cam.name); else matchWin.picked.delete(cam.name); csMatchRenderReview(); } }); });
+      const name = el("span", "cs-review-name"); name.append(el("b", "", pad(cam.order)), document.createTextNode(" " + cam.name));
+      const list = el("span", "cs-review-changes");
+      if (ch) ch.items.forEach(([what, from, to]) => { const it = el("span", "cs-review-change"); it.append(el("s", "", from), el("span", "to", to)); it.title = what; list.appendChild(it); });
+      else list.appendChild(el("span", "cs-review-none", changes.length && cam.name === (changes[0] || {}).camera ? "reference" : "no change"));
+      const ratio = csTest.ratios[cam.name];
+      if (ratio && ratio.differs) {
+        const w = el("span", "cs-review-ratio", "Shot " + ratio.shot + " · camera reports " + ratio.reported);
+        w.title = "The test photo came out " + ratio.shot + ", but the camera says its aspect ratio is " + ratio.reported + ". Check the camera menu (some settings only apply to JPEG, not RAW).";
+        list.appendChild(w);
+      }
+      const thumb = el("span", "cs-review-thumb" + (ch ? " changed" : "") + (ratio && ratio.differs ? " ratio-warn" : ""));
+      csMatchPhoto(after, cam.name, 320).then((url) => { if (url) thumb.style.backgroundImage = "url(" + url + ")"; });
+      row.append(box, name, list, thumb);
+      row.addEventListener("click", () => { matchWin.cam = cam.name; csMatchRenderReview(); });
+      row.matchBox = ch ? box : null;  // (teclado: ↑ ↓ e Espaço tratados no documento, antes do tratador do Camera settings)
+      rowsBox.appendChild(row);
+    });
+    const tnote = el("div", "cs-review-tnote", "Click a row to see that camera on the right. Play runs the whole sequence, before and after at once. Untick a camera to keep it as it is.");
+    table.appendChild(tnote);
+    wrap.appendChild(table);
+    // Fotos: a câmera escolhida, antes e depois
+    const photos = el("div", "cs-review-photos");
+    const top = el("div", "cs-review-top");
+    const camLabel = el("span", "cs-review-cam", matchWin.cam || "");
+    const ctrls = el("div", "cs-review-ctrls");
+    const prev = button("", () => csMatchStep(-1), { icon: "left", title: "Previous camera" });
+    const play = button("", () => csMatchTogglePlay(), { icon: matchWin.playing ? "pause" : "play", title: matchWin.playing ? "Pause" : "Play the sequence" });
+    play.classList.add("cs-review-play");
+    const next = button("", () => csMatchStep(1), { icon: "right", title: "Next camera" });
+    // Velocidade: muda o texto e o ritmo do play no lugar, sem redesenhar a janela (os controles não piscam)
+    const speed = el("span", "cs-review-speed");
+    const showSpeed = () => { const v = PLAY_SPEEDS[speedIndex]; speed.textContent = (v % 1 === 0 ? v.toFixed(1) : String(v)) + "x"; slower.disabled = speedIndex === 0; faster.disabled = speedIndex === PLAY_SPEEDS.length - 1; };
+    const setSpeed = (d) => { speedIndex = Math.max(0, Math.min(PLAY_SPEEDS.length - 1, speedIndex + d)); renderSpeed(); showSpeed(); csMatchRestartPlay(); };
+    const slower = button("", () => setSpeed(-1), { icon: "minus", title: "Slower" });
+    const faster = button("", () => setSpeed(1), { icon: "plus", title: "Faster" });
+    showSpeed();
+    const rev = el("label", "cs-review-rev log-option"); const revBox = document.createElement("input"); revBox.type = "checkbox"; revBox.checked = reverseLoop.checked;
+    revBox.addEventListener("change", () => { reverseLoop.checked = revBox.checked; });
+    rev.append(revBox, document.createTextNode(" Reverse loop"));
+    ctrls.append(prev, play, next, el("span", "cs-review-speedlabel", "Speed"), slower, speed, faster, rev);
+    // Os controles não arrastam a cortina nem viram a foto (Flip)
+    ["pointerdown", "click"].forEach((t) => ctrls.addEventListener(t, (ev) => ev.stopPropagation()));
+    const modes = el("div", "cs-review-modes");
+    [["split", "Split"], ["side", "Side by side"], ["flip", "Flip"]].forEach(([m, label]) => {
+      const b = el("button", "cs-review-mode" + (matchWin.mode === m ? " on" : ""), label); b.type = "button";
+      b.addEventListener("click", () => { matchWin.mode = m; csMatchRenderReview(); });
+      modes.appendChild(b);
+    });
+    top.append(camLabel, modes);
+    photos.appendChild(top);
+    const stage = el("div", "cs-review-stage " + matchWin.mode);
+    const showCtrls = fadeControls(stage, ctrls);
+    if (matchWin.revealCtrls) { matchWin.revealCtrls = false; setTimeout(() => showCtrls(CTRLS_REVEAL_MS), 0); }  // ao chegar no passo 3, já aparecem
+    const imgB = el("div", "cs-review-img before"), imgA = el("div", "cs-review-img after");
+    imgB.appendChild(el("span", "cs-review-tag", "Before")); imgA.appendChild(el("span", "cs-review-tag on", "After"));
+    const ch = changes.find((x) => x.camera === matchWin.cam);
+    if (ch) { imgB.querySelector(".cs-review-tag").textContent = "Before · " + ch.items.map((i) => i[1]).join(" · "); imgA.querySelector(".cs-review-tag").textContent = "After · " + ch.items.map((i) => i[2]).join(" · "); }
+    csMatchPhoto(before, matchWin.cam, 1600).then((url) => { if (url) imgB.style.backgroundImage = "url(" + url + ")"; });
+    csMatchPhoto(after, matchWin.cam, 1600).then((url) => { if (url) imgA.style.backgroundImage = "url(" + url + ")"; });
+    stage.prepend(imgB, imgA);
+    if (matchWin.mode === "split") {
+      imgA.style.clipPath = "inset(0 0 0 " + matchWin.split + "%)";
+      const handle = el("div", "cs-review-handle"); handle.style.left = matchWin.split + "%";
+      const knob = el("span", "cs-review-knob"); knob.innerHTML = icon("curtain", 16); handle.appendChild(knob);
+      stage.appendChild(handle);
+      let dragging = false;
+      const move = (ev) => { const r = stage.getBoundingClientRect(); matchWin.split = Math.max(2, Math.min(98, ((ev.clientX - r.left) / r.width) * 100)); imgA.style.clipPath = "inset(0 0 0 " + matchWin.split + "%)"; handle.style.left = matchWin.split + "%"; };
+      stage.addEventListener("pointerdown", (ev) => { ev.preventDefault(); dragging = true; stage.setPointerCapture(ev.pointerId); move(ev); });
+      stage.addEventListener("pointermove", (ev) => { if (dragging) move(ev); });
+      stage.addEventListener("pointerup", () => { dragging = false; });
+      stage.addEventListener("pointercancel", () => { dragging = false; });
+      stage.addEventListener("dblclick", () => { matchWin.split = 50; imgA.style.clipPath = "inset(0 0 0 50%)"; handle.style.left = "50%"; });  // dois cliques: cortina no centro
+    } else if (matchWin.mode === "flip") {
+      stage.classList.toggle("show-after", !!matchWin.flipAfter);
+      stage.title = "Click to switch between before and after";
+      stage.addEventListener("click", () => { matchWin.flipAfter = !matchWin.flipAfter; stage.classList.toggle("show-after", !!matchWin.flipAfter); });
+    }
+    photos.appendChild(stage);
+    // Fileiras de miniaturas: antes e depois
+    // Fileira de miniaturas: cada uma com a metade esquerda do "antes" e a direita do "depois";
+    // fora do Tab (← → trocam de câmera, como na tela principal)
+    const strip = el("div", "cs-review-strip");
+    placedCameras().filter((c) => c.connected).forEach((cam) => {
+      const chg = changes.some((x) => x.camera === cam.name);
+      const t = el("button", "cs-review-mini" + (chg ? " changed" : "") + (matchWin.cam === cam.name ? " current" : "") + (chg && matchWin.picked.has(cam.name) ? "" : " off") + (csTest.ratios[cam.name] && csTest.ratios[cam.name].differs ? " ratio-warn" : "")); t.type = "button"; t.tabIndex = -1;
+      t.title = cam.name + " · before (left) and after (right)"; t.setAttribute("aria-label", cam.name); t.dataset.cam = cam.name;
+      const half = (cls) => { const h = el("span", "cs-review-half " + cls); t.appendChild(h); return h; };
+      const hb = half("before"), ha = half("after");
+      t.appendChild(el("span", "cs-review-minilabel", pad(cam.order)));
+      csMatchPhoto(before, cam.name, 320).then((url) => { if (url) hb.style.backgroundImage = "url(" + url + ")"; });
+      csMatchPhoto(after, cam.name, 320).then((url) => { if (url) ha.style.backgroundImage = "url(" + url + ")"; });
+      t.addEventListener("click", () => { matchWin.cam = cam.name; csMatchRenderReview(); });
+      strip.appendChild(t);
+    });
+    photos.appendChild(strip);
+    wrap.appendChild(photos);
+    body.appendChild(wrap);
+    csMatchFootNote();
+  }
+  // Miniaturas: câmera desmarcada (ou sem mudança) mostra só o "antes", inteiro
+  function csMatchSyncMinis() {
+    const changes = (matchWin.result && matchWin.result.changes) || [];
+    $("csMatchBody").querySelectorAll(".cs-review-mini").forEach((m) => { const n = m.dataset.cam; m.classList.toggle("off", !(changes.some((x) => x.camera === n) && matchWin.picked.has(n))); });
+  }
+  function csMatchFootNote() {
+    const n = matchWin.picked.size;
+    $("csMatchNote").textContent = "After Apply, one " + (upd.info && upd.info.os === "windows" ? "Ctrl+Z" : "⌘Z") + " brings every camera back.";
+    $("csMatchGo").textContent = n ? "Apply to " + plural(n, "camera", "cameras") : "Apply";
+    $("csMatchGo").disabled = n === 0;
+  }
+  // ‹ › e as setas: como na tela cheia da sessão, param o play e andam uma câmera (sem redesenhar a janela)
+  function csMatchStep(d, focusRow) {
+    const cams = placedCameras().filter((c) => c.connected).map((c) => c.name);
+    const i = cams.indexOf(matchWin.cam);
+    if (!cams.length) return;
+    if (matchWin.playing) csMatchStopPlay();
+    matchWin.cam = cams[(i + d + cams.length) % cams.length];
+    csMatchSwapPhotos();
+    const m = $("csMatchBody").querySelector(".cs-review-mini.current");
+    if (m) m.scrollIntoView({ block: "nearest", inline: "nearest" });  // (o play não rola; ‹ › e as setas sim)
+    if (focusRow) { const r = $("csMatchBody").querySelector(".cs-review-row.current"); if (r) r.focus({ preventScroll: false }); }
+  }
+  function csMatchPlayButton() {
+    const b = $("csMatchBody").querySelector(".cs-review-play");
+    if (!b) return;
+    b.innerHTML = icon(matchWin.playing ? "pause" : "play");
+    b.title = matchWin.playing ? "Pause" : "Play the sequence"; b.setAttribute("aria-label", b.title);
+  }
+  function csMatchStopPlay() { clearInterval(matchWin.playing); matchWin.playing = 0; csMatchPlayButton(); }
+  function csMatchPlayTick() {
+    const cams = placedCameras().filter((c) => c.connected).map((c) => c.name);
+    if (cams.length < 2 || matchWin.step !== 3) { csMatchStopPlay(); return; }
+    let i = cams.indexOf(matchWin.cam);
+    if (!reverseLoop.checked) i = (i + 1) % cams.length;
+    else { i += matchWin.dir; if (i >= cams.length) { matchWin.dir = -1; i = cams.length - 2; } else if (i < 0) { matchWin.dir = 1; i = 1; } }
+    matchWin.cam = cams[i];
+    csMatchSwapPhotos();
+  }
+  // Velocidade mudou no meio do play: continua, no ritmo novo
+  function csMatchRestartPlay() { if (!matchWin.playing) return; clearInterval(matchWin.playing); matchWin.playing = setInterval(csMatchPlayTick, playInterval()); }
+  function csMatchTogglePlay() {
+    if (matchWin.playing) { csMatchStopPlay(); return; }
+    matchWin.dir = 1;
+    matchWin.playing = setInterval(csMatchPlayTick, playInterval());
+    csMatchPlayButton();
+  }
+  // Controles sobre uma prévia: aparecem quando o mouse se mexe sobre ela e somem 2 s depois de parado (ou ao
+  // sair); em cima deles não somem; com o foco do teclado neles, ficam (CSS :focus-within). Clicar neles não
+  // chega à prévia (não arrasta a cortina nem vira a foto).
+  function fadeControls(stage, ctrls) {
+    stage.appendChild(ctrls);
+    let hideTimer = 0;
+    // show(ms): mostra e some depois de ms parado (2 s pelo mouse; mais ao entrar na tela, para a pessoa ver que existem)
+    const show = (ms) => { ctrls.classList.add("show"); clearTimeout(hideTimer); hideTimer = setTimeout(() => ctrls.classList.remove("show"), typeof ms === "number" ? ms : 2000); };
+    stage.addEventListener("pointermove", () => show());
+    stage.addEventListener("pointerenter", () => show());
+    stage.addEventListener("pointerleave", () => { clearTimeout(hideTimer); ctrls.classList.remove("show"); });
+    ctrls.addEventListener("pointermove", (ev) => { ev.stopPropagation(); ctrls.classList.add("show"); clearTimeout(hideTimer); });
+    ["pointerdown", "click", "dblclick"].forEach((t) => ctrls.addEventListener(t, (ev) => ev.stopPropagation()));
+    return show;
+  }
+  const CTRLS_REVEAL_MS = 4000;  // ao entrar na tela cheia / no passo 3: os controles já aparecem e ficam 4 s
+  // Tocando: só as fotos trocam (sem redesenhar tudo a cada passo)
+  function csMatchSwapPhotos() {
+    const { before, after } = csMatchSessions();
+    const body = $("csMatchBody");
+    const imgB = body.querySelector(".cs-review-img.before"), imgA = body.querySelector(".cs-review-img.after");
+    const label = body.querySelector(".cs-review-cam");
+    if (label) label.textContent = matchWin.cam;
+    body.querySelectorAll(".cs-review-row").forEach((r) => { const on = r.querySelector(".cs-review-name") && r.querySelector(".cs-review-name").textContent.trim().endsWith(matchWin.cam); r.classList.toggle("current", on); r.tabIndex = on ? 0 : -1; });
+    body.querySelectorAll(".cs-review-mini").forEach((m) => m.classList.toggle("current", m.dataset.cam === matchWin.cam));
+    csMatchPhoto(before, matchWin.cam, 1600).then((url) => { if (url && imgB) imgB.style.backgroundImage = "url(" + url + ")"; });
+    csMatchPhoto(after, matchWin.cam, 1600).then((url) => { if (url && imgA) imgA.style.backgroundImage = "url(" + url + ")"; });
+  }
+  // Apply: só as câmeras marcadas; um passo no Desfazer para todas
+  function csMatchApply() {
+    const e = matchWin.result;
+    if (!e) return;
+    const chosen = (e.changes || []).filter((c) => matchWin.picked.has(c.camera));
+    if (!chosen.length) return;
+    const before = matchWin.before || csSnapshot();
+    const applyAll = () => { csRecord = false; try { chosen.forEach((c) => (c.apply || []).forEach(([key, value]) => csSet(c.camera, key, value))); } finally { csRecord = true; } return true; };
+    applyAll();
+    recordAction({ label: "Match automatically (" + plural(chosen.length, "camera", "cameras") + ")", camera: true,
+      undo: () => csRestore(before), redo: () => applyAll() });
+    toast("Matched: " + plural(chosen.length, "camera", "cameras") + " changed");
+    log("Match automatically: " + plural(chosen.length, "camera", "cameras") + " changed" + (chosen.length < (e.changes || []).length ? " (" + ((e.changes || []).length - chosen.length) + " kept as they were)" : ""), "ok");
+    csMatchClose();
+  }
+  $("csMatchBtn").addEventListener("click", csMatchOpen);
+  $("csMatchCancel").addEventListener("click", () => { if (csTest.capturing && !csTest.cancelling) csTakeTest(); csMatchClose(); });
+  $("csMatchBack").addEventListener("click", () => { csMatchStopPlay(); csMatchRenderChoose(); });
+  $("csMatchKeep").addEventListener("click", () => { log("Match automatically: result not applied", "ok"); csMatchClose(); });
+  $("csMatchGo").addEventListener("click", () => {
+    if (matchWin.step === 1) csMatchStart();
+    else if (matchWin.step === 2) { if (csTest.capturing && !csTest.cancelling) csTakeTest(); }
+    else if (matchWin.step === 3) csMatchApply();
+  });
+  // Sair no meio (Esc, clique fora, Done): no passo 2 e no 3 pergunta antes (decisão do dono, 2026-11-02)
+  function csMatchLeave(then) {
+    if (matchWin.step === 2)
+      dialog("Leave Match automatically?", "The test shot is still running. Leaving cancels it and the cameras stay as they were.",
+        [{ label: "Keep matching" }, { label: "Leave and cancel", primary: true, onClick: then }]);
+    else if (matchWin.step === 3)
+      dialog("Leave without applying?", "The result has not been applied to the cameras yet. You can still apply it, or discard the changes.",
+        [{ label: "Stay" }, { label: "Leave without applying", primary: true, onClick: then }]);
+    else then();
+  }
+  document.addEventListener("keydown", (e) => {
+    // Passo 3 pelo teclado (aqui, na captura: o tratador do Camera settings para as teclas): ← → trocam de
+    // câmera; na linha da lista, ↑ ↓ também e Espaço marca/desmarca a câmera
+    if (matchWin.step === 3 && !$("csMatch").classList.contains("hidden") && $("dialogOverlay").classList.contains("hidden") && !selectMenu && !openMenu) {
+      const onRow = e.target.classList && e.target.classList.contains("cs-review-row");
+      if ((e.key === "ArrowLeft" || e.key === "ArrowRight") && e.target.tagName !== "SELECT") {
+        e.preventDefault(); e.stopImmediatePropagation();
+        csMatchStep(e.key === "ArrowLeft" ? -1 : 1, onRow);
+        return;
+      }
+      if (onRow && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
+        e.preventDefault(); e.stopImmediatePropagation();
+        csMatchStep(e.key === "ArrowUp" ? -1 : 1, true);
+        return;
+      }
+      if (onRow && (e.key === " " || e.key === "Enter")) {
+        e.preventDefault(); e.stopImmediatePropagation();
+        const box = e.target.matchBox;
+        if (box) { box.checked = !box.checked; box.dispatchEvent(new Event("change")); }
+        return;
+      }
+    }
+    // Enter numa caixa de marcar da janela (passo 1 e cabeçalho do passo 3): marca/desmarca, como o Espaço
+    if (!$("csMatch").classList.contains("hidden") && e.key === "Enter" && e.target.tagName === "INPUT" && e.target.type === "checkbox" && $("csMatch").contains(e.target) && $("dialogOverlay").classList.contains("hidden")) {
+      e.preventDefault(); e.stopImmediatePropagation();
+      e.target.click();
+      return;
+    }
+    if (e.key !== "Escape" || $("csMatch").classList.contains("hidden") || csCardOpen() || selectMenu || !$("dialogOverlay").classList.contains("hidden")) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    csMatchLeave(() => {
+      if (matchWin.step === 2) { if (csTest.capturing && !csTest.cancelling) csTakeTest(); }
+      csMatchClose();
+    });
+  }, true);
+
   // ----- Cartão cinza: o app achou o cartão em cada foto; a pessoa confere ou clica nele -----
   const csCard = { regions: {}, mode: "card", quads: {}, moved: {} };
   function csCardHide() { $("csCardPick").classList.add("hidden"); }
@@ -5463,13 +7758,21 @@
     });
     csCardStatus();
     csSetZoom(false);
+    $("csCardSkip").classList.remove("hidden");
     $("csCardPick").classList.remove("hidden");
     csGallery.message("Waiting for you to check the gray card");
   }
   $("csCardContinue").addEventListener("click", () => {
     csCardHide();
     csGallery.message(csCard.mode === "chart" ? "Calibrating with the chart" : "Matching with the gray card");
-    window.grayCardConfirm();
+    window.grayCardConfirm(0);
+  });
+  // Desistir do cartão no meio: o Match segue medindo a foto inteira
+  $("csCardSkip").addEventListener("click", () => {
+    csCardHide();
+    csGallery.message("Matching without the gray card");
+    log("Gray card skipped: matching with the whole photo", "ok");
+    window.grayCardConfirm(1);
   });
 
   // ----- Cartela de cores: o app achou as 4 marcas; a pessoa confere ou arrasta os cantos -----
@@ -5564,19 +7867,21 @@
     });
     csChartStatus();
     csSetZoom(false);
+    $("csCardSkip").classList.add("hidden");  // (a cartela não tem "pular")
     $("csCardPick").classList.remove("hidden");
     csGallery.message("Waiting for you to check the chart");
   }
 
   // Botão "Calibrate with chart": instruções, abrir a cartela e começar
-  function csChartIntro() {
+  // onCancel: chamado se a pessoa desistir antes de começar (o Match reabre, se veio de lá)
+  function csChartIntro(onCancel) {
     const cams = camSettings.filter((c) => c.adjustable && c.styleDetail && cameras.some((x) => x.name === c.camera && x.connected));
     const models = new Set(cams.map((c) => c.model));
     if (models.size < 2) {
       dialog("Calibrate with chart",
         "This compares camera models, so it needs at least two different models connected whose Picture Style can be changed from the app (for example, an SL3 and a T7).\n\n" +
         "Cameras of the same model already look alike: Match automatically is enough for them.",
-        [{ label: "Open chart", link: true, onClick: () => window.openChart() }, { label: "OK", primary: true }]);
+        [{ label: "Open chart", link: true, onClick: () => { window.openChart(); csChartIntro(onCancel); } }, { label: "OK", primary: true, onClick: onCancel }]);
       return;
     }
     dialog("Calibrate with chart",
@@ -5586,16 +7891,17 @@
       "3. Set the exposure so the chart looks normal in every camera (tip: run Test shot with Match automatically first).\n" +
       "4. Click Start. The app takes 4 photos, changing contrast, saturation and color tone, and then puts every setting back as it was.\n\n" +
       "After the first photo, you check that the chart corners are marked right.",
-      [{ label: "Cancel" },
+      [{ label: "Cancel", onClick: onCancel },
        { label: "Open chart", link: true, onClick: () => {
          Promise.resolve(window.openChart()).then((r) => { if (!r || !r.ok) toast("The chart file was not found. Build the app again."); });
-         csChartIntro();
+         csChartIntro(onCancel);
        } },
        { label: "Start", primary: true, onClick: csChartStart }]);
   }
   function csChartStart() {
     const connected = cameras.filter((c) => c.connected).length;
     if (busy || !connected || csTest.capturing) return;
+    if (matchWin.returnAfterChart) csMatchClose();  // veio do Match: a janela sai durante a calibração e volta no fim
     csTest.capturing = true;
     csTest.cancelling = false;
     csTest.has = false;
@@ -5615,14 +7921,7 @@
     csCardHide();
     if (csTest.capturing) csTakeTest();  // o mesmo que o botão Cancel do Test shot
   });
-  // "Use gray card" só vale com "Match automatically"
-  function csCardOption() {
-    const on = $("csAuto").checked;
-    $("csCard").disabled = !on;
-    document.querySelector(".cs-card-option").classList.toggle("off", !on);
-  }
-  $("csAuto").addEventListener("change", csCardOption);
-  csCardOption();
+  // ("Use gray card" e "Match automatically" saíram do rodapé: agora são o passo 1 da janela Match automatically)
 
   function showCsTest(list) {
     csTest.capturing = false;
@@ -5639,10 +7938,45 @@
                title: shortModel(cam.model), subtitle: cam.name };
     });
     csGallery.setItems(items, 0);
+    if (csTest.mode !== "chart" && csTest.mode !== "match") csMeasureRatios(items);
     $("csTestBox").classList.toggle("has-photos", items.length > 0);
     const missing = items.filter((i) => !i.file).length;
     csGallery.setHead(csTest.mode === "chart" ? "Chart calibration" : csTest.mode === "match" ? "Test shot · matched" : "Test shot",
       (missing ? plural(missing, "camera", "cameras") + " did not send a photo · " : "") + "Not saved · click a photo to enlarge · ← → to compare");
+  }
+  // Nome da proporção de uma foto: a mais perto entre 3:2, 4:3, 16:9 e 1:1 (como RatioName no programa)
+  function ratioName(w, h) {
+    if (!w || !h) return "";
+    const r = Math.max(w, h) / Math.min(w, h);
+    const known = [["3:2", 1.5], ["4:3", 4 / 3], ["16:9", 16 / 9], ["1:1", 1]];
+    return known.reduce((best, k) => (Math.abs(k[1] - r) < Math.abs(best[1] - r) ? k : best))[0];
+  }
+  // Test shot simples: mede a proporção real de cada foto na prévia e compara com o que a câmera informa
+  // (coluna Ratio), como o Match faz no programa. Resultado em csTest.ratios: célula Ratio, ícone de alerta,
+  // seleção âmbar na fileira e linha na Activity.
+  function csMeasureRatios(items) {
+    const found = {};
+    const probes = items.filter((i) => i.file && i.previewable).map((item) => orderPhoto(item.session, item.file, 320).then((url) => new Promise((done) => {
+      if (!url) return done();
+      const probe = new Image();
+      probe.onload = () => { found[item.name] = ratioName(probe.naturalWidth, probe.naturalHeight); done(); };
+      probe.onerror = () => done();
+      probe.src = url;
+    })));
+    Promise.all(probes).then(() => {
+      if (!csTest.has) return;  // as fotos já foram descartadas
+      csTest.ratios = {};
+      Object.keys(found).forEach((name) => {
+        const c = camSettings.find((x) => x.camera === name);
+        const a = c && c.settings && c.settings.aspect;
+        const reported = a && a.available ? a.label : "";
+        csTest.ratios[name] = { camera: name, shot: found[name], reported, differs: !!reported && reported !== found[name] };
+      });
+      const wrong = Object.values(csTest.ratios).filter((r) => r.differs);
+      if (wrong.length) log("Aspect ratio: " + wrong.map((r) => r.camera + " shot " + r.shot + " but reports " + r.reported).join(" · "), "warn");
+      csGallery.refreshMarks();
+      csRender();
+    });
   }
   function csDiscardTest() {
     if (!csTest.has && !csTest.capturing) return;
@@ -5655,12 +7989,19 @@
     Object.keys(photoCache).filter((k) => k.startsWith("order/")).forEach((k) => delete photoCache[k]);
   }
   function closeCamSettings() {
+    // No meio do Match automatically (foto de teste ou revisão): pergunta antes de fechar
+    if (!$("csMatch").classList.contains("hidden") && (matchWin.step === 2 || matchWin.step === 3) && $("dialogOverlay").classList.contains("hidden")) { csMatchLeave(closeCamSettingsNow); return; }
+    closeCamSettingsNow();
+  }
+  function closeCamSettingsNow() {
+    matchWin.returnAfterChart = false;
     // Fechar esperando o cartão cinza: cancela (senão o Match ficaria esperando)
     if (csCardOpen()) $("csCardCancel").click();
     // Fechar no meio do Test shot, do Match ou da calibração: cancela também (as câmeras voltam
     // como estavam; sem isso o programa ficava esperando a conferência numa janela fechada)
     else if (csTest.capturing && !csTest.cancelling) csTakeTest();
     $("camSettingsOverlay").classList.add("hidden");
+    csMatchClose();
     csStylePop = null;
     renderStylePop();
     clearInterval(csPoll);
@@ -5675,9 +8016,33 @@
     window.readCameraSettings();
   }
 
+  // A linha "All cameras" gruda logo abaixo do cabeçalho, na altura real dele. Com a janela ainda escondida a
+  // medida dá 0 (a linha sumiria por baixo do cabeçalho): nesse caso fica para a próxima vez
+  function csStickAllRow() {
+    const table = $("csBody").querySelector("table.cs");
+    const headRow = table && (table.querySelector("thead") || table.querySelector("tr"));
+    if (!headRow) return;
+    const h = headRow.getBoundingClientRect().height;
+    if (h > 0) table.querySelectorAll("tr.all td").forEach((td) => { td.style.top = h + "px"; });
+  }
+  // A área que rola é encaixada num pixel inteiro da tela: a janela é centrada e pode cair em meio pixel, e aí o
+  // recorte da rolagem e o cabeçalho preso arredondam para pixels diferentes (uma fresta por onde as linhas passam)
+  function csSnapBody() {
+    const body = $("csBody");
+    if ($("camSettingsOverlay").classList.contains("hidden")) return;
+    body.style.top = "0px";
+    const r = body.getBoundingClientRect();
+    const dy = Math.round(r.top) - r.top;
+    body.style.top = (Math.abs(dy) < 0.01 ? 0 : dy) + "px";
+  }
+  window.addEventListener("resize", () => requestAnimationFrame(csSnapBody));
+  if (window.ResizeObserver) new ResizeObserver(() => csSnapBody()).observe($("csBody"));
   $("camSettingsBtn").addEventListener("click", () => {
     renderCamSettings();
     $("camSettingsOverlay").classList.remove("hidden");
+    csStickAllRow();
+    requestAnimationFrame(csSnapBody);
+    setTimeout(csSnapBody, 260);  // depois da animação de entrada da janela
     window.readCameraSettings();
     clearInterval(csPoll);
     csPoll = setInterval(csPollTick, 3000);
@@ -5738,7 +8103,7 @@
     promptOverlay: () => $("promptCancel").click(),
     projectOverlay: () => closeProjectWindow(),
     projectPickOverlay: () => $("projectPickOverlay").classList.add("hidden"),
-    exportOverlay: () => { if (!exp.waiting) closeExport(); },
+    exportOverlay: () => { if (!exp.waiting) askCloseExport(); },
     settingsOverlay: () => $("settingsOverlay").classList.add("hidden"),
     aboutOverlay: () => $("aboutOverlay").classList.add("hidden"),
     orderOverlay: () => ui.orderCancel.click(),
@@ -5761,10 +8126,14 @@
     const open = ["promptOverlay", "dialogOverlay", "projectPickOverlay", "projectOverlay", "exportOverlay", "orderOverlay"]
       .find((id) => !$(id).classList.contains("hidden"));
     if (!open) return false;
+    // Settings ou About por cima (de qualquer janela): o Esc é deles; a janela de baixo continua como estava
+    if (open !== "promptOverlay" && open !== "dialogOverlay" && ["settingsOverlay", "aboutOverlay"].some((id) => !$(id).classList.contains("hidden"))) return false;
     if (e.key === "Escape") {
       if (open === "promptOverlay") return false;  // o campo já trata Enter/Esc
       e.overlayHandled = true;
       e.preventDefault(); e.stopImmediatePropagation();
+      // Dentro de "Align photos", o Esc volta ao Framing, como "Done aligning" (decisão do dono, 2026-11-04)
+      if (open === "exportOverlay" && exp.step === 1 && exp.aligning && !exp.waiting) { exp.aligning = false; renderExport(); return true; }
       OVERLAY_CANCEL[open]();
       return true;
     }
@@ -6080,7 +8449,8 @@
     return null;
   }
   function sessPointerDown(e, li, s, multi) {
-    if (e.button !== 0 || busy || e.target.closest("button")) return;
+    if (e.button !== 0 || e.target.closest("button")) return;
+    if (busy) { if (!multi && (!currentSession || currentSession.name !== s.name)) showSession(s); return; }  // ocupado: escolhe, mas não arrasta
     if (sessDrag) sessEndDrag(null);
     e.preventDefault();  // sem seleção de texto pelo caminho do arraste (o clique continua valendo)
     // Várias marcadas: vão juntas as do mesmo lado da segurada (todas do projeto, ou todas de fora)
@@ -6256,6 +8626,7 @@
   const trash = { count: 0, bytes: 0, days: 15 };
   function setTrashInfo(e) {
     trash.count = e.count || 0; trash.bytes = +e.bytes || 0; trash.days = e.days || 15;
+    refreshDeleted();
     const b = $("trashBtn");
     b.classList.toggle("has", trash.count > 0);
     $("trashCount").textContent = trash.count ? shortNum(trash.count) : "";
@@ -6849,7 +9220,12 @@
       const ed = li.querySelector(".project-row-edited");
       if (s.edited > 0) { const t = projectTag(s); ed.appendChild(t); }
       else { const t = document.createElement("span"); t.className = "project-tag dim"; t.textContent = "originals"; ed.appendChild(t); }
-      if (s.missing > 0) ed.appendChild(missingTag(s.missing));
+      // Avisos na coluna Session, embaixo da data, como na lista Sessions (a coluna Edited fica só com as editadas)
+      const warnBox = el("span", "project-row-warns");
+      { const ri = ratioInfoCached(s.name); if (ri && ri.mixed) warnBox.appendChild(mixedTag(s.name, ri)); }
+      if (s.missing > 0) warnBox.appendChild(missingTag(s.missing));
+      if (deletedBySession[s.name]) warnBox.appendChild(deletedTag(deletedBySession[s.name]));
+      if (warnBox.childNodes.length) li.querySelector(".project-row-main").appendChild(warnBox);
       const first = s.photos.find((p) => p.previewable);
       if (first) sessionPhoto(s.name, first.file, 320).then((url) => { if (url) li.querySelector(".export-thumb").style.backgroundImage = "url(" + url + ")"; });
       li.querySelector(".project-row-play").addEventListener("click", () => { closeProjectWindow(); showSession(s); });

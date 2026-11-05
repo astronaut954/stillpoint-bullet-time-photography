@@ -4,9 +4,14 @@
 // sequências (MP4, MOV, GIF, WEBP, AVIF). Usado pelo "Save sessions".
 
 #include <atomic>
+#include <cmath>
 #include <filesystem>
+
+#include "photo_store.h"  // RgbFrame
 #include <functional>
+#include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace Export
@@ -21,6 +26,54 @@ namespace Export
     // Bits por segundo do MP4/MOV (H.264) para o tamanho, a velocidade e a qualidade
     int VideoBitrate(int width, int height, int fps, Quality quality);
 
+    // Proporção da saída (Parte 4 da Proporção): recorte de cada foto para "3:2", "4:3", "16:9" ou "1:1"
+    // ("" ou "asshot" = como saiu da câmera). posX/posY (0..1): que parte da foto fica quando se corta
+    // (0,5 = o meio; 0 = esquerda/topo; 1 = direita/base). Um recorte só por sessão.
+    // Pedaço 2 do Framing (alinhamento, tela "Align photos" do Export): cada foto pode ser movida, redimensionada e
+    // girada sobre as outras. dx/dy em pixels do original (num canvas com o centro em 0,0), scale em fração (1 =
+    // o tamanho original), rot em graus (sentido horário na tela). Os originais não mudam: a transformação é
+    // aplicada só na exportação (Converted, Sequence e Lenticular Fill).
+    struct Align
+    {
+        double dx = 0, dy = 0, scale = 1, rot = 0;
+        double base = 1;  // o tamanho escolhido pela pessoa; scale pode ser maior (cresce para cobrir a área ao girar)
+        bool touched = false;  // a pessoa mexeu nesta foto na tela; senão ela fica na posição do recorte (posX/posY)
+        bool noop = false;     // a foto já é o canvas inteiro, sem ajuste: nada a fazer (fica como saiu da câmera)
+        bool Identity() const { return std::abs(dx) < 1e-6 && std::abs(dy) < 1e-6 && std::abs(scale - 1) < 1e-9 && std::abs(rot) < 1e-9; }
+    };
+    // Texto guardado em session.json ("align"): "<arquivo>:dx,dy,scale,rot[,base];<arquivo>:..."
+    std::map<std::string, Align> ParseAlign(const std::string& text);
+
+    struct Framing
+    {
+        std::string ratio;
+        double posX = 0.5, posY = 0.5;
+        bool Active() const { return !ratio.empty() && ratio != "asshot"; }
+        // Alinhamento: uma entrada por foto, na ordem em que as fotos são passadas (vazio = sem alinhamento).
+        // Com alguma foto alinhada, cada foto é transformada e cortada ao "quadro comum" (o que todas cobrem
+        // depois do ajuste) antes da proporção; a proporção corta o quadro comum, não cada foto.
+        std::vector<Align> align;
+        bool Aligned() const;  // alguma foto com transformação feita pela pessoa
+        bool Canvas() const { return !align.empty() && commonW > 0 && commonH > 0; }  // o canvas foi calculado: exporta por ele
+        // Quadro comum, no canvas centrado em (0,0), em pixels (ComputeCommonFrame)
+        double commonX = 0, commonY = 0, commonW = 0, commonH = 0;
+    };
+    double RatioValue(const std::string& ratio);  // "3:2" -> 1.5; 0 se não for uma das quatro
+    // Recorta a foto no lugar (não faz nada se já estiver na proporção, ou sem proporção)
+    void ApplyFraming(RgbFrame& frame, const Framing& framing);
+    // O canvas (quadro comum), centrado em 0,0: a interseção das fotos como saíram da câmera e, com proporção
+    // escolhida, o maior retângulo nessa proporção que cabe nela (nenhuma foto é ampliada: ampliar mudaria o tamanho
+    // do objeto entre as câmeras; decisão do dono, 2026-11-03). Mover, redimensionar ou girar uma foto não muda o
+    // canvas; a foto se mexe por trás dele.
+    // Tamanhos (largura, altura) na mesma ordem de framing.align. false (e align limpo) se o quadro ficou vazio.
+    // Também fixa, em cada Align, o tamanho em uso (o maior entre o escolhido e o necessário para cobrir o canvas) e,
+    // nas fotos em que a pessoa não mexeu, a posição dada por posX/posY (a folga que sobra para cada lado).
+    bool ComputeCommonFrame(Framing& framing, const std::vector<std::pair<int, int>>& sizes);
+    // Transforma a foto k (move, redimensiona, gira) e corta ao quadro comum; nada sem alinhamento
+    void ApplyAlign(RgbFrame& frame, const Framing& framing, size_t k);
+    // Largura e altura de uma foto (decodifica; RAW usa a prévia embutida)
+    bool PhotoSize(const std::filesystem::path& photo, int& width, int& height);
+
     struct SequenceOptions
     {
         std::vector<std::string> formats;  // "mp4", "mov", "gif", "webp", "avif"
@@ -29,6 +82,7 @@ namespace Export
         bool reverse = true;               // vai e volta: 1, 2, 3, 2, 1...
         int height = 1080;                 // 720, 1080 ou 2160 (4K: só MP4/MOV)
         Quality quality = Quality::High;
+        Framing framing;                   // proporção da sequência (recorte igual em todas as fotos)
     };
 
     // Ordem dos quadros de UMA volta: 0..n-1 e, com reverse, volta até 1 (sem repetir as pontas)
@@ -45,8 +99,12 @@ namespace Export
                        const std::atomic<bool>* cancel, std::string& error);
 
     // Converte uma foto para "jpg", "png", "webp", "tiff" ou "heic". dest sem extensão.
+    // framing: recorte para a proporção escolhida; targetWidth/targetHeight > 0: a foto (já recortada) é
+    // reduzida para esse tamanho ("Same size for all photos": o da menor câmera).
+    // photoIndex: posição da foto em framing.align (alinhamento).
     bool ConvertPhoto(const std::filesystem::path& photo, const std::filesystem::path& destWithoutExtension,
-                      const std::string& format, Quality quality, std::string& error);
+                      const std::string& format, Quality quality, std::string& error,
+                      const Framing& framing = Framing(), int targetWidth = 0, int targetHeight = 0, size_t photoIndex = 0);
 
     // Formatos que este computador consegue gerar (HEIC no Windows depende de extensões)
     bool FormatAvailable(const std::string& format, std::string& reason);
@@ -69,6 +127,13 @@ namespace Export
         bool cropMarks = false;      // risquinhos nos cantos: onde cortar
         bool alignMarks = false;     // cruzes no meio de cada lado: para posicionar a lâmina
         double bleedInches = 0;      // sangria (3 mm = 0,118 pol)
+        // Parte 4 da Proporção: "Placement". fit=false (Fill): a foto cobre o papel e é cortada, posX/posY
+        // escolhem a parte; fit=true: a foto inteira, com faixa preta (ou branca) onde não chega à borda
+        bool fit = false;
+        bool whiteBand = false;
+        double posX = 0.5, posY = 0.5;
+        // Alinhamento das fotos (só o align e o quadro comum são usados; a proporção aqui é a do papel)
+        Framing framing;
         // As configurações em texto: vão dentro do TIFF (descrição da imagem) e num .txt ao lado
         std::string description;
     };

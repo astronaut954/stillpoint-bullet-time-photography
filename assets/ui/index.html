@@ -225,7 +225,7 @@
           <span class="info-tip" tabindex="0" aria-label="What the colors mean">?
             <span class="info-tip-text">
               <span class="cs-key cs-key-diff"></span>Different from the other cameras<br>
-              <span class="cs-key cs-key-partial"></span>Some Picture Style options (±) differ<br>
+              <span class="cs-key cs-key-partial"></span>Some Color options (±) differ<br>
               <span class="cs-key cs-key-na"></span>Not available or not changeable on this camera<br>
               <span class="cs-key cs-key-warn"></span>Needs attention on the camera (for example, autofocus on)<br>
               Changes go to the camera right away.
@@ -237,6 +237,25 @@
       <!-- Teste rápido: uma foto de cada câmera, só para conferir (não é salva) -->
       <div id="csTestBox" class="cs-test hidden"><div id="csGallery" class="gallery"></div></div>
       <div id="csBody" class="cs-body"></div>
+      <!-- Match automatically em três passos: escolher, foto de teste, revisar (nada muda antes do Apply) -->
+      <div id="csMatch" class="cs-match hidden">
+        <div class="cs-match-head">
+          <div>
+            <h3>Match automatically</h3>
+            <p id="csMatchSub">Choose what the app may change. Nothing changes on the cameras before you review the result.</p>
+          </div>
+          <div class="cs-steps"><span id="csStep1" class="cs-step on">1 Choose</span><span class="cs-step-sep">—</span><span id="csStep2" class="cs-step">2 Test shot</span><span class="cs-step-sep">—</span><span id="csStep3" class="cs-step">3 Review</span></div>
+        </div>
+        <div id="csMatchBody" class="cs-match-body"></div>
+        <div class="cs-match-foot">
+          <span id="csMatchNote" class="cs-match-note"></span>
+          <span class="spacer"></span>
+          <button id="csMatchBack" class="btn btn-secondary hidden">← Back</button>
+          <button id="csMatchCancel" class="btn btn-secondary">Cancel</button>
+          <button id="csMatchKeep" class="btn btn-secondary hidden">Discard changes</button>
+          <button id="csMatchGo" class="btn btn-primary">Take the test shot →</button>
+        </div>
+      </div>
       <!-- Cartão cinza: conferir (ou clicar para corrigir) onde está o cartão em cada foto -->
       <div id="csCardPick" class="cs-card-pick hidden">
         <div class="cs-card-head">
@@ -248,13 +267,14 @@
           <span id="csCardStatus" class="cs-card-status"></span>
           <span class="spacer"></span>
           <button id="csCardCancel" class="btn btn-secondary">Cancel</button>
+          <button id="csCardSkip" class="btn btn-secondary" title="Go on without the gray card: the app measures the whole photo instead">Skip the gray card</button>
           <button id="csCardContinue" class="btn btn-primary">Continue</button>
         </div>
       </div>
       <div class="cs-foot">
         <button id="csTest" class="btn btn-secondary" title="Fires all cameras to check the photos. The photos are not saved.">Test shot</button>
-        <label class="log-option cs-auto" title="Sets the same shutter, aperture, ISO and Picture Style, a common white balance, and matches the color (white balance fine-tune) and brightness (ISO) of every camera to the average of all. Takes up to 5 photos."><input id="csAuto" type="checkbox" checked> Match automatically</label>
-        <label class="log-option cs-auto cs-card-option" title="Put a gray card where every camera sees it. The app measures only the card (not the rest of the scene) and sets the white balance so the card comes out neutral gray in every camera. After the first photo, you check where the card is."><input id="csCard" type="checkbox"> Use gray card</label>
+        <button id="csMatchBtn" class="btn btn-primary" title="Makes the cameras look alike: you choose what to match, the app takes test photos and shows the result before changing anything.">Match automatically</button>
+        <input id="csAuto" type="checkbox" class="hidden" aria-hidden="true"><input id="csCard" type="checkbox" class="hidden" aria-hidden="true">
         <button id="csRead" class="btn btn-link btn-small">Read again</button>
         <button id="csChart" class="btn btn-link btn-small" title="Makes cameras of different models look alike in contrast, saturation and color tone, using a printed chart. Once per camera model.">Calibrate with chart</button>
         <span class="spacer"></span>
@@ -308,6 +328,10 @@
           </div>
         </div>
         <div class="settings-row">
+          <span class="export-label">Lenticular</span>
+          <div><div id="settingsLentBand"></div><div class="export-note">Band color when a lenticular print uses "Placement: Fit" and the photo does not fill the sheet. The same for every session.</div></div>
+        </div>
+        <div class="settings-row">
           <span class="export-label">Debug</span>
           <div>
             <div id="settingsDebug"></div>
@@ -351,6 +375,7 @@
     <div class="sheet export-sheet">
       <div class="export-head">
         <h3><span id="exportTitle"></span><small id="exportSub"></small></h3>
+        <div id="exportSteps" class="export-steps" role="tablist" aria-label="Export steps"></div>
       </div>
       <div class="export-body">
         <div class="export-sessions">
@@ -365,8 +390,8 @@
       <div class="export-foot">
         <span id="exportCount" class="save-count"></span><span class="spacer"></span>
         <label id="exportEditedLabel" class="log-option hidden" title="When a session has edited photos in the project's Edited folder, use them instead of the originals"><input id="exportEdited" type="checkbox" checked> Use edited photos when available</label>
+        <button id="exportBack" class="btn btn-secondary hidden">← Back</button>
         <button id="exportCancel" class="btn btn-secondary">Cancel</button>
-        <button id="exportPitch" class="btn btn-secondary" title="A sheet to measure the real LPI of your lens sheet with your printer (Lenticular)">Print pitch test</button>
         <button id="exportConfirm" class="btn btn-primary">Export</button>
       </div>
     </div>

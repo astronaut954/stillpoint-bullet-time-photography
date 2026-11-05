@@ -574,9 +574,14 @@ namespace
         {
             const CameraSettings& s = all[i];
             int order = 0;
+            std::string quirk;  // câmera simulada com comportamento de propósito (a página mostra ao lado do nome)
             for (const auto& cam : controller.GetCameras())
                 if (cam.shortName == s.camera)
+                {
                     order = cam.orderPrefix;
+                    if (cam.fake && order == 2)
+                        quirk = "Simulated camera: always shoots 16:9, whatever Ratio says (to test the aspect ratio warning).";
+                }
             std::string settings = "{";
             for (size_t k = 0; k < s.settings.size(); ++k)
             {
@@ -604,7 +609,7 @@ namespace
                                     .Add("colorTone", it->second.colorTone).Str();
             list += (i ? "," : "") + Json("camera").Add("camera", s.camera).Add("model", s.model)
                 .Add("abFlip", abFlip).Add("gmFlip", gmFlip)
-                .Add("order", order).Add("adjustable", s.adjustable).Add("reason", s.reason)
+                .Add("order", order).Add("adjustable", s.adjustable).Add("reason", s.reason).Add("quirk", quirk)
                 .Add("mode", s.mode).Add("manual", s.manualMode).Add("kelvin", s.kelvin)
                 .Add("kelvinAvailable", s.kelvinAvailable).Add("shiftAvailable", s.shiftAvailable)
                 .Add("shiftAB", s.shiftAB).Add("shiftGM", s.shiftGM).Add("focusManual", s.focusManual)
@@ -742,7 +747,7 @@ namespace
             Json item("session");
             item.Add("name", session.name).Add("saved", session.saved).Add("missing", session.missing)
                 .Add("inProject", session.inProject).Add("label", session.label).Add("edited", session.edited)
-                .Add("timing", session.timing).Raw("photos", photos);
+                .Add("timing", session.timing).Add("crop", session.crop).Add("align", session.align).Raw("photos", photos);
             list += (firstSession ? "" : ",") + item.Str();
             firstSession = false;
         }
@@ -1552,7 +1557,20 @@ namespace
                         continue;
                     char prefix[8];
                     std::snprintf(prefix, sizeof(prefix), "%02d", static_cast<int>(i) + 1);
-                    WriteTestPhoto(dir / (std::string(prefix) + "_" + plan[i].shortName + "_IMG_" + std::to_string(1000 + i) + ".jpg"), number, static_cast<int>(i) + 1);
+                    // A foto simulada sai na proporção que a câmera simulada informa (Ratio); a câmera 02
+                    // entrega sempre 16:9, o que for que esteja marcado, para testar o aviso de proporção
+                    double ratio = 1.5;
+                    for (const auto& cam : controller.GetCameras())
+                        if (cam.shortName == plan[i].shortName)
+                        {
+                            const CameraSettings s = controller.ReadSettings(cam);
+                            for (const auto& st : s.settings)
+                                if (st.key == "aspect" && st.available)
+                                    ratio = st.value == 1 ? 4.0 / 3.0 : st.value == 2 ? 16.0 / 9.0 : st.value == 7 ? 1.0 : 1.5;
+                            if (cam.orderPrefix == 2)
+                                ratio = 16.0 / 9.0;
+                        }
+                    WriteTestPhoto(dir / (std::string(prefix) + "_" + plan[i].shortName + "_IMG_" + std::to_string(1000 + i) + ".jpg"), number, static_cast<int>(i) + 1, ratio);
                     ++done;
                 }
                 if (!refusedLines.empty())
@@ -2229,6 +2247,53 @@ namespace
             emitSessions();
             return Json("label").Add("ok", ok).Str();
         });
+        // setSessionCrop(sessão, "3:2|0.5|0.5"): o recorte escolhido para o Export fica na sessão (Project)
+        window.bind("setSessionCrop", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            const bool ok = args.size() >= 2 && store.SetCrop(args[0], args[1]);
+            return Json("crop").Add("ok", ok).Str();
+        });
+        // setSessionAlign(sessão, "arquivo:dx,dy,scale,rot;..."): o alinhamento das fotos (tela "Align photos" do
+        // Export) fica na sessão; os originais não mudam (pedaço 2 do Framing)
+        window.bind("setSessionAlign", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            const bool ok = args.size() >= 2 && store.SetAlign(args[0], args[1]);
+            return Json("align").Add("ok", ok).Str();
+        });
+        // photoSize(sessão, arquivo): largura e altura da foto em pixels (a tela de alinhamento trabalha em
+        // pixels do original). Decodifica na fila de prévias; o resultado fica guardado por arquivo.
+        {
+            static std::map<std::string, std::pair<int, int>> sizeCache;
+            static std::mutex sizeMutex;
+            window.bind("photoSize", [&](const std::string& id, const std::string& request, void*)
+            {
+                const auto args = ParseStringArgs(request);
+                const std::string session = args.size() > 0 ? args[0] : "";
+                const std::string file = args.size() > 1 ? args[1] : "";
+                previews.Post([&, id, session, file]
+                {
+                    const std::string key = session + "/" + file;
+                    int w = 0, h = 0;
+                    {
+                        std::lock_guard<std::mutex> lock(sizeMutex);
+                        auto it = sizeCache.find(key);
+                        if (it != sizeCache.end()) { w = it->second.first; h = it->second.second; }
+                    }
+                    if (w <= 0)
+                    {
+                        const std::filesystem::path dir = store.SessionDir(session);
+                        if (!dir.empty() && Export::PhotoSize(dir / file, w, h))
+                        {
+                            std::lock_guard<std::mutex> lock(sizeMutex);
+                            sizeCache[key] = { w, h };
+                        }
+                    }
+                    window.resolve(id, 0, Json("size").Add("width", w).Add("height", h).Str());
+                });
+            }, nullptr);
+        }
         // projectExportDefaults(json): guarda as últimas configurações de export do Project
         window.bind("projectExportDefaults", [&](const std::string& request) -> std::string
         {
@@ -2656,6 +2721,7 @@ namespace
             std::mutex mutex;
             std::condition_variable wake;
             bool confirmed = false;
+            std::atomic<bool> skipped{ false };                      // "Skip the gray card": segue medindo a foto inteira
             std::map<std::string, ColorMatch::Region> regions;      // por câmera
             std::map<std::string, std::filesystem::path> files;     // a foto 1 de cada câmera
             std::map<std::string, Chart::Quad> quads;               // cartela: cantos por câmera
@@ -2678,6 +2744,7 @@ namespace
         window.bind("cancelTest", [&](const std::string&) -> std::string
         {
             testCancel = true;
+            fakeCancel = true;  // câmeras simuladas: para o fakeRun também
             controller.RequestCancel();
             cardPick.wake.notify_all();
             return "null";
@@ -2730,12 +2797,16 @@ namespace
             return regionJson(args[0], region);
         });
 
-        // grayCardConfirm(): o cartão está certo em todas; o Match continua
-        window.bind("grayCardConfirm", [&](const std::string&) -> std::string
+        // grayCardConfirm(skip): o cartão está certo em todas; o Match continua. Com skip = 1, a pessoa
+        // desistiu do cartão: o Match segue medindo a foto inteira (como sem o cartão)
+        window.bind("grayCardConfirm", [&](const std::string& request) -> std::string
         {
+            const auto values = ParseIntArgs(request);
             {
                 std::lock_guard<std::mutex> lock(cardPick.mutex);
                 cardPick.confirmed = true;
+                if (!values.empty() && values[0] != 0)
+                    cardPick.skipped = true;
             }
             cardPick.wake.notify_all();
             return "null";
@@ -2745,12 +2816,33 @@ namespace
         {
             const auto values = ParseIntArgs(request);
             const bool grayCard = values.size() > 1 && values[1] != 0;
+            // Terceiro valor: o que igualar e o modo revisão, em bits (ver a janela Match automatically no app):
+            // 1 exposição (tv/av/exp. comp.), 2 ISO, 4 brilho, 8 balanço de branco, 16 cor, 32 Picture Style,
+            // 64 formato, 128 proporção, 256 revisão (as câmeras voltam ao "antes"; o app aplica depois)
+            const int flags = values.size() > 2 ? values[2] : 0xFF;
+            // Quarto valor (texto): os valores escolhidos no passo 1, "tv=93 av=40 kelvin=5200" (ver csMatchTargets no app)
+            std::map<std::string, long long> targets;
+            {
+                const auto strings = ParseStringArgs(request);
+                if (!strings.empty())
+                {
+                    std::istringstream in(strings[0]);
+                    std::string pair;
+                    while (in >> pair)
+                    {
+                        const size_t eq = pair.find('=');
+                        if (eq == std::string::npos)
+                            continue;
+                        try { targets[pair.substr(0, eq)] = std::stoll(pair.substr(eq + 1)); } catch (...) {}
+                    }
+                }
+            }
             SequenceSettings settings;
             settings.countdownSeconds = 0;
             settings.sessionCount = 1;
             settings.downloadWaitSeconds = values.empty() ? 10 : std::max(1, values[0]);
             settings.playSounds = false;
-            run("orderPhotos", [&, settings, grayCard]
+            run("orderPhotos", [&, settings, grayCard, flags, targets]
             {
                 if (cameraConnecting())
                     return;
@@ -2758,6 +2850,7 @@ namespace
                 {
                     std::lock_guard<std::mutex> lock(cardPick.mutex);
                     cardPick.confirmed = false;
+                    cardPick.skipped = false;
                     cardPick.regions.clear();
                     cardPick.files.clear();
                 }
@@ -2770,17 +2863,31 @@ namespace
                     if (testCancel)
                         return false;
                     listener.Emit(Json("autoMatchProgress").Add("shot", shot).Add("shots", shots).Add("stage", stage));
-                    orderStore.DeleteAll();
+                    // Revisão: a primeira foto fica guardada (é o "antes"); as do meio vão embora.
+                    // Na primeira foto, tudo o que havia de testes anteriores sai.
+                    if ((flags & 256) && shot > 1)
+                    {
+                        auto old = orderStore.ListSessions();
+                        std::sort(old.begin(), old.end(), [](const StoredSession& a, const StoredSession& b) { return a.name < b.name; });
+                        for (size_t i = 1; i < old.size(); ++i)
+                            orderStore.DeleteSessionNow(old[i].name);
+                    }
+                    else
+                        orderStore.DeleteAll();
                     EnsureSingleShot(controller, singleShotWarned);
                     const std::string previous = controller.GetOutputFolder();
                     controller.SetOutputFolder(orderStore.Root().string());
-                    controller.RunSequence(settings);
+                    if (fakeCount)
+                        fakeRun(settings);  // câmeras simuladas: grava uma foto de teste por câmera (como o Test shot)
+                    else
+                        controller.RunSequence(settings);
                     controller.SetOutputFolder(previous);
                     const auto sessions = orderStore.ListSessions();
                     if (sessions.empty() || testCancel)
                         return false;
-                    // Uma foto por câmera (JPEG quando houver RAW + JPEG)
-                    const StoredSession& session = sessions.back();
+                    // Uma foto por câmera (JPEG quando houver RAW + JPEG); a sessão nova é a mais recente
+                    // (a lista vem da mais nova para a mais antiga; no modo revisão a primeira foto fica guardada)
+                    const StoredSession& session = sessions.front();
                     std::map<std::string, const StoredPhoto*> picks;
                     for (const auto& p : session.photos)
                         if (!picks.count(p.camera) || IsJpegPhoto(p.file))
@@ -2817,7 +2924,7 @@ namespace
                         if (photo->previewable)
                         {
                             const auto file = orderStore.Root() / session.name / photo->file;
-                            if (!grayCard)
+                            if (!grayCard || cardPick.skipped)
                                 measured[camera] = ColorMatch::Measure(file);
                             else
                             {
@@ -2839,6 +2946,17 @@ namespace
                 AutoMatch::Options options;
                 options.grayCard = grayCard;
                 options.chartFile = ChartCalibrationFile();
+                options.exposure = flags & 1;
+                options.iso = flags & 2;
+                options.brightness = flags & 4;
+                options.whiteBalance = flags & 8;
+                options.color = flags & 16;
+                options.style = flags & 32;
+                options.format = flags & 64;
+                options.aspect = flags & 128;
+                options.review = flags & 256;
+                options.targets = targets;
+                options.grayCardSkipped = &cardPick.skipped;
                 const AutoMatch::Result result = AutoMatch::Run(controller, shoot, CalibrationFile(), [&] { return testCancel.load(); }, options,
                                                                 debug.Active() ? std::function<void(const std::string&)>(trace) : nullptr);
                 if (debug.Active())
@@ -2862,19 +2980,28 @@ namespace
                         items += (j ? "," : "") + std::string("[") + JsonString(item[0]) + "," + JsonString(item[1]) + ","
                                  + JsonString(item[2]) + "]";
                     }
-                    changes += (i ? "," : "") + Json("change").Add("camera", result.changes[i].camera).Raw("items", items + "]").Str();
+                    std::string apply = "[";
+                    for (size_t j = 0; j < result.changes[i].apply.size(); ++j)
+                        apply += (j ? "," : "") + std::string("[") + JsonString(result.changes[i].apply[j].first) + "," + std::to_string(result.changes[i].apply[j].second) + "]";
+                    changes += (i ? "," : "") + Json("change").Add("camera", result.changes[i].camera).Raw("items", items + "]").Raw("apply", apply + "]").Str();
                 }
                 changes += "]";
                 std::string notes = "[";
                 for (size_t i = 0; i < result.notes.size(); ++i)
                     notes += (i ? "," : "") + JsonString(result.notes[i]);
                 notes += "]";
+                // Proporção real de cada foto contra a informada pela câmera
+                std::string ratios = "[";
+                for (size_t i = 0; i < result.ratios.size(); ++i)
+                    ratios += (i ? "," : "") + Json("ratio").Add("camera", result.ratios[i].camera).Add("shot", result.ratios[i].shot)
+                                                  .Add("reported", result.ratios[i].reported).Add("differs", result.ratios[i].differs).Str();
+                ratios += "]";
 
                 listener.Emit(Json("orderPhotos").Raw("sessions", SessionsJson(orderStore)));
                 listener.Emit(Json("autoMatchResult").Add("ok", result.ok).Add("matched", result.matched)
-                                  .Add("cancelled", result.cancelled)
+                                  .Add("cancelled", result.cancelled).Add("review", (flags & 256) != 0)
                                   .Add("debugFolder", debug.Active() ? PathToUtf8(debug.Folder()) : std::string())
-                                  .Add("error", result.error).Raw("changes", changes).Raw("notes", notes));
+                                  .Add("error", result.error).Raw("changes", changes).Raw("notes", notes).Raw("ratios", ratios));
                 EmitCameraSettings(controller, listener, singleShotWarned);
             });
             return "null";
@@ -2951,7 +3078,10 @@ namespace
                     EnsureSingleShot(controller, singleShotWarned);
                     const std::string previous = controller.GetOutputFolder();
                     controller.SetOutputFolder(orderStore.Root().string());
-                    controller.RunSequence(settings);
+                    if (fakeCount)
+                        fakeRun(settings);  // câmeras simuladas: grava uma foto de teste por câmera (como o Test shot)
+                    else
+                        controller.RunSequence(settings);
                     controller.SetOutputFolder(previous);
                     const auto sessions = orderStore.ListSessions();
                     if (sessions.empty() || testCancel)
@@ -3118,6 +3248,10 @@ namespace
             std::string photoFormat;          // "original", "jpg"... ("" = não salvar fotos)
             Export::Quality photoQuality = Export::Quality::High;
             Export::SequenceOptions options;
+            // Parte 4 da Proporção: recorte da sessão (Converted e Sequence; os originais não mudam) e
+            // "Same size for all photos" (Converted reduzidas ao tamanho da menor câmera)
+            Export::Framing framing;
+            bool sameSize = false;
         };
 
         // Salvamento de fato (na fila de prévias). replace: apaga o que havia dentro da
@@ -3213,7 +3347,37 @@ namespace
                     std::vector<std::string> perCamera;
                     for (const auto& [group, file] : byCamera)
                         perCamera.push_back(file);
-
+                    // Canvas e alinhamento (pedaço 2 do Framing): uma transformação por foto, na ordem de perCamera (as que a
+                    // pessoa não mexeu ficam centradas, no menor tamanho que cobre o canvas), e o canvas calculado a partir
+                    // do tamanho real de cada foto. Sem tamanho de alguma foto, cai no recorte simples de cada foto.
+                    Export::Framing framing = job.framing;
+                    if (!perCamera.empty())
+                    {
+                        const auto aligns = Export::ParseAlign(session->align);
+                        std::vector<std::pair<int, int>> sizes;
+                        bool allSizes = true;
+                        for (const auto& f : perCamera)
+                        {
+                            auto it = aligns.find(f);
+                            framing.align.push_back(it == aligns.end() ? Export::Align() : it->second);
+                            int w = 0, h = 0;
+                            if (exportCancel) break;
+                            if (!Export::PhotoSize(photoPath(f), w, h)) { w = 0; h = 0; allSizes = false; }
+                            sizes.push_back({ w, h });
+                        }
+                        // "As shot" (decisão do dono, 2026-11-04, revista no mesmo dia): numa sessão com proporções
+                        // misturadas cada foto sai como é, mesmo com alinhamento guardado (alinhar exige uma proporção);
+                        // numa sessão toda na mesma forma, o alinhamento vale e o canvas é a parte comum às fotos.
+                        bool sameShape = allSizes && !sizes.empty() && sizes[0].second > 0;
+                        for (const auto& sz : sizes)
+                            if (!sameShape || sz.second <= 0 ||
+                                std::abs(static_cast<double>(sz.first) / sz.second - static_cast<double>(sizes[0].first) / sizes[0].second) > 0.02)
+                                sameShape = false;
+                        if (!framing.Active() && (!sameShape || !framing.Aligned()))
+                            framing.align.clear();
+                        else if (!allSizes || !Export::ComputeCommonFrame(framing, sizes))
+                            framing.align.clear();
+                    }
                     // Subpastas quando há mais de uma saída: Photos/, Sequence/ e Lenticular/
                     const bool savePhotos = !job.photoFormat.empty();
                     const bool saveSequence = job.sequence && !job.options.formats.empty();
@@ -3229,6 +3393,7 @@ namespace
                         {
                             Export::SequenceOptions one = job.options;
                             one.formats = { format };
+                            one.framing = framing;
                             const fs::path dir = split ? target / "Sequence" : target;
                             fs::create_directories(dir, ec);
                             if (!Export::WriteSequence(photos, dir / job.folderName, one, report, &exportCancel, error))
@@ -3251,6 +3416,7 @@ namespace
                         // Configurações em texto (dentro do TIFF e num .txt ao lado): para reimprimir
                         // ou conferir depois, mesmo sem o app
                         Export::LenticularOptions lent = job.lent;
+                        lent.framing = framing;
                         {
                             const Export::LenticularInfo info = Export::LenticularPlan(lent, static_cast<int>(photos.size()));
                             const double nominal = job.lentNominal > 0 ? job.lentNominal : lent.lpi;
@@ -3283,6 +3449,14 @@ namespace
                             std::snprintf(line, sizeof(line), "Marks: %s; bleed %.3g mm; file %d x %d px\n", marks.empty() ? "none" : marks.c_str(),
                                           lent.bleedInches * 25.4, info.fileWidth, info.fileHeight);
                             t += line;
+                            if (lent.fit) t += std::string("Placement: Fit (whole photo, ") + (lent.whiteBand ? "white" : "black") + " band)\n";
+                            else { std::snprintf(line, sizeof(line), "Placement: Fill (crop at %.0f%% across, %.0f%% down)\n", lent.posX * 100, lent.posY * 100); t += line; }
+                            if (framing.Aligned())
+                            {
+                                std::snprintf(line, sizeof(line), "Alignment: photos aligned in Stillpoint (canvas %d x %d px)\n",
+                                              static_cast<int>(std::lround(framing.commonW)), static_cast<int>(std::lround(framing.commonH)));
+                                t += line;
+                            }
                             t += "\nPrint at 100% (actual size), never \"fit to page\": the file already has the right size and dpi.\n";
                             lent.description = t;
                         }
@@ -3326,6 +3500,28 @@ namespace
                         }
                         else
                             files = perCamera;
+                        // Same size: o tamanho da menor foto depois do recorte (todas na mesma proporção)
+                        int targetW = 0, targetH = 0;
+                        if (!original && job.sameSize)
+                        {
+                            long long bestArea = -1;
+                            for (const auto& f : files)
+                            {
+                                if (exportCancel) break;
+                                int w = 0, h = 0;
+                                if (framing.Canvas()) { w = static_cast<int>(std::lround(framing.commonW)); h = static_cast<int>(std::lround(framing.commonH)); }
+                                else if (!Export::PhotoSize(photoPath(f), w, h)) continue;
+                                const double r = Export::RatioValue(job.framing.ratio);
+                                int cw = std::max(w, h), ch = std::min(w, h);  // deitada
+                                if (r > 0)
+                                {
+                                    if (static_cast<double>(cw) / ch > r) cw = static_cast<int>(std::lround(ch * r));
+                                    else ch = static_cast<int>(std::lround(cw / r));
+                                }
+                                const long long area = static_cast<long long>(cw) * ch;
+                                if (bestArea < 0 || area < bestArea) { bestArea = area; targetW = cw; targetH = ch; }
+                            }
+                        }
                         for (size_t i = 0; i < files.size() && error.empty(); ++i)
                         {
                             if (exportCancel) { error = "cancelled"; break; }
@@ -3344,7 +3540,7 @@ namespace
                             }
                             else
                                 Export::ConvertPhoto(from, formatDir / shortStem(files[i], "." + photoFormat), photoFormat,
-                                                     job.photoQuality, error);
+                                                     job.photoQuality, error, framing, targetW, targetH, i);
                         }
                         if (!error.empty())
                             break;
@@ -3468,6 +3664,21 @@ namespace
                     job.lent.cropMarks = at(21) == "1";
                     job.lent.alignMarks = at(22) == "1";
                     try { if (!at(23).empty()) job.lent.bleedInches = std::max(0.0, std::stod(at(23))) / 25.4; } catch (...) {}
+                    // Parte 4 da Proporção: 25 proporção (asshot|3:2|4:3|16:9|1:1) | 26 posição x | 27 posição y |
+                    // 28 same size 1/0 | 29 placement fill|fit | 30 faixa black|white
+                    job.framing.ratio = at(25);
+                    try
+                    {
+                        if (!at(26).empty()) job.framing.posX = std::clamp(std::stod(at(26)), 0.0, 1.0);
+                        if (!at(27).empty()) job.framing.posY = std::clamp(std::stod(at(27)), 0.0, 1.0);
+                    }
+                    catch (...) {}
+                    job.sameSize = at(28) == "1";
+                    job.options.framing = job.framing;
+                    job.lent.fit = at(29) == "fit";
+                    job.lent.whiteBand = at(30) == "white";
+                    job.lent.posX = job.framing.posX;
+                    job.lent.posY = job.framing.posY;
                 }
                 else if (job.lenticular)
                 {

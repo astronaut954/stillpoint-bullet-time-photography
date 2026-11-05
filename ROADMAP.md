@@ -652,6 +652,126 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    projeto), data, fotos, tamanho, há quanto tempo e quantos dias faltam; Restore, Delete now e Empty
    trash. O Desfazer de apagar continua (traz o item mais recente da sessão). Sessões já salvas que o
    app apaga ao fechar, e as descartadas no fechamento, saem de vez (não ocupam a lixeira), como antes.
+   **Proporção da foto (entre a lixeira e a 20; branch `proporcao`, versão 2.16.0, iniciada em
+   2026-11-01).** Decisões do dono: (a) Camera settings lê e muda a proporção da câmera (3:2, 4:3,
+   16:9, 1:1) dentro do painel do botão de estilo, renomeado "Style, Quality & Ratio", logo abaixo de
+   Quality; entra na comparação entre câmeras e no "Settings differ"; câmeras que não aceitam pelo USB
+   mostram a linha desabilitada com a explicação. (b) A sessão avisa quando as fotos têm tamanhos ou
+   proporções diferentes. (c) Export sessions ganha a linha "Aspect ratio" (As shot, 3:2, 4:3, 16:9,
+   1:1) para Photos e Sequence, recorte centralizado com prévia; "As shot" com proporções misturadas
+   na sessão avisa. Lenticular não usa a linha: o tamanho do papel já define a proporção e o app
+   recorta para preencher. (d) O app lê a marca de recorte que a câmera grava no RAW quando a
+   proporção não é 3:2, para mostrar e exportar o mesmo quadro que o Lightroom. Depois dela vem a 20
+   (Lightroom Classic), como 2.17.0.
+   Desenho fechado com o dono em 2026-11-01 (protótipo "Match automatically — protótipos"):
+   - **Match automatically vira uma janela em três passos** (um botão só): 1 Choose (o que igualar:
+     shutter/aperture/exp. comp., ISO, brightness, white balance, color, Picture Style, Quality,
+     Aspect ratio, gray card; lembrado), 2 Test shot (até 5 fotos; nada muda nas câmeras),
+     3 Review (tabela por câmera com antes riscado → depois em verde e caixa para aceitar cada câmera,
+     ao lado a comparação de fotos: Split/Side by side/Flip, play com velocidade e Reverse loop,
+     fileiras de miniaturas antes/depois). Só o "Apply to n cameras" mexe nas câmeras; um ⌘Z desfaz tudo.
+     Para o "depois" existir, o Match tira uma foto extra no fim, já com as mudanças.
+   - **Valores do passo 1 (decisão do dono, 2026-11-02):** cada item de "Set the same value on every
+     camera" já mostra o valor calculado que o app poria em todas, com o porquê, numa lista para trocar.
+     Regra (a mesma do núcleo): shutter/aperture/exp. comp./ISO, o valor mais perto da média em stops que
+     todas aceitam; Picture Style, o mais comum (nunca Auto); Format e Ratio, o das câmeras que não aceitam
+     mudar, senão o mais comum; White balance, "Let the test shot choose" (Daylight e a foto escolhe o
+     predefinido comum mais perto) ou um predefinido/Kelvin fixo, que a foto não troca (só ajuste fino).
+     O valor trocado pela pessoa vai ao núcleo (`autoMatch`, 4.º argumento "tv=93 kelvin=5200") e vale
+     para todas as câmeras que o aceitam. As trocas não ficam guardadas: cada abertura recalcula.
+   - **Cartela no Match (decisão do dono, 2026-11-02, opção A):** o Calibrate with chart continua um preparo
+     separado (uma vez por modelo; botão do rodapé fica), mas o passo 1 do Match tem o bloco "Camera models":
+     sem calibração, aviso âmbar com "Calibrate with chart"; calibrados, uma linha com "Recalibrate".
+   - **Passo 1 sem rolagem (decisão do dono, 2026-11-02, protótipo G):** uma linha por item, título e
+     explicação à esquerda e a lista de valor à direita (exposição: três listas lado a lado); o texto sobre a
+     foto de teste foi para o subtítulo. "Use the gray card" começa desligado a cada abertura; na
+     conferência do cartão há "Skip the gray card" (segue medindo a foto inteira).
+   - **Aspect ratio no Match:** iguala as que aceitam mudar às que não aceitam ("fixed"); o Test shot mede
+     a proporção real de cada foto e marca em amarelo a que saiu diferente do informado. **Feito em
+     2026-11-02:** o Match mede largura/altura da primeira foto de cada câmera (`Result.ratios`), o passo 3
+     mostra "Shot 16:9 · camera reports 3:2" e a célula Ratio do Camera settings fica tracejada âmbar; as
+     câmeras simuladas entregam a foto na proporção marcada e a 02 entrega sempre 16:9 para testar.
+   - **Aviso na sessão (primeiro disparo):** etiqueta "Mixed ratios" e aviso uma vez por sessão,
+     "Cameras 02 and 04 shot 16:9; the others 3:2", com "Open Camera settings" e "Crop on export to
+     16:9 (keeps 94%)": a sugestão é a proporção presente que perde menos pixels; as outras (3:2, 4:3,
+     16:9, 1:1) ao lado, cada uma com quanto mantém. Miniaturas com proporção diferente ganham marca
+     amarela. Nas sessões seguintes só a etiqueta. **Decisões do dono (2026-11-02, protótipo J):** o
+     aviso é uma janela por cima da tela (como as confirmações do app); a sugestão é a proporção que
+     perde menos pixels e o número entre parênteses é a média por foto; a marca vai nas fotos que
+     diferem da proporção mais comum e, em empate, nas da proporção de menor área (ex.: 3 em 3:2 e 3
+     em 16:9 → marca as 16:9); o aviso volta ao reabrir o app e quando a combinação de câmeras/
+     proporções muda; só a proporção conta (tamanho de sensor não). Em aberto: o botão "Crop on
+     export" antes da linha "Aspect ratio" do Export existir, o texto com três proporções e o botão
+     "Keep as shot" — resolvidos em 2026-11-03: botões ficam e guardam a escolha por sessão (hoje na
+     memória do app, `localStorage`; passa para a sessão quando o Export a usar), texto com três
+     proporções aprovado, "Keep as shot" fica. **Feito em 2026-11-03** (`docs/teste-manual.md`, seção 35):
+     o app mede a proporção na prévia de cada foto da sessão (como o Test shot simples). Toda sessão com aviso âmbar (fotos que faltaram, proporções misturadas) deixa o
+     ícone dela âmbar na barra só de ícones da tela cheia (feito para "n missing" em 2026-11-02).
+   - **Export sessions:** linha "Aspect ratio" (As shot, 3:2, 4:3, 16:9, 1:1) para Photos e Sequence;
+     "As shot" com proporções misturadas avisa. Recorte único por sessão (a sequência não pode pular),
+     prévia arrastável no Fill, nove posições rápidas. Photos: opção "Same size for all photos"
+     (desligada por padrão) para igualar ao tamanho da menor quando os sensores diferem.
+   - **Lenticular:** "Placement" Fill (cobre e corta; arrastar para escolher a parte) ou Fit (foto
+     inteira, faixa preta ou branca); nove posições; sem zoom intermediário; prévia com sangria e marcas
+     de corte; um enquadramento por sessão.
+   - **Decisões do dono (2026-11-03, protótipos P–S):** a linha "Aspect ratio" vem por último, depois de
+     Quality (opção Q); "Placement" Fill/Fit é por sessão e a cor da faixa é um ajuste geral do app, em
+     Settings › Lenticular (opção S); linha "Crop" separada, com a prévia e as nove posições. **Feito em
+     2026-11-03** (`docs/teste-manual.md`, seção 36): o programa recorta Converted e Sequence
+     (`Export::Framing`), "Same size" reduz ao tamanho da menor câmera, Lenticular Fill com posição e Fit
+     com faixa; a escolha (proporção e posição) fica em `session.json` (`crop`), também fora do Project,
+     e a janela "Mixed ratios" grava nela. Testado só com câmeras simuladas; RAW e lenticular real
+     continuam adiados.
+   - **Framing (decisão do dono, 2026-11-03, protótipos T/U/V → W1/W2):** o alinhamento das fotos e a
+     proporção são interdependentes, então ficam juntos numa aba **"Framing"** do Export sessions (antes de
+     Photos/Sequence/Lenticular; uma porta só, sem botão ao lado de "Reorder"), com a prévia em cima e as
+     linhas embaixo, como nas outras abas (decisão de 2026-11-03, commit `fefd1b0`; o desenho inicial era uma
+     coluna à direita) e **sem modo teatro** (decisão do dono, 2026-11-03): o ⤢ do canto da prévia só amplia a prévia e deixa as
+     linhas do Framing à vista (a fileira, Aspect ratio, Same size, Position); o teatro "< >" que esconde tudo é só
+     do Lenticular, que não mudou. **Pedaço 2 feito em 2026-11-03** (`docs/teste-manual.md`, seção 37; protótipo X2):
+     o botão do canto da prévia virou "Align photos" (texto + ícone de dois quadros) e abre a tela de alinhamento no
+     lugar das abas: prévia grande com as referências tingidas por baixo da foto atual (Previous azul, Next laranja;
+     a referência "Photo 01" foi retirada em 2026-11-03), cada camada com a sua opacidade (a barra da Current photo
+     move as três; guardadas na memória do app), quadro comum aceso, quadro da proporção âmbar, fileira de miniaturas com
+     o ponto da referência; coluna com References, This photo (Move X/Y, Size, Rotate, Reset photo/Reset all), Common
+     frame e Aspect ratio/Position; gestos como decidido. `session.json` ganha "align" (arquivo:dx,dy,scale,rot); o
+     programa (`Export::Align`, `ComputeCommonFrame`, `ApplyAlign`) transforma cada foto e corta ao quadro comum antes
+     da proporção, em Converted, Sequence e Lenticular (Fill e Fit); sem foto alinhada nada muda. Resolvido em 2026-11-04
+     (o que estava "em aberto" aqui): com uma proporção escolhida, toda sessão, alinhada ou não, sai no canvas (a parte
+     comum às fotos), com todas as fotos no mesmo tamanho; em "As shot", cada foto sai inteira. **Decisões do dono (2026-11-03, noite):** a caixa "Same size for all photos" saiu: o recorte é
+     um só para a sessão e todas as fotos convertidas saem no mesmo tamanho (sempre); na tela de alinhamento o recorte
+     da proporção não se move (a posição do recorte é só da aba Framing) e "Position" posiciona a foto atual na folga
+     que ela tem sobre a área útil; o quadro comum é a interseção das fotos no tamanho escolhido, sem giro (girar só
+     faz a foto crescer para seguir cobrindo a área, com conferência exata pelos cantos); quadro da proporção neon
+     sólido, o original tracejado. **Canvas (decisões do dono, 2026-11-03, noite):** o canvas é a interseção das fotos como saíram
+     e, com proporção escolhida, o maior retângulo nessa proporção que cabe nela; nenhuma foto é ampliada sozinha
+     (chegou-se a fazer as 16:9 crescerem para a altura das 3:2 e voltou-se atrás: ampliar muda o tamanho do objeto
+     fotografado entre as câmeras). Um quadro só na tela (o canvas, neon). As fotos convertidas saem no tamanho do
+     canvas. "As shot" sem foto ajustada continua saindo cada foto como é.
+   - **Export em três passos (decisão do dono, 2026-11-04, protótipo "Export em três passos" aprovado):** 1 Sessions
+     (escolher as sessões e o Framing de cada uma, com selo por sessão e "Use this framing on all ticked sessions",
+     que copia proporção e posição mas não o alinhamento), 2 Outputs (Photos · Sequence · Lenticular, "Same settings for
+     all sessions"; "Print pitch test" dentro da aba Lenticular), 3 Review (tabela por sessão com "Edit", "Name" valendo
+     para todas as marcadas e "Export to"). Passos no cabeçalho (para trás sempre, para a frente só com o atual pronto);
+     o passo onde a pessoa parou fica guardado ao sair. **Alinhar exige proporção (2026-11-04, opção B):**
+     "As shot" é sempre como saiu (a exportação ignora o alinhamento guardado); "Align photos" em "As shot" pede antes
+     uma proporção ("Choose a ratio first") e abre com ela; dentro da tela, "As shot" fica desativado. **Lenticular × Framing (2026-11-04, opção A):** em Fill o papel
+     manda (o canvas é cortado de novo para a forma do papel), com aviso âmbar quando as formas diferem; Fit põe o
+     Framing inteiro no papel com faixa. Modo teatro também em Photos (com as miniaturas) e Sequence; reabrir o Export
+     nunca volta em teatro. "Use the default folder" sempre à vista no Review.
+     **Revisão da opção B (2026-11-04, tarde):** só a sessão com mixed ratios precisa de uma proporção para alinhar; numa
+     sessão toda na mesma forma, "As shot" alinha e exporta pelo canvas (a parte comum). O Export reabre sempre no passo 1.
+     Settings e About abrem por cima de qualquer janela. ⌘Z não age com uma confirmação aberta; a cor da faixa do
+     Lenticular entra no desfazer. A escolha da janela "Mixed ratios" vale para todas as sessões do disparo; mudar o
+     Camera settings faz o aviso voltar.
+     **2026-11-04 (noite):** a escolha da janela "Mixed ratios" vale também para os disparos seguintes com a mesma
+     combinação (até mudar o Camera settings). Etiqueta "n deleted" (fotos da sessão na lixeira), no desenho do "n
+     missing". Na janela Project os avisos ficam na coluna Session. Dentro de "Align photos" o rodapé tem só "Done
+     aligning" (caminho A). Em "Choose a ratio first" a sugerida é o botão verde ao lado do Cancel.
+     **⌘Z e passos (2026-11-04, decisão do dono):** desfazer e refazer levam até onde a mudança aconteceu (passo, sessão,
+     aba, foto, Align photos) e o aviso diz onde; navegar não é um passo. Passos do cabeçalho: voltam livres, para a frente
+     só pelo botão verde (caminho B). Esc dentro do Align photos volta ao Framing. Cursor de girar no "Align photos": seta em arco preta com
+     contorno branco (opção B). `docs/teste-manual.md`, seção 38.
 5. **Etapa 20 — Edit in Lightroom Classic / Photoshop.** Ida e volta: o app abre os originais
    do Project no Lightroom Classic (o dono do projeto usa o Classic); um plugin do Stillpoint
    (SDK Lua do Classic) agrupa cada sessão como coleção e tem "Export to Stillpoint", que
@@ -821,6 +941,18 @@ Junto com essas etapas (sem etapa própria):
 Atualizar esta tabela sempre que uma função mudar de status.
 
 ## Pendências conhecidas
+
+- **Live view com várias sessões num disparo (anotado pelo dono em 2026-11-02):** quando "Sessions"
+  é maior que 1, o Live view (modo operador e modo audiência) só mostra uma sessão; não dá para
+  navegar entre as sessões do mesmo bullet time. Decisão de como deve ser: do dono, ainda não tomada.
+
+- **Testes com câmeras reais ainda não feitos (anotado pelo dono em 2026-11-02):** o **cartão
+  cinza** ("Use the gray card" no Match automatically: achar o cartão na foto, a conferência com
+  clique/arrastar, "Skip the gray card", o alvo cinza neutro) e o **Calibrate with chart** (impressão
+  da cartela, achar as 4 marcas, arrastar os cantos, as 4 fotos, o resultado por modelo e o uso
+  dele pelo Match) nunca foram testados com câmeras de verdade: só com simuladas, que entregam fotos
+  de cor lisa (sem cartão nem marcas). Roteiro: `docs/teste-manual.md`, seções 34 (cartão) e a da
+  cartela. Precisa de SL3 + T7 (dois modelos), o cartão cinza e a cartela impressa a 100%.
 
 - **2.12.0 (etapa 17 — Project) publicada em 2026-10-29; no mesmo dia testada no Mac com
   câmeras reais (T7 + SL3 + T5): tudo aprovado** — `session.json`, `.xmp` renomeado junto,

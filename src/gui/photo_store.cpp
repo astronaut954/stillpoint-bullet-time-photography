@@ -353,9 +353,9 @@ namespace
     }
 }
 
-bool WriteTestPhoto(const fs::path& file, int cameraNumber, int shotNumber)
+bool WriteTestPhoto(const fs::path& file, int cameraNumber, int shotNumber, double ratio)
 {
-    const int w = 900, h = 600;
+    const int w = 900, h = std::max(100, static_cast<int>(std::lround(900.0 / std::max(0.5, ratio))));
     std::vector<unsigned char> px(static_cast<size_t>(w) * h * 3);
     // Uma cor por câmera (tons escuros, para o número branco ler bem)
     const int hue = (cameraNumber * 47) % 360;
@@ -532,6 +532,30 @@ bool PhotoStore::SetLabel(const std::string& session, const std::string& label) 
     return WriteSessionInfoFile(dir, info);
 }
 
+bool PhotoStore::SetCrop(const std::string& session, const std::string& crop) const
+{
+    const fs::path dir = SessionDir(session);
+    if (dir.empty())
+        return false;
+    JsonLite::Value info = ReadSessionInfo(dir);
+    if (!info.isObject())
+        info = JsonLite::Value::NewObject();
+    info.set("crop", crop);
+    return WriteSessionInfoFile(dir, info);
+}
+
+bool PhotoStore::SetAlign(const std::string& session, const std::string& align) const
+{
+    const fs::path dir = SessionDir(session);
+    if (dir.empty())
+        return false;
+    JsonLite::Value info = ReadSessionInfo(dir);
+    if (!info.isObject())
+        info = JsonLite::Value::NewObject();
+    info.set("align", align);
+    return WriteSessionInfoFile(dir, info);
+}
+
 bool PhotoStore::WriteSessionInfo(const std::string& session, const std::string& jsonText) const
 {
     const fs::path dir = SessionDir(session);
@@ -637,11 +661,15 @@ void PhotoStore::ReadSessions(const fs::path& base, bool inProject, std::vector<
         StoredSession session;
         session.name = dir.path().filename().string();
         session.inProject = inProject;
-        if (inProject)
         {
             const JsonLite::Value info = ReadSessionInfo(dir.path());
-            session.label = info.get("label").asString();
-            session.timing = info.get("timing").asString();
+            if (inProject)
+            {
+                session.label = info.get("label").asString();
+                session.timing = info.get("timing").asString();
+            }
+            session.crop = info.get("crop").asString();  // (também fora do Project)
+            session.align = info.get("align").asString();
         }
 
         session.saved = fs::exists(dir.path() / kSavedMark, ec);
