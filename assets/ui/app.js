@@ -6061,7 +6061,8 @@
     });
     document.querySelectorAll("#settingsOverlay .settings-pane").forEach((p) => p.classList.toggle("hidden", p.dataset.pane !== tab));
   }
-  document.querySelectorAll("#settingsTabs .export-tab").forEach((b) => b.addEventListener("click", () => settingsTab(b.dataset.tab)));
+  // Abrir a aba "Lightroom & Photoshop" procura os programas de novo (instalados ou tirados com o app aberto)
+  document.querySelectorAll("#settingsTabs .export-tab").forEach((b) => b.addEventListener("click", () => { settingsTab(b.dataset.tab); if (b.dataset.tab === "adobe") refreshAdobe(); }));
   // Settings › Lightroom & Photoshop: os programas achados, o plugin e o catálogo
   const adobe = { info: null };
   function refreshAdobe() {
@@ -8447,6 +8448,7 @@
           : now - start > 120000;
         if (late) {
           finish(); hideToast();
+          log("Lightroom Classic did not answer: " + Math.round((now - start) / 1000) + " s, Lightroom " + (st.running ? "open" : "not seen open") + ", plugin " + (st.alive ? "on" : "not answering") + (working ? ", request taken" : ", request not taken"), "warn");
           noAnswer(r, s, group, scope, !!st.running);
           return;
         }

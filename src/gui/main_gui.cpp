@@ -2486,7 +2486,9 @@ namespace
             std::vector<std::filesystem::path> files;
             if (switchCatalog)
                 files.push_back(catalog);
-            Platform::OpenWithApplication(lr.path, files);
+            const bool opened = Platform::OpenWithApplication(lr.path, files);
+            Log(std::string("Lightroom Classic: ") + (opened ? "asked to open " : "could not open ") + PathToUtf8(lr.path) + " (open now: " + (running ? "yes" : "no") +
+                ", plugin answering: " + (alive.fresh ? "yes" : "no") + ", plugin installed: " + Adobe::InstalledPluginVersion() + ")");
             Log("Edit in Lightroom Classic: " + args[0] + " (" + std::to_string(r.photos.size()) + " photos" +
                 (args[3] == "photo" ? ", just " + args[2] : "") + (switchCatalog ? ", switching to the project catalog" : "") + ")");
             return Json("adobeEdit").Add("ok", true).Add("id", r.id).Add("running", running).Add("alive", alive.fresh)
