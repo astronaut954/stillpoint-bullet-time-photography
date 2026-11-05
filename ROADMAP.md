@@ -653,7 +653,7 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    trash. O Desfazer de apagar continua (traz o item mais recente da sessão). Sessões já salvas que o
    app apaga ao fechar, e as descartadas no fechamento, saem de vez (não ocupam a lixeira), como antes.
    **Proporção da foto (entre a lixeira e a 20; branch `proporcao`, versão 2.16.0, iniciada em
-   2026-11-01).** Decisões do dono: (a) Camera settings lê e muda a proporção da câmera (3:2, 4:3,
+   2026-11-01; no main em 2026-11-04, testada com câmeras simuladas no Mac; câmeras reais e Windows pendentes).** Decisões do dono: (a) Camera settings lê e muda a proporção da câmera (3:2, 4:3,
    16:9, 1:1) dentro do painel do botão de estilo, renomeado "Style, Quality & Ratio", logo abaixo de
    Quality; entra na comparação entre câmeras e no "Settings differ"; câmeras que não aceitam pelo USB
    mostram a linha desabilitada com a explicação. (b) A sessão avisa quando as fotos têm tamanhos ou
