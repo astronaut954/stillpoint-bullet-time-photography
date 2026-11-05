@@ -8382,7 +8382,7 @@
       const box = el("div");
       box.appendChild(stepsBox(["In Lightroom Classic, choose File › New Catalog…",
         "Go to this folder (Show folder opens it): " + r.folder,
-        "Name the catalog “" + r.name + "” and click Create. Lightroom Classic restarts with it.",
+        "Name the catalog “" + r.name + "” and click Create (Lightroom Classic makes a folder with that name and restarts with the new catalog).",
         "Back here, click Try again."]));
       dialog("Create the project's catalog first", "One catalog per project is on (Settings › Lightroom & Photoshop), and this project has no catalog yet. Lightroom Classic creates catalogs itself:", [
         { label: "Cancel", link: true, left: true },
