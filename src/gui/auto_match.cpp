@@ -1,3 +1,6 @@
+#if defined(_WIN32) && !defined(NOMINMAX)
+#define NOMINMAX  // windows.h (via o cabeçalho das câmeras) define min/max, que quebram std::min/std::max
+#endif
 #include "auto_match.h"
 
 #include "camera_settings.h"
