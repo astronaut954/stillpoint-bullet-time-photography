@@ -13,6 +13,7 @@ local folderPath = nil
 local pluginVersion = nil
 local lastAlive = 0
 local lastId = nil
+local lastWaiting = nil
 -- Quando o plugin começou. Logo depois de abrir, o Lightroom ainda volta para a coleção e o módulo da última
 -- vez: um pedido que chega nesse começo espera um pouco e a coleção é mostrada de novo depois (teste de 2026-11-05:
 -- o Lightroom aberto pelo Stillpoint mostrava a sessão anterior).
@@ -245,6 +246,20 @@ function Bridge.tick()
 	local request = parse(text)
 	if not request.id then Bridge.noteOnce('request file without id') return end
 	if request.id == lastId then Bridge.noteOnce('request ' .. request.id .. ' seen again, ignored') return end
+	-- Pedido para outro catálogo (um catálogo por projeto): não pega. O Lightroom está perguntando se troca de
+	-- catálogo ("Relaunch"); depois de trocar, o plugin do catálogo certo pega o pedido. O Stillpoint fica sabendo
+	-- pelo estado "other-catalog" (teste de 2026-11-05: antes o plugin recusava na hora, com o Lightroom ainda perguntando).
+	if request.catalog and request.catalog ~= '' then
+		local open = LrApplication.activeCatalog():getPath()
+		if not samePath(open, request.catalog) then
+			if lastWaiting ~= request.id then
+				lastWaiting = request.id
+				Bridge.note('request ' .. request.id .. ': for another catalog, waiting for Lightroom Classic to switch')
+				writeStatus(request.id, 'other-catalog', { catalog = open })
+			end
+			return
+		end
+	end
 	lastId = request.id
 	removeFile(requestFile)
 	Bridge.note('request ' .. request.id .. ': ' .. tostring(request.action) .. ', ' .. #request.photos .. ' photos')

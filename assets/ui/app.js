@@ -8437,7 +8437,7 @@
   }
   function lrWait(r, s, group, scope, groups) {
     const id = r.id, start = Date.now();
-    let runningSince = r.running ? start : 0, aliveSince = r.alive ? start : 0;
+    let runningSince = r.running ? start : 0, aliveSince = r.alive ? start : 0, otherSince = 0;
     lrJob.id = id;
     lrWaitToast(s);
     const again = () => startLightroom(s, group, scope, groups);
@@ -8465,6 +8465,27 @@
           ], kvBox([["Open now", st.catalog || "?"]]));
           return;
         }
+        // Pedido para o catálogo do projeto com outro aberto: o Lightroom pergunta se troca ("Relaunch"). Espera até
+        // 90 s (o Lightroom reinicia e o plugin espera ele abrir); se ele continuar no outro catálogo (Cancel lá), mostra a janela do outro catálogo.
+        if (st.state === "other-catalog") {
+          if (!otherSince) {
+            otherSince = now;
+            toast("Lightroom Classic is asking to switch to the project's catalog: click Relaunch there", 600000, { silent: true });
+            const body = ui.toast.querySelector(".toast-body"), close = body && body.querySelector(".toast-close");
+            if (close) { const b = el("button", "btn btn-link btn-small toast-action", "Cancel"); b.type = "button"; b.addEventListener("click", cancelLightroom); close.replaceWith(b); }
+          }
+          if (now - otherSince > 90000) {
+            finish(); hideToast(); window.adobeCancel(id);
+            dialog("Lightroom Classic has another catalog open", "This project's sessions go to the project's catalog (Settings › Lightroom & Photoshop › One catalog per project), but Lightroom Classic has another one open. Open the project's catalog in Lightroom Classic (File › Open Catalog…), then try again.", [
+              { label: "Cancel", link: true, left: true },
+              { label: "Try again", primary: true, onClick: again },
+            ], kvBox([["Open now", st.catalog || "?"]]));
+            return;
+          }
+          lrJob.timer = setTimeout(tick, 500);
+          return;
+        }
+        if (otherSince) { otherSince = 0; aliveSince = st.alive ? now : 0; runningSince = st.running ? now : 0; }
         if (st.running && !runningSince) runningSince = now;
         if (st.alive && !aliveSince) aliveSince = now;
         // Quanto esperar: o plugin já pegou o pedido ("working") = até 5 min (muitas fotos); plugin ligado = 30 s;
