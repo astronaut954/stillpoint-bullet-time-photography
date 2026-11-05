@@ -2617,9 +2617,29 @@ namespace
             });
             // "Another window" (nas duas): abre (ou traz de volta) a outra janela Live um pouco à
             // direita e abaixo desta, para ficar claro que é outra janela
-            v.bind("liveAnother", [&, self, index](const std::string&) -> std::string
+            v.bind("liveAnother", [&, self, index](const std::string& request) -> std::string
             {
                 const int other = index == 1 ? 2 : 1;
+                // A outra janela abre no modo contrário ao desta (decisão do dono, 2026-11-05): Operator aqui, Audience
+                // lá, ou o inverso. Grava nas opções dela (live1/live2) e avisa, caso ela já exista (escondida)
+                const auto args = ParseStringArgs(request);
+                if (!args.empty() && (args[0] == "operator" || args[0] == "audience"))
+                {
+                    const std::string mode = args[0] == "operator" ? "audience" : "operator";
+                    auto current = LoadSettings();
+                    const std::string otherKey = "live" + std::to_string(other);
+                    std::string opts = current.count(otherKey) ? current.at(otherKey) : std::string();
+                    static const std::regex modeField("\"mode\"\\s*:\\s*\"[a-z]*\"");
+                    if (std::regex_search(opts, modeField))
+                        opts = std::regex_replace(opts, modeField, "\"mode\":\"" + mode + "\"");
+                    else if (opts.size() > 1 && opts.front() == '{' && opts.find(':') != std::string::npos)
+                        opts = "{\"mode\":\"" + mode + "\"," + opts.substr(1);
+                    else
+                        opts = "{\"mode\":\"" + mode + "\"}";
+                    current[otherKey] = opts;
+                    SaveSettings(current);
+                    listener.Emit(Json("liveMode").Add("index", other).Add("mode", mode));
+                }
                 openLive(other);
                 for (auto& w : lives)
                     if (w->index == other)

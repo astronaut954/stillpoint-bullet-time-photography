@@ -1644,10 +1644,14 @@ Com `STILLPOINT_FAKE_CAMERAS=9`. Na tela principal, painel "Bullet time", campo 
 - [ ] Parado numa sessão sem mexer: depois de 15 s, volta sozinho a "· Playing all".
 - [ ] Space dispara de novo: o disparo novo começa em "Playing all", só com as sessões dele.
 - [ ] "Sessions" em 1: nada disso aparece (igual a antes).
-- [ ] Os controles das sessões ficam na mesma caixa de "Speed" e "Reverse loop" (canto de cima, à direita), que aparece
-      com o mouse e some sozinha. Com a janela estreita, a caixa quebra em duas linhas: "Speed · Reverse loop · Reset"
-      em cima e "‹ Session 1 of 2 › · Pinned · Play all" embaixo; o resumo ("9 cameras · all at once") encurta com "…".
-- [ ] "Reset" (na mesma caixa, só com a sequência tocando): para a sequência e volta para a tela de pronto ("Ready · …").
+- [ ] Canto de cima, à direita (aparece com o mouse e some sozinho): duas caixas separadas, uma com "Speed" e "Reverse
+      loop", outra com "‹ Session 1 of 2 › · Pinned · Play all" e "Reset". Com a janela estreita, a segunda caixa desce
+      para baixo da primeira; o resumo ("9 cameras · all at once") encurta com "…".
+- [ ] "Reset" (na segunda caixa, só com a sequência tocando): para a sequência e volta para a tela de pronto ("Ready · …").
+- [ ] Modo com duas janelas: com uma Live só, "Mode" troca entre Operator e Audience. "Another window" abre a segunda no
+      modo contrário ao da primeira (Operator → a nova é Audience, e o inverso). Com as duas abertas, "Mode" fica preso
+      nas duas (só o modo da janela aceso; mouse em cima: "Two Live windows are open…"). Fechando uma ("Close"), a outra
+      volta a poder trocar.
 - [ ] Disparar, fechar a Live, apagar as sessões na tela principal e abrir a Live de novo: não fica tocando nada (volta
       para a tela de pronto). Apagando só uma das sessões do disparo, a Live continua só com as que sobraram.
 

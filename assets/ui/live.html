@@ -24,9 +24,9 @@
           <span class="live-tools-label">Speed</span>
           <span class="live-speed"><button id="liveSlower" class="btn btn-secondary btn-small btn-icon" title="Slower">−</button><span id="liveSpeed" class="play-speed">1.0x</span><button id="liveFaster" class="btn btn-secondary btn-small btn-icon" title="Faster">+</button></span>
           <label class="log-option live-tools-check" title="Play back and forth (1, 2, 3, 2, 1...)"><input id="liveReverse" type="checkbox" checked> Reverse loop</label>
-          <button id="liveReset" class="btn btn-secondary btn-small hidden" title="Stop the sequence and go back to the ready screen">Reset</button>
         </span>
-        <span id="liveSess" class="live-sess live-play-row hidden"><button id="liveSessPrev" class="btn btn-secondary btn-small btn-icon" title="Previous session (←)">‹</button><span id="liveSessLabel" class="lbl"></span><button id="liveSessNext" class="btn btn-secondary btn-small btn-icon" title="Next session (→)">›</button><span id="liveSessMode" class="mode"></span><button id="liveSessAll" class="btn btn-secondary btn-small hidden" title="Play every session again, one after the other (A)">Play all<span class="live-key">A</span></button></span>
+        <span id="livePlayMore" class="live-play-row hidden"><span id="liveSess" class="live-sess hidden"><button id="liveSessPrev" class="btn btn-secondary btn-small btn-icon" title="Previous session (←)">‹</button><span id="liveSessLabel" class="lbl"></span><button id="liveSessNext" class="btn btn-secondary btn-small btn-icon" title="Next session (→)">›</button><span id="liveSessMode" class="mode"></span><button id="liveSessAll" class="btn btn-secondary btn-small hidden" title="Play every session again, one after the other (A)">Play all<span class="live-key">A</span></button></span>
+          <button id="liveReset" class="btn btn-secondary btn-small hidden" title="Stop the sequence and go back to the ready screen">Reset</button></span>
       </div>
     </div>
     <div class="live-center">
@@ -86,6 +86,7 @@
       if (event.type === "cameras") { cameras = event.cameras || []; Live.setCameras(cameras); return; }
       if (event.type === "soundChanged") { Live.setSound({ sound: !!event.sound, sounds: !!event.sounds }); return; }
       if (event.type === "screens") { Live.setScreens(event.screens || []); return; }
+      if (event.type === "liveMode") { if (+event.index === myIndex) Live.setOptions({ mode: event.mode }); return; }
       if (event.type === "liveWindows") { Live.setLives(event.open, event.ranks && event.ranks[String(myIndex)]); return; }
       if (event.type === "sessions") {
         const list = event.sessions || [];
@@ -108,7 +109,7 @@
         setSound: (sound) => window.liveSetSound(sound.sound ? "1" : "0", sound.sounds ? "1" : "0"),
         close: () => window.liveClose(String(info.index || 1)),
         identify: () => window.liveIdentify(),
-        another: () => window.liveAnother(),
+        another: () => window.liveAnother(Live.options().mode),
         pick: (session, pinned) => { if (typeof window.livePick === "function") window.livePick(String(session), pinned ? "1" : "0"); },
       }, info.opts || "", info.sound || null, info.screens || []);
       ready = true;

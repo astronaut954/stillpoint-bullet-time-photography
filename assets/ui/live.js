@@ -93,7 +93,7 @@ window.Live = (function () {
       film: $("liveFilm"), stage: $("liveStage"), stageImg: $("liveStageImg"),
       hint: $("liveHint"), tools: $("liveTools"), flash: $("liveFlash"),
       sess: $("liveSess"), sessLabel: $("liveSessLabel"), sessMode: $("liveSessMode"), sessAll: $("liveSessAll"),
-      sessPrev: $("liveSessPrev"), sessNext: $("liveSessNext"), reset: $("liveReset"),
+      sessPrev: $("liveSessPrev"), sessNext: $("liveSessNext"), reset: $("liveReset"), playMore: $("livePlayMore"),
       modeBtns: Array.from(document.querySelectorAll("#liveTools [data-mode]")),
       layoutBtns: Array.from(document.querySelectorAll("#liveTools [data-layout]")),
       displayBtns: Array.from(document.querySelectorAll("#liveTools [data-display]")),
@@ -260,7 +260,15 @@ window.Live = (function () {
   function renderOpts() {
     if (!el) return;
     el.root.classList.toggle("audience", S.opts.mode === "audience");
-    el.modeBtns.forEach((b) => b.classList.toggle("on", b.dataset.mode === S.opts.mode));
+    // Duas janelas Live abertas (decisão do dono, 2026-11-05): uma Operator e a outra Audience, o modo fica preso e só
+    // mostra qual é esta; fechando uma, volta a dar para trocar
+    const locked = (S.lives || 0) > 1;
+    el.modeBtns.forEach((b) => {
+      b.classList.toggle("on", b.dataset.mode === S.opts.mode);
+      b.disabled = locked;
+      b.title = locked ? "Two Live windows are open: one is Operator, the other Audience. Close one to change the mode." : "";
+    });
+    if (el.modeBtns[0]) el.modeBtns[0].parentElement.classList.toggle("locked", locked);
     el.layoutBtns.forEach((b) => b.classList.toggle("on", b.dataset.layout === S.opts.layout));
     el.displayBtns.forEach((b) => b.classList.toggle("on", b.dataset.display === S.opts.display));
     el.onTop.checked = S.opts.onTop;
@@ -499,6 +507,7 @@ window.Live = (function () {
     el.topRight.classList.toggle("live-sess-aud", multi && audience);
     el.sess.classList.toggle("hidden", !(multi && !audience));
     el.reset.classList.toggle("hidden", !(S.phase === "done" && S.play.urls.length));
+    el.playMore.classList.toggle("hidden", el.reset.classList.contains("hidden") && el.sess.classList.contains("hidden"));
     if (multi && !audience) {
       el.sessLabel.textContent = "Session " + (S.multi.cur + 1) + " of " + S.multi.list.length;
       el.sessMode.textContent = S.multi.pinned ? "· Pinned" : "· Playing all";
