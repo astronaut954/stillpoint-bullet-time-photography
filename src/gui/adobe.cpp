@@ -343,6 +343,57 @@ namespace Adobe
         return status;
     }
 
+    namespace
+    {
+        std::map<std::string, std::pair<std::string, std::string>> LoadCollections()
+        {
+            std::map<std::string, std::pair<std::string, std::string>> out;
+            std::ifstream in(BridgeFolder() / "collections.txt", std::ios::binary);
+            for (std::string line; std::getline(in, line);)
+            {
+                if (!line.empty() && line.back() == '\r')
+                    line.pop_back();
+                const auto a = line.find('\t');
+                const auto b = a == std::string::npos ? a : line.find('\t', a + 1);
+                if (b != std::string::npos)
+                    out[line.substr(0, a)] = { line.substr(a + 1, b - a - 1), line.substr(b + 1) };
+            }
+            return out;
+        }
+        void SaveCollections(const std::map<std::string, std::pair<std::string, std::string>>& map)
+        {
+            std::ostringstream text;
+            for (const auto& [session, where] : map)
+                text << session << '\t' << OneLine(where.first) << '\t' << OneLine(where.second) << '\n';
+            WriteWhole(BridgeFolder() / "collections.txt", text.str());
+        }
+    }
+
+    void RememberCollection(const std::string& session, const std::string& project, const std::string& title)
+    {
+        auto map = LoadCollections();
+        map[session] = { project, title };
+        SaveCollections(map);
+    }
+
+    bool QueueRemoveCollection(const std::string& session)
+    {
+        auto map = LoadCollections();
+        const auto it = map.find(session);
+        if (it == map.end())
+            return false;
+        // Um arquivo por pedido: o plugin pega todos os done-*.txt quando estiver aberto
+        static int counter = 0;
+        const std::string name = "done-" + std::to_string(std::time(nullptr)) + "-" + std::to_string(++counter) + ".txt";
+        const bool ok = WriteWhole(BridgeFolder() / name, "project=" + OneLine(it->second.first) + "\ntitle=" + OneLine(it->second.second) + "\nend=1\n");
+        if (ok)
+        {
+            map.erase(it);
+            SaveCollections(map);
+        }
+        return ok;
+    }
+
     Alive ReadAlive()
     {
         Alive alive;

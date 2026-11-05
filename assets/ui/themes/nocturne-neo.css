@@ -1857,9 +1857,10 @@ html.kbd-focus .export-tab.on .export-tab-check input:focus + .save-check { outl
 /* Etiqueta "In Lightroom" / "In Photoshop": o desenho das outras etiquetas, sem o âmbar de aviso */
 .missing-tag.edit-tag { border-color: var(--noct-border-strong); color: var(--noct-text); cursor: help; display: inline-flex; align-items: center; gap: 6px; }
 /* Bolinha âmbar pulsando: a foto está aberta no outro programa agora */
-.edit-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--noct-pending); box-shadow: 0 0 6px rgba(var(--noct-pending-rgb), .8);
-  animation: noct-pulse 1.4s ease-in-out infinite; flex: none; }
-@media (prefers-reduced-motion: reduce) { .edit-dot { animation: none; } }
+/* Pulsa só com o Lightroom aberto (body.lr-live); fechado, fica parada e apagada */
+.edit-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--noct-pending); opacity: .4; flex: none; }
+body.lr-live .edit-dot { opacity: 1; box-shadow: 0 0 6px rgba(var(--noct-pending-rgb), .8); animation: noct-pulse 1.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { body.lr-live .edit-dot { animation: none; } }
 /* "LR" / "PS" no canto da miniatura */
 .frame-corner { position: absolute; right: 3px; bottom: 3px; display: flex; gap: 3px; align-items: flex-end; z-index: 2; }
 .frame-corner .frame-ratio { position: static; }

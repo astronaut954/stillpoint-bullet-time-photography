@@ -183,6 +183,52 @@ local function handle(request)
 	writeStatus(request.id, 'done', { added = added, missing = missing, catalog = catalog:getPath() })
 end
 
+-- "Done editing" de uma sessão no Stillpoint: tira a coleção dela (as fotos e as edições ficam no catálogo).
+-- Conjuntos que ficarem vazios (o do projeto, o Stillpoint) saem também.
+local function findByName(list, name)
+	for _, item in ipairs(list or {}) do
+		if item:getName() == name then return item end
+	end
+	return nil
+end
+
+local function removeCollection(project, title)
+	local catalog = LrApplication.activeCatalog()
+	local top = findByName(catalog:getChildCollectionSets(), 'Stillpoint')
+	local projectSet = top and findByName(top:getChildCollectionSets(), (project ~= nil and project ~= '') and project or 'No project')
+	local collection = projectSet and findByName(projectSet:getChildCollections(), title)
+	if not collection then
+		Bridge.note('done editing: collection "' .. tostring(title) .. '" not found (already removed?)')
+		return
+	end
+	catalog:withWriteAccessDo('Stillpoint: done editing', function()
+		collection:delete()
+	end, { timeout = 60 })
+	catalog:withWriteAccessDo('Stillpoint: tidy collection sets', function()
+		if #projectSet:getChildCollections() == 0 and #projectSet:getChildCollectionSets() == 0 then projectSet:delete() end
+	end, { timeout = 60 })
+	catalog:withWriteAccessDo('Stillpoint: tidy collection sets', function()
+		if #top:getChildCollections() == 0 and #top:getChildCollectionSets() == 0 then top:delete() end
+	end, { timeout = 60 })
+	Bridge.note('done editing: collection "' .. tostring(title) .. '" removed')
+end
+
+local function handleDoneFiles()
+	for path in LrFileUtils.files(Bridge.folder()) do
+		local name = LrPathUtils.leafName(path)
+		if name:match('^done%-.*%.txt$') then
+			local text = readAll(path)
+			if text and text:find('\nend=1') then
+				removeFile(path)
+				local request = parse(text)
+				local LrTasks = import 'LrTasks'
+				local ok, problem = LrTasks.pcall(removeCollection, request.project, request.title)
+				if not ok then Bridge.problem('done editing: ' .. tostring(problem)) end
+			end
+		end
+	end
+end
+
 -- Uma volta da espera (a cada meio segundo)
 function Bridge.tick()
 	if not Bridge.folder() then return end
@@ -191,6 +237,7 @@ function Bridge.tick()
 		writeAlive()
 	end
 	if os.time() - startedAt < STARTUP_WAIT then return end  -- Lightroom acabando de abrir
+	handleDoneFiles()
 	local requestFile = bridgeFile('request.txt')
 	local text = readAll(requestFile)
 	if not text then return end

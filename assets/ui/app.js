@@ -1271,14 +1271,18 @@
       if (sel.length > 1) {
         popupMenuAt(e.clientX, e.clientY, [
           { html: el("div", "project-menu-label", plural(sel.length, "photo", "photos") + " selected") },
+          { label: "Edit " + sel.length + " photos in Lightroom Classic", onClick: () => {
+            const picked = sel.map((i) => sessionGallery.items[i]).filter(Boolean);
+            const s = sessions.find((x) => x.name === (item.session || currentSession.name));
+            if (s && picked.length && !adobeMissingBuild()) startLightroom(s, item.group, "photos", picked.map((x) => x.group));
+          } },
+          "-",
           { label: "Delete " + sel.length + " photos…", danger: true, onClick: deleteCurrentPhoto },
         ]);
         return;
       }
-      const inEdit = editingOf(item.session || currentSession.name, item.group);
       popupMenuAt(e.clientX, e.clientY, [
         { label: "Edit in Lightroom Classic…", disabled: !hasFile, dim: !hasFile, onClick: () => editPhotoInLightroom(item) },
-        { label: "Done editing", disabled: !inEdit, dim: !inEdit, onClick: () => doneEditing(item.session || currentSession.name, [item.group]) },
         "-",
         { label: win ? "Show in Explorer" : "Show in Finder", disabled: !hasFile, dim: !hasFile, onClick: () => fileAction("reveal") },
         { label: "Open in default app", disabled: !hasFile, dim: !hasFile, onClick: () => fileAction("open") },
@@ -1519,13 +1523,24 @@
     t.appendChild(document.createTextNode(lr ? "In Lightroom" : "In Photoshop"));
     t.dataset.itip = (lr ? plural(lr, "photo of this session is", "photos of this session are") + " being edited in Lightroom Classic" : "")
       + (lr && ps ? "; " : "") + (ps ? plural(ps, "photo is", "photos are") + " open in Photoshop" : "")
-      + ". Right-click a photo › Done editing when you finish.";
+      + ". Right-click the session › Done editing when you finish.";
     return t;
+  }
+  // Opção A (decisão do dono, 2026-11-05): a etiqueta fica até o Done editing; a bolinha só pulsa enquanto o
+  // Lightroom está aberto com o plugin respondendo. Pergunta ao app a cada 5 s, só enquanto houver etiqueta.
+  let lrLiveTimer = 0;
+  function checkLrLive() {
+    clearTimeout(lrLiveTimer);
+    if (!Object.keys(editingBySession).length || typeof window.adobeInfo !== "function") { document.body.classList.remove("lr-live"); return; }
+    Promise.resolve(window.adobeInfo()).then((r) => {
+      document.body.classList.toggle("lr-live", !!(r && r.plugin && r.plugin.running));
+    }, () => {}).finally(() => { lrLiveTimer = setTimeout(checkLrLive, 5000); });
   }
   function setAdobeEditing(map) {
     const next = map || {};
     if (JSON.stringify(next) === JSON.stringify(editingBySession)) return;
     editingBySession = next;
+    checkLrLive();
     renderSessionListSoon();
     if (currentSession) sessionHead(currentSession);
     sessionGallery.refreshBadges();
@@ -8326,7 +8341,7 @@
     if (!s) return;
     const n = sessionItems(s).length;
     const num = pad(item.order || 1);
-    dialog("Edit the whole session?", "Bullet time edits usually go on every photo of the session. Lightroom Classic gets all " + n + " photos in the session's collection either way, and opens photo " + num + ".", [
+    dialog("Edit the whole session?", "Bullet time edits usually go on every photo of the session. Just this photo sends only photo " + num + " to Lightroom Classic; Edit the whole session sends all " + n + " and opens photo " + num + ".", [
       { label: "Cancel", link: true, left: true },
       { label: "Just this photo", onClick: () => startLightroom(s, item.group, "photo") },
       { label: "Edit the whole session", primary: true, onClick: () => startLightroom(s, item.group, "session") },
@@ -8339,17 +8354,19 @@
     const open = currentSession && currentSession.name === s.name ? sessionGallery.items[sessionGallery.index] : null;
     startLightroom(s, (open || first || {}).group || "", "session");
   }
-  function startLightroom(s, group, scope) {
+  // scope: "session" (todas), "photo" (a do grupo) ou "photos" (as de groups)
+  function startLightroom(s, group, scope, groups) {
     if (lrJob.id) { toast("Lightroom Classic is still opening the last session. Wait for it, or click Cancel in the message below.", 8000, { warn: true }); lrWaitToast(s); return; }
-    Promise.resolve(window.adobeEditInLightroom(s.name, lrCollectionTitle(s), group, scope)).then((r) => {
+    const list = groups && groups.length ? groups : [];
+    Promise.resolve(window.adobeEditInLightroom(s.name, lrCollectionTitle(s), group, scope, ...list)).then((r) => {
       if (!r) return;
-      if (!r.ok) { lightroomProblem(r, s, group, scope); return; }
-      log("Edit in Lightroom Classic: " + sessionShort(s) + (scope === "photo" ? " (photo " + group.slice(0, 2) + ")" : ""), "ok");
-      lrWait(r, s, group, scope);
+      if (!r.ok) { lightroomProblem(r, s, group, scope, list); return; }
+      log("Edit in Lightroom Classic: " + sessionShort(s) + (scope === "photo" ? " (photo " + group.slice(0, 2) + ")" : scope === "photos" ? " (" + plural(list.length, "photo", "photos") + ")" : ""), "ok");
+      lrWait(r, s, group, scope, list);
     });
   }
-  function lightroomProblem(r, s, group, scope) {
-    const again = () => startLightroom(s, group, scope);
+  function lightroomProblem(r, s, group, scope, groups) {
+    const again = () => startLightroom(s, group, scope, groups);
     if (r.problem === "missing") {
       dialog("Lightroom Classic is not installed", "Edit in Lightroom Classic needs Adobe Lightroom Classic on this computer. If it is installed in another place, choose it with Locate.", [
         { label: "Cancel", link: true, left: true },
@@ -8418,12 +8435,12 @@
     hideToast();
     toast("Edit in Lightroom Classic cancelled");
   }
-  function lrWait(r, s, group, scope) {
+  function lrWait(r, s, group, scope, groups) {
     const id = r.id, start = Date.now();
     let runningSince = r.running ? start : 0, aliveSince = r.alive ? start : 0;
     lrJob.id = id;
     lrWaitToast(s);
-    const again = () => startLightroom(s, group, scope);
+    const again = () => startLightroom(s, group, scope, groups);
     const finish = () => { clearTimeout(lrJob.timer); lrJob.id = null; };
     const tick = () => {
       if (lrJob.id !== id) return;
@@ -8463,7 +8480,7 @@
           finish(); hideToast();
           window.adobeCancel(id);  // o pedido não fica esperando: um Lightroom aberto depois não recebe um pedido velho
           log("Lightroom Classic did not answer: " + Math.round((now - start) / 1000) + " s, Lightroom " + (st.running ? "open" : "not seen open") + ", plugin " + (st.alive ? "on" : "not answering") + (working ? ", request taken" : ", request not taken"), "warn");
-          noAnswer(r, s, group, scope, !!st.running);
+          noAnswer(r, s, group, scope, !!st.running, groups);
           return;
         }
         lrJob.timer = setTimeout(tick, 500);
@@ -8471,8 +8488,8 @@
     };
     lrJob.timer = setTimeout(tick, 400);
   }
-  function noAnswer(r, s, group, scope, running) {
-    const again = () => startLightroom(s, group, scope);
+  function noAnswer(r, s, group, scope, running, groups) {
+    const again = () => startLightroom(s, group, scope, groups);
     const reinstall = () => Promise.resolve(window.adobeInstallPlugin()).then((x) => {
       if (x && x.ok) { toast("Stillpoint plugin reinstalled. Quit Lightroom Classic and open it again, then click Try again."); log("Lightroom plugin reinstalled", "ok"); }
       else dialog("Could not install the Stillpoint plugin", (x && x.error) || "The plugin could not be copied.", [{ label: "OK", primary: true }]);

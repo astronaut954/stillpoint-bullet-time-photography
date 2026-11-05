@@ -2289,6 +2289,7 @@ namespace
         // ---- Etapa 20, pedaço 1: Edit in Lightroom Classic ----
         // Pedidos mandados ao plugin e ainda sem resposta: id -> (sessão, grupos que ficam "In Lightroom")
         std::map<std::string, std::pair<std::string, std::vector<std::string>>> adobePending;
+        std::map<std::string, std::pair<std::string, std::string>> adobeSent;  // id -> (projeto, coleção) do pedido
         int adobeNextId = 0;
         auto adobeFind = [&](Adobe::Program program)
         {
@@ -2466,16 +2467,21 @@ namespace
             r.project = session->inProject && project.IsOpen() ? project.Name() : std::string();
             r.title = args[1];
             r.catalog = catalog.empty() ? std::string() : PathToUtf8(catalog);
+            // "session": todas as fotos; senão só as escolhidas (args[4...], ou a foto ativa): decisão do dono em
+            // 2026-11-05, "Just this photo" manda só aquela foto (antes ia a sessão inteira para a coleção)
+            std::vector<std::string> chosen(args.begin() + 4, args.end());
+            if (chosen.empty())
+                chosen.push_back(args[2]);
             std::vector<std::string> marked;
             for (const auto& [group, file] : PhotosForEditing(*session))
             {
                 const auto path = dir / file;
+                const bool take = args[3] == "session" || std::find(chosen.begin(), chosen.end(), group) != chosen.end();
+                if (!take)
+                    continue;
                 r.photos.push_back(path);
-                if (args[3] == "session" || group == args[2])
-                {
-                    r.select.push_back(path);
-                    marked.push_back(group);
-                }
+                r.select.push_back(path);
+                marked.push_back(group);
                 if (group == args[2])
                     r.focus = path;
             }
@@ -2489,6 +2495,7 @@ namespace
             if (!Adobe::WriteRequest(r, error))
                 return Json("adobeEdit").Add("ok", false).Add("problem", "error").Add("error", error).Str();
             adobePending[r.id] = { args[0], marked };
+            adobeSent[r.id] = { r.project, r.title };
             const auto alive = Adobe::ReadAlive();
             const bool running = alive.fresh || Platform::ApplicationRunning(lr.path);
             // Abre o Lightroom (ou traz para a frente). Com outro catálogo aberto, abrir o .lrcat faz o Lightroom trocar
@@ -2528,6 +2535,10 @@ namespace
                         for (const auto& group : it->second.second)
                             map[it->second.first][group] = "lr";
                         SaveEditing(map);
+                        // Onde a sessão ficou no Lightroom (para o Done editing tirar a coleção certa, mesmo se o rótulo mudar)
+                        const auto sent = adobeSent.find(id);
+                        if (sent != adobeSent.end())
+                            Adobe::RememberCollection(it->second.first, sent->second.first, sent->second.second);
                         emitEditing();
                         Log("Lightroom Classic: " + it->second.first + " is in the collection (" + std::to_string(status.added) + " new in the catalog)");
                     }
@@ -2558,7 +2569,13 @@ namespace
                 return "null";
             auto map = LoadEditing();
             if (args.size() == 1)
+            {
+                // A sessão inteira: a coleção dela sai do Lightroom (as fotos e as edições ficam no catálogo). Com o
+                // Lightroom fechado, o plugin tira quando ele abrir.
                 map.erase(args[0]);
+                if (Adobe::QueueRemoveCollection(args[0]))
+                    Log("Done editing: the Lightroom Classic collection of " + args[0] + " will be removed");
+            }
             else
                 for (size_t i = 1; i < args.size(); ++i)
                     map[args[0]].erase(args[i]);

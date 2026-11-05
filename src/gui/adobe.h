@@ -74,6 +74,11 @@ namespace Adobe
     };
     Status ReadStatus(const std::string& id);
 
+    // Coleção de cada sessão no Lightroom (collections.txt: sessão, projeto, coleção). Gravada quando o plugin
+    // confirma; o "Done editing" da sessão pede para o plugin tirar essa coleção (arquivo done-<n>.txt).
+    void RememberCollection(const std::string& session, const std::string& project, const std::string& title);
+    bool QueueRemoveCollection(const std::string& session);
+
     struct Alive
     {
         bool fresh = false;    // o plugin escreveu há menos de 5 s
