@@ -31,15 +31,17 @@ local function readAll(path)
 	return text
 end
 
--- Grava num arquivo temporário e troca de nome: o Stillpoint nunca lê um arquivo pela metade
+-- Grava o arquivo inteiro de uma vez. O Stillpoint só aceita o arquivo quando a última linha ("end=1") já
+-- está lá, então não precisa de arquivo temporário nem de trocar de nome.
 local function writeWhole(path, text)
-	local temp = path .. '.tmp'
-	local file = io.open(temp, 'wb')
-	if not file then return false end
+	local file, problem = io.open(path, 'wb')
+	if not file then
+		Bridge.problem('could not write ' .. tostring(path) .. ': ' .. tostring(problem))
+		return false
+	end
 	file:write(text)
 	file:close()
-	removeFile(path)
-	return LrFileUtils.move(temp, path)
+	return true
 end
 
 function Bridge.folder()
@@ -97,7 +99,7 @@ end
 
 local function writeAlive()
 	local catalog = LrApplication.activeCatalog()
-	local text = 'time=' .. os.time() .. '\ncatalog=' .. oneLine(catalog and catalog:getPath() or '') .. '\nversion=' .. Bridge.version() .. '\n'
+	local text = 'time=' .. os.time() .. '\ncatalog=' .. oneLine(catalog and catalog:getPath() or '') .. '\nversion=' .. Bridge.version() .. '\nend=1\n'
 	writeWhole(bridgeFile('alive.txt'), text)
 end
 
@@ -144,6 +146,7 @@ local function handle(request)
 		end
 	end
 	if #photos == 0 then
+		Bridge.note('request ' .. request.id .. ': no photos could be added')
 		writeStatus(request.id, 'error', { message = 'Lightroom Classic could not add the photos of this session.' })
 		return
 	end
@@ -163,6 +166,7 @@ local function handle(request)
 	end
 	LrTasks.pcall(function() catalog:setSelectedPhotos(focus, others) end)
 	LrTasks.pcall(function() LrApplicationView.switchToModule('develop') end)
+	Bridge.note('request ' .. request.id .. ': done, ' .. added .. ' new in the catalog, ' .. missing .. ' missing')
 	writeStatus(request.id, 'done', { added = added, missing = missing, catalog = catalog:getPath() })
 end
 
@@ -180,6 +184,7 @@ function Bridge.tick()
 	if not request.id or request.id == lastId then return end
 	lastId = request.id
 	removeFile(requestFile)
+	Bridge.note('request ' .. request.id .. ': ' .. tostring(request.action) .. ', ' .. #request.photos .. ' photos')
 	writeStatus(request.id, 'working')
 	if request.action == 'edit' then
 		local LrTasks = import 'LrTasks'
@@ -187,6 +192,16 @@ function Bridge.tick()
 		if not ok then writeStatus(request.id, 'error', { message = tostring(problem) }) end
 	else
 		writeStatus(request.id, 'error', { message = 'This plugin does not know "' .. tostring(request.action) .. '". Reinstall it from Stillpoint › Settings.' })
+	end
+end
+
+-- Uma linha no registro do plugin (plugin-log.txt, na pasta da conversa): para saber se ele começou e o que fez
+function Bridge.note(text)
+	if not Bridge.folder() then return end
+	local file = io.open(bridgeFile('plugin-log.txt'), 'ab')
+	if file then
+		file:write(os.date('%Y-%m-%d %H:%M:%S') .. ' ' .. tostring(text) .. '\n')
+		file:close()
 	end
 end
 

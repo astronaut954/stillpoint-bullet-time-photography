@@ -346,6 +346,8 @@ namespace Adobe
     {
         Alive alive;
         const auto pairs = ReadPairs(BridgeFolder() / "alive.txt");
+        if (Value(pairs, "end") != "1")
+            return alive;  // sendo escrito agora (o plugin grava direto no arquivo)
         long long at = 0;
         try { at = std::stoll(Value(pairs, "time")); } catch (...) {}
         const long long now = static_cast<long long>(std::time(nullptr));
