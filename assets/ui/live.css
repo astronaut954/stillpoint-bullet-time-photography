@@ -162,8 +162,14 @@
 html.kbd-focus .live :focus { outline: 2px solid var(--noct-primary); outline-offset: 2px; }
 
 /* Várias sessões num disparo (2026-11-05): ‹ Session 2 of 3 › no canto de cima do Operator; no Audience, o texto */
-.live-sess { display: inline-flex; align-items: center; gap: 8px; flex: none; }  /* na ponta direita, depois do play (que aparece com o mouse) */
-.live-sess.hidden { display: none; }
+/* A caixa do play quebra em duas linhas quando não cabe: velocidade em cima, as sessões embaixo (alinhadas à direita) */
+.live-top { height: auto; min-height: 40px; align-items: flex-start; }
+.live-top > b, .live-top > span { line-height: 40px; }
+.live-top .live-play { flex-wrap: wrap; justify-content: flex-end; row-gap: 8px; flex: 0 1 auto; min-width: min-content; }
+.live-top #liveTopInfo { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }  /* o resumo encolhe antes da caixa do play */
+.live-play-row { display: inline-flex; align-items: center; gap: 10px; flex: none; }
+.live-sess { gap: 8px; text-transform: uppercase; letter-spacing: .12em; }
+.live-sess.hidden, .live-play .hidden { display: none; }
 .live-sess .btn-icon { width: 30px; height: 30px; padding: 0; font-size: 16px; line-height: 1; }
 .live-sess .btn-small { height: 30px; }
 .live-sess .lbl { color: var(--noct-text); min-width: 15ch; text-align: center; font-variant-numeric: tabular-nums; }

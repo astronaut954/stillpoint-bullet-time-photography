@@ -1644,6 +1644,12 @@ Com `STILLPOINT_FAKE_CAMERAS=9`. Na tela principal, painel "Bullet time", campo 
 - [ ] Parado numa sessão sem mexer: depois de 15 s, volta sozinho a "· Playing all".
 - [ ] Space dispara de novo: o disparo novo começa em "Playing all", só com as sessões dele.
 - [ ] "Sessions" em 1: nada disso aparece (igual a antes).
+- [ ] Os controles das sessões ficam na mesma caixa de "Speed" e "Reverse loop" (canto de cima, à direita), que aparece
+      com o mouse e some sozinha. Com a janela estreita, a caixa quebra em duas linhas: "Speed · Reverse loop · Reset"
+      em cima e "‹ Session 1 of 2 › · Pinned · Play all" embaixo; o resumo ("9 cameras · all at once") encurta com "…".
+- [ ] "Reset" (na mesma caixa, só com a sequência tocando): para a sequência e volta para a tela de pronto ("Ready · …").
+- [ ] Disparar, fechar a Live, apagar as sessões na tela principal e abrir a Live de novo: não fica tocando nada (volta
+      para a tela de pronto). Apagando só uma das sessões do disparo, a Live continua só com as que sobraram.
 
 ## Resultado
 

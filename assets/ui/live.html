@@ -16,14 +16,18 @@
     <!-- Clarão a cada disparo (como o da janela principal) -->
     <div id="liveFlash" class="live-flash"></div>
     <div id="liveTop" class="live-top"><b>Stillpoint · Live</b><span id="liveTopInfo"></span><span id="liveTopRight" class="r"></span>
-      <!-- Play da sequência no fim: velocidade e vai-e-volta (aparece com o mouse, como as opções) -->
+      <!-- Play da sequência no fim (aparece com o mouse, como as opções): velocidade e vai-e-volta; com várias sessões
+           num disparo, ‹ Session 2 of 3 › e o estado na mesma caixa, na linha de baixo quando não cabe; Reset sai da
+           sequência e volta para a tela de pronto -->
       <div id="livePlay" class="live-play">
-      <span class="live-tools-label">Speed</span>
-      <div class="live-speed"><button id="liveSlower" class="btn btn-secondary btn-small btn-icon" title="Slower">−</button><span id="liveSpeed" class="play-speed">1.0x</span><button id="liveFaster" class="btn btn-secondary btn-small btn-icon" title="Faster">+</button></div>
-      <label class="log-option live-tools-check" title="Play back and forth (1, 2, 3, 2, 1...)"><input id="liveReverse" type="checkbox" checked> Reverse loop</label>
-</div>
-      <!-- Várias sessões num disparo (Operator): ‹ Session 2 of 3 › e o estado; "Play all" volta a tocar todas -->
-      <span id="liveSess" class="live-sess hidden"><button id="liveSessPrev" class="btn btn-secondary btn-small btn-icon" title="Previous session (←)">‹</button><span id="liveSessLabel" class="lbl"></span><button id="liveSessNext" class="btn btn-secondary btn-small btn-icon" title="Next session (→)">›</button><span id="liveSessMode" class="mode"></span><button id="liveSessAll" class="btn btn-secondary btn-small hidden" title="Play every session again, one after the other (A)">Play all<span class="live-key">A</span></button></span>
+        <span class="live-play-row">
+          <span class="live-tools-label">Speed</span>
+          <span class="live-speed"><button id="liveSlower" class="btn btn-secondary btn-small btn-icon" title="Slower">−</button><span id="liveSpeed" class="play-speed">1.0x</span><button id="liveFaster" class="btn btn-secondary btn-small btn-icon" title="Faster">+</button></span>
+          <label class="log-option live-tools-check" title="Play back and forth (1, 2, 3, 2, 1...)"><input id="liveReverse" type="checkbox" checked> Reverse loop</label>
+          <button id="liveReset" class="btn btn-secondary btn-small hidden" title="Stop the sequence and go back to the ready screen">Reset</button>
+        </span>
+        <span id="liveSess" class="live-sess live-play-row hidden"><button id="liveSessPrev" class="btn btn-secondary btn-small btn-icon" title="Previous session (←)">‹</button><span id="liveSessLabel" class="lbl"></span><button id="liveSessNext" class="btn btn-secondary btn-small btn-icon" title="Next session (→)">›</button><span id="liveSessMode" class="mode"></span><button id="liveSessAll" class="btn btn-secondary btn-small hidden" title="Play every session again, one after the other (A)">Play all<span class="live-key">A</span></button></span>
+      </div>
     </div>
     <div class="live-center">
       <div id="liveBig" class="live-big hidden"></div>

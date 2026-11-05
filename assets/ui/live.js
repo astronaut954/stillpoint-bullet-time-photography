@@ -93,7 +93,7 @@ window.Live = (function () {
       film: $("liveFilm"), stage: $("liveStage"), stageImg: $("liveStageImg"),
       hint: $("liveHint"), tools: $("liveTools"), flash: $("liveFlash"),
       sess: $("liveSess"), sessLabel: $("liveSessLabel"), sessMode: $("liveSessMode"), sessAll: $("liveSessAll"),
-      sessPrev: $("liveSessPrev"), sessNext: $("liveSessNext"),
+      sessPrev: $("liveSessPrev"), sessNext: $("liveSessNext"), reset: $("liveReset"),
       modeBtns: Array.from(document.querySelectorAll("#liveTools [data-mode]")),
       layoutBtns: Array.from(document.querySelectorAll("#liveTools [data-layout]")),
       displayBtns: Array.from(document.querySelectorAll("#liveTools [data-display]")),
@@ -118,6 +118,7 @@ window.Live = (function () {
     el.sessPrev.addEventListener("click", () => pickSession(S.multi.cur - 1, true));
     el.sessNext.addEventListener("click", () => pickSession(S.multi.cur + 1, true));
     el.sessAll.addEventListener("click", () => pickSession(S.multi.cur, false));
+    el.reset.addEventListener("click", () => resetView());
     el.root.addEventListener("mousemove", showTools);
     el.root.addEventListener("mousedown", showTools);
     // Um botão clicado não fica com o foco: Space continua sendo "disparar", não o botão
@@ -497,6 +498,7 @@ window.Live = (function () {
       : !audience && sessions > 1 ? "Session " + S.session.index + " of " + sessions : "";
     el.topRight.classList.toggle("live-sess-aud", multi && audience);
     el.sess.classList.toggle("hidden", !(multi && !audience));
+    el.reset.classList.toggle("hidden", !(S.phase === "done" && S.play.urls.length));
     if (multi && !audience) {
       el.sessLabel.textContent = "Session " + (S.multi.cur + 1) + " of " + S.multi.list.length;
       el.sessMode.textContent = S.multi.pinned ? "· Pinned" : "· Playing all";
@@ -584,7 +586,23 @@ window.Live = (function () {
   }
   // A lista de sessões do app (a mais nova primeiro), a cada aviso "sessions": guarda os nomes que já existiam
   // antes do disparo, para saber quais são deste disparo
-  function noteSessions(list) { S.lastNames = (list || []).map((x) => x.name); }
+  function noteSessions(list) {
+    S.lastNames = (list || []).map((x) => x.name);
+    // Sessões apagadas (ou que saíram da lista) não continuam tocando: tira da volta; se não sobrar nenhuma, Reset
+    const have = new Set(S.lastNames);
+    if (S.multi.active) {
+      const keep = S.multi.list.filter((x) => have.has(x.name));
+      if (keep.length !== S.multi.list.length) {
+        if (!keep.length) { resetView(); return; }
+        const curName = S.multi.list[S.multi.cur] && S.multi.list[S.multi.cur].name;
+        S.multi.list = keep;
+        if (keep.length < 2) { S.multi.active = false; S.play.name = keep[0].name; S.play.urls = keep[0].urls; S.play.i = 0; restartPlayTimer(); render(); return; }
+        const k = keep.findIndex((x) => x.name === curName);
+        showMulti(k >= 0 ? k : 0, false);
+        render();
+      }
+    } else if (S.play.name && S.play.urls.length && !have.has(S.play.name)) resetView();
+  }
   // fotos: [{file, order}] da sessão nova; load(session, file) -> Promise<url>; list: a lista do app (a mais nova primeiro).
   // O app manda a lista só no fim do disparo inteiro: com "Sessions" > 1, as sessões deste disparo são as primeiras
   // da lista que não existiam antes dele (no máximo "Sessions")
@@ -617,12 +635,24 @@ window.Live = (function () {
     }
     loadAll(photos, name).then((urls) => {
       if (!S.open || S.phase !== "done") return;
+      S.play.name = name || "";
       S.play.urls = urls;
       S.play.i = 0;
       S.play.dir = 1;
       restartPlayTimer();
       render();
     });
+  }
+  // Reset (decisão do dono, 2026-11-05): para a sequência e volta para a tela de pronto ("Ready · …")
+  function resetView() {
+    clearTimeout(S.multi.pinTimer);
+    S.multi = { list: [], cur: 0, pinned: false, active: false, pinTimer: 0, before: S.multi.before };
+    S.play.name = "";
+    stopPlayback();
+    S.phase = "idle";
+    S.received = { done: 0, total: 0 };
+    S.elapsedMs = 0;
+    render();
   }
   function multiOn() { return S.multi.active && S.multi.list.length > 1 && S.phase === "done"; }
   // Mostra a sessão k (do começo). broadcast: o Operator avisa as outras janelas Live (o Audience acompanha)
