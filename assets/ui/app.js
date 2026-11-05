@@ -3877,7 +3877,7 @@
     let cur = Math.max(0, Math.min(n - 1, exp.photo || 0));
     const item = items[cur];
     top.innerHTML = "";
-    top.appendChild(button("Back to Framing", () => { exp.aligning = false; rerender(); }, { icon: "left", kind: "btn-secondary" }));
+    // Sem "Back to Framing" aqui: sair é pelo "Done aligning" do rodapé ou pelo Esc (decisão do dono, 2026-11-04)
     const where = el("span", "align-where", "Photo " + pad(item.order || cur + 1) + " of " + pad(n) + " · ← → other photos");
     top.appendChild(where);
     rows.classList.add("hidden");
