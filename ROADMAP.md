@@ -781,12 +781,39 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    pior que nenhuma). Photoshop / Camera Raw: abre os frames; aviso de que o resultado sai num
    formato não RAW (TIFF/JPEG) em `Edited/`. Lightroom "normal" (nuvem): sem SDK nem XMP — só o
    caminho manual (exportar para `Edited/`).
-6. **Etapa 21 — modo caixa de disparo (sempre a última).** O app usa a caixa (ESP32 + um canal
+   Decisão do dono (2026-11-01): plugin para o Lightroom Classic primeiro (ele usa o Classic), depois
+   o Photoshop. O app confere se o plugin está instalado e atualizado e instala sozinho; um comando
+   só ("Edit in Lightroom Classic"), feedback por avisos, Activity e a etiqueta "Edited n / m".
+   Protótipo das telas no Lightroom aprovado em conceito; decisões de formato, sync e prévia pendentes.
+   Decisões do dono registradas nas conversas de 2026-11-01 (passadas para cá em 2026-11-05; conferir antes de
+   começar): editadas voltam em TIFF 16 bits, resolução cheia, Adobe RGB, com pergunta na exportação sobre manter
+   Adobe RGB ou converter; no Stillpoint a editada aparece por padrão, com botão para alternar Original / Edited;
+   sessão já importada só vai para a coleção que já existe; a seção do Settings se chama "Lightroom & Photoshop";
+   cor: sRGB por padrão em JPG/PNG/WEBP/HEIC/Sequence, Adobe RGB em TIFF/Lenticular, com opção de trocar; o
+   plugin precisa funcionar no Mac e no Windows (Lightroom Classic 15.6 e Photoshop 27.11 na máquina do dono).
+6. **Etapa 21 — Histórico de edição permanente.** Pedido do dono (2026-11-01): um histórico no estilo
+   do painel History do Lightroom Classic, **vinculado ao projeto** (o projeto faz o papel do catálogo
+   do Classic: o histórico mora na pasta dele, vai junto se a pasta for movida e só existe com um
+   projeto aberto; sessões fora de projeto ficam só com o Desfazer de hoje), organizado por sessão e
+   sobrevivendo ao fechar o app: cada ação (entrar/sair do projeto, ordem das fotos, apagar/restaurar, rótulo, exportação) vira
+   um passo com data; dá para voltar a qualquer passo, não só ao último (o Desfazer de hoje vive só
+   na memória da sessão aberta). Decisões pendentes do dono: onde aparece (janela Project, botão
+   direito da sessão, painel próprio), se voltar a um passo cria um passo novo (como no Lightroom) ou
+   apaga os seguintes, e o que fica fora (ex.: mudanças de câmera).
+7. **Etapa 22 — Bullet time com celulares (Android e iPhone).** Pedido do dono (2026-11-01): usar
+   celulares como câmeras do rig, junto ou no lugar das Canon. Um app companheiro no celular (ou a
+   página Live servida na rede local, se a câmera do navegador bastar) recebe o plano de disparo do
+   Stillpoint pelo Wi-Fi, dispara no instante combinado e manda a foto de volta; o Stillpoint trata o
+   celular como mais uma câmera (ordem, Identify, sessão, exportação). Decisões pendentes do dono:
+   app nativo ou navegador; sincronia de relógio aceitável entre os aparelhos; se a foto volta em
+   JPEG/HEIC ou também em RAW (DNG) nos aparelhos que permitem; mistura com as Canon na mesma sessão.
+   Depende de medir a precisão de disparo pela rede antes de desenhar a interface.
+8. **Etapa 23 — modo caixa de disparo (sempre a última).** O app usa a caixa (ESP32 + um canal
    por câmera, já desenhada em `docs/hardware/caixa-de-disparo.pdf` e `hardware/trigger-box/`)
    para disparar: o plano do Timing/Sweep vai para a caixa (PLAN/GO), que dispara com precisão
    de milissegundos; o USB fica só para configurações e fotos. Depende do protótipo de 2 canais
    testado em hardware.
-7. **Etapa futura (muito depois, só com o projeto maduro) — distribuído por rede.** Vários
+9. **Etapa futura (muito depois, só com o projeto maduro) — distribuído por rede.** Vários
    computadores pequenos, cada um com 3–4 câmeras, ligados por Ethernet a um "chefe" que coordena
    e junta as fotos (modo "trabalhador" e modo "chefe" no Stillpoint). É o desenho dos rigs de
    20–100 câmeras.
@@ -798,7 +825,7 @@ Junto com essas etapas (sem etapa própria):
   0,9 s depois da anterior e aceita a 1,8 s. Entre câmeras diferentes, 0,3 s funcionou; 0,1 e
   0,15 s ainda não foram testados com 9 câmeras. **Decisão pendente (dono do projeto):** o que
   fazer com esse limite — avisar na Timeline, insistir no "busy", fundir Sweep com One after
-  another, ou nada por enquanto. Nada foi mudado no Sweep. Com a caixa de disparo (hoje etapa 21) o
+  another, ou nada por enquanto. Nada foi mudado no Sweep. Com a caixa de disparo (hoje etapa 23) o
   limite entre câmeras deixa de existir; o da mesma câmera, não.
   **Decisões de 2026-10-21 (noite), branch `sweep-limite`:** (C) "One after another" e "Sweep"
   viraram um modo só, **Sweep** — intervalo livre a partir de 0,05 s, atalhos 0,1 / 0,2 / 0,3 /
