@@ -356,7 +356,7 @@ Before a new version:
    The app shows these lines in its update window.
 
 Each platform packages its own zip and installer (`.dmg` on macOS, `-setup.exe` on Windows).
-Run on each machine, after building:
+Run on each machine. The script builds the app first and stops without publishing if the build fails (on Windows, run it from the Visual Studio *Developer PowerShell*, where `cmake` is available):
 
 ```
 python3 scripts/publish_release.py vX.Y.Z   # macOS — the first one creates the tag and the GitHub release

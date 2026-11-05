@@ -322,7 +322,32 @@ def make_mac_app(dest_dir: Path) -> None:
         print("[WARN] codesign failed; the app is packaged without a local signature")
 
 
+def build_app() -> None:
+    """Compila o app antes de montar o pacote e para tudo se a compilação falhar.
+
+    Em 2026-11-05 a compilação do Windows falhou, a linha do PowerShell seguiu adiante e este script empacotou
+    o Stillpoint.exe antigo que estava em build/ (a versão conferida vem de um arquivo gerado antes de compilar,
+    não do .exe). Compilando aqui, um erro impede o envio."""
+    cmake = shutil.which("cmake")
+    if not cmake:
+        raise SystemExit(
+            "\n[ERROR] cmake not found, so the app cannot be built and nothing was published.\n"
+            + ("Install CMake (brew install cmake) and run this script again.\n" if IS_MAC else
+               "Run this script from the Visual Studio Developer PowerShell (or Developer Command Prompt).\n")
+        )
+    configure_preset = "macos-arm64" if IS_MAC else "windows-x64"
+    build_dir = REPO_ROOT / "build" / configure_preset
+    if not (build_dir / "CMakeCache.txt").exists():
+        print(f"[RUN] cmake --preset {configure_preset}")
+        if subprocess.run([cmake, "--preset", configure_preset], cwd=REPO_ROOT).returncode != 0:
+            raise SystemExit("\n[ERROR] CMake configure failed. Nothing was published.\n")
+    print(f"[RUN] cmake --build --preset {configure_preset}-release")
+    if subprocess.run([cmake, "--build", "--preset", f"{configure_preset}-release"], cwd=REPO_ROOT).returncode != 0:
+        raise SystemExit("\n[ERROR] The build failed (see the errors above). Nothing was packaged or published.\n")
+
+
 def main():
+    build_app()
     ensure_file(BUILD_EXE, f"{BUILD_EXE.name} (Release build)")
     ensure_file(BUILD_GUI, f"{BUILD_GUI.name} (Release build of the window app)")
     ensure_file(BUILD_WORKER, f"{BUILD_WORKER.name} (Release build of the camera worker; the window app needs it beside it)")
