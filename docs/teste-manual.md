@@ -1612,6 +1612,15 @@ Com `STILLPOINT_FAKE_CAMERAS=9`.
 - [ ] Janela Project: "Mixed ratios", "n missing" e "n deleted" ficam na coluna Session, embaixo da data; a coluna
       Edited fica só com "Originals" / "Edited n / m".
 - [ ] Janela de digitar um nome aberta (ex.: renomear): ⌘Z fora do campo não desfaz nada do app.
+- [ ] Align photos: Esc volta à tela do Framing (como "Done aligning"); o Export continua aberto. Fora do Align photos, o
+      Esc segue perguntando "Leave Export sessions?".
+- [ ] Passos do cabeçalho (caminho B): os de trás ("1 Sessions ✓") voltam com um clique; os da frente não reagem ao
+      clique (mouse em cima: "Continue with the green button below"). Avançar só pelo botão verde do rodapé.
+- [ ] Regra do ⌘Z: mudar a proporção no passo 1 (sessão A), ir ao passo 2 › aba Sequence e mudar o fps, ir ao passo 3.
+      ⌘Z: a janela vai para o passo 2 › Sequence e desfaz o fps (aviso "Undo: Outputs › Sequence · <data de A>"). ⌘Z de
+      novo: vai ao passo 1, sessão A, e desfaz a proporção ("Undo: Framing · <data>"). ⇧⌘Z refaz indo aos mesmos
+      lugares. Mudança feita no "Align photos": desfazer abre o "Align photos" na foto em que foi feita. Trocar de
+      passo, aba, sessão ou foto não entra no desfazer.
 
 ## Resultado
 

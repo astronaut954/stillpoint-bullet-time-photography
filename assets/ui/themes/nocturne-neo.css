@@ -1777,6 +1777,7 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .export-step.done { color: var(--noct-text-muted); border-color: var(--noct-border-strong); }
 .export-step.on { background: var(--noct-primary); border-color: var(--noct-primary); color: var(--noct-on-primary); cursor: default; }
 .export-step:disabled { cursor: default; opacity: .6; }
+.export-step.ahead:disabled { opacity: 1; }  /* passos da frente: só indicação (avança pelo botão verde) */
 .export-step:not(.on):not(:disabled):hover { color: var(--noct-primary); border-color: var(--noct-primary); }
 .export-step-sep { color: var(--noct-text-dim); }
 .export-step:focus-visible { outline: 2px solid var(--noct-primary); outline-offset: 2px; }

@@ -2824,9 +2824,19 @@
     const now = expSnapshot();
     if (expSnap !== null && now !== expSnap) {
       const before = expSnap;
-      recordAction({ label: "Export settings", exportWin: true, undo: () => expApply(before), redo: () => expApply(now) });
+      // Regra do ⌘Z (decisão do dono, 2026-11-04): desfazer e refazer levam até onde a mudança aconteceu (passo,
+      // sessão, aba, foto, "Align photos") antes de aplicar, e o aviso diz o quê e onde. Navegar não é um passo.
+      const where = expWhere();
+      const go = (snap) => { if ($("exportOverlay").classList.contains("hidden")) return false; Object.assign(exp, where); return expApply(snap); };
+      recordAction({ label: expWhereText(where), exportWin: true, where, undo: () => go(before), redo: () => go(now) });
     }
     expSnap = now;
+  }
+  function expWhere() { return { step: exp.step, active: exp.active, mode: exp.mode, photo: exp.photo || 0, aligning: exp.step === 1 && !!exp.aligning }; }
+  function expWhereText(w) {
+    const date = sessionLabel(w.active || "").date;
+    const place = w.step === 1 ? (w.aligning ? "Align photos" : "Framing") : w.step === 2 ? "Outputs › " + ((OUTPUTS.find(([k]) => k === w.mode) || [, "Photos"])[1]) : "Review";
+    return place + (w.step === 3 || !date ? "" : " · " + date);
   }
   function expApply(snap) {
     if ($("exportOverlay").classList.contains("hidden")) return false;
@@ -2883,10 +2893,12 @@
       const done = n < exp.step;
       const b = el("button", "export-step" + (n === exp.step ? " on" : done ? " done" : ""), n + " " + name + (done ? " ✓" : ""));
       b.type = "button"; b.setAttribute("role", "tab"); b.setAttribute("aria-selected", n === exp.step ? "true" : "false");
-      const blocked = n > exp.step && !!exportStepProblem(n - 1);
-      b.disabled = blocked;
-      if (blocked) b.title = exportStepProblem(n - 1);
-      b.addEventListener("click", () => goExportStep(n));
+      // Caminho B (decisão do dono, 2026-11-04): os passos de trás voltam com um clique; os da frente são só
+      // indicação (avança-se pelo botão verde do rodapé, que confere o passo aberto)
+      const ahead = n > exp.step;
+      b.disabled = ahead;
+      if (ahead) { b.classList.add("ahead"); b.title = "Continue with the green button below"; }
+      b.addEventListener("click", () => { if (n < exp.step) goExportStep(n); });
       box.appendChild(b);
     });
   }
@@ -3749,8 +3761,8 @@
           const u0 = top.undo, r0 = top.redo;
           top.alignRatio = true;
           top.label = "Ratio " + r + " for Align photos";
-          top.undo = () => { exp.active = fromActive; exp.photo = fromPhoto; exp.aligning = fromAligning; return u0(); };
-          top.redo = () => { exp.active = session.name; exp.photo = 0; exp.aligning = true; return r0(); };
+          top.undo = () => { const r = u0(); if (r === false) return false; exp.active = fromActive; exp.photo = fromPhoto; exp.aligning = fromAligning; renderExport(); };
+          top.redo = () => r0();  // o lugar guardado já é "Align photos" na sessão escolhida
         }
     };
     const box = el("div", "ratio-others");
@@ -8107,6 +8119,8 @@
       if (open === "promptOverlay") return false;  // o campo já trata Enter/Esc
       e.overlayHandled = true;
       e.preventDefault(); e.stopImmediatePropagation();
+      // Dentro de "Align photos", o Esc volta ao Framing, como "Done aligning" (decisão do dono, 2026-11-04)
+      if (open === "exportOverlay" && exp.step === 1 && exp.aligning && !exp.waiting) { exp.aligning = false; renderExport(); return true; }
       OVERLAY_CANCEL[open]();
       return true;
     }
