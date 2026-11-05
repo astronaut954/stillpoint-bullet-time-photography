@@ -251,12 +251,15 @@ function Bridge.start(why)
 	local generation = _G.StillpointGeneration
 	LrTasks.startAsyncTask(function()
 		Bridge.note('Stillpoint plugin ' .. tostring(Bridge.version()) .. ' listening (' .. tostring(why) .. ', bridge folder: ' .. tostring(Bridge.folder()) .. ')')
-		while _G.StillpointGeneration == generation do
+		-- Para quando outra volta começa ou quando o plugin é desligado no Plug-in Manager (Disable). O Shutdown.lua
+		-- sozinho não bastava: no teste de 2026-11-05 o plugin desligado continuou respondendo.
+		while _G.StillpointGeneration == generation and _PLUGIN.enabled ~= false do
 			local ok, problem = LrTasks.pcall(Bridge.tick)
 			if not ok then Bridge.problem(problem) end
 			LrTasks.sleep(0.5)
 		end
-		Bridge.note('Stillpoint plugin stopped listening (' .. tostring(why) .. ')')
+		Bridge.note('Stillpoint plugin stopped listening (' .. tostring(why) .. (_PLUGIN.enabled == false and ', turned off in the Plug-in Manager' or '') .. ')')
+		if _PLUGIN.enabled == false then Bridge.goodbye() end
 	end, 'Stillpoint bridge')
 end
 
