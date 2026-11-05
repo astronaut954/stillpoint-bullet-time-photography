@@ -160,3 +160,13 @@
 
 /* Teclado (Tab): contorno verde no item com o foco; nas caixas de marcar, o mesmo */
 html.kbd-focus .live :focus { outline: 2px solid var(--noct-primary); outline-offset: 2px; }
+
+/* Várias sessões num disparo (2026-11-05): ‹ Session 2 of 3 › no canto de cima do Operator; no Audience, o texto */
+.live-sess { display: inline-flex; align-items: center; gap: 8px; flex: none; }  /* na ponta direita, depois do play (que aparece com o mouse) */
+.live-sess.hidden { display: none; }
+.live-sess .btn-icon { width: 30px; height: 30px; padding: 0; font-size: 16px; line-height: 1; }
+.live-sess .btn-small { height: 30px; }
+.live-sess .lbl { color: var(--noct-text); min-width: 15ch; text-align: center; font-variant-numeric: tabular-nums; }
+.live-sess .mode { color: var(--noct-text-muted); font-size: 11px; }
+.live-sess .mode.pinned { color: var(--noct-pending); }
+.live-top .r.live-sess-aud { font-size: 14px; color: var(--noct-text); letter-spacing: .2em; }

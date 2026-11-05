@@ -944,7 +944,11 @@ Atualizar esta tabela sempre que uma função mudar de status.
 
 - **Live view com várias sessões num disparo (anotado pelo dono em 2026-11-02):** quando "Sessions"
   é maior que 1, o Live view (modo operador e modo audiência) só mostra uma sessão; não dá para
-  navegar entre as sessões do mesmo bullet time. Decisão de como deve ser: do dono, ainda não tomada.
+  navegar entre as sessões do mesmo bullet time. **Decidido em 2026-11-05 (protótipo "Live view: várias sessões"):**
+  caminho B com as setas da A: no fim, as sessões tocam uma volta inteira cada, em sequência ("Playing all"); no
+  Operator, "‹ Session 2 of 3 ›" (ou ← →) para numa sessão ("Pinned"), "Play all" (tecla A) volta, e volta sozinho
+  depois de 15 s parado; o Audience mostra "Session 2 of 3" e acompanha (aviso `livePick` do app para as janelas Live).
+  Implementado na branch `proporcao`; falta o teste do dono (seção 39 do roteiro).
 
 - **Testes com câmeras reais ainda não feitos (anotado pelo dono em 2026-11-02):** o **cartão
   cinza** ("Use the gray card" no Match automatically: achar o cartão na foto, a conferência com

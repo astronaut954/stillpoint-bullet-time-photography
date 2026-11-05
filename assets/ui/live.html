@@ -22,6 +22,8 @@
       <div class="live-speed"><button id="liveSlower" class="btn btn-secondary btn-small btn-icon" title="Slower">−</button><span id="liveSpeed" class="play-speed">1.0x</span><button id="liveFaster" class="btn btn-secondary btn-small btn-icon" title="Faster">+</button></div>
       <label class="log-option live-tools-check" title="Play back and forth (1, 2, 3, 2, 1...)"><input id="liveReverse" type="checkbox" checked> Reverse loop</label>
 </div>
+      <!-- Várias sessões num disparo (Operator): ‹ Session 2 of 3 › e o estado; "Play all" volta a tocar todas -->
+      <span id="liveSess" class="live-sess hidden"><button id="liveSessPrev" class="btn btn-secondary btn-small btn-icon" title="Previous session (←)">‹</button><span id="liveSessLabel" class="lbl"></span><button id="liveSessNext" class="btn btn-secondary btn-small btn-icon" title="Next session (→)">›</button><span id="liveSessMode" class="mode"></span><button id="liveSessAll" class="btn btn-secondary btn-small hidden" title="Play every session again, one after the other (A)">Play all<span class="live-key">A</span></button></span>
     </div>
     <div class="live-center">
       <div id="liveBig" class="live-big hidden"></div>
@@ -85,7 +87,7 @@
         const list = event.sessions || [];
         const newest = list[0];
         if (newest && newest.photos && newest.photos.length)
-          Live.playback(newest.photos, (file) => photo(newest.name, file, 800));
+          Live.playback(newest.photos, (file) => photo(newest.name, file, 800), newest.name);
         return;
       }
       Live.handle(event);
@@ -102,6 +104,7 @@
         close: () => window.liveClose(String(info.index || 1)),
         identify: () => window.liveIdentify(),
         another: () => window.liveAnother(),
+        pick: (session, pinned) => { if (typeof window.livePick === "function") window.livePick(String(session), pinned ? "1" : "0"); },
       }, info.opts || "", info.sound || null, info.screens || []);
       ready = true;
       Live.setLives(info.lives || 1, info.rank || 1);

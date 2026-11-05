@@ -2627,6 +2627,18 @@ namespace
                             NativeWindow::PlaceNear(a.value(), b.value(), 40, 40);
                 return "null";
             });
+            // livePick(sessão, parada "1"/"0"): no fim de um disparo com várias sessões, a janela Operator
+            // avisa todas as janelas Live qual sessão está tocando (o Audience acompanha)
+            v.bind("livePick", [&](const std::string& request) -> std::string
+            {
+                const auto args = ParseStringArgs(request);
+                if (args.size() < 2)
+                    return "null";
+                int session = 0;
+                try { session = std::stoi(args[0]); } catch (...) { return "null"; }
+                listener.Emit(Json("livePick").Add("session", session).Add("pinned", args[1] == "1"));
+                return "null";
+            });
             // "Identify displays": número grande em cada monitor por 3 s
             v.bind("liveIdentify", [](const std::string&) -> std::string
             {

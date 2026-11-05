@@ -1627,6 +1627,24 @@ Com `STILLPOINT_FAKE_CAMERAS=9`.
       lugares. Mudança feita no "Align photos": desfazer abre o "Align photos" na foto em que foi feita. Trocar de
       passo, aba, sessão ou foto não entra no desfazer.
 
+## 39. Live view com várias sessões num disparo (2.17.0 em diante)
+
+Com `STILLPOINT_FAKE_CAMERAS=9`. Na tela principal, painel "Bullet time", campo "Sessions" em 3. Abra o "Live view"
+(barra de cima); dentro dela, mova o mouse e clique em "Another window"; na segunda janela, em "Mode", escolha
+"Audience". Deixe as duas à vista e dispare com "It's bullet time" (ou Space numa das Live).
+
+- [ ] Durante o disparo: igual a antes (contagem, câmeras; "Session 2 of 3" no canto do Operator).
+- [ ] No fim, Operator: no canto de cima, à direita, "‹ Session 1 of 3 ›" e "· Playing all"; embaixo, "Playing all
+      sessions" e a linha de teclas começa com "← → · other sessions". Cada sessão toca uma volta inteira (com "Reverse
+      loop" ligado, 1 → 9 → 1) e passa para a seguinte; depois da 3, volta para a 1. A tira de fotos muda junto.
+- [ ] Audience: "Session 1 of 3" no canto de cima, e a mesma sessão que o Operator mostra, trocando junto.
+- [ ] Operator: clicar "›" (ou →): vai para a sessão seguinte e fica nela ("· Pinned" em âmbar, "Playing session 2"),
+      aparece o botão "Play all" (com a tecla A) e a linha de teclas ganha "A · play all". O Audience vai junto.
+- [ ] "Play all" (ou A): volta a "· Playing all", continuando da sessão em que estava; o Audience acompanha.
+- [ ] Parado numa sessão sem mexer: depois de 15 s, volta sozinho a "· Playing all".
+- [ ] Space dispara de novo: o disparo novo começa em "Playing all", só com as sessões dele.
+- [ ] "Sessions" em 1: nada disso aparece (igual a antes).
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |

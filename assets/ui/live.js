@@ -20,6 +20,7 @@ window.Live = (function () {
   const SPEEDS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 3, 4, 5];  // 1x = 220 ms por foto, como na janela principal
   const NUMERIC_GAP_MS = 1500;   // contagem em números só para intervalos maiores que isto
   const FLASH_MS = 320;          // quanto tempo a câmera fica branca depois de disparar
+  const PIN_MS = 15000;          // parada numa sessão: volta a tocar todas depois disto (decisão do dono, 2026-11-05)
 
   const S = {
     open: false,
@@ -38,6 +39,10 @@ window.Live = (function () {
     received: { done: 0, total: 0 },
     elapsedMs: 0,              // duração do disparo (do primeiro ao último)
     play: { urls: [], i: 0, dir: 1, timer: 0, waiting: false },
+    // Várias sessões num disparo (decisão do dono, 2026-11-05: caminho B com as setas da A). list: as sessões que já
+    // chegaram neste disparo ({name, urls}); cur: a que está tocando; pinned: parada numa só (‹ › ou ← → no
+    // Operator); volta sozinha para "Playing all" depois de PIN_MS
+    multi: { list: [], cur: 0, pinned: false, active: false, pinTimer: 0 },
     raf: 0,
     hideTimer: 0,
     rigVisible: false,
@@ -87,6 +92,8 @@ window.Live = (function () {
       bar: $("liveBar"), fill: $("liveBarFill"), ticks: $("liveBarTicks"),
       film: $("liveFilm"), stage: $("liveStage"), stageImg: $("liveStageImg"),
       hint: $("liveHint"), tools: $("liveTools"), flash: $("liveFlash"),
+      sess: $("liveSess"), sessLabel: $("liveSessLabel"), sessMode: $("liveSessMode"), sessAll: $("liveSessAll"),
+      sessPrev: $("liveSessPrev"), sessNext: $("liveSessNext"),
       modeBtns: Array.from(document.querySelectorAll("#liveTools [data-mode]")),
       layoutBtns: Array.from(document.querySelectorAll("#liveTools [data-layout]")),
       displayBtns: Array.from(document.querySelectorAll("#liveTools [data-display]")),
@@ -108,6 +115,9 @@ window.Live = (function () {
     el.onTop.addEventListener("change", () => setOpts({ onTop: el.onTop.checked }));
     el.another.addEventListener("click", () => { if (cb.another) cb.another(); });
     el.close.addEventListener("click", close);
+    el.sessPrev.addEventListener("click", () => pickSession(S.multi.cur - 1, true));
+    el.sessNext.addEventListener("click", () => pickSession(S.multi.cur + 1, true));
+    el.sessAll.addEventListener("click", () => pickSession(S.multi.cur, false));
     el.root.addEventListener("mousemove", showTools);
     el.root.addEventListener("mousedown", showTools);
     // Um botão clicado não fica com o foco: Space continua sendo "disparar", não o botão
@@ -175,6 +185,14 @@ window.Live = (function () {
       if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
       e.preventDefault();
       if (S.opts.display === "full") setOpts({ display: "window" }); else askFullScreen();
+    } else if ((e.key === "ArrowLeft" || e.key === "ArrowRight") && multiOn() && S.opts.mode === "operator") {
+      if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
+      e.preventDefault();
+      pickSession(S.multi.cur + (e.key === "ArrowRight" ? 1 : -1), true);
+    } else if ((e.key === "a" || e.key === "A") && multiOn() && S.multi.pinned && S.opts.mode === "operator" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
+      e.preventDefault();
+      pickSession(S.multi.cur, false);
     } else if (e.key === " ") {
       if (e.target.tagName === "INPUT") return;
       e.preventDefault();
@@ -450,7 +468,8 @@ window.Live = (function () {
         if (audience) nothing();
         else {
           const n = S.received.total || (p ? p.shots.length : 0);
-          status(S.received.done + " / " + n + " received", S.play.urls.length ? "Playing the sequence" : (S.lost.size ? "Some photos did not arrive" : "Done"));
+          status(S.received.done + " / " + n + " received", S.play.urls.length ? (multiOn() ? (S.multi.pinned ? "Playing session " + (S.multi.cur + 1) : "Playing all sessions") : "Playing the sequence")
+            : (S.lost.size ? "Some photos did not arrive" : "Done"));
         }
         break;
       case "cancelled":
@@ -472,10 +491,22 @@ window.Live = (function () {
     }
     el.topInfo.textContent = info;
     const sessions = p ? p.sessions : S.session.total;
-    el.topRight.textContent = !audience && sessions > 1 ? "Session " + S.session.index + " of " + sessions : "";
+    const multi = multiOn();
+    // No fim de um disparo com várias sessões: o Operator ganha ‹ Session 2 of 3 › e o estado; o Audience, o texto
+    el.topRight.textContent = multi ? (audience ? "Session " + (S.multi.cur + 1) + " of " + S.multi.list.length : "")
+      : !audience && sessions > 1 ? "Session " + S.session.index + " of " + sessions : "";
+    el.topRight.classList.toggle("live-sess-aud", multi && audience);
+    el.sess.classList.toggle("hidden", !(multi && !audience));
+    if (multi && !audience) {
+      el.sessLabel.textContent = "Session " + (S.multi.cur + 1) + " of " + S.multi.list.length;
+      el.sessMode.textContent = S.multi.pinned ? "· Pinned" : "· Playing all";
+      el.sessMode.classList.toggle("pinned", S.multi.pinned);
+      el.sessAll.classList.toggle("hidden", !S.multi.pinned);
+    }
     el.hint.textContent =
       S.phase === "countdown" || S.phase === "firing" || S.phase === "receiving" ? "Esc · cancel"
-      : "Space · " + (S.phase === "done" ? "shoot again" : "bullet time") + "    F · full screen    Esc · " + (S.opts.display === "full" ? "leave full screen" : "close");
+      : (multi && !audience ? "← → · other sessions    " + (S.multi.pinned ? "A · play all    " : "") : "")
+        + "Space · " + (S.phase === "done" ? "shoot again" : "bullet time") + "    F · full screen    Esc · " + (S.opts.display === "full" ? "leave full screen" : "close");
     el.legend.classList.toggle("hidden", audience || !p || p.all || S.phase === "idle" || S.phase === "countdown" || !!S.play.urls.length);
   }
 
@@ -507,14 +538,16 @@ window.Live = (function () {
   function stopPlayback() {
     clearInterval(S.play.timer);
     S.play = { urls: [], i: 0, dir: 1, timer: 0, waiting: false };
-    if (el) { el.film.innerHTML = ""; el.stageImg.removeAttribute("src"); }
+    if (el) { el.film.innerHTML = ""; el.film.dataset.key = ""; el.stageImg.removeAttribute("src"); }
   }
   function renderPlayback() {
     const urls = S.play.urls;
     el.film.classList.toggle("hidden", !urls.length);
     el.stage.classList.toggle("hidden", !urls.length);
     if (!urls.length) return;
-    if (el.film.childElementCount !== urls.length) {
+    const key = urls.join("|");
+    if (el.film.dataset.key !== key) {
+      el.film.dataset.key = key;
       el.film.innerHTML = "";
       urls.forEach((u, i) => {
         const d = document.createElement("div");
@@ -534,29 +567,75 @@ window.Live = (function () {
     const n = S.play.urls.length;
     if (n < 2) return;
     S.play.timer = setInterval(() => {
+      let lap = false;
       if (S.opts.reverse) {
         let next = S.play.i + (S.play.dir || 1);
         if (next >= n) { S.play.dir = -1; next = n - 2; }
-        else if (next < 0) { S.play.dir = 1; next = 1; }
+        else if (next < 0) { S.play.dir = 1; next = 1; lap = true; }
         S.play.i = next;
-      } else
+      } else {
         S.play.i = (S.play.i + 1) % n;
+        lap = S.play.i === 0;
+      }
+      // Uma volta inteira (1 → 9 → 1, ou 1 → 9): em "Playing all", a sessão seguinte
+      if (lap && multiOn() && !S.multi.pinned) { showMulti((S.multi.cur + 1) % S.multi.list.length, true); render(); return; }
       renderPlayback();
     }, Math.round(220 / S.opts.speed));
   }
-  // fotos: [{file, order}] da sessão nova; load(file) -> Promise<url>
-  function playback(photos, load) {
+  // fotos: [{file, order}] da sessão nova; load(file) -> Promise<url>; name: a sessão
+  function playback(photos, load, name) {
     if (!S.open || !S.play.waiting) return;
     S.play.waiting = false;
     const sorted = photos.slice().sort((a, b) => a.order - b.order);
+    const total = S.session.total, last = S.session.index >= total;
     Promise.all(sorted.map((ph) => Promise.resolve(load(ph.file)).catch(() => null))).then((urls) => {
       if (!S.open || S.phase !== "done") return;
-      S.play.urls = urls.filter(Boolean);
+      urls = urls.filter(Boolean);
+      // Guarda cada sessão do disparo; na última, começa a tocar todas, a partir da 1
+      if (total > 1) {
+        const key = name || String(S.session.index);
+        if (!S.multi.list.some((x) => x.name === key)) S.multi.list.push({ name: key, urls });
+        if (last && S.multi.list.length > 1) { S.multi.active = true; S.multi.pinned = false; clearTimeout(S.multi.pinTimer); showMulti(0, false); render(); return; }
+      }
+      S.play.urls = urls;
       S.play.i = 0;
       S.play.dir = 1;
       restartPlayTimer();
       render();
     });
+  }
+  function multiOn() { return S.multi.active && S.multi.list.length > 1 && S.phase === "done"; }
+  // Mostra a sessão k (do começo). broadcast: o Operator avisa as outras janelas Live (o Audience acompanha)
+  function showMulti(k, broadcast) {
+    const n = S.multi.list.length;
+    if (!n) return;
+    S.multi.cur = ((k % n) + n) % n;
+    S.play.urls = S.multi.list[S.multi.cur].urls;
+    S.play.i = 0;
+    S.play.dir = 1;
+    restartPlayTimer();
+    if (broadcast && S.opts.mode === "operator" && cb.pick) cb.pick(S.multi.cur, S.multi.pinned);
+  }
+  // ‹ › / ← → (pinned = true) ou "Play all" / A / os 15 s (pinned = false)
+  function pickSession(k, pinned) {
+    if (!multiOn()) return;
+    S.multi.pinned = pinned;
+    clearTimeout(S.multi.pinTimer);
+    if (pinned) S.multi.pinTimer = setTimeout(() => { if (multiOn() && S.multi.pinned) pickSession(S.multi.cur, false); }, PIN_MS);
+    if (pinned) showMulti(k, true);
+    else if (S.opts.mode === "operator" && cb.pick) cb.pick(S.multi.cur, false);  // continua de onde está
+    render();
+  }
+  // Aviso de outra janela Live (livePick): segue a mesma sessão
+  function remotePick(k, pinned) {
+    if (!S.multi.active || !S.multi.list.length) return;
+    const same = k === S.multi.cur && pinned === S.multi.pinned;
+    if (same) return;
+    S.multi.pinned = pinned;
+    clearTimeout(S.multi.pinTimer);
+    if (pinned) S.multi.pinTimer = setTimeout(() => { if (S.multi.pinned) { S.multi.pinned = false; render(); } }, PIN_MS);
+    if (k !== S.multi.cur) showMulti(k, false);
+    render();
   }
 
   // ---------------------------------------------------------------- avisos do programa
@@ -570,6 +649,8 @@ window.Live = (function () {
   }
   const handlers = {
     livePlan(e) {
+      clearTimeout(S.multi.pinTimer);
+      S.multi = { list: [], cur: 0, pinned: false, active: false, pinTimer: 0 };  // disparo novo: começa em "Playing all"
       S.plan = { all: !!e.all, countdown: e.countdown, sessions: e.sessions, shots: e.shots || [], groups: groupsOf(e.shots || []) };
       S.session = { index: 1, total: e.sessions };
       S.phase = "idle";
@@ -622,7 +703,8 @@ window.Live = (function () {
       S.play.waiting = true;
     },
     sessionInterrupted() { S.phase = "failed"; },
-    sequenceCancelled() { S.phase = "cancelled"; stopPlayback(); },
+    sequenceCancelled() { S.phase = "cancelled"; stopPlayback(); S.multi.active = false; },
+    livePick(e) { remotePick(+e.session || 0, !!e.pinned); },
     sequenceFinished(e) {
       if (S.phase === "cancelled") return;
       if (!e.completed && S.phase !== "done") S.phase = "failed";
