@@ -8448,6 +8448,7 @@
           : now - start > 120000;
         if (late) {
           finish(); hideToast();
+          window.adobeCancel(id);  // o pedido não fica esperando: um Lightroom aberto depois não recebe um pedido velho
           log("Lightroom Classic did not answer: " + Math.round((now - start) / 1000) + " s, Lightroom " + (st.running ? "open" : "not seen open") + ", plugin " + (st.alive ? "on" : "not answering") + (working ? ", request taken" : ", request not taken"), "warn");
           noAnswer(r, s, group, scope, !!st.running);
           return;
