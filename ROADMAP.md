@@ -942,7 +942,7 @@ Atualizar esta tabela sempre que uma função mudar de status.
 
 ## Pendências conhecidas
 
-- **Live view com várias sessões num disparo (anotado pelo dono em 2026-11-02):** quando "Sessions"
+- **[Resolvido na 2.17.0, publicada em 2026-11-05] Live view com várias sessões num disparo (anotado pelo dono em 2026-11-02):** quando "Sessions"
   é maior que 1, o Live view (modo operador e modo audiência) só mostra uma sessão; não dá para
   navegar entre as sessões do mesmo bullet time. **Decidido em 2026-11-05 (protótipo "Live view: várias sessões"):**
   caminho B com as setas da A: no fim, as sessões tocam uma volta inteira cada, em sequência ("Playing all"); no
