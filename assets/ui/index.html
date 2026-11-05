@@ -308,37 +308,75 @@
     <div class="dialog settings-dialog">
       <h3>Settings</h3>
       <div class="settings-body">
-        <div class="settings-row">
-          <span class="export-label">Theme</span>
-          <div><div id="settingsThemes"></div><div class="export-note">More themes will appear here.</div></div>
+        <!-- Abas (etapa 20, no desenho das abas do Export) -->
+        <div id="settingsTabs" class="export-tabs settings-tabs" role="tablist">
+          <button class="export-tab" type="button" role="tab" data-tab="general">General</button>
+          <button class="export-tab" type="button" role="tab" data-tab="projects">Projects</button>
+          <button class="export-tab" type="button" role="tab" data-tab="export">Export</button>
+          <button class="export-tab" type="button" role="tab" data-tab="adobe">Lightroom &amp; Photoshop</button>
+          <button class="export-tab" type="button" role="tab" data-tab="advanced">Advanced</button>
         </div>
-        <div class="settings-row">
-          <span class="export-label">Language</span>
-          <div><div id="settingsLanguages"></div><div class="export-note">More languages will appear here.</div></div>
-        </div>
-        <div class="settings-row">
-          <span class="export-label">Opening</span>
-          <div><div id="settingsSplash"></div><div class="export-note">The Stillpoint logo with the falling code when the app opens. Off: the app opens straight to the main screen (from the next time it opens).</div></div>
-        </div>
-        <div class="settings-row">
-          <span class="export-label">New projects</span>
-          <div>
-            <div class="settings-folder"><span id="settingsProjectsFolder" class="settings-folder-path"></span><button id="settingsProjectsFolderChange" class="btn btn-secondary btn-small">Change…</button><button id="settingsProjectsFolderReset" class="btn btn-secondary btn-small hidden" title="Back to the default folder (Pictures/Stillpoint)">Reset to default</button></div>
-            <div class="export-note">"New project…" creates each project as a folder inside this one. You can still pick another place for a single project from the New project window.</div>
+        <div class="settings-pane" data-pane="general">
+          <div class="settings-row">
+            <span class="export-label">Theme</span>
+            <div><div id="settingsThemes"></div><div class="export-note">More themes will appear here.</div></div>
+          </div>
+          <div class="settings-row">
+            <span class="export-label">Language</span>
+            <div><div id="settingsLanguages"></div><div class="export-note">More languages will appear here.</div></div>
+          </div>
+          <div class="settings-row">
+            <span class="export-label">Opening</span>
+            <div><div id="settingsSplash"></div><div class="export-note">The Stillpoint logo with the falling code when the app opens. Off: the app opens straight to the main screen (from the next time it opens).</div></div>
           </div>
         </div>
-        <div class="settings-row">
-          <span class="export-label">Lenticular</span>
-          <div><div id="settingsLentBand"></div><div class="export-note">Band color when a lenticular print uses "Placement: Fit" and the photo does not fill the sheet. The same for every session.</div></div>
+        <div class="settings-pane" data-pane="projects">
+          <div class="settings-row">
+            <span class="export-label">New projects</span>
+            <div>
+              <div class="settings-folder"><span id="settingsProjectsFolder" class="settings-folder-path"></span><button id="settingsProjectsFolderChange" class="btn btn-secondary btn-small">Change…</button><button id="settingsProjectsFolderReset" class="btn btn-secondary btn-small hidden" title="Back to the default folder (Pictures/Stillpoint)">Reset to default</button></div>
+              <div class="export-note">"New project…" creates each project as a folder inside this one. You can still pick another place for a single project from the New project window.</div>
+            </div>
+          </div>
         </div>
-        <div class="settings-row">
-          <span class="export-label">Debug</span>
-          <div>
-            <div id="settingsDebug"></div>
-            <div class="export-note">Saves the photos of every Test shot and what Match automatically measured and changed, in a folder you can send for analysis. Turns off when Stillpoint closes. Keeps up to 300 MB (the oldest are deleted).</div>
-            <div class="export-note" id="settingsDebugSize"></div>
-            <button id="settingsDebugFolder" class="btn btn-link btn-small settings-link">Open debug folder</button>
-            <button id="settingsDebugDelete" class="btn btn-link btn-small settings-link">Delete debug data</button>
+        <div class="settings-pane" data-pane="export">
+          <div class="settings-row">
+            <span class="export-label">Lenticular</span>
+            <div><div id="settingsLentBand"></div><div class="export-note">Band color when a lenticular print uses "Placement: Fit" and the photo does not fill the sheet. The same for every session.</div></div>
+          </div>
+        </div>
+        <div class="settings-pane" data-pane="adobe">
+          <div class="settings-row">
+            <span class="export-label">Lightroom Classic</span>
+            <div>
+              <div class="lr-status" id="settingsLrStatus"></div>
+              <div class="lr-status" id="settingsLrButtons"></div>
+              <div class="export-note">Edit in Lightroom Classic sends the session to the catalog below; Export to Stillpoint, in Lightroom, brings the edited photos back.</div>
+            </div>
+          </div>
+          <div class="settings-row">
+            <span class="export-label">Catalog</span>
+            <div><div id="settingsLrCatalog"></div><div class="export-note">The open catalog: sessions go to Stillpoint › project name › session. One catalog per project: Lightroom Classic switches to the project's catalog (it restarts to switch).</div></div>
+          </div>
+          <div class="settings-row">
+            <span class="export-label">Photoshop</span>
+            <div>
+              <div class="lr-status" id="settingsPsStatus"></div>
+              <div class="lr-status" id="settingsPsButtons"></div>
+              <div class="export-note">Edit in Photoshop opens one photo at a time (the edited one, when there is one).</div>
+            </div>
+          </div>
+        </div>
+        <div class="settings-pane" data-pane="advanced">
+          <div class="settings-row">
+            <span class="export-label">Debug</span>
+            <div>
+              <div id="settingsDebug"></div>
+              <div class="export-note">Saves the photos of every Test shot and what Match automatically measured and changed, in a folder you can send for analysis. Turns off when Stillpoint closes. Keeps up to 300 MB (the oldest are deleted).</div>
+              <div class="export-note" id="settingsDebugSize"></div>
+              <button id="settingsDebugFolder" class="btn btn-link btn-small settings-link">Open debug folder</button>
+              <button id="settingsDebugDelete" class="btn btn-link btn-small settings-link">Delete debug data</button>
+            </div>
           </div>
         </div>
         <div id="settingsRestart" class="settings-restart hidden">

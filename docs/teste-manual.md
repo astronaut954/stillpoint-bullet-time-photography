@@ -1655,6 +1655,78 @@ Com `STILLPOINT_FAKE_CAMERAS=9`. Na tela principal, painel "Bullet time", campo 
 - [ ] Disparar, fechar a Live, apagar as sessões na tela principal e abrir a Live de novo: não fica tocando nada (volta
       para a tela de pronto). Apagando só uma das sessões do disparo, a Live continua só com as que sobraram.
 
+## 40. Edit in Lightroom Classic, pedaço 1 (etapa 20; protótipo "Stillpoint e Adobe" aprovado em 2026-11-05)
+
+Precisa do Adobe Lightroom Classic instalado. Pode ser com câmeras simuladas (`STILLPOINT_FAKE_CAMERAS=9`): as fotos de
+teste são JPEG e entram no Lightroom do mesmo jeito. Antes, faça um ou dois disparos (de preferência com um projeto aberto,
+com rótulo em uma sessão, ex.: "Pose 7").
+
+**Settings com abas**
+- [ ] Menu › "Settings…" abre na aba "General" (Theme, Language, Opening). As abas "General", "Projects", "Export",
+      "Lightroom & Photoshop" e "Advanced" ficam em cima, no desenho das abas do Export; a janela é mais larga (600 px).
+- [ ] "Projects": "New projects". "Export": "Lenticular". "Advanced": "Debug". Tudo funciona como antes.
+- [ ] "Lightroom & Photoshop": linha "Lightroom Classic" com "● Found: Lightroom Classic <versão>" e, ao lado, o estado do
+      plugin ("not installed yet…" na primeira vez). Botões "Install plugin" (ou "Reinstall plugin") e "Locate…".
+      Linha "Catalog" com "The open catalog" (aceso) e "One catalog per project". Linha "Photoshop" com "● Found…" ou
+      "● Not found" em âmbar, "Locate…" e, sem o Photoshop, "Get Photoshop".
+- [ ] "Install plugin": aviso "Stillpoint plugin installed…"; a linha passa a dizer "Stillpoint plugin <versão>, up to date"
+      e o botão vira "Reinstall plugin". No Finder: `~/Library/Application Support/Adobe/Lightroom/Modules/Stillpoint.lrplugin`
+      (Windows: `%APPDATA%\Adobe\Lightroom\Modules\Stillpoint.lrplugin`).
+- [ ] Na janela Export, uma sessão em "Lenticular" com "Placement: Fit": o link "Settings › Export" abre o Settings já na aba
+      "Export".
+
+**Primeira vez com o Lightroom aberto**
+- [ ] Com o Lightroom Classic aberto desde antes de instalar o plugin: botão direito numa sessão (lista "Sessions") ›
+      "Edit in Lightroom Classic". Depois de uns 20 s aparece "Restart Lightroom Classic" (o Lightroom só carrega plugins
+      novos ao abrir). Feche o Lightroom, abra de novo e clique "Try again".
+
+**Mandar a sessão inteira**
+- [ ] Botão direito numa sessão › "Edit in Lightroom Classic" (fica logo abaixo de "Show session"). Aparece embaixo
+      "Opening <sessão> in Lightroom Classic… waiting for Lightroom" com "Cancel". O Lightroom vem para a frente (ou abre),
+      cria a coleção **Stillpoint › <nome do projeto> › <rótulo · data · Session n>** (sessão fora de projeto:
+      "No project"), mostra só essa coleção, seleciona todas as fotos e abre o Develop.
+- [ ] No Lightroom, as fotos estão no lugar delas (Library › botão direito numa foto › "Show in Finder" aponta para a pasta
+      da sessão no projeto ou no app); nada foi copiado.
+- [ ] No Stillpoint: aviso "<sessão> is in Lightroom Classic: Stillpoint › …"; a sessão ganha a etiqueta "In Lightroom"
+      (lista "Sessions" e janela "Project") e cada miniatura ganha "LR" no canto de baixo à direita.
+- [ ] Mandar a mesma sessão de novo: não duplica fotos nem a coleção no Lightroom.
+- [ ] Fechar e abrir o Stillpoint: a etiqueta e os "LR" continuam.
+
+**Uma foto**
+- [ ] Mouse em cima da foto grande: aparece "Edit in Lightroom Classic…" logo abaixo dos controles do play (canto de cima à
+      direita). Também no botão direito numa foto: "Edit in Lightroom Classic…" e "Done editing" (apagado), antes de
+      "Show in Finder".
+- [ ] Clicar: janela "Edit the whole session?" com "Cancel", "Just this photo" e "Edit the whole session".
+      "Just this photo": no Lightroom a coleção tem todas as fotos, mas só essa fica selecionada; no Stillpoint só ela
+      ganha "LR". "Edit the whole session": todas selecionadas, com a foto escolhida ativa no Develop.
+- [ ] Botão direito numa foto com "LR" › "Done editing": o "LR" some dela. Quando nenhuma foto da sessão tiver "LR", a
+      etiqueta "In Lightroom" some.
+
+**Quando não dá**
+- [ ] Cancel: feche o Lightroom, clique "Edit in Lightroom Classic" e logo em seguida "Cancel" no aviso de baixo: aviso
+      "Edit in Lightroom Classic cancelled"; o Lightroom pode abrir, mas não recebe a sessão.
+- [ ] Plugin desligado: no Lightroom, File › Plug-in Manager… › Stillpoint › "Disable". No Stillpoint, "Edit in Lightroom
+      Classic": depois de 20 s, "The Stillpoint plugin did not answer" com os 3 passos e "Cancel", "Reinstall the plugin",
+      "Try again". Ligar de novo ("Enable") e "Try again": funciona.
+- [ ] Settings › "Lightroom & Photoshop" › "Locate…": abre a janela de escolher programa em Aplicativos; escolher outro
+      programa (ex.: Calculadora): aviso "That is not Lightroom Classic." Escolher o Lightroom: volta "● Found".
+- [ ] (Se tiver como testar) sem o Lightroom no lugar de sempre: "Lightroom Classic is not installed" com "Cancel",
+      "Get Lightroom Classic" (abre a página da Adobe) e "Locate…".
+
+**Um catálogo por projeto (para testar a opção B)**
+- [ ] Settings › "Lightroom & Photoshop" › Catalog › "One catalog per project". Com um projeto aberto, "Edit in Lightroom
+      Classic" numa sessão do projeto: "Create the project's catalog first", com os passos, "Show folder" (abre
+      `<projeto>/Lightroom` sem fechar a janela) e "Try again".
+- [ ] No Lightroom: File › New Catalog…, na pasta `<projeto>/Lightroom`, nome igual ao do projeto, Create (o Lightroom
+      reinicia com ele). "Try again": a sessão entra nesse catálogo.
+- [ ] Com o catálogo principal aberto de novo no Lightroom: "Edit in Lightroom Classic" faz o Lightroom trocar para o
+      catálogo do projeto (ele pergunta e reinicia); a sessão entra depois que ele abrir.
+- [ ] Voltar para "The open catalog".
+
+**Windows**
+- [ ] O mesmo roteiro (Settings › "Lightroom & Photoshop", sessão inteira, uma foto, Done editing). "Locate…" abre a
+      janela de escolher programa em `C:\Program Files\Adobe`.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |

@@ -11,6 +11,9 @@ namespace NativeWindow
     // Abre o seletor de pastas do sistema, começando em startFolder (se existir).
     // Retorna "" se a pessoa cancelar. Chamar na thread da janela.
     std::string ChooseFolder(const std::string& prompt, const std::string& startFolder = "");
+    // Escolher um programa (etapa 20, "Locate…" do Lightroom/Photoshop): um .app no Mac, um .exe no Windows.
+    // Devolve o caminho, ou vazio se a pessoa cancelou.
+    std::string ChooseApplication(const std::string& prompt, const std::string& startFolder = "");
 
     // Antes de a janela fechar, pergunta a canClose(): se devolver false, a janela
     // continua aberta (a página mostra a confirmação e encerra depois). Vale por

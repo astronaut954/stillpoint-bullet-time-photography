@@ -104,6 +104,46 @@ namespace NativeWindow
         return result;
     }
 
+    std::string ChooseApplication(const std::string& prompt, const std::string& startFolder)
+    {
+        std::string result;
+        IFileOpenDialog* dialog = nullptr;
+        if (FAILED(CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&dialog))))
+            return result;
+        DWORD options = 0;
+        dialog->GetOptions(&options);
+        dialog->SetOptions(options | FOS_FILEMUSTEXIST | FOS_FORCEFILESYSTEM);
+        const COMDLG_FILTERSPEC types[] = { { L"Programs", L"*.exe" } };
+        dialog->SetFileTypes(1, types);
+        const std::wstring title = ToWide(prompt);
+        dialog->SetTitle(title.c_str());
+        if (!startFolder.empty())
+        {
+            IShellItem* start = nullptr;
+            if (SUCCEEDED(SHCreateItemFromParsingName(ToWide(startFolder).c_str(), nullptr, IID_PPV_ARGS(&start))))
+            {
+                dialog->SetFolder(start);
+                start->Release();
+            }
+        }
+        if (SUCCEEDED(dialog->Show(GetActiveWindow())))
+        {
+            IShellItem* item = nullptr;
+            if (SUCCEEDED(dialog->GetResult(&item)))
+            {
+                PWSTR path = nullptr;
+                if (SUCCEEDED(item->GetDisplayName(SIGDN_FILESYSPATH, &path)))
+                {
+                    result = ToUtf8(path);
+                    CoTaskMemFree(path);
+                }
+                item->Release();
+            }
+        }
+        dialog->Release();
+        return result;
+    }
+
     void InstallCloseGuard(void* nativeWindow, std::function<bool()> canClose)
     {
         auto* guard = new std::function<bool()>(std::move(canClose));  // vive enquanto a janela

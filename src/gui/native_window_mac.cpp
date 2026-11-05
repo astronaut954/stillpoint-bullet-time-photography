@@ -202,6 +202,29 @@ namespace NativeWindow
         return utf8 ? utf8 : "";
     }
 
+    std::string ChooseApplication(const std::string& prompt, const std::string& startFolder)
+    {
+        id panel = Send<id>(GetClass("NSOpenPanel"), "openPanel");
+        Send<void>(panel, "setCanChooseFiles:", YES);
+        Send<void>(panel, "setCanChooseDirectories:", NO);
+        Send<void>(panel, "setAllowsMultipleSelection:", NO);
+        // Só aplicativos (.app): o pacote aparece como um arquivo, não como pasta
+        id types = Send<id>(GetClass("NSArray"), "arrayWithObject:", NSStringFrom("app"));
+        Send<void>(panel, "setAllowedFileTypes:", types);
+        Send<void>(panel, "setMessage:", NSStringFrom(prompt));
+        Send<void>(panel, "setPrompt:", NSStringFrom("Choose"));
+        const std::string start = startFolder.empty() ? std::string("/Applications") : startFolder;
+        id url = Send<id>(GetClass("NSURL"), "fileURLWithPath:isDirectory:", NSStringFrom(start), YES);
+        if (url)
+            Send<void>(panel, "setDirectoryURL:", url);
+        if (Send<long>(panel, "runModal") != 1)  // NSModalResponseOK
+            return "";
+        id chosen = Send<id>(panel, "URL");
+        id path = Send<id>(chosen, "path");
+        const char* utf8 = Send<const char*>(path, "UTF8String");
+        return utf8 ? utf8 : "";
+    }
+
     void InstallCloseGuard(void* nativeWindow, std::function<bool()> canClose)
     {
         id window = static_cast<id>(nativeWindow);

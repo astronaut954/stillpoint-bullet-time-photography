@@ -4,10 +4,13 @@
 #include <bcrypt.h>
 #include <objbase.h>
 #include <shellapi.h>
+#include <winver.h>
+#pragma comment(lib, "version.lib")  // GetFileVersionInfoW (versão do Lightroom/Photoshop, etapa 20)
 #include <setupapi.h>
 #include <psapi.h>
 #include <tlhelp32.h>
 #include <algorithm>
+#include <cwchar>
 #include <cwctype>
 #include <chrono>
 #include <clocale>
@@ -647,5 +650,47 @@ namespace Platform
     void OpenWithDefaultApp(const fs::path& file)
     {
         ShellExecuteW(nullptr, L"open", file.wstring().c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+    }
+
+    bool OpenWithApplication(const fs::path& app, const std::vector<fs::path>& files)
+    {
+        std::wstring args;
+        for (const auto& f : files)
+            args += (args.empty() ? L"" : L" ") + std::wstring(L"\"") + f.wstring() + L"\"";
+        const auto result = reinterpret_cast<INT_PTR>(ShellExecuteW(nullptr, L"open", app.wstring().c_str(),
+            args.empty() ? nullptr : args.c_str(), app.parent_path().wstring().c_str(), SW_SHOWNORMAL));
+        return result > 32;
+    }
+
+    std::string ApplicationVersion(const fs::path& app)
+    {
+        // A versão do produto gravada no .exe ("15.6.0.10"): fica com "15.6"
+        DWORD ignored = 0;
+        const DWORD size = GetFileVersionInfoSizeW(app.wstring().c_str(), &ignored);
+        if (size == 0)
+            return "";
+        std::vector<unsigned char> data(size);
+        if (!GetFileVersionInfoW(app.wstring().c_str(), 0, size, data.data()))
+            return "";
+        VS_FIXEDFILEINFO* info = nullptr;
+        UINT length = 0;
+        if (!VerQueryValueW(data.data(), L"\\", reinterpret_cast<void**>(&info), &length) || !info)
+            return "";
+        return std::to_string(HIWORD(info->dwProductVersionMS)) + "." + std::to_string(LOWORD(info->dwProductVersionMS));
+    }
+
+    bool ApplicationRunning(const fs::path& app)
+    {
+        const std::wstring wanted = app.filename().wstring();
+        HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+        if (snapshot == INVALID_HANDLE_VALUE)
+            return false;
+        PROCESSENTRY32W entry{};
+        entry.dwSize = sizeof(entry);
+        bool found = false;
+        for (BOOL more = Process32FirstW(snapshot, &entry); more && !found; more = Process32NextW(snapshot, &entry))
+            found = _wcsicmp(entry.szExeFile, wanted.c_str()) == 0;
+        CloseHandle(snapshot);
+        return found;
     }
 }

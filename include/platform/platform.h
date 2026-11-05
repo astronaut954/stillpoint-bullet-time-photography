@@ -165,4 +165,12 @@ namespace Platform
 
     // Abre um arquivo no programa padrão do sistema para aquele tipo (Pré-visualização, Fotos...).
     void OpenWithDefaultApp(const std::filesystem::path& file);
+
+    // Etapa 20 (Lightroom Classic / Photoshop): abre um programa (o .app no Mac, o .exe no Windows), com arquivos
+    // para ele abrir (pode ser nenhum). Se o programa já estiver aberto, ele vem para a frente e recebe os arquivos.
+    bool OpenWithApplication(const std::filesystem::path& app, const std::vector<std::filesystem::path>& files);
+    // Versão de um programa ("15.6"; vazio se não der para ler): Info.plist do .app no Mac, dados do .exe no Windows.
+    std::string ApplicationVersion(const std::filesystem::path& app);
+    // O programa está aberto agora? (Mac: algum processo de dentro do .app; Windows: um processo com o nome do .exe)
+    bool ApplicationRunning(const std::filesystem::path& app);
 }

@@ -1841,3 +1841,34 @@ html.kbd-focus .export-tab.on .export-tab-check input:focus + .save-check { outl
 
 /* Modo teatro em Photos: as miniaturas continuam embaixo da prévia */
 .export-settings.theater.theater-strip .export-strip-slot { display: block !important; }
+
+/* ---------- Etapa 20: Lightroom Classic e Photoshop ---------- */
+/* Settings com abas (no desenho das abas do Export) */
+.settings-dialog { width: min(600px, 92%); }
+.settings-tabs { flex-wrap: wrap; margin-bottom: 0; }
+.settings-pane { display: flex; flex-direction: column; gap: 16px; }
+.settings-pane.hidden { display: none; }
+.settings-row .export-label { line-height: 1.35; }
+.lr-status { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
+.lr-status:empty { display: none; }
+.lr-ok { color: var(--noct-primary); }
+.lr-bad { color: var(--noct-pending); }
+.lr-dot { margin-right: 6px; }
+/* Etiqueta "In Lightroom" / "In Photoshop": o desenho das outras etiquetas, sem o âmbar de aviso */
+.missing-tag.edit-tag { border-color: var(--noct-border-strong); color: var(--noct-text); cursor: help; }
+/* "LR" / "PS" no canto da miniatura */
+.frame-app { position: absolute; right: 3px; bottom: 3px; padding: 0 4px; background: rgba(var(--noct-bg-rgb), .85); border: 1px solid var(--noct-border-strong);
+  color: var(--noct-text); font: 700 9px/14px var(--noct-font-mono); letter-spacing: .08em; z-index: 2; pointer-events: none; }
+/* Botão sobre a foto grande: aparece com o mouse em cima da foto */
+.stage .stage-tools .stage-hover { opacity: 0; transition: opacity .15s; }
+.stage:hover .stage-tools .stage-hover, .stage .stage-tools .stage-hover:focus-visible { opacity: 1; }
+/* Janelas de aviso: passos numerados e pares nome/valor */
+.dialog .dialog-extra { padding: 0 20px 12px; }
+.dlg-steps { margin: 10px 0 0; padding-left: 20px; line-height: 1.7; color: var(--noct-text); }
+.dlg-kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; margin-top: 10px; font: 12px var(--noct-font-mono); color: var(--noct-text-muted); }
+.dlg-kv b { color: var(--noct-text); font-weight: 600; overflow-wrap: anywhere; }
+.toast .toast-action { margin-left: 10px; }
+/* Na sessão, o canto de cima à direita da foto grande já tem os controles do play (aparecem com o mouse):
+   o botão do Lightroom fica logo abaixo deles, alinhado à direita */
+#sessionGallery .stage-tools { top: 56px; right: 10px; z-index: 2; }
+#sessionGallery .stage-tools .stage-hover { background: rgba(0, 0, 0, .78); }

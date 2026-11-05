@@ -41,6 +41,7 @@
 #include "match_debug.h"
 #include "color_match.h"
 #include "platform/media.h"
+#include "adobe.h"
 
 #include "webview/webview.h"
 
@@ -725,6 +726,95 @@ namespace
         Json event("cameras");
         event.Raw("cameras", list);
         return event;
+    }
+
+    // ---- Etapa 20: Lightroom Classic e Photoshop ----
+    // Fotos que estão sendo editadas fora do app: sessão -> (grupo "02_T7_1" -> "lr" | "ps"). Fica em
+    // <pasta de dados>/lightroom/editing.txt (uma linha por sessão: sessão, tab, programa:grupo,programa:grupo...),
+    // para valer também em sessões fora de projeto. Some com "Done editing" (e, no pedaço 2, quando a foto
+    // editada chega).
+    using EditingMap = std::map<std::string, std::map<std::string, std::string>>;
+    std::filesystem::path EditingFile() { return Adobe::BridgeFolder() / "editing.txt"; }
+    EditingMap LoadEditing()
+    {
+        EditingMap map;
+        std::ifstream in(EditingFile(), std::ios::binary);
+        for (std::string line; std::getline(in, line);)
+        {
+            if (!line.empty() && line.back() == '\r')
+                line.pop_back();
+            const auto tab = line.find('\t');
+            if (tab == std::string::npos)
+                continue;
+            std::stringstream rest(line.substr(tab + 1));
+            for (std::string pair; std::getline(rest, pair, ',');)
+            {
+                const auto colon = pair.find(':');
+                if (colon != std::string::npos && colon + 1 < pair.size())
+                    map[line.substr(0, tab)][pair.substr(colon + 1)] = pair.substr(0, colon);
+            }
+        }
+        return map;
+    }
+    bool SaveEditing(const EditingMap& map)
+    {
+        std::error_code ec;
+        std::filesystem::create_directories(EditingFile().parent_path(), ec);
+        std::ofstream out(EditingFile(), std::ios::binary | std::ios::trunc);
+        for (const auto& [session, groups] : map)
+        {
+            if (groups.empty())
+                continue;
+            out << session << '\t';
+            bool first = true;
+            for (const auto& [group, program] : groups)
+            {
+                out << (first ? "" : ",") << program << ':' << group;
+                first = false;
+            }
+            out << '\n';
+        }
+        return static_cast<bool>(out);
+    }
+    std::string EditingJson(const EditingMap& map)
+    {
+        std::string out = "{";
+        bool firstSession = true;
+        for (const auto& [session, groups] : map)
+        {
+            if (groups.empty())
+                continue;
+            Json item;
+            for (const auto& [group, program] : groups)
+                item.Add(group, program);
+            out += (firstSession ? "" : ",") + JsonString(session) + ":" + item.Str();
+            firstSession = false;
+        }
+        return out + "}";
+    }
+    // Grupo de uma foto (o mesmo da página): "02_T7_1" (ordem e câmera), ou o nome do arquivo
+    std::string PhotoGroup(const StoredPhoto& photo)
+    {
+        if (photo.camera.empty())
+            return photo.file;
+        char order[8];
+        std::snprintf(order, sizeof(order), "%02d", photo.order);
+        return std::string(order) + "_" + photo.camera;
+    }
+    // Uma foto por câmera para o Lightroom: o RAW quando existe (é ele que se edita), senão o JPEG
+    std::vector<std::pair<std::string, std::string>> PhotosForEditing(const StoredSession& session)
+    {
+        std::vector<std::pair<std::string, std::string>> out;  // (grupo, arquivo)
+        for (const auto& photo : session.photos)
+        {
+            const std::string group = PhotoGroup(photo);
+            auto it = std::find_if(out.begin(), out.end(), [&](const auto& x) { return x.first == group; });
+            if (it == out.end())
+                out.emplace_back(group, photo.file);
+            else if (IsRawPhoto(photo.file) && !IsRawPhoto(it->second))
+                it->second = photo.file;
+        }
+        return out;
     }
 
     std::string SessionsJson(const PhotoStore& store)
@@ -2195,6 +2285,274 @@ namespace
                 listener.Emit(Json("pitchTestDone").Add("ok", ok).Add("file", file.string()).Add("error", error));
             });
             return Json("pitchTest").Add("ok", true).Add("file", file.string()).Str();
+        });
+        // ---- Etapa 20, pedaço 1: Edit in Lightroom Classic ----
+        // Pedidos mandados ao plugin e ainda sem resposta: id -> (sessão, grupos que ficam "In Lightroom")
+        std::map<std::string, std::pair<std::string, std::vector<std::string>>> adobePending;
+        int adobeNextId = 0;
+        auto adobeFind = [&](Adobe::Program program)
+        {
+            const auto settings = LoadSettings();
+            const auto it = settings.find(program == Adobe::Program::Lightroom ? "lightroomPath" : "photoshopPath");
+            return Adobe::Find(program, it == settings.end() ? std::string() : it->second);
+        };
+        auto adobeCatalogMode = [&]
+        {
+            const auto settings = LoadSettings();
+            const auto it = settings.find("lightroomCatalog");
+            return it != settings.end() && it->second == "project" ? std::string("project") : std::string("open");
+        };
+        auto adobeProgramJson = [&](const Adobe::Found& f, bool lightroom)
+        {
+            Json j;
+            j.Add("found", f.found).Add("path", PathToUtf8(f.path)).Add("version", f.version).Add("custom", f.custom);
+            if (lightroom)
+                j.Add("tooOld", f.found && !f.version.empty() && Adobe::CompareVersions(f.version, Adobe::kMinimumLightroom) < 0)
+                 .Add("minimum", Adobe::kMinimumLightroom);
+            return j.Str();
+        };
+        auto adobeInfoJson = [&]
+        {
+            const auto lr = adobeFind(Adobe::Program::Lightroom);
+            const auto ps = adobeFind(Adobe::Program::Photoshop);
+            const std::string installed = Adobe::InstalledPluginVersion();
+            const auto alive = Adobe::ReadAlive();
+            Json plugin;
+            plugin.Add("installed", !installed.empty()).Add("version", installed).Add("current", AppVersion())
+                  .Add("upToDate", installed == AppVersion()).Add("running", alive.fresh).Add("runningVersion", alive.version);
+            return Json("adobeInfo").Raw("lightroom", adobeProgramJson(lr, true)).Raw("photoshop", adobeProgramJson(ps, false))
+                .Raw("plugin", plugin.Str()).Add("catalog", adobeCatalogMode()).Add("project", project.Available()).Str();
+        };
+        auto emitEditing = [&] { listener.Emit(Json("adobeEditing").Raw("sessions", EditingJson(LoadEditing()))); };
+
+        // adobeInfo(): os dois programas (achados? versão?) e o plugin (Settings › Lightroom & Photoshop)
+        window.bind("adobeInfo", [&](const std::string&) -> std::string { return adobeInfoJson(); });
+        // adobeEditing(): as fotos que estão no Lightroom/Photoshop, por sessão
+        window.bind("adobeEditing", [&](const std::string&) -> std::string
+        {
+            return Json("adobeEditing").Raw("sessions", EditingJson(LoadEditing())).Str();
+        });
+        // adobeLocate("lightroom" | "photoshop"): a pessoa escolhe o programa (Locate…)
+        window.bind("adobeLocate", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            const bool lightroom = args.empty() || args[0] != "photoshop";
+            const auto program = lightroom ? Adobe::Program::Lightroom : Adobe::Program::Photoshop;
+#ifdef _WIN32
+            const std::string start = std::getenv("ProgramFiles") ? std::string(std::getenv("ProgramFiles")) + "\\Adobe" : std::string();
+#else
+            const std::string start = "/Applications";
+#endif
+            const std::string chosen = NativeWindow::ChooseApplication(
+                lightroom ? "Choose Adobe Lightroom Classic" : "Choose Adobe Photoshop", start);
+            if (chosen.empty())
+                return Json("adobeLocate").Add("ok", false).Add("cancelled", true).Raw("info", adobeInfoJson()).Str();
+            if (!Adobe::LooksLike(program, std::filesystem::path(std::u8string(chosen.begin(), chosen.end()))))
+                return Json("adobeLocate").Add("ok", false)
+                    .Add("error", std::string("That is not ") + (lightroom ? "Lightroom Classic." : "Photoshop.")).Raw("info", adobeInfoJson()).Str();
+            auto settings = LoadSettings();
+            settings[lightroom ? "lightroomPath" : "photoshopPath"] = chosen;
+            SaveSettings(settings);
+            Log(std::string(lightroom ? "Lightroom Classic" : "Photoshop") + " located: " + chosen);
+            return Json("adobeLocate").Add("ok", true).Raw("info", adobeInfoJson()).Str();
+        });
+        // adobeForget("lightroom" | "photoshop"): volta a procurar no lugar de sempre
+        window.bind("adobeForget", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            auto settings = LoadSettings();
+            settings.erase(!args.empty() && args[0] == "photoshop" ? "photoshopPath" : "lightroomPath");
+            SaveSettings(settings);
+            return adobeInfoJson();
+        });
+        // adobeInstallPlugin(): instala (ou reinstala) o plugin na pasta de plugins do Lightroom Classic
+        window.bind("adobeInstallPlugin", [&](const std::string&) -> std::string
+        {
+            std::string error;
+            const bool ok = Adobe::InstallPlugin(Platform::ResourcesDirectory() / "assets" / "lightroom" / "Stillpoint.lrplugin", AppVersion(), error);
+            Log(ok ? "Lightroom plugin installed in " + PathToUtf8(Adobe::InstalledPlugin()) : "Lightroom plugin install failed: " + error);
+            return Json("adobeInstall").Add("ok", ok).Add("error", error).Add("folder", PathToUtf8(Adobe::InstalledPlugin()))
+                .Raw("info", adobeInfoJson()).Str();
+        });
+        // adobeSetCatalog("open" | "project")
+        window.bind("adobeSetCatalog", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            auto settings = LoadSettings();
+            settings["lightroomCatalog"] = !args.empty() && args[0] == "project" ? "project" : "open";
+            SaveSettings(settings);
+            return adobeInfoJson();
+        });
+        // adobeGetApp("lightroom" | "photoshop"): a página da Adobe para baixar o programa
+        window.bind("adobeGetApp", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            Platform::OpenUrl(!args.empty() && args[0] == "photoshop" ? "https://www.adobe.com/products/photoshop.html"
+                                                                       : "https://www.adobe.com/products/photoshop-lightroom-classic.html");
+            return "null";
+        });
+        // Catálogo do projeto (Settings › Catalog: One catalog per project): <Projeto>/Lightroom/<nome>.lrcat
+        auto projectCatalog = [&]() -> std::filesystem::path
+        {
+            if (!project.Available())
+                return {};
+            return project.Root() / "Lightroom" / (project.Name() + ".lrcat");
+        };
+        // adobeShowCatalogFolder(): cria <Projeto>/Lightroom e mostra no Finder/Explorer
+        window.bind("adobeShowCatalogFolder", [&](const std::string&) -> std::string
+        {
+            const auto catalog = projectCatalog();
+            if (!catalog.empty())
+            {
+                std::error_code ec;
+                std::filesystem::create_directories(catalog.parent_path(), ec);
+                Platform::OpenInFileManager(catalog.parent_path());
+            }
+            return "null";
+        });
+        // adobeEditInLightroom(sessão, título, grupo da foto ativa, "session" | "photo"): manda a sessão para o
+        // Lightroom Classic. Devolve problem = missing | old | install | catalog quando não dá; senão o id do
+        // pedido (a página pergunta por adobeStatus até o plugin responder).
+        window.bind("adobeEditInLightroom", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            if (args.size() < 4)
+                return Json("adobeEdit").Add("ok", false).Add("problem", "error").Add("error", "Missing values.").Str();
+            const auto lr = adobeFind(Adobe::Program::Lightroom);
+            if (!lr.found)
+                return Json("adobeEdit").Add("ok", false).Add("problem", "missing").Str();
+            if (!lr.version.empty() && Adobe::CompareVersions(lr.version, Adobe::kMinimumLightroom) < 0)
+                return Json("adobeEdit").Add("ok", false).Add("problem", "old").Add("version", lr.version).Add("minimum", Adobe::kMinimumLightroom).Str();
+            const auto sessions = store.ListSessions();
+            const auto session = std::find_if(sessions.begin(), sessions.end(), [&](const StoredSession& x) { return x.name == args[0]; });
+            const auto dir = store.SessionDir(args[0]);
+            if (session == sessions.end() || dir.empty())
+                return Json("adobeEdit").Add("ok", false).Add("problem", "error").Add("error", "The session is no longer there.").Str();
+            // Plugin: instala na primeira vez e quando o app muda de versão
+            bool justInstalled = false;
+            if (Adobe::InstalledPluginVersion() != AppVersion())
+            {
+                std::string error;
+                if (!Adobe::InstallPlugin(Platform::ResourcesDirectory() / "assets" / "lightroom" / "Stillpoint.lrplugin", AppVersion(), error))
+                {
+                    Log("Lightroom plugin install failed: " + error);
+                    return Json("adobeEdit").Add("ok", false).Add("problem", "install").Add("error", error).Str();
+                }
+                Log("Lightroom plugin installed in " + PathToUtf8(Adobe::InstalledPlugin()));
+                justInstalled = true;
+            }
+            // Catálogo: o aberto, ou o do projeto (só para sessões do projeto)
+            std::filesystem::path catalog;
+            if (adobeCatalogMode() == "project" && session->inProject)
+            {
+                catalog = projectCatalog();
+                std::error_code ec;
+                if (catalog.empty() || !std::filesystem::exists(catalog, ec))
+                    return Json("adobeEdit").Add("ok", false).Add("problem", "catalog")
+                        .Add("folder", PathToUtf8(catalog.parent_path())).Add("name", project.Name()).Str();
+            }
+            Adobe::Request r;
+            r.id = std::to_string(std::time(nullptr)) + "-" + std::to_string(++adobeNextId);
+            r.project = session->inProject && project.IsOpen() ? project.Name() : std::string();
+            r.title = args[1];
+            r.catalog = catalog.empty() ? std::string() : PathToUtf8(catalog);
+            std::vector<std::string> marked;
+            for (const auto& [group, file] : PhotosForEditing(*session))
+            {
+                const auto path = dir / file;
+                r.photos.push_back(path);
+                if (args[3] == "session" || group == args[2])
+                {
+                    r.select.push_back(path);
+                    marked.push_back(group);
+                }
+                if (group == args[2])
+                    r.focus = path;
+            }
+            if (r.photos.empty())
+                return Json("adobeEdit").Add("ok", false).Add("problem", "error").Add("error", "The session has no photos.").Str();
+            if (r.focus.empty())
+                r.focus = r.photos.front();
+            if (marked.empty())
+                marked.push_back(PhotosForEditing(*session).front().first);
+            std::string error;
+            if (!Adobe::WriteRequest(r, error))
+                return Json("adobeEdit").Add("ok", false).Add("problem", "error").Add("error", error).Str();
+            adobePending[r.id] = { args[0], marked };
+            const auto alive = Adobe::ReadAlive();
+            const bool running = alive.fresh || Platform::ApplicationRunning(lr.path);
+            // Abre o Lightroom (ou traz para a frente). Com outro catálogo aberto, abrir o .lrcat faz o Lightroom trocar
+            const bool switchCatalog = !r.catalog.empty() && alive.catalog != r.catalog;
+            std::vector<std::filesystem::path> files;
+            if (switchCatalog)
+                files.push_back(catalog);
+            Platform::OpenWithApplication(lr.path, files);
+            Log("Edit in Lightroom Classic: " + args[0] + " (" + std::to_string(r.photos.size()) + " photos" +
+                (args[3] == "photo" ? ", just " + args[2] : "") + (switchCatalog ? ", switching to the project catalog" : "") + ")");
+            return Json("adobeEdit").Add("ok", true).Add("id", r.id).Add("running", running).Add("alive", alive.fresh)
+                .Add("justInstalled", justInstalled).Add("switchCatalog", switchCatalog).Str();
+        });
+        // adobeStatus(id): a resposta do plugin a esse pedido. done marca as fotos como "In Lightroom".
+        window.bind("adobeStatus", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            const std::string id = args.empty() ? std::string() : args[0];
+            const auto status = Adobe::ReadStatus(id);
+            const auto alive = Adobe::ReadAlive();
+            bool running = alive.fresh;
+            if (!running)
+            {
+                const auto lr = adobeFind(Adobe::Program::Lightroom);
+                running = lr.found && Platform::ApplicationRunning(lr.path);
+            }
+            if (status.state == "done" || status.state == "error" || status.state == "wrong-catalog")
+            {
+                const auto it = adobePending.find(id);
+                if (it != adobePending.end())
+                {
+                    if (status.state == "done")
+                    {
+                        auto map = LoadEditing();
+                        for (const auto& group : it->second.second)
+                            map[it->second.first][group] = "lr";
+                        SaveEditing(map);
+                        emitEditing();
+                        Log("Lightroom Classic: " + it->second.first + " is in the collection (" + std::to_string(status.added) + " new in the catalog)");
+                    }
+                    else
+                        Log("Lightroom Classic: " + status.state + " " + status.message);
+                    adobePending.erase(it);
+                }
+            }
+            return Json("adobeStatus").Add("state", status.state).Add("message", status.message).Add("catalog", status.catalog)
+                .Add("added", status.added).Add("alive", alive.fresh).Add("running", running).Str();
+        });
+        // adobeCancel(id): desiste do pedido (o plugin não pega mais)
+        window.bind("adobeCancel", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            if (!args.empty())
+            {
+                Adobe::CancelRequest(args[0]);
+                adobePending.erase(args[0]);
+            }
+            return "null";
+        });
+        // adobeDoneEditing(sessão, grupo, ...): as fotos saem do "In Lightroom" (nenhum grupo = a sessão inteira)
+        window.bind("adobeDoneEditing", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            if (args.empty())
+                return "null";
+            auto map = LoadEditing();
+            if (args.size() == 1)
+                map.erase(args[0]);
+            else
+                for (size_t i = 1; i < args.size(); ++i)
+                    map[args[0]].erase(args[i]);
+            SaveEditing(map);
+            emitEditing();
+            return Json("adobeEditing").Raw("sessions", EditingJson(LoadEditing())).Str();
         });
         // photoFile(sessão, arquivo, "reveal" | "open"): mostra a foto selecionada no Finder/Explorer
         // ou abre no programa padrão (botão direito numa foto)

@@ -272,6 +272,7 @@ if(STILLPOINT_BUILD_GUI)
         src/gui/match_debug.cpp
         src/gui/chart.cpp
         src/gui/project.cpp
+        src/gui/adobe.cpp
     )
     if(WIN32)
         list(APPEND STILLPOINT_GUI_SOURCES src/gui/native_window_win.cpp "${CMAKE_BINARY_DIR}/app.rc")

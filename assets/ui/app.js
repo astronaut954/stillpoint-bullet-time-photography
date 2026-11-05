@@ -450,7 +450,7 @@
       const b = document.createElement("button");
       b.className = "btn " + (a.danger ? "btn-danger" : a.primary ? "btn-primary" : a.link ? "btn-link" : "btn-secondary") + (a.left ? " btn-left" : "");
       b.textContent = a.label;
-      b.addEventListener("click", () => { ui.dialogOverlay.classList.add("hidden"); a.onClick && a.onClick(); });
+      b.addEventListener("click", () => { if (!a.keep) ui.dialogOverlay.classList.add("hidden"); a.onClick && a.onClick(); });
       ui.dialogActions.appendChild(b);
     });
     ui.dialogOverlay.classList.remove("hidden");
@@ -562,6 +562,7 @@
         // Sem prévia: mostra o tipo do arquivo (ex.: "TIF"), ou nada se a câmera não mandou foto
         img.appendChild(document.createTextNode(item.file ? item.file.split(".").pop().toUpperCase() : ""));
       }
+      appBadge(li, item);
 
       // Clique: Shift marca o intervalo, Cmd/Ctrl marca ou desmarca uma; segurar e arrastar muda a ordem
       // (todas as marcadas vão juntas)
@@ -587,6 +588,19 @@
       return li;
     }
 
+    // Etapa 20: "LR" / "PS" no canto da miniatura enquanto a foto está no Lightroom Classic ou no Photoshop
+    function appBadge(li, item) {
+      if (!opts.appBadge) return;
+      const img = li.querySelector(".frame-img");
+      const old = img.querySelector(".frame-app");
+      const v = item ? opts.appBadge(item) : "";
+      if (!v) { if (old) old.remove(); return; }
+      const b = old || document.createElement("span");
+      b.className = "frame-app";
+      b.textContent = v;
+      b.title = v === "PS" ? "Open in Photoshop" : "In Lightroom Classic";
+      if (!old) img.appendChild(b);
+    }
     function markSelected(scroll) {
       [...el.carousel.children].forEach((li, i) => {
         li.classList.toggle("selected", i === index); li.classList.toggle("multi", multi.size > 1 && multi.has(i));
@@ -856,6 +870,7 @@
       },
       setHead(title, sub, tag) { el.title.textContent = title || ""; if (tag) el.title.appendChild(tag); el.sub.textContent = sub || ""; },
       refreshMarks() { markSelected(false); },  // (a proporção medida chegou depois das fotos)
+      refreshBadges() { [...el.carousel.children].forEach((li, i) => appBadge(li, items[i])); },
       setActions(nodes) { el.actions.innerHTML = ""; nodes.forEach((n) => el.actions.appendChild(n)); },
       // Botões sobre a foto grande (canto superior direito)
       setStageTools(nodes) {
@@ -1221,6 +1236,7 @@
     // borda âmbar tracejada e a proporção no canto
     warnItem: (item) => { const r = ratioInfoCached(item.session); return !!(r && r.mixed && r.marked.includes(item.group)); },
     warnLabel: (item) => { const r = ratioInfoCached(item.session); return r ? r.byGroup[item.group] || "" : ""; },
+    appBadge: (item) => { const m = editingBySession[item.session]; const v = m && m[item.group]; return v === "lr" ? "LR" : v === "ps" ? "PS" : ""; },
     onPick: () => { photoKeys = true; },
     // Arrastar uma miniatura: para o lado muda a ordem; até o botão da lixeira apaga
     freeDrag: true,
@@ -1252,7 +1268,11 @@
         ]);
         return;
       }
+      const inEdit = editingOf(item.session || currentSession.name, item.group);
       popupMenuAt(e.clientX, e.clientY, [
+        { label: "Edit in Lightroom Classic…", disabled: !hasFile, dim: !hasFile, onClick: () => editPhotoInLightroom(item) },
+        { label: "Done editing", disabled: !inEdit, dim: !inEdit, onClick: () => doneEditing(item.session || currentSession.name, [item.group]) },
+        "-",
         { label: win ? "Show in Explorer" : "Show in Finder", disabled: !hasFile, dim: !hasFile, onClick: () => fileAction("reveal") },
         { label: "Open in default app", disabled: !hasFile, dim: !hasFile, onClick: () => fileAction("open") },
         "-",
@@ -1473,6 +1493,34 @@
   // Fotos apagadas de uma sessão (estão na lixeira): etiqueta "n deleted", no desenho do "n missing"
   // (decisão do dono, 2026-11-04). Some quando as fotos voltam da lixeira ou a lixeira as descarta.
   let deletedBySession = {};
+  // Etapa 20: fotos no Lightroom Classic / Photoshop, por sessão (grupo "02_T7_1" -> "lr" | "ps"). Vem do app
+  // (adobeEditing) e muda com o evento "adobeEditing".
+  let editingBySession = {};
+  function editingOf(session, group) { const m = editingBySession[session]; return m ? m[group] || "" : ""; }
+  // Etiqueta "In Lightroom" / "In Photoshop" (no desenho das outras etiquetas, sem o âmbar de aviso)
+  function editTagFor(session) {
+    const m = editingBySession[session];
+    if (!m) return null;
+    const v = Object.values(m);
+    if (!v.length) return null;
+    const lr = v.filter((x) => x === "lr").length, ps = v.length - lr;
+    const t = document.createElement("span");
+    t.className = "missing-tag edit-tag";
+    t.textContent = lr ? "In Lightroom" : "In Photoshop";
+    t.dataset.itip = (lr ? plural(lr, "photo of this session is", "photos of this session are") + " being edited in Lightroom Classic" : "")
+      + (lr && ps ? "; " : "") + (ps ? plural(ps, "photo is", "photos are") + " open in Photoshop" : "")
+      + ". Right-click a photo › Done editing when you finish.";
+    return t;
+  }
+  function setAdobeEditing(map) {
+    const next = map || {};
+    if (JSON.stringify(next) === JSON.stringify(editingBySession)) return;
+    editingBySession = next;
+    renderSessionListSoon();
+    if (currentSession) sessionHead(currentSession);
+    sessionGallery.refreshBadges();
+    if (!$("projectOverlay").classList.contains("hidden") && !(document.activeElement && document.activeElement.closest && document.activeElement.closest("#projectList input[type=text]"))) renderProjectWindow();
+  }
   function deletedTag(count) {
     const t = document.createElement("span");
     t.className = "missing-tag deleted-tag";
@@ -1626,6 +1674,7 @@
       if (deletedBySession[s.name]) li.querySelector(".folder-meta").after(deletedTag(deletedBySession[s.name]));
       if (s.missing > 0) li.querySelector(".folder-meta").after(missingTag(s.missing));
       if (mixed) li.querySelector(".folder-meta").after(mixedTag(s.name, ratioInfoCached(s.name)));
+      if (editTagFor(s.name)) li.querySelector(".folder-meta").after(editTagFor(s.name));
       if (projectOpen) {
         // Só a etiqueta de editadas (estar no projeto é a posição na lista)
         if (s.inProject && s.edited > 0) li.querySelector(".folder-meta").after(projectTag(s));
@@ -1776,6 +1825,7 @@
     const f = document.createDocumentFragment();
     if (r && r.mixed) f.appendChild(mixedTag(session.name, r));
     if (deletedBySession[session.name]) f.appendChild(deletedTag(deletedBySession[session.name]));
+    if (editTagFor(session.name)) f.appendChild(editTagFor(session.name));
     return f.childNodes.length ? f : null;
   }
 
@@ -4890,9 +4940,9 @@
       place.appendChild(segmented([["fill", "Fill"], ["fit", "Fit"]], l.placement || "fill", (v) => { l.placement = v; rerender(); }));
       if ((l.placement || "fill") === "fit") {
         const note = el("span", "export-note-inline", "Band: " + lentBand + " · change it in ");
-        const go = el("button", "note-link", "Settings › Lenticular"); go.type = "button";
-        go.title = "Open Settings at the Lenticular band color";
-        go.addEventListener("click", () => { openSettings(); const r = $("settingsLentBand"); if (r) r.scrollIntoView({ block: "center" }); });
+        const go = el("button", "note-link", "Settings › Export"); go.type = "button";
+        go.title = "Open Settings at the Lenticular band color (Export tab)";
+        go.addEventListener("click", () => openSettings("export"));
         note.appendChild(go);
         place.appendChild(note);
       }
@@ -5356,6 +5406,8 @@
   const captureGallery = () => (csTest.capturing ? csGallery : orderGallery);
 
   const handlers = {
+    // Etapa 20: fotos que entraram no Lightroom Classic (ou saíram com "Done editing")
+    adobeEditing(e) { setAdobeEditing(e.sessions); },
     busy(e) {
       busy = e.busy;
       busyAction = e.busy ? e.action : "";
@@ -5985,13 +6037,72 @@
 
   // Settings: tema e idioma. Gravados na hora; valem ao abrir o app de novo.
   const prefs = { theme: "", language: "", restart: false, debug: false };
-  function openSettings() {
+  // tab (opcional): "general" | "projects" | "export" | "adobe" | "advanced"; sem tab abre em General
+  function openSettings(tab) {
     if (!upd.info) return;
     if (!prefs.theme) { prefs.theme = upd.info.theme; prefs.language = upd.info.language; prefs.debug = !!upd.info.debug; }
     renderSettings();
     refreshDebugSize();
     refreshProjectsFolder();
+    settingsTab(tab || "general");
     $("settingsOverlay").classList.remove("hidden");
+    refreshAdobe();
+  }
+  // Abas do Settings (etapa 20): no desenho das abas do Export
+  function settingsTab(tab) {
+    document.querySelectorAll("#settingsTabs .export-tab").forEach((b) => {
+      const on = b.dataset.tab === tab;
+      b.classList.toggle("on", on);
+      b.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    document.querySelectorAll("#settingsOverlay .settings-pane").forEach((p) => p.classList.toggle("hidden", p.dataset.pane !== tab));
+  }
+  document.querySelectorAll("#settingsTabs .export-tab").forEach((b) => b.addEventListener("click", () => settingsTab(b.dataset.tab)));
+  // Settings › Lightroom & Photoshop: os programas achados, o plugin e o catálogo
+  const adobe = { info: null };
+  function refreshAdobe() {
+    if (typeof window.adobeInfo !== "function") { renderAdobeSettings(); return; }
+    Promise.resolve(window.adobeInfo()).then((r) => { adobe.info = r || null; renderAdobeSettings(); }, () => {});
+  }
+  function renderAdobeSettings() {
+    const i = adobe.info;
+    const status = (id, parts) => { const x = $(id); x.innerHTML = ""; parts.forEach((p) => x.appendChild(p)); };
+    const dot = (ok, text) => { const sp = el("span", ok ? "lr-ok" : "lr-bad"); sp.appendChild(el("span", "lr-dot", "●")); sp.appendChild(document.createTextNode(text)); return sp; };
+    if (!i) {
+      status("settingsLrStatus", [el("span", "", "This build cannot use Lightroom Classic yet. Build the app again.")]);
+      status("settingsLrButtons", []); status("settingsPsStatus", []); status("settingsPsButtons", []);
+      $("settingsLrCatalog").innerHTML = "";
+      return;
+    }
+    const lr = i.lightroom || {}, ps = i.photoshop || {}, pl = i.plugin || {};
+    const lrParts = [];
+    if (!lr.found) lrParts.push(dot(false, "Not found"));
+    else if (lr.tooOld) lrParts.push(dot(false, "Found: Lightroom Classic " + lr.version + ", too old (needs " + lr.minimum + " or newer)"));
+    else lrParts.push(dot(true, "Found: Lightroom Classic " + (lr.version || "")));
+    if (lr.found) lrParts.push(el("span", "", "· " + (!pl.installed ? "Stillpoint plugin not installed yet (it installs the first time you use Edit in Lightroom Classic)"
+      : pl.upToDate ? "Stillpoint plugin " + pl.version + ", up to date" : "Stillpoint plugin " + pl.version + ", updates to " + pl.current + " the next time you use it")));
+    if (lr.found && lr.path) lrParts[0].title = lr.path;
+    status("settingsLrStatus", lrParts);
+    const lrBtns = [];
+    if (lr.found) lrBtns.push(button(pl.installed ? "Reinstall plugin" : "Install plugin", () => {
+      Promise.resolve(window.adobeInstallPlugin()).then((x) => {
+        if (x && x.info) adobe.info = x.info;
+        renderAdobeSettings();
+        if (x && x.ok) { toast("Stillpoint plugin installed. If Lightroom Classic is open, quit it and open it again."); log("Lightroom plugin installed in " + x.folder, "ok"); }
+        else dialog("Could not install the Stillpoint plugin", (x && x.error) || "The plugin could not be copied.", [{ label: "OK", primary: true }]);
+      });
+    }, { title: "Copy the Stillpoint plugin to the Lightroom Classic plugin folder again" }));
+    lrBtns.push(button("Locate…", () => locateAdobe("lightroom"), { title: "Choose where Lightroom Classic is on this computer" }));
+    if (!lr.found) lrBtns.push(button("Get Lightroom Classic", () => window.adobeGetApp("lightroom"), { kind: "btn-link" }));
+    status("settingsLrButtons", lrBtns);
+    $("settingsLrCatalog").innerHTML = "";
+    $("settingsLrCatalog").appendChild(segmented([["open", "The open catalog"], ["project", "One catalog per project"]], i.catalog || "open", (v) => {
+      Promise.resolve(window.adobeSetCatalog(v)).then((x) => { if (x) adobe.info = x; renderAdobeSettings(); log("Lightroom catalog: " + (v === "project" ? "one per project" : "the open catalog"), "tech"); });
+    }));
+    status("settingsPsStatus", [ps.found ? dot(true, "Found: Photoshop " + (ps.version || "")) : dot(false, "Not found")]);
+    const psBtns = [button("Locate…", () => locateAdobe("photoshop"), { title: "Choose where Photoshop is on this computer" })];
+    if (!ps.found) psBtns.push(button("Get Photoshop", () => window.adobeGetApp("photoshop"), { kind: "btn-link" }));
+    status("settingsPsButtons", psBtns);
   }
   function renderSettings() {
     const info = upd.info;
@@ -8177,11 +8288,210 @@
   let openMenu = null;
   function closeMenu() { if (openMenu) { openMenu.remove(); openMenu = null; } }
   // Menu do botão direito numa sessão: rótulo, projeto, apagar
+  // =================== Etapa 20, pedaço 1: Edit in Lightroom Classic ===================
+  // O app manda a sessão para o plugin do Stillpoint no Lightroom Classic (por arquivos, ver src/gui/adobe.h):
+  // as fotos entram no catálogo no lugar onde estão, na coleção "Stillpoint › projeto › sessão", e o Lightroom
+  // abre no Develop com a foto escolhida. Enquanto isso, um aviso "waiting for Lightroom" com Cancel.
+  const lrJob = { id: null, timer: 0 };
+  function lrCollectionTitle(s) {
+    const l = sessionLabel(s.name);
+    return [s.label, l.date, l.detail].filter(Boolean).join(" · ");
+  }
+  function sessionShort(s) { return s.label || sessionLabel(s.name).date; }
+  function adobeMissingBuild() {
+    if (typeof window.adobeEditInLightroom === "function") return false;
+    toast("This build cannot open Lightroom Classic yet. Build the app again.", 8000);
+    return true;
+  }
+  // Uma foto (menu da foto, botão sobre a foto grande): pergunta se vai a sessão inteira
+  function editPhotoInLightroom(item) {
+    if (adobeMissingBuild() || !item) return;
+    const s = sessions.find((x) => x.name === (item.session || (currentSession && currentSession.name)));
+    if (!s) return;
+    const n = sessionItems(s).length;
+    const num = pad(item.order || 1);
+    dialog("Edit the whole session?", "Bullet time edits usually go on every photo of the session. Lightroom Classic gets all " + n + " photos in the session's collection either way, and opens photo " + num + ".", [
+      { label: "Cancel", link: true, left: true },
+      { label: "Just this photo", onClick: () => startLightroom(s, item.group, "photo") },
+      { label: "Edit the whole session", primary: true, onClick: () => startLightroom(s, item.group, "session") },
+    ]);
+  }
+  function editSessionInLightroom(s) {
+    if (adobeMissingBuild() || !s) return;
+    const first = sessionItems(s)[0];
+    // A sessão aberta: a foto ativa no Lightroom é a que está na foto grande
+    const open = currentSession && currentSession.name === s.name ? sessionGallery.items[sessionGallery.index] : null;
+    startLightroom(s, (open || first || {}).group || "", "session");
+  }
+  function startLightroom(s, group, scope) {
+    if (lrJob.id) { toast("Lightroom Classic is still opening the last session. Wait for it, or click Cancel in the message below.", 8000, { warn: true }); lrWaitToast(s); return; }
+    Promise.resolve(window.adobeEditInLightroom(s.name, lrCollectionTitle(s), group, scope)).then((r) => {
+      if (!r) return;
+      if (!r.ok) { lightroomProblem(r, s, group, scope); return; }
+      log("Edit in Lightroom Classic: " + sessionShort(s) + (scope === "photo" ? " (photo " + group.slice(0, 2) + ")" : ""), "ok");
+      lrWait(r, s, group, scope);
+    });
+  }
+  function lightroomProblem(r, s, group, scope) {
+    const again = () => startLightroom(s, group, scope);
+    if (r.problem === "missing") {
+      dialog("Lightroom Classic is not installed", "Edit in Lightroom Classic needs Adobe Lightroom Classic on this computer. If it is installed in another place, choose it with Locate.", [
+        { label: "Cancel", link: true, left: true },
+        { label: "Get Lightroom Classic", onClick: () => window.adobeGetApp("lightroom") },
+        { label: "Locate…", primary: true, onClick: () => locateAdobe("lightroom", again) },
+      ]);
+    } else if (r.problem === "old") {
+      dialog("Lightroom Classic is too old", "The Stillpoint plugin needs a newer Lightroom Classic. Update it from the Adobe Creative Cloud app, then try again.", [
+        { label: "Cancel", link: true, left: true },
+        { label: "OK", primary: true },
+      ], kvBox([["Found", "Lightroom Classic " + r.version], ["Needed", "Lightroom Classic " + r.minimum + " or newer"]]));
+    } else if (r.problem === "catalog") {
+      const box = el("div");
+      box.appendChild(stepsBox(["In Lightroom Classic, choose File › New Catalog…",
+        "Go to this folder (Show folder opens it): " + r.folder,
+        "Name the catalog “" + r.name + "” and click Create. Lightroom Classic restarts with it.",
+        "Back here, click Try again."]));
+      dialog("Create the project's catalog first", "One catalog per project is on (Settings › Lightroom & Photoshop), and this project has no catalog yet. Lightroom Classic creates catalogs itself:", [
+        { label: "Cancel", link: true, left: true },
+        { label: "Show folder", keep: true, onClick: () => window.adobeShowCatalogFolder() },
+        { label: "Try again", primary: true, onClick: again },
+      ], box);
+    } else if (r.problem === "install") {
+      dialog("Could not install the Stillpoint plugin", r.error || "The plugin could not be copied to the Lightroom Classic plugin folder.", [{ label: "OK", primary: true }]);
+    } else {
+      toast(r.error || "Could not open Lightroom Classic.", 8000);
+    }
+  }
+  function kvBox(rows) {
+    const box = el("div", "dlg-kv");
+    rows.forEach(([k, v]) => { box.appendChild(el("span", "", k)); box.appendChild(el("b", "", v)); });
+    return box;
+  }
+  function stepsBox(lines) {
+    const box = el("div"), ol = el("ol", "dlg-steps");
+    lines.forEach((t) => ol.appendChild(el("li", "", t)));
+    box.appendChild(ol);
+    return box;
+  }
+  function locateAdobe(program, then) {
+    if (typeof window.adobeLocate !== "function") return;
+    Promise.resolve(window.adobeLocate(program)).then((r) => {
+      if (!r) return;
+      if (r.info) { adobe.info = r.info; if (!$("settingsOverlay").classList.contains("hidden")) renderAdobeSettings(); }
+      if (r.cancelled) return;
+      if (!r.ok) { toast(r.error || "That is not the right program.", 8000, { warn: true }); return; }
+      log((program === "photoshop" ? "Photoshop" : "Lightroom Classic") + " located", "ok");
+      if (then) then();
+    });
+  }
+  // Aviso de espera com Cancel no lugar do ×
+  function lrWaitToast(s) {
+    toast("Opening " + sessionShort(s) + " in Lightroom Classic… waiting for Lightroom", 600000, { silent: true });
+    const body = ui.toast.querySelector(".toast-body");
+    const close = body.querySelector(".toast-close");
+    const b = el("button", "btn btn-link btn-small toast-action", "Cancel");
+    b.type = "button";
+    b.addEventListener("click", cancelLightroom);
+    close.replaceWith(b);
+  }
+  function cancelLightroom() {
+    if (!lrJob.id) return;
+    window.adobeCancel(lrJob.id);
+    clearTimeout(lrJob.timer);
+    lrJob.id = null;
+    hideToast();
+    toast("Edit in Lightroom Classic cancelled");
+  }
+  function lrWait(r, s, group, scope) {
+    const id = r.id, start = Date.now();
+    let runningSince = r.running ? start : 0, aliveSince = r.alive ? start : 0;
+    lrJob.id = id;
+    lrWaitToast(s);
+    const again = () => startLightroom(s, group, scope);
+    const finish = () => { clearTimeout(lrJob.timer); lrJob.id = null; };
+    const tick = () => {
+      if (lrJob.id !== id) return;
+      Promise.resolve(window.adobeStatus(id)).then((st) => {
+        if (lrJob.id !== id || !st) return;
+        const now = Date.now();
+        if (st.state === "done") {
+          finish(); hideToast();
+          toast(sessionShort(s) + " is in Lightroom Classic: Stillpoint › " + (s.inProject && project.open ? project.name : "No project") + " › " + lrCollectionTitle(s));
+          return;
+        }
+        if (st.state === "error") {
+          finish(); hideToast();
+          dialog("Lightroom Classic could not open the session", st.message || "The Stillpoint plugin reported a problem.", [{ label: "OK", primary: true }]);
+          return;
+        }
+        if (st.state === "wrong-catalog") {
+          finish(); hideToast();
+          dialog("Lightroom Classic has another catalog open", "This project's sessions go to the project's catalog (Settings › Lightroom & Photoshop › One catalog per project), but Lightroom Classic has another one open. Open the project's catalog in Lightroom Classic (File › Open Catalog…), then try again.", [
+            { label: "Cancel", link: true, left: true },
+            { label: "Try again", primary: true, onClick: again },
+          ], kvBox([["Open now", st.catalog || "?"]]));
+          return;
+        }
+        if (st.running && !runningSince) runningSince = now;
+        if (st.alive && !aliveSince) aliveSince = now;
+        // Quanto esperar: o plugin já pegou o pedido ("working") = até 5 min (muitas fotos); plugin ligado = 30 s;
+        // Lightroom aberto sem o plugin = 20 s; abrindo agora (ou trocando de catálogo) = 2 min
+        const working = st.state === "working";
+        const late = working ? now - start > 300000
+          : aliveSince ? now - aliveSince > 30000
+          : runningSince && !r.switchCatalog && r.running ? now - runningSince > 20000
+          : now - start > 120000;
+        if (late) {
+          finish(); hideToast();
+          noAnswer(r, s, group, scope, !!st.running);
+          return;
+        }
+        lrJob.timer = setTimeout(tick, 500);
+      }, () => { if (lrJob.id === id) lrJob.timer = setTimeout(tick, 1000); });
+    };
+    lrJob.timer = setTimeout(tick, 400);
+  }
+  function noAnswer(r, s, group, scope, running) {
+    const again = () => startLightroom(s, group, scope);
+    const reinstall = () => Promise.resolve(window.adobeInstallPlugin()).then((x) => {
+      if (x && x.ok) { toast("Stillpoint plugin reinstalled. Quit Lightroom Classic and open it again, then click Try again."); log("Lightroom plugin reinstalled", "ok"); }
+      else dialog("Could not install the Stillpoint plugin", (x && x.error) || "The plugin could not be copied.", [{ label: "OK", primary: true }]);
+    });
+    const buttons = [
+      { label: "Cancel", link: true, left: true, onClick: () => window.adobeCancel(r.id) },
+      { label: "Reinstall the plugin", keep: true, onClick: reinstall },
+      { label: "Try again", primary: true, onClick: again },
+    ];
+    if (r.justInstalled && running) {
+      dialog("Restart Lightroom Classic", "The Stillpoint plugin was just installed, and Lightroom Classic only loads new plugins when it opens. Quit Lightroom Classic, open it again, then click Try again.", buttons);
+      return;
+    }
+    dialog("The Stillpoint plugin did not answer", running ? "Lightroom Classic is open, but the plugin did not answer in 20 seconds. It may be turned off:"
+      : "Lightroom Classic did not open in 2 minutes, or the plugin did not answer. If Lightroom Classic is open, the plugin may be turned off:", buttons,
+      stepsBox(["In Lightroom Classic, open File › Plug-in Manager…", "Select Stillpoint in the list on the left.", "Click Enable, then Done."]));
+  }
+  function doneEditing(session, groups) {
+    if (typeof window.adobeDoneEditing !== "function") return;
+    Promise.resolve(window.adobeDoneEditing(session, ...groups)).then((r) => { if (r && r.sessions) setAdobeEditing(r.sessions); });
+  }
+  function refreshEditing() {
+    if (typeof window.adobeEditing !== "function") return;
+    Promise.resolve(window.adobeEditing()).then((r) => { if (r && r.sessions) setAdobeEditing(r.sessions); }, () => {});
+  }
+  // Botão sobre a foto grande (aparece com o mouse em cima da foto)
+  {
+    const b = button("Edit in Lightroom Classic…", () => { const it = sessionGallery.items[sessionGallery.index]; if (it && !editing.on) editPhotoInLightroom(it); },
+      { title: "Send this session to Lightroom Classic (asks whether to edit the whole session or just this photo)" });
+    b.classList.add("btn-small", "stage-hover");
+    sessionGallery.setStageTools([b]);
+  }
+
   function sessionContextMenu(e, s) {
     const items = [];
     items.push({ label: (s.label ? "Rename label…" : "Add label…"), onClick: () => editSessionLabel(s) });
     if (s.label) items.push({ label: "Remove label", onClick: () => setSessionLabelUndoable(s, "") });
     items.push({ label: "Show session", onClick: () => showSession(s) });
+    items.push({ label: "Edit in Lightroom Classic", onClick: () => editSessionInLightroom(s) });
     items.push({ label: s.inProject ? "Open originals folder" : "Open folder", onClick: () => {
       if (typeof window.openSessionFolder !== "function") { toast("This build cannot open session folders yet. Build the app again.", 8000); return; }
       window.openSessionFolder(s.name);
@@ -9225,7 +9535,16 @@
       { const ri = ratioInfoCached(s.name); if (ri && ri.mixed) warnBox.appendChild(mixedTag(s.name, ri)); }
       if (s.missing > 0) warnBox.appendChild(missingTag(s.missing));
       if (deletedBySession[s.name]) warnBox.appendChild(deletedTag(deletedBySession[s.name]));
+      if (editTagFor(s.name)) warnBox.appendChild(editTagFor(s.name));
       if (warnBox.childNodes.length) li.querySelector(".project-row-main").appendChild(warnBox);
+      // Botão direito numa linha: mandar a sessão para o Lightroom Classic (etapa 20)
+      li.addEventListener("contextmenu", (e) => {
+        if (e.target.closest("input")) return;
+        e.preventDefault();
+        popupMenuAt(e.clientX, e.clientY, [
+          { label: "Edit in Lightroom Classic", onClick: () => editSessionInLightroom(s) },
+        ]);
+      });
       const first = s.photos.find((p) => p.previewable);
       if (first) sessionPhoto(s.name, first.file, 320).then((url) => { if (url) li.querySelector(".export-thumb").style.backgroundImage = "url(" + url + ")"; });
       li.querySelector(".project-row-play").addEventListener("click", () => { closeProjectWindow(); showSession(s); });
@@ -9855,6 +10174,7 @@
     Promise.resolve(window.trashList()).then((r) => { const all = r ? (r.items || []) : [], rids = new Set(all.filter((i) => i.restored).map((i) => i.id)); const top = all.filter((i) => !i.restored && (!i.parent || rids.has(i.parent))); if (r) setTrashInfo({ count: top.length, bytes: top.reduce((t, i) => t + (+i.bytes || 0), 0), days: r.days }); });
   Promise.resolve(window.uiReady()).then((info) => {
     refreshSessions();
+    refreshEditing();
     if (info && info.unsavedSessions > 0) offerRecovery(info.unsavedSessions);
     if (info && info.testRestart) { testRestart = true; ui.restartAppBtn.classList.remove("hidden"); }
     upd.info = info || null;

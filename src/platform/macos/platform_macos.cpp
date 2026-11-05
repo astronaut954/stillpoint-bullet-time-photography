@@ -24,6 +24,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <fstream>
+#include <iterator>
 #include <string>
 #include <thread>
 #include <vector>
@@ -613,5 +614,36 @@ open "$APP"
     void OpenWithDefaultApp(const fs::path& file)
     {
         Spawn({ "/usr/bin/open", file.string() });
+    }
+
+    bool OpenWithApplication(const fs::path& app, const std::vector<fs::path>& files)
+    {
+        std::vector<std::string> args = { "/usr/bin/open", "-a", app.string() };
+        for (const auto& f : files)
+            args.push_back(f.string());
+        return Spawn(args) > 0;
+    }
+
+    std::string ApplicationVersion(const fs::path& app)
+    {
+        // Contents/Info.plist (texto XML): o valor de CFBundleShortVersionString
+        std::ifstream in((app / "Contents" / "Info.plist").string(), std::ios::binary);
+        if (!in)
+            return "";
+        const std::string text((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+        const auto key = text.find("<key>CFBundleShortVersionString</key>");
+        if (key == std::string::npos)
+            return "";
+        const auto open = text.find("<string>", key);
+        const auto close = open == std::string::npos ? open : text.find("</string>", open);
+        if (close == std::string::npos)
+            return "";
+        return text.substr(open + 8, close - open - 8);
+    }
+
+    bool ApplicationRunning(const fs::path& app)
+    {
+        // pgrep -f procura no caminho completo dos processos: o programa de dentro do .app
+        return RunProcess({ "/usr/bin/pgrep", "-f", (app / "Contents" / "MacOS").string() + "/" }, 5) == 0;
     }
 }

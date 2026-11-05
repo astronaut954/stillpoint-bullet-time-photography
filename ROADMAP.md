@@ -791,6 +791,14 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    sessão já importada só vai para a coleção que já existe; a seção do Settings se chama "Lightroom & Photoshop";
    cor: sRGB por padrão em JPG/PNG/WEBP/HEIC/Sequence, Adobe RGB em TIFF/Lenticular, com opção de trocar; o
    plugin precisa funcionar no Mac e no Windows (Lightroom Classic 15.6 e Photoshop 27.11 na máquina do dono).
+   **Andamento (branch `etapa-20-lightroom`):** protótipo "Stillpoint e Adobe" aprovado em 2026-11-05 (15 telas; conflito
+   de Desfazer: opção A, janela de escolha obrigatória). Pedaços: 1) Settings com abas, plugin (instalar/atualizar),
+   "Edit in Lightroom Classic" (sessão e foto), coleção "Stillpoint › projeto › sessão", etiqueta "In Lightroom" e "LR"
+   nas miniaturas, "Done editing", janelas de "não instalado / antigo / não respondeu", catálogo por projeto;
+   2) "Export to Stillpoint" no Lightroom (⌥⇧E), "Edited n / m", aplicar a foto 01 em todas; 3) alternar Original /
+   Edited; 4) Photoshop (uma foto por vez, aviso "no longer RAW", conflito de Desfazer). **Pedaço 1 feito, para testar
+   (`docs/teste-manual.md`, seção 40).** Plugin em `assets/lightroom/Stillpoint.lrplugin` (Lua), conversa por arquivos em
+   `<pasta de dados>/lightroom` (`src/gui/adobe.h`).
 6. **Etapa 21 — Histórico de edição permanente.** Pedido do dono (2026-11-01): um histórico no estilo
    do painel History do Lightroom Classic, **vinculado ao projeto** (o projeto faz o papel do catálogo
    do Classic: o histórico mora na pasta dele, vai junto se a pasta for movida e só existe com um
