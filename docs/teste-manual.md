@@ -1457,8 +1457,9 @@ direita; a lista de sessões continua à esquerda da janela.
       preview" com o Interlaced: volta na hora, sem travar (a imagem entrelaçada fica guardada enquanto nada muda).
 - [ ] "Fit to canvas", "Reset photo" e "Reset all" cabem na coluna (quebram linha se faltar largura). "Fit to canvas": com a 04 em Size 130% e movida, o botão centra a foto e leva o Size ao
       menor valor que ainda cobre a área útil (100% numa foto sem giro; mais, se estiver girada — o giro fica).
-- [ ] Afastar muito uma foto (Move X 7000): o quadro comum some e "Common frame" avisa em âmbar "The photos do not
-      overlap: move them closer, or Reset." "Reset photo" volta a 04 a zero; "Reset all" zera todas.
+- [ ] Coluna da direita › "This photo" › campo "Move X": digitar 7000 e Enter. A foto não sai da área útil: vai só até
+      encostar na borda do canvas (a borda pisca laranja) e o campo mostra o valor máximo possível. "Reset photo" volta a
+      foto a zero; "Reset all" zera todas. (O aviso antigo "The photos do not overlap" não existe mais: a trava impede.)
 - [ ] Último bloco da coluna (sem título repetido): "Aspect ratio" (As shot · 3:2 · 4:3 · 16:9 · 1:1) é a mesma escolha
       da aba Framing e vale para a sessão inteira; o quadro neon fica onde a aba Framing o deixou (a posição do recorte
       só muda lá). "Position" (nove pontos, sem texto) move a foto atual dentro da
@@ -1514,7 +1515,8 @@ Com `STILLPOINT_FAKE_CAMERAS=9` e algumas sessões. Abrir "Export sessions".
       todas as marcadas e a coluna "Folder" acompanha enquanto se digita) e a caixa "Export to" (caminho, "Choose
       another folder…", "Reset to default" depois de trocar). Rodapé: "← Outputs", "Cancel" e "Export n sessions". No
       Project, "Use edited photos when available" aparece só neste passo.
-- [ ] Com uma proporção escolhida, o quadro neon do passo 1 fica parado e do mesmo tamanho ao trocar de foto (← → ou
+- [ ] Com uma proporção escolhida, o retângulo de borda verde neon sobre a prévia grande do passo 1 (a área que vai
+      ser exportada) fica parado e do mesmo tamanho ao trocar de foto (← → ou
       clique nas miniaturas), inclusive entre fotos 3:2 e 16:9: é a foto que muda atrás dele. Arrastar a prévia move a
       foto ("Drag the photo to choose the part that stays"); o ponto de "Position" acompanha. Foto com alinhamento
       próprio: a instrução diz "This photo is aligned: move it in Align photos" e o arraste não age nela.
@@ -1584,6 +1586,32 @@ Com `STILLPOINT_FAKE_CAMERAS=9`.
       "Align photos" na sessão de antes. Escolher uma proporção: "Align photos" passa para a sessão misturada.
 - [ ] Janela Project (botão ao lado do título "Sessions", com um projeto aberto): as sessões misturadas têm a etiqueta
       "Mixed ratios" (mouse em cima mostra o texto), como na lista Sessions.
+
+## 38 C. Ajustes depois do teste de 2026-11-04 (noite)
+
+Com `STILLPOINT_FAKE_CAMERAS=9`.
+
+- [ ] Tela principal: disparar, escolher 3:2 na janela "Mixed ratios" e disparar de novo (sem mexer no Camera settings):
+      a janela não abre e a sessão nova já vem com 3:2 (Activity: "Crop on export: 3:2 for …"). Com "Keep as shot", a
+      sessão nova fica em As shot.
+- [ ] Tela principal, logo depois de um disparo (com "Sessions" em 2): clicar em outras sessões da lista, devagar e rápido:
+      cada clique abre a sessão clicada, sem marcar várias (a moldura de seleção múltipla só com ⌘ ou ⇧).
+- [ ] Align photos: arrastar a foto rápido contra a borda: ela encosta na borda (não para antes) e o outro eixo continua
+      livre; o movimento acompanha o mouse sem engasgos. O mesmo no passo 1, arrastando a prévia.
+- [ ] Align photos: o rodapé mostra só o botão verde "Done aligning" ("Cancel" e "Outputs →" somem); clicar volta à
+      tela do Framing, com o rodapé normal.
+- [ ] Align photos, com o foco na lista de sessões (Tab): ← → trocam de foto e o anel de foco da sessão fica parado.
+- [ ] Align photos, com o foco na lista (Tab), ↑ ↓ até uma sessão misturada ainda em "As shot" (com "Same framing for
+      all ticked sessions" desligado): abre "Choose a ratio first" antes de trocar; "Cancel" fica na sessão de antes.
+- [ ] "Choose a ratio first": o botão verde "Use 3:2 · keeps 97%" fica à direita do "Cancel"; as outras proporções
+      ficam em "Other ratios", acima.
+- [ ] Etiqueta de fotos apagadas: numa sessão, apagar 2 fotos (miniatura e Delete). Aparece "2 deleted" (mesmo desenho
+      do "n missing") na lista Sessions, no cabeçalho da sessão, na lista do Export e na janela Project; o mouse em cima
+      mostra "2 photos of this session are in the Trash (top bar). Restore brings them back." Restaurar as fotos na
+      lixeira: a etiqueta some. ⌘Z do apagar: também some.
+- [ ] Janela Project: "Mixed ratios", "n missing" e "n deleted" ficam na coluna Session, embaixo da data; a coluna
+      Edited fica só com "Originals" / "Edited n / m".
+- [ ] Janela de digitar um nome aberta (ex.: renomear): ⌘Z fora do campo não desfaz nada do app.
 
 ## Resultado
 

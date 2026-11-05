@@ -763,7 +763,12 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      sessão toda na mesma forma, "As shot" alinha e exporta pelo canvas (a parte comum). O Export reabre sempre no passo 1.
      Settings e About abrem por cima de qualquer janela. ⌘Z não age com uma confirmação aberta; a cor da faixa do
      Lenticular entra no desfazer. A escolha da janela "Mixed ratios" vale para todas as sessões do disparo; mudar o
-     Camera settings faz o aviso voltar. Cursor de girar no "Align photos": seta em arco preta com
+     Camera settings faz o aviso voltar.
+     **2026-11-04 (noite):** a escolha da janela "Mixed ratios" vale também para os disparos seguintes com a mesma
+     combinação (até mudar o Camera settings). Etiqueta "n deleted" (fotos da sessão na lixeira), no desenho do "n
+     missing". Na janela Project os avisos ficam na coluna Session. Dentro de "Align photos" o rodapé tem só "Done
+     aligning" (caminho A). Em "Choose a ratio first" a sugerida é o botão verde ao lado do Cancel.
+     **Em aberto (decisão do dono):** regra do ⌘Z entre os passos do Export e se os passos continuam livres. Cursor de girar no "Align photos": seta em arco preta com
      contorno branco (opção B). `docs/teste-manual.md`, seção 38.
 5. **Etapa 20 — Edit in Lightroom Classic / Photoshop.** Ida e volta: o app abre os originais
    do Project no Lightroom Classic (o dono do projeto usa o Classic); um plugin do Stillpoint

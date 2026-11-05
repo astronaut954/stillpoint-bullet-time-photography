@@ -431,6 +431,8 @@
     // Dentro de um campo de texto, o desfazer é o do texto (caixas de marcar e botões não)
     if (tag === "TEXTAREA" || (tag === "INPUT" && !["checkbox", "radio", "button", "range"].includes(e.target.type))) return;
     e.preventDefault(); e.stopImmediatePropagation();
+    // Janela de digitar um nome aberta (fora do campo): também não desfaz nada do app
+    if (!$("promptOverlay").classList.contains("hidden")) return;
     // Janela Match automatically (passos 1 e 3): desfaz as escolhas feitas nela (caixas e valores)
     if (typeof csMatchHistoryActive === "function" && csMatchHistoryActive()) { if (e.key === "y" || e.shiftKey) csMatchRedo(); else csMatchUndo(); return; }
     if (e.key === "y" || e.shiftKey) doRedo(); else doUndo();
@@ -1468,6 +1470,29 @@
     return t;
   }
   // Etiqueta de sessão com fotos que a câmera recusou no disparo (arquivo ".missing")
+  // Fotos apagadas de uma sessão (estão na lixeira): etiqueta "n deleted", no desenho do "n missing"
+  // (decisão do dono, 2026-11-04). Some quando as fotos voltam da lixeira ou a lixeira as descarta.
+  let deletedBySession = {};
+  function deletedTag(count) {
+    const t = document.createElement("span");
+    t.className = "missing-tag deleted-tag";
+    t.textContent = count + " deleted";
+    t.dataset.itip = plural(count, "photo of this session is", "photos of this session are") + " in the Trash (top bar). Restore brings " + (count === 1 ? "it" : "them") + " back.";
+    return t;
+  }
+  function refreshDeleted() {
+    if (typeof window.trashList !== "function") return;
+    Promise.resolve(window.trashList()).then((r) => {
+      const map = {};
+      (r && r.items || []).forEach((i) => { if (!i.whole && !i.restored && !i.isProject && i.session && (+i.photos || 0) > 0) map[i.session] = (map[i.session] || 0) + (+i.photos || 0); });
+      if (JSON.stringify(map) === JSON.stringify(deletedBySession)) return;
+      deletedBySession = map;
+      renderSessionListSoon();
+      if (currentSession) sessionHead(currentSession);
+      if (!$("projectOverlay").classList.contains("hidden") && !(document.activeElement && document.activeElement.closest && document.activeElement.closest("#projectList input[type=text]"))) renderProjectWindow();
+      if (!$("exportOverlay").classList.contains("hidden")) renderExportList();
+    }, () => {});
+  }
   function missingTag(count) {
     const t = document.createElement("span");
     t.className = "missing-tag";
@@ -1543,6 +1568,13 @@
     ui.sessionList.querySelectorAll("li.folder").forEach((x) => { x.tabIndex = x === row ? 0 : -1; });
     row.focus();
   }
+  // Redesenho "de fundo" (medição das proporções, lista nova vinda do programa): com o botão do mouse apertado na
+  // lista, espera soltar. Redesenhar no meio do clique trocava a linha e o clique se perdia (Record 1, 2026-11-04).
+  let listHeld = false, listRenderPending = false;
+  ui.sessionList.addEventListener("pointerdown", () => { listHeld = true; }, true);
+  window.addEventListener("pointerup", () => { listHeld = false; if (listRenderPending) { listRenderPending = false; setTimeout(() => { if (!sessDrag) renderSessionList(); }, 0); } }, true);
+  window.addEventListener("pointercancel", () => { listHeld = false; }, true);
+  function renderSessionListSoon() { if (listHeld || sessDrag) { listRenderPending = true; return; } renderSessionList(); }
   function renderSessionList() {
     if (sessDrag) sessEndDrag(null);
     pruneSelection();  // a linha arrastada vai sumir: termina o arraste
@@ -1584,13 +1616,14 @@
       li.dataset.name = s.name;
       li.dataset.tip = (s.label ? s.label + " · " : "") + label.date;  // legenda da barra só de ícones (tela cheia)
       const mixed = ratioInfoCached(s.name) && ratioInfoCached(s.name).mixed;
-      const warns = [s.missing > 0 ? s.missing + " missing" : "", mixed ? "Mixed ratios" : ""].filter(Boolean);
+      const warns = [s.missing > 0 ? s.missing + " missing" : "", deletedBySession[s.name] ? deletedBySession[s.name] + " deleted" : "", mixed ? "Mixed ratios" : ""].filter(Boolean);
       if (warns.length) { li.classList.add("warn"); li.dataset.tipWarn = warns.join(" · "); }  // aviso âmbar: o ícone da barra só de ícones também fica âmbar
       if (projectOpen && !s.inProject && !notInProjectOpen) li.classList.add("hidden");
       li.innerHTML = icon("session", 16) + '<div><div class="folder-date"></div><div class="folder-meta"></div></div>';
       if (sessSel.has(s.name) && selectionActive()) li.classList.add("multi");
       li.querySelector(".folder-date").textContent = s.label ? s.label + " · " + label.date : label.date;
       li.querySelector(".folder-meta").textContent = [plural(count, "photo", "photos"), label.detail].filter(Boolean).join(" · ");
+      if (deletedBySession[s.name]) li.querySelector(".folder-meta").after(deletedTag(deletedBySession[s.name]));
       if (s.missing > 0) li.querySelector(".folder-meta").after(missingTag(s.missing));
       if (mixed) li.querySelector(".folder-meta").after(mixedTag(s.name, ratioInfoCached(s.name)));
       if (projectOpen) {
@@ -1737,7 +1770,13 @@
     sessionGallery.setHead(label.date,  // a data já tem os segundos
       editing.on ? "Drag the photos, or select and use the arrows (Shift+click or " + (upd.info && upd.info.os === "windows" ? "Ctrl" : "Cmd") + "+click selects several). Then save the order."
                  : [mixed ? ratioShortText(r) : "", label.detail].filter(Boolean).join(" · "),
-      mixed ? mixedTag(session.name, r) : null);
+      headTags(session, r));
+  }
+  function headTags(session, r) {
+    const f = document.createDocumentFragment();
+    if (r && r.mixed) f.appendChild(mixedTag(session.name, r));
+    if (deletedBySession[session.name]) f.appendChild(deletedTag(deletedBySession[session.name]));
+    return f.childNodes.length ? f : null;
   }
 
   // =================== Proporções misturadas numa sessão (Parte 3 da Proporção) ===================
@@ -1790,7 +1829,7 @@
       if (info.mixed && !ratioLogged.has(session.name)) { ratioLogged.add(session.name); log("Mixed ratios: " + ratioText(info, session), "warn", "Open Camera settings to match the cameras, or crop on export."); }
       // Na tela: miniaturas, cabeçalho e lista
       if (currentSession && currentSession.name === session.name) { sessionGallery.refreshMarks(); if (!playTimer) sessionHead(session); }
-      if (!sessDrag) renderSessionList();
+      renderSessionListSoon();
       if (!$("projectOverlay").classList.contains("hidden") && !(document.activeElement && document.activeElement.closest && document.activeElement.closest("#projectList input[type=text]"))) renderProjectWindow();  // (não no meio de digitar um rótulo)
       return info;
     });
@@ -1846,14 +1885,17 @@
   function maybeWarnMixed(session, info, batch) {
     if (!info.mixed) return;
     const names = batch && batch.length ? batch : [session.name];
-    const chooseAll = (r) => names.forEach((n) => {
+    let memo = null;
+    const chooseAll = (r) => { if (memo) memo.choice = r; names.forEach((n) => {
       const s2 = sessions.find((x) => x.name === n);
       if (!s2) return;
-      measureSessionRatios(s2).then((i2) => { if (i2 && i2.mixed) chooseSessionCrop(n, r, i2); });
-    });
+      measureSessionRatios(s2).then((i2) => { if (i2 && i2.mixed && !sessionCrop[n]) chooseSessionCrop(n, r, i2); });
+    }); };
     const sig = Object.keys(info.byGroup).sort().map((g) => g + "=" + info.byGroup[g]).join(",");
-    if (ratioWarned[sig]) return;
-    ratioWarned[sig] = true;
+    // Já avisado nesta combinação: a escolha feita na janela vale também para os disparos seguintes (até mudar o
+    // Camera settings, que faz o aviso voltar). "Keep as shot" não guarda nada.
+    if (ratioWarned[sig]) { const c = ratioWarned[sig].choice; if (c && !sessionCrop[session.name]) chooseSessionCrop(session.name, c, info); return; }
+    memo = ratioWarned[sig] = { choice: null };
     // Linha do disparo em âmbar
     if (/^Done/.test(ui.progress.textContent) && !/Mixed ratios/.test(ui.progress.textContent)) { ui.progress.textContent += " · Mixed ratios"; ui.progress.classList.add("warn"); }
     const others = el("div", "ratio-others");
@@ -2876,7 +2918,10 @@
   // Teclado: o Tab para numa sessão só; ↑ ↓ trocam de sessão (e mostram as opções dela, como o clique)
   const exportRoving = makeRoving({ root: () => $("exportList"), rows: (r) => [...r.querySelectorAll("li.export-item")],
     controls: (row) => (exp.step === 2 ? [row] : [row.querySelector("input")]), id: (row) => row.dataset.name,  // passo 2: sem caixa, a linha é o controle
-    onMove: (name, i) => { if (exp.active === name) return; exp.active = name; exp.photo = 0; renderExportList(); renderExportSettings(); exportRoving.focusAt(name, i); } });
+    onMove: (name, i) => {
+      if (exp.active === name) return;
+      if (exp.aligning) { const s = sessions.find((x) => x.name === name), tst = s && settingsFor(name); if (s && needsRatio(s, tst)) { askRatioForAlign(s, tst, renderExport); return; } }
+      exp.active = name; exp.photo = 0; renderExportList(); renderExportSettings(); exportRoving.focusAt(name, i); } });
   function renderExportList() {
     const list = $("exportList");
     const focusWas = exportRoving.where(document.activeElement);
@@ -2905,6 +2950,7 @@
       li.querySelector(".export-check").addEventListener("click", (e) => e.stopPropagation());
       li.querySelector(".folder-date").textContent = label.date;
       li.querySelector(".folder-meta").textContent = [plural(sessionItems(s).length, "photo", "photos"), label.detail].filter(Boolean).join(" · ");
+      if (deletedBySession[s.name]) li.querySelector(".folder-meta").after(deletedTag(deletedBySession[s.name]));
       if (s.missing > 0) li.querySelector(".folder-meta").after(missingTag(s.missing));
       if (s.inProject && s.edited > 0) li.querySelector(".folder-meta").after(projectTag(s));  // "Edited n / m" também aqui
       if (s.saved) li.querySelector(".folder-meta").after(savedTag());
@@ -2970,8 +3016,11 @@
     $("exportCount").classList.toggle("warn", warn);
     // Botão verde: avança ("Outputs →", "Review →") e, no passo 3, exporta
     const next = exp.step === 1 ? "Outputs →" : exp.step === 2 ? "Review →" : chosen ? "Export " + plural(chosen, "session", "sessions") : "Export";
-    $("exportConfirm").textContent = next;
-    $("exportConfirm").disabled = exp.step === 1 ? chosen === 0 : chosen === 0 || block;
+    // Dentro de "Align photos" (decisão do dono, 2026-11-04, caminho A): um botão só, que volta ao Framing
+    const aligningNow = exp.step === 1 && !!exp.aligning;
+    $("exportConfirm").textContent = aligningNow ? "Done aligning" : next;
+    $("exportConfirm").disabled = aligningNow ? false : exp.step === 1 ? chosen === 0 : chosen === 0 || block;
+    $("exportCancel").classList.toggle("hidden", aligningNow);
     $("exportBack").classList.toggle("hidden", exp.step === 1);
     $("exportBack").textContent = exp.step === 3 ? "← Outputs" : "← Sessions";
     $("exportSelectAll").disabled = chosen === all.length;
@@ -2982,6 +3031,8 @@
   }
   function sessionTitle(s) { const l = sessionLabel(s.name); return s.label ? s.label + " · " + l.date : l.date; }
 
+  // Trocar de foto (← → ou clique na miniatura): só a coluna da direita; a lista não muda e não perde o foco
+  function photoRerender() { renderExportSettings(); if (renderExportSettings.restoreScroll) renderExportSettings.restoreScroll(); }
   function refreshSummaries() {
     if (exp.step === 1) { renderExportList(); updateExportCount(); return; }  // os selos do Framing mudam com a sessão
     const diffNow = differentSessions(exp.step);
@@ -3575,13 +3626,20 @@
     let drag = null;
     box.addEventListener("dragstart", (e) => e.preventDefault());  // sem o arraste nativo da imagem (prendia o mouse)
     box.addEventListener("pointerdown", (e) => { if (!slack || e.target.closest("button")) return; drag = { x: e.clientX, y: e.clientY, cx: st.crop.x, cy: st.crop.y }; box.setPointerCapture(e.pointerId); document.body.classList.add("photo-drag"); e.preventDefault(); });
+    let cropRaf = 0;
     box.addEventListener("pointermove", (e) => {
+      if (!drag || !slack) return;
+      const ev = e;
+      if (cropRaf) cancelAnimationFrame(cropRaf);
+      cropRaf = requestAnimationFrame(() => { cropRaf = 0; cropMove(ev); });
+    });
+    const cropMove = (e) => {
       if (!drag || !slack) return;
       // A foto acompanha o mouse: arrastar para a direita mostra mais do lado esquerdo dela
       if (slack.x > 1) st.crop.x = Math.max(0, Math.min(1, drag.cx - (e.clientX - drag.x) / slack.x));
       if (slack.y > 1) st.crop.y = Math.max(0, Math.min(1, drag.cy - (e.clientY - drag.y) / slack.y));
       layout();
-    });
+    };
     const endDrag = () => { if (!drag) return; drag = null; document.body.classList.remove("photo-drag"); onChange(true); };
     box.addEventListener("pointerup", endDrag); box.addEventListener("pointercancel", endDrag); box.addEventListener("lostpointercapture", endDrag);
     box.relayout = layout;
@@ -3678,15 +3736,8 @@
   function askRatioForAlign(session, st, rerender) {
     const fromActive = exp.active, fromAligning = !!exp.aligning, fromPhoto = exp.photo;
     const info = ratioInfoCached(session.name);
-    const box = el("div", "ratio-others");
-    box.appendChild(el("span", "ratio-others-label", "Ratio for the alignment"));
-    RATIO_ORDER.forEach((r) => {
-      const suggested = info && info.suggest === r;
-      const b = el("button", "btn btn-small ratio-chip " + (suggested ? "btn-primary" : "btn-secondary")); b.type = "button";
-      b.appendChild(document.createTextNode(r + " "));
-      if (info && info.keep && info.keep[r] != null) b.appendChild(el("span", "dim", "· keeps " + info.keep[r] + "%"));
-      if (suggested) b.title = "Loses the fewest pixels in this session";
-      b.addEventListener("click", () => {
+    const suggest = info && info.suggest && RATIO_ORDER.includes(info.suggest) ? info.suggest : "";
+    const choose = (r) => {
         ui.dialogOverlay.classList.add("hidden");
         expTrack();  // o que estava antes da escolha
         st.crop.ratio = r; cropShare(session, st);
@@ -3701,12 +3752,22 @@
           top.undo = () => { exp.active = fromActive; exp.photo = fromPhoto; exp.aligning = fromAligning; return u0(); };
           top.redo = () => { exp.active = session.name; exp.photo = 0; exp.aligning = true; return r0(); };
         }
-      });
+    };
+    const box = el("div", "ratio-others");
+    box.appendChild(el("span", "ratio-others-label", suggest ? "Other ratios" : "Ratio for the alignment"));
+    RATIO_ORDER.filter((r) => r !== suggest).forEach((r) => {
+      const b = el("button", "btn btn-small ratio-chip btn-secondary"); b.type = "button";
+      b.appendChild(document.createTextNode(r + " "));
+      if (info && info.keep && info.keep[r] != null) b.appendChild(el("span", "dim", "· keeps " + info.keep[r] + "%"));
+      b.addEventListener("click", () => choose(r));
       box.appendChild(b);
     });
+    // A sugerida (a que perde menos) é o botão verde, ao lado direito do Cancel (decisão do dono, 2026-11-04)
+    const buttons = [{ label: "Cancel" }];
+    if (suggest) buttons.push({ label: "Use " + suggest + (info.keep && info.keep[suggest] != null ? " · keeps " + info.keep[suggest] + "%" : ""), primary: true, onClick: () => choose(suggest) });
     dialog("Choose a ratio first",
       "Aligning moves and rotates the photos, so they need one frame in the same shape: \"As shot\" keeps each photo as the camera made it and cannot be aligned. Choose the ratio the alignment will use; you can change it later in Align photos.",
-      [{ label: "Cancel" }], box);
+      buttons, box);
   }
   // A foto (w×h, com o seu tamanho e giro, centrada em dx,dy) cobre inteiro o retângulo reto r? Conferência exata
   // pelos quatro cantos de r levados ao espaço da foto (a mesma conta do programa, Export::Covers)
@@ -3842,11 +3903,11 @@
       // Proporções misturadas: a mesma marca da tela principal (borda tracejada âmbar e a proporção no canto)
       if (mixedInfo && mixedInfo.mixed && mixedInfo.marked.includes(it.group)) { li.classList.add("ratio-warn"); li.appendChild(el("span", "frame-ratio", mixedInfo.byGroup[it.group] || "")); }
       sessionPhoto(session.name, it.file, 320).then((url) => { if (url) li.querySelector("img").src = url; });
-      li.addEventListener("click", () => { exp.photo = k; rerender(); });
+      li.addEventListener("click", () => { exp.photo = k; photoRerender(); });
       strip.appendChild(li);
     });
     const slot = el("div", "export-strip-slot"); slot.appendChild(stripScroll); left.appendChild(slot);
-    exp.keyNav = (d) => { const k = Math.max(0, Math.min(n - 1, cur + d)); if (k === cur) return; exp.photo = k; rerender(); };
+    exp.keyNav = (d) => { const k = Math.max(0, Math.min(n - 1, cur + d)); if (k === cur) return; exp.photo = k; photoRerender(); };
     wrap.appendChild(left);
 
     // Coluna de controles
@@ -3930,12 +3991,20 @@
         if (need != null && cand.rot !== a.rot) { cand.scale = need; Object.assign(a, cand); return true; }
       }
       if (covers(cand)) { Object.assign(a, cand); return true; }
-      if (cand.dx !== a.dx || cand.dy !== a.dy) {
-        const onlyX = Object.assign({}, a, { dx: cand.dx }), onlyY = Object.assign({}, a, { dy: cand.dy });
-        if (cand.scale === a.scale && cand.rot === a.rot) {
-          if (covers(onlyX)) { a.dx = cand.dx; return true; }
-          if (covers(onlyY)) { a.dy = cand.dy; return true; }
-        }
+      if ((cand.dx !== a.dx || cand.dy !== a.dy) && cand.scale === a.scale && cand.rot === a.rot) {
+        // Mover além do limite: cada eixo vai até onde ainda cobre a área útil (a foto encosta na borda, sem parar
+        // antes) e o outro eixo continua livre
+        const before = { dx: a.dx, dy: a.dy };
+        ["dx", "dy"].forEach((axis) => {
+          if (cand[axis] === a[axis]) return;
+          const t = Object.assign({}, a, { [axis]: cand[axis] });
+          if (covers(t)) { a[axis] = cand[axis]; return; }
+          let lo = a[axis], hi = cand[axis];
+          for (let i = 0; i < 18; i++) { const mid = (lo + hi) / 2; t[axis] = mid; if (covers(t)) lo = mid; else hi = mid; }
+          a[axis] = lo;
+        });
+        stage.classList.add("locked"); clearTimeout(lockFlash); lockFlash = setTimeout(() => stage.classList.remove("locked"), 300);
+        return a.dx !== before.dx || a.dy !== before.dy;
       }
       stage.classList.add("locked"); clearTimeout(lockFlash); lockFlash = setTimeout(() => stage.classList.remove("locked"), 300);
       return false;
@@ -4160,17 +4229,23 @@
         drag = { kind: "move", x: e.clientX, y: e.clientY, dx: a.dx, dy: a.dy }; stage.classList.add("dragging");
       }
     });
+    let moveEv = null, moveRaf = 0;
     stage.addEventListener("pointermove", (e) => {
       if (!drag) return;
+      moveEv = e;
+      if (!moveRaf) moveRaf = requestAnimationFrame(() => { moveRaf = 0; if (drag && moveEv) dragMove(moveEv); });
+    });
+    const dragMove = (e) => {
       if (drag.kind === "pan") { view.px = drag.px + e.clientX - drag.x; view.py = drag.py + e.clientY - drag.y; layout(); return; }
       const c = centerOnScreen();
       if (drag.kind === "move") tryApply((cand) => { cand.dx = drag.dx + (e.clientX - drag.x) / scaleK; cand.dy = drag.dy + (e.clientY - drag.y) / scaleK; });
       else if (drag.kind === "scale") tryApply((cand) => { cand.scale = Math.max(0.05, Math.min(20, drag.scale * Math.max(1, Math.hypot(e.clientX - c.x, e.clientY - c.y)) / drag.dist)); });
       else { const ang = Math.atan2(e.clientY - c.y, e.clientX - c.x); let d = (ang - drag.angle) * 180 / Math.PI; if (e.shiftKey) d = Math.round(d / 15) * 15; tryApply((cand) => { cand.rot = Math.round((drag.rot + d) * 100) / 100; }); }
       sync(); layout();
-    });
-    const endDrag = () => {
+    };
+    const endDrag = (e) => {
       if (!drag) return;
+      if (moveRaf) { cancelAnimationFrame(moveRaf); moveRaf = 0; if (moveEv) dragMove(moveEv); }  // a última posição do mouse vale
       const pan = drag.kind === "pan";
       drag = null; stage.classList.remove("dragging", "resizing", "rotating", "panning"); document.body.classList.remove("photo-drag");
       if (pan) return;  // deslocar a vista não muda a foto
@@ -4429,10 +4504,10 @@
             li.innerHTML = '<div class="frame-img"><img alt=""><span class="frame-badge"></span></div>';
             li.querySelector(".frame-badge").textContent = pad(item.order || k + 1);
             sessionPhoto(session.name, item.file, 320).then((url) => { if (url) li.querySelector("img").src = url; });
-            li.addEventListener("click", () => { exp.photo = k; rerender(); });
+            li.addEventListener("click", () => { exp.photo = k; photoRerender(); });
             strip.appendChild(li);
           });
-          exp.keyNav = (d) => { const k = Math.max(0, Math.min(items.length - 1, (exp.photo || 0) + d)); if (k === exp.photo) return; exp.photo = k; rerender(); };
+          exp.keyNav = (d) => { const k = Math.max(0, Math.min(items.length - 1, (exp.photo || 0) + d)); if (k === exp.photo) return; exp.photo = k; photoRerender(); };
           const slot = el("div", "export-strip-slot");
           slot.appendChild(stripScroll);
           outer.insertBefore(slot, rows);
@@ -5172,7 +5247,10 @@
   $("exportSelectAll").addEventListener("click", () => { exp.selectedTouched = true; exp.selected = new Set(exportable().map((s) => s.name)); renderExportList(); updateExportCount(); });
   $("exportUnselectAll").addEventListener("click", () => { exp.selectedTouched = true; exp.selected.clear(); renderExportList(); updateExportCount(); });
   $("exportCancel").addEventListener("click", askCloseExport);
-  $("exportConfirm").addEventListener("click", () => { if (exp.step < 3) goExportStep(exp.step + 1); else confirmExport(); });
+  $("exportConfirm").addEventListener("click", () => {
+    if (exp.step === 1 && exp.aligning) { exp.aligning = false; renderExport(); return; }  // "Done aligning"
+    if (exp.step < 3) goExportStep(exp.step + 1); else confirmExport();
+  });
   $("exportBack").addEventListener("click", () => goExportStep(exp.step - 1));
   $("progressCancel").addEventListener("click", () => {
     $("progressCancel").disabled = true;
@@ -8344,7 +8422,8 @@
     return null;
   }
   function sessPointerDown(e, li, s, multi) {
-    if (e.button !== 0 || busy || e.target.closest("button")) return;
+    if (e.button !== 0 || e.target.closest("button")) return;
+    if (busy) { if (!multi && (!currentSession || currentSession.name !== s.name)) showSession(s); return; }  // ocupado: escolhe, mas não arrasta
     if (sessDrag) sessEndDrag(null);
     e.preventDefault();  // sem seleção de texto pelo caminho do arraste (o clique continua valendo)
     // Várias marcadas: vão juntas as do mesmo lado da segurada (todas do projeto, ou todas de fora)
@@ -8520,6 +8599,7 @@
   const trash = { count: 0, bytes: 0, days: 15 };
   function setTrashInfo(e) {
     trash.count = e.count || 0; trash.bytes = +e.bytes || 0; trash.days = e.days || 15;
+    refreshDeleted();
     const b = $("trashBtn");
     b.classList.toggle("has", trash.count > 0);
     $("trashCount").textContent = trash.count ? shortNum(trash.count) : "";
@@ -9113,8 +9193,12 @@
       const ed = li.querySelector(".project-row-edited");
       if (s.edited > 0) { const t = projectTag(s); ed.appendChild(t); }
       else { const t = document.createElement("span"); t.className = "project-tag dim"; t.textContent = "originals"; ed.appendChild(t); }
-      if (s.missing > 0) ed.appendChild(missingTag(s.missing));
-      { const ri = ratioInfoCached(s.name); if (ri && ri.mixed) ed.appendChild(mixedTag(s.name, ri)); }  // como na lista Sessions
+      // Avisos na coluna Session, embaixo da data, como na lista Sessions (a coluna Edited fica só com as editadas)
+      const warnBox = el("span", "project-row-warns");
+      { const ri = ratioInfoCached(s.name); if (ri && ri.mixed) warnBox.appendChild(mixedTag(s.name, ri)); }
+      if (s.missing > 0) warnBox.appendChild(missingTag(s.missing));
+      if (deletedBySession[s.name]) warnBox.appendChild(deletedTag(deletedBySession[s.name]));
+      if (warnBox.childNodes.length) li.querySelector(".project-row-main").appendChild(warnBox);
       const first = s.photos.find((p) => p.previewable);
       if (first) sessionPhoto(s.name, first.file, 320).then((url) => { if (url) li.querySelector(".export-thumb").style.backgroundImage = "url(" + url + ")"; });
       li.querySelector(".project-row-play").addEventListener("click", () => { closeProjectWindow(); showSession(s); });

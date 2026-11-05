@@ -1692,7 +1692,10 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .export-settings.theater .export-preview .lent-paper img { position: absolute; inset: 0; width: 100%; height: 100%; }
 /* Proporções misturadas na sessão (Parte 3 da Proporção) */
 .missing-tag.mixed-tag { border-style: dashed; cursor: help; }
-.gallery-title .mixed-tag { display: inline-block; margin: 0 0 0 10px; vertical-align: 2px; }
+.gallery-title .missing-tag { display: inline-block; margin: 0 0 0 10px; vertical-align: 2px; }
+.missing-tag.deleted-tag { cursor: help; }
+.project-row-warns { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 3px; }
+.project-row-warns .missing-tag { margin-top: 0; }
 .frame.ratio-warn { border-color: var(--noct-pending); border-style: dashed; }
 .frame.ratio-warn.selected { box-shadow: 0 0 16px rgba(var(--noct-pending-rgb), .25); }
 .frame.ratio-warn.selected .frame-badge { background: var(--noct-pending); border-color: var(--noct-pending); color: var(--noct-on-primary); }
