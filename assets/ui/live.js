@@ -510,7 +510,7 @@ window.Live = (function () {
     el.playMore.classList.toggle("hidden", el.reset.classList.contains("hidden") && el.sess.classList.contains("hidden"));
     if (multi && !audience) {
       el.sessLabel.textContent = "Session " + (S.multi.cur + 1) + " of " + S.multi.list.length;
-      el.sessMode.textContent = S.multi.pinned ? "· Pinned" : "· Playing all";
+      el.sessMode.textContent = S.multi.pinned ? "Pinned" : "Playing all";
       el.sessMode.classList.toggle("pinned", S.multi.pinned);
       el.sessAll.classList.toggle("hidden", !S.multi.pinned);
     }

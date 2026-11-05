@@ -1645,7 +1645,7 @@ Com `STILLPOINT_FAKE_CAMERAS=9`. Na tela principal, painel "Bullet time", campo 
 - [ ] Space dispara de novo: o disparo novo começa em "Playing all", só com as sessões dele.
 - [ ] "Sessions" em 1: nada disso aparece (igual a antes).
 - [ ] Canto de cima, à direita (aparece com o mouse e some sozinho): duas caixas separadas, uma com "Speed" e "Reverse
-      loop", outra com "‹ Session 1 of 2 › · Pinned · Play all" e "Reset". Com a janela estreita, a segunda caixa desce
+      loop", outra com "‹ Session 1 of 2 › Pinned  Play all" e "Reset" (sem o "·" antes de Pinned / Playing all, com o mesmo espaço entre todos). Com a janela estreita, a segunda caixa desce
       para baixo da primeira; o resumo ("9 cameras · all at once") encurta com "…".
 - [ ] "Reset" (na segunda caixa, só com a sequência tocando): para a sequência e volta para a tela de pronto ("Ready · …").
 - [ ] Modo com duas janelas: com uma Live só, "Mode" troca entre Operator e Audience. "Another window" abre a segunda no
