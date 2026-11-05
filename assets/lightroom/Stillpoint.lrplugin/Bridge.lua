@@ -244,4 +244,20 @@ function Bridge.goodbye()
 	if Bridge.folder() then removeFile(bridgeFile('alive.txt')) end
 end
 
+-- Começa (ou recomeça) a esperar os pedidos. Cada começo tem um número: o anterior para sozinho.
+function Bridge.start(why)
+	local LrTasks = import 'LrTasks'
+	_G.StillpointGeneration = (_G.StillpointGeneration or 0) + 1
+	local generation = _G.StillpointGeneration
+	LrTasks.startAsyncTask(function()
+		Bridge.note('Stillpoint plugin ' .. tostring(Bridge.version()) .. ' listening (' .. tostring(why) .. ', bridge folder: ' .. tostring(Bridge.folder()) .. ')')
+		while _G.StillpointGeneration == generation do
+			local ok, problem = LrTasks.pcall(Bridge.tick)
+			if not ok then Bridge.problem(problem) end
+			LrTasks.sleep(0.5)
+		end
+		Bridge.note('Stillpoint plugin stopped listening (' .. tostring(why) .. ')')
+	end, 'Stillpoint bridge')
+end
+
 return Bridge

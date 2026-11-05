@@ -275,8 +275,9 @@ namespace Adobe
             error = "Could not find the Lightroom plugin folder on this computer.";
             return false;
         }
-        fs::create_directories(target.parent_path(), ec);
-        fs::remove_all(target, ec);
+        // Escreve por cima, sem apagar a pasta antes: com o Lightroom aberto, a pasta do plugin sumindo por um
+        // instante fazia o Lightroom dar o plugin como perdido (suspeita do teste de 2026-11-05)
+        fs::create_directories(target, ec);
         ec.clear();
         fs::copy(source, target, fs::copy_options::recursive | fs::copy_options::overwrite_existing, ec);
         if (ec)

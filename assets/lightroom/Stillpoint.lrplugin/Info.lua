@@ -13,5 +13,8 @@ return {
 	LrInitPlugin = 'Init.lua',
 	LrShutdownPlugin = 'Shutdown.lua',
 	LrPluginInfoProvider = 'PluginInfo.lua',
+	-- Library › Plug-in Extras (e File › Plug-in Extras)
+	LrLibraryMenuItems = { { title = 'Stillpoint: listen again', file = 'Restart.lua' } },
+	LrExportMenuItems = { { title = 'Stillpoint: listen again', file = 'Restart.lua' } },
 	VERSION = { major = 1, minor = 0, revision = 0, build = 0 },
 }

@@ -2434,7 +2434,13 @@ namespace
             bool justInstalled = false;
             const auto pluginSource = Platform::ResourcesDirectory() / "assets" / "lightroom" / "Stillpoint.lrplugin";
             const std::string bundledPlugin = Adobe::BundledPluginVersion(pluginSource, AppVersion());
-            if (Adobe::InstalledPluginVersion() != bundledPlugin)
+            const std::string installedPlugin = Adobe::InstalledPluginVersion();
+            // Plugin antigo com o Lightroom aberto: não troca agora (o Lightroom só lê o plugin novo ao abrir, e
+            // trocar os arquivos com ele aberto atrapalhava); troca na próxima vez com o Lightroom fechado
+            const bool lrOpenNow = Adobe::ReadAlive().fresh || Platform::ApplicationRunning(lr.path);
+            if (!installedPlugin.empty() && installedPlugin != bundledPlugin && lrOpenNow)
+                Log("Lightroom plugin " + installedPlugin + " is older than " + bundledPlugin + ": it updates the next time Lightroom Classic is closed");
+            else if (installedPlugin != bundledPlugin)
             {
                 std::string error;
                 if (!Adobe::InstallPlugin(pluginSource, bundledPlugin, error))
