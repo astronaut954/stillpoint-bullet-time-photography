@@ -2573,13 +2573,31 @@ namespace
                 // A sessão inteira: a coleção dela sai do Lightroom (as fotos e as edições ficam no catálogo). Com o
                 // Lightroom fechado, o plugin tira quando ele abrir.
                 map.erase(args[0]);
-                if (Adobe::QueueRemoveCollection(args[0]))
+                if (Adobe::QueueRemoveCollection(args[0], "", ""))
                     Log("Done editing: the Lightroom Classic collection of " + args[0] + " will be removed");
             }
             else
                 for (size_t i = 1; i < args.size(); ++i)
                     map[args[0]].erase(args[i]);
             SaveEditing(map);
+            emitEditing();
+            return Json("adobeEditing").Raw("sessions", EditingJson(LoadEditing())).Str();
+        });
+        // adobeDoneSession(sessão, nome da coleção): Done editing da sessão inteira. Tira a etiqueta e pede ao plugin
+        // para tirar a coleção do Lightroom (as fotos e as edições ficam no catálogo).
+        window.bind("adobeDoneSession", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            if (args.empty())
+                return "null";
+            const auto sessions = store.ListSessions();
+            const auto s = std::find_if(sessions.begin(), sessions.end(), [&](const StoredSession& x) { return x.name == args[0]; });
+            const std::string projectName = s != sessions.end() && s->inProject && project.IsOpen() ? project.Name() : std::string();
+            auto map = LoadEditing();
+            map.erase(args[0]);
+            SaveEditing(map);
+            if (Adobe::QueueRemoveCollection(args[0], projectName, args.size() > 1 ? args[1] : std::string()))
+                Log("Done editing: the Lightroom Classic collection of " + args[0] + " will be removed");
             emitEditing();
             return Json("adobeEditing").Raw("sessions", EditingJson(LoadEditing())).Str();
         });

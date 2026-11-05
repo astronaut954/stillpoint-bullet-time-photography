@@ -376,12 +376,16 @@ namespace Adobe
         SaveCollections(map);
     }
 
-    bool QueueRemoveCollection(const std::string& session)
+    bool QueueRemoveCollection(const std::string& session, const std::string& fallbackProject, const std::string& fallbackTitle)
     {
         auto map = LoadCollections();
+        if (map.find(session) == map.end())
+        {
+            if (fallbackTitle.empty())
+                return false;
+            map[session] = { fallbackProject, fallbackTitle };
+        }
         const auto it = map.find(session);
-        if (it == map.end())
-            return false;
         // Um arquivo por pedido: o plugin pega todos os done-*.txt quando estiver aberto
         static int counter = 0;
         const std::string name = "done-" + std::to_string(std::time(nullptr)) + "-" + std::to_string(++counter) + ".txt";

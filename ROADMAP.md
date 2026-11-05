@@ -800,7 +800,10 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    (`docs/teste-manual.md`, seção 40).** Plugin em `assets/lightroom/Stillpoint.lrplugin` (Lua), conversa por arquivos em
    `<pasta de dados>/lightroom` (`src/gui/adobe.h`). Pedaço 1 aprovado no Mac em 2026-11-05 (falta catálogo por
    projeto e Windows). Decisões do dono (2026-11-05): versão mínima do Lightroom Classic 11.0; "Done editing" deve
-   tirar a coleção do Lightroom (detalhes pendentes: foto a foto, e se as fotos saem também do catálogo).
+   tirar a coleção do Lightroom, só na sessão (não por foto); as fotos e as edições ficam no catálogo; "Just this
+   photo" manda só a foto; várias fotos selecionadas podem ir juntas; bolinha da etiqueta pulsa só com o Lightroom
+   aberto (opção A). Para o pedaço 2: exportar de novo uma foto que já tem editada no Stillpoint pergunta antes de
+   trocar; "Apply photo 01 to all" pergunta se sobrescreve as fotos que já têm edição ou aplica só nas sem edição.
 6. **Etapa 21 — Histórico de edição permanente.** Pedido do dono (2026-11-01): um histórico no estilo
    do painel History do Lightroom Classic, **vinculado ao projeto** (o projeto faz o papel do catálogo
    do Classic: o histórico mora na pasta dele, vai junto se a pasta for movida e só existe com um

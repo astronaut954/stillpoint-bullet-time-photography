@@ -8507,9 +8507,10 @@
       : "Lightroom Classic did not open in 2 minutes, or the plugin did not answer. If Lightroom Classic is open, the plugin may be turned off:", buttons,
       stepsBox(["In Lightroom Classic, open File › Plug-in Manager…", "Select Stillpoint in the list on the left.", "Click Enable, then Done."]));
   }
-  function doneEditing(session, groups) {
-    if (typeof window.adobeDoneEditing !== "function") return;
-    Promise.resolve(window.adobeDoneEditing(session, ...groups)).then((r) => { if (r && r.sessions) setAdobeEditing(r.sessions); });
+  // Done editing da sessão: tira a etiqueta e a coleção do Lightroom
+  function doneEditing(s) {
+    if (typeof window.adobeDoneSession !== "function") return;
+    Promise.resolve(window.adobeDoneSession(s.name, lrCollectionTitle(s))).then((r) => { if (r && r.sessions) setAdobeEditing(r.sessions); });
   }
   function refreshEditing() {
     if (typeof window.adobeEditing !== "function") return;
@@ -8530,7 +8531,7 @@
     items.push({ label: "Show session", onClick: () => showSession(s) });
     items.push({ label: "Edit in Lightroom Classic", onClick: () => editSessionInLightroom(s) });
     const inEdit = !!editTagFor(s.name);
-    items.push({ label: "Done editing", disabled: !inEdit, dim: !inEdit, onClick: () => doneEditing(s.name, []) });
+    items.push({ label: "Done editing", disabled: !inEdit, dim: !inEdit, onClick: () => doneEditing(s) });
     items.push({ label: s.inProject ? "Open originals folder" : "Open folder", onClick: () => {
       if (typeof window.openSessionFolder !== "function") { toast("This build cannot open session folders yet. Build the app again.", 8000); return; }
       window.openSessionFolder(s.name);
