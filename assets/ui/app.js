@@ -4552,7 +4552,17 @@
         li.appendChild(thumb);
         // Passo 2: a miniatura também com o Framing do passo 1, inteira na caixa (sem cortar de novo)
         sessionPhoto(session.name, item.file, 320).then((url) => (url && exp.step === 2 ? framedUrl(session, items, st, item, url, 320) : url))
-          .then((url) => { if (!url) return; pic.classList.toggle("framed", exp.step === 2 && !(st.crop.ratio === "asshot" && !sessionAligned(session, st))); pic.src = url; });
+          .then((url) => {
+            if (!url) return;
+            const framed = exp.step === 2 && !(st.crop.ratio === "asshot" && !sessionAligned(session, st));
+            // A caixa da miniatura acompanha a forma do recorte (decisão do dono, 2026-11-04): a mesma altura de
+            // sempre, a largura pela proporção da imagem recortada; a imagem enche a caixa sem cortar
+            if (framed) pic.onload = () => {
+              const r = pic.naturalWidth / Math.max(1, pic.naturalHeight), h = 47, w = Math.max(24, Math.round(h * r));
+              thumb.style.width = w + "px"; li.style.width = (w + 6) + "px"; li.style.flexBasis = (w + 6) + "px"; li.style.setProperty("--frame-w", (w + 6) + "px");
+            };
+            pic.src = url;
+          });
         li.addEventListener("click", () => { exp.photo = k; showPhoto(); });
         strip.appendChild(li);
       });
