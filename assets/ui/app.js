@@ -588,7 +588,7 @@
       return li;
     }
 
-    // Canto de baixo à direita da miniatura: as etiquetas ficam lado a lado ("LR" à esquerda da proporção)
+    // Canto de baixo à direita da miniatura: as etiquetas ficam lado a lado ("LR" à direita da proporção)
     function frameCorner(li) {
       const img = li.querySelector(".frame-img");
       let c = img.querySelector(".frame-corner");
@@ -606,7 +606,7 @@
       b.className = "frame-app";
       b.textContent = v;
       b.title = v === "PS" ? "Open in Photoshop" : "In Lightroom Classic";
-      if (!old) frameCorner(li).prepend(b);
+      if (!old) frameCorner(li).appendChild(b);  // à direita da etiqueta da proporção
     }
     function markSelected(scroll) {
       [...el.carousel.children].forEach((li, i) => {
@@ -630,7 +630,7 @@
           // Etiqueta de texto no canto (ex.: "16:9" na sessão com proporções misturadas)
           const text = warn && opts.warnLabel ? opts.warnLabel(items[i]) : "";
           let lab = li.querySelector(".frame-ratio");
-          if (text && !lab) { lab = document.createElement("span"); lab.className = "frame-ratio"; frameCorner(li).appendChild(lab); }
+          if (text && !lab) { lab = document.createElement("span"); lab.className = "frame-ratio"; frameCorner(li).prepend(lab); }
           if (text) lab.textContent = text; else if (lab) lab.remove();
           if (a && text) a.remove();  // a etiqueta substitui o ícone
         }
@@ -8510,6 +8510,8 @@
     if (s.label) items.push({ label: "Remove label", onClick: () => setSessionLabelUndoable(s, "") });
     items.push({ label: "Show session", onClick: () => showSession(s) });
     items.push({ label: "Edit in Lightroom Classic", onClick: () => editSessionInLightroom(s) });
+    const inEdit = !!editTagFor(s.name);
+    items.push({ label: "Done editing", disabled: !inEdit, dim: !inEdit, onClick: () => doneEditing(s.name, []) });
     items.push({ label: s.inProject ? "Open originals folder" : "Open folder", onClick: () => {
       if (typeof window.openSessionFolder !== "function") { toast("This build cannot open session folders yet. Build the app again.", 8000); return; }
       window.openSessionFolder(s.name);

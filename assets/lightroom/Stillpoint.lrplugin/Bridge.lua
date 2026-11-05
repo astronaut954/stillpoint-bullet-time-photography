@@ -193,9 +193,11 @@ function Bridge.tick()
 	if os.time() - startedAt < STARTUP_WAIT then return end  -- Lightroom acabando de abrir
 	local requestFile = bridgeFile('request.txt')
 	local text = readAll(requestFile)
-	if not text or not text:find('\nend=1') then return end
+	if not text then return end
+	if not text:find('\nend=1') then Bridge.noteOnce('request file without end (still being written?)') return end
 	local request = parse(text)
-	if not request.id or request.id == lastId then return end
+	if not request.id then Bridge.noteOnce('request file without id') return end
+	if request.id == lastId then Bridge.noteOnce('request ' .. request.id .. ' seen again, ignored') return end
 	lastId = request.id
 	removeFile(requestFile)
 	Bridge.note('request ' .. request.id .. ': ' .. tostring(request.action) .. ', ' .. #request.photos .. ' photos')
@@ -216,6 +218,15 @@ function Bridge.note(text)
 	if file then
 		file:write(os.date('%Y-%m-%d %H:%M:%S') .. ' ' .. tostring(text) .. '\n')
 		file:close()
+	end
+end
+
+-- A mesma linha só uma vez seguida (a espera roda duas vezes por segundo)
+local lastNote = nil
+function Bridge.noteOnce(text)
+	if text ~= lastNote then
+		lastNote = text
+		Bridge.note(text)
 	end
 end
 
