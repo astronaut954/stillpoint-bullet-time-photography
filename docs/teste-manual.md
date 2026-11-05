@@ -1723,6 +1723,13 @@ com rótulo em uma sessão, ex.: "Pose 7").
       catálogo do projeto (ele pergunta e reinicia); a sessão entra depois que ele abrir.
 - [ ] Voltar para "The open catalog".
 
+**Rótulo em várias sessões**
+- [ ] Na lista "Sessions", clique numa sessão e ⌘-clique (Windows: Ctrl-clique) em outra. Botão direito numa delas:
+      "Add label to 2 sessions…" e, se alguma tiver rótulo, "Remove n labels". "Add label to 2 sessions…" abre "Add label"
+      (o campo vem preenchido só se as duas tiverem o mesmo rótulo; com rótulo antigo, o texto avisa que ele é trocado).
+      "Add": as duas ganham o rótulo. ⌘Z (Ctrl+Z): as duas voltam ao que eram, num passo só. ⇧⌘Z (Ctrl+Shift+Z): refaz.
+- [ ] "Remove n labels": tira o rótulo de todas as selecionadas; ⌘Z devolve.
+
 **Windows**
 - [ ] O mesmo roteiro (Settings › "Lightroom & Photoshop", sessão inteira, uma foto, Done editing). "Locate…" abre a
       janela de escolher programa em `C:\Program Files\Adobe`.

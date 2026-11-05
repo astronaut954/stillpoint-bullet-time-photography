@@ -1606,6 +1606,10 @@
     const items = [{ html: el("div", "project-menu-label", plural(list.length, "session", "sessions") + " selected") }];
     if (project.open && outside.length) items.push({ label: "Add " + outside.length + " to project", onClick: () => moveMany(outside, true) });
     if (project.open && inside.length) items.push({ label: "Remove " + inside.length + " from project", onClick: () => moveMany(inside, false) });
+    // Rótulo em várias sessões de uma vez (um passo só no Desfazer)
+    const labeled = list.filter((x) => x.label);
+    items.push({ label: "Add label to " + list.length + " sessions…", onClick: () => editManyLabels(list) });
+    if (labeled.length) items.push({ label: "Remove " + plural(labeled.length, "label", "labels"), onClick: () => setManyLabels(labeled, "") });
     if (items.length > 1) items.push("-");
     items.push({ label: "Delete " + list.length + " sessions…", danger: true, onClick: () => deleteMany(names) });
     popupMenuAt(e.clientX, e.clientY, items);
@@ -8517,6 +8521,25 @@
                    undo: () => window.setSessionLabel(s.name, before), redo: () => window.setSessionLabel(s.name, after) });
   }
   // Rótulos já usados nas outras sessões: sugestões num menu do app, abaixo do campo
+  function editManyLabels(list) {
+    const input = $("promptInput");
+    delete input.dataset.folderName;
+    if (promptSuggestOff) promptSuggestOff();
+    promptSuggestOff = attachSuggest(input, () => labelSuggestions(""));
+    const same = list.every((x) => (x.label || "") === (list[0].label || "")) ? list[0].label || "" : "";
+    const had = list.filter((x) => x.label).length;
+    promptDialog("Add label", "A short name for the " + list.length + " selected sessions (shown next to the date)." + (had ? " It replaces the labels they have now." : ""), same, "Add",
+      (v) => !v ? "Type a label." : v.length > 60 ? "Up to 60 characters." : "", (v) => setManyLabels(list, v));
+  }
+  function setManyLabels(list, after) {
+    const before = list.map((x) => [x.name, x.label || ""]);
+    const apply = (pairs) => pairs.forEach(([name, label]) => window.setSessionLabel(name, label));
+    apply(list.map((x) => [x.name, after]));
+    const what = after ? 'Label "' + after + '" on ' + plural(list.length, "session", "sessions") : "Labels removed from " + plural(list.length, "session", "sessions");
+    toast(what);
+    recordAction({ label: after ? 'Label "' + after + '" on ' + plural(list.length, "session", "sessions") : "Remove labels from " + plural(list.length, "session", "sessions"),
+                   undo: () => apply(before), redo: () => apply(list.map((x) => [x.name, after])) });
+  }
   function labelSuggestions(except) {
     return [...new Set(sessions.filter((x) => x.label && x.name !== except).map((x) => x.label))].sort((a, b) => a.localeCompare(b));
   }
