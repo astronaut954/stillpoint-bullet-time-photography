@@ -8453,9 +8453,11 @@
         // Quanto esperar: o plugin já pegou o pedido ("working") = até 5 min (muitas fotos); plugin ligado = 30 s;
         // Lightroom aberto sem o plugin = 20 s; abrindo agora (ou trocando de catálogo) = 2 min
         const working = st.state === "working";
+        // Lightroom aberto agora há pouco (pelo Stillpoint): 45 s depois de ele aparecer aberto, sem o plugin, desiste
         const late = working ? now - start > 300000
           : aliveSince ? now - aliveSince > 30000
           : runningSince && !r.switchCatalog && r.running ? now - runningSince > 20000
+          : runningSince && !r.switchCatalog ? now - runningSince > 45000
           : now - start > 120000;
         if (late) {
           finish(); hideToast();
