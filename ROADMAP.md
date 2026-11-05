@@ -736,9 +736,9 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      o ponto da referência; coluna com References, This photo (Move X/Y, Size, Rotate, Reset photo/Reset all), Common
      frame e Aspect ratio/Position; gestos como decidido. `session.json` ganha "align" (arquivo:dx,dy,scale,rot); o
      programa (`Export::Align`, `ComputeCommonFrame`, `ApplyAlign`) transforma cada foto e corta ao quadro comum antes
-     da proporção, em Converted, Sequence e Lenticular (Fill e Fit); sem foto alinhada nada muda. Em aberto: sessões
-     com sensores de tamanhos diferentes e sem alinhamento continuam como no pedaço 1 (cada foto inteira), não ao quadro
-     comum — a decidir. **Decisões do dono (2026-11-03, noite):** a caixa "Same size for all photos" saiu: o recorte é
+     da proporção, em Converted, Sequence e Lenticular (Fill e Fit); sem foto alinhada nada muda. Resolvido em 2026-11-04
+     (o que estava "em aberto" aqui): com uma proporção escolhida, toda sessão, alinhada ou não, sai no canvas (a parte
+     comum às fotos), com todas as fotos no mesmo tamanho; em "As shot", cada foto sai inteira. **Decisões do dono (2026-11-03, noite):** a caixa "Same size for all photos" saiu: o recorte é
      um só para a sessão e todas as fotos convertidas saem no mesmo tamanho (sempre); na tela de alinhamento o recorte
      da proporção não se move (a posição do recorte é só da aba Framing) e "Position" posiciona a foto atual na folga
      que ela tem sobre a área útil; o quadro comum é a interseção das fotos no tamanho escolhido, sem giro (girar só
