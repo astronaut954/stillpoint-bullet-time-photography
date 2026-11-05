@@ -245,21 +245,30 @@ function Bridge.goodbye()
 end
 
 -- Começa (ou recomeça) a esperar os pedidos. Cada começo tem um número: o anterior para sozinho.
+-- Desligado no Plug-in Manager (Disable): a volta continua, mas não responde nem dá sinal de vida; ligado de novo
+-- (Enable), volta a responder. (O Lightroom não roda o Init.lua de novo ao ligar: parar a volta deixava o plugin
+-- mudo até fechar o Lightroom, teste de 2026-11-05.)
 function Bridge.start(why)
 	local LrTasks = import 'LrTasks'
 	_G.StillpointGeneration = (_G.StillpointGeneration or 0) + 1
 	local generation = _G.StillpointGeneration
 	LrTasks.startAsyncTask(function()
 		Bridge.note('Stillpoint plugin ' .. tostring(Bridge.version()) .. ' listening (' .. tostring(why) .. ', bridge folder: ' .. tostring(Bridge.folder()) .. ')')
-		-- Para quando outra volta começa ou quando o plugin é desligado no Plug-in Manager (Disable). O Shutdown.lua
-		-- sozinho não bastava: no teste de 2026-11-05 o plugin desligado continuou respondendo.
-		while _G.StillpointGeneration == generation and _PLUGIN.enabled ~= false do
-			local ok, problem = LrTasks.pcall(Bridge.tick)
-			if not ok then Bridge.problem(problem) end
+		local wasOff = false
+		while _G.StillpointGeneration == generation do
+			local off = _PLUGIN.enabled == false
+			if off ~= wasOff then
+				wasOff = off
+				Bridge.note(off and 'turned off in the Plug-in Manager: not answering' or 'turned on again: answering')
+				if off then Bridge.goodbye() end
+			end
+			if not off then
+				local ok, problem = LrTasks.pcall(Bridge.tick)
+				if not ok then Bridge.problem(problem) end
+			end
 			LrTasks.sleep(0.5)
 		end
-		Bridge.note('Stillpoint plugin stopped listening (' .. tostring(why) .. (_PLUGIN.enabled == false and ', turned off in the Plug-in Manager' or '') .. ')')
-		if _PLUGIN.enabled == false then Bridge.goodbye() end
+		Bridge.note('Stillpoint plugin stopped listening (' .. tostring(why) .. ')')
 	end, 'Stillpoint bridge')
 end
 
