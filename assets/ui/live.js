@@ -582,21 +582,41 @@ window.Live = (function () {
       renderPlayback();
     }, Math.round(220 / S.opts.speed));
   }
-  // fotos: [{file, order}] da sessão nova; load(file) -> Promise<url>; name: a sessão
-  function playback(photos, load, name) {
+  // A lista de sessões do app (a mais nova primeiro), a cada aviso "sessions": guarda os nomes que já existiam
+  // antes do disparo, para saber quais são deste disparo
+  function noteSessions(list) { S.lastNames = (list || []).map((x) => x.name); }
+  // fotos: [{file, order}] da sessão nova; load(session, file) -> Promise<url>; list: a lista do app (a mais nova primeiro).
+  // O app manda a lista só no fim do disparo inteiro: com "Sessions" > 1, as sessões deste disparo são as primeiras
+  // da lista que não existiam antes dele (no máximo "Sessions")
+  function playback(photos, load, name, list) {
     if (!S.open || !S.play.waiting) return;
     S.play.waiting = false;
-    const sorted = photos.slice().sort((a, b) => a.order - b.order);
-    const total = S.session.total, last = S.session.index >= total;
-    Promise.all(sorted.map((ph) => Promise.resolve(load(ph.file)).catch(() => null))).then((urls) => {
+    const loadAll = (ph, sname) => Promise.all(ph.slice().sort((a, b) => a.order - b.order).map((x) => Promise.resolve(load(sname, x.file)).catch(() => null)))
+      .then((urls) => urls.filter(Boolean));
+    const total = S.session.total;
+    const before = new Set(S.multi.before || []);
+    // As sessões de um disparo têm o mesmo código no nome ("2026-11-05_01-02-03_AB12_session_02"): junta pelo código
+    // da mais nova (entre as "Sessions" mais novas: as câmeras simuladas usam sempre "FAKE"), em ordem de sessão; sem código, as primeiras da lista que não existiam antes do disparo
+    const code = (n) => { const m = /_([A-Z0-9]+)_session_(\d+)$/.exec(n || ""); return m ? { id: m[1], k: +m[2] } : null; };
+    const mineCode = code(name);
+    let mine = [];
+    if (total > 1 && Array.isArray(list)) {
+      mine = mineCode
+        ? list.slice(0, total).filter((x) => { const c = code(x.name); return c && c.id === mineCode.id && x.photos && x.photos.length; }).sort((a, b) => code(a.name).k - code(b.name).k)
+        : list.slice(0, total).filter((x) => !before.has(x.name) && x.photos && x.photos.length).reverse();
+    }
+    if (mine.length > 1) {
+      Promise.all(mine.map((x) => loadAll(x.photos, x.name).then((urls) => ({ name: x.name, urls })))).then((all) => {
+        if (!S.open || S.phase !== "done") return;
+        S.multi.list = all.filter((x) => x.urls.length);
+        if (S.multi.list.length > 1) { S.multi.active = true; S.multi.pinned = false; clearTimeout(S.multi.pinTimer); showMulti(0, false); render(); return; }
+        S.play.urls = S.multi.list.length ? S.multi.list[0].urls : [];
+        S.play.i = 0; S.play.dir = 1; restartPlayTimer(); render();
+      });
+      return;
+    }
+    loadAll(photos, name).then((urls) => {
       if (!S.open || S.phase !== "done") return;
-      urls = urls.filter(Boolean);
-      // Guarda cada sessão do disparo; na última, começa a tocar todas, a partir da 1
-      if (total > 1) {
-        const key = name || String(S.session.index);
-        if (!S.multi.list.some((x) => x.name === key)) S.multi.list.push({ name: key, urls });
-        if (last && S.multi.list.length > 1) { S.multi.active = true; S.multi.pinned = false; clearTimeout(S.multi.pinTimer); showMulti(0, false); render(); return; }
-      }
       S.play.urls = urls;
       S.play.i = 0;
       S.play.dir = 1;
@@ -650,7 +670,7 @@ window.Live = (function () {
   const handlers = {
     livePlan(e) {
       clearTimeout(S.multi.pinTimer);
-      S.multi = { list: [], cur: 0, pinned: false, active: false, pinTimer: 0 };  // disparo novo: começa em "Playing all"
+      S.multi = { list: [], cur: 0, pinned: false, active: false, pinTimer: 0, before: (S.lastNames || []).slice() };  // disparo novo: começa em "Playing all"
       S.plan = { all: !!e.all, countdown: e.countdown, sessions: e.sessions, shots: e.shots || [], groups: groupsOf(e.shots || []) };
       S.session = { index: 1, total: e.sessions };
       S.phase = "idle";
@@ -780,5 +800,5 @@ window.Live = (function () {
   function isOpen() { return S.open; }
   function options() { return Object.assign({}, S.opts); }
 
-  return { init, setCameras, open, close, isOpen, handle, playback, options, setOptions: setOpts, setSound: setSoundState, setScreens, setLives };
+  return { init, setCameras, open, close, isOpen, handle, playback, noteSessions, options, setOptions: setOpts, setSound: setSoundState, setScreens, setLives };
 })();

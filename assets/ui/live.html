@@ -87,7 +87,8 @@
         const list = event.sessions || [];
         const newest = list[0];
         if (newest && newest.photos && newest.photos.length)
-          Live.playback(newest.photos, (file) => photo(newest.name, file, 800), newest.name);
+          Live.playback(newest.photos, (session, file) => photo(session, file, 800), newest.name, list);
+        Live.noteSessions(list);
         return;
       }
       Live.handle(event);
