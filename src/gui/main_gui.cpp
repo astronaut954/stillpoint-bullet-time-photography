@@ -2399,7 +2399,24 @@ namespace
         {
             if (!project.Available())
                 return {};
-            return project.Root() / "Lightroom" / (project.Name() + ".lrcat");
+            // O "File › New Catalog…" do Lightroom cria uma pasta com o nome do catálogo e o .lrcat dentro dela
+            // (<Projeto>/Lightroom/<nome>/<nome>.lrcat, teste de 2026-11-05). Aceita também o .lrcat direto na pasta
+            // e, se o nome for outro, o primeiro .lrcat que achar até dois níveis abaixo.
+            const auto folder = project.Root() / "Lightroom";
+            const auto direct = folder / (project.Name() + ".lrcat");
+            const auto nested = folder / project.Name() / (project.Name() + ".lrcat");
+            std::error_code ec;
+            if (std::filesystem::exists(nested, ec)) return nested;
+            if (std::filesystem::exists(direct, ec)) return direct;
+            std::vector<std::filesystem::path> found;
+            for (std::filesystem::recursive_directory_iterator it(folder, ec), end; !ec && it != end; it.increment(ec))
+            {
+                if (it.depth() > 1) { it.disable_recursion_pending(); continue; }
+                if (it->path().extension() == ".lrcat" && it->is_regular_file(ec))
+                    found.push_back(it->path());
+            }
+            std::sort(found.begin(), found.end());
+            return found.empty() ? direct : found.front();
         };
         // adobeShowCatalogFolder(): cria <Projeto>/Lightroom e mostra no Finder/Explorer
         window.bind("adobeShowCatalogFolder", [&](const std::string&) -> std::string
