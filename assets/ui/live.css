@@ -182,3 +182,5 @@ html.kbd-focus .live :focus { outline: 2px solid var(--noct-primary); outline-of
 /* Duas janelas Live abertas: o modo fica preso (uma Operator, a outra Audience); o botão do modo desta janela continua aceso */
 .live-tools .segmented.locked button:disabled { opacity: .45; cursor: not-allowed; }
 .live-tools .segmented.locked button.on:disabled { opacity: 1; }
+/* A tecla dentro de "Play all": sem o espaçamento de letras da caixa (deslocava o "A" para a esquerda), centrada */
+.live-sess .live-key { letter-spacing: 0; display: inline-flex; align-items: center; justify-content: center; min-width: 18px; box-sizing: border-box; }
