@@ -1660,6 +1660,7 @@ Com `STILLPOINT_FAKE_CAMERAS=9`. Na tela principal, painel "Bullet time", campo 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |
 | --- | --- | --- | --- | --- | --- |
 | 2026-10 | Windows | v1.3.0 | Canon SL3 + Canon T7 | sim | Teste de referência, antes da migração |
+| 2026-11-05 | Mac (M5, macOS 26) | proporcao (2.17.0) | 9 simuladas | sim | Seção 39 (Live view com várias sessões: Playing all, Pinned, Play all, 15 s, Audience acompanhando, Reset, sessões apagadas, modo preso com duas janelas) aprovada pelo dono do projeto. Windows: compila; sem teste de uso |
 | 2026-11-04 | Mac (M5, macOS 26) | proporcao (2.16.0) | 9 simuladas | sim | Seções 35, 36, 36 B, 37, 38, 38 B e 38 C aprovadas pelo dono do projeto (Mixed ratios, Framing, Align photos, Export em três passos, exportação real com 3:2 e alinhamento). Pendente: câmeras reais (cartão cinza, Calibrate with chart, RAW, impressão lenticular, Ratio na SL3 e na T7) e Windows |
 | 2026-10-29 | Mac (M5, macOS 26) | etapa-17-project (2.12.0) | 9 simuladas | sim | Roteiro 23 com câmeras simuladas aprovado pelo dono do projeto (projeto, arrastar, botão direito, rótulos, rename, undo/redo, avisos, Activity). Windows: compila; sem teste de uso. Câmeras reais: pendente |
 | 2026-11-01 | Mac (M5, macOS 26) | etapa-19-lenticular (2.14.0) | câmeras reais | sim | Seção 25 inteira aprovada pelo dono do projeto (Camera settings, ordem das câmeras, fotos reais, Save sessions com projeto/Exports/Originals+JPG/Lenticular TIFF) |

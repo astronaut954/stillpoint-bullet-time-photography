@@ -948,7 +948,9 @@ Atualizar esta tabela sempre que uma função mudar de status.
   caminho B com as setas da A: no fim, as sessões tocam uma volta inteira cada, em sequência ("Playing all"); no
   Operator, "‹ Session 2 of 3 ›" (ou ← →) para numa sessão ("Pinned"), "Play all" (tecla A) volta, e volta sozinho
   depois de 15 s parado; o Audience mostra "Session 2 of 3" e acompanha (aviso `livePick` do app para as janelas Live).
-  Implementado na branch `proporcao`; falta o teste do dono (seção 39 do roteiro).
+  Testado e aprovado pelo dono em 2026-11-05 (seção 39 do roteiro); versão 2.17.0. Junto: botão Reset, sessões
+  apagadas saem da Live, duas caixas no canto de cima, e com duas janelas Live a segunda abre no modo contrário e o
+  modo fica preso até fechar uma.
 
 - **Testes com câmeras reais ainda não feitos (anotado pelo dono em 2026-11-02):** o **cartão
   cinza** ("Use the gray card" no Match automatically: achar o cartão na foto, a conferência com
