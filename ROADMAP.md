@@ -798,7 +798,9 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    2) "Export to Stillpoint" no Lightroom (⌥⇧E), "Edited n / m", aplicar a foto 01 em todas; 3) alternar Original /
    Edited; 4) Photoshop (uma foto por vez, aviso "no longer RAW", conflito de Desfazer). **Pedaço 1 feito, para testar
    (`docs/teste-manual.md`, seção 40).** Plugin em `assets/lightroom/Stillpoint.lrplugin` (Lua), conversa por arquivos em
-   `<pasta de dados>/lightroom` (`src/gui/adobe.h`).
+   `<pasta de dados>/lightroom` (`src/gui/adobe.h`). Pedaço 1 aprovado no Mac em 2026-11-05 (falta catálogo por
+   projeto e Windows). Decisões do dono (2026-11-05): versão mínima do Lightroom Classic 11.0; "Done editing" deve
+   tirar a coleção do Lightroom (detalhes pendentes: foto a foto, e se as fotos saem também do catálogo).
 6. **Etapa 21 — Histórico de edição permanente.** Pedido do dono (2026-11-01): um histórico no estilo
    do painel History do Lightroom Classic, **vinculado ao projeto** (o projeto faz o papel do catálogo
    do Classic: o histórico mora na pasta dele, vai junto se a pasta for movida e só existe com um
