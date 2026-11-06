@@ -101,6 +101,11 @@ namespace Adobe
     // Cria o catálogo do projeto a partir do modelo (não sobrescreve um que já exista)
     bool MakeCatalogFromTemplate(const std::filesystem::path& target, std::string& error);
 
+    // Delete edits (decisão do dono, 2026-11-06): as fotos voltam ao original também no Lightroom (reset-*.txt; o plugin
+    // faz quando o catálogo da sessão estiver aberto). CancelReset tira o pedido que ainda não foi feito (o ⌘Z).
+    bool QueueReset(const std::string& session, const std::vector<std::filesystem::path>& photos);
+    bool CancelReset(const std::string& session);
+
     // Sessão -> catálogo onde a coleção dela está ("" = não anotado)
     std::map<std::string, std::string> CollectionCatalogs();
     // Mesmo catálogo? (no Windows, sem diferença de maiúsculas e barras)

@@ -1787,6 +1787,9 @@ antes de começar: o Stillpoint troca o plugin pelo novo no próximo "Edit in Li
 - [ ] Export to Stillpoint exporta a sessão inteira aberta no Lightroom, não só as fotos selecionadas.
 - [ ] Export com só os originais (sem Converted) e a sessão com editadas ligadas: Photos/Edited/ ao lado dos originais.
 - [ ] Lixeira: editada apagada antes da foto fica embaixo da foto (recuada); Restore só depois da foto.
+      Também dentro de um projeto apagado (a sessão, a foto e a editada, cada uma embaixo da outra).
+- [ ] Delete edits volta as fotos ao original no Lightroom (na hora, ou quando o Lightroom abrir o catálogo da sessão);
+      ⌘Z no Stillpoint antes disso cancela; depois, o aviso manda usar Edit › Undo no Lightroom.
 
 **Go to session in Stillpoint**
 - [ ] Depois de exportar, "Go to session in Stillpoint" (painel ou menu) traz o Stillpoint para a frente com a sessão aberta.

@@ -1535,23 +1535,35 @@
       return true;
     });
   }
-  // Delete edits (decisão do dono, 2026-11-06): as editadas vão para a lixeira do Stillpoint (Trash), num item só
-  // delas; ⌘Z traz de volta. files vazio = a sessão inteira
+  // Delete edits (decisões do dono, 2026-11-06): as editadas vão para a lixeira do Stillpoint (Trash), num item só
+  // delas, e as fotos voltam ao original também no Lightroom (o plugin faz quando o catálogo da sessão estiver aberto).
+  // ⌘Z traz as editadas de volta e, se o Lightroom ainda não fez, cancela a volta ao original. files vazio = a sessão
   function deleteEdits(s, files) {
     if (typeof window.deleteEdits !== "function") { toast("This build cannot do that yet. Build the app again.", 8000); return; }
     const n = files.length || s.edited;
     const what = files.length ? plural(n, "edited photo", "edited photos") : "the " + plural(n, "edited photo", "edited photos") + " of " + sessionTitle(s);
     dialog("Delete " + plural(n, "edit", "edits") + "?",
-      "Moves " + what + " from the project's Edited folder to the Stillpoint trash. The originals and your edits in Lightroom Classic stay as they are. ⌘Z or the Trash brings " + (n === 1 ? "it" : "them") + " back.",
+      "Moves " + what + " from the project's Edited folder to the Stillpoint trash, and puts " + (n === 1 ? "the photo" : "these photos") + " back to the original in Lightroom Classic (now, or as soon as Lightroom opens the catalog of this session). The originals stay as they are. ⌘Z or the Trash brings the edited files back.",
       [{ label: "Cancel" },
        { label: "Delete " + plural(n, "edit", "edits"), danger: true, onClick: () => {
-         const run = () => Promise.resolve(window.deleteEdits(s.name, ...files)).then((removed) => { forgetSessionPreviews(s.name); return Number(removed) || 0; });
-         run().then((count) => {
-           if (!count) { toast("No edited files were found.", TOAST_MS); return; }
-           toast(plural(count, "edit", "edits") + " moved to the trash · " + sessionTitle(s) + " · ⌘Z undoes", TOAST_MS);
-           log("Delete edits: " + plural(count, "edited file", "edited files") + " of " + sessionShort(s) + " moved to the trash", "ok");
-           recordAction({ label: "Delete " + plural(count, "edit", "edits") + " · " + sessionLabel(s.name).date,
-             undo: () => Promise.resolve(restoreSession(s.name)).then((ok) => { forgetSessionPreviews(s.name); return ok; }),
+         const run = () => Promise.resolve(window.deleteEdits(s.name, ...files)).then((r) => {
+           forgetSessionPreviews(s.name);
+           const o = typeof r === "object" && r ? r : { removed: Number(r) || 0, reset: false };
+           return o;
+         });
+         run().then((o) => {
+           if (!o.removed) { toast("No edited files were found.", TOAST_MS); return; }
+           toast(plural(o.removed, "edit", "edits") + " moved to the trash · " + sessionTitle(s) + (o.reset ? " · reset in Lightroom Classic" : "") + " · ⌘Z undoes", TOAST_MS);
+           log("Delete edits: " + plural(o.removed, "edited file", "edited files") + " of " + sessionShort(s) + " moved to the trash" + (o.reset ? "; the photos go back to the original in Lightroom Classic" : ""), "ok");
+           recordAction({ label: "Delete " + plural(o.removed, "edit", "edits") + " · " + sessionLabel(s.name).date,
+             undo: () => Promise.resolve(restoreSession(s.name)).then((ok) => {
+               forgetSessionPreviews(s.name);
+               if (o.reset && typeof window.adobeCancelReset === "function")
+                 Promise.resolve(window.adobeCancelReset(s.name)).then((cancelled) => {
+                   if (!cancelled) toast("Lightroom Classic already put the photos back to the original. Use Edit › Undo in Lightroom to get the edit back there.", 9000, { warn: true });
+                 });
+               return ok;
+             }),
              redo: () => run() });
          });
        } }]);
@@ -9469,7 +9481,7 @@
         if (o.isProject) {
           add(o, 0, null, inProject);
           const kids = items.filter((x) => x.parent === o.id);
-          const kidDependent = (k) => !k.whole && kids.some((w) => w.whole && w.session === k.session && trashLater(w, k));
+          const kidDependent = (k) => (!k.whole && kids.some((w) => w.whole && w.session === k.session && trashLater(w, k))) || !!editParent(k);
           kids.forEach((k) => { if (!used.has(k.id) && !kidDependent(k)) addSession(k, 1, o, kids, inProject); });
         } else addSession(o, 0, null, pool, inProject);
       });

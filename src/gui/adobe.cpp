@@ -503,13 +503,45 @@ namespace Adobe
         // Um arquivo por pedido: o plugin pega todos os done-*.txt quando estiver aberto
         static int counter = 0;
         const std::string name = "done-" + std::to_string(std::time(nullptr)) + "-" + std::to_string(++counter) + ".txt";
+        // O registro fica (não é apagado): se o ⌘Z do Lightroom trouxer a coleção de volta, o Stillpoint reconhece
+        // (SessionsBackInCatalog); o Delete edits também usa o catálogo dele
         const bool ok = WriteWhole(BridgeFolder() / name, "project=" + OneLine(it->second.project) + "\ntitle=" + OneLine(it->second.title) + "\ncatalog=" + OneLine(it->second.catalog) + "\nend=1\n");
-        if (ok)
-        {
-            map.erase(it);
-            SaveCollections(map);
-        }
+        SaveCollections(map);
         return ok;
+    }
+
+    bool QueueReset(const std::string& session, const std::vector<fs::path>& photos)
+    {
+        if (photos.empty())
+            return false;
+        const auto map = LoadCollections();
+        const auto it = map.find(session);
+        if (it == map.end())
+            return false;  // nunca foi para o Lightroom
+        static int counter = 0;
+        const std::string name = "reset-" + std::to_string(std::time(nullptr)) + "-" + std::to_string(++counter) + ".txt";
+        std::string text = "session=" + OneLine(session) + "\ncatalog=" + OneLine(it->second.catalog) + "\n";
+        for (const auto& p : photos)
+            text += "photo=" + OneLine(Utf8(p)) + "\n";
+        return WriteWhole(BridgeFolder() / name, text + "end=1\n");
+    }
+
+    bool CancelReset(const std::string& session)
+    {
+        bool removed = false;
+        std::error_code ec;
+        for (fs::directory_iterator it(BridgeFolder(), ec), end; !ec && it != end; it.increment(ec))
+        {
+            const std::string name = Utf8(it->path().filename());
+            if (name.rfind("reset-", 0) != 0)
+                continue;
+            if (Value(ReadPairs(it->path()), "session") == session)
+            {
+                std::error_code rec;
+                removed = fs::remove(it->path(), rec) || removed;
+            }
+        }
+        return removed;
     }
 
     Alive ReadAlive()

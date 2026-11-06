@@ -262,6 +262,53 @@ local function handleDoneFiles()
 	end
 end
 
+-- Delete edits no Stillpoint (decisão do dono, 2026-11-06): as fotos voltam ao original no Lightroom (o Reset do
+-- Develop, uma por vez: o SDK só faz isso na foto ativa do Develop). Pedido de outro catálogo espera esse catálogo abrir.
+local function resetPhotos(request)
+	local LrTasks = import 'LrTasks'
+	local LrDevelopController = import 'LrDevelopController'
+	local catalog = LrApplication.activeCatalog()
+	local photos = {}
+	for _, path in ipairs(request.photos) do
+		local photo = catalog:findPhotoByPath(path)
+		if photo then table.insert(photos, photo) end
+	end
+	if #photos == 0 then
+		Bridge.note('delete edits: no photos of ' .. tostring(request.session) .. ' in this catalog to reset')
+		return
+	end
+	local before = catalog:getTargetPhoto()
+	LrApplicationView.switchToModule('develop')
+	for _, photo in ipairs(photos) do
+		catalog:setSelectedPhotos(photo, {})
+		LrTasks.sleep(0.4)
+		LrDevelopController.resetAllDevelopAdjustments()
+		LrTasks.sleep(0.2)
+	end
+	if before then LrTasks.pcall(function() catalog:setSelectedPhotos(before, {}) end) end
+	Bridge.note('delete edits: ' .. #photos .. ' photos of ' .. tostring(request.session) .. ' back to the original')
+end
+
+local function handleResetFiles()
+	for path in LrFileUtils.files(Bridge.folder()) do
+		local name = LrPathUtils.leafName(path)
+		if name:match('^reset%-.*%.txt$') then
+			local text = readAll(path)
+			local request = text and text:find('\nend=1') and parse(text)
+			local otherCatalog = request and request.catalog and request.catalog ~= ''
+				and not samePath(LrApplication.activeCatalog():getPath(), request.catalog)
+			if otherCatalog then
+				Bridge.noteOnce('delete edits for another catalog, waiting: ' .. tostring(request.session))
+			elseif request then
+				removeFile(path)
+				local LrTasks = import 'LrTasks'
+				local ok, problem = LrTasks.pcall(resetPhotos, request)
+				if not ok then Bridge.problem('delete edits: ' .. tostring(problem)) end
+			end
+		end
+	end
+end
+
 -- Uma volta da espera (a cada meio segundo)
 function Bridge.tick()
 	if not Bridge.folder() then return end
@@ -271,6 +318,7 @@ function Bridge.tick()
 	end
 	if os.time() - startedAt < STARTUP_WAIT then return end  -- Lightroom acabando de abrir
 	handleDoneFiles()
+	handleResetFiles()
 	local requestFile = bridgeFile('request.txt')
 	local text = readAll(requestFile)
 	if not text then return end

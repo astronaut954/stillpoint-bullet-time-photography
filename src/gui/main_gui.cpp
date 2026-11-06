@@ -2355,12 +2355,30 @@ namespace
                     if (s.name == session)
                         for (const auto& p : s.photos)
                             if (p.edited) files.push_back(p.file);
+            // As fotos que tinham editada voltam ao original também no Lightroom (decisão do dono, 2026-11-06)
+            std::vector<std::filesystem::path> originals;
+            const auto dir = store.SessionDir(session);
+            for (const auto& file : files)
+                if (!store.EditedFiles(session, file).empty())
+                    originals.push_back(dir / file);
             std::string error;
             const int removed = store.TrashEdits(session, files, error);
             if (!error.empty())
                 Log("Delete edits: " + error);
+            bool reset = false;
+            if (removed > 0 && Adobe::QueueReset(session, originals))
+            {
+                reset = true;
+                Log("Delete edits: " + std::to_string(originals.size()) + " photo(s) of " + session + " will be reset in Lightroom Classic");
+            }
             emitSessions();
-            return std::to_string(removed);
+            return Json().Add("removed", removed).Add("reset", reset).Str();
+        });
+        // ⌘Z do Delete edits: tira o pedido de voltar ao original no Lightroom, se ele ainda não foi feito
+        window.bind("adobeCancelReset", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            return args.empty() ? "false" : (Adobe::CancelReset(args[0]) ? "true" : "false");
         });
 
         window.bind("adobeLive", [&](const std::string&) -> std::string

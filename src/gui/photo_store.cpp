@@ -1451,6 +1451,23 @@ static std::vector<TrashEntry> TrashEntries(const fs::path& appTrash, const fs::
     return out;
 }
 
+// Nomes-base das fotos de um item (das editadas, no item do Delete edits)
+static std::vector<std::string> TrashBases(const fs::path& entry, bool editsOnly)
+{
+    std::vector<std::string> bases;
+    std::error_code ec;
+    for (const auto& f : fs::directory_iterator(editsOnly ? entry / kTrashEdited : entry, ec))
+    {
+        const std::string name = f.path().filename().string();
+        if (!f.is_regular_file(ec) || name.rfind('.', 0) == 0 || name == "session.json")
+            continue;
+        const std::string base = BaseName(name);
+        if (std::find(bases.begin(), bases.end(), base) == bases.end())
+            bases.push_back(base);
+    }
+    return bases;
+}
+
 std::vector<TrashItem> PhotoStore::ListTrash() const
 {
     const fs::path projectTrash = projectRoot.empty() ? fs::path() : projectRoot.parent_path() / kProjectTrash;
@@ -1497,9 +1514,12 @@ std::vector<TrashItem> PhotoStore::ListTrash() const
                     TrashItem in;
                     in.id = "nested/" + e.path.filename().string() + "/" + n.path.filename().string();
                     in.session = n.info["session"];
-                    in.wholeSession = n.info["kind"] != "photos";
+                    in.wholeSession = n.info["kind"] != "photos" && n.info["kind"] != "edits";
+                    in.editsOnly = n.info["kind"] == "edits";
                     in.restored = n.info["restored"] == "1";
                     in.photos = in.restored ? 0 : CountTrashPhotos(n.path);
+                    in.edits = in.restored ? 0 : CountTrashEdits(n.path);
+                    in.bases = TrashBases(n.path, in.editsOnly);
                     in.bytes = in.restored ? 0 : FolderBytes(n.path);
                     in.deletedAt = n.deletedAt;
                     in.order = n.order;
@@ -1527,16 +1547,7 @@ std::vector<TrashItem> PhotoStore::ListTrash() const
             t.photos = CountTrashPhotos(e.path);
             t.edits = CountTrashEdits(e.path);
             t.bytes = FolderBytes(e.path);
-            std::error_code bec;
-            for (const auto& f : fs::directory_iterator(t.editsOnly ? e.path / kTrashEdited : e.path, bec))
-            {
-                const std::string name = f.path().filename().string();
-                if (!f.is_regular_file(bec) || name.rfind('.', 0) == 0 || name == "session.json")
-                    continue;
-                const std::string base = BaseName(name);
-                if (std::find(t.bases.begin(), t.bases.end(), base) == t.bases.end())
-                    t.bases.push_back(base);
-            }
+            t.bases = TrashBases(e.path, t.editsOnly);
         }
         t.deletedAt = e.deletedAt;
         t.order = e.order;
