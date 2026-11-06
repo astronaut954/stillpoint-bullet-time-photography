@@ -510,7 +510,7 @@ namespace Adobe
         return ok;
     }
 
-    bool QueueReset(const std::string& session, const std::vector<fs::path>& photos)
+    bool QueuePhotos(const std::string& kind, const std::string& session, const std::vector<fs::path>& photos)
     {
         if (photos.empty())
             return false;
@@ -519,21 +519,27 @@ namespace Adobe
         if (it == map.end())
             return false;  // nunca foi para o Lightroom
         static int counter = 0;
-        const std::string name = "reset-" + std::to_string(std::time(nullptr)) + "-" + std::to_string(++counter) + ".txt";
-        std::string text = "session=" + OneLine(session) + "\ncatalog=" + OneLine(it->second.catalog) + "\n";
+        const std::string name = kind + "-" + std::to_string(std::time(nullptr)) + "-" + std::to_string(++counter) + ".txt";
+        std::string text = "session=" + OneLine(session) + "\nproject=" + OneLine(it->second.project) + "\ntitle=" + OneLine(it->second.title)
+            + "\ncatalog=" + OneLine(it->second.catalog) + "\n";
         for (const auto& p : photos)
             text += "photo=" + OneLine(Utf8(p)) + "\n";
         return WriteWhole(BridgeFolder() / name, text + "end=1\n");
     }
 
-    bool CancelReset(const std::string& session)
+    bool QueueReset(const std::string& session, const std::vector<fs::path>& photos)
+    {
+        return QueuePhotos("reset", session, photos);
+    }
+
+    bool CancelQueued(const std::string& kind, const std::string& session)
     {
         bool removed = false;
         std::error_code ec;
         for (fs::directory_iterator it(BridgeFolder(), ec), end; !ec && it != end; it.increment(ec))
         {
             const std::string name = Utf8(it->path().filename());
-            if (name.rfind("reset-", 0) != 0)
+            if (name.rfind(kind + "-", 0) != 0)
                 continue;
             if (Value(ReadPairs(it->path()), "session") == session)
             {
@@ -542,6 +548,11 @@ namespace Adobe
             }
         }
         return removed;
+    }
+
+    bool CancelReset(const std::string& session)
+    {
+        return CancelQueued("reset", session);
     }
 
     Alive ReadAlive()

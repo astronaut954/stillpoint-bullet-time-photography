@@ -290,8 +290,14 @@ local function resetPhotos(request)
 		end)
 		catalog:setSelectedPhotos(photo, {})
 		LrTasks.sleep(0.5)
-		-- Só faz o Reset se a foto ativa é mesmo esta (nunca em outra foto)
+		-- Só faz o Reset se a foto ativa é mesmo esta (nunca em outra foto). Antes, guarda a edição: o ⌘Z do Stillpoint
+		-- pede para pôr de volta ("bringback")
 		if catalog:getTargetPhoto() == photo then
+			local LrPrefs = import 'LrPrefs'
+			local prefs = LrPrefs.prefsForPlugin()
+			local saved = prefs.savedEdits or {}
+			saved[photo:getRawMetadata('path')] = photo:getDevelopSettings()
+			prefs.savedEdits = saved
 			LrDevelopController.resetAllDevelopAdjustments()
 			done = done + 1
 			LrTasks.sleep(0.2)
@@ -305,21 +311,77 @@ local function resetPhotos(request)
 	Bridge.note('delete edits: ' .. done .. ' photos of ' .. tostring(request.session) .. ' back to the original' .. (skipped > 0 and (', ' .. skipped .. ' not found in the view') or ''))
 end
 
+-- ⌘Z do Delete edits no Stillpoint: a edição guardada antes do Reset volta (um passo no histórico do Lightroom)
+local function bringBack(request)
+	local LrPrefs = import 'LrPrefs'
+	local prefs = LrPrefs.prefsForPlugin()
+	local saved = prefs.savedEdits or {}
+	local catalog = LrApplication.activeCatalog()
+	local list = {}
+	for _, path in ipairs(request.photos) do
+		local photo = catalog:findPhotoByPath(path)
+		if photo and saved[path] then table.insert(list, { photo = photo, settings = saved[path], path = path }) end
+	end
+	if #list == 0 then Bridge.note('bring back edits: nothing saved for ' .. tostring(request.session)) return end
+	catalog:withWriteAccessDo('Stillpoint: bring back the edit (' .. tostring(request.title) .. ')', function()
+		for _, item in ipairs(list) do item.photo:applyDevelopSettings(item.settings) end
+	end, { timeout = 60 })
+	for _, item in ipairs(list) do saved[item.path] = nil end
+	prefs.savedEdits = saved
+	Bridge.note('bring back edits: ' .. #list .. ' photos of ' .. tostring(request.session))
+end
+
+-- A coleção da sessão (Stillpoint › projeto › título)
+local function sessionCollection(project, title)
+	local catalog = LrApplication.activeCatalog()
+	local top = findByName(catalog:getChildCollectionSets(), 'Stillpoint')
+	local projectSet = top and findByName(top:getChildCollectionSets(), (project ~= nil and project ~= '') and project or 'No project')
+	return projectSet and findByName(projectSet:getChildCollections(), title)
+end
+
+-- Fotos apagadas no Stillpoint saem da coleção ("remove"); as que voltaram da lixeira voltam ("readd").
+-- Ficam no catálogo: o SDK do Lightroom não tira fotos do catálogo.
+local function collectionPhotos(request, add)
+	local catalog = LrApplication.activeCatalog()
+	local collection = sessionCollection(request.project, request.title)
+	if not collection then Bridge.note((add and 'readd' or 'remove') .. ': collection "' .. tostring(request.title) .. '" not found') return end
+	local photos = {}
+	for _, path in ipairs(request.photos) do
+		local photo = catalog:findPhotoByPath(path)
+		if photo then table.insert(photos, photo) end
+	end
+	if #photos == 0 then return end
+	catalog:withWriteAccessDo('Stillpoint: ' .. (add and 'put back ' or 'remove ') .. #photos .. ' photo' .. (#photos == 1 and '' or 's') .. (add and ' in ' or ' from ') .. tostring(request.title), function()
+		if add then collection:addPhotos(photos) else collection:removePhotos(photos) end
+	end, { timeout = 60 })
+	Bridge.note((add and 'readd: ' or 'remove: ') .. #photos .. ' photos, collection "' .. tostring(request.title) .. '"')
+end
+
+-- Pedidos em arquivos <tipo>-*.txt: feitos quando o catálogo deles estiver aberto (senão esperam)
+local QUEUED = {
+	{ 'reset', resetPhotos },
+	{ 'bringback', bringBack },
+	{ 'remove', function(r) collectionPhotos(r, false) end },
+	{ 'readd', function(r) collectionPhotos(r, true) end },
+}
+
 local function handleResetFiles()
 	for path in LrFileUtils.files(Bridge.folder()) do
 		local name = LrPathUtils.leafName(path)
-		if name:match('^reset%-.*%.txt$') then
-			local text = readAll(path)
-			local request = text and text:find('\nend=1') and parse(text)
-			local otherCatalog = request and request.catalog and request.catalog ~= ''
-				and not samePath(LrApplication.activeCatalog():getPath(), request.catalog)
-			if otherCatalog then
-				Bridge.noteOnce('delete edits for another catalog, waiting: ' .. tostring(request.session))
-			elseif request then
-				removeFile(path)
-				local LrTasks = import 'LrTasks'
-				local ok, problem = LrTasks.pcall(resetPhotos, request)
-				if not ok then Bridge.problem('delete edits: ' .. tostring(problem)) end
+		for _, q in ipairs(QUEUED) do
+			if name:sub(1, #q[1] + 1) == q[1] .. '-' and name:match('%.txt$') then
+				local text = readAll(path)
+				local request = text and text:find('\nend=1') and parse(text)
+				local otherCatalog = request and request.catalog and request.catalog ~= ''
+					and not samePath(LrApplication.activeCatalog():getPath(), request.catalog)
+				if otherCatalog then
+					Bridge.noteOnce(q[1] .. ' for another catalog, waiting: ' .. tostring(request.session))
+				elseif request then
+					removeFile(path)
+					local LrTasks = import 'LrTasks'
+					local ok, problem = LrTasks.pcall(q[2], request)
+					if not ok then Bridge.problem(q[1] .. ': ' .. tostring(problem)) end
+				end
 			end
 		end
 	end

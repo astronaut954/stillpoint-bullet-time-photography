@@ -105,6 +105,12 @@ namespace Adobe
     // faz quando o catálogo da sessão estiver aberto). CancelReset tira o pedido que ainda não foi feito (o ⌘Z).
     bool QueueReset(const std::string& session, const std::vector<std::filesystem::path>& photos);
     bool CancelReset(const std::string& session);
+    // Pedidos ao plugin sobre fotos da coleção da sessão (feitos quando o catálogo dela estiver aberto):
+    //   "bringback" a edição volta no Lightroom (o ⌘Z do Delete edits; o plugin guardou a edição antes do Reset)
+    //   "remove"    as fotos apagadas no Stillpoint saem da coleção (o SDK não tira fotos do catálogo)
+    //   "readd"     as fotos que voltaram da lixeira voltam para a coleção
+    bool QueuePhotos(const std::string& kind, const std::string& session, const std::vector<std::filesystem::path>& photos);
+    bool CancelQueued(const std::string& kind, const std::string& session);
 
     // Sessão -> catálogo onde a coleção dela está ("" = não anotado)
     std::map<std::string, std::string> CollectionCatalogs();

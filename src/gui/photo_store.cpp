@@ -1692,7 +1692,7 @@ bool PhotoStore::RestoreEntry(const fs::path& trash, std::string& errorMessage, 
     return true;
 }
 
-bool PhotoStore::Restore(const std::string& session, std::string& errorMessage) const
+bool PhotoStore::Restore(const std::string& session, std::string& errorMessage, std::vector<std::string>* restored) const
 {
     // O Desfazer: o item mais recente desta sessão (nas duas lixeiras)
     const fs::path projectTrash = projectRoot.empty() ? fs::path() : projectRoot.parent_path() / kProjectTrash;
@@ -1706,7 +1706,7 @@ bool PhotoStore::Restore(const std::string& session, std::string& errorMessage) 
         errorMessage = "Nothing to restore for this session.";
         return false;
     }
-    return RestoreEntry(best->path, errorMessage);
+    return RestoreEntry(best->path, errorMessage, restored);
 }
 
 static fs::path TrashPathFromId(const std::string& id, const fs::path& appTrash, const fs::path& projectTrash)

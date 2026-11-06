@@ -2053,3 +2053,6 @@ html.kbd-focus .export-tab.on .export-tab-check input:focus + .save-check { outl
 .trash-app { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 16px; font: 700 9px var(--noct-font-mono); letter-spacing: 0; border: 1px solid currentColor; }
 .trash-app.lr { color: var(--noct-primary); }
 .trash-edits { display: flex; align-items: center; gap: 8px; margin-top: 6px; padding-left: 14px; border-left: 1px solid var(--noct-border); }
+.trash-edits { flex-wrap: wrap; row-gap: 4px; }
+.trash-edits small { flex: 1 1 220px; min-width: 0; }
+.trash-edits button { padding: 2px 8px; font-size: 11px; min-height: 0; }

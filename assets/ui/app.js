@@ -1558,9 +1558,11 @@
            recordAction({ label: "Delete " + plural(o.removed, "edit", "edits") + " · " + sessionLabel(s.name).date,
              undo: () => Promise.resolve(restoreSession(s.name)).then((ok) => {
                forgetSessionPreviews(s.name);
+               // No Lightroom: cancela a volta ao original se ainda não foi feita; se já foi, o plugin põe de volta a
+               // edição que guardou antes do Reset (pedido do dono, 2026-11-06)
                if (o.reset && typeof window.adobeCancelReset === "function")
-                 Promise.resolve(window.adobeCancelReset(s.name)).then((cancelled) => {
-                   if (!cancelled) toast("Lightroom Classic already put the photos back to the original. Use Edit › Undo in Lightroom to get the edit back there.", 9000, { warn: true });
+                 Promise.resolve(window.adobeCancelReset(s.name, ...(o.files || []))).then((what) => {
+                   if (what === "bringback") toast("The edit also comes back in Lightroom Classic (now, or when Lightroom opens the catalog of this session).", 7000);
                  });
                return ok;
              }),
@@ -9380,7 +9382,15 @@
         if (!group.length) return;
         if (tree.some((n) => n.group !== inProject) || inProject)
           list.appendChild(el("li", "trash-group", inProject ? "In the project " + (r.project || "") : "In the app"));
-        group.forEach(({ item, level, blockedBy }) => {
+        // Descendentes de um item (o que foi apagado antes e depende dele), em qualquer nível
+        const descendants = (id) => tree.filter((n) => n.under === id).flatMap((n) => [n, ...descendants(n.item.id)]);
+        // Os de cima de um item, do mais alto ao mais baixo
+        const ancestors = (node) => { const up = []; let cur = node; while (cur && cur.under) { cur = tree.find((n) => n.item.id === cur.under); if (cur) up.unshift(cur); } return up; };
+        // Editada apagada antes da foto: linha pequena presa à foto, não um item do mesmo tamanho (decisão do dono, 2026-11-06)
+        const compactEdit = (n) => n.item.editsOnly && n.under && tree.some((p) => p.item.id === n.under && !p.item.whole && !p.item.isProject && !p.item.editsOnly);
+        group.forEach((node) => {
+          const { item, level, blockedBy } = node;
+          if (compactEdit(node)) return;
           const li = el("li", "trash-row lvl" + level + (item.whole ? " is-session" : " is-photos"));
           li.dataset.id = item.id;
           const label = sessionLabel(item.session);
@@ -9401,7 +9411,8 @@
           const left = Math.max(0, Math.ceil((item.deletedAt + r.days * 86400 - now) / 86400));
           const what = item.isProject ? "Project" + (item.sessions ? " · " + plural(item.sessions, "session", "sessions") : "")
             : item.editsOnly ? plural(item.edits, "Lightroom Classic edit", "Lightroom Classic edits") + " from this session"
-            : item.whole ? "Session" + (item.photos ? " · " + plural(item.photos, "photo", "photos") : "") : plural(item.photos, "photo", "photos") + " from this session";
+            : (item.whole ? "Session" + (item.photos ? " · " + plural(item.photos, "photo", "photos") : "") : plural(item.photos, "photo", "photos") + " from this session")
+              + (item.edits > 0 ? " · " + plural(item.edits, "Lightroom Classic edit", "Lightroom Classic edits") : "");
           const meta = el("small", "", what + (+item.bytes ? " · " + fmtBytes(+item.bytes) : "") + " · deleted " + agoText(now - item.deletedAt));
           if (!item.restored) {
             meta.appendChild(document.createTextNode(" · "));
@@ -9409,24 +9420,43 @@
             else meta.appendChild(el("span", left <= 2 ? "soon" : "", left <= 1 ? "deleted for good within a day" : "deleted for good in " + left + " days"));
           }
           main.appendChild(meta);
-          // Editadas que foram junto com as fotos (ou com a sessão): uma linha embaixo, com o ícone do Lightroom
-          if (!item.editsOnly && item.edits > 0 && !item.restored) {
+          // Editadas apagadas antes desta foto: linhas pequenas presas a ela, com o ícone do Lightroom e os botões
+          tree.filter((n) => n.under === item.id && compactEdit(n) && !n.item.restored).forEach((n) => {
+            const e = n.item;
             const sub = el("div", "trash-edits");
-            sub.append(el("span", "trash-app lr", "Lr"), el("small", "", plural(item.edits, "Lightroom Classic edit", "Lightroom Classic edits") + " · come back with " + (item.whole ? "the session" : item.photos === 1 ? "the photo" : "the photos")));
+            sub.append(el("span", "trash-app lr", "Lr"), el("small", "", plural(e.edits, "Lightroom Classic edit", "Lightroom Classic edits") + " · deleted before the photo" + (+e.bytes ? " · " + fmtBytes(+e.bytes) : "")));
+            const rest = button("Restore", () => restoreEverything(new Set([...ancestors(n).map((a) => a.item.id), e.id])),
+              { kind: "btn-link", title: "Restores the photo too (and what is above it), then the edit" });
+            const del = button("Delete permanently", () => dialog("Delete permanently?", (e.edits === 1 ? "This edit" : "These edits") + " will be deleted for good. This cannot be undone.", [
+              { label: "Cancel" }, { label: "Delete permanently", danger: true, onClick: () => Promise.resolve(window.trashDelete(e.id)).then(() => renderTrash()) }]),
+              { kind: "btn-link", title: "Delete this edit for good" });
+            sub.append(rest, del);
             main.appendChild(sub);
-          }
+          });
           const these = item.editsOnly ? (item.edits === 1 ? "This edit was" : "These edits were") : item.whole ? "This session was" : item.photos === 1 ? "This photo was" : "These photos were";
           if (item.restored) main.appendChild(el("small", "trash-note done", "Restored. It stays here until the " + (item.isProject ? "items from its trash" : "photos deleted before it") + " below are restored or deleted."));
           else if (offDisk) main.appendChild(el("small", "trash-note", "The disk with this project is not connected. Connect it to restore or delete the project."));
-          else if (blockedBy && blockedBy.isProject) main.appendChild(el("small", "trash-note", these + " in the trash of the project " + blockedBy.session + ", which was deleted after. Restore the project first."));
-          else if (blockedBy && item.editsOnly) main.appendChild(el("small", "trash-note", "The photo was deleted after " + (item.edits === 1 ? "this edit" : "these edits") + ". Restore the photo first."))
-          else if (blockedBy) main.appendChild(el("small", "trash-note", item.photos === 1
-            ? "The whole session was deleted after this photo. Restore the session first to bring it back."
-            : "The whole session was deleted after these photos. Restore the session first to bring them back."));
+          else if (blockedBy) {
+            // Restaurar este traz junto os de cima (decisão do dono, 2026-11-06)
+            const up = ancestors(node).filter((a) => !a.item.restored).map((a) => a.item.isProject ? "the project " + a.item.session : a.item.whole ? "the session" : "the photo");
+            main.appendChild(el("small", "trash-note", these + " deleted before " + up[up.length - 1] + ". Restoring " + (these.startsWith("These") ? "them" : "it") + " also brings back " + up.reverse().join(", ") + "."));
+          }
           li.appendChild(main);
           if (!item.restored) {
-            const restore = button("Restore", () => restoreTrashItem(item, label), { title: item.isProject ? "Put the project folder back" : item.whole ? "Put the session back in the list" : "Put the photos back in their session" });
-            if (blockedBy) { restore.disabled = true; restore.title = blockedBy.isProject ? "Restore the project first" : blockedBy.whole ? "Restore the session first" : "Restore the photo first"; }
+            const below = descendants(item.id).filter((n) => !n.item.restored);
+            const restore = button("Restore", () => {
+              // De baixo: traz junto os de cima. De cima com coisas embaixo: pergunta se traz tudo
+              if (blockedBy) { restoreEverything(new Set([...ancestors(node).map((a) => a.item.id), item.id])); return; }
+              if (!below.length) { restoreTrashItem(item, label); return; }
+              const counts = [["session", "sessions", (o) => o.whole && !o.isProject], ["photo item", "photo items", (o) => !o.whole && !o.isProject && !o.editsOnly], ["edit", "edits", (o) => o.editsOnly]]
+                .map(([one, many, f]) => { const k = below.filter((n) => f(n.item)).length; return k ? plural(k, one, many) : ""; }).filter(Boolean);
+              const name = item.isProject ? "the project" : item.whole ? "the session" : item.photos === 1 ? "the photo" : "the photos";
+              dialog("Restore " + name + "?", "The trash also has " + counts.join(", ") + " deleted before " + name + ". Restore them too?", [
+                { label: "Cancel" },
+                { label: "Only " + name, onClick: () => restoreTrashItem(item, label) },
+                { label: "Restore all", primary: true, onClick: () => restoreEverything(new Set([item.id, ...below.map((n) => n.item.id)])) },
+              ]);
+            }, { title: item.isProject ? "Put the project folder back" : item.whole ? "Put the session back in the list" : "Put the photos back in their session" });
             if (offDisk) { restore.disabled = true; restore.title = "Connect the disk with this project first"; }
             li.appendChild(restore);
             // Apagar de vez leva junto o que dependia dele (fotos apagadas antes; a lixeira do projeto)
@@ -9528,14 +9558,22 @@
   }
   // Restore everything: primeiro as sessões inteiras, depois as fotos (as que dependiam de uma sessão
   // apagada depois delas voltam para dentro dela). Um passo só no Desfazer.
-  function restoreEverything() {
+  // only (opcional): só esses itens (o Restore de um item com os de cima, ou com os de baixo)
+  function restoreEverything(only) {
     // Em rodadas: o que está liberado volta (sessões e projetos primeiro); o que dependia dele fica
     // liberado na rodada seguinte (fotos apagadas antes, a lixeira de um projeto)
     const done = [];
     let failed = 0;
     const tried = new Set();
+    const wanted = new Set();
     const round = (n) => Promise.resolve(window.trashList()).then((r) => {
-      const ready = trashTree((r && r.items) || []).filter((x) => !x.item.restored && !x.blockedBy && !tried.has(x.item.id) && !(x.item.isProject && !x.item.reachable)).map((x) => x.item);
+      // Os ids dos itens de um projeto mudam quando ele volta (a lixeira dele passa a ser a do projeto aberto): o filtro
+      // compara também pela sessão e pelo momento em que foi apagado
+      const key = (i) => i.session + "|" + i.deletedAt + "|" + (i.editsOnly ? "e" : i.whole ? "s" : i.isProject ? "p" : "f");
+      const onlyKeys = only ? new Set(((r && r.items) || []).filter((i) => only.has(i.id)).map(key)) : null;
+      if (only && n === 0) onlyKeys.forEach((k) => wanted.add(k));
+      const ready = trashTree((r && r.items) || []).filter((x) => !x.item.restored && !x.blockedBy && !tried.has(x.item.id) && !(x.item.isProject && !x.item.reachable)
+        && (!only || wanted.has(key(x.item)))).map((x) => x.item);
       if (!ready.length || n > 6) return;
       const ordered = ready.filter((i) => i.whole).concat(ready.filter((i) => !i.whole));
       const step = (k) => {
@@ -9543,7 +9581,8 @@
         const item = ordered[k];
         tried.add(item.id);
         return Promise.resolve(window.trashRestore(item.id)).then((x) => {
-          if (x && x.ok) done.push({ session: item.session, whole: item.whole, files: x.files || [], project: item.isProject ? x.folder : "" }); else failed++;
+          if (x && x.ok) done.push({ session: item.session, whole: item.whole, files: x.files || [], project: item.isProject ? x.folder : "" });
+          else { failed++; log("Could not restore " + (item.isProject ? "the project " + item.session : sessionLabel(item.session).date) + ": " + ((x && x.error) || "unknown reason"), "warn"); }
           // Projeto que voltou com nada aberto: abre já, para a lixeira dele (sessões, fotos, editadas) entrar na
           // próxima rodada (teste do dono, 2026-11-06: antes elas ficavam para trás)
           if (x && x.ok && item.isProject && !project.open && x.folder && typeof window.projectOpen === "function")

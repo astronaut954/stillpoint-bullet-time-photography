@@ -2198,9 +2198,17 @@ namespace
         {
             const auto args = ParseStringArgs(request);
             std::string error;
-            const bool ok = !args.empty() && store.Restore(args[0], error);
+            std::vector<std::string> restoredFiles;
+            const bool ok = !args.empty() && store.Restore(args[0], error, &restoredFiles);
             if (!ok)
                 Log("Restore failed: " + error);
+            // Fotos que voltaram: voltam também para a coleção da sessão no Lightroom (se ela foi para lá)
+            if (ok && !restoredFiles.empty())
+            {
+                std::vector<std::filesystem::path> paths;
+                for (const auto& f : restoredFiles) paths.push_back(store.SessionDir(args[0]) / f);
+                Adobe::QueuePhotos("readd", args[0], paths);
+            }
             emitSessions();
             return Json("restore").Add("ok", ok).Add("error", error).Str();
         });
@@ -2372,13 +2380,23 @@ namespace
                 Log("Delete edits: " + std::to_string(originals.size()) + " photo(s) of " + session + " will be reset in Lightroom Classic");
             }
             emitSessions();
-            return Json().Add("removed", removed).Add("reset", reset).Str();
+            std::string resetFiles = "[";
+            for (size_t i = 0; i < originals.size(); ++i) resetFiles += (i ? "," : "") + JsonString(PathToUtf8(originals[i].filename()));
+            return Json().Add("removed", removed).Add("reset", reset).Raw("files", resetFiles + "]").Str();
         });
-        // ⌘Z do Delete edits: tira o pedido de voltar ao original no Lightroom, se ele ainda não foi feito
+        // ⌘Z do Delete edits: tira o pedido de voltar ao original no Lightroom, se ele ainda não foi feito; se já foi,
+        // pede ao plugin para pôr de volta a edição que ele guardou antes do Reset (args: sessão, arquivos)
         window.bind("adobeCancelReset", [&](const std::string& request) -> std::string
         {
             const auto args = ParseStringArgs(request);
-            return args.empty() ? "false" : (Adobe::CancelReset(args[0]) ? "true" : "false");
+            if (args.empty())
+                return "\"none\"";
+            if (Adobe::CancelReset(args[0]))
+                return "\"cancelled\"";
+            std::vector<std::filesystem::path> paths;
+            const auto dir = store.SessionDir(args[0]);
+            for (size_t i = 1; i < args.size(); ++i) paths.push_back(dir / args[i]);
+            return Adobe::QueuePhotos("bringback", args[0], paths) ? "\"bringback\"" : "\"none\"";
         });
 
         window.bind("adobeLive", [&](const std::string&) -> std::string
@@ -4559,9 +4577,24 @@ namespace
             args.erase(args.begin());
             previews.Post([&, session, args]
             {
+                // Os arquivos dessas fotos (antes de sair), para tirá-las da coleção da sessão no Lightroom
+                std::vector<std::filesystem::path> paths;
+                const auto dir = store.SessionDir(session);
+                for (const auto& s : store.ListSessions())
+                    if (s.name == session)
+                        for (const auto& p : s.photos)
+                        {
+                            char group[64];
+                            std::snprintf(group, sizeof(group), "%02d_", p.order);
+                            const std::string key = group + p.camera;
+                            if (std::find(args.begin(), args.end(), key) != args.end() || std::find(args.begin(), args.end(), p.file) != args.end())
+                                paths.push_back(dir / p.file);
+                        }
                 std::string error;
                 if (!store.DeletePhotos(session, args, error))
                     listener.Emit(Json("deleteFailed").Add("error", error));
+                else if (!paths.empty() && Adobe::QueuePhotos("remove", session, paths))
+                    Log("Delete photos: " + std::to_string(paths.size()) + " file(s) of " + session + " leave the Lightroom Classic collection");
                 emitSessions();
             });
             return "null";
@@ -4614,6 +4647,15 @@ namespace
                         projectFolder = line.substr(7);
             }
             const bool ok = !args.empty() && store.RestoreTrashItem(args[0], error, &files);
+            // Fotos que voltaram: voltam também para a coleção da sessão no Lightroom (se ela foi para lá)
+            if (ok && !files.empty())
+                for (const auto& item : store.ListTrash())
+                    if (item.id == args[0])
+                    {
+                        std::vector<std::filesystem::path> paths;
+                        for (const auto& f : files) paths.push_back(store.SessionDir(item.session) / f);
+                        Adobe::QueuePhotos("readd", item.session, paths);
+                    }
             if (ok && !projectFolder.empty())
                 setRecent(projectFolder, true);
             if (ok && !projectFolder.empty())
