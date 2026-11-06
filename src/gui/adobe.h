@@ -94,7 +94,8 @@ namespace Adobe
     TemplateInfo Template();
     // O modelo é de outra versão principal do Lightroom (15 x 16)?
     bool TemplateOutdated(const TemplateInfo& info, const std::string& lightroomVersion);
-    // <Mesa>/Stillpoint Template/Stillpoint Template.lrcat (o New Catalog cria a pasta com o nome)
+    // <Mesa>/Template/Template.lrcat, sem diferença de maiúsculas (o New Catalog cria a pasta com o nome);
+    // vazio se não achou
     std::filesystem::path DesktopTemplate(const std::filesystem::path& desktop);
     bool SaveTemplate(const std::filesystem::path& catalog, const std::string& lightroomVersion, std::string& error);
     // Cria o catálogo do projeto a partir do modelo (não sobrescreve um que já exista)

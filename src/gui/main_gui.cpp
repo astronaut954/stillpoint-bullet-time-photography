@@ -2453,8 +2453,7 @@ namespace
             if (desktop.empty())
                 return Json("adobeTemplate").Add("found", false).Str();
             const auto file = Adobe::DesktopTemplate(std::filesystem::path(std::u8string(desktop.begin(), desktop.end())));
-            std::error_code ec;
-            if (!std::filesystem::exists(file, ec))
+            if (file.empty())
                 return Json("adobeTemplate").Add("found", false).Str();
             const auto lr = adobeFind(Adobe::Program::Lightroom);
             std::string error;

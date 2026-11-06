@@ -422,7 +422,22 @@ namespace Adobe
 
     fs::path DesktopTemplate(const fs::path& desktop)
     {
-        return desktop / "Stillpoint Template" / "Stillpoint Template.lrcat";
+        // "Template" (ou "template", "TEMPLATE"; e "Stillpoint Template", o nome de antes): o New Catalog cria uma
+        // pasta com o nome e o .lrcat com o mesmo nome dentro dela (decisão do dono, 2026-11-06)
+        std::error_code ec;
+        for (fs::directory_iterator it(desktop, ec), end; !ec && it != end; it.increment(ec))
+        {
+            if (!it->is_directory(ec))
+                continue;
+            const std::string name = Lower(Utf8(it->path().filename()));
+            if (name != "template" && name != "stillpoint template")
+                continue;
+            std::error_code ec2;
+            for (fs::directory_iterator f(it->path(), ec2), fend; !ec2 && f != fend; f.increment(ec2))
+                if (Lower(Utf8(f->path().extension())) == ".lrcat" && Lower(Utf8(f->path().stem())) == name)
+                    return f->path();
+        }
+        return {};
     }
 
     bool SaveTemplate(const fs::path& catalog, const std::string& lightroomVersion, std::string& error)

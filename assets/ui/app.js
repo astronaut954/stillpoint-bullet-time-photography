@@ -8568,10 +8568,10 @@
         : "Stillpoint copies an empty catalog into each new project. You make that empty catalog in Lightroom Classic, once; Stillpoint keeps a copy." },
       { t: "Open New Catalog", x: () => "In Lightroom Classic, choose <b>File › New Catalog…</b>" },
       { t: "Save it on the Desktop", x: () => st.os === "win"
-        ? "Click <b>Desktop</b> on the left, name it <b>Stillpoint Template</b>, and click <b>Create</b>."
-        : "Name it <b>Stillpoint Template</b>, choose <b>Desktop</b> in Where, and click <b>Create</b>." },
+        ? "Click <b>Desktop</b> on the left, name it <b>Template</b>, and click <b>Create</b>."
+        : "Name it <b>Template</b>, choose <b>Desktop</b> in Where, and click <b>Create</b>." },
       { t: "Lightroom Classic opens the empty catalog", x: () => "Lightroom Classic restarts with it. Stillpoint finds it on the Desktop and keeps a copy; this step moves on by itself." },
-      { t: "All set", x: () => "Stillpoint made the <b>" + esc(st.project) + "</b> catalog. Lightroom Classic asks <b>Relaunch Lightroom with this Catalog?</b>: click <b>Relaunch</b>. The Stillpoint Template folder on the Desktop goes to the " + (st.os === "win" ? "Recycle Bin" : "Trash") + " by itself." },
+      { t: "All set", x: () => "Stillpoint made the <b>" + esc(st.project) + "</b> catalog. Lightroom Classic asks <b>Relaunch Lightroom with this Catalog?</b>: click <b>Relaunch</b>. The Template folder on the Desktop goes to the " + (st.os === "win" ? "Recycle Bin" : "Trash") + " by itself." },
     ];
     const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
     function render() {
@@ -8593,10 +8593,11 @@
       const s = $g("cgStatus");
       s.classList.toggle("hidden", st.step !== 3);
       s.classList.toggle("found", st.found);
-      $g("cgStatusText").textContent = st.found ? "Found Stillpoint Template on the Desktop. Stillpoint kept a copy." : "Waiting for Stillpoint Template on the Desktop…";
+      $g("cgStatusText").textContent = st.found ? "Found Template on the Desktop. Stillpoint kept a copy." : "Waiting for Template on the Desktop…";
       $g("cgBack").disabled = st.step === 0;
       $g("cgNext").textContent = st.step === SLIDES.length - 1 ? "Send to Lightroom Classic" : "Next";
       $g("cgNext").disabled = st.step === 3 && !st.found;
+      play(st.step);
       if (st.step === 3 && st.found && !advanceTimer) advanceTimer = setTimeout(() => { advanceTimer = 0; if (st && st.step === 3) { st.step = 4; render(); } }, 1200);
     }
     function poll() {
@@ -8608,7 +8609,88 @@
         timer = setTimeout(poll, 1000);
       }, () => { if (st) timer = setTimeout(poll, 2000); });
     }
+    // ---- Animação dos slides: o cursor vai até cada coisa (pela posição real dela na ilustração) e clica ----
+    let playToken = 0, playing = -1;
+    const reduced = () => window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    function play(step) {
+      const key = step + ":" + st.os;
+      if (playing === key) return;
+      playing = key;
+      const token = ++playToken;
+      const slide = document.querySelectorAll("#cgStage .cg-slide")[step];
+      if (!slide) return;
+      const lr = slide.querySelector(".lr");
+      const cur = slide.querySelector(".cursor");
+      const q = (sel) => [...slide.querySelectorAll(sel)].find((e) => e.offsetParent !== null);
+      const alive = () => token === playToken && st && slide.classList.contains("on");
+      const reset = () => {
+        slide.querySelectorAll(".hl,.open,.focus,.down").forEach((e) => e.classList.remove("hl", "open", "focus", "down"));
+        slide.querySelectorAll(".x-typed").forEach((e) => { e.textContent = ""; });
+        const wv = slide.querySelector(".x-wval"); if (wv) wv.textContent = "Pictures";
+        const pics = slide.querySelector(".x-wpics"); if (pics) pics.classList.add("sel");
+        const desk = slide.querySelector(".x-wdesk"); if (desk) desk.classList.remove("sel");
+        if (cur) { cur.classList.remove("text", "press"); place(lr.clientWidth * .62, lr.clientHeight * .82, 0); }
+      };
+      // Posição dentro da ilustração (o cursor é filho de .lr)
+      function place(x, y, ms) {
+        if (!cur) return;
+        cur.style.setProperty("--cd", ms + "ms");
+        cur.style.setProperty("--cx", Math.round(x) + "px");
+        cur.style.setProperty("--cy", Math.round(y) + "px");
+      }
+      function pointOf(el, fx, fy) {
+        const a = el.getBoundingClientRect(), b = lr.getBoundingClientRect();
+        // a ilustração pode estar reduzida (o protótipo encolhe a janela): volta para o tamanho dela
+        const k = b.width / lr.offsetWidth || 1;
+        return [(a.left - b.left + a.width * (fx == null ? .5 : fx)) / k, (a.top - b.top + a.height * (fy == null ? .55 : fy)) / k];
+      }
+      const chk = () => { if (!alive()) throw new Error("stop"); };
+      async function move(el, ms, fx, fy) { chk(); const [x, y] = pointOf(el, fx, fy); place(x, y, ms); await sleep(ms + 60); }
+      async function click(el) { chk(); cur && cur.classList.add("press"); if (el) el.classList.add("down"); await sleep(140); cur && cur.classList.remove("press"); if (el) el.classList.remove("down"); await sleep(120); }
+      async function type(el, text) { for (const ch of text) { chk(); el.textContent += ch; await sleep(110); } }
+      const scripts = {
+        1: async () => {   // File › New Catalog…
+          const file = q(".x-file"), menu = q(".lr-menu"), item = q(".x-target");
+          await sleep(500); await move(file, 900); await click(); file.classList.add("hl"); menu.classList.add("open");
+          await sleep(450); await move(item, 600, .35); item.classList.add("hl"); await sleep(350); await click(); await sleep(1400);
+        },
+        2: async () => {
+          if (st.os === "win") {   // Desktop à esquerda, nome, Create
+            const desk = q(".x-wdesk"), pics = q(".x-wpics"), name = q(".x-name"), typed = name.querySelector(".x-typed"), create = q(".x-create");
+            await sleep(500); await move(desk, 900, .4); desk.classList.add("hl"); await click(); desk.classList.remove("hl"); pics.classList.remove("sel"); desk.classList.add("sel");
+            await sleep(300); await move(name, 700, .3); cur.classList.add("text"); await click(); name.classList.add("focus");
+            await sleep(250); await type(typed, "Template"); await sleep(400); cur.classList.remove("text");
+            await move(create, 800); await click(create); await sleep(1400);
+          } else {                 // nome, Where › Desktop, Create
+            const name = q(".x-name"), typed = name.querySelector(".x-typed"), where = q(".x-where"), dd = q(".x-dd"), opt = dd.children[0], create = q(".x-create");
+            await sleep(500); await move(name, 900, .3); cur.classList.add("text"); await click(); name.classList.add("focus");
+            await sleep(250); await type(typed, "Template"); await sleep(400); cur.classList.remove("text"); name.classList.remove("focus");
+            await move(where, 700, .5); await click(); dd.classList.add("open");
+            await sleep(350); await move(opt, 500, .3); opt.classList.add("hl"); await sleep(300); await click();
+            dd.classList.remove("open"); opt.classList.remove("hl"); where.querySelector(".x-wval").textContent = "Desktop";
+            await sleep(350); await move(create, 800); await click(create); await sleep(1400);
+          }
+        },
+        4: async () => {   // Relaunch
+          const go = q(".x-go");
+          await sleep(700); await move(go, 1000); await click(go); await sleep(1600);
+        },
+      };
+      reset();
+      const run = scripts[step];
+      if (!run || !cur) return;
+      if (reduced()) return;   // sem movimento: fica a primeira imagem do passo
+      (async () => {
+        await sleep(30);
+        while (alive()) {
+          reset(); await sleep(40);
+          try { await run(); } catch (e) { return; }
+        }
+      })();
+    }
     function close() {
+      playToken++; playing = -1;
       clearTimeout(timer); clearTimeout(advanceTimer); advanceTimer = 0;
       st = null;
       $g("catGuideOverlay").classList.add("hidden");

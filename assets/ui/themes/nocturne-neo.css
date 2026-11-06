@@ -1915,34 +1915,18 @@ html.kbd-focus .export-tab.on .export-tab-check input:focus + .save-check { outl
 .cat-guide .cursor { position: absolute; width: 14px; height: 20px; z-index: 5; pointer-events: none; }
 .cat-guide .cursor::before { content: ""; position: absolute; inset: 0; background: #fff; clip-path: polygon(0 0, 0 80%, 25% 62%, 42% 100%, 55% 94%, 40% 58%, 72% 58%); filter: drop-shadow(0 1px 1px #000); }
 /* Slide 2: abre File e para em New Catalog… */
-.cat-guide .s2.on .cg-c2 { animation: cg-c2 4.2s ease-in-out infinite; }
-@keyframes cg-c2 { 0% { left: 320px; top: 160px; } 22% { left: 130px; top: 6px; } 40% { left: 130px; top: 6px; } 62% { left: 150px; top: 34px; } 100% { left: 150px; top: 34px; } }
-.cat-guide .s2.on .lr-menu { animation: cg-m2 4.2s infinite; }
-@keyframes cg-m2 { 0%, 30% { opacity: 0; transform: translateY(-4px); } 34%, 96% { opacity: 1; transform: none; } 100% { opacity: 0; } }
-.cat-guide .s2.on .x-file { animation: cg-f2 4.2s infinite; }
-@keyframes cg-f2 { 0%, 30% { background: transparent; } 34%, 96% { background: #4a7bd4; } 100% { background: transparent; } }
-.cat-guide .s2.on .x-target { animation: cg-t2 4.2s infinite; }
-@keyframes cg-t2 { 0%, 58% { background: transparent; } 62%, 96% { background: #4a7bd4; } 100% { background: transparent; } }
 .cat-guide .x-file { border-radius: 3px; padding: 1px 6px; margin: 0 -6px; }
 /* Slide 3: janela de salvar */
 .cat-guide .x-save { position: absolute; left: 50%; top: 34px; width: 360px; margin-left: -180px; background: #333; border-radius: 8px; box-shadow: 0 10px 24px rgba(0,0,0,.7); padding: 14px 16px; }
 .cat-guide .x-save .x-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
 .cat-guide .x-save .x-row label { width: 64px; text-align: right; color: #bbb; }
 .cat-guide .x-save .x-field { flex: 1; height: 22px; border-radius: 4px; background: #1e1e1e; border: 1px solid #555; display: flex; align-items: center; padding: 0 6px; color: #fff; overflow: hidden; white-space: nowrap; }
-.cat-guide .x-save .x-typed { display: inline-block; overflow: hidden; white-space: nowrap; width: 0; }
+.cat-guide .x-save .x-typed { white-space: pre; }
 .cat-guide .x-save .x-caret { display: inline-block; width: 1px; height: 13px; background: #fff; margin-left: 1px; }
-.cat-guide .s3.on .x-typed { animation: cg-type3 5s steps(19) infinite; }
-@keyframes cg-type3 { 0%, 8% { width: 0; } 45%, 100% { width: 19ch; } }
-.cat-guide .x-save .x-where { display: flex; align-items: center; justify-content: space-between; }
-.cat-guide .s3.on .x-where { animation: cg-w3 5s infinite; }
-@keyframes cg-w3 { 0%, 52% { color: #888; } 56%, 100% { color: #fff; } }
+.cat-guide .x-save .x-where { justify-content: space-between; }
 .cat-guide .x-save .x-btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
 .cat-guide .x-save .x-btns span { padding: 3px 14px; border-radius: 5px; background: #4d4d4d; color: #eee; }
 .cat-guide .x-save .x-btns span.x-create { background: #2f6fd6; color: #fff; }
-.cat-guide .s3.on .x-create { animation: cg-cr3 5s infinite; }
-@keyframes cg-cr3 { 0%, 84% { filter: none; } 88%, 94% { filter: brightness(1.4); } 100% { filter: none; } }
-.cat-guide .s3.on .cg-c3 { animation: cg-c3 5s ease-in-out infinite; }
-@keyframes cg-c3 { 0% { left: 400px; top: 200px; } 10% { left: 300px; top: 60px; } 48% { left: 300px; top: 60px; } 56% { left: 300px; top: 96px; } 70% { left: 300px; top: 96px; } 84% { left: 430px; top: 140px; } 100% { left: 430px; top: 140px; } }
 /* Slide 4: o Lightroom reinicia vazio */
 .cat-guide .s4 .lr-body { display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 10px; color: #999; }
 .cat-guide .x-spin { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #555; border-top-color: #ccc; }
@@ -1961,9 +1945,6 @@ html.kbd-focus .export-tab.on .export-tab-check input:focus + .save-check { outl
 .cat-guide .x-relaunch .x-btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
 .cat-guide .x-relaunch .x-btns span { padding: 3px 14px; border-radius: 5px; background: #fff; border: 1px solid #ccc; }
 .cat-guide .x-relaunch .x-btns span.x-go { background: #2f6fd6; color: #fff; border-color: #2f6fd6; }
-.cat-guide .s5.on .x-go { animation: cg-cr3 3.4s infinite; }
-.cat-guide .s5.on .cg-c5 { animation: cg-c5 3.4s ease-in-out infinite; }
-@keyframes cg-c5 { 0% { left: 200px; top: 210px; } 50% { left: 470px; top: 150px; } 100% { left: 470px; top: 150px; } }
 /* Slide 1: um catálogo vazio vira o catálogo de cada projeto */
 .cat-guide .s1 .x-flow { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 22px; font: 12px var(--noct-font-mono); color: var(--noct-text-muted); }
 .cat-guide .s1 .x-cat { width: 120px; height: 84px; border: 1px solid var(--noct-border-strong); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-align: center; }
@@ -1975,7 +1956,7 @@ html.kbd-focus .export-tab.on .export-tab-check input:focus + .save-check { outl
 .cat-guide .s1.on .x-proj .x-cat:nth-child(2) { animation-delay: .4s; }
 .cat-guide .s1.on .x-proj .x-cat:nth-child(3) { animation-delay: .8s; }
 @keyframes cg-pop { 0% { opacity: 0; transform: translateX(-8px); } 15%, 85% { opacity: 1; transform: none; } 100% { opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .cat-guide .cg-slide *, .cat-guide .cg-slide.on * { animation: none !important; } .cat-guide .s1 .x-proj .x-cat, .cat-guide .lr-menu, .cat-guide .s4 .x-empty { opacity: 1 !important; } .cat-guide .x-typed { width: 19ch; } }
+@media (prefers-reduced-motion: reduce) { .cat-guide .cg-slide *, .cat-guide .cg-slide.on * { animation: none !important; } .cat-guide .s1 .x-proj .x-cat, .cat-guide .lr-menu, .cat-guide .s4 .x-empty { opacity: 1 !important; } }
 /* Mac x Windows: o que só existe num dos dois */
 .cat-guide[data-os="mac"] .os-win, .cat-guide[data-os="win"] .os-mac { display: none !important; }
 .cat-guide .lr-title { display: none; }
@@ -1987,9 +1968,7 @@ html.kbd-focus .export-tab.on .export-tab-check input:focus + .save-check { outl
 .cat-guide[data-os="win"] .lr-menu { top: 46px; left: 2px; border-radius: 0; }
 .cat-guide[data-os="win"] .lr-menu div { border-radius: 0; }
 .cat-guide[data-os="win"] .x-file { margin: 0 -6px 0 -6px; border-radius: 0; }
-.cat-guide[data-os="win"] .s2.on .cg-c2 { animation-name: cg-c2w; }
-@keyframes cg-c2w { 0% { left: 320px; top: 170px; } 22% { left: 14px; top: 30px; } 40% { left: 14px; top: 30px; } 62% { left: 40px; top: 56px; } 100% { left: 40px; top: 56px; } }
-.cat-guide .x-savewin { position: absolute; left: 50%; top: 20px; width: 420px; margin-left: -210px; background: #2b2b2b; border: 1px solid #555; box-shadow: 0 10px 24px rgba(0,0,0,.7); font-size: 11.5px; }
+.cat-guide .x-savewin { position: absolute; left: 50%; top: 12px; width: 420px; margin-left: -210px; background: #2b2b2b; border: 1px solid #555; box-shadow: 0 10px 24px rgba(0,0,0,.7); font-size: 11.5px; }
 .cat-guide .x-wtitle { display: flex; justify-content: space-between; padding: 6px 10px; background: #202020; color: #ddd; }
 .cat-guide .x-wmain { display: flex; height: 64px; border-bottom: 1px solid #444; }
 .cat-guide .x-wnav { width: 110px; border-right: 1px solid #444; padding: 4px 0; }
@@ -2001,27 +1980,44 @@ html.kbd-focus .export-tab.on .export-tab-check input:focus + .save-check { outl
 .cat-guide .x-dim { color: #999; }
 .cat-guide .x-savewin .x-btns { padding: 8px 10px; margin: 0; }
 .cat-guide .x-savewin .x-btns span { border-radius: 0; min-width: 52px; text-align: center; }
-.cat-guide .s3.on .x-wdesk { animation: cg-wd 5s infinite; }
-@keyframes cg-wd { 0%, 52% { background: transparent; } 56%, 100% { background: #3d5a80; color: #fff; } }
-.cat-guide[data-os="win"] .s3.on .cg-c3 { animation-name: cg-c3w; }
-@keyframes cg-c3w { 0% { left: 400px; top: 210px; } 10% { left: 230px; top: 120px; } 48% { left: 230px; top: 120px; } 56% { left: 110px; top: 70px; } 70% { left: 110px; top: 70px; } 84% { left: 380px; top: 170px; } 100% { left: 380px; top: 170px; } }
 .cat-guide[data-os="win"] .x-relaunch { border-radius: 0; background: #f3f3f3; padding: 0 0 12px; }
 .cat-guide[data-os="win"] .x-relaunch > b, .cat-guide[data-os="win"] .x-relaunch > span { display: block; padding: 0 14px; }
 .cat-guide[data-os="win"] .x-relaunch > b { padding-top: 10px; }
 .cat-guide[data-os="win"] .x-relaunch .x-wtitle { background: #e5e5e5; color: #222; }
 .cat-guide[data-os="win"] .x-relaunch .x-btns { padding: 0 14px; }
 .cat-guide[data-os="win"] .x-relaunch .x-btns span { border-radius: 0; }
-.cat-guide[data-os="win"] .s5.on .cg-c5 { animation-name: cg-c5w; }
-@keyframes cg-c5w { 0% { left: 200px; top: 210px; } 50% { left: 380px; top: 152px; } 100% { left: 380px; top: 152px; } }
 .cat-guide .x-big { font-size: 22px; color: #777; }
 
 .cat-guide .dialog-actions { flex-wrap: nowrap; }
 .cat-guide .dialog-actions .btn { white-space: nowrap; }
 /* Janela de salvar do Windows: mesmos campos e botões da do Mac, no desenho do Windows */
 .cat-guide .x-savewin .x-field { flex: 1; height: 20px; background: #1e1e1e; border: 1px solid #555; display: flex; align-items: center; padding: 0 6px; color: #fff; overflow: hidden; white-space: nowrap; }
-.cat-guide .x-savewin .x-typed { display: inline-block; overflow: hidden; white-space: nowrap; width: 0; }
+.cat-guide .x-savewin .x-typed { white-space: pre; }
 .cat-guide .x-savewin .x-caret { display: inline-block; width: 1px; height: 12px; background: #fff; margin-left: 1px; }
-.cat-guide .x-savewin .x-wmain { height: 72px; }
+.cat-guide .x-savewin .x-wmain { height: 80px; }
 .cat-guide .x-savewin .x-btns { display: flex; justify-content: flex-end; gap: 8px; }
 .cat-guide .x-savewin .x-btns span { padding: 3px 14px; background: #4d4d4d; color: #eee; }
 .cat-guide .x-savewin .x-btns span.x-create { background: #2f6fd6; color: #fff; }
+
+/* Animação dos slides (feita pelo script, passo a passo: o cursor vai até cada coisa e clica) */
+.cat-guide .cursor { left: 0; top: 0; transform: translate(var(--cx, 300px), var(--cy, 200px)); transition: transform var(--cd, 0ms) cubic-bezier(.45, 0, .25, 1); }
+.cat-guide .cursor.text::before { clip-path: none; inset: auto; width: 7px; height: 16px; left: -3px; top: -8px;
+  background: linear-gradient(#fff, #fff) center / 1px 100% no-repeat, linear-gradient(#fff, #fff) top / 7px 1px no-repeat, linear-gradient(#fff, #fff) bottom / 7px 1px no-repeat; }
+.cat-guide .cursor.press::before { transform: scale(.85); transform-origin: 0 0; }
+.cat-guide .lr-menu { transition: opacity .12s, transform .12s; }
+.cat-guide .lr-menu.open { opacity: 1; transform: none; }
+.cat-guide .x-file.hl, .cat-guide .lr-menu div.hl { background: #4a7bd4; color: #fff; }
+.cat-guide .x-field.focus { border-color: #4a7bd4; box-shadow: 0 0 0 2px rgba(74, 123, 212, .45); }
+.cat-guide .x-caret { visibility: hidden; }
+.cat-guide .x-field.focus .x-caret { visibility: visible; animation: cg-blink 1s steps(1) infinite; }
+@keyframes cg-blink { 50% { visibility: hidden; } }
+.cat-guide .x-btns span.down { filter: brightness(1.35); }
+.cat-guide .x-where { position: relative; display: flex; align-items: center; justify-content: space-between; }
+.cat-guide .x-chev { width: 9px; height: 12px; flex: none; opacity: .8; }
+.cat-guide .x-dd { position: absolute; left: -1px; right: -1px; top: 22px; z-index: 3; background: #3b3b3b; border-radius: 6px; box-shadow: 0 6px 16px rgba(0,0,0,.6); padding: 4px; opacity: 0; pointer-events: none; transition: opacity .1s; }
+.cat-guide .x-dd.open { opacity: 1; }
+.cat-guide .x-dd div { padding: 3px 8px; border-radius: 4px; }
+.cat-guide .x-dd div.hl { background: #4a7bd4; color: #fff; }
+.cat-guide .x-wnav div.hl { background: #3d5a80; color: #fff; }
+.cat-guide .x-wnav div.sel { background: #344a66; color: #fff; }
+@media (prefers-reduced-motion: reduce) { .cat-guide .cursor { transition: none; } .cat-guide .x-field.focus .x-caret { animation: none; } }
