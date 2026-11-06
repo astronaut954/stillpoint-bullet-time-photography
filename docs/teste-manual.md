@@ -1795,6 +1795,19 @@ antes de começar: o Stillpoint troca o plugin pelo novo no próximo "Edit in Li
 **Go to session in Stillpoint**
 - [ ] Depois de exportar, "Go to session in Stillpoint" (painel ou menu) traz o Stillpoint para a frente com a sessão aberta.
 
+**Lixeira D e ⌘Z (regra X)**
+- [ ] A lixeira mostra uma linha baixa por item, com linhas de ligação para o que foi apagado antes, miniaturas reais no fim
+      da linha (número da foto; selo LR quando a editada foi junto; listrada quando é só a editada) e, à direita, Restore e ···.
+- [ ] ··· tem "Delete permanently" e, numa foto com a editada apagada antes, "Restore the edit of photo NN" e
+      "Delete the edit of photo NN permanently".
+- [ ] Restaurar pela lixeira não entra no ⌘Z: depois de um Restore, ⌘Z não apaga de novo nem desfaz o "apagar" daquele item.
+
+**Sincronia com o Lightroom (alive.txt com a lista de coleções)**
+- [ ] `alive.txt` tem as linhas `collections=1`, `collection=` e `members=` com o Lightroom aberto.
+- [ ] Apagar a sessão, Edit › Undo no Lightroom: a etiqueta "In Lightroom" volta no Stillpoint em poucos segundos.
+- [ ] Remove from Collection no Lightroom: o selo LR some da foto no Stillpoint; Edit › Undo: volta.
+- [ ] Apagar a foto no Stillpoint e restaurar pela lixeira: a foto volta para a coleção no Lightroom.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |

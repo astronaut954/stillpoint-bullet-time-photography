@@ -4714,10 +4714,40 @@ namespace
                         std::string b = "[";
                         for (size_t i = 0; i < item.bases.size(); ++i) b += (i ? "," : "") + JsonString(item.bases[i]);
                         return b + "]";
+                    }()).Raw("editBases", [&] {
+                        std::string b = "[";
+                        for (size_t i = 0; i < item.editBases.size(); ++i) b += (i ? "," : "") + JsonString(item.editBases[i]);
+                        return b + "]";
                     }()).Str();
             return Json("trash").Raw("items", list + "]").Add("days", kTrashDays)
                 .Add("project", project.IsOpen() ? project.Name() : std::string()).Str();
         });
+        // trashThumb(id, nome-base, "edited" ou "") -> "data:image/jpeg;base64,..." (ou null): as miniaturas da lixeira.
+        // Ficam guardadas enquanto o app está aberto (um RAW leva um tempo para abrir)
+        window.bind("trashThumb", [&](const std::string& id, const std::string& request, void*)
+        {
+            const auto args = ParseStringArgs(request);
+            const std::string item = args.size() > 0 ? args[0] : "", base = args.size() > 1 ? args[1] : "";
+            const bool edited = args.size() > 2 && args[2] == "edited";
+            previews.Post([&, id, item, base, edited]
+            {
+                static std::mutex lock;
+                static std::map<std::string, std::string> cache;
+                const std::string key = item + "|" + base + "|" + (edited ? "e" : "o");
+                std::string jpeg;
+                {
+                    std::lock_guard<std::mutex> g(lock);
+                    auto it = cache.find(key);
+                    if (it != cache.end()) jpeg = it->second;
+                }
+                if (jpeg.empty())
+                {
+                    jpeg = store.TrashThumb(item, base, edited, 120);
+                    if (!jpeg.empty()) { std::lock_guard<std::mutex> g(lock); if (cache.size() > 400) cache.clear(); cache[key] = jpeg; }
+                }
+                window.resolve(id, 0, jpeg.empty() ? "null" : JsonString("data:image/jpeg;base64," + Base64Encode(jpeg)));
+            });
+        }, nullptr);
         // trashRestore(id): volta para onde estava (ou para o app, se a pasta de lá sumiu)
         window.bind("trashRestore", [&](const std::string& request) -> std::string
         {

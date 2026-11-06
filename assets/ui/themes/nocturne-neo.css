@@ -2056,3 +2056,26 @@ html.kbd-focus .export-tab.on .export-tab-check input:focus + .save-check { outl
 .trash-edits { flex-wrap: wrap; row-gap: 4px; }
 .trash-edits small { flex: 1 1 220px; min-width: 0; }
 .trash-edits button { padding: 2px 8px; font-size: 11px; min-height: 0; }
+
+/* Lixeira D (etapa 20, para o dono testar): uma linha baixa por item, árvore com linhas de ligação,
+   miniaturas pequenas no fim da linha, Restore e o menu ··· */
+.tD .trash-row.drow { display: flex; align-items: center; gap: 10px; padding: 7px 2px; border-bottom: 1px solid var(--noct-border); position: relative; }
+.tD .trash-row.drow.lvl1 { padding-left: 26px; border-bottom: 0; }
+.tD .trash-row.drow.lvl2 { padding-left: 52px; }
+.tD .trash-row.drow.lvl3 { padding-left: 78px; }
+.tD .trash-row.drow.lvl4 { padding-left: 104px; }
+.tD .drow.lvl1::before, .tD .drow.lvl2::before, .tD .drow.lvl3::before, .tD .drow.lvl4::before { content: ""; position: absolute; top: 0; bottom: 50%; width: 12px; border-left: 1px solid var(--noct-border-strong); border-bottom: 1px solid var(--noct-border-strong); }
+.tD .drow.lvl1::before { left: 14px; } .tD .drow.lvl2::before { left: 40px; } .tD .drow.lvl3::before { left: 66px; } .tD .drow.lvl4::before { left: 92px; }
+.tD .trash-kind { width: 24px; height: 24px; }
+.tD .dmain { flex: 1; min-width: 0; }
+.tD .dmain b { display: block; padding: 0; font: 600 14px var(--noct-font-sans); color: var(--noct-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tD .dmain small { display: block; margin-top: 0; font: 11px var(--noct-font-mono); color: var(--noct-text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tD .dthumbs { display: flex; gap: 4px; flex: none; }
+.tD .dt { position: relative; width: 38px; height: 26px; border: 1px solid var(--noct-border); background: var(--noct-elevated) center / cover no-repeat; }
+.tD .dt i { position: absolute; left: 2px; top: 2px; font: 700 8px var(--noct-font-mono); font-style: normal; background: var(--noct-primary); color: #000; padding: 0 2px; }
+.tD .dt u { position: absolute; right: 2px; bottom: 2px; font: 700 7px var(--noct-font-mono); text-decoration: none; background: #000; color: var(--noct-primary); border: 1px solid var(--noct-primary); padding: 0 2px; }
+.tD .dt.edit { background-image: repeating-linear-gradient(135deg, rgba(0,255,65,.22) 0 4px, rgba(0,0,0,.4) 4px 8px); }
+.tD .dt.more { display: inline-flex; align-items: center; justify-content: center; font: 700 10px var(--noct-font-mono); color: var(--noct-text-dim); }
+.tD .dmore { width: 34px; padding: 0; justify-content: center; }
+.tD .dhint { margin: 0; padding: 4px 18px 12px; font: 11px/1.5 var(--noct-font-mono); color: var(--noct-text-dim); }
+.tD .trash-row.blocked .dthumbs { opacity: .45; }

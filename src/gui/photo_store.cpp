@@ -1520,6 +1520,7 @@ std::vector<TrashItem> PhotoStore::ListTrash() const
                     in.photos = in.restored ? 0 : CountTrashPhotos(n.path);
                     in.edits = in.restored ? 0 : CountTrashEdits(n.path);
                     in.bases = TrashBases(n.path, in.editsOnly);
+                    in.editBases = TrashBases(n.path, true);
                     in.bytes = in.restored ? 0 : FolderBytes(n.path);
                     in.deletedAt = n.deletedAt;
                     in.order = n.order;
@@ -1548,6 +1549,7 @@ std::vector<TrashItem> PhotoStore::ListTrash() const
             t.edits = CountTrashEdits(e.path);
             t.bytes = FolderBytes(e.path);
             t.bases = TrashBases(e.path, t.editsOnly);
+            t.editBases = TrashBases(e.path, true);
         }
         t.deletedAt = e.deletedAt;
         t.order = e.order;
@@ -1759,6 +1761,39 @@ bool PhotoStore::RestoreTrashItem(const std::string& id, std::string& errorMessa
         return false;
     }
     return RestoreEntry(entry, errorMessage, restored);
+}
+
+std::string PhotoStore::TrashThumb(const std::string& id, const std::string& base, bool edited, int maxSize) const
+{
+    if (base.empty() || base.find_first_of("/\\") != std::string::npos || base == "." || base == "..")
+        return "";
+    const fs::path projectTrash = projectRoot.empty() ? fs::path() : projectRoot.parent_path() / kProjectTrash;
+    const fs::path entry = TrashPathFromId(id, root / kTrashFolder, projectTrash);
+    std::error_code ec;
+    if (entry.empty() || !fs::is_directory(entry, ec))
+        return "";
+    // O arquivo daquela foto: JPEG antes (mais rápido), depois TIFF (editada), depois RAW
+    fs::path pick;
+    int rank = 9;
+    for (const auto& f : fs::directory_iterator(edited ? entry / kTrashEdited : entry, ec))
+    {
+        const std::string name = f.path().filename().string();
+        if (!f.is_regular_file(ec) || name.rfind('.', 0) == 0 || BaseName(name) != base)
+            continue;
+        const int r = IsJpeg(name) ? 0 : IsTiff(name) ? 1 : IsRaw(name) ? 2 : 9;
+        if (r < rank) { rank = r; pick = f.path(); }
+    }
+    RgbFrame frame;
+    if (pick.empty() || !LoadPhotoRgb(pick, frame) || frame.width <= 0 || frame.height <= 0)
+        return "";
+    const double scale = std::min(1.0, static_cast<double>(maxSize) / std::max(frame.width, frame.height));
+    const int tw = std::max(1, static_cast<int>(frame.width * scale));
+    const int th = std::max(1, static_cast<int>(frame.height * scale));
+    std::vector<unsigned char> resized(static_cast<size_t>(tw) * th * 3);
+    stbir_resize_uint8_linear(frame.pixels.data(), frame.width, frame.height, 0, resized.data(), tw, th, 0, STBIR_RGB);
+    std::string jpeg;
+    stbi_write_jpg_to_func(AppendToString, &jpeg, tw, th, 3, resized.data(), 80);
+    return jpeg;
 }
 
 // Apaga de vez um item; um projeto só com o disco dele ligado (senão o item fica, para depois)

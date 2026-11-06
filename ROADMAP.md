@@ -815,6 +815,11 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    sai do Lightroom (como no Done editing); "Only the new ones" fica; Apply photo 01 copia tudo o que foi mudado no Lightroom;
    sem atalho de teclado; "Stillpoint" como destino na janela File › Export… (feito). As prévias do app mostram a editada
    quando existe (a alternância Original / Edited é o pedaço 3). Depois (2026-11-06): a etiqueta "Edited n / m" é a alternância (prévias e Export), "Use edited photos" foi da Review para Outputs, "Delete edits" na sessão e nas fotos, e o Apply usa a foto ativa no Lightroom.
+   Decisões do dono (2026-11-06, noite): **⌘Z regra X** (restaurar pela lixeira não entra no ⌘Z; o "apagar" daquele item sai da pilha);
+   **lixeira D** para testar primeiro (linha baixa, árvore com ligações, miniaturas com selo LR, Restore e menu ···; ele tende para a A
+   depois de testar); painel do Lightroom com abas "Not in Lightroom / In Lightroom" com prévias, 12 por página, fechado de começo
+   (Add selected, Add all, Remove from Lightroom só tira da coleção) — a fazer; exportar de novo troca a editada nos dois programas
+   (B), com pergunta pendente sobre como voltar atrás; coleções identificadas pelo número interno do Lightroom (não pelo nome) — a fazer.
 6. **Etapa 21 — Histórico de edição permanente.** Pedido do dono (2026-11-01): um histórico no estilo
    do painel History do Lightroom Classic, **vinculado ao projeto** (o projeto faz o papel do catálogo
    do Classic: o histórico mora na pasta dele, vai junto se a pasta for movida e só existe com um

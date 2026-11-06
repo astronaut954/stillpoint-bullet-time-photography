@@ -83,8 +83,10 @@ local function parse(text)
 	return request
 end
 
+-- Uma linha só (os parênteses deixam só o texto: o gsub devolve também a contagem, e isso quebrava o
+-- table.insert da lista de fotos)
 local function oneLine(text)
-	return tostring(text or ''):gsub('[\r\n]+', ' ')
+	return (tostring(text or ''):gsub('[\r\n]+', ' '))
 end
 
 local function writeStatus(id, state, extra)

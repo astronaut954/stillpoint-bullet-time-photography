@@ -46,6 +46,8 @@ struct TrashItem
     bool editsOnly = false;
     // Nomes-base das fotos do item (das editadas, no item do Delete edits): a lixeira põe a editada embaixo da foto
     std::vector<std::string> bases;
+    // Nomes-base que têm editada no item (a lixeira mostra o selo LR na miniatura)
+    std::vector<std::string> editBases;
 };
 
 struct StoredSession
@@ -147,6 +149,8 @@ public:
     bool RestoreTrashItem(const std::string& id, std::string& errorMessage,
                           std::vector<std::string>* restored = nullptr) const;
     bool DeleteTrashItem(const std::string& id) const;
+    // Miniatura (JPEG) de uma foto de um item da lixeira, pelo nome-base; edited = a editada do Lightroom (.edited)
+    std::string TrashThumb(const std::string& id, const std::string& base, bool edited, int maxSize) const;
     // Manda um projeto inteiro para a lixeira (a pasta é movida no mesmo disco). Devolve o id do item
     // ("" se não deu, com a mensagem em errorMessage). O projeto já deve estar fechado.
     std::string TrashProject(const std::filesystem::path& folder, const std::string& name, int sessions,
