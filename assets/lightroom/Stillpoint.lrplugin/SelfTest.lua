@@ -217,7 +217,7 @@ local function scenarioOpen()
 	if c then
 		local order = {}
 		for _, photo in ipairs(c:getPhotos()) do table.insert(order, (LrPathUtils.leafName(photo:getRawMetadata('path')):match('^(%d+)_') or '?')) end
-		info('order Lightroom gives for the collection: ' .. table.concat(order, ' '))
+		info('order of collection:getPhotos() (not the order shown in Lightroom): ' .. table.concat(order, ' '))
 	end
 	local baselines, opened = 0, 0
 	for i = 1, #NAMES do
@@ -438,9 +438,21 @@ local function scenarioCancel()
 	check('D: Close and keep changes: photo 04 keeps the change', Bridge.same(settingsOf(4), changed))
 	check('D: the collection is gone', findCollection() == nil)
 	check('D: the message says "kept"', seenTitle('bezel', 'kept') ~= nil, seenText())
-	-- E: nenhuma foto com edição: fecha sem perguntar
+	-- E: as edições tiradas no Lightroom e mandadas ao Stillpoint (o export só avisa para tirar as editadas):
+	-- nada com edição e nada por mandar, fecha sem perguntar. (Na 1ª rodada o teste não mandava antes, e o plugin
+	-- perguntou com razão: o Stillpoint ainda tinha as editadas de 01 e 03.)
 	openSession('E')
 	for i = 1, #NAMES do toBaseline(i) end
+	selectSession()
+	dialogs({})
+	local ok, problem = LrTasks.pcall(Actions.exportToStillpoint)
+	check('E: export with every edit taken off runs', ok, problem)
+	local sent = takeMessages('exported')
+	local cleared = {}
+	for _, msg in ipairs(sent) do for _, f in ipairs(msg.list.cleared or {}) do table.insert(cleared, f) end end
+	check('E: it tells Stillpoint to remove the edits of 01 and 03', has(cleared, NAMES[1]) and has(cleared, NAMES[3]), table.concat(cleared, ', '))
+	check('E: says "removed in Stillpoint"', seenTitle('bezel', 'removed in Stillpoint') ~= nil, seenText())
+	for _, i in ipairs({ 1, 3 }) do LrFileUtils.delete(editedOf(i)) end  -- o Stillpoint tiraria
 	m = cancel({})
 	check('E: no edit at all: closes without asking', seenTitle('confirm', '') == nil, seenText())
 	check('E: the collection is gone', findCollection() == nil)
