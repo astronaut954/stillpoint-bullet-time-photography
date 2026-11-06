@@ -163,13 +163,13 @@ function Bridge.same(a, b)
 end
 
 -- A edição de uma foto como ela chegou no catálogo (ou depois do Reset do Delete edits)
--- Guarda um valor por foto nas preferências do plugin. Sempre uma tabela nova: devolver a mesma tabela mudada às
--- preferências pode não ser gravado pelo Lightroom
+-- Guarda um valor por foto nas preferências do plugin (do jeito que já funcionava: muda a tabela guardada e devolve a
+-- mesma). A cópia numa tabela nova, feita na rodada anterior, é a suspeita de as fotos sem edição terem virado
+-- "editadas" (9/9 no teste do dono, 2026-11-06)
 local function prefsPut(key, path, value)
 	local LrPrefs = import 'LrPrefs'
 	local prefs = LrPrefs.prefsForPlugin()
-	local all = {}
-	for k, v in pairs(prefs[key] or {}) do all[k] = v end
+	local all = prefs[key] or {}
 	all[path] = value
 	prefs[key] = all
 end
