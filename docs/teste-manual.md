@@ -1760,6 +1760,14 @@ antes de começar: o Stillpoint troca o plugin pelo novo no próximo "Edit in Li
 - [ ] Editar a foto 01 e usar "Apply photo 01 edit to all n": a edição vai para as outras. Se alguma já tem edição
       própria, pergunta "Overwrite", "Cancel" ou "Only the unedited ones".
 
+**Export… do Lightroom**
+- [ ] File › Export…, "Export To:" "Stillpoint": seção "Stillpoint" em cima (Project, Session, Goes to, File names); sem
+      "Export Location" e "File Naming"; começa em TIFF 16 bits, Adobe RGB, tamanho cheio. "Export" manda para Edited/.
+
+**Prévias**
+- [ ] Depois de exportar, as prévias da sessão no Stillpoint (miniaturas e foto grande) mostram a editada.
+- [ ] Com todas as fotos da sessão editadas, a etiqueta "In Lightroom" sai e a coleção sai do Lightroom.
+
 **Go to session in Stillpoint**
 - [ ] Depois de exportar, "Go to session in Stillpoint" (painel ou menu) traz o Stillpoint para a frente com a sessão aberta.
 

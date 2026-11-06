@@ -2371,11 +2371,26 @@ namespace
                     Log("Lightroom Classic: " + std::to_string(count) + " edited photo" + (count == 1 ? "" : "s") + " of " + session
                         + " arrived in the project's Edited folder (Edited " + std::to_string(edited) + " / " + std::to_string(total) + ")"
                         + (failed > 0 ? "; " + std::to_string(failed) + " could not be exported" : ""));
-                    exported += (firstExport ? "" : ",") + Json().Add("session", session).Add("count", count).Add("failed", failed)
+                    // Todas as fotos da sessão com editada: sai do "In Lightroom" e a coleção sai do Lightroom, como no
+                    // Done editing (decisão do dono, 2026-11-06)
+                    bool finished = false;
+                    if (total > 0 && edited >= total)
+                    {
+                        auto map = LoadEditing();
+                        if (map.erase(session))
+                        {
+                            SaveEditing(map);
+                            finished = true;
+                            if (Adobe::QueueRemoveCollection(session, s->inProject && project.IsOpen() ? project.Name() : std::string(), "", ""))
+                                Log("All photos of " + session + " are edited: the Lightroom Classic collection will be removed");
+                        }
+                    }
+                    exported += (firstExport ? "" : ",") + Json().Add("finished", finished).Add("session", session).Add("count", count).Add("failed", failed)
                         .Add("edited", edited).Add("total", total).Add("found", s != sessions.end()).Str();
                     firstExport = false;
                 }
                 emitSessions();
+                emitEditing();
             }
             std::string goTo;
             for (const auto& message : Adobe::TakeMessages("goto"))

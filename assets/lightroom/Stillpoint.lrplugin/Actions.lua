@@ -106,7 +106,7 @@ local function orderOf(file)
 	return tonumber((file or ''):match('^(%d+)_')) or 9999
 end
 
-local function writeMessage(prefix, lines)
+function Actions.writeMessage(prefix, lines)
 	local folder = Bridge.folder()
 	if not folder then return false end
 	Actions.counter = (Actions.counter or 0) + 1
@@ -265,7 +265,7 @@ function Actions.exportToStillpoint()
 			doneAll, failedAll = doneAll + done, failedAll + failed
 			local lines = { 'session=' .. job.group.session, 'project=' .. job.group.root, 'count=' .. done, 'failed=' .. failed, 'color=' .. colorSpace }
 			for _, name in ipairs(files) do table.insert(lines, 'file=' .. name) end
-			if done > 0 or failed > 0 then writeMessage('exported', lines) end
+			if done > 0 or failed > 0 then Actions.writeMessage('exported', lines) end
 			Bridge.note('export to Stillpoint: ' .. job.group.session .. ', ' .. done .. ' exported, ' .. failed .. ' failed, ' .. colorSpace)
 			Actions.state.lastSession = job.group.session
 			if progress:isCanceled() then break end
@@ -379,7 +379,7 @@ function Actions.goToSession()
 		return
 	end
 	-- O Stillpoint lê em até 3 s; um pedido com mais de 20 s (Stillpoint fechado) é ignorado quando ele abrir
-	writeMessage('goto', { 'session=' .. session, 'time=' .. os.time() })
+	Actions.writeMessage('goto', { 'session=' .. session, 'time=' .. os.time() })
 	LrDialogs.showBezel('Showing the session in Stillpoint')
 end
 

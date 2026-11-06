@@ -239,11 +239,11 @@ namespace Adobe
 
     std::string BundledPluginVersion(const fs::path& source, const std::string& appVersion)
     {
-        // FNV-1a dos nomes e do conteúdo dos .lua, em ordem de nome
+        // FNV-1a dos nomes e do conteúdo dos .lua e das imagens (.png), em ordem de nome
         std::vector<fs::path> files;
         std::error_code ec;
         for (fs::directory_iterator it(source, ec), end; !ec && it != end; it.increment(ec))
-            if (it->path().extension() == ".lua")
+            if (it->path().extension() == ".lua" || it->path().extension() == ".png")
                 files.push_back(it->path());
         std::sort(files.begin(), files.end());
         unsigned long long hash = 1469598103934665603ull;

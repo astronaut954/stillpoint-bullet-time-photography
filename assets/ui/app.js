@@ -1550,6 +1550,9 @@
   }
   // Export to Stillpoint terminou: aviso "Edited n / m · sessão" (a etiqueta da sessão já mudou com a lista nova)
   function lightroomExported(e) {
+    // As prévias dessa sessão passam a ser as editadas: esquece as guardadas e mostra de novo
+    Object.keys(photoCache).forEach((k) => { if (k.startsWith("sessions/" + e.session + "/") || k.startsWith("order/" + e.session + "/")) delete photoCache[k]; });
+    if (currentSession && currentSession.name === e.session) setTimeout(() => { const cur = sessions.find((x) => x.name === e.session); if (cur && currentSession && currentSession.name === e.session) showSession(cur, true); }, 300);
     const s = sessions.find((x) => x.name === e.session);
     const title = s ? sessionTitle(s) : sessionLabel(e.session).date;
     let text = e.found && e.total ? "Edited " + e.edited + " / " + e.total + " · " + title : plural(e.count, "edited photo", "edited photos") + " arrived from Lightroom Classic · " + title;

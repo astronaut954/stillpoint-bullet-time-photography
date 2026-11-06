@@ -973,30 +973,52 @@ std::string PhotoStore::Preview(const std::string& session, const std::string& f
     if (dir.empty() || file.find_first_of("/\\") != std::string::npos || !(IsJpeg(file) || IsRaw(file)))
         return "";
 
-    const fs::path cache = dir / kPreviewFolder / (std::to_string(maxSize) + "_" + file);
     std::error_code ec;
+    // Project: a foto editada (Edited/<sessão>/) aparece no lugar do original (decisão do dono, 2026-11-01). A prévia
+    // dela tem a hora do arquivo no nome: exportar de novo do Lightroom faz uma prévia nova.
+    const fs::path edited = EditedFile(session, file);
+    std::string cacheName = std::to_string(maxSize) + "_" + file;
+    if (!edited.empty())
+    {
+        const auto when = fs::last_write_time(edited, ec).time_since_epoch().count();
+        cacheName = "edited_" + std::to_string(static_cast<long long>(when)) + "_" + cacheName;
+    }
+    const fs::path cache = dir / kPreviewFolder / cacheName;
     if (fs::exists(cache, ec))
         return ReadFile(cache);
 
-    const std::string original = ReadFile(dir / file);
-    if (original.empty())
-        return "";
-
-    RgbImage decoded;
-    if (IsRaw(file))
+    int w = 0, h = 0;
+    std::vector<unsigned char> image;
+    RgbFrame editedFrame;
+    if (!edited.empty() && LoadPhotoRgb(edited, editedFrame))
     {
-        if (!DecodeRawPreview(original, decoded))
-            return "";
+        w = editedFrame.width;
+        h = editedFrame.height;
+        image = std::move(editedFrame.pixels);
     }
     else
     {
-        if (!DecodeJpeg(original, decoded))
+        const std::string original = ReadFile(dir / file);
+        if (original.empty())
             return "";
-        decoded.orientation = ReadExifOrientation(original);
-    }
 
-    int w = decoded.width, h = decoded.height;
-    const std::vector<unsigned char> image = Rotate(decoded.pixels, w, h, decoded.orientation);
+        RgbImage decoded;
+        if (IsRaw(file))
+        {
+            if (!DecodeRawPreview(original, decoded))
+                return "";
+        }
+        else
+        {
+            if (!DecodeJpeg(original, decoded))
+                return "";
+            decoded.orientation = ReadExifOrientation(original);
+        }
+
+        w = decoded.width;
+        h = decoded.height;
+        image = Rotate(decoded.pixels, w, h, decoded.orientation);
+    }
 
     const double scale = std::min(1.0, static_cast<double>(maxSize) / std::max(w, h));
     const int tw = std::max(1, static_cast<int>(w * scale));

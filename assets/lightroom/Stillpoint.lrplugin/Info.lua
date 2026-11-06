@@ -30,5 +30,7 @@ return {
 		{ title = 'About the Stillpoint plugin…', file = 'AboutMenu.lua' },
 		{ title = 'Stillpoint: listen again', file = 'Restart.lua' },
 	},
+	-- File › Export…: "Stillpoint" em Export To (pasta e nomes do Stillpoint; formato, tamanho e cor mudam)
+	LrExportServiceProvider = { title = 'Stillpoint', file = 'ExportService.lua' },
 	VERSION = { major = 1, minor = 0, revision = 0, build = 0 },
 }
