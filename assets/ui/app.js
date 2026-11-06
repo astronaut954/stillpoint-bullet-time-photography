@@ -1617,6 +1617,10 @@
       lrLive = new Set((r && r.sessions) || []);
       apply();
       ((r && r.exported) || []).forEach(lightroomExported);
+      ((r && r.gone) || []).forEach((name) => {
+        const s = sessions.find((x) => x.name === name);
+        toast("Closed in Lightroom Classic · " + (s ? sessionTitle(s) : sessionLabel(name).date) + " (its collection is gone from the catalog)", 7000);
+      });
       ((r && r.back) || []).forEach((name) => {
         const s = sessions.find((x) => x.name === name);
         toast("Back in Lightroom Classic · " + (s ? sessionTitle(s) : sessionLabel(name).date) + " (undone in Lightroom)", 7000);

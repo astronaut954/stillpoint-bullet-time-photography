@@ -116,6 +116,13 @@ local function stillpointCollections(catalog)
 				for _, projectSet in ipairs(set:getChildCollectionSets()) do
 					for _, collection in ipairs(projectSet:getChildCollections()) do
 						table.insert(lines, 'collection=' .. oneLine(projectSet:getName()) .. '\t' .. oneLine(collection:getName()))
+						-- As fotos que estão nela (nomes de arquivo): tirar ou pôr uma foto na coleção pelo Lightroom
+						-- muda o selo LR dela no Stillpoint
+						local files = {}
+						for _, photo in ipairs(collection:getPhotos()) do
+							table.insert(files, oneLine(LrPathUtils.leafName(photo:getRawMetadata('path') or '')))
+						end
+						table.insert(lines, 'members=' .. oneLine(projectSet:getName()) .. '\t' .. oneLine(collection:getName()) .. '\t' .. table.concat(files, '|'))
 					end
 				end
 			end

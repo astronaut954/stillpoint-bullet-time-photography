@@ -2409,6 +2409,7 @@ namespace
             return Adobe::QueuePhotos("bringback", args[0], paths) ? "\"bringback\"" : "\"none\"";
         });
 
+        std::set<std::string> lrSeen;  // sessões cuja coleção o Stillpoint já viu no catálogo (para notar quando ela some)
         window.bind("adobeLive", [&](const std::string&) -> std::string
         {
             const auto alive = Adobe::ReadAlive();
@@ -2446,17 +2447,87 @@ namespace
                         const auto s = std::find_if(stored.begin(), stored.end(), [&](const StoredSession& x) { return x.name == session; });
                         if (s == stored.end())
                             continue;
+                        // Só as fotos que estão na coleção (a lista do plugin); sem lista, todas
+                        const auto st = Adobe::CollectionState(alive, session);
                         for (const auto& photo : s->photos)
                         {
+                            if (!st.files.empty() && std::find(st.files.begin(), st.files.end(), photo.file) == st.files.end())
+                                continue;
                             char group[64];
                             std::snprintf(group, sizeof(group), "%02d_", photo.order);
                             map[session][group + photo.camera] = "lr";
                         }
+                        if (map[session].empty()) { map.erase(session); continue; }
+                        lrSeen.insert(session);
                         backList += std::string(backList.size() > 1 ? "," : "") + JsonString(session);
                         Log("Lightroom Classic: the collection of " + session + " is back in the catalog (undo in Lightroom): In Lightroom again");
                     }
                     SaveEditing(map);
                     emitEditing();
+                }
+            }
+            // O que mudou no Lightroom pelas mãos da pessoa (pedido do dono, 2026-11-06): foto tirada ou posta na
+            // coleção muda o selo LR dela; a coleção que sumiu (⌘⇧Z, apagada no Lightroom) tira a sessão do
+            // "In Lightroom". Só com o Lightroom no catálogo da sessão, sem pedido do Stillpoint esperando.
+            std::string goneList = "[";
+            {
+                auto map = LoadEditing();
+                bool changed = false;
+                const auto stored = store.ListSessions();
+                for (auto it = map.begin(); it != map.end();)
+                {
+                    const std::string session = it->first;
+                    bool waiting = false;
+                    for (const auto& [id, pending] : adobePending)
+                        if (pending.first == session) waiting = true;
+                    const auto st = Adobe::CollectionState(alive, session);
+                    if (waiting || !st.inCatalog || it->second.empty()) { ++it; continue; }
+                    if (st.present)
+                    {
+                        lrSeen.insert(session);
+                        const auto s = std::find_if(stored.begin(), stored.end(), [&](const StoredSession& x) { return x.name == session; });
+                        if (s != stored.end() && !st.files.empty())
+                        {
+                            std::set<std::string> in;
+                            for (const auto& photo : s->photos)
+                                if (std::find(st.files.begin(), st.files.end(), photo.file) != st.files.end())
+                                {
+                                    char group[64];
+                                    std::snprintf(group, sizeof(group), "%02d_", photo.order);
+                                    in.insert(group + photo.camera);
+                                }
+                            for (auto g = it->second.begin(); g != it->second.end();)
+                                if (g->second == "lr" && !in.count(g->first)) { g = it->second.erase(g); changed = true; } else ++g;
+                            for (const auto& g : in)
+                                if (!it->second.count(g)) { it->second[g] = "lr"; changed = true; }
+                        }
+                        ++it;
+                    }
+                    else if (lrSeen.count(session) && !st.removalWaiting)
+                    {
+                        Log("Lightroom Classic: the collection of " + session + " is gone from the catalog: not In Lightroom anymore");
+                        goneList += std::string(goneList.size() > 1 ? "," : "") + JsonString(session);
+                        lrSeen.erase(session);
+                        it = map.erase(it);
+                        changed = true;
+                    }
+                    else ++it;
+                }
+                if (changed) { SaveEditing(map); emitEditing(); }
+                // Para diagnóstico (o dono manda quando algo não sincroniza): o que o Stillpoint vê de cada sessão
+                static std::string lastSync;
+                std::string sync;
+                for (const auto& [session, catalogPath] : Adobe::CollectionCatalogs())
+                {
+                    const auto st = Adobe::CollectionState(alive, session);
+                    sync += session + " editing=" + (map.count(session) ? "1" : "0") + " inCatalog=" + (st.inCatalog ? "1" : "0")
+                        + " present=" + (st.present ? "1" : "0") + " photos=" + std::to_string(st.files.size())
+                        + " removalWaiting=" + (st.removalWaiting ? "1" : "0") + " seen=" + (lrSeen.count(session) ? "1" : "0") + "\n";
+                }
+                if (sync != lastSync)
+                {
+                    lastSync = sync;
+                    std::ofstream(Adobe::BridgeFolder() / "app-sync.txt", std::ios::binary) << sync;
                 }
             }
             // Recados do plugin: editadas que chegaram (Export to Stillpoint) e "Go to session in Stillpoint"
@@ -2514,7 +2585,7 @@ namespace
             if (!goTo.empty())
                 if (auto native = window.window(); native.ok())
                     NativeWindow::Show(native.value());
-            return Json("adobeLive").Add("running", alive.fresh).Raw("sessions", list + "]").Raw("exported", exported + "]").Add("goto", goTo).Raw("back", backList + "]").Str();
+            return Json("adobeLive").Add("running", alive.fresh).Raw("sessions", list + "]").Raw("exported", exported + "]").Add("goto", goTo).Raw("back", backList + "]").Raw("gone", goneList + "]").Str();
         });
         // adobeEditing(): as fotos que estão no Lightroom/Photoshop, por sessão
         window.bind("adobeEditing", [&](const std::string&) -> std::string

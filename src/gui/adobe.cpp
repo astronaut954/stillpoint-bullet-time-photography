@@ -575,7 +575,47 @@ namespace Adobe
             if (tab != std::string::npos)
                 alive.collections.emplace_back(it->second.substr(0, tab), it->second.substr(tab + 1));
         }
+        const auto mrange = pairs.equal_range("members");
+        for (auto it = mrange.first; it != mrange.second; ++it)
+        {
+            const auto t1 = it->second.find('\t');
+            const auto t2 = t1 == std::string::npos ? t1 : it->second.find('\t', t1 + 1);
+            if (t2 == std::string::npos)
+                continue;
+            std::vector<std::string> files;
+            std::stringstream list(it->second.substr(t2 + 1));
+            for (std::string f; std::getline(list, f, '|');)
+                if (!f.empty()) files.push_back(f);
+            alive.members[it->second.substr(0, t2)] = files;
+        }
         return alive;
+    }
+
+    CollectionNow CollectionState(const Alive& alive, const std::string& session)
+    {
+        CollectionNow now;
+        const auto map = LoadCollections();
+        const auto it = map.find(session);
+        if (it == map.end())
+            return now;
+        now.known = true;
+        if (!alive.fresh || !alive.listsCollections || (!it->second.catalog.empty() && !SameCatalog(it->second.catalog, alive.catalog)))
+            return now;
+        now.inCatalog = true;
+        const std::string project = it->second.project.empty() ? "No project" : it->second.project;
+        const std::pair<std::string, std::string> key(project, it->second.title);
+        now.present = std::find(alive.collections.begin(), alive.collections.end(), key) != alive.collections.end();
+        const auto m = alive.members.find(project + "\t" + it->second.title);
+        if (m != alive.members.end())
+            now.files = m->second;
+        std::error_code ec;
+        for (fs::directory_iterator d(BridgeFolder(), ec), end; !ec && d != end; d.increment(ec))
+        {
+            const std::string name = Utf8(d->path().filename());
+            if (name.rfind("done-", 0) == 0 && Value(ReadPairs(d->path()), "title") == it->second.title)
+                now.removalWaiting = true;
+        }
+        return now;
     }
 
     std::vector<std::string> SessionsBackInCatalog(const Alive& alive, const std::vector<std::string>& editing)
