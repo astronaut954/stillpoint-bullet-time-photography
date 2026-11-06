@@ -808,6 +808,10 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    projeto: opção A (modelo vazio criado uma vez pela pessoa, copiado pelo Stillpoint para cada projeto), com slides
    animados passo a passo dentro da janela "Create the project's catalog first" (protótipo antes); o app detecta quando
    refazer o modelo (Lightroom atualizado, catálogo convertido, modelo sumido) e oferece "Use the open catalog instead".
+   Catálogo vazio "Template" com slides aprovado no Mac em 2026-11-06. **Pedaço 2 feito, para testar (`docs/teste-manual.md`,
+   seção 41):** painel flutuante e menu File › Plug-in Extras no Lightroom, Export to Stillpoint (TIFF 16 bits, tamanho cheio,
+   Adobe RGB ou sRGB, pergunta antes de trocar editadas), Apply photo 01 edit (pergunta antes de sobrescrever edições),
+   Go to session in Stillpoint; o app lê os TIFF (sem compressão, LZW ou ZIP; Adobe RGB vira sRGB) e avisa "Edited n / m".
 6. **Etapa 21 — Histórico de edição permanente.** Pedido do dono (2026-11-01): um histórico no estilo
    do painel History do Lightroom Classic, **vinculado ao projeto** (o projeto faz o papel do catálogo
    do Classic: o histórico mora na pasta dele, vai junto se a pasta for movida e só existe com um

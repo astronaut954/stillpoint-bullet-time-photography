@@ -13,8 +13,22 @@ return {
 	LrInitPlugin = 'Init.lua',
 	LrShutdownPlugin = 'Shutdown.lua',
 	LrPluginInfoProvider = 'PluginInfo.lua',
-	-- Library › Plug-in Extras (e File › Plug-in Extras)
-	LrLibraryMenuItems = { { title = 'Stillpoint: listen again', file = 'Restart.lua' } },
-	LrExportMenuItems = { { title = 'Stillpoint: listen again', file = 'Restart.lua' } },
+	-- File › Plug-in Extras (LrExportMenuItems) e Library › Plug-in Extras (LrLibraryMenuItems)
+	LrExportMenuItems = {
+		{ title = 'Export to Stillpoint', file = 'ExportMenu.lua' },
+		{ title = 'Apply photo 01 edit to the session', file = 'ApplyMenu.lua' },
+		{ title = 'Show Stillpoint panel', file = 'PanelMenu.lua' },
+		{ title = 'Go to session in Stillpoint', file = 'GotoMenu.lua' },
+		{ title = 'About the Stillpoint plugin…', file = 'AboutMenu.lua' },
+		{ title = 'Stillpoint: listen again', file = 'Restart.lua' },
+	},
+	LrLibraryMenuItems = {
+		{ title = 'Export to Stillpoint', file = 'ExportMenu.lua' },
+		{ title = 'Apply photo 01 edit to the session', file = 'ApplyMenu.lua' },
+		{ title = 'Show Stillpoint panel', file = 'PanelMenu.lua' },
+		{ title = 'Go to session in Stillpoint', file = 'GotoMenu.lua' },
+		{ title = 'About the Stillpoint plugin…', file = 'AboutMenu.lua' },
+		{ title = 'Stillpoint: listen again', file = 'Restart.lua' },
+	},
 	VERSION = { major = 1, minor = 0, revision = 0, build = 0 },
 }

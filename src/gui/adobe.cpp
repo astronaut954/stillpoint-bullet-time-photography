@@ -526,4 +526,33 @@ namespace Adobe
         alive.version = Value(pairs, "version");
         return alive;
     }
+
+    std::vector<std::multimap<std::string, std::string>> TakeMessages(const std::string& prefix)
+    {
+        std::vector<std::pair<std::string, std::multimap<std::string, std::string>>> found;
+        std::error_code ec;
+        for (fs::directory_iterator it(BridgeFolder(), ec), end; !ec && it != end; it.increment(ec))
+        {
+            const std::string name = Utf8(it->path().filename());
+            if (name.rfind(prefix + "-", 0) != 0 || name.size() < 4 || name.substr(name.size() - 4) != ".txt")
+                continue;
+            auto pairs = ReadPairs(it->path());
+            if (Value(pairs, "end") != "1")
+                continue;  // o plugin ainda está escrevendo
+            std::error_code ec2;
+            fs::remove(it->path(), ec2);
+            found.emplace_back(name, std::move(pairs));
+        }
+        // Na ordem em que chegaram (o nome começa pela hora)
+        std::sort(found.begin(), found.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
+        std::vector<std::multimap<std::string, std::string>> out;
+        for (auto& f : found)
+            out.push_back(std::move(f.second));
+        return out;
+    }
+
+    std::string MessageValue(const std::multimap<std::string, std::string>& message, const std::string& key)
+    {
+        return Value(message, key);
+    }
 }

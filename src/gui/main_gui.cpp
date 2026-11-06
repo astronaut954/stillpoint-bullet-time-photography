@@ -2352,7 +2352,44 @@ namespace
                     first = false;
                 }
             }
-            return Json("adobeLive").Add("running", alive.fresh).Raw("sessions", list + "]").Str();
+            // Recados do plugin: editadas que chegaram (Export to Stillpoint) e "Go to session in Stillpoint"
+            std::string exported = "[";
+            bool firstExport = true;
+            const auto exports = Adobe::TakeMessages("exported");
+            if (!exports.empty())
+            {
+                const auto sessions = store.ListSessions();
+                for (const auto& message : exports)
+                {
+                    const std::string session = Adobe::MessageValue(message, "session");
+                    int count = 0, failed = 0;
+                    try { count = std::stoi(Adobe::MessageValue(message, "count")); } catch (...) {}
+                    try { failed = std::stoi(Adobe::MessageValue(message, "failed")); } catch (...) {}
+                    const auto s = std::find_if(sessions.begin(), sessions.end(), [&](const StoredSession& x) { return x.name == session; });
+                    const int edited = s != sessions.end() ? s->edited : 0;
+                    const int total = s != sessions.end() ? static_cast<int>(s->photos.size()) : 0;
+                    Log("Lightroom Classic: " + std::to_string(count) + " edited photo" + (count == 1 ? "" : "s") + " of " + session
+                        + " arrived in the project's Edited folder (Edited " + std::to_string(edited) + " / " + std::to_string(total) + ")"
+                        + (failed > 0 ? "; " + std::to_string(failed) + " could not be exported" : ""));
+                    exported += (firstExport ? "" : ",") + Json().Add("session", session).Add("count", count).Add("failed", failed)
+                        .Add("edited", edited).Add("total", total).Add("found", s != sessions.end()).Str();
+                    firstExport = false;
+                }
+                emitSessions();
+            }
+            std::string goTo;
+            for (const auto& message : Adobe::TakeMessages("goto"))
+            {
+                // Pedido velho (o Stillpoint estava fechado quando a pessoa pediu): não abre a sessão do nada
+                long long at = 0;
+                try { at = std::stoll(Adobe::MessageValue(message, "time")); } catch (...) {}
+                if (at > 0 && static_cast<long long>(std::time(nullptr)) - at <= 20)
+                    goTo = Adobe::MessageValue(message, "session");
+            }
+            if (!goTo.empty())
+                if (auto native = window.window(); native.ok())
+                    NativeWindow::Show(native.value());
+            return Json("adobeLive").Add("running", alive.fresh).Raw("sessions", list + "]").Raw("exported", exported + "]").Add("goto", goTo).Str();
         });
         // adobeEditing(): as fotos que estão no Lightroom/Photoshop, por sessão
         window.bind("adobeEditing", [&](const std::string&) -> std::string

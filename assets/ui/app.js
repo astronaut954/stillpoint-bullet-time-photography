@@ -1532,14 +1532,29 @@
   // Só nas sessões cuja coleção está no catálogo aberto agora (decisão do dono, 2026-11-06)
   let lrLiveTimer = 0;
   let lrLive = new Set();
+  // A cada 3 s: quais sessões "In Lightroom" estão no catálogo aberto (bolinha pulsando) e os recados do plugin
+  // (editadas que chegaram com Export to Stillpoint; Go to session in Stillpoint)
   function checkLrLive() {
     clearTimeout(lrLiveTimer);
     const apply = () => document.querySelectorAll(".edit-tag[data-session]").forEach((t) => t.classList.toggle("live", lrLive.has(t.dataset.session)));
-    if (!Object.keys(editingBySession).length || typeof window.adobeLive !== "function") { lrLive = new Set(); apply(); return; }
+    if (typeof window.adobeLive !== "function") { lrLive = new Set(); apply(); return; }
     Promise.resolve(window.adobeLive()).then((r) => {
       lrLive = new Set((r && r.sessions) || []);
       apply();
-    }, () => {}).finally(() => { lrLiveTimer = setTimeout(checkLrLive, 5000); });
+      ((r && r.exported) || []).forEach(lightroomExported);
+      if (r && r.goto) {
+        const s = sessions.find((x) => x.name === r.goto);
+        if (s) showSession(s); else toast("That session is not in Stillpoint anymore.", 6000, { warn: true });
+      }
+    }, () => {}).finally(() => { lrLiveTimer = setTimeout(checkLrLive, 3000); });
+  }
+  // Export to Stillpoint terminou: aviso "Edited n / m · sessão" (a etiqueta da sessão já mudou com a lista nova)
+  function lightroomExported(e) {
+    const s = sessions.find((x) => x.name === e.session);
+    const title = s ? sessionTitle(s) : sessionLabel(e.session).date;
+    let text = e.found && e.total ? "Edited " + e.edited + " / " + e.total + " · " + title : plural(e.count, "edited photo", "edited photos") + " arrived from Lightroom Classic · " + title;
+    if (e.failed > 0) text += " · " + plural(e.failed, "photo", "photos") + " could not be exported";
+    toast(text, e.failed > 0 ? 9000 : TOAST_MS, e.failed > 0 ? { warn: true } : undefined);
   }
   function setAdobeEditing(map) {
     const next = map || {};
@@ -10435,6 +10450,7 @@
   Promise.resolve(window.uiReady()).then((info) => {
     refreshSessions();
     refreshEditing();
+    checkLrLive();  // recados do plugin (editadas que chegaram), mesmo sem sessão "In Lightroom"
     if (info && info.unsavedSessions > 0) offerRecovery(info.unsavedSessions);
     if (info && info.testRestart) { testRestart = true; ui.restartAppBtn.classList.remove("hidden"); }
     upd.info = info || null;

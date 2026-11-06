@@ -113,4 +113,11 @@ namespace Adobe
         std::string version;   // versão do plugin que está rodando
     };
     Alive ReadAlive();
+
+    // Recados do plugin (pedaço 2), um arquivo por recado, lidos e apagados aqui:
+    //   exported-*.txt  "Export to Stillpoint" terminou (session, project, count, failed, color)
+    //   goto-*.txt      "Go to session in Stillpoint" (session)
+    // Só os completos (com "end=1"); os pela metade ficam para a próxima vez.
+    std::vector<std::multimap<std::string, std::string>> TakeMessages(const std::string& prefix);
+    std::string MessageValue(const std::multimap<std::string, std::string>& message, const std::string& key);
 }

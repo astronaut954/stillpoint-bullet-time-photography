@@ -21,6 +21,7 @@
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_ONLY_JPEG
+#define STBI_SUPPORT_ZLIB  // o descompactador zlib do stb, para os TIFF com compressão ZIP do Lightroom
 #include "stb_image.h"
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
 #include "stb_image_resize2.h"
@@ -232,6 +233,224 @@ namespace
         return true;
     }
 
+    bool IsTiff(const std::string& file)
+    {
+        const std::string ext = Extension(file);
+        return ext == ".tif" || ext == ".tiff";
+    }
+
+    // ---- TIFF (etapa 20, pedaço 2): as editadas que o Lightroom Classic manda (Export to Stillpoint) ----
+    // RGB de 8 ou 16 bits, em tiras, sem compressão, LZW ou ZIP (com ou sem "predictor"). Adobe RGB (perfil ICC
+    // embutido) vira sRGB, que é o que o resto do app usa. Tiles, CMYK, cinza e camadas: não lê (devolve false).
+    struct TiffReader
+    {
+        const std::string& d;
+        bool little = true;
+        explicit TiffReader(const std::string& data) : d(data) {}
+        bool ok(size_t at, size_t n) const { return at <= d.size() && n <= d.size() - at; }
+        unsigned u16(size_t at) const
+        {
+            const auto b = reinterpret_cast<const unsigned char*>(d.data()) + at;
+            return little ? (b[0] | (b[1] << 8)) : ((b[0] << 8) | b[1]);
+        }
+        unsigned long u32(size_t at) const
+        {
+            const auto b = reinterpret_cast<const unsigned char*>(d.data()) + at;
+            return little ? (b[0] | (b[1] << 8) | (b[2] << 16) | (static_cast<unsigned long>(b[3]) << 24))
+                          : ((static_cast<unsigned long>(b[0]) << 24) | (b[1] << 16) | (b[2] << 8) | b[3]);
+        }
+    };
+
+    bool LzwDecode(const unsigned char* in, size_t n, std::vector<unsigned char>& out, size_t expected)
+    {
+        std::vector<std::vector<unsigned char>> table;
+        auto reset = [&] { table.clear(); for (int i = 0; i < 256; ++i) table.push_back({ static_cast<unsigned char>(i) }); table.push_back({}); table.push_back({}); };
+        reset();
+        size_t bit = 0;
+        int width = 9;
+        int prev = -1;
+        auto next = [&]() -> int
+        {
+            if ((bit + width) > n * 8) return 257;
+            int code = 0;
+            for (int i = 0; i < width; ++i, ++bit)
+                code = (code << 1) | ((in[bit >> 3] >> (7 - (bit & 7))) & 1);
+            return code;
+        };
+        while (out.size() < expected)
+        {
+            const int code = next();
+            if (code == 257) break;
+            if (code == 256) { reset(); width = 9; prev = -1; continue; }
+            std::vector<unsigned char> entry;
+            if (code < static_cast<int>(table.size())) entry = table[code];
+            else if (prev >= 0 && code == static_cast<int>(table.size())) { entry = table[prev]; entry.push_back(table[prev][0]); }
+            else return false;
+            out.insert(out.end(), entry.begin(), entry.end());
+            if (prev >= 0)
+            {
+                std::vector<unsigned char> add = table[prev];
+                add.push_back(entry[0]);
+                table.push_back(std::move(add));
+            }
+            prev = code;
+            // TIFF troca de largura um código antes (o "early change")
+            if (table.size() + 1 >= (1u << width) && width < 12) ++width;
+        }
+        return true;
+    }
+
+    bool DecodeTiff(const std::string& data, RgbImage& out)
+    {
+        TiffReader r(data);
+        if (data.size() < 8) return false;
+        if (data[0] == 'I' && data[1] == 'I') r.little = true;
+        else if (data[0] == 'M' && data[1] == 'M') r.little = false;
+        else return false;
+        if (r.u16(2) != 42) return false;
+        const size_t ifd = r.u32(4);
+        if (!r.ok(ifd, 2)) return false;
+        const unsigned count = r.u16(ifd);
+        if (!r.ok(ifd + 2, static_cast<size_t>(count) * 12)) return false;
+        unsigned long width = 0, height = 0, bits = 8, compression = 1, photometric = 2, samples = 3, rowsPerStrip = 0, planar = 1, predictor = 1;
+        std::vector<unsigned long> offsets, counts;
+        size_t iccAt = 0, iccLen = 0;
+        int orientation = 1;
+        auto values = [&](size_t entry, std::vector<unsigned long>& list)
+        {
+            const unsigned type = r.u16(entry + 2);
+            const unsigned long n = r.u32(entry + 4);
+            const size_t size = type == 3 ? 2 : 4;
+            if (n > 1000000) return;
+            size_t at = n * size <= 4 ? entry + 8 : r.u32(entry + 8);
+            if (!r.ok(at, n * size)) return;
+            for (unsigned long i = 0; i < n; ++i)
+                list.push_back(type == 3 ? r.u16(at + i * 2) : r.u32(at + i * 4));
+        };
+        for (unsigned i = 0; i < count; ++i)
+        {
+            const size_t e = ifd + 2 + static_cast<size_t>(i) * 12;
+            const unsigned tag = r.u16(e);
+            std::vector<unsigned long> v;
+            if (tag == 34675) { iccLen = r.u32(e + 4); iccAt = r.u32(e + 8); continue; }
+            values(e, v);
+            if (v.empty()) continue;
+            switch (tag)
+            {
+            case 256: width = v[0]; break;
+            case 257: height = v[0]; break;
+            case 258: bits = v[0]; break;
+            case 259: compression = v[0]; break;
+            case 262: photometric = v[0]; break;
+            case 273: offsets = v; break;
+            case 274: orientation = static_cast<int>(v[0]); break;
+            case 277: samples = v[0]; break;
+            case 278: rowsPerStrip = v[0]; break;
+            case 279: counts = v; break;
+            case 284: planar = v[0]; break;
+            case 317: predictor = v[0]; break;
+            case 322: return false;  // tiles: o Lightroom não grava assim
+            default: break;
+            }
+        }
+        if (!width || !height || width > 60000 || height > 60000 || (bits != 8 && bits != 16) || photometric != 2
+            || samples < 3 || planar != 1 || offsets.empty() || offsets.size() != counts.size())
+            return false;
+        if (compression != 1 && compression != 5 && compression != 8 && compression != 32946) return false;
+        if (!rowsPerStrip || rowsPerStrip > height) rowsPerStrip = height;
+        const size_t bytesPerSample = bits / 8;
+        const size_t rowBytes = static_cast<size_t>(width) * samples * bytesPerSample;
+        std::vector<unsigned char> raw;
+        raw.reserve(rowBytes * height);
+        for (size_t s = 0; s < offsets.size() && raw.size() < rowBytes * height; ++s)
+        {
+            if (!r.ok(offsets[s], counts[s])) return false;
+            const auto src = reinterpret_cast<const unsigned char*>(data.data()) + offsets[s];
+            const size_t rows = std::min<size_t>(rowsPerStrip, height - s * rowsPerStrip);
+            const size_t want = rows * rowBytes;
+            std::vector<unsigned char> strip;
+            if (compression == 1) strip.assign(src, src + std::min<size_t>(counts[s], want));
+            else if (compression == 5) { if (!LzwDecode(src, counts[s], strip, want)) return false; }
+            else
+            {
+                strip.resize(want);
+                const int got = stbi_zlib_decode_buffer(reinterpret_cast<char*>(strip.data()), static_cast<int>(want),
+                                                        reinterpret_cast<const char*>(src), static_cast<int>(counts[s]));
+                if (got < 0) return false;
+                strip.resize(static_cast<size_t>(got));
+            }
+            strip.resize(want, 0);
+            if (predictor == 2)  // cada amostra guardada como diferença da do pixel à esquerda
+                for (size_t y = 0; y < rows; ++y)
+                {
+                    unsigned char* row = strip.data() + y * rowBytes;
+                    if (bits == 8)
+                        for (size_t x = samples; x < rowBytes; ++x) row[x] = static_cast<unsigned char>(row[x] + row[x - samples]);
+                    else
+                        for (size_t x = samples; x < static_cast<size_t>(width) * samples; ++x)
+                        {
+                            unsigned a, b;
+                            if (r.little) { a = row[x * 2] | (row[x * 2 + 1] << 8); b = row[(x - samples) * 2] | (row[(x - samples) * 2 + 1] << 8); }
+                            else { a = (row[x * 2] << 8) | row[x * 2 + 1]; b = ((row[(x - samples) * 2] << 8) | row[(x - samples) * 2 + 1]); }
+                            const unsigned v = (a + b) & 0xFFFF;
+                            if (r.little) { row[x * 2] = v & 0xFF; row[x * 2 + 1] = static_cast<unsigned char>(v >> 8); }
+                            else { row[x * 2] = static_cast<unsigned char>(v >> 8); row[x * 2 + 1] = v & 0xFF; }
+                        }
+                }
+            raw.insert(raw.end(), strip.begin(), strip.end());
+        }
+        if (raw.size() < rowBytes * height) return false;
+        // Adobe RGB (1998): o perfil ICC embutido diz o nome (em ASCII ou em UTF-16)
+        bool adobe = false;
+        if (iccLen > 0 && r.ok(iccAt, iccLen))
+        {
+            const std::string icc = data.substr(iccAt, iccLen);
+            const std::string wide = std::string("A\0d\0o\0b\0e\0 \0R\0G\0B", 17);
+            adobe = icc.find("Adobe RGB") != std::string::npos || icc.find(wide) != std::string::npos;
+        }
+        const size_t pixels = static_cast<size_t>(width) * height;
+        out.pixels.resize(pixels * 3);
+        out.width = static_cast<int>(width);
+        out.height = static_cast<int>(height);
+        out.orientation = orientation >= 1 && orientation <= 8 ? orientation : 1;
+        auto sample = [&](size_t i) -> unsigned  // 0..65535
+        {
+            if (bits == 8) return raw[i] * 257u;
+            return r.little ? (raw[i * 2] | (raw[i * 2 + 1] << 8)) : ((raw[i * 2] << 8) | raw[i * 2 + 1]);
+        };
+        if (!adobe)
+        {
+            for (size_t p = 0; p < pixels; ++p)
+                for (int c = 0; c < 3; ++c)
+                    out.pixels[p * 3 + c] = static_cast<unsigned char>((sample(p * samples + c) + 128) / 257);
+            return true;
+        }
+        // Adobe RGB -> sRGB: tira a curva (gama 563/256), troca as cores primárias (mesmo branco D65) e põe a curva do sRGB
+        static std::vector<float> linear;
+        static std::vector<unsigned char> encode;
+        if (linear.empty())
+        {
+            linear.resize(65536);
+            for (int i = 0; i < 65536; ++i) linear[i] = std::pow(i / 65535.0f, 563.0f / 256.0f);
+            encode.resize(4097);
+            for (int i = 0; i <= 4096; ++i)
+            {
+                const float v = i / 4096.0f;
+                const float e = v <= 0.0031308f ? v * 12.92f : 1.055f * std::pow(v, 1 / 2.4f) - 0.055f;
+                encode[i] = static_cast<unsigned char>(std::lround(std::min(1.0f, std::max(0.0f, e)) * 255));
+            }
+        }
+        auto put = [&](float v) { return encode[static_cast<size_t>(std::lround(std::min(1.0f, std::max(0.0f, v)) * 4096))]; };
+        for (size_t p = 0; p < pixels; ++p)
+        {
+            const float R = linear[sample(p * samples)], G = linear[sample(p * samples + 1)], B = linear[sample(p * samples + 2)];
+            out.pixels[p * 3] = put(1.3982832f * R - 0.3982831f * G);
+            out.pixels[p * 3 + 1] = put(G);
+            out.pixels[p * 3 + 2] = put(-0.0429383f * G + 1.0429383f * B);
+        }
+        return true;
+    }
+
     // RAW: usa a prévia JPEG que a câmera grava dentro do arquivo (rápido e
     // com as cores da câmera), em vez de revelar o RAW inteiro
     bool DecodeRawPreview(const std::string& data, RgbImage& out)
@@ -409,6 +628,14 @@ bool LoadPhotoRgb(const fs::path& file, RgbFrame& out, std::string* jpegBytes)
                 && raw->imgdata.thumbnail.tformat == LIBRAW_THUMBNAIL_JPEG)
                 jpegBytes->assign(raw->imgdata.thumbnail.thumb, raw->imgdata.thumbnail.tlength);
         }
+    }
+    else if (IsTiff(name))
+    {
+        // Editada do Lightroom Classic (Edited/<sessão>/): não tem JPEG para devolver
+        if (!DecodeTiff(original, decoded))
+            return false;
+        if (jpegBytes)
+            jpegBytes->clear();
     }
     else
     {

@@ -1734,6 +1734,35 @@ com rótulo em uma sessão, ex.: "Pose 7").
 - [ ] O mesmo roteiro (Settings › "Lightroom & Photoshop", sessão inteira, uma foto, Done editing). "Locate…" abre a
       janela de escolher programa em `C:\Program Files\Adobe`.
 
+## 41. Export to Stillpoint, pedaço 2 (etapa 20; protótipo "Stillpoint no Lightroom Classic")
+
+Precisa do Lightroom Classic e de um projeto aberto com uma sessão já mandada ao Lightroom (seção 40). Feche o Lightroom
+antes de começar: o Stillpoint troca o plugin pelo novo no próximo "Edit in Lightroom Classic".
+
+**Painel e menu**
+- [ ] "Edit in Lightroom Classic" numa sessão do projeto abre o Lightroom e a janela flutuante "Stillpoint" (o painel):
+      PROJECT, SESSION, "Importing n photos…" e depois "Ready to edit. Export when you are done.", botões
+      "Export to Stillpoint" e "Apply photo 01 edit to all n".
+- [ ] File › Plug-in Extras: "Export to Stillpoint", "Apply photo 01 edit to the session", "Show Stillpoint panel",
+      "Go to session in Stillpoint", "About the Stillpoint plugin…", "Stillpoint: listen again". Fechar o painel e usar
+      "Show Stillpoint panel" abre de novo.
+
+**Export to Stillpoint**
+- [ ] Com fotos da sessão selecionadas: janela "Export to Stillpoint" com Project, Session, Photos (16-bit TIFF, full size),
+      Goes to (…/Edited/<sessão>/), File names e "Color" (Adobe RGB (1998) ou Convert to sRGB). "Export" exporta.
+- [ ] Os TIFF aparecem em <Projeto>/Edited/<sessão>/ com o nome dos originais; em até 3 s o Stillpoint mostra
+      "Edited n / m · <sessão>" e a etiqueta da sessão muda. O painel diz "n edited photos sent to Stillpoint ✓".
+- [ ] Exportar de novo fotos que já têm editada pergunta antes: "Replace", "Cancel" e, se só parte tem editada,
+      "Only the new ones".
+- [ ] Export do Stillpoint com "Use edited photos when available" usa os TIFF (cores certas também em Adobe RGB).
+
+**Apply photo 01 edit**
+- [ ] Editar a foto 01 e usar "Apply photo 01 edit to all n": a edição vai para as outras. Se alguma já tem edição
+      própria, pergunta "Overwrite", "Cancel" ou "Only the unedited ones".
+
+**Go to session in Stillpoint**
+- [ ] Depois de exportar, "Go to session in Stillpoint" (painel ou menu) traz o Stillpoint para a frente com a sessão aberta.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |

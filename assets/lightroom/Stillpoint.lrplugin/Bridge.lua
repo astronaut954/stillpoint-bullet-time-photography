@@ -9,6 +9,7 @@ local LrFileUtils = import 'LrFileUtils'
 local LrPathUtils = import 'LrPathUtils'
 
 local Bridge = {}
+local importingCount = nil   -- fotos sendo colocadas no catálogo agora (o painel mostra "Importing n photos…")
 local folderPath = nil
 local pluginVersion = nil
 local lastAlive = 0
@@ -117,8 +118,14 @@ local function collectionFor(catalog, request)
 	return catalog:createCollection(request.title ~= '' and request.title or 'Session', projectSet, true)
 end
 
+function Bridge.importing() return importingCount end
+
 local function handle(request)
 	local catalog = LrApplication.activeCatalog()
+	importingCount = #request.photos
+	-- O painel do Stillpoint abre junto (pedaço 2): mostra "Importing…" e depois os botões
+	local LrTasks = import 'LrTasks'
+	LrTasks.pcall(function() require('Panel').show() end)
 	if request.catalog and request.catalog ~= '' and not samePath(catalog:getPath(), request.catalog) then
 		writeStatus(request.id, 'wrong-catalog', { catalog = catalog:getPath() })
 		return
@@ -272,6 +279,7 @@ function Bridge.tick()
 	if request.action == 'edit' then
 		local LrTasks = import 'LrTasks'
 		local ok, problem = LrTasks.pcall(handle, request)
+		importingCount = nil
 		if not ok then writeStatus(request.id, 'error', { message = tostring(problem) }) end
 	else
 		writeStatus(request.id, 'error', { message = 'This plugin does not know "' .. tostring(request.action) .. '". Reinstall it from Stillpoint › Settings.' })
