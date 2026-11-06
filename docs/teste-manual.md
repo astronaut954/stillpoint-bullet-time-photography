@@ -1773,7 +1773,11 @@ antes de começar: o Stillpoint troca o plugin pelo novo no próximo "Edit in Li
       originais; clicar de novo liga. Em Export › Outputs, "Use edited photos" (ao lado de "Same settings for all
       sessions") é a mesma chave.
 - [ ] Botão direito na sessão › "Delete edits…"; na foto › "Delete edit…"; com várias fotos selecionadas › "Delete n
-      edits…": as editadas vão para o Lixo e as prévias voltam aos originais.
+      edits…": as editadas vão para a lixeira do Stillpoint (item com o ícone "Lr") e as prévias voltam aos originais;
+      ⌘Z e o Restore da lixeira trazem de volta. Apagar a foto (ou a sessão) leva a editada junto, numa linha "Lr"
+      embaixo do item, e o Restore traz as duas.
+- [ ] Export › Photos › Originals: "Keep the originals, exactly as each camera sent them (RAW and non-RAW)" vem
+      marcada ao abrir e copia os originais (nunca as editadas).
 
 **Go to session in Stillpoint**
 - [ ] Depois de exportar, "Go to session in Stillpoint" (painel ou menu) traz o Stillpoint para a frente com a sessão aberta.

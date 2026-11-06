@@ -1144,7 +1144,7 @@ body.timing-open .app { --controls-h: clamp(320px, 64vh, 720px); }
 .project-tag.ok { background: var(--noct-primary); color: var(--noct-on-primary); border-color: var(--noct-primary); }
 .project-tag.part { border-color: var(--noct-pending); color: var(--noct-pending); }
 /* Com editadas a etiqueta é um botão (liga e desliga as editadas); desligada: só o contorno tracejado, apagada */
-button.project-tag { cursor: pointer; line-height: inherit; }
+button.project-tag { cursor: pointer; line-height: inherit; background: transparent; }
 button.project-tag:hover, button.project-tag:focus-visible { outline: 1px solid var(--noct-text); outline-offset: 1px; }
 .project-tag.off, .project-tag.ok.off, .project-tag.part.off { background: transparent; color: var(--noct-text-dim); border: 1px dashed var(--noct-border-strong); text-decoration: line-through; }
 .save-count.warn { color: var(--noct-pending); text-transform: none; letter-spacing: .02em; }
@@ -2046,3 +2046,8 @@ html.kbd-focus .export-tab.on .export-tab-check input:focus + .save-check { outl
 
 /* Export › Outputs: "Use edited photos" na mesma linha de "Same settings for all sessions" */
 .same-row .export-edited-opt { margin-left: 24px; }
+
+/* Lixeira: editadas do Lightroom (item só delas, ou a linha embaixo das fotos que levaram as editadas junto) */
+.trash-app { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 16px; font: 700 9px var(--noct-font-mono); letter-spacing: 0; border: 1px solid currentColor; }
+.trash-app.lr { color: var(--noct-primary); }
+.trash-edits { display: flex; align-items: center; gap: 8px; margin-top: 6px; padding-left: 14px; border-left: 1px solid var(--noct-border); }

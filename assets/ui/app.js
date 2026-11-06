@@ -1528,19 +1528,24 @@
       toast((show ? "Edited photos" : "Originals") + " · " + sessionTitle(s), TOAST_MS);
     });
   }
-  // Delete edits (decisão do dono, 2026-11-06): as editadas vão para o Lixo do sistema; files vazio = a sessão inteira
+  // Delete edits (decisão do dono, 2026-11-06): as editadas vão para a lixeira do Stillpoint (Trash), num item só
+  // delas; ⌘Z traz de volta. files vazio = a sessão inteira
   function deleteEdits(s, files) {
     if (typeof window.deleteEdits !== "function") { toast("This build cannot do that yet. Build the app again.", 8000); return; }
     const n = files.length || s.edited;
     const what = files.length ? plural(n, "edited photo", "edited photos") : "the " + plural(n, "edited photo", "edited photos") + " of " + sessionTitle(s);
     dialog("Delete " + plural(n, "edit", "edits") + "?",
-      "Moves " + what + " from the project's Edited folder to the " + (upd.info && upd.info.os === "windows" ? "Recycle Bin" : "Trash") + ". The originals and your edits in Lightroom Classic stay as they are.",
+      "Moves " + what + " from the project's Edited folder to the Stillpoint trash. The originals and your edits in Lightroom Classic stay as they are. ⌘Z or the Trash brings " + (n === 1 ? "it" : "them") + " back.",
       [{ label: "Cancel" },
        { label: "Delete " + plural(n, "edit", "edits"), danger: true, onClick: () => {
-         Promise.resolve(window.deleteEdits(s.name, ...files)).then((removed) => {
-           forgetSessionPreviews(s.name);
-           const count = Number(removed) || 0;
-           toast(count ? plural(count, "edited file", "edited files") + " moved to the " + (upd.info && upd.info.os === "windows" ? "Recycle Bin" : "Trash") + " · " + sessionTitle(s) : "No edited files were found.", TOAST_MS);
+         const run = () => Promise.resolve(window.deleteEdits(s.name, ...files)).then((removed) => { forgetSessionPreviews(s.name); return Number(removed) || 0; });
+         run().then((count) => {
+           if (!count) { toast("No edited files were found.", TOAST_MS); return; }
+           toast(plural(count, "edit", "edits") + " moved to the trash · " + sessionTitle(s) + " · ⌘Z undoes", TOAST_MS);
+           log("Delete edits: " + plural(count, "edited file", "edited files") + " of " + sessionShort(s) + " moved to the trash", "ok");
+           recordAction({ label: "Delete " + plural(count, "edit", "edits") + " · " + sessionLabel(s.name).date,
+             undo: () => Promise.resolve(restoreSession(s.name)).then((ok) => { forgetSessionPreviews(s.name); return ok; }),
+             redo: () => run() });
          });
        } }]);
   }
@@ -2877,6 +2882,8 @@
     exp.selected = new Set(exp.project ? projectNames : kept.length ? kept : (exp.exitAfter && unsaved.length ? unsaved : all).map((s) => s.name));
     Object.keys(exp.settings).forEach((k) => { if (!all.some((s) => s.name === k)) delete exp.settings[k]; });
     if (!all.some((s) => s.name === exp.active)) exp.active = (currentSession && all.some((s) => s.name === currentSession.name) && currentSession.name) || all[0].name;
+    // "Keep the originals" vem sempre marcada ao abrir (decisão do dono, 2026-11-06)
+    Object.values(exp.settings).forEach((st) => { if (st && st.photos) st.photos.original = true; });
     exp.photo = 0;
     // Já diferentes ao abrir: a caixa vem com o traço e nada é igualado sozinho
     if (exp.sameFraming && differentSessions(1).size) exp.sameFraming = false;
@@ -4719,7 +4726,7 @@
       }
       // Originais e/ou uma cópia convertida, independentes; com os dois, Photos/Originals/ e Photos/<FORMATO>/
       const ro = row("Originals");
-      ro.appendChild(checkOption("Keep the originals, exactly as each camera saved them (JPG and RAW)", s.original, (v) => { s.original = v; rerender(); }));
+      ro.appendChild(checkOption("Keep the originals, exactly as each camera sent them (RAW and non-RAW)", s.original, (v) => { s.original = v; rerender(); }));
       box.appendChild(ro);
       const r = row("Converted");
       r.appendChild(checkOption("", s.convert, (v) => { s.convert = v; rerender(); }));
@@ -9356,8 +9363,11 @@
           const label = sessionLabel(item.session);
           if (blockedBy || item.restored) li.classList.add("blocked");
           const kindIcon = el("span", "trash-kind");
-          kindIcon.innerHTML = icon(item.isProject ? "folder" : item.whole ? "session" : "photo", 16);
-          kindIcon.title = item.isProject ? "A whole project" : item.whole ? "A whole session" : "Photos from a session";
+          if (item.editsOnly) { kindIcon.appendChild(el("span", "trash-app lr", "Lr")); kindIcon.title = "Edited photos from Lightroom Classic"; }
+          else {
+            kindIcon.innerHTML = icon(item.isProject ? "folder" : item.whole ? "session" : "photo", 16);
+            kindIcon.title = item.isProject ? "A whole project" : item.whole ? "A whole session" : "Photos from a session";
+          }
           li.appendChild(kindIcon);
           const offDisk = item.isProject && !item.reachable && !item.restored;
           if (offDisk) li.classList.add("offdisk");
@@ -9367,6 +9377,7 @@
           main.appendChild(title);
           const left = Math.max(0, Math.ceil((item.deletedAt + r.days * 86400 - now) / 86400));
           const what = item.isProject ? "Project" + (item.sessions ? " · " + plural(item.sessions, "session", "sessions") : "")
+            : item.editsOnly ? plural(item.edits, "Lightroom Classic edit", "Lightroom Classic edits") + " from this session"
             : item.whole ? "Session" + (item.photos ? " · " + plural(item.photos, "photo", "photos") : "") : plural(item.photos, "photo", "photos") + " from this session";
           const meta = el("small", "", what + (+item.bytes ? " · " + fmtBytes(+item.bytes) : "") + " · deleted " + agoText(now - item.deletedAt));
           if (!item.restored) {
@@ -9375,7 +9386,13 @@
             else meta.appendChild(el("span", left <= 2 ? "soon" : "", left <= 1 ? "deleted for good within a day" : "deleted for good in " + left + " days"));
           }
           main.appendChild(meta);
-          const these = item.whole ? "This session was" : item.photos === 1 ? "This photo was" : "These photos were";
+          // Editadas que foram junto com as fotos (ou com a sessão): uma linha embaixo, com o ícone do Lightroom
+          if (!item.editsOnly && item.edits > 0 && !item.restored) {
+            const sub = el("div", "trash-edits");
+            sub.append(el("span", "trash-app lr", "Lr"), el("small", "", plural(item.edits, "Lightroom Classic edit", "Lightroom Classic edits") + " · come back with " + (item.whole ? "the session" : item.photos === 1 ? "the photo" : "the photos")));
+            main.appendChild(sub);
+          }
+          const these = item.editsOnly ? (item.edits === 1 ? "This edit was" : "These edits were") : item.whole ? "This session was" : item.photos === 1 ? "This photo was" : "These photos were";
           if (item.restored) main.appendChild(el("small", "trash-note done", "Restored. It stays here until the " + (item.isProject ? "items from its trash" : "photos deleted before it") + " below are restored or deleted."));
           else if (offDisk) main.appendChild(el("small", "trash-note", "The disk with this project is not connected. Connect it to restore or delete the project."));
           else if (blockedBy && blockedBy.isProject) main.appendChild(el("small", "trash-note", these + " in the trash of the project " + blockedBy.session + ", which was deleted after. Restore the project first."));
@@ -9391,7 +9408,7 @@
             // Apagar de vez leva junto o que dependia dele (fotos apagadas antes; a lixeira do projeto)
             const linked = tree.filter((n) => n.under === item.id).map((n) => n.item).filter((o) => !o.restored);
             li.appendChild(button("Delete permanently", () => {
-              dialog("Delete permanently?", (item.isProject ? "The project " + item.session + " and everything in its folder" : (item.whole ? "The session " : item.photos === 1 ? "This photo of " : "These photos of ") + label.date) + " will be deleted for good" +
+              dialog("Delete permanently?", (item.isProject ? "The project " + item.session + " and everything in its folder" : (item.editsOnly ? (item.edits === 1 ? "This edit of " : "These edits of ") : item.whole ? "The session " : item.photos === 1 ? "This photo of " : "These photos of ") + label.date) + " will be deleted for good" +
                 (linked.length ? (item.isProject ? ", together with " + plural(linked.length, "item", "items") + " that " + (linked.length === 1 ? "was" : "were") + " in its trash"
                   : ", together with " + plural(linked.reduce((t, o) => t + o.photos, 0), "photo", "photos") + " of it deleted before") : "") + ". This cannot be undone.", [
                 { label: "Cancel" },

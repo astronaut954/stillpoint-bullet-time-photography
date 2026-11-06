@@ -50,7 +50,9 @@ end
 
 -- A coleção do Stillpoint em que a foto está (Stillpoint › projeto › sessão), se houver
 local function stillpointCollection(photo)
-	local ok, list = LrTasks.pcall(function() return photo:getContainedCollections() end)
+	-- pcall que serve dentro e fora de uma tarefa (a janela Export… chama fora)
+	local call = (LrTasks.canYield and LrTasks.canYield()) and LrTasks.pcall or pcall
+	local ok, list = call(function() return photo:getContainedCollections() end)
 	if not ok then return nil end
 	for _, collection in ipairs(list or {}) do
 		local parent = collection:getParent()

@@ -40,8 +40,10 @@ function service.startDialog(propertyTable)
 	end
 end
 
-function service.sectionsForTopOfDialog(f, propertyTable)
-	local ok, groups = LrTasks.pcall(function() return (Actions.target()) end)
+local function buildSection(f, propertyTable)
+	-- Fora de uma tarefa (a janela Export… chama assim): pcall comum
+	local ok, groups = pcall(function() return (Actions.target()) end)
+	if not ok then Bridge.problem('export dialog: ' .. tostring(groups)) end
 	groups = ok and groups or {}
 	local first = groups[1]
 	local function line(label, value)
@@ -64,10 +66,25 @@ function service.sectionsForTopOfDialog(f, propertyTable)
 	return { rows }
 end
 
+function service.sectionsForTopOfDialog(f, propertyTable)
+	local ok, sections = pcall(buildSection, f, propertyTable)
+	if ok then return sections end
+	Bridge.problem('export dialog section: ' .. tostring(sections))
+	return { { title = 'Stillpoint', synopsis = 'Edited photos for a Stillpoint project',
+		f:static_text { title = 'The photos go to the project\'s Edited folder, with the names of the originals.' } } }
+end
+
 function service.processRenderedPhotos(functionContext, exportContext)
 	local exportSession = exportContext.exportSession
 	local settings = exportContext.propertyTable
-	local photos = exportSession:photosToExport() or {}
+	-- photosToExport() devolve um iterador (não uma lista)
+	local photos = {}
+	local listOrIterator = exportSession:photosToExport()
+	if type(listOrIterator) == 'function' then
+		for photo in listOrIterator do table.insert(photos, photo) end
+	else
+		for _, photo in ipairs(listOrIterator or {}) do table.insert(photos, photo) end
+	end
 	-- Onde vai cada foto, e quais já têm editada no Stillpoint
 	local places, already, outside = {}, 0, 0
 	for _, photo in ipairs(photos) do

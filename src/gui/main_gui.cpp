@@ -2341,7 +2341,8 @@ namespace
             emitSessions();
             return "true";
         });
-        // Delete edits: as editadas das fotos (sessão inteira: sem arquivos) vão para o Lixo do sistema
+        // Delete edits: as editadas das fotos (sessão inteira: sem arquivos) vão para a lixeira do Stillpoint, num item
+        // só delas (Restore e o Desfazer trazem de volta)
         window.bind("deleteEdits", [&](const std::string& request) -> std::string
         {
             const auto args = ParseStringArgs(request);
@@ -2354,12 +2355,10 @@ namespace
                     if (s.name == session)
                         for (const auto& p : s.photos)
                             if (p.edited) files.push_back(p.file);
-            int removed = 0;
-            for (const auto& file : files)
-                for (const auto& path : store.EditedFiles(session, file))
-                    if (NativeWindow::MoveToSystemTrash(PathToUtf8(path)))
-                        ++removed;
-            Log("Delete edits: " + std::to_string(removed) + " edited file" + (removed == 1 ? "" : "s") + " of " + session + " moved to the Trash");
+            std::string error;
+            const int removed = store.TrashEdits(session, files, error);
+            if (!error.empty())
+                Log("Delete edits: " + error);
             emitSessions();
             return std::to_string(removed);
         });
@@ -4156,7 +4155,8 @@ namespace
                         {
                             if (exportCancel) { error = "cancelled"; break; }
                             report(static_cast<double>(i) / files.size(), original ? "photos-save" : photoFormat);
-                            const fs::path from = photoPath(files[i]);
+                            // "Keep the originals": sempre o arquivo que a câmera mandou, nunca a editada
+                            const fs::path from = original ? source / files[i] : photoPath(files[i]);
                             if (original)
                             {
                                 const std::string ext = from.extension().string();
@@ -4517,7 +4517,8 @@ namespace
                     .Add("whole", item.wholeSession).Add("photos", item.photos).Raw("bytes", std::to_string(item.bytes))
                     .Raw("deletedAt", std::to_string(item.deletedAt)).Add("order", std::to_string(item.order))
                     .Add("inProject", item.inProject).Add("isProject", item.isProject).Add("reachable", item.reachable)
-                    .Add("sessions", item.sessions).Add("parent", item.parent).Add("restored", item.restored).Str();
+                    .Add("sessions", item.sessions).Add("parent", item.parent).Add("restored", item.restored)
+                    .Add("edits", item.edits).Add("editsOnly", item.editsOnly).Str();
             return Json("trash").Raw("items", list + "]").Add("days", kTrashDays)
                 .Add("project", project.IsOpen() ? project.Name() : std::string()).Str();
         });

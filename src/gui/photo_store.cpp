@@ -69,6 +69,22 @@ namespace
             // ordem exata (o Desfazer pega o item mais recente, mesmo com dois no mesmo segundo)
             << "order=" << std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count() << "\n";
     }
+    // Editadas na lixeira (etapa 20): ficam na subpasta ".edited" do item (de uma foto apagada, junto dela; do
+    // Delete edits, num item só delas, kind=edits) e voltam para <Project>/Edited/<sessão>/ ao restaurar
+    const char* const kTrashEdited = ".edited";
+    void MarkTrashKind(const fs::path& entry, const std::string& kind)
+    {
+        std::ofstream out(entry / kTrashInfo, std::ios::binary | std::ios::app);
+        out << "kind=" << kind << "\n";
+    }
+    int CountTrashEdits(const fs::path& entry)
+    {
+        int n = 0;
+        std::error_code ec;
+        for (const auto& f : fs::directory_iterator(entry / kTrashEdited, ec))
+            if (f.is_regular_file(ec)) ++n;
+        return n;
+    }
     // Fotos num item (o RAW e o JPG da mesma câmera contam como uma)
     int CountTrashPhotos(const fs::path& entry)
     {
@@ -1257,6 +1273,13 @@ bool PhotoStore::DeletePhotos(const std::string& session, const std::vector<std:
     WriteTrashInfo(trash, session, false, dir, NowSeconds());
     for (const auto& path : toDelete)
     {
+        // A editada da foto (Edited/<sessão>/) vai junto, na subpasta .edited do item
+        for (const auto& edit : EditedFiles(session, path.filename().string()))
+        {
+            std::error_code eec;
+            fs::create_directories(trash / kTrashEdited, eec);
+            MoveFile(edit, trash / kTrashEdited / edit.filename(), eec);
+        }
         MoveFile(path, trash / path.filename(), ec);
         if (ec)
         {
@@ -1275,6 +1298,40 @@ bool PhotoStore::DeletePhotos(const std::string& session, const std::vector<std:
         WriteTrashInfo(trash, session, true, dir, NowSeconds());  // a sessão inteira saiu
     }
     return true;
+}
+
+int PhotoStore::TrashEdits(const std::string& session, const std::vector<std::string>& files, std::string& errorMessage) const
+{
+    const fs::path dir = SessionPath(session);
+    std::error_code ec;
+    if (dir.empty() || !fs::is_directory(dir, ec))
+    {
+        errorMessage = "Session not found.";
+        return 0;
+    }
+    std::vector<fs::path> edits;
+    for (const auto& file : files)
+        for (const auto& e : EditedFiles(session, file))
+            if (std::find(edits.begin(), edits.end(), e) == edits.end())
+                edits.push_back(e);
+    if (edits.empty())
+        return 0;
+    const fs::path trash = NewTrashEntry(dir, session, false);
+    fs::create_directories(trash / kTrashEdited, ec);
+    WriteTrashInfo(trash, session, false, dir, NowSeconds());
+    MarkTrashKind(trash, "edits");
+    int moved = 0;
+    for (const auto& e : edits)
+    {
+        std::error_code mec;
+        MoveFile(e, trash / kTrashEdited / e.filename(), mec);
+        if (mec) { errorMessage = "Could not delete " + e.filename().string() + ": " + mec.message(); break; }
+        ++moved;
+    }
+    if (moved == 0)
+        fs::remove_all(trash, ec);
+    fs::remove_all(dir / kPreviewFolder, ec);  // as prévias das editadas
+    return moved;
 }
 
 fs::path PhotoStore::TrashRootFor(const fs::path& dir) const
@@ -1324,6 +1381,16 @@ bool PhotoStore::DeleteSession(const std::string& session) const
         fs::remove_all(dir, ec);
     }
     WriteTrashInfo(trash, session, true, dir, NowSeconds());
+    // As editadas da sessão (Edited/<sessão>/) vão junto
+    if (!projectEdited.empty())
+    {
+        const fs::path edited = projectEdited / session;
+        if (fs::is_directory(edited, ec))
+        {
+            fs::rename(edited, trash / kTrashEdited, ec);
+            if (ec) { ec.clear(); fs::copy(edited, trash / kTrashEdited, fs::copy_options::recursive, ec); if (!ec) fs::remove_all(edited, ec); }
+        }
+    }
     return true;
 }
 
@@ -1397,7 +1464,8 @@ std::vector<TrashItem> PhotoStore::ListTrash() const
         TrashItem t;
         t.id = std::string(e.inProject ? "project/" : "app/") + e.path.filename().string();
         t.session = e.info["session"];
-        t.wholeSession = e.info["kind"] != "photos";
+        t.wholeSession = e.info["kind"] != "photos" && e.info["kind"] != "edits";
+        t.editsOnly = e.info["kind"] == "edits";
         t.restored = restored;
         std::error_code pec;
         if (e.info["kind"] == "project")
@@ -1445,7 +1513,7 @@ std::vector<TrashItem> PhotoStore::ListTrash() const
             // Sessão restaurada: fica enquanto houver fotos dela apagadas antes
             bool dependents = false;
             for (auto& o : all)
-                if (o.path.parent_path() == e.path.parent_path() && o.info["session"] == t.session && o.info["kind"] == "photos"
+                if (o.path.parent_path() == e.path.parent_path() && o.info["session"] == t.session && (o.info["kind"] == "photos" || o.info["kind"] == "edits")
                     && o.info["restored"] != "1" && o.order < e.order)
                     dependents = true;
             if (!dependents)
@@ -1457,6 +1525,7 @@ std::vector<TrashItem> PhotoStore::ListTrash() const
         else
         {
             t.photos = CountTrashPhotos(e.path);
+            t.edits = CountTrashEdits(e.path);
             t.bytes = FolderBytes(e.path);
         }
         t.deletedAt = e.deletedAt;
@@ -1540,6 +1609,24 @@ bool PhotoStore::RestoreEntry(const fs::path& trash, std::string& errorMessage, 
         const std::string name = entry.path().filename().string();
         if (name == kTrashOrigin || name == kTrashInfo)
             continue;
+        if (name == kTrashEdited)
+        {
+            // As editadas voltam para <Project>/Edited/<sessão>/ (sem Project aberto: ficam no item)
+            if (projectEdited.empty())
+            {
+                errorMessage = "Open the project to restore its edited photos.";
+                return false;
+            }
+            const fs::path editedDir = projectEdited / session;
+            fs::create_directories(editedDir, ec);
+            for (const auto& f : fs::directory_iterator(entry.path(), ec))
+            {
+                std::error_code mec;
+                if (!fs::exists(editedDir / f.path().filename(), mec))
+                    MoveFile(f.path(), editedDir / f.path().filename(), mec);
+            }
+            continue;
+        }
         const fs::path to = target / entry.path().filename();
         if (fs::exists(to, ec))
             continue;  // já existe na sessão (ex.: session.json): fica o de lá
@@ -1561,7 +1648,7 @@ bool PhotoStore::RestoreEntry(const fs::path& trash, std::string& errorMessage, 
     }
     // Sessão inteira com fotos dela apagadas antes, ainda na lixeira: fica como restaurada até elas acabarem
     bool dependents = false;
-    if (info["kind"] != "photos")
+    if (info["kind"] != "photos" && info["kind"] != "edits")
     {
         long long myOrder = 0;
         try { myOrder = std::stoll(info["order"]); } catch (...) {}
@@ -1572,7 +1659,7 @@ bool PhotoStore::RestoreEntry(const fs::path& trash, std::string& errorMessage, 
             auto o = ReadTrashInfo(d.path());
             long long order = 0;
             try { order = std::stoll(o["order"]); } catch (...) {}
-            if (o["session"] == session && o["kind"] == "photos" && o["restored"] != "1" && order < myOrder)
+            if (o["session"] == session && (o["kind"] == "photos" || o["kind"] == "edits") && o["restored"] != "1" && order < myOrder)
                 dependents = true;
         }
     }

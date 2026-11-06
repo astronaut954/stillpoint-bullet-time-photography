@@ -41,6 +41,9 @@ struct TrashItem
     // Já restaurado, mas fica na lista (sem botões) enquanto houver itens apagados antes que dependem dele
     // (fotos de uma sessão; o que estava na lixeira de um projeto). Sai sozinho quando eles acabam.
     bool restored = false;
+    // Editadas (etapa 20): quantas foram junto (subpasta .edited); editsOnly = item do Delete edits (só editadas)
+    int edits = 0;
+    bool editsOnly = false;
 };
 
 struct StoredSession
@@ -150,6 +153,9 @@ public:
     bool DeleteSessionNow(const std::string& session) const;
     bool DeletePhotos(const std::string& session, const std::vector<std::string>& groups,
                       std::string& errorMessage) const;
+    // Delete edits: as editadas dessas fotos (nomes de arquivo) vão para a lixeira, num item só delas.
+    // Devolve quantos arquivos foram.
+    int TrashEdits(const std::string& session, const std::vector<std::string>& files, std::string& errorMessage) const;
 
     // Nova ordem das fotos de uma sessão: lista de "ordem_câmera" na ordem desejada
     // (ex.: {"02_T7_1", "01_SL3_1"}). Renomeia os arquivos (02_T7_1_IMG.JPG ->
