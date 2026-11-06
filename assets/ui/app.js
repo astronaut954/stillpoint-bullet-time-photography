@@ -1279,10 +1279,10 @@
             const s = sessions.find((x) => x.name === (item.session || currentSession.name));
             if (s && picked.length && !adobeMissingBuild()) startLightroom(s, item.group, "photos", picked.map((x) => x.group));
           } },
-          { label: "Delete " + plural(editedPicked().length, "edit", "edits") + "…", danger: editedPicked().length > 0, disabled: !editedPicked().length, dim: !editedPicked().length, onClick: () => {
+          ...(editedPicked().length ? [{ label: "Delete " + plural(editedPicked().length, "edit", "edits") + "…", danger: true, onClick: () => {
             const s = sessions.find((x) => x.name === (item.session || currentSession.name));
             if (s) deleteEdits(s, editedPicked().map((x) => x.file));
-          } },
+          } }] : []),
           "-",
           { label: "Delete " + sel.length + " photos…", danger: true, onClick: deleteCurrentPhoto },
         ]);
@@ -1294,10 +1294,11 @@
         { label: win ? "Show in Explorer" : "Show in Finder", disabled: !hasFile, dim: !hasFile, onClick: () => fileAction("reveal") },
         { label: "Open in default app", disabled: !hasFile, dim: !hasFile, onClick: () => fileAction("open") },
         "-",
-        { label: "Delete edit…", danger: hasFile && photoEdited(item), disabled: !(hasFile && photoEdited(item)), dim: !(hasFile && photoEdited(item)), onClick: () => {
+        // Só nas fotos que têm editada (pedido do dono, 2026-11-06)
+        ...(hasFile && photoEdited(item) ? [{ label: "Delete edit…", danger: true, onClick: () => {
           const s = sessions.find((x) => x.name === (item.session || currentSession.name));
           if (s) deleteEdits(s, [item.file]);
-        } },
+        } }] : []),
         { label: "Delete photo " + pad(item.order || sessionGallery.index + 1) + "…", danger: true, onClick: deleteCurrentPhoto },
       ]);
     },
@@ -8838,7 +8839,7 @@
     items.push({ label: "Edit in Lightroom Classic", onClick: () => editSessionInLightroom(s) });
     const inEdit = !!editTagFor(s.name);
     items.push({ label: "Done editing", disabled: !inEdit, dim: !inEdit, onClick: () => doneEditing(s) });
-    if (s.inProject) items.push({ label: "Delete edits…", sub: s.edited > 0 ? s.edited + " edited" : "", danger: s.edited > 0, disabled: !(s.edited > 0), dim: !(s.edited > 0), onClick: () => deleteEdits(s, []) });
+    if (s.inProject && s.edited > 0) items.push({ label: "Delete edits…", sub: s.edited + " edited", danger: true, onClick: () => deleteEdits(s, []) });
     items.push({ label: s.inProject ? "Open originals folder" : "Open folder", onClick: () => {
       if (typeof window.openSessionFolder !== "function") { toast("This build cannot open session folders yet. Build the app again.", 8000); return; }
       window.openSessionFolder(s.name);

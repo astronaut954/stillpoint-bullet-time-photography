@@ -2194,6 +2194,20 @@ namespace
             return Json("project").Add("error", error).Raw("project", projectJson()).Str();
         });
         // restoreSession(sessão): traz de volta da lixeira do app (Desfazer de apagar sessão/fotos)
+        // Fotos que voltaram da lixeira voltam também para a coleção da sessão no Lightroom (sessão inteira: todas;
+        // a coleção é criada de novo se tinha saído). Só para sessões que já foram para o Lightroom.
+        auto adobeReadd = [&](const std::string& session, const std::vector<std::string>& files)
+        {
+            std::vector<std::filesystem::path> paths;
+            const auto dir = store.SessionDir(session);
+            if (!files.empty())
+                for (const auto& f : files) paths.push_back(dir / f);
+            else
+                for (const auto& s : store.ListSessions())
+                    if (s.name == session)
+                        for (const auto& p : s.photos) paths.push_back(dir / p.file);
+            Adobe::QueuePhotos("readd", session, paths);
+        };
         window.bind("restoreSession", [&](const std::string& request) -> std::string
         {
             const auto args = ParseStringArgs(request);
@@ -2203,12 +2217,8 @@ namespace
             if (!ok)
                 Log("Restore failed: " + error);
             // Fotos que voltaram: voltam também para a coleção da sessão no Lightroom (se ela foi para lá)
-            if (ok && !restoredFiles.empty())
-            {
-                std::vector<std::filesystem::path> paths;
-                for (const auto& f : restoredFiles) paths.push_back(store.SessionDir(args[0]) / f);
-                Adobe::QueuePhotos("readd", args[0], paths);
-            }
+            if (ok)
+                adobeReadd(args[0], restoredFiles);
             emitSessions();
             return Json("restore").Add("ok", ok).Add("error", error).Str();
         });
@@ -4604,7 +4614,15 @@ namespace
         {
             const auto args = ParseStringArgs(request);
             if (!args.empty())
+            {
                 store.DeleteSession(args[0]);
+                // A coleção sai do Lightroom, como no Done editing (decisão do dono, 2026-11-06); o Restore traz de volta
+                auto map = LoadEditing();
+                const bool wasEditing = map.erase(args[0]) > 0;
+                if (wasEditing) { SaveEditing(map); emitEditing(); }
+                if (Adobe::QueueRemoveCollection(args[0], "", "", ""))
+                    Log("Session deleted: its Lightroom Classic collection will be removed");
+            }
             emitSessions();
             return "null";
         });
@@ -4648,14 +4666,10 @@ namespace
             }
             const bool ok = !args.empty() && store.RestoreTrashItem(args[0], error, &files);
             // Fotos que voltaram: voltam também para a coleção da sessão no Lightroom (se ela foi para lá)
-            if (ok && !files.empty())
+            if (ok)
                 for (const auto& item : store.ListTrash())
-                    if (item.id == args[0])
-                    {
-                        std::vector<std::filesystem::path> paths;
-                        for (const auto& f : files) paths.push_back(store.SessionDir(item.session) / f);
-                        Adobe::QueuePhotos("readd", item.session, paths);
-                    }
+                    if (item.id == args[0] && !item.editsOnly && !item.session.empty())
+                        adobeReadd(item.session, files);
             if (ok && !projectFolder.empty())
                 setRecent(projectFolder, true);
             if (ok && !projectFolder.empty())

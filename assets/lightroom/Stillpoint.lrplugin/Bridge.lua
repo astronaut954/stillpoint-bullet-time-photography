@@ -108,7 +108,9 @@ end
 -- acha que está no Lightroom (o ⌘Z do Lightroom pode trazer de volta uma coleção que o plugin tirou)
 local function stillpointCollections(catalog)
 	local lines = {}
-	local ok = pcall(function()
+	-- LrTasks.pcall: o pcall comum não deixa o catálogo responder ("Yielding is not allowed"), e a lista não saía
+	local LrTasks = import 'LrTasks'
+	local ok, problem = LrTasks.pcall(function()
 		for _, set in ipairs(catalog:getChildCollectionSets()) do
 			if set:getName() == 'Stillpoint' then
 				for _, projectSet in ipairs(set:getChildCollectionSets()) do
@@ -119,6 +121,7 @@ local function stillpointCollections(catalog)
 			end
 		end
 	end)
+	if not ok then Bridge.noteOnce('collections list: ' .. tostring(problem)) end
 	return ok, lines
 end
 
@@ -140,6 +143,20 @@ end
 
 function Bridge.importing() return importingCount end
 
+-- A edição de uma foto como ela chegou no catálogo (ou depois do Reset do Delete edits)
+function Bridge.setBaseline(path, settings)
+	local LrPrefs = import 'LrPrefs'
+	local prefs = LrPrefs.prefsForPlugin()
+	local all = prefs.baselines or {}
+	all[path] = settings
+	prefs.baselines = all
+end
+function Bridge.baseline(path)
+	local LrPrefs = import 'LrPrefs'
+	local all = LrPrefs.prefsForPlugin().baselines
+	return all and all[path]
+end
+
 local function handle(request)
 	local catalog = LrApplication.activeCatalog()
 	importingCount = #request.photos
@@ -154,12 +171,14 @@ local function handle(request)
 	local missing = 0
 	-- 1ª escrita: as fotos entram no catálogo no lugar onde estão (sem copiar) e a coleção é criada.
 	-- Objetos criados numa escrita só podem ser usados depois dela: as fotos entram na coleção na 2ª.
+	local newPaths = {}
 	catalog:withWriteAccessDo('Stillpoint: add ' .. tostring(request.title), function()
 		for _, path in ipairs(request.photos) do
 			if not catalog:findPhotoByPath(path) then
 				if LrFileUtils.exists(path) then
 					catalog:addPhoto(path)
 					added = added + 1
+					table.insert(newPaths, path)
 				else
 					missing = missing + 1
 				end
@@ -188,6 +207,12 @@ local function handle(request)
 		collection = collectionFor(catalog, request)
 		collection:addPhotos(photos)
 	end, { timeout = 60 })
+	-- Como a foto chegou (sem edição): "tem edição" passa a ser "está diferente disso" (teste do dono, 2026-11-06:
+	-- só o histórico do Lightroom contava, e uma foto sem edição, ou depois do Reset, virava "editada")
+	for _, path in ipairs(newPaths) do
+		local photo = catalog:findPhotoByPath(path)
+		if photo then LrTasks.pcall(function() Bridge.setBaseline(path, photo:getDevelopSettings()) end) end
+	end
 	-- Mostra a coleção, seleciona as fotos (a ativa primeiro) e abre o Develop
 	-- (cada passo à parte: se um não der, os outros ainda acontecem e as fotos já estão na coleção)
 	local LrTasks = import 'LrTasks'
@@ -288,8 +313,13 @@ local function resetPhotos(request)
 			if collections and collections[1] then catalog:setActiveSources(collections)
 			else catalog:setActiveSources({ catalog:getFolderByPath(LrPathUtils.parent(photo:getRawMetadata('path'))) }) end
 		end)
-		catalog:setSelectedPhotos(photo, {})
-		LrTasks.sleep(0.5)
+		-- O Lightroom demora a trocar a vista: tenta escolher a foto algumas vezes
+		for _ = 1, 6 do
+			LrTasks.sleep(0.4)
+			catalog:setSelectedPhotos(photo, {})
+			LrTasks.sleep(0.3)
+			if catalog:getTargetPhoto() == photo then break end
+		end
 		-- Só faz o Reset se a foto ativa é mesmo esta (nunca em outra foto). Antes, guarda a edição: o ⌘Z do Stillpoint
 		-- pede para pôr de volta ("bringback")
 		if catalog:getTargetPhoto() == photo then
@@ -299,6 +329,8 @@ local function resetPhotos(request)
 			saved[photo:getRawMetadata('path')] = photo:getDevelopSettings()
 			prefs.savedEdits = saved
 			LrDevelopController.resetAllDevelopAdjustments()
+			LrTasks.sleep(0.4)
+			LrTasks.pcall(function() Bridge.setBaseline(photo:getRawMetadata('path'), photo:getDevelopSettings()) end)
 			done = done + 1
 			LrTasks.sleep(0.2)
 		else
@@ -344,6 +376,15 @@ end
 local function collectionPhotos(request, add)
 	local catalog = LrApplication.activeCatalog()
 	local collection = sessionCollection(request.project, request.title)
+	if not collection and add then
+		-- A coleção saiu (Done editing, sessão apagada): volta junto com as fotos
+		catalog:withWriteAccessDo('Stillpoint: collection ' .. tostring(request.title), function()
+			local top = catalog:createCollectionSet('Stillpoint', nil, true)
+			local projectSet = catalog:createCollectionSet((request.project ~= nil and request.project ~= '') and request.project or 'No project', top, true)
+			catalog:createCollection(request.title, projectSet, true)
+		end, { timeout = 60 })
+		collection = sessionCollection(request.project, request.title)
+	end
 	if not collection then Bridge.note((add and 'readd' or 'remove') .. ': collection "' .. tostring(request.title) .. '" not found') return end
 	local photos = {}
 	for _, path in ipairs(request.photos) do

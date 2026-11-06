@@ -316,7 +316,23 @@ end
 -- ---------------- Apply photo 01 edit to the session ----------------
 
 -- A foto já tem edição própria no Lightroom? (o SDK nem sempre diz: nesse caso conta a editada no Stillpoint)
+local function sameSettings(a, b)
+	if type(a) ~= type(b) then return false end
+	if type(a) == 'number' then return math.abs(a - b) < 1e-6 end
+	if type(a) ~= 'table' then return a == b end
+	for k, v in pairs(a) do if not sameSettings(v, b[k]) then return false end end
+	for k, _ in pairs(b) do if a[k] == nil then return false end end
+	return true
+end
+
 local function hasOwnEdit(photo, place)
+	-- Com a edição de quando a foto chegou guardada: tem edição = está diferente dela
+	local path = photo:getRawMetadata('path')
+	local base = path and Bridge.baseline(path)
+	if base then
+		local ok, now = LrTasks.pcall(function() return photo:getDevelopSettings() end)
+		if ok and now then return not sameSettings(now, base) end
+	end
 	for _, key in ipairs({ 'hasAdjustments', 'editCount' }) do
 		local ok, value = LrTasks.pcall(function() return photo:getRawMetadata(key) end)
 		if ok and value ~= nil then
