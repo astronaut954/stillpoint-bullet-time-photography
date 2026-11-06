@@ -118,6 +118,8 @@ function service.processRenderedPhotos(functionContext, exportContext)
 	local done, failed = 0, 0
 	for _, rendition in exportContext:renditions { stopIfCanceled = true } do
 		local place = places[rendition.photo]
+		-- Sem edição no Lightroom: não vai (não vira "editada" no Stillpoint)
+		if place and not Actions.hasOwnEdit(rendition.photo, nil) then place = nil end
 		if not place or (skipExisting and #place.existing > 0) then
 			rendition:skipRender()
 		else

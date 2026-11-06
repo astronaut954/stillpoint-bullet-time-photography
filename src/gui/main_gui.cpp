@@ -2453,7 +2453,10 @@ namespace
                     // Todas as fotos da sessão com editada: sai do "In Lightroom" e a coleção sai do Lightroom, como no
                     // Done editing (decisão do dono, 2026-11-06)
                     bool finished = false;
-                    if (total > 0 && edited >= total)
+                    // O plugin olhou a sessão inteira e nada falhou (as fotos sem edição no Lightroom não vêm), ou
+                    // todas as fotos já têm editada
+                    const bool complete = Adobe::MessageValue(message, "complete") == "1" && failed == 0 && count > 0;
+                    if (total > 0 && (edited >= total || complete))
                     {
                         auto map = LoadEditing();
                         if (map.erase(session))

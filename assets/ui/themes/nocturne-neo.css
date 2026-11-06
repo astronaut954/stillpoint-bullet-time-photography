@@ -1394,6 +1394,8 @@ html.kbd-focus input:focus + .save-check { outline: 2px solid var(--noct-primary
 /* Árvore da lixeira: projeto → sessões → fotos */
 .trash-row.lvl1 { padding-left: 26px; }
 .trash-row.lvl2 { padding-left: 52px; }
+.trash-row.lvl3 { padding-left: 78px; }
+.trash-row.lvl4 { padding-left: 104px; }
 .trash-restored { display: inline-block; margin-left: 10px; font: 700 10px/12px var(--noct-font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--noct-primary); border: 1px solid var(--noct-primary); padding: 1px 5px; vertical-align: middle; }
 .trash-row b { padding: 2px 0; }
 .trash-row.blocked .trash-main b .trash-restored { opacity: 1; }

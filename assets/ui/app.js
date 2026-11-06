@@ -9544,6 +9544,10 @@
         tried.add(item.id);
         return Promise.resolve(window.trashRestore(item.id)).then((x) => {
           if (x && x.ok) done.push({ session: item.session, whole: item.whole, files: x.files || [], project: item.isProject ? x.folder : "" }); else failed++;
+          // Projeto que voltou com nada aberto: abre já, para a lixeira dele (sessões, fotos, editadas) entrar na
+          // próxima rodada (teste do dono, 2026-11-06: antes elas ficavam para trás)
+          if (x && x.ok && item.isProject && !project.open && x.folder && typeof window.projectOpen === "function")
+            return Promise.resolve(window.projectOpen(x.folder)).then((o) => { projectResult(o); return step(k + 1); });
           return step(k + 1);
         });
       };
@@ -9559,6 +9563,7 @@
         const projects = done.filter((d) => d.project);
         // Sem projeto aberto: abre o projeto que voltou (o primeiro, se forem vários); os outros ficam nos recentes
         if (projects.length && !project.open) Promise.resolve(window.projectOpen(projects[0].project)).then(projectResult);
+        else refreshSessions();
         if (projects.length) toast(text + " · " + (projects.length === 1 ? "the project " + projects[0].session + (project.open ? " is in Recent" : " is open again") : plural(projects.length, "project", "projects") + " back in Recent"), 6000);
         const plain = done.filter((d) => !d.project);
         const wholeSessions = [...new Set(plain.filter((d) => d.whole).map((d) => d.session))];

@@ -170,10 +170,26 @@ function Actions.exportToStillpoint()
 	end
 	local groups, outside, total = Actions.target()
 	-- A sessão inteira que está aberta no Lightroom, não só as fotos selecionadas (decisão do dono, 2026-11-06)
+	-- Só as fotos com edição no Lightroom: uma foto sem edição não vira "editada" no Stillpoint (decisão do dono,
+	-- 2026-11-06). complete = a sessão inteira foi olhada (o Stillpoint tira o "In Lightroom" se nada falhar)
+	local unedited = 0
 	for _, group in ipairs(groups) do
 		local all = Actions.sessionItems(group)
 		if #all > 0 then group.items = all end
+		group.complete = #all > 0
+		local kept = {}
+		for _, item in ipairs(group.items) do
+			if Actions.hasOwnEdit(item.photo, nil) then table.insert(kept, item) else unedited = unedited + 1 end
+		end
+		group.items = kept
 	end
+	local withEdits = {}
+	for _, group in ipairs(groups) do if #group.items > 0 then table.insert(withEdits, group) end end
+	if #withEdits == 0 then
+		LrDialogs.message('Nothing to export yet', 'None of these photos has an edit in Lightroom Classic. Edit a photo and choose Export to Stillpoint again.', 'info')
+		return
+	end
+	groups = withEdits
 	if #groups == 0 then
 		LrDialogs.message('Select photos of a Stillpoint project',
 			'Export to Stillpoint works with photos that Stillpoint sent from a project (they are in the project\'s Originals folder). '
@@ -234,7 +250,7 @@ function Actions.exportToStillpoint()
 			f:static_text { title = 'STILLPOINT · Edited photos for a Stillpoint project', font = '<system/bold>' },
 			line('Project', first.project),
 			line('Session', sessionText),
-			line('Photos', plural(n, 'photo', 'photos') .. ' · 16-bit TIFF · full size'),
+			line('Photos', plural(n, 'photo', 'photos') .. ' · 16-bit TIFF · full size' .. (unedited > 0 and (' (' .. plural(unedited, 'photo without an edit stays', 'photos without an edit stay') .. ' out)') or '')),
 			line('Goes to', '…/' .. goesTo),
 			line('File names', 'the same as the originals (' .. LrPathUtils.removeExtension(work[1].items[1].place.file) .. '.tif …)'),
 			f:row {
@@ -270,7 +286,8 @@ function Actions.exportToStillpoint()
 			end
 			local done, failed, files = exportGroup(job.group, job.items, colorSpace, progress, doneAll + failedAll, n)
 			doneAll, failedAll = doneAll + done, failedAll + failed
-			local lines = { 'session=' .. job.group.session, 'project=' .. job.group.root, 'count=' .. done, 'failed=' .. failed, 'color=' .. colorSpace }
+			local lines = { 'session=' .. job.group.session, 'project=' .. job.group.root, 'count=' .. done, 'failed=' .. failed, 'color=' .. colorSpace,
+				'complete=' .. ((job.group.complete and not skipExisting) and '1' or '0') }
 			for _, name in ipairs(files) do table.insert(lines, 'file=' .. name) end
 			if done > 0 or failed > 0 then Actions.writeMessage('exported', lines) end
 			Bridge.note('export to Stillpoint: ' .. job.group.session .. ', ' .. done .. ' exported, ' .. failed .. ' failed, ' .. colorSpace)
@@ -303,13 +320,13 @@ local function hasOwnEdit(photo, place)
 	for _, key in ipairs({ 'hasAdjustments', 'editCount' }) do
 		local ok, value = LrTasks.pcall(function() return photo:getRawMetadata(key) end)
 		if ok and value ~= nil then
-			if Actions.editSignal ~= key then Actions.editSignal = key; Bridge.note('apply photo 01: own edits read from "' .. key .. '"') end
+			if Actions.editSignal ~= key then Actions.editSignal = key; Bridge.note('own edits read from "' .. key .. '"') end
 			if type(value) == 'number' then return value > 0 end
 			return value == true
 		end
 	end
-	if Actions.editSignal ~= 'edited-folder' then Actions.editSignal = 'edited-folder'; Bridge.note('apply photo 01: own edits read from the Edited folder') end
-	return place and #Actions.editedFiles(place) > 0
+	if Actions.editSignal ~= 'edited-folder' then Actions.editSignal = 'edited-folder'; Bridge.note('own edits read from the Edited folder') end
+	return place ~= nil and #Actions.editedFiles(place) > 0
 end
 
 -- As fotos da sessão no catálogo: as da coleção do Stillpoint; sem coleção, as escolhidas
@@ -330,6 +347,7 @@ end
 -- A foto de onde a edição sai: a que está ativa no Lightroom (a selecionada, a do Develop), se for da sessão;
 -- senão a foto 01
 Actions.sessionItems = sessionPhotos
+Actions.hasOwnEdit = hasOwnEdit
 
 function Actions.sourceOf(list)
 	local ok, active = LrTasks.pcall(function() return LrApplication.activeCatalog():getTargetPhoto() end)

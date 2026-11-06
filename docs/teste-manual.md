@@ -1784,7 +1784,8 @@ antes de começar: o Stillpoint troca o plugin pelo novo no próximo "Edit in Li
 - [ ] No Lightroom, Edit › Undo mostra o nome do passo do plugin ("Stillpoint: remove collection …", "Stillpoint: apply
       photo 02 edit"). Desfazer a retirada de uma coleção faz a sessão voltar a "In Lightroom" no Stillpoint, com o aviso
       "Back in Lightroom Classic".
-- [ ] Export to Stillpoint exporta a sessão inteira aberta no Lightroom, não só as fotos selecionadas.
+- [ ] Export to Stillpoint exporta a sessão inteira aberta no Lightroom, não só as fotos selecionadas, e só as fotos
+      com edição no Lightroom (as sem edição ficam de fora e não viram "editadas").
 - [ ] Export com só os originais (sem Converted) e a sessão com editadas ligadas: Photos/Edited/ ao lado dos originais.
 - [ ] Lixeira: editada apagada antes da foto fica embaixo da foto (recuada); Restore só depois da foto.
       Também dentro de um projeto apagado (a sessão, a foto e a editada, cada uma embaixo da outra).

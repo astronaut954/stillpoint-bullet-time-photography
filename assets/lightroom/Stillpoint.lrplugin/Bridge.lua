@@ -229,14 +229,14 @@ local function removeCollection(project, title)
 		Bridge.note('done editing: collection "' .. tostring(title) .. '" not found (already removed?)')
 		return
 	end
+	-- Um passo só no histórico do Lightroom (um ⌘Z traz a coleção de volta): se ela é a única do projeto, sai o
+	-- conjunto do projeto; se esse é o único do Stillpoint, sai o conjunto Stillpoint (cada um leva o que tem dentro)
+	local onlyInProject = #projectSet:getChildCollections() == 1 and #projectSet:getChildCollectionSets() == 0
+	local onlyInTop = onlyInProject and #top:getChildCollections() == 0 and #top:getChildCollectionSets() == 1
 	catalog:withWriteAccessDo('Stillpoint: remove collection ' .. tostring(title), function()
-		collection:delete()
-	end, { timeout = 60 })
-	catalog:withWriteAccessDo('Stillpoint: tidy collection sets', function()
-		if #projectSet:getChildCollections() == 0 and #projectSet:getChildCollectionSets() == 0 then projectSet:delete() end
-	end, { timeout = 60 })
-	catalog:withWriteAccessDo('Stillpoint: tidy collection sets', function()
-		if #top:getChildCollections() == 0 and #top:getChildCollectionSets() == 0 then top:delete() end
+		if onlyInTop then top:delete()
+		elseif onlyInProject then projectSet:delete()
+		else collection:delete() end
 	end, { timeout = 60 })
 	Bridge.note('done editing: collection "' .. tostring(title) .. '" removed')
 end
@@ -278,15 +278,31 @@ local function resetPhotos(request)
 		return
 	end
 	local before = catalog:getTargetPhoto()
+	local sources = catalog:getActiveSources()
 	LrApplicationView.switchToModule('develop')
+	local done, skipped = 0, 0
 	for _, photo in ipairs(photos) do
+		-- A foto precisa estar na vista atual para ser escolhida: mostra uma coleção (ou pasta) onde ela está
+		local ok = LrTasks.pcall(function()
+			local collections = photo:getContainedCollections()
+			if collections and collections[1] then catalog:setActiveSources(collections)
+			else catalog:setActiveSources({ catalog:getFolderByPath(LrPathUtils.parent(photo:getRawMetadata('path'))) }) end
+		end)
 		catalog:setSelectedPhotos(photo, {})
-		LrTasks.sleep(0.4)
-		LrDevelopController.resetAllDevelopAdjustments()
-		LrTasks.sleep(0.2)
+		LrTasks.sleep(0.5)
+		-- Só faz o Reset se a foto ativa é mesmo esta (nunca em outra foto)
+		if catalog:getTargetPhoto() == photo then
+			LrDevelopController.resetAllDevelopAdjustments()
+			done = done + 1
+			LrTasks.sleep(0.2)
+		else
+			skipped = skipped + 1
+			Bridge.problem('delete edits: could not select ' .. tostring(photo:getRawMetadata('path')) .. ' to reset it' .. (ok and '' or ' (no collection or folder)'))
+		end
 	end
+	LrTasks.pcall(function() if sources and #sources > 0 then catalog:setActiveSources(sources) end end)
 	if before then LrTasks.pcall(function() catalog:setSelectedPhotos(before, {}) end) end
-	Bridge.note('delete edits: ' .. #photos .. ' photos of ' .. tostring(request.session) .. ' back to the original')
+	Bridge.note('delete edits: ' .. done .. ' photos of ' .. tostring(request.session) .. ' back to the original' .. (skipped > 0 and (', ' .. skipped .. ' not found in the view') or ''))
 end
 
 local function handleResetFiles()
