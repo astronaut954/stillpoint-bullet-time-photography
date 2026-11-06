@@ -178,18 +178,54 @@ function Actions.exportToStillpoint()
 		local all = Actions.sessionItems(group)
 		if #all > 0 then group.items = all end
 		group.complete = #all > 0
-		local kept = {}
+		local kept, cleared = {}, {}
 		for _, item in ipairs(group.items) do
-			if Actions.hasOwnEdit(item.photo, nil) then table.insert(kept, item) else unedited = unedited + 1 end
+			if Actions.hasOwnEdit(item.photo, nil) then table.insert(kept, item)
+			else
+				unedited = unedited + 1
+				-- A edição foi tirada no Lightroom, mas o Stillpoint ainda tem a editada: ela sai de lá também
+				-- (teste do dono, 2026-11-06)
+				if #Actions.editedFiles(item.place) > 0 then table.insert(cleared, item) end
+			end
 		end
 		group.items = kept
+		group.cleared = cleared
 	end
-	local withEdits = {}
-	for _, group in ipairs(groups) do if #group.items > 0 then table.insert(withEdits, group) end end
+	local withEdits, clearedTotal = {}, 0
+	for _, group in ipairs(groups) do
+		if #group.items > 0 then table.insert(withEdits, group) end
+		clearedTotal = clearedTotal + #group.cleared
+	end
+	-- Só tirar editadas (nenhuma foto com edição para mandar): avisa o Stillpoint e pronto
+	local function sendCleared(list)
+		local sent = 0
+		for _, group in ipairs(list) do
+			if #group.cleared > 0 then
+				local lines = { 'session=' .. group.session, 'project=' .. group.root, 'count=0', 'failed=0', 'complete=0' }
+				for _, item in ipairs(group.cleared) do
+					table.insert(lines, 'cleared=' .. item.place.file)
+					LrTasks.pcall(function() Bridge.setSent(item.place.path, nil) end)
+				end
+				Actions.writeMessage('exported', lines)
+				Bridge.note('export to Stillpoint: ' .. group.session .. ', ' .. #group.cleared .. ' edits removed (no edit in Lightroom anymore)')
+				sent = sent + #group.cleared
+			end
+		end
+		return sent
+	end
 	if #withEdits == 0 then
+		if clearedTotal > 0 then
+			local n = sendCleared(groups)
+			Actions.state.text = plural(n, 'edit', 'edits') .. ' removed in Stillpoint (no edit in Lightroom anymore)'
+			LrDialogs.showBezel(plural(n, 'edit', 'edits') .. ' removed in Stillpoint')
+			return
+		end
 		LrDialogs.message('Nothing to export yet', 'None of these photos has an edit in Lightroom Classic. Edit a photo and choose Export to Stillpoint again.', 'info')
 		return
 	end
+	-- Grupos que só tiram editadas (sem foto com edição): mandados depois que a pessoa confirma o export
+	local onlyCleared = {}
+	for _, group in ipairs(groups) do if #group.items == 0 then table.insert(onlyCleared, group) end end
 	groups = withEdits
 	if #groups == 0 then
 		LrDialogs.message('Select photos of a Stillpoint project',
@@ -252,6 +288,7 @@ function Actions.exportToStillpoint()
 			line('Project', first.project),
 			line('Session', sessionText),
 			line('Photos', plural(n, 'photo', 'photos') .. ' · 16-bit TIFF · full size' .. (unedited > 0 and (' (' .. plural(unedited, 'photo without an edit stays', 'photos without an edit stay') .. ' out)') or '')),
+			clearedTotal > 0 and line('Removed', plural(clearedTotal, 'edit', 'edits') .. ' in Stillpoint (no edit in Lightroom anymore; they go to the Stillpoint trash)') or f:spacer { height = 0 },
 			line('Goes to', '…/' .. goesTo),
 			line('File names', 'the same as the originals (' .. LrPathUtils.removeExtension(work[1].items[1].place.file) .. '.tif …)'),
 			f:row {
@@ -269,6 +306,7 @@ function Actions.exportToStillpoint()
 	end)
 	if not go then return end
 	prefs.colorSpace = colorSpace
+	sendCleared(onlyCleared)
 
 	Actions.state.busy = true
 	Actions.state.text = 'Exporting 0 of ' .. n .. ' · 16-bit TIFF'
@@ -298,6 +336,10 @@ function Actions.exportToStillpoint()
 			local lines = { 'session=' .. job.group.session, 'project=' .. job.group.root, 'count=' .. done, 'failed=' .. failed, 'color=' .. colorSpace,
 				'complete=' .. ((job.group.complete and not skipExisting) and '1' or '0') }
 			for _, name in ipairs(files) do table.insert(lines, 'file=' .. name) end
+			for _, item in ipairs(job.group.cleared or {}) do
+				table.insert(lines, 'cleared=' .. item.place.file)
+				LrTasks.pcall(function() Bridge.setSent(item.place.path, nil) end)
+			end
 			if done > 0 or failed > 0 then Actions.writeMessage('exported', lines) end
 			Bridge.note('export to Stillpoint: ' .. job.group.session .. ', ' .. done .. ' exported, ' .. failed .. ' failed, ' .. colorSpace)
 			Actions.state.lastSession = job.group.session
@@ -457,13 +499,20 @@ function Actions.cancelEditing()
 	end
 	local group = groups[1]
 	local list = sessionPhotos(group)
+	-- Mudanças que o Stillpoint não tem: comparadas com o último envio; se a foto nunca foi mandada, com como ela
+	-- estava quando a sessão abriu no Lightroom; senão com como ela chegou. Cada foto fica anotada no
+	-- plugin-log.txt (para achar o que não bate)
 	local changed = {}
 	for _, item in ipairs(list) do
-		local reference = Bridge.sent(item.place.path) or Bridge.baseline(item.place.path)
-		if reference then
-			local ok, now = LrTasks.pcall(function() return item.photo:getDevelopSettings() end)
-			if ok and now and not sameSettings(now, reference) then table.insert(changed, { photo = item.photo, settings = reference }) end
-		end
+		local path = item.place.path
+		local reference, from = Bridge.sent(path), 'last export'
+		if not reference then reference, from = Bridge.opened(path), 'when the session opened' end
+		if not reference then reference, from = Bridge.baseline(path), 'how it arrived' end
+		local ok, now = LrTasks.pcall(function() return item.photo:getDevelopSettings() end)
+		local differs = reference and ok and now and not sameSettings(now, reference)
+		if differs then table.insert(changed, { photo = item.photo, settings = reference }) end
+		Bridge.note('cancel editing: ' .. item.place.file .. ' compared with ' .. (reference and from or 'nothing (no reference)')
+			.. (reference and (differs and ': changed' or ': same') or ''))
 	end
 	local discard = false
 	if #changed > 0 then
@@ -472,9 +521,9 @@ function Actions.cancelEditing()
 			(#changed == 1 and '1 photo of this session was' or (#changed .. ' photos of this session were')) .. ' changed in Lightroom Classic and '
 				.. (#changed == 1 and 'is' or 'are') .. ' not in Stillpoint yet. Discard brings '
 				.. (#changed == 1 and 'it' or 'them') .. ' back to how '
-				.. (#changed == 1 and 'it was' or 'they were') .. ' last sent to Stillpoint (or to how '
-				.. (#changed == 1 and 'it' or 'they') .. ' arrived). Keep leaves the changes in Lightroom Classic only.',
-			'Discard changes', 'Cancel', 'Keep changes')
+				.. (#changed == 1 and 'it was' or 'they were') .. ' last sent to Stillpoint (or, if never sent, to how '
+				.. (#changed == 1 and 'it was' or 'they were') .. ' when the session opened). Close and keep changes leaves them in Lightroom Classic only.',
+			'Discard changes', 'Keep editing', 'Close and keep changes')
 		if answer == 'cancel' then return end
 		discard = answer == 'ok'
 	else
@@ -488,8 +537,8 @@ function Actions.cancelEditing()
 			local answer = LrDialogs.confirm(
 				'Cancel editing?',
 				(edited == 1 and '1 photo of this session has' or (edited .. ' photos of this session have')) .. ' an edit in Lightroom Classic. '
-					.. 'Stillpoint already has ' .. (edited == 1 and 'it' or 'them') .. ', so the edit' .. (edited == 1 and '' or 's') .. ' stay in both programs. '
-					.. 'The session closes in Lightroom Classic.',
+					.. 'Nothing changed since the last export (or since the session opened). The session closes in Lightroom Classic and the edit'
+					.. (edited == 1 and ' stays' or 's stay') .. ' as ' .. (edited == 1 and 'it is.' or 'they are.'),
 				'Cancel editing', 'Keep editing')
 			if answer ~= 'ok' then return end
 		end
@@ -503,10 +552,14 @@ function Actions.cancelEditing()
 	local projectName = group.collection and group.collection:getParent() and group.collection:getParent():getName() or group.project
 	LrTasks.pcall(Bridge.removeCollection, projectName, group.title)
 	Actions.writeMessage('cancelled', { 'session=' .. group.session, 'project=' .. group.root, 'discarded=' .. (discard and #changed or 0), 'time=' .. os.time() })
-	Bridge.note('cancel editing: ' .. group.session .. (discard and (', ' .. #changed .. ' photos back to how Stillpoint has them') or (#changed > 0 and ', changes kept' or '')))
-	Actions.state.text = 'Editing cancelled' .. (discard and (' · ' .. plural(#changed, 'change', 'changes') .. ' discarded') or '')
+	Bridge.note('cancel editing: ' .. group.session .. (discard and (', ' .. #changed .. ' photos back') or (#changed > 0 and ', changes kept in Lightroom only' or '')))
+	-- O recado bate com o que aconteceu (pedido do dono, 2026-11-06)
+	local said = discard and ('Session closed · ' .. plural(#changed, 'change', 'changes') .. ' discarded')
+		or (#changed > 0 and ('Session closed · ' .. plural(#changed, 'change', 'changes') .. ' kept in Lightroom Classic only'))
+		or 'Session closed in Lightroom Classic'
+	Actions.state.text = said
 	Actions.state.lastSession = group.session
-	LrDialogs.showBezel('Editing cancelled' .. (discard and (' · ' .. plural(#changed, 'photo', 'photos') .. ' back') or ''))
+	LrDialogs.showBezel(said)
 end
 
 -- ---------------- Go to session in Stillpoint ----------------

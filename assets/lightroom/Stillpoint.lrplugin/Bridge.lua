@@ -163,12 +163,20 @@ function Bridge.same(a, b)
 end
 
 -- A edição de uma foto como ela chegou no catálogo (ou depois do Reset do Delete edits)
-function Bridge.setBaseline(path, settings)
+-- Guarda um valor por foto nas preferências do plugin. Sempre uma tabela nova: devolver a mesma tabela mudada às
+-- preferências pode não ser gravado pelo Lightroom
+local function prefsPut(key, path, value)
 	local LrPrefs = import 'LrPrefs'
 	local prefs = LrPrefs.prefsForPlugin()
-	local all = prefs.baselines or {}
-	all[path] = settings
-	prefs.baselines = all
+	local all = {}
+	for k, v in pairs(prefs[key] or {}) do all[k] = v end
+	all[path] = value
+	prefs[key] = all
+end
+Bridge.prefsPut = prefsPut
+
+function Bridge.setBaseline(path, settings)
+	prefsPut('baselines', path, settings)
 end
 function Bridge.baseline(path)
 	local LrPrefs = import 'LrPrefs'
@@ -212,6 +220,8 @@ end
 local function handle(request)
 	local catalog = LrApplication.activeCatalog()
 	importingCount = #request.photos
+	-- O painel não mostra mais o recado da vez anterior ("Editing cancelled"…)
+	pcall(function() local A = require('Actions'); A.state.text = nil end)
 	-- O painel do Stillpoint abre junto (pedaço 2): mostra "Importing…" e depois os botões
 	local LrTasks = import 'LrTasks'
 	LrTasks.pcall(function() require('Panel').show() end)
@@ -264,6 +274,10 @@ local function handle(request)
 	for _, path in ipairs(newPaths) do
 		local photo = catalog:findPhotoByPath(path)
 		if photo then LrTasks.pcall(function() Bridge.setBaseline(path, photo:getDevelopSettings()) end) end
+	end
+	-- Como cada foto está agora, ao abrir a sessão (o Cancel editing compara com isso quando a foto nunca foi mandada)
+	for _, photo in ipairs(photos) do
+		LrTasks.pcall(function() Bridge.setOpened(photo:getRawMetadata('path'), photo:getDevelopSettings()) end)
 	end
 	-- Mostra a coleção, seleciona as fotos (a ativa primeiro) e abre o Develop
 	-- (cada passo à parte: se um não der, os outros ainda acontecem e as fotos já estão na coleção)
@@ -324,11 +338,17 @@ Bridge.removeCollection = removeCollection
 -- A edição de cada foto como foi mandada ao Stillpoint pela última vez (Export to Stillpoint): o "Cancel editing"
 -- do painel compara com ela para saber se há mudanças que o Stillpoint não tem
 function Bridge.setSent(path, settings)
+	prefsPut('sentEdits', path, settings)
+end
+-- Como a foto estava quando a sessão foi aberta no Lightroom desta vez (o Cancel editing compara com isso quando a
+-- foto nunca foi mandada ao Stillpoint)
+function Bridge.setOpened(path, settings)
+	prefsPut('openedEdits', path, settings)
+end
+function Bridge.opened(path)
 	local LrPrefs = import 'LrPrefs'
-	local prefs = LrPrefs.prefsForPlugin()
-	local all = prefs.sentEdits or {}
-	all[path] = settings
-	prefs.sentEdits = all
+	local all = LrPrefs.prefsForPlugin().openedEdits
+	return all and all[path]
 end
 function Bridge.sent(path)
 	local LrPrefs = import 'LrPrefs'

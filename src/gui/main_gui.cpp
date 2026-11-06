@@ -2617,10 +2617,23 @@ namespace
             const auto exports = Adobe::TakeMessages("exported");
             if (!exports.empty())
             {
-                const auto sessions = store.ListSessions();
                 for (const auto& message : exports)
                 {
                     const std::string session = Adobe::MessageValue(message, "session");
+                    // Fotos cuja edição foi tirada no Lightroom e que foram exportadas assim: a editada sai do Stillpoint
+                    // (vai para a lixeira, como o Delete edits; teste do dono, 2026-11-06)
+                    std::vector<std::string> cleared;
+                    for (auto [it, end] = message.equal_range("cleared"); it != end; ++it)
+                        if (!it->second.empty()) cleared.push_back(it->second);
+                    int clearedCount = 0;
+                    if (!cleared.empty())
+                    {
+                        std::string error;
+                        clearedCount = store.TrashEdits(session, cleared, error);
+                        Log("Lightroom Classic: " + std::to_string(clearedCount) + " photo(s) of " + session
+                            + " have no edit in Lightroom anymore: their edited files went to the trash" + (error.empty() ? "" : " (" + error + ")"));
+                    }
+                    const auto sessions = store.ListSessions();
                     int count = 0, failed = 0;
                     try { count = std::stoi(Adobe::MessageValue(message, "count")); } catch (...) {}
                     try { failed = std::stoi(Adobe::MessageValue(message, "failed")); } catch (...) {}
@@ -2647,7 +2660,7 @@ namespace
                                 Log("All photos of " + session + " are edited: the Lightroom Classic collection will be removed");
                         }
                     }
-                    exported += (firstExport ? "" : ",") + Json().Add("finished", finished).Add("session", session).Add("count", count).Add("failed", failed)
+                    exported += (firstExport ? "" : ",") + Json().Add("finished", finished).Add("session", session).Add("count", count).Add("failed", failed).Add("cleared", clearedCount)
                         .Add("edited", edited).Add("total", total).Add("found", s != sessions.end()).Str();
                     firstExport = false;
                 }

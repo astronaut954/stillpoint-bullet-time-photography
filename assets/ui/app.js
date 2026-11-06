@@ -1675,6 +1675,7 @@
     const s = sessions.find((x) => x.name === e.session);
     const title = s ? sessionTitle(s) : sessionLabel(e.session).date;
     let text = e.found && e.total ? "Edited " + e.edited + " / " + e.total + " · " + title : plural(e.count, "edited photo", "edited photos") + " arrived from Lightroom Classic · " + title;
+    if (e.cleared > 0) text += " · " + plural(e.cleared, "edit", "edits") + " removed (no edit in Lightroom anymore; in the trash)";
     if (e.failed > 0) text += " · " + plural(e.failed, "photo", "photos") + " could not be exported";
     toast(text, e.failed > 0 ? 9000 : TOAST_MS, e.failed > 0 ? { warn: true } : undefined);
   }

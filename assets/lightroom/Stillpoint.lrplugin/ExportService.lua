@@ -108,13 +108,23 @@ function service.processRenderedPhotos(functionContext, exportContext)
 	end
 	-- Onde vai cada foto, e quais já têm editada no Stillpoint
 	local places, already, outside, unedited = {}, 0, 0, 0
+	local clearedBy = {}
 	for _, photo in ipairs(photos) do
 		local place = Actions.placeOf(photo)
 		-- Sem edição no Lightroom: não vai (não vira "editada" no Stillpoint). Decidido antes de começar a gerar os
 		-- arquivos: pular depois disso dava "AgExportRendition:skip(): must not be called after exportSession has
 		-- started rendering" (teste do dono, 2026-11-06)
 		local edited = place and Actions.hasOwnEdit(photo, nil)
-		if place and not edited then unedited = unedited + 1; place = nil
+		if place and not edited then
+			unedited = unedited + 1
+			-- A edição foi tirada no Lightroom, mas o Stillpoint ainda tem a editada: ela sai de lá também
+			if #Actions.editedFiles(place) > 0 then
+				local key = place.root .. '|' .. place.session
+				clearedBy[key] = clearedBy[key] or { place = place, files = {} }
+				table.insert(clearedBy[key].files, place.file)
+				LrTasks.pcall(function() Bridge.setSent(place.path, nil) end)
+			end
+			place = nil
 		elseif place then
 			place.existing = Actions.editedFiles(place)
 			if #place.existing > 0 then already = already + 1 end
@@ -193,10 +203,16 @@ function service.processRenderedPhotos(functionContext, exportContext)
 			Actions.state.text = 'Exporting ' .. (done + failed) .. ' of ' .. count
 		end
 	end
+	-- Sessões que só tiram editadas: entram na lista também
+	for key, c in pairs(clearedBy) do
+		if not bySession[key] then bySession[key] = { place = c.place, files = {} }; table.insert(order, bySession[key]) end
+	end
 	for _, s in ipairs(order) do
 		local lines = { 'session=' .. s.place.session, 'project=' .. s.place.root, 'count=' .. #s.files, 'failed=0',
 			'color=' .. tostring(settings.LR_export_colorSpace), 'format=' .. tostring(settings.LR_format) }
 		for _, name in ipairs(s.files) do table.insert(lines, 'file=' .. name) end
+		local key = s.place.root .. '|' .. s.place.session
+		for _, name in ipairs(clearedBy[key] and clearedBy[key].files or {}) do table.insert(lines, 'cleared=' .. name) end
 		Actions.writeMessage('exported', lines)
 		Actions.state.lastSession = s.place.session
 		Bridge.note('export dialog to Stillpoint: ' .. s.place.session .. ', ' .. #s.files .. ' exported, ' .. tostring(settings.LR_format))
