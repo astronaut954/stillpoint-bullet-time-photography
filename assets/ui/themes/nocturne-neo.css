@@ -1865,8 +1865,12 @@ html.kbd-focus .export-tab.on .export-tab-check input:focus + .save-check { outl
 /* Bolinha âmbar pulsando: a foto está aberta no outro programa agora */
 /* Pulsa só com o Lightroom aberto no catálogo onde a sessão está (.live); senão fica parada e apagada */
 .edit-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--noct-pending); opacity: .4; flex: none; }
-.edit-tag.live .edit-dot { opacity: 1; box-shadow: 0 0 6px rgba(var(--noct-pending-rgb), .8); animation: noct-pulse 1.4s ease-in-out infinite; }
-@media (prefers-reduced-motion: reduce) { .edit-tag.live .edit-dot { animation: none; } }
+.edit-tag.live .edit-dot, .frame-app.live .edit-dot, .caption-app.live .edit-dot { opacity: 1; box-shadow: 0 0 6px rgba(var(--noct-pending-rgb), .8); animation: noct-pulse 1.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .edit-tag.live .edit-dot, .frame-app.live .edit-dot, .caption-app.live .edit-dot { animation: none; } }
+/* Na miniatura ("LR" com a bolinha antes) e na legenda da prévia grande */
+.frame-app { display: inline-flex; align-items: center; gap: 4px; }
+.frame-app .edit-dot { width: 5px; height: 5px; }
+.caption-app { display: inline-flex; align-items: center; margin: 0 8px 0 2px; vertical-align: middle; }
 /* "LR" / "PS" no canto da miniatura */
 .frame-corner { position: absolute; right: 3px; bottom: 3px; display: flex; gap: 3px; align-items: flex-end; z-index: 2; }
 .frame-corner .frame-ratio { position: static; }

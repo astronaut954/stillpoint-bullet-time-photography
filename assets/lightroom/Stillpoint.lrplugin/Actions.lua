@@ -324,14 +324,7 @@ end
 -- ---------------- Apply photo 01 edit to the session ----------------
 
 -- A foto já tem edição própria no Lightroom? (o SDK nem sempre diz: nesse caso conta a editada no Stillpoint)
-local function sameSettings(a, b)
-	if type(a) ~= type(b) then return false end
-	if type(a) == 'number' then return math.abs(a - b) < 1e-6 end
-	if type(a) ~= 'table' then return a == b end
-	for k, v in pairs(a) do if not sameSettings(v, b[k]) then return false end end
-	for k, _ in pairs(b) do if a[k] == nil then return false end end
-	return true
-end
+local sameSettings = Bridge.same
 
 local function hasOwnEdit(photo, place)
 	-- Com a edição de quando a foto chegou guardada: tem edição = está diferente dela

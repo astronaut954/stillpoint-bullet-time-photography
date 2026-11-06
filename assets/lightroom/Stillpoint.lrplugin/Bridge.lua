@@ -152,6 +152,16 @@ end
 
 function Bridge.importing() return importingCount end
 
+-- Duas edições iguais? (números com tolerância; tabelas por dentro)
+function Bridge.same(a, b)
+	if type(a) ~= type(b) then return false end
+	if type(a) == 'number' then return math.abs(a - b) < 1e-6 end
+	if type(a) ~= 'table' then return a == b end
+	for k, v in pairs(a) do if not Bridge.same(v, b[k]) then return false end end
+	for k, _ in pairs(b) do if a[k] == nil then return false end end
+	return true
+end
+
 -- A edição de uma foto como ela chegou no catálogo (ou depois do Reset do Delete edits)
 function Bridge.setBaseline(path, settings)
 	local LrPrefs = import 'LrPrefs'
@@ -164,6 +174,32 @@ function Bridge.baseline(path)
 	local LrPrefs = import 'LrPrefs'
 	local all = LrPrefs.prefsForPlugin().baselines
 	return all and all[path]
+end
+
+-- Fotos da coleção na ordem do Stillpoint (01, 02, 03...). A ordem própria de uma coleção (Custom Order) é a ordem em
+-- que as fotos entraram: uma foto que volta da lixeira entrava no fim (teste do dono, 2026-11-06). Por isso a coleção
+-- é refeita na ordem certa: tira todas e põe de volta (dentro de uma escrita já aberta)
+local function orderNumber(photo)
+	local name = LrPathUtils.leafName(photo:getRawMetadata('path') or '') or ''
+	return tonumber(name:match('^(%d+)_')) or 9999, name
+end
+local function putInOrder(collection, extra)
+	local all, seen = {}, {}
+	for _, photo in ipairs(collection:getPhotos() or {}) do
+		if not seen[photo] then seen[photo] = true; table.insert(all, photo) end
+	end
+	for _, photo in ipairs(extra or {}) do
+		if not seen[photo] then seen[photo] = true; table.insert(all, photo) end
+	end
+	table.sort(all, function(a, b)
+		local na, sa = orderNumber(a)
+		local nb, sb = orderNumber(b)
+		if na ~= nb then return na < nb end
+		return sa < sb
+	end)
+	local current = collection:getPhotos() or {}
+	if #current > 0 then collection:removePhotos(current) end
+	collection:addPhotos(all)
 end
 
 local function handle(request)
@@ -214,7 +250,7 @@ local function handle(request)
 	local collection
 	catalog:withWriteAccessDo('Stillpoint: collection ' .. tostring(request.title), function()
 		collection = collectionFor(catalog, request)
-		collection:addPhotos(photos)
+		putInOrder(collection, photos)
 	end, { timeout = 60 })
 	-- Como a foto chegou (sem edição): "tem edição" passa a ser "está diferente disso" (teste do dono, 2026-11-06:
 	-- só o histórico do Lightroom contava, e uma foto sem edição, ou depois do Reset, virava "editada")
@@ -321,6 +357,7 @@ end
 local function resetPhotos(request)
 	local LrTasks = import 'LrTasks'
 	local LrDevelopController = import 'LrDevelopController'
+	local LrPrefs = import 'LrPrefs'
 	local catalog = LrApplication.activeCatalog()
 	local photos = {}
 	for _, path in ipairs(request.photos) do
@@ -331,45 +368,75 @@ local function resetPhotos(request)
 		Bridge.note('delete edits: no photos of ' .. tostring(request.session) .. ' in this catalog to reset')
 		return
 	end
-	local before = catalog:getTargetPhoto()
-	local sources = catalog:getActiveSources()
-	LrApplicationView.switchToModule('develop')
-	local done, skipped = 0, 0
-	for _, photo in ipairs(photos) do
-		-- A foto precisa estar na vista atual para ser escolhida: mostra uma coleção (ou pasta) onde ela está
-		local ok = LrTasks.pcall(function()
-			local collections = photo:getContainedCollections()
-			if collections and collections[1] then catalog:setActiveSources(collections)
-			else catalog:setActiveSources({ catalog:getFolderByPath(LrPathUtils.parent(photo:getRawMetadata('path'))) }) end
-		end)
-		-- O Lightroom demora a trocar a vista: tenta escolher a foto algumas vezes
-		for _ = 1, 6 do
-			LrTasks.sleep(0.4)
-			catalog:setSelectedPhotos(photo, {})
-			LrTasks.sleep(0.3)
-			if catalog:getTargetPhoto() == photo then break end
-		end
-		-- Só faz o Reset se a foto ativa é mesmo esta (nunca em outra foto). Antes, guarda a edição: o ⌘Z do Stillpoint
-		-- pede para pôr de volta ("bringback")
-		if catalog:getTargetPhoto() == photo then
-			local LrPrefs = import 'LrPrefs'
-			local prefs = LrPrefs.prefsForPlugin()
-			local saved = prefs.savedEdits or {}
-			saved[photo:getRawMetadata('path')] = photo:getDevelopSettings()
-			prefs.savedEdits = saved
-			LrDevelopController.resetAllDevelopAdjustments()
-			LrTasks.sleep(0.4)
-			LrTasks.pcall(function() Bridge.setBaseline(photo:getRawMetadata('path'), photo:getDevelopSettings()) end)
-			Bridge.setSent(photo:getRawMetadata('path'), nil)  -- o Stillpoint ficou sem a editada
-			done = done + 1
-			LrTasks.sleep(0.2)
-		else
-			skipped = skipped + 1
-			Bridge.problem('delete edits: could not select ' .. tostring(photo:getRawMetadata('path')) .. ' to reset it' .. (ok and '' or ' (no collection or folder)'))
-		end
+	-- Guarda a edição antes de voltar ao original (o ⌘Z do Stillpoint pede para pôr de volta, "bringback"). Uma foto
+	-- que já está no original não troca o que foi guardado (⌘Z e ⌘⇧Z seguidos apagavam a edição guardada)
+	local function save(photo)
+		local path = photo:getRawMetadata('path')
+		local base = Bridge.baseline(path)
+		local now = photo:getDevelopSettings()
+		if base and Bridge.same(now, base) then return false end
+		local prefs = LrPrefs.prefsForPlugin()
+		local saved = prefs.savedEdits or {}
+		saved[path] = now
+		prefs.savedEdits = saved
+		return true
 	end
-	LrTasks.pcall(function() if sources and #sources > 0 then catalog:setActiveSources(sources) end end)
-	if before then LrTasks.pcall(function() catalog:setSelectedPhotos(before, {}) end) end
+	-- Com a foto como chegou guardada: volta a ela direto, sem precisar escolher a foto no Develop (escolher às vezes
+	-- falhava e a foto ficava editada no Lightroom; teste do dono, 2026-11-06)
+	local direct, develop = {}, {}
+	for _, photo in ipairs(photos) do
+		local base = Bridge.baseline(photo:getRawMetadata('path'))
+		if base then table.insert(direct, { photo = photo, base = base }) else table.insert(develop, photo) end
+	end
+	local done, skipped = 0, 0
+	if #direct > 0 then
+		local changed = {}
+		for _, item in ipairs(direct) do
+			if save(item.photo) then table.insert(changed, item) else done = done + 1 end
+		end
+		if #changed > 0 then
+			catalog:withWriteAccessDo('Stillpoint: delete the edit (' .. tostring(request.title) .. ')', function()
+				for _, item in ipairs(changed) do item.photo:applyDevelopSettings(item.base) end
+			end, { timeout = 60 })
+			done = done + #changed
+		end
+		for _, item in ipairs(direct) do Bridge.setSent(item.photo:getRawMetadata('path'), nil) end
+	end
+	if #develop > 0 then
+		local before = catalog:getTargetPhoto()
+		local sources = catalog:getActiveSources()
+		LrApplicationView.switchToModule('develop')
+		for _, photo in ipairs(develop) do
+			-- A foto precisa estar na vista atual para ser escolhida: mostra uma coleção (ou pasta) onde ela está
+			local ok = LrTasks.pcall(function()
+				local collections = photo:getContainedCollections()
+				if collections and collections[1] then catalog:setActiveSources(collections)
+				else catalog:setActiveSources({ catalog:getFolderByPath(LrPathUtils.parent(photo:getRawMetadata('path'))) }) end
+			end)
+			-- O Lightroom demora a trocar a vista: tenta escolher a foto algumas vezes
+			for _ = 1, 6 do
+				LrTasks.sleep(0.4)
+				catalog:setSelectedPhotos(photo, {})
+				LrTasks.sleep(0.3)
+				if catalog:getTargetPhoto() == photo then break end
+			end
+			-- Só faz o Reset se a foto ativa é mesmo esta (nunca em outra foto)
+			if catalog:getTargetPhoto() == photo then
+				save(photo)
+				LrDevelopController.resetAllDevelopAdjustments()
+				LrTasks.sleep(0.4)
+				LrTasks.pcall(function() Bridge.setBaseline(photo:getRawMetadata('path'), photo:getDevelopSettings()) end)
+				Bridge.setSent(photo:getRawMetadata('path'), nil)  -- o Stillpoint ficou sem a editada
+				done = done + 1
+				LrTasks.sleep(0.2)
+			else
+				skipped = skipped + 1
+				Bridge.problem('delete edits: could not select ' .. tostring(photo:getRawMetadata('path')) .. ' to reset it' .. (ok and '' or ' (no collection or folder)'))
+			end
+		end
+		LrTasks.pcall(function() if sources and #sources > 0 then catalog:setActiveSources(sources) end end)
+		if before then LrTasks.pcall(function() catalog:setSelectedPhotos(before, {}) end) end
+	end
 	Bridge.note('delete edits: ' .. done .. ' photos of ' .. tostring(request.session) .. ' back to the original' .. (skipped > 0 and (', ' .. skipped .. ' not found in the view') or ''))
 end
 
@@ -388,8 +455,8 @@ local function bringBack(request)
 	catalog:withWriteAccessDo('Stillpoint: bring back the edit (' .. tostring(request.title) .. ')', function()
 		for _, item in ipairs(list) do item.photo:applyDevelopSettings(item.settings) end
 	end, { timeout = 60 })
-	for _, item in ipairs(list) do saved[item.path] = nil; Bridge.setSent(item.path, item.settings) end
-	prefs.savedEdits = saved
+	-- A edição guardada fica (outro ⌘Z depois de um ⌘⇧Z ainda a encontra); o próximo Delete edits troca por outra
+	for _, item in ipairs(list) do Bridge.setSent(item.path, item.settings) end
 	Bridge.note('bring back edits: ' .. #list .. ' photos of ' .. tostring(request.session))
 end
 
@@ -423,7 +490,7 @@ local function collectionPhotos(request, add)
 	end
 	if #photos == 0 then return end
 	catalog:withWriteAccessDo('Stillpoint: ' .. (add and 'put back ' or 'remove ') .. #photos .. ' photo' .. (#photos == 1 and '' or 's') .. (add and ' in ' or ' from ') .. tostring(request.title), function()
-		if add then collection:addPhotos(photos) else collection:removePhotos(photos) end
+		if add then putInOrder(collection, photos) else collection:removePhotos(photos) end
 	end, { timeout = 60 })
 	Bridge.note((add and 'readd: ' or 'remove: ') .. #photos .. ' photos, collection "' .. tostring(request.title) .. '"')
 	writeAlive()
@@ -438,26 +505,37 @@ local QUEUED = {
 }
 
 local function handleResetFiles()
+	-- Na ordem em que o Stillpoint pediu (o nome é <tipo>-<hora>-<número>): um "pôr de volta" e um "voltar ao
+	-- original" seguidos precisam acontecer nessa ordem
+	local found = {}
 	for path in LrFileUtils.files(Bridge.folder()) do
 		local name = LrPathUtils.leafName(path)
 		for _, q in ipairs(QUEUED) do
 			if name:sub(1, #q[1] + 1) == q[1] .. '-' and name:match('%.txt$') then
-				local text = readAll(path)
-				local request = text and text:find('\nend=1') and parse(text)
-				local otherCatalog = request and request.catalog and request.catalog ~= ''
-					and not samePath(LrApplication.activeCatalog():getPath(), request.catalog)
-				if otherCatalog then
-					Bridge.noteOnce(q[1] .. ' for another catalog, waiting: ' .. tostring(request.session))
-				elseif request then
-					removeFile(path)
-					local LrTasks = import 'LrTasks'
-					local ok, problem = LrTasks.pcall(q[2], request)
-					if not ok then Bridge.problem(q[1] .. ': ' .. tostring(problem)) end
-				end
+				local time, number = name:match('^[%a]+%-(%d+)%-(%d+)%.txt$')
+				table.insert(found, { path = path, q = q, time = tonumber(time) or 0, number = tonumber(number) or 0 })
 			end
 		end
 	end
+	table.sort(found, function(a, b) if a.time ~= b.time then return a.time < b.time end return a.number < b.number end)
+	for _, f in ipairs(found) do
+		local q, path = f.q, f.path
+		local text = readAll(path)
+		local request = text and text:find('\nend=1') and parse(text)
+		local otherCatalog = request and request.catalog and request.catalog ~= ''
+			and not samePath(LrApplication.activeCatalog():getPath(), request.catalog)
+		if otherCatalog then
+			Bridge.noteOnce(q[1] .. ' for another catalog, waiting: ' .. tostring(request.session))
+		elseif request then
+			removeFile(path)
+			local LrTasks = import 'LrTasks'
+			local ok, problem = LrTasks.pcall(q[2], request)
+			if not ok then Bridge.problem(q[1] .. ': ' .. tostring(problem)) end
+		end
+	end
 end
+
+Bridge.handleQueued = handleResetFiles  -- (os testes chamam direto)
 
 -- Uma volta da espera (a cada meio segundo)
 function Bridge.tick()

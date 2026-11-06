@@ -529,7 +529,47 @@ namespace Adobe
 
     bool QueueReset(const std::string& session, const std::vector<fs::path>& photos)
     {
-        return QueuePhotos("reset", session, photos);
+        // Um "pôr a edição de volta" ainda na fila para essas fotos (⌘Z e ⌘⇧Z seguidos): o Lightroom ainda está com
+        // elas no original, então basta tirar as fotos daquele pedido (fazer os dois desencontrava o Lightroom do
+        // Stillpoint; teste do dono, 2026-11-06)
+        std::vector<fs::path> rest = photos;
+        bool known = false;
+        {
+            const auto map = LoadCollections();
+            known = map.find(session) != map.end();
+        }
+        if (!known)
+            return false;
+        std::error_code ec;
+        for (fs::directory_iterator it(BridgeFolder(), ec), end; !ec && it != end; it.increment(ec))
+        {
+            const std::string name = Utf8(it->path().filename());
+            if (name.rfind("bringback-", 0) != 0)
+                continue;
+            const auto pairs = ReadPairs(it->path());
+            if (Value(pairs, "session") != session || Value(pairs, "end") != "1")
+                continue;
+            std::string text;
+            int left = 0;
+            for (const auto& [key, value] : pairs)
+            {
+                if (key == "end")
+                    continue;
+                if (key == "photo")
+                {
+                    const auto found = std::find_if(rest.begin(), rest.end(), [&](const fs::path& p) { return Utf8(p) == value; });
+                    if (found != rest.end()) { rest.erase(found); continue; }
+                    ++left;
+                }
+                text += key + "=" + value + "\n";
+            }
+            std::error_code rec;
+            if (left == 0) fs::remove(it->path(), rec);
+            else WriteWhole(it->path(), text + "end=1\n");
+        }
+        if (rest.empty())
+            return true;  // nada a fazer no Lightroom: as fotos já estão no original lá
+        return QueuePhotos("reset", session, rest);
     }
 
     bool CancelQueued(const std::string& kind, const std::string& session)

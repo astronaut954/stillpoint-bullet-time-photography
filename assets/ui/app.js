@@ -610,9 +610,24 @@
       if (!v) { if (old) old.remove(); return; }
       const b = old || document.createElement("span");
       b.className = "frame-app";
-      b.textContent = v;
+      // A bolinha âmbar da etiqueta "In Lightroom" da sessão, igual: pulsa com o Lightroom aberto no catálogo dela
+      // (pedido do dono, 2026-11-06)
+      b.innerHTML = "<i class=\"edit-dot\"></i>";
+      b.appendChild(document.createTextNode(v));
+      b.classList.toggle("live", !!(opts.appLive && opts.appLive(item)));
       b.title = v === "PS" ? "Open in Photoshop" : "In Lightroom Classic";
       if (!old) frameCorner(li).appendChild(b);  // à direita da etiqueta da proporção
+    }
+    // A mesma bolinha na legenda da prévia grande, quando a foto mostrada está no outro programa
+    function largeDot() {
+      if (!opts.appBadge || !el.caption) return;
+      const item = items[index];
+      const v = item ? opts.appBadge(item) : "";
+      let d = el.caption.querySelector(".caption-app");
+      if (!v) { if (d) d.remove(); return; }
+      if (!d) { d = document.createElement("span"); d.className = "caption-app"; d.innerHTML = "<i class=\"edit-dot\"></i>"; el.caption.insertBefore(d, el.caption.children[1] || null); }
+      d.classList.toggle("live", !!(opts.appLive && opts.appLive(item)));
+      d.title = v === "PS" ? "Open in Photoshop" : "In Lightroom Classic";
     }
     function markSelected(scroll) {
       [...el.carousel.children].forEach((li, i) => {
@@ -665,6 +680,7 @@
       el.caption.children[2].textContent = files.join("  +  ");
       el.caption.children[2].classList.toggle("hidden", !files.length);
       el.caption.classList.remove("hidden");
+      largeDot();
 
       if (!item.file) { el.img.removeAttribute("src"); return message("This camera did not send a photo."); }
       if (!item.previewable) { el.img.removeAttribute("src"); return message("No preview for this file type (" + item.file + ")."); }
@@ -883,7 +899,7 @@
       },
       setHead(title, sub, tag) { el.title.textContent = title || ""; if (tag) el.title.appendChild(tag); el.sub.textContent = sub || ""; },
       refreshMarks() { markSelected(false); },  // (a proporção medida chegou depois das fotos)
-      refreshBadges() { [...el.carousel.children].forEach((li, i) => appBadge(li, items[i])); },
+      refreshBadges() { [...el.carousel.children].forEach((li, i) => appBadge(li, items[i])); largeDot(); },
       setActions(nodes) { el.actions.innerHTML = ""; nodes.forEach((n) => el.actions.appendChild(n)); },
       // Botões sobre a foto grande (canto superior direito)
       setStageTools(nodes) {
@@ -1250,6 +1266,7 @@
     warnItem: (item) => { const r = ratioInfoCached(item.session); return !!(r && r.mixed && r.marked.includes(item.group)); },
     warnLabel: (item) => { const r = ratioInfoCached(item.session); return r ? r.byGroup[item.group] || "" : ""; },
     appBadge: (item) => { const m = editingBySession[item.session]; const v = m && m[item.group]; return v === "lr" ? "LR" : v === "ps" ? "PS" : ""; },
+    appLive: (item) => { try { return lrLive.has(item.session); } catch (e) { return false; } },
     onPick: () => { photoKeys = true; },
     // Arrastar uma miniatura: para o lado muda a ordem; até o botão da lixeira apaga
     freeDrag: true,
@@ -1617,7 +1634,10 @@
   // (editadas que chegaram com Export to Stillpoint; Go to session in Stillpoint)
   function checkLrLive() {
     clearTimeout(lrLiveTimer);
-    const apply = () => document.querySelectorAll(".edit-tag[data-session]").forEach((t) => t.classList.toggle("live", lrLive.has(t.dataset.session)));
+    const apply = () => {
+      document.querySelectorAll(".edit-tag[data-session]").forEach((t) => t.classList.toggle("live", lrLive.has(t.dataset.session)));
+      sessionGallery.refreshBadges();  // a bolinha das miniaturas e da prévia grande segue a da sessão
+    };
     if (typeof window.adobeLive !== "function") { lrLive = new Set(); apply(); return; }
     Promise.resolve(window.adobeLive()).then((r) => {
       lrLive = new Set((r && r.sessions) || []);

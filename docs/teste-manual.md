@@ -1814,6 +1814,10 @@ antes de começar: o Stillpoint troca o plugin pelo novo no próximo "Edit in Li
       "Stillpoint: bring back the edit").
 - [ ] Export to Stillpoint traz a janela do Stillpoint para a frente com a sessão aberta.
 
+- [ ] Foto apagada e restaurada: a ordem das fotos na coleção do Lightroom continua 01, 02, 03 (igual ao Stillpoint).
+- [ ] Delete edit, ⌘Z e ⌘⇧Z várias vezes seguidas numa foto editada: no fim, o Lightroom e o Stillpoint mostram a mesma coisa.
+- [ ] Miniaturas e prévia grande das fotos que estão no Lightroom: bolinha âmbar, pulsando só com o Lightroom aberto.
+
 **Cancel editing (painel do Lightroom)**
 - [ ] Sem mudanças desde o último envio: Cancel editing tira a coleção sem perguntar; o Stillpoint avisa
       "Editing cancelled in Lightroom Classic" e tira o "In Lightroom".
