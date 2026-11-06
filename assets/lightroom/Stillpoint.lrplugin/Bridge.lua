@@ -191,12 +191,19 @@ local function putInOrder(collection, extra)
 	for _, photo in ipairs(extra or {}) do
 		if not seen[photo] then seen[photo] = true; table.insert(all, photo) end
 	end
-	table.sort(all, function(a, b)
-		local na, sa = orderNumber(a)
-		local nb, sb = orderNumber(b)
-		if na ~= nb then return na < nb end
-		return sa < sb
+	-- As chaves são lidas antes de ordenar: ler do catálogo dentro do table.sort dava "Yielding is not allowed within a
+	-- C or metamethod call" (teste do dono, 2026-11-06)
+	local keys = {}
+	for i, photo in ipairs(all) do
+		local n, name = orderNumber(photo)
+		keys[i] = { photo = photo, n = n, name = name }
+	end
+	table.sort(keys, function(a, b)
+		if a.n ~= b.n then return a.n < b.n end
+		return a.name < b.name
 	end)
+	all = {}
+	for i, k in ipairs(keys) do all[i] = k.photo end
 	local current = collection:getPhotos() or {}
 	if #current > 0 then collection:removePhotos(current) end
 	collection:addPhotos(all)

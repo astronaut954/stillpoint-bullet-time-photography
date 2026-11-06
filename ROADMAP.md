@@ -827,7 +827,10 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    dentro do Lightroom (o ⌘Z dele a tira da lixeira); restaurar a editada pela lixeira traz a edição de volta no Lightroom.
    **Anotado para o fim da etapa 20 (pedido do dono, 2026-11-06; não fazer antes de tudo estar polido):** repensar o botão
    "Edit in Lightroom Classic…" da prévia grande e as opções do botão direito das fotos e da sessão, para uma experiência
-   melhor. Feito em 2026-11-06: bolinha âmbar pulsando nas miniaturas e na prévia grande das fotos que estão no Lightroom;
+   melhor. Também para depois (mesmo dia): fotos com proporções diferentes cortadas para 3:2 (na janela do bullet time ou no
+   Export) ficam com a vinheta e outros efeitos de borda do Lightroom no lugar errado depois do corte; soluções propostas
+   (mandar já com o corte aplicado no Lightroom, aviso no painel, cópias já cortadas, efeitos no Stillpoint) — decisão do dono.
+   Feito em 2026-11-06: bolinha âmbar pulsando nas miniaturas e na prévia grande das fotos que estão no Lightroom;
    a coleção do Lightroom refeita na ordem do Stillpoint quando uma foto volta; Delete edits e o ⌘Z dele em fila, na ordem.
 6. **Etapa 21 — Histórico de edição permanente.** Pedido do dono (2026-11-01): um histórico no estilo
    do painel History do Lightroom Classic, **vinculado ao projeto** (o projeto faz o papel do catálogo
