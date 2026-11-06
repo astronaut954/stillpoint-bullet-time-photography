@@ -830,6 +830,8 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    melhor. Também para depois (mesmo dia): fotos com proporções diferentes cortadas para 3:2 (na janela do bullet time ou no
    Export) ficam com a vinheta e outros efeitos de borda do Lightroom no lugar errado depois do corte; soluções propostas
    (mandar já com o corte aplicado no Lightroom, aviso no painel, cópias já cortadas, efeitos no Stillpoint) — decisão do dono.
+   Painel do plugin atrás do Lightroom: opções levadas ao dono (atalho de teclado do Mac para "Show Stillpoint panel",
+   botões do painel também no Stillpoint, informação no painel Metadata do Lightroom) — decisão do dono.
    Feito em 2026-11-06: bolinha âmbar pulsando nas miniaturas e na prévia grande das fotos que estão no Lightroom;
    a coleção do Lightroom refeita na ordem do Stillpoint quando uma foto volta; Delete edits e o ⌘Z dele em fila, na ordem.
 6. **Etapa 21 — Histórico de edição permanente.** Pedido do dono (2026-11-01): um histórico no estilo

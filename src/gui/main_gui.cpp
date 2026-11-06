@@ -2198,14 +2198,20 @@ namespace
         // a coleção é criada de novo se tinha saído). Só para sessões que já foram para o Lightroom.
         auto adobeReadd = [&](const std::string& session, const std::vector<std::string>& files)
         {
+            // Só fotos que voltaram (nunca "todas": uma editada que voltava não trazia nomes e a sessão inteira ia de
+            // novo para o Lightroom), e só para uma sessão que está no Lightroom agora (uma sessão fechada lá não é
+            // reaberta por um Restore aqui; teste do dono, 2026-11-06)
+            if (files.empty())
+                return;
+            {
+                const auto map = LoadEditing();
+                const auto it = map.find(session);
+                if (it == map.end() || it->second.empty())
+                    return;
+            }
             std::vector<std::filesystem::path> paths;
             const auto dir = store.SessionDir(session);
-            if (!files.empty())
-                for (const auto& f : files) paths.push_back(dir / f);
-            else
-                for (const auto& s : store.ListSessions())
-                    if (s.name == session)
-                        for (const auto& p : s.photos) paths.push_back(dir / p.file);
+            for (const auto& f : files) paths.push_back(dir / f);
             Adobe::QueuePhotos("readd", session, paths);
         };
         window.bind("restoreSession", [&](const std::string& request) -> std::string
@@ -2218,11 +2224,19 @@ namespace
             // estava no Lightroom só fica "In Lightroom" de novo por uma ação de dentro do Lightroom, como o ⌘Z dele
             // (decisão do dono, 2026-11-06)
             const bool wholeSession = !args.empty() && !std::filesystem::is_directory(store.SessionDir(args[0]), dirEc);
+            // O item que o Desfazer vai trazer (o mais recente da sessão): editadas não mexem na coleção
+            bool editsOnly = false;
+            {
+                long long best = -1;
+                if (!args.empty())
+                    for (const auto& item : store.ListTrash())
+                        if (item.session == args[0] && !item.restored && item.order > best) { best = item.order; editsOnly = item.editsOnly; }
+            }
             const bool ok = !args.empty() && store.Restore(args[0], error, &restoredFiles);
             if (!ok)
                 Log("Restore failed: " + error);
             // Fotos que voltaram para uma sessão que está aqui: voltam também para a coleção dela no Lightroom
-            if (ok && !wholeSession)
+            if (ok && !wholeSession && !editsOnly)
                 adobeReadd(args[0], restoredFiles);
             emitSessions();
             return Json("restore").Add("ok", ok).Add("error", error).Str();
@@ -2902,6 +2916,10 @@ namespace
             if (switchCatalog)
                 files.push_back(catalog);
             const bool opened = Platform::OpenWithApplication(lr.path, files);
+            // Já aberto: vem para a frente (o "open" sozinho não trazia; pedido do dono, 2026-11-06). O plugin mostra o
+            // painel com "Preparing photos…"
+            if (running)
+                NativeWindow::ActivateApplication(PathToUtf8(lr.path));
             Log(std::string("Lightroom Classic: ") + (opened ? "asked to open " : "could not open ") + PathToUtf8(lr.path) + " (open now: " + (running ? "yes" : "no") +
                 ", plugin answering: " + (alive.fresh ? "yes" : "no") + ", plugin installed: " + Adobe::InstalledPluginVersion() + ")");
             Log("Edit in Lightroom Classic: " + args[0] + " (" + std::to_string(r.photos.size()) + " photos" +

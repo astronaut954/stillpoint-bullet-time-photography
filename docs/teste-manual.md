@@ -1818,8 +1818,15 @@ antes de começar: o Stillpoint troca o plugin pelo novo no próximo "Edit in Li
 - [ ] Delete edit, ⌘Z e ⌘⇧Z várias vezes seguidas numa foto editada: no fim, o Lightroom e o Stillpoint mostram a mesma coisa.
 - [ ] Miniaturas e prévia grande das fotos que estão no Lightroom: bolinha âmbar, pulsando só com o Lightroom aberto.
 
+- [ ] Edit in Lightroom Classic com o Lightroom já aberto: o Lightroom vem para a frente com o painel mostrando
+      "Preparing n photos to edit…".
+- [ ] Export to Stillpoint (painel, menu ou File › Export… › Export To: Stillpoint): o painel vem para a frente.
+- [ ] File › Export… › Export To: Stillpoint com fotos editadas e não editadas: sem erro; só as editadas chegam.
+- [ ] Delete edit numa sessão que já saiu do Lightroom, ⌘Z e ⌘⇧Z rápidos: a sessão não volta para o Lightroom.
+
 **Cancel editing (painel do Lightroom)**
-- [ ] Sem mudanças desde o último envio: Cancel editing tira a coleção sem perguntar; o Stillpoint avisa
+- [ ] Sem edição nenhuma: Cancel editing tira a coleção sem perguntar; com edições já mandadas, pergunta
+      "Cancel editing?" (Cancel editing / Keep editing). Nos dois casos o Stillpoint avisa
       "Editing cancelled in Lightroom Classic" e tira o "In Lightroom".
 - [ ] Com mudanças: pergunta "Discard the changes?" com Discard changes, Keep changes e Cancel; Discard volta as fotos ao
       último envio (ou a como chegaram); Keep deixa as mudanças só no Lightroom; Cancel não faz nada.

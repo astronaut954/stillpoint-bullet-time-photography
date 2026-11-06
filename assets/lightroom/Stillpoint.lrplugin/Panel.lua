@@ -34,7 +34,7 @@ local function refresh(props)
 	props.session = group and (#groups > 1 and (#groups .. ' sessions') or (group.title .. ' · ' .. plural(#group.items, 'photo', 'photos'))) or '—'
 	local importing = Bridge.importing()
 	if importing then
-		props.status = 'Importing ' .. plural(importing, 'photo', 'photos') .. '…'
+		props.status = 'Preparing ' .. plural(importing, 'photo', 'photos') .. ' to edit…'
 		props.canExport = false
 	elseif Actions.state.busy then
 		props.status = Actions.state.text or 'Exporting…'

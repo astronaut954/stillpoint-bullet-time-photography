@@ -10,6 +10,7 @@ namespace NativeWindow
     std::string ChooseApplication(const std::string&, const std::string&) { return ""; }
     std::string DesktopFolder() { return ""; }
     bool MoveToSystemTrash(const std::string&) { return false; }
+    bool ActivateApplication(const std::string&) { return false; }
     std::string ChooseFolder(const std::string&, const std::string&)
     {
         const char* folder = std::getenv("STILLPOINT_TEST_SAVE_FOLDER");

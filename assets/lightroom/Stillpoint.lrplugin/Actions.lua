@@ -164,6 +164,7 @@ end
 
 -- Pergunta e exporta. Roda dentro de uma tarefa do Lightroom (LrTasks).
 function Actions.exportToStillpoint()
+	LrTasks.pcall(function() require('Panel').show() end)  -- o painel vem para a frente (pedido do dono, 2026-11-06)
 	if Actions.state.busy then
 		LrDialogs.message('Stillpoint is already exporting', 'Wait for the export that is running to finish.', 'info')
 		return
@@ -476,6 +477,22 @@ function Actions.cancelEditing()
 			'Discard changes', 'Cancel', 'Keep changes')
 		if answer == 'cancel' then return end
 		discard = answer == 'ok'
+	else
+		-- Sem mudanças por mandar, mas com edição aplicada: confirma antes de fechar (pedido do dono, 2026-11-06)
+		local edited = 0
+		for _, item in ipairs(list) do
+			local ok, has = LrTasks.pcall(function() return hasOwnEdit(item.photo, nil) end)
+			if ok and has then edited = edited + 1 end
+		end
+		if edited > 0 then
+			local answer = LrDialogs.confirm(
+				'Cancel editing?',
+				(edited == 1 and '1 photo of this session has' or (edited .. ' photos of this session have')) .. ' an edit in Lightroom Classic. '
+					.. 'Stillpoint already has ' .. (edited == 1 and 'it' or 'them') .. ', so the edit' .. (edited == 1 and '' or 's') .. ' stay in both programs. '
+					.. 'The session closes in Lightroom Classic.',
+				'Cancel editing', 'Keep editing')
+			if answer ~= 'ok' then return end
+		end
 	end
 	local catalog = LrApplication.activeCatalog()
 	if discard then

@@ -209,6 +209,24 @@ namespace NativeWindow
         return home ? std::string(home) + "/Desktop" : std::string();
     }
 
+    bool ActivateApplication(const std::string& appPath)
+    {
+        id bundle = Send<id>(GetClass("NSBundle"), "bundleWithPath:", NSStringFrom(appPath));
+        id identifier = bundle ? Send<id>(bundle, "bundleIdentifier") : nullptr;
+        if (!identifier)
+            return false;
+        id list = Send<id>(GetClass("NSRunningApplication"), "runningApplicationsWithBundleIdentifier:", identifier);
+        id running = list && Send<unsigned long>(list, "count") > 0 ? Send<id>(list, "firstObject") : nullptr;
+        if (!running)
+            return false;
+        // macOS 14 em diante: o app da frente precisa ceder a vez, senão o outro não vem para a frente
+        id app = Send<id>(GetClass("NSApplication"), "sharedApplication");
+        if (Send<BOOL>(app, "respondsToSelector:", sel_registerName("yieldActivationToApplication:")))
+            Send<void>(app, "yieldActivationToApplication:", running);
+        // NSApplicationActivateAllWindows (1) | NSApplicationActivateIgnoringOtherApps (2)
+        return Send<BOOL>(running, "activateWithOptions:", 3ul);
+    }
+
     bool MoveToSystemTrash(const std::string& path)
     {
         id fm = Send<id>(GetClass("NSFileManager"), "defaultManager");

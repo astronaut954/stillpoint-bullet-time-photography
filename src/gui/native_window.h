@@ -18,6 +18,9 @@ namespace NativeWindow
     std::string DesktopFolder();
     // Manda um arquivo ou pasta para o Lixo do sistema (Mac) / Lixeira (Windows). true = foi.
     bool MoveToSystemTrash(const std::string& path);
+    // Traz para a frente um programa que já está aberto (Mac: o .app; o Stillpoint cede a vez para ele). false = não
+    // estava aberto ou o sistema não deixou. Windows: não faz nada (o Windows já traz o programa aberto pelo arquivo).
+    bool ActivateApplication(const std::string& appPath);
 
     // Antes de a janela fechar, pergunta a canClose(): se devolver false, a janela
     // continua aberta (a página mostra a confirmação e encerra depois). Vale por

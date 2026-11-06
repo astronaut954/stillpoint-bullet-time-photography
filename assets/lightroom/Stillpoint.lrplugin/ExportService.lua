@@ -40,30 +40,49 @@ function service.startDialog(propertyTable)
 	end
 end
 
+-- O que o quadro mostra: preenchido por uma tarefa à parte. A janela Export… monta o quadro fora de uma tarefa, onde o
+-- catálogo não pode ser lido ("Yielding is not allowed within a C or metamethod call"; teste do dono, 2026-11-06)
+local function fill(propertyTable)
+	LrTasks.startAsyncTask(function()
+		local ok, groups = LrTasks.pcall(function() return (Actions.target()) end)
+		groups = ok and groups or {}
+		local first = groups[1]
+		if not first then
+			propertyTable.stillpointProject = '—'
+			propertyTable.stillpointSession = 'Select photos that Stillpoint sent from a project (they are in the project\'s Originals folder).'
+			propertyTable.stillpointGoes = '—'
+			propertyTable.stillpointNames = '—'
+			return
+		end
+		local base = LrPathUtils.removeExtension(first.items[1].place.file)
+		propertyTable.stillpointProject = first.project
+		propertyTable.stillpointSession = #groups == 1 and (first.title .. (first.title ~= first.session and '  (' .. first.session .. ')' or '')) or (#groups .. ' sessions')
+		propertyTable.stillpointGoes = '…/' .. first.project .. '/Edited/' .. (#groups == 1 and first.session or '<each session>') .. '/'
+		propertyTable.stillpointNames = 'the same as the originals (' .. base .. '.tif …)'
+	end, 'Stillpoint export dialog')
+end
+
 local function buildSection(f, propertyTable)
-	-- Fora de uma tarefa (a janela Export… chama assim): pcall comum
-	local ok, groups = pcall(function() return (Actions.target()) end)
-	if not ok then Bridge.problem('export dialog: ' .. tostring(groups)) end
-	groups = ok and groups or {}
-	local first = groups[1]
-	local function line(label, value)
+	propertyTable.stillpointProject = propertyTable.stillpointProject or '…'
+	propertyTable.stillpointSession = propertyTable.stillpointSession or '…'
+	propertyTable.stillpointGoes = propertyTable.stillpointGoes or '…'
+	propertyTable.stillpointNames = propertyTable.stillpointNames or '…'
+	fill(propertyTable)
+	local function line(label, key)
 		return f:row {
 			f:static_text { title = label, width = LrView.share('stillpointLabel'), alignment = 'right', text_color = DIM },
-			f:static_text { title = value, width_in_chars = 50, truncation = 'middle' },
+			f:static_text { title = LrView.bind(key), width_in_chars = 50, truncation = 'middle' },
 		}
 	end
-	local rows = { title = 'Stillpoint', synopsis = 'Edited photos for a Stillpoint project', spacing = f:control_spacing() }
-	if first then
-		local base = LrPathUtils.removeExtension(first.items[1].place.file)
-		table.insert(rows, line('Project', first.project))
-		table.insert(rows, line('Session', #groups == 1 and (first.title .. (first.title ~= first.session and '  (' .. first.session .. ')' or '')) or (#groups .. ' sessions')))
-		table.insert(rows, line('Goes to', '…/' .. first.project .. '/Edited/' .. (#groups == 1 and first.session or '<each session>') .. '/'))
-		table.insert(rows, line('File names', 'the same as the originals (' .. base .. '.tif …)'))
-	else
-		table.insert(rows, f:static_text { title = 'Select photos that Stillpoint sent from a project (they are in the project\'s Originals folder).', width_in_chars = 60, height_in_lines = 2 })
-	end
-	table.insert(rows, f:static_text { title = 'Folder and names are set by Stillpoint. Only the format, size and color below can change.', text_color = DIM })
-	return { rows }
+	return { {
+		title = 'Stillpoint', synopsis = 'Edited photos for a Stillpoint project', spacing = f:control_spacing(),
+		bind_to_object = propertyTable,
+		line('Project', 'stillpointProject'),
+		line('Session', 'stillpointSession'),
+		line('Goes to', 'stillpointGoes'),
+		line('File names', 'stillpointNames'),
+		f:static_text { title = 'Folder and names are set by Stillpoint. Only the format, size and color below can change.', text_color = DIM },
+	} }
 end
 
 function service.sectionsForTopOfDialog(f, propertyTable)
@@ -75,6 +94,8 @@ function service.sectionsForTopOfDialog(f, propertyTable)
 end
 
 function service.processRenderedPhotos(functionContext, exportContext)
+	-- O painel do Stillpoint vem para a frente durante o export (pedido do dono, 2026-11-06)
+	LrTasks.pcall(function() require('Panel').show() end)
 	local exportSession = exportContext.exportSession
 	local settings = exportContext.propertyTable
 	-- photosToExport() devolve um iterador (não uma lista)
@@ -86,10 +107,15 @@ function service.processRenderedPhotos(functionContext, exportContext)
 		for _, photo in ipairs(listOrIterator or {}) do table.insert(photos, photo) end
 	end
 	-- Onde vai cada foto, e quais já têm editada no Stillpoint
-	local places, already, outside = {}, 0, 0
+	local places, already, outside, unedited = {}, 0, 0, 0
 	for _, photo in ipairs(photos) do
 		local place = Actions.placeOf(photo)
-		if place then
+		-- Sem edição no Lightroom: não vai (não vira "editada" no Stillpoint). Decidido antes de começar a gerar os
+		-- arquivos: pular depois disso dava "AgExportRendition:skip(): must not be called after exportSession has
+		-- started rendering" (teste do dono, 2026-11-06)
+		local edited = place and Actions.hasOwnEdit(photo, nil)
+		if place and not edited then unedited = unedited + 1; place = nil
+		elseif place then
 			place.existing = Actions.editedFiles(place)
 			if #place.existing > 0 then already = already + 1 end
 			places[photo] = place
@@ -97,7 +123,7 @@ function service.processRenderedPhotos(functionContext, exportContext)
 			outside = outside + 1
 		end
 	end
-	local count = #photos - outside
+	local count = #photos - outside - unedited
 	local skipExisting = false
 	if already > 0 then
 		local answer = LrDialogs.confirm(
@@ -107,7 +133,7 @@ function service.processRenderedPhotos(functionContext, exportContext)
 				.. (already < count and ' Or export only the photos that do not have one yet.' or ''),
 			'Replace', 'Cancel', already < count and 'Only the new ones' or nil)
 		if answer == 'cancel' then
-			for _, rendition in exportContext:renditions() do rendition:skipRender() end
+			for _, rendition in exportContext:renditions() do LrTasks.pcall(function() rendition:skipRender() end) end
 			return
 		end
 		skipExisting = answer == 'other'
@@ -116,14 +142,26 @@ function service.processRenderedPhotos(functionContext, exportContext)
 	Actions.state.busy = true
 	local bySession, order = {}, {}
 	local done, failed = 0, 0
+	-- 1ª volta: pula o que não vai, antes de qualquer arquivo ser gerado (se o Lightroom já tiver começado a gerar,
+	-- o arquivo é gerado e jogado fora)
+	local todo = {}
 	for _, rendition in exportContext:renditions { stopIfCanceled = true } do
 		local place = places[rendition.photo]
-		-- Sem edição no Lightroom: não vai (não vira "editada" no Stillpoint)
-		if place and not Actions.hasOwnEdit(rendition.photo, nil) then place = nil end
-		if not place or (skipExisting and #place.existing > 0) then
-			rendition:skipRender()
+		local skip = not place or (skipExisting and #place.existing > 0)
+		local discard = false
+		if skip then
+			local ok = LrTasks.pcall(function() rendition:skipRender() end)
+			if not ok then discard = true end
+		end
+		if not skip or discard then table.insert(todo, { rendition = rendition, place = place, discard = discard }) end
+	end
+	-- 2ª volta: espera cada arquivo e põe na pasta Edited
+	for _, job in ipairs(todo) do
+		local rendition, place = job.rendition, job.place
+		local ok, pathOrMessage = rendition:waitForRender()
+		if job.discard then
+			if ok then LrFileUtils.delete(pathOrMessage) end
 		else
-			local ok, pathOrMessage = rendition:waitForRender()
 			if ok then
 				LrFileUtils.createAllDirectories(place.edited)
 				local ext = LrPathUtils.extension(pathOrMessage):lower()

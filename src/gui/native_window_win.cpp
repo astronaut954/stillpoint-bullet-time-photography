@@ -114,6 +114,8 @@ namespace NativeWindow
         return ToUtf8(path);
     }
 
+    bool ActivateApplication(const std::string&) { return false; }
+
     bool MoveToSystemTrash(const std::string& path)
     {
         // SHFileOperation quer a lista terminada em dois zeros
