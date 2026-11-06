@@ -2330,6 +2330,30 @@ namespace
 
         // adobeInfo(): os dois programas (achados? versão?) e o plugin (Settings › Lightroom & Photoshop)
         window.bind("adobeInfo", [&](const std::string&) -> std::string { return adobeInfoJson(); });
+        // adobeLive(): as sessões "In Lightroom" cuja coleção está no catálogo aberto agora no Lightroom (com o plugin
+        // respondendo). A bolinha da etiqueta só pulsa nelas (decisão do dono, 2026-11-06).
+        window.bind("adobeLive", [&](const std::string&) -> std::string
+        {
+            const auto alive = Adobe::ReadAlive();
+            std::string list = "[";
+            bool first = true;
+            if (alive.fresh)
+            {
+                const auto catalogs = Adobe::CollectionCatalogs();
+                for (const auto& [session, groups] : LoadEditing())
+                {
+                    if (groups.empty())
+                        continue;
+                    const auto it = catalogs.find(session);
+                    const bool here = it == catalogs.end() || it->second.empty() || Adobe::SameCatalog(it->second, alive.catalog);
+                    if (!here)
+                        continue;
+                    list += (first ? "" : ",") + JsonString(session);
+                    first = false;
+                }
+            }
+            return Json("adobeLive").Add("running", alive.fresh).Raw("sessions", list + "]").Str();
+        });
         // adobeEditing(): as fotos que estão no Lightroom/Photoshop, por sessão
         window.bind("adobeEditing", [&](const std::string&) -> std::string
         {

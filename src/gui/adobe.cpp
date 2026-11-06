@@ -372,6 +372,24 @@ namespace Adobe
         }
     }
 
+    std::map<std::string, std::string> CollectionCatalogs()
+    {
+        std::map<std::string, std::string> out;
+        for (const auto& [session, where] : LoadCollections())
+            out[session] = where.catalog;
+        return out;
+    }
+
+    bool SameCatalog(const std::string& a, const std::string& b)
+    {
+#ifdef _WIN32
+        auto norm = [](std::string t) { std::replace(t.begin(), t.end(), '/', '\\'); return Lower(t); };
+        return norm(a) == norm(b);
+#else
+        return a == b;
+#endif
+    }
+
     void RememberCollection(const std::string& session, const std::string& project, const std::string& title, const std::string& catalog)
     {
         auto map = LoadCollections();

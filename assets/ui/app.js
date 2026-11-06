@@ -1516,7 +1516,8 @@
     if (!v.length) return null;
     const lr = v.filter((x) => x === "lr").length, ps = v.length - lr;
     const t = document.createElement("span");
-    t.className = "missing-tag edit-tag";
+    t.className = "missing-tag edit-tag" + (lrLive.has(session) ? " live" : "");
+    t.dataset.session = session;
     const dot = document.createElement("span");
     dot.className = "edit-dot";
     t.appendChild(dot);
@@ -1528,12 +1529,16 @@
   }
   // Opção A (decisão do dono, 2026-11-05): a etiqueta fica até o Done editing; a bolinha só pulsa enquanto o
   // Lightroom está aberto com o plugin respondendo. Pergunta ao app a cada 5 s, só enquanto houver etiqueta.
+  // Só nas sessões cuja coleção está no catálogo aberto agora (decisão do dono, 2026-11-06)
   let lrLiveTimer = 0;
+  let lrLive = new Set();
   function checkLrLive() {
     clearTimeout(lrLiveTimer);
-    if (!Object.keys(editingBySession).length || typeof window.adobeInfo !== "function") { document.body.classList.remove("lr-live"); return; }
-    Promise.resolve(window.adobeInfo()).then((r) => {
-      document.body.classList.toggle("lr-live", !!(r && r.plugin && r.plugin.running));
+    const apply = () => document.querySelectorAll(".edit-tag[data-session]").forEach((t) => t.classList.toggle("live", lrLive.has(t.dataset.session)));
+    if (!Object.keys(editingBySession).length || typeof window.adobeLive !== "function") { lrLive = new Set(); apply(); return; }
+    Promise.resolve(window.adobeLive()).then((r) => {
+      lrLive = new Set((r && r.sessions) || []);
+      apply();
     }, () => {}).finally(() => { lrLiveTimer = setTimeout(checkLrLive, 5000); });
   }
   function setAdobeEditing(map) {

@@ -10,6 +10,7 @@
 // O plugin acha essa pasta pelo arquivo bridge-path.txt, que o Stillpoint grava dentro do plugin ao instalar.
 
 #include <filesystem>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -81,6 +82,11 @@ namespace Adobe
     // Sem registro da coleção (sessão mandada antes de existir o registro): usa o projeto e o nome de agora
     bool QueueRemoveCollection(const std::string& session, const std::string& fallbackProject, const std::string& fallbackTitle,
                                const std::string& fallbackCatalog);
+
+    // Sessão -> catálogo onde a coleção dela está ("" = não anotado)
+    std::map<std::string, std::string> CollectionCatalogs();
+    // Mesmo catálogo? (no Windows, sem diferença de maiúsculas e barras)
+    bool SameCatalog(const std::string& a, const std::string& b);
 
     struct Alive
     {
