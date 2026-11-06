@@ -285,6 +285,14 @@ function Actions.exportToStillpoint()
 				end
 			end
 			local done, failed, files = exportGroup(job.group, job.items, colorSpace, progress, doneAll + failedAll, n)
+			-- Como cada foto foi mandada (o Cancel editing compara com isso)
+			local sentNames = {}
+			for _, name in ipairs(files) do sentNames[LrPathUtils.removeExtension(name):lower()] = true end
+			for _, item in ipairs(job.items) do
+				if sentNames[LrPathUtils.removeExtension(item.place.file):lower()] then
+					LrTasks.pcall(function() Bridge.setSent(item.place.path, item.photo:getDevelopSettings()) end)
+				end
+			end
 			doneAll, failedAll = doneAll + done, failedAll + failed
 			local lines = { 'session=' .. job.group.session, 'project=' .. job.group.root, 'count=' .. done, 'failed=' .. failed, 'color=' .. colorSpace,
 				'complete=' .. ((job.group.complete and not skipExisting) and '1' or '0') }
@@ -432,6 +440,63 @@ function Actions.applyPhoto01()
 	end, { timeout = 60 })
 	Bridge.note('apply photo ' .. label .. ' edit: ' .. #targets .. ' photos of ' .. group.session)
 	LrDialogs.showBezel('Photo ' .. label .. ' edit applied to ' .. plural(#targets, 'photo', 'photos'))
+end
+
+-- ---------------- Cancel editing ----------------
+
+-- Para de editar a sessão no Lightroom (pedido do dono, 2026-11-06): se alguma foto mudou desde a última vez que foi
+-- mandada ao Stillpoint (ou desde que chegou, se nunca foi), pergunta se descarta as mudanças. Depois tira a coleção
+-- (como o Done editing) e avisa o Stillpoint (arquivo cancelled-*.txt), que tira o "In Lightroom" da sessão.
+function Actions.cancelEditing()
+	if Actions.state.busy then
+		LrDialogs.message('Stillpoint is exporting', 'Wait for the export that is running to finish.', 'info')
+		return
+	end
+	local groups = Actions.target()
+	if #groups == 0 then
+		LrDialogs.message('Select a photo of a Stillpoint session', 'Cancel editing works on the session of the selected photo.', 'info')
+		return
+	end
+	if #groups > 1 then
+		LrDialogs.message('Photos of more than one session are selected', 'Select photos of one session only.', 'info')
+		return
+	end
+	local group = groups[1]
+	local list = sessionPhotos(group)
+	local changed = {}
+	for _, item in ipairs(list) do
+		local reference = Bridge.sent(item.place.path) or Bridge.baseline(item.place.path)
+		if reference then
+			local ok, now = LrTasks.pcall(function() return item.photo:getDevelopSettings() end)
+			if ok and now and not sameSettings(now, reference) then table.insert(changed, { photo = item.photo, settings = reference }) end
+		end
+	end
+	local discard = false
+	if #changed > 0 then
+		local answer = LrDialogs.confirm(
+			'Discard the changes?',
+			(#changed == 1 and '1 photo of this session was' or (#changed .. ' photos of this session were')) .. ' changed in Lightroom Classic and '
+				.. (#changed == 1 and 'is' or 'are') .. ' not in Stillpoint yet. Discard brings '
+				.. (#changed == 1 and 'it' or 'them') .. ' back to how '
+				.. (#changed == 1 and 'it was' or 'they were') .. ' last sent to Stillpoint (or to how '
+				.. (#changed == 1 and 'it' or 'they') .. ' arrived). Keep leaves the changes in Lightroom Classic only.',
+			'Discard changes', 'Cancel', 'Keep changes')
+		if answer == 'cancel' then return end
+		discard = answer == 'ok'
+	end
+	local catalog = LrApplication.activeCatalog()
+	if discard then
+		catalog:withWriteAccessDo('Stillpoint: discard the changes (' .. tostring(group.title) .. ')', function()
+			for _, item in ipairs(changed) do item.photo:applyDevelopSettings(item.settings) end
+		end, { timeout = 60 })
+	end
+	local projectName = group.collection and group.collection:getParent() and group.collection:getParent():getName() or group.project
+	LrTasks.pcall(Bridge.removeCollection, projectName, group.title)
+	Actions.writeMessage('cancelled', { 'session=' .. group.session, 'project=' .. group.root, 'discarded=' .. (discard and #changed or 0), 'time=' .. os.time() })
+	Bridge.note('cancel editing: ' .. group.session .. (discard and (', ' .. #changed .. ' photos back to how Stillpoint has them') or (#changed > 0 and ', changes kept' or '')))
+	Actions.state.text = 'Editing cancelled' .. (discard and (' · ' .. plural(#changed, 'change', 'changes') .. ' discarded') or '')
+	Actions.state.lastSession = group.session
+	LrDialogs.showBezel('Editing cancelled' .. (discard and (' · ' .. plural(#changed, 'photo', 'photos') .. ' back') or ''))
 end
 
 -- ---------------- Go to session in Stillpoint ----------------

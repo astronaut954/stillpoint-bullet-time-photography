@@ -273,6 +273,24 @@ local function removeCollection(project, title)
 		else collection:delete() end
 	end, { timeout = 60 })
 	Bridge.note('done editing: collection "' .. tostring(title) .. '" removed')
+	writeAlive()  -- a lista nova já sai (o Stillpoint não vê a coleção que acabou de sair)
+end
+
+Bridge.removeCollection = removeCollection
+
+-- A edição de cada foto como foi mandada ao Stillpoint pela última vez (Export to Stillpoint): o "Cancel editing"
+-- do painel compara com ela para saber se há mudanças que o Stillpoint não tem
+function Bridge.setSent(path, settings)
+	local LrPrefs = import 'LrPrefs'
+	local prefs = LrPrefs.prefsForPlugin()
+	local all = prefs.sentEdits or {}
+	all[path] = settings
+	prefs.sentEdits = all
+end
+function Bridge.sent(path)
+	local LrPrefs = import 'LrPrefs'
+	local all = LrPrefs.prefsForPlugin().sentEdits
+	return all and all[path]
 end
 
 local function handleDoneFiles()
@@ -287,10 +305,12 @@ local function handleDoneFiles()
 			if otherCatalog then
 				Bridge.noteOnce('done editing for another catalog, waiting: ' .. tostring(request.title))
 			elseif request then
-				removeFile(path)
+				-- Primeiro tira a coleção e atualiza o alive.txt, só depois apaga o pedido: assim o Stillpoint nunca vê o
+				-- pedido já feito com a lista velha (que ainda tem a coleção) e não acha que ela "voltou"
 				local LrTasks = import 'LrTasks'
 				local ok, problem = LrTasks.pcall(removeCollection, request.project, request.title)
 				if not ok then Bridge.problem('done editing: ' .. tostring(problem)) end
+				removeFile(path)
 			end
 		end
 	end
@@ -340,6 +360,7 @@ local function resetPhotos(request)
 			LrDevelopController.resetAllDevelopAdjustments()
 			LrTasks.sleep(0.4)
 			LrTasks.pcall(function() Bridge.setBaseline(photo:getRawMetadata('path'), photo:getDevelopSettings()) end)
+			Bridge.setSent(photo:getRawMetadata('path'), nil)  -- o Stillpoint ficou sem a editada
 			done = done + 1
 			LrTasks.sleep(0.2)
 		else
@@ -367,7 +388,7 @@ local function bringBack(request)
 	catalog:withWriteAccessDo('Stillpoint: bring back the edit (' .. tostring(request.title) .. ')', function()
 		for _, item in ipairs(list) do item.photo:applyDevelopSettings(item.settings) end
 	end, { timeout = 60 })
-	for _, item in ipairs(list) do saved[item.path] = nil end
+	for _, item in ipairs(list) do saved[item.path] = nil; Bridge.setSent(item.path, item.settings) end
 	prefs.savedEdits = saved
 	Bridge.note('bring back edits: ' .. #list .. ' photos of ' .. tostring(request.session))
 end
@@ -405,6 +426,7 @@ local function collectionPhotos(request, add)
 		if add then collection:addPhotos(photos) else collection:removePhotos(photos) end
 	end, { timeout = 60 })
 	Bridge.note((add and 'readd: ' or 'remove: ') .. #photos .. ' photos, collection "' .. tostring(request.title) .. '"')
+	writeAlive()
 end
 
 -- Pedidos em arquivos <tipo>-*.txt: feitos quando o catálogo deles estiver aberto (senão esperam)

@@ -142,6 +142,7 @@ function service.processRenderedPhotos(functionContext, exportContext)
 					Bridge.problem('export dialog to Stillpoint: could not move ' .. tostring(pathOrMessage) .. ' to ' .. target .. ': ' .. tostring(problem))
 				else
 					done = done + 1
+					LrTasks.pcall(function() Bridge.setSent(place.path, rendition.photo:getDevelopSettings()) end)
 					local key = place.root .. '|' .. place.session
 					if not bySession[key] then bySession[key] = { place = place, files = {} }; table.insert(order, bySession[key]) end
 					table.insert(bySession[key].files, LrPathUtils.leafName(target))

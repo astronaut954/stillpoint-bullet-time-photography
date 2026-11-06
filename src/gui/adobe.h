@@ -120,6 +120,7 @@ namespace Adobe
     struct Alive
     {
         bool fresh = false;    // o plugin escreveu há menos de 5 s
+        long long time = 0;    // quando o plugin escreveu (segundos desde 1970)
         std::string catalog;   // catálogo aberto
         std::string version;   // versão do plugin que está rodando
         // Coleções do Stillpoint no catálogo aberto ("projeto", "coleção"); listsCollections = o plugin mandou a lista
@@ -134,7 +135,7 @@ namespace Adobe
     std::vector<std::string> SessionsBackInCatalog(const Alive& alive, const std::vector<std::string>& editing);
     // Onde a coleção da sessão está anotada (collections.txt), e se ela está no catálogo aberto agora.
     // inCatalog: o Lightroom está nesse catálogo e mandou a lista; present: a coleção existe; files: as fotos dela
-    struct CollectionNow { bool known = false, inCatalog = false, present = false, removalWaiting = false; std::vector<std::string> files; };
+    struct CollectionNow { bool known = false, inCatalog = false, present = false, removalWaiting = false, membersKnown = false; std::vector<std::string> files; };
     CollectionNow CollectionState(const Alive& alive, const std::string& session);
 
     // Recados do plugin (pedaço 2), um arquivo por recado, lidos e apagados aqui:

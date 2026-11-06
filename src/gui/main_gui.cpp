@@ -2213,11 +2213,16 @@ namespace
             const auto args = ParseStringArgs(request);
             std::string error;
             std::vector<std::string> restoredFiles;
+            std::error_code dirEc;
+            // A sessão inteira volta (a pasta dela não existia): não volta para o Lightroom. Uma sessão apagada enquanto
+            // estava no Lightroom só fica "In Lightroom" de novo por uma ação de dentro do Lightroom, como o ⌘Z dele
+            // (decisão do dono, 2026-11-06)
+            const bool wholeSession = !args.empty() && !std::filesystem::is_directory(store.SessionDir(args[0]), dirEc);
             const bool ok = !args.empty() && store.Restore(args[0], error, &restoredFiles);
             if (!ok)
                 Log("Restore failed: " + error);
-            // Fotos que voltaram: voltam também para a coleção da sessão no Lightroom (se ela foi para lá)
-            if (ok)
+            // Fotos que voltaram para uma sessão que está aqui: voltam também para a coleção dela no Lightroom
+            if (ok && !wholeSession)
                 adobeReadd(args[0], restoredFiles);
             emitSessions();
             return Json("restore").Add("ok", ok).Add("error", error).Str();
@@ -2410,9 +2415,41 @@ namespace
         });
 
         std::set<std::string> lrSeen;  // sessões cuja coleção o Stillpoint já viu no catálogo (para notar quando ela some)
+        // Cancel editing no painel do Lightroom: a hora do recado, por sessão. Enquanto o alive.txt for de antes dela, a
+        // coleção que ainda aparece nele não conta como "voltou"
+        std::map<std::string, long long> lrCancelledAt;
         window.bind("adobeLive", [&](const std::string&) -> std::string
         {
             const auto alive = Adobe::ReadAlive();
+            // Cancel editing no painel do Lightroom (pedido do dono, 2026-11-06): a sessão sai do "In Lightroom" aqui
+            std::string cancelledList = "[";
+            {
+                const auto messages = Adobe::TakeMessages("cancelled");
+                if (!messages.empty())
+                {
+                    auto map = LoadEditing();
+                    for (const auto& message : messages)
+                    {
+                        const std::string session = Adobe::MessageValue(message, "session");
+                        if (session.empty())
+                            continue;
+                        long long at = 0;
+                        try { at = std::stoll(Adobe::MessageValue(message, "time")); } catch (...) {}
+                        lrCancelledAt[session] = at > 0 ? at : static_cast<long long>(std::time(nullptr));
+                        map.erase(session);
+                        lrSeen.erase(session);
+                        const std::string discarded = Adobe::MessageValue(message, "discarded");
+                        Log("Lightroom Classic: editing of " + session + " cancelled in the Stillpoint panel"
+                            + (!discarded.empty() && discarded != "0" ? " (" + discarded + " photo(s) back to how Stillpoint has them)" : ""));
+                        cancelledList += std::string(cancelledList.size() > 1 ? "," : "")
+                            + Json().Add("session", session).Add("discarded", discarded.empty() ? 0 : std::atoi(discarded.c_str())).Str();
+                    }
+                    SaveEditing(map);
+                    emitEditing();
+                }
+                for (auto it = lrCancelledAt.begin(); it != lrCancelledAt.end();)
+                    if (alive.fresh && alive.time > it->second) it = lrCancelledAt.erase(it); else ++it;
+            }
             std::string list = "[";
             bool first = true;
             if (alive.fresh)
@@ -2432,26 +2469,46 @@ namespace
             }
             // ⌘Z no Lightroom trouxe de volta a coleção de uma sessão que já tinha saído: ela volta a ficar
             // "In Lightroom" aqui também (decisão do dono, 2026-11-06)
-            std::string backList = "[";
+            std::string backList = "[", restoredBackList = "[";
             {
                 auto map = LoadEditing();
                 std::vector<std::string> editing;
                 for (const auto& [session, groups] : map)
                     if (!groups.empty()) editing.push_back(session);
-                const auto back = Adobe::SessionsBackInCatalog(alive, editing);
+                auto back = Adobe::SessionsBackInCatalog(alive, editing);
+                back.erase(std::remove_if(back.begin(), back.end(), [&](const std::string& x) { return lrCancelledAt.count(x) > 0; }), back.end());
                 if (!back.empty())
                 {
-                    const auto stored = store.ListSessions();
+                    auto stored = store.ListSessions();
                     for (const auto& session : back)
                     {
-                        const auto s = std::find_if(stored.begin(), stored.end(), [&](const StoredSession& x) { return x.name == session; });
-                        if (s == stored.end())
-                            continue;
-                        // Só as fotos que estão na coleção (a lista do plugin); sem lista, todas
                         const auto st = Adobe::CollectionState(alive, session);
+                        if (st.membersKnown && st.files.empty())
+                            continue;  // a coleção está lá, mas sem fotos
+                        auto s = std::find_if(stored.begin(), stored.end(), [&](const StoredSession& x) { return x.name == session; });
+                        if (s == stored.end())
+                        {
+                            // A sessão foi apagada aqui enquanto estava no Lightroom, e o ⌘Z do Lightroom trouxe a coleção
+                            // de volta: ela sai da lixeira e fica "In Lightroom" (decisão do dono, 2026-11-06)
+                            std::string trashId;
+                            for (const auto& item : store.ListTrash())
+                                if (item.session == session && item.wholeSession && !item.isProject && !item.editsOnly && !item.restored && item.parent.empty())
+                                    trashId = item.id;
+                            std::string error;
+                            if (trashId.empty() || !store.RestoreTrashItem(trashId, error))
+                                continue;
+                            Log("Lightroom Classic: " + session + " came back from the trash (undo in Lightroom)");
+                            restoredBackList += std::string(restoredBackList.size() > 1 ? "," : "") + JsonString(session);
+                            emitSessions();
+                            stored = store.ListSessions();
+                            s = std::find_if(stored.begin(), stored.end(), [&](const StoredSession& x) { return x.name == session; });
+                            if (s == stored.end())
+                                continue;
+                        }
+                        // Só as fotos que estão na coleção (a lista do plugin); sem lista, todas
                         for (const auto& photo : s->photos)
                         {
-                            if (!st.files.empty() && std::find(st.files.begin(), st.files.end(), photo.file) == st.files.end())
+                            if (st.membersKnown && std::find(st.files.begin(), st.files.end(), photo.file) == st.files.end())
                                 continue;
                             char group[64];
                             std::snprintf(group, sizeof(group), "%02d_", photo.order);
@@ -2486,7 +2543,7 @@ namespace
                     {
                         lrSeen.insert(session);
                         const auto s = std::find_if(stored.begin(), stored.end(), [&](const StoredSession& x) { return x.name == session; });
-                        if (s != stored.end() && !st.files.empty())
+                        if (s != stored.end() && st.membersKnown)
                         {
                             std::set<std::string> in;
                             for (const auto& photo : s->photos)
@@ -2500,6 +2557,16 @@ namespace
                                 if (g->second == "lr" && !in.count(g->first)) { g = it->second.erase(g); changed = true; } else ++g;
                             for (const auto& g : in)
                                 if (!it->second.count(g)) { it->second[g] = "lr"; changed = true; }
+                        }
+                        // Nenhuma foto sobrou na coleção (todas tiradas pelo Lightroom): sai do "In Lightroom"; pôr uma
+                        // foto de volta (ou o ⌘Z do Lightroom) traz de volta
+                        if (it->second.empty())
+                        {
+                            Log("Lightroom Classic: no photos of " + session + " are left in its collection: not In Lightroom anymore");
+                            goneList += std::string(goneList.size() > 1 ? "," : "") + JsonString(session);
+                            it = map.erase(it);
+                            changed = true;
+                            continue;
                         }
                         ++it;
                     }
@@ -2574,6 +2641,14 @@ namespace
                 emitEditing();
             }
             std::string goTo;
+            // Editadas que chegaram do Lightroom: o Stillpoint vem para a frente com a sessão aberta (pedido do dono, 2026-11-06)
+            if (!exports.empty())
+            {
+                const std::string last = Adobe::MessageValue(exports.back(), "session");
+                const auto sessions = store.ListSessions();
+                if (std::any_of(sessions.begin(), sessions.end(), [&](const StoredSession& x) { return x.name == last; }))
+                    goTo = last;
+            }
             for (const auto& message : Adobe::TakeMessages("goto"))
             {
                 // Pedido velho (o Stillpoint estava fechado quando a pessoa pediu): não abre a sessão do nada
@@ -2585,7 +2660,8 @@ namespace
             if (!goTo.empty())
                 if (auto native = window.window(); native.ok())
                     NativeWindow::Show(native.value());
-            return Json("adobeLive").Add("running", alive.fresh).Raw("sessions", list + "]").Raw("exported", exported + "]").Add("goto", goTo).Raw("back", backList + "]").Raw("gone", goneList + "]").Str();
+            return Json("adobeLive").Add("running", alive.fresh).Raw("sessions", list + "]").Raw("exported", exported + "]").Add("goto", goTo).Raw("back", backList + "]").Raw("gone", goneList + "]")
+                .Raw("restoredBack", restoredBackList + "]").Raw("cancelled", cancelledList + "]").Str();
         });
         // adobeEditing(): as fotos que estão no Lightroom/Photoshop, por sessão
         window.bind("adobeEditing", [&](const std::string&) -> std::string
@@ -4765,12 +4841,38 @@ namespace
                     if (line.rfind("origin=", 0) == 0)
                         projectFolder = line.substr(7);
             }
-            const bool ok = !args.empty() && store.RestoreTrashItem(args[0], error, &files);
-            // Fotos que voltaram: voltam também para a coleção da sessão no Lightroom (se ela foi para lá)
-            if (ok)
+            // O item como estava antes de voltar (depois ele pode sair da lista; foi por isso que a foto restaurada
+            // não voltava para a coleção, teste do dono de 2026-11-06)
+            TrashItem before;
+            bool known = false;
+            if (!args.empty())
                 for (const auto& item : store.ListTrash())
-                    if (item.id == args[0] && !item.editsOnly && !item.session.empty())
-                        adobeReadd(item.session, files);
+                    if (item.id == args[0]) { before = item; known = true; }
+            const bool ok = !args.empty() && store.RestoreTrashItem(args[0], error, &files);
+            if (ok && known && !before.isProject && !before.session.empty())
+            {
+                if (before.editsOnly)
+                {
+                    // Editadas que voltam: a edição volta também no Lightroom (o Delete edits tinha voltado as fotos ao
+                    // original lá). Se a volta ao original ainda não foi feita, ela é cancelada.
+                    if (!Adobe::CancelReset(before.session))
+                    {
+                        std::vector<std::filesystem::path> originals;
+                        const auto dir = store.SessionDir(before.session);
+                        for (const auto& s : store.ListSessions())
+                            if (s.name == before.session)
+                                for (const auto& p : s.photos)
+                                    if (std::find(before.bases.begin(), before.bases.end(), std::filesystem::path(p.file).stem().string()) != before.bases.end())
+                                        originals.push_back(dir / p.file);
+                        if (Adobe::QueuePhotos("bringback", before.session, originals))
+                            Log("Restore: the edit of " + std::to_string(originals.size()) + " photo(s) of " + before.session + " comes back in Lightroom Classic too");
+                    }
+                }
+                // Fotos que voltaram para uma sessão que está aqui: voltam também para a coleção dela no Lightroom.
+                // A sessão inteira não (só uma ação de dentro do Lightroom a põe de volta lá; decisão do dono, 2026-11-06)
+                else if (!before.wholeSession)
+                    adobeReadd(before.session, files);
+            }
             if (ok && !projectFolder.empty())
                 setRecent(projectFolder, true);
             if (ok && !projectFolder.empty())

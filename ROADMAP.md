@@ -820,6 +820,11 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    depois de testar); painel do Lightroom com abas "Not in Lightroom / In Lightroom" com prévias, 12 por página, fechado de começo
    (Add selected, Add all, Remove from Lightroom só tira da coleção) — a fazer; exportar de novo troca a editada nos dois programas
    (B), com pergunta pendente sobre como voltar atrás; coleções identificadas pelo número interno do Lightroom (não pelo nome) — a fazer.
+   Depois (2026-11-06, noite): lixeira D mantida; para voltar atrás uma editada trocada, vale o histórico do Lightroom
+   (regra B, escolhida por mim a pedido do dono: o Lightroom é onde a edição mora e o Stillpoint segue). Cancel editing no
+   painel (pergunta se descarta mudanças que o Stillpoint não tem); Export to Stillpoint traz o Stillpoint para a frente
+   com a sessão; sessão apagada no Stillpoint enquanto estava no Lightroom só volta com "In Lightroom" por uma ação de
+   dentro do Lightroom (o ⌘Z dele a tira da lixeira); restaurar a editada pela lixeira traz a edição de volta no Lightroom.
 6. **Etapa 21 — Histórico de edição permanente.** Pedido do dono (2026-11-01): um histórico no estilo
    do painel History do Lightroom Classic, **vinculado ao projeto** (o projeto faz o papel do catálogo
    do Classic: o histórico mora na pasta dele, vai junto se a pasta for movida e só existe com um

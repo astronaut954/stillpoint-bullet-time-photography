@@ -129,6 +129,8 @@ function Panel.layout(f, props)
 				action = function() run(Actions.applyPhoto01) end },
 			f:push_button { title = 'Go to session in Stillpoint', fill_horizontal = 1, visible = LrView.bind('showGoto'),
 				action = function() run(Actions.goToSession) end },
+			f:push_button { title = 'Cancel editing', fill_horizontal = 1, enabled = LrView.bind('canExport'),
+				action = function() run(Actions.cancelEditing) end },
 		},
 		f:static_text { title = 'Edited photos go to the project\'s Edited folder as 16-bit TIFF. Stillpoint picks them up by itself.',
 			width = WIDTH, height_in_lines = 2, text_color = DIM, font = '<system/small>' },
@@ -147,6 +149,7 @@ function Panel.plainLayout(f, props)
 		f:push_button { title = 'Export to Stillpoint', enabled = LrView.bind('canExport'), action = function() run(Actions.exportToStillpoint) end },
 		f:push_button { title = LrView.bind('applyTitle'), enabled = LrView.bind('canApply'), action = function() run(Actions.applyPhoto01) end },
 		f:push_button { title = 'Go to session in Stillpoint', visible = LrView.bind('showGoto'), action = function() run(Actions.goToSession) end },
+		f:push_button { title = 'Cancel editing', enabled = LrView.bind('canExport'), action = function() run(Actions.cancelEditing) end },
 	}
 end
 

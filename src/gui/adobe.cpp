@@ -565,6 +565,7 @@ namespace Adobe
         try { at = std::stoll(Value(pairs, "time")); } catch (...) {}
         const long long now = static_cast<long long>(std::time(nullptr));
         alive.fresh = at > 0 && now - at < 5 && at - now < 5;
+        alive.time = at;
         alive.catalog = Value(pairs, "catalog");
         alive.version = Value(pairs, "version");
         alive.listsCollections = Value(pairs, "collections") == "1";
@@ -607,7 +608,10 @@ namespace Adobe
         now.present = std::find(alive.collections.begin(), alive.collections.end(), key) != alive.collections.end();
         const auto m = alive.members.find(project + "\t" + it->second.title);
         if (m != alive.members.end())
+        {
             now.files = m->second;
+            now.membersKnown = true;  // a lista veio (pode estar vazia: a coleção ficou sem fotos)
+        }
         std::error_code ec;
         for (fs::directory_iterator d(BridgeFolder(), ec), end; !ec && d != end; d.increment(ec))
         {

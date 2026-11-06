@@ -1627,9 +1627,20 @@
         const s = sessions.find((x) => x.name === name);
         toast("Closed in Lightroom Classic · " + (s ? sessionTitle(s) : sessionLabel(name).date) + " (its collection is gone from the catalog)", 7000);
       });
+      // Sessão apagada aqui que o ⌘Z do Lightroom trouxe de volta: saiu da lixeira; o "apagar" sai do ⌘Z do Stillpoint
+      const restoredBack = (r && r.restoredBack) || [];
+      if (restoredBack.length) {
+        restoredBack.forEach((name) => forgetDelete((t) => (t.sessions || []).includes(name)));
+        refreshSessions();
+        if ($("trashOverlay") && !$("trashOverlay").classList.contains("hidden")) renderTrash();
+      }
       ((r && r.back) || []).forEach((name) => {
         const s = sessions.find((x) => x.name === name);
-        toast("Back in Lightroom Classic · " + (s ? sessionTitle(s) : sessionLabel(name).date) + " (undone in Lightroom)", 7000);
+        toast("Back in Lightroom Classic · " + (s ? sessionTitle(s) : sessionLabel(name).date) + (restoredBack.includes(name) ? " (undone in Lightroom; restored from the trash)" : " (undone in Lightroom)"), 7000);
+      });
+      ((r && r.cancelled) || []).forEach((c) => {
+        const s = sessions.find((x) => x.name === c.session);
+        toast("Editing cancelled in Lightroom Classic · " + (s ? sessionTitle(s) : sessionLabel(c.session).date) + (c.discarded ? " · " + plural(c.discarded, "change", "changes") + " discarded there" : ""), 7000);
       });
       if (r && r.goto) {
         const s = sessions.find((x) => x.name === r.goto);

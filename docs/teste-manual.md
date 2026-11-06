@@ -1807,6 +1807,18 @@ antes de começar: o Stillpoint troca o plugin pelo novo no próximo "Edit in Li
 - [ ] Apagar a sessão, Edit › Undo no Lightroom: a etiqueta "In Lightroom" volta no Stillpoint em poucos segundos.
 - [ ] Remove from Collection no Lightroom: o selo LR some da foto no Stillpoint; Edit › Undo: volta.
 - [ ] Apagar a foto no Stillpoint e restaurar pela lixeira: a foto volta para a coleção no Lightroom.
+- [ ] Remove from Collection em todas as fotos da coleção: a sessão sai do "In Lightroom"; Edit › Undo: volta.
+- [ ] Sessão apagada no Stillpoint enquanto estava no Lightroom: restaurada pelo Stillpoint (Restore ou ⌘Z) volta sem
+      "In Lightroom"; restaurada pelo Edit › Undo do Lightroom sai da lixeira e volta com "In Lightroom".
+- [ ] Delete edit, depois Restore da editada pela lixeira: a edição volta também no Lightroom (histórico com um passo
+      "Stillpoint: bring back the edit").
+- [ ] Export to Stillpoint traz a janela do Stillpoint para a frente com a sessão aberta.
+
+**Cancel editing (painel do Lightroom)**
+- [ ] Sem mudanças desde o último envio: Cancel editing tira a coleção sem perguntar; o Stillpoint avisa
+      "Editing cancelled in Lightroom Classic" e tira o "In Lightroom".
+- [ ] Com mudanças: pergunta "Discard the changes?" com Discard changes, Keep changes e Cancel; Discard volta as fotos ao
+      último envio (ou a como chegaram); Keep deixa as mudanças só no Lightroom; Cancel não faz nada.
 
 ## Resultado
 
