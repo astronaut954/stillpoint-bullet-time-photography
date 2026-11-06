@@ -14,6 +14,10 @@ namespace NativeWindow
     // Escolher um programa (etapa 20, "Locate…" do Lightroom/Photoshop): um .app no Mac, um .exe no Windows.
     // Devolve o caminho, ou vazio se a pessoa cancelou.
     std::string ChooseApplication(const std::string& prompt, const std::string& startFolder = "");
+    // Pasta da Mesa (Desktop) da pessoa (no Windows, a de verdade, mesmo se o OneDrive a mudou de lugar)
+    std::string DesktopFolder();
+    // Manda um arquivo ou pasta para o Lixo do sistema (Mac) / Lixeira (Windows). true = foi.
+    bool MoveToSystemTrash(const std::string& path);
 
     // Antes de a janela fechar, pergunta a canClose(): se devolver false, a janela
     // continua aberta (a página mostra a confirmação e encerra depois). Vale por

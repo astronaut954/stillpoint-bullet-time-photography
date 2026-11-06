@@ -8384,16 +8384,19 @@
         { label: "OK", primary: true },
       ], kvBox([["Found", "Lightroom Classic " + r.version], ["Needed", "Lightroom Classic " + r.minimum + " or newer"]]));
     } else if (r.problem === "catalog") {
-      const box = el("div");
-      box.appendChild(stepsBox(["In Lightroom Classic, choose File › New Catalog…",
-        "Go to this folder (Show folder opens it): " + r.folder,
-        "Name the catalog “" + r.name + "” and click Create (Lightroom Classic makes a folder with that name and restarts with the new catalog).",
-        "Back here, click Try again."]));
-      dialog("Create the project's catalog first", "One catalog per project is on (Settings › Lightroom & Photoshop), and this project has no catalog yet. Lightroom Classic creates catalogs itself:", [
-        { label: "Cancel", link: true, left: true },
-        { label: "Show folder", keep: true, onClick: () => window.adobeShowCatalogFolder() },
-        { label: "Try again", primary: true, onClick: again },
-      ], box);
+      // Sem o catálogo vazio guardado (ou de outra versão do Lightroom): a janela com os slides. Ao achar o catálogo
+      // vazio na Mesa, o app guarda uma cópia e cria o catálogo do projeto; "Send to Lightroom Classic" manda de novo.
+      catGuide.open({
+        variant: r.template === "outdated" ? "updated" : "first",
+        os: upd.info && upd.info.os === "windows" ? "win" : "mac",
+        project: r.name, from: r.templateVersion || "", to: r.lrVersion || "",
+        api: {
+          watch: () => window.adobeTemplateWatch(),
+          send: again,
+          cancel: () => {},
+          openSettings: () => openSettings("adobe"),
+        },
+      });
     } else if (r.problem === "install") {
       dialog("Could not install the Stillpoint plugin", r.error || "The plugin could not be copied to the Lightroom Classic plugin folder.", [{ label: "OK", primary: true }]);
     } else {
@@ -8552,6 +8555,87 @@
     const tools = b.parentElement;
     if (tools && tools.parentElement) tools.parentElement.appendChild(tools);
   }
+
+  // ---- Etapa 20: janela "Create the project's catalog first" com 5 slides (protótipo aprovado em 2026-11-06) ----
+  // catGuide.open({ variant: "first" | "updated", os: "mac" | "win", project, from, to, api })
+  // api: watch() -> Promise({ found, made }) (procura o catálogo vazio na Mesa), send(), cancel(), openSettings()
+  const catGuide = (() => {
+    const $g = (id) => document.getElementById(id);
+    let st = null, timer = 0, advanceTimer = 0;
+    const SLIDES = [
+      { t: "One empty catalog, once", x: () => st.variant === "updated"
+        ? "Stillpoint copies an empty catalog into each project. That empty catalog has to come from the Lightroom Classic you have now."
+        : "Stillpoint copies an empty catalog into each new project. You make that empty catalog in Lightroom Classic, once; Stillpoint keeps a copy." },
+      { t: "Open New Catalog", x: () => "In Lightroom Classic, choose <b>File › New Catalog…</b>" },
+      { t: "Save it on the Desktop", x: () => st.os === "win"
+        ? "Click <b>Desktop</b> on the left, name it <b>Stillpoint Template</b>, and click <b>Create</b>."
+        : "Name it <b>Stillpoint Template</b>, choose <b>Desktop</b> in Where, and click <b>Create</b>." },
+      { t: "Lightroom Classic opens the empty catalog", x: () => "Lightroom Classic restarts with it. Stillpoint finds it on the Desktop and keeps a copy; this step moves on by itself." },
+      { t: "All set", x: () => "Stillpoint made the <b>" + esc(st.project) + "</b> catalog. Lightroom Classic asks <b>Relaunch Lightroom with this Catalog?</b>: click <b>Relaunch</b>. The Stillpoint Template folder on the Desktop goes to the " + (st.os === "win" ? "Recycle Bin" : "Trash") + " by itself." },
+    ];
+    const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    function render() {
+      const box = document.querySelector("#catGuideOverlay .cat-guide");
+      box.dataset.os = st.os;
+      $g("cgHead").textContent = st.variant === "updated" ? "Make a new catalog template" : "Create the project's catalog first";
+      $g("cgLead").textContent = st.variant === "updated"
+        ? "Lightroom Classic was updated (" + st.from + " → " + st.to + ") and the empty catalog Stillpoint keeps is from the old version. Create a new one, the same way as the first time."
+        : "Each project gets its own Lightroom Classic catalog. Stillpoint makes them from one empty catalog that you create once. It takes about a minute.";
+      $g("cgProj1").textContent = st.project;
+      $g("cgRelaunchPath").textContent = "Do you want to relaunch Lightroom with …/" + st.project + "/Lightroom/" + st.project + "/" + st.project + ".lrcat?";
+      document.querySelectorAll("#cgStage .cg-slide").forEach((s, i) => s.classList.toggle("on", i === st.step));
+      const dots = $g("cgDots");
+      if (dots.children.length !== SLIDES.length) { dots.innerHTML = ""; SLIDES.forEach(() => dots.appendChild(document.createElement("span"))); }
+      [...dots.children].forEach((d, i) => d.classList.toggle("on", i === st.step));
+      $g("cgStep").textContent = "Step " + (st.step + 1) + " of " + SLIDES.length;
+      $g("cgTitle").textContent = SLIDES[st.step].t;
+      $g("cgText").innerHTML = SLIDES[st.step].x();
+      const s = $g("cgStatus");
+      s.classList.toggle("hidden", st.step !== 3);
+      s.classList.toggle("found", st.found);
+      $g("cgStatusText").textContent = st.found ? "Found Stillpoint Template on the Desktop. Stillpoint kept a copy." : "Waiting for Stillpoint Template on the Desktop…";
+      $g("cgBack").disabled = st.step === 0;
+      $g("cgNext").textContent = st.step === SLIDES.length - 1 ? "Send to Lightroom Classic" : "Next";
+      $g("cgNext").disabled = st.step === 3 && !st.found;
+      if (st.step === 3 && st.found && !advanceTimer) advanceTimer = setTimeout(() => { advanceTimer = 0; if (st && st.step === 3) { st.step = 4; render(); } }, 1200);
+    }
+    function poll() {
+      clearTimeout(timer);
+      if (!st || st.found) return;
+      Promise.resolve(st.api.watch()).then((r) => {
+        if (!st) return;
+        if (r && r.found) { st.found = true; render(); return; }
+        timer = setTimeout(poll, 1000);
+      }, () => { if (st) timer = setTimeout(poll, 2000); });
+    }
+    function close() {
+      clearTimeout(timer); clearTimeout(advanceTimer); advanceTimer = 0;
+      st = null;
+      $g("catGuideOverlay").classList.add("hidden");
+    }
+    function open(opts) {
+      st = Object.assign({ variant: "first", os: "mac", project: "", from: "", to: "", step: 0, found: false }, opts);
+      $g("catGuideOverlay").classList.remove("hidden");
+      render();
+      poll();
+      $g("cgNext").focus();
+    }
+    $g("cgNext").addEventListener("click", () => {
+      if (!st) return;
+      if (st.step < SLIDES.length - 1) { st.step++; render(); return; }
+      const api = st.api; close(); api.send();
+    });
+    $g("cgBack").addEventListener("click", () => { if (st && st.step > 0) { st.step--; render(); } });
+    $g("cgCancel").addEventListener("click", () => { if (!st) return; const api = st.api; close(); api.cancel && api.cancel(); });
+    $g("cgOpen").addEventListener("click", () => { if (!st) return; const api = st.api; close(); api.openSettings(); });
+    document.addEventListener("keydown", (e) => {
+      if (!st) return;
+      if (e.key === "ArrowRight") { e.preventDefault(); e.stopPropagation(); $g("cgNext").click(); }
+      else if (e.key === "ArrowLeft") { e.preventDefault(); e.stopPropagation(); $g("cgBack").click(); }
+      else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); $g("cgCancel").click(); }
+    }, true);
+    return { open, close, isOpen: () => !!st, _found: () => { if (st) { st.found = true; render(); } } };
+  })();
 
   function sessionContextMenu(e, s) {
     const items = [];

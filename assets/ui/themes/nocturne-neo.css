@@ -1881,3 +1881,147 @@ html.kbd-focus .export-tab.on .export-tab-check input:focus + .save-check { outl
 /* No canto de baixo à direita da foto grande (a legenda da câmera fica embaixo à esquerda) */
 #sessionGallery .stage-tools { top: auto; bottom: 10px; right: 10px; z-index: 2; }
 #sessionGallery .stage-tools .stage-hover { background: rgba(0, 0, 0, .78); }
+
+/* ---------- Etapa 20: janela de criar o catálogo vazio (slides animados; o Lightroom desenhado de forma simples, sem a marca da Adobe) ---------- */
+/* ---- Novo: janela com slides ---- */
+.cat-guide { width: 640px; }
+.cat-guide .cg-lead { padding: 14px 18px 4px; }
+.cat-guide .cg-stage { position: relative; margin: 10px 18px 0; height: 250px; border: 1px solid var(--noct-border); background: #111; overflow: hidden; }
+.cat-guide .cg-slide { position: absolute; inset: 0; opacity: 0; transition: opacity .35s; pointer-events: none; }
+.cat-guide .cg-slide.on { opacity: 1; pointer-events: auto; }
+.cat-guide .cg-cap { padding: 12px 18px 0; min-height: 112px; box-sizing: border-box; }
+.cat-guide .cg-step { font: 700 11px var(--noct-font-mono); letter-spacing: var(--noct-tracking-widest); text-transform: uppercase; color: var(--noct-text-dim); }
+.cat-guide .cg-title { margin-top: 4px; font: 700 16px var(--noct-font-sans); color: var(--noct-text); letter-spacing: .02em; }
+.cat-guide .cg-text { margin-top: 4px; color: var(--noct-text-muted); line-height: 1.5; }
+.cat-guide .cg-text b { color: var(--noct-text); font-weight: 600; }
+.cat-guide .cg-dots { display: flex; gap: 6px; justify-content: center; padding: 10px 0 12px; }
+.cat-guide .cg-dots span { width: 18px; height: 3px; background: var(--noct-border); }
+.cat-guide .cg-dots span.on { background: var(--noct-primary); }
+.cat-guide .cg-status { display: inline-flex; align-items: center; gap: 8px; margin-top: 8px; font: 12px var(--noct-font-mono); color: var(--noct-pending); }
+.cat-guide .cg-status .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--noct-pending); animation: noct-pulse 1.4s ease-in-out infinite; }
+.cat-guide .cg-status.found { color: var(--noct-primary); }
+.cat-guide .cg-status.found .dot { background: var(--noct-primary); animation: none; }
+
+/* ---- Ilustrações: o Lightroom Classic desenhado de forma simples (cinza, sem a marca da Adobe) ---- */
+.cat-guide .lr { position: absolute; inset: 14px 18px; background: #2b2b2b; border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,.6); overflow: hidden; font: 12px -apple-system, "Segoe UI", sans-serif; color: #ddd; }
+.cat-guide .lr-bar { height: 22px; background: #3a3a3a; display: flex; align-items: center; gap: 14px; padding: 0 10px; font-size: 12px; color: #eee; }
+.cat-guide .lr-bar b { font-weight: 700; }
+.cat-guide .lr-bar span.hl { background: #4a7bd4; border-radius: 3px; padding: 1px 6px; margin: 0 -6px; }
+.cat-guide .lr-body { position: absolute; inset: 22px 0 0; background: #1f1f1f; }
+.cat-guide .lr-menu { position: absolute; top: 22px; left: 118px; width: 210px; background: #3b3b3b; border-radius: 6px; box-shadow: 0 6px 16px rgba(0,0,0,.6); padding: 4px; opacity: 0; transform: translateY(-4px); }
+.cat-guide .lr-menu div { padding: 4px 10px; border-radius: 4px; color: #eee; }
+.cat-guide .lr-menu hr { border: 0; border-top: 1px solid #555; margin: 4px 6px; }
+.cat-guide .lr-menu .x-target { position: relative; }
+.cat-guide .cursor { position: absolute; width: 14px; height: 20px; z-index: 5; pointer-events: none; }
+.cat-guide .cursor::before { content: ""; position: absolute; inset: 0; background: #fff; clip-path: polygon(0 0, 0 80%, 25% 62%, 42% 100%, 55% 94%, 40% 58%, 72% 58%); filter: drop-shadow(0 1px 1px #000); }
+/* Slide 2: abre File e para em New Catalog… */
+.cat-guide .s2.on .cg-c2 { animation: cg-c2 4.2s ease-in-out infinite; }
+@keyframes cg-c2 { 0% { left: 320px; top: 160px; } 22% { left: 130px; top: 6px; } 40% { left: 130px; top: 6px; } 62% { left: 150px; top: 34px; } 100% { left: 150px; top: 34px; } }
+.cat-guide .s2.on .lr-menu { animation: cg-m2 4.2s infinite; }
+@keyframes cg-m2 { 0%, 30% { opacity: 0; transform: translateY(-4px); } 34%, 96% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+.cat-guide .s2.on .x-file { animation: cg-f2 4.2s infinite; }
+@keyframes cg-f2 { 0%, 30% { background: transparent; } 34%, 96% { background: #4a7bd4; } 100% { background: transparent; } }
+.cat-guide .s2.on .x-target { animation: cg-t2 4.2s infinite; }
+@keyframes cg-t2 { 0%, 58% { background: transparent; } 62%, 96% { background: #4a7bd4; } 100% { background: transparent; } }
+.cat-guide .x-file { border-radius: 3px; padding: 1px 6px; margin: 0 -6px; }
+/* Slide 3: janela de salvar */
+.cat-guide .x-save { position: absolute; left: 50%; top: 34px; width: 360px; margin-left: -180px; background: #333; border-radius: 8px; box-shadow: 0 10px 24px rgba(0,0,0,.7); padding: 14px 16px; }
+.cat-guide .x-save .x-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.cat-guide .x-save .x-row label { width: 64px; text-align: right; color: #bbb; }
+.cat-guide .x-save .x-field { flex: 1; height: 22px; border-radius: 4px; background: #1e1e1e; border: 1px solid #555; display: flex; align-items: center; padding: 0 6px; color: #fff; overflow: hidden; white-space: nowrap; }
+.cat-guide .x-save .x-typed { display: inline-block; overflow: hidden; white-space: nowrap; width: 0; }
+.cat-guide .x-save .x-caret { display: inline-block; width: 1px; height: 13px; background: #fff; margin-left: 1px; }
+.cat-guide .s3.on .x-typed { animation: cg-type3 5s steps(19) infinite; }
+@keyframes cg-type3 { 0%, 8% { width: 0; } 45%, 100% { width: 19ch; } }
+.cat-guide .x-save .x-where { display: flex; align-items: center; justify-content: space-between; }
+.cat-guide .s3.on .x-where { animation: cg-w3 5s infinite; }
+@keyframes cg-w3 { 0%, 52% { color: #888; } 56%, 100% { color: #fff; } }
+.cat-guide .x-save .x-btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+.cat-guide .x-save .x-btns span { padding: 3px 14px; border-radius: 5px; background: #4d4d4d; color: #eee; }
+.cat-guide .x-save .x-btns span.x-create { background: #2f6fd6; color: #fff; }
+.cat-guide .s3.on .x-create { animation: cg-cr3 5s infinite; }
+@keyframes cg-cr3 { 0%, 84% { filter: none; } 88%, 94% { filter: brightness(1.4); } 100% { filter: none; } }
+.cat-guide .s3.on .cg-c3 { animation: cg-c3 5s ease-in-out infinite; }
+@keyframes cg-c3 { 0% { left: 400px; top: 200px; } 10% { left: 300px; top: 60px; } 48% { left: 300px; top: 60px; } 56% { left: 300px; top: 96px; } 70% { left: 300px; top: 96px; } 84% { left: 430px; top: 140px; } 100% { left: 430px; top: 140px; } }
+/* Slide 4: o Lightroom reinicia vazio */
+.cat-guide .s4 .lr-body { display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 10px; color: #999; }
+.cat-guide .x-spin { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #555; border-top-color: #ccc; }
+.cat-guide .s4.on .x-spin { animation: cg-spin 1s linear infinite; }
+@keyframes cg-spin { to { transform: rotate(360deg); } }
+.cat-guide .s4 .x-empty { opacity: 0; }
+.cat-guide .s4.on .x-empty { animation: cg-e4 4s infinite; }
+.cat-guide .s4.on .x-loading { animation: cg-l4 4s infinite; }
+@keyframes cg-l4 { 0%, 45% { opacity: 1; } 50%, 100% { opacity: 0; } }
+@keyframes cg-e4 { 0%, 48% { opacity: 0; } 54%, 100% { opacity: 1; } }
+.cat-guide .s4 .x-loading, .cat-guide .s4 .x-empty { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.cat-guide .s4 .x-title { position: absolute; top: 4px; left: 0; right: 0; text-align: center; font-size: 11px; color: #aaa; }
+/* Slide 5: Relaunch */
+.cat-guide .x-relaunch { position: absolute; left: 50%; top: 40px; width: 380px; margin-left: -190px; background: #ececec; color: #222; border-radius: 10px; box-shadow: 0 10px 24px rgba(0,0,0,.7); padding: 14px 16px; font-size: 12px; }
+.cat-guide .x-relaunch b { display: block; margin-bottom: 6px; font-size: 13px; }
+.cat-guide .x-relaunch .x-btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+.cat-guide .x-relaunch .x-btns span { padding: 3px 14px; border-radius: 5px; background: #fff; border: 1px solid #ccc; }
+.cat-guide .x-relaunch .x-btns span.x-go { background: #2f6fd6; color: #fff; border-color: #2f6fd6; }
+.cat-guide .s5.on .x-go { animation: cg-cr3 3.4s infinite; }
+.cat-guide .s5.on .cg-c5 { animation: cg-c5 3.4s ease-in-out infinite; }
+@keyframes cg-c5 { 0% { left: 200px; top: 210px; } 50% { left: 470px; top: 150px; } 100% { left: 470px; top: 150px; } }
+/* Slide 1: um catálogo vazio vira o catálogo de cada projeto */
+.cat-guide .s1 .x-flow { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 22px; font: 12px var(--noct-font-mono); color: var(--noct-text-muted); }
+.cat-guide .s1 .x-cat { width: 120px; height: 84px; border: 1px solid var(--noct-border-strong); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-align: center; }
+.cat-guide .s1 .x-cat b { color: var(--noct-text); font-weight: 700; }
+.cat-guide .s1 .x-proj { display: flex; flex-direction: column; gap: 8px; }
+.cat-guide .s1 .x-proj .x-cat { width: 150px; height: 48px; }
+.cat-guide .s1 .x-arrow { color: var(--noct-primary); font-size: 22px; }
+.cat-guide .s1.on .x-proj .x-cat { animation: cg-pop 3s infinite; opacity: 0; }
+.cat-guide .s1.on .x-proj .x-cat:nth-child(2) { animation-delay: .4s; }
+.cat-guide .s1.on .x-proj .x-cat:nth-child(3) { animation-delay: .8s; }
+@keyframes cg-pop { 0% { opacity: 0; transform: translateX(-8px); } 15%, 85% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .cat-guide .cg-slide *, .cat-guide .cg-slide.on * { animation: none !important; } .cat-guide .s1 .x-proj .x-cat, .cat-guide .lr-menu, .cat-guide .s4 .x-empty { opacity: 1 !important; } .cat-guide .x-typed { width: 19ch; } }
+/* Mac x Windows: o que só existe num dos dois */
+.cat-guide[data-os="mac"] .os-win, .cat-guide[data-os="win"] .os-mac { display: none !important; }
+.cat-guide .lr-title { display: none; }
+/* Windows: barra de título com o nome do catálogo e — ☐ ✕, menus dentro da janela, cantos retos */
+.cat-guide[data-os="win"] .lr { border-radius: 0; font-family: "Segoe UI", -apple-system, sans-serif; }
+.cat-guide[data-os="win"] .lr-title { display: flex; justify-content: space-between; align-items: center; height: 24px; padding: 0 10px; background: #1b1b1b; color: #bbb; font-size: 11px; }
+.cat-guide[data-os="win"] .lr-bar { background: #2e2e2e; }
+.cat-guide[data-os="win"] .lr-body { top: 46px; }
+.cat-guide[data-os="win"] .lr-menu { top: 46px; left: 2px; border-radius: 0; }
+.cat-guide[data-os="win"] .lr-menu div { border-radius: 0; }
+.cat-guide[data-os="win"] .x-file { margin: 0 -6px 0 -6px; border-radius: 0; }
+.cat-guide[data-os="win"] .s2.on .cg-c2 { animation-name: cg-c2w; }
+@keyframes cg-c2w { 0% { left: 320px; top: 170px; } 22% { left: 14px; top: 30px; } 40% { left: 14px; top: 30px; } 62% { left: 40px; top: 56px; } 100% { left: 40px; top: 56px; } }
+.cat-guide .x-savewin { position: absolute; left: 50%; top: 20px; width: 420px; margin-left: -210px; background: #2b2b2b; border: 1px solid #555; box-shadow: 0 10px 24px rgba(0,0,0,.7); font-size: 11.5px; }
+.cat-guide .x-wtitle { display: flex; justify-content: space-between; padding: 6px 10px; background: #202020; color: #ddd; }
+.cat-guide .x-wmain { display: flex; height: 64px; border-bottom: 1px solid #444; }
+.cat-guide .x-wnav { width: 110px; border-right: 1px solid #444; padding: 4px 0; }
+.cat-guide .x-wnav div { padding: 2px 10px; color: #ccc; }
+.cat-guide .x-wfiles { flex: 1; background: #232323; }
+.cat-guide .x-wrow { display: flex; align-items: center; gap: 8px; padding: 6px 10px 0; }
+.cat-guide .x-wrow label { width: 78px; text-align: right; color: #bbb; }
+.cat-guide .x-savewin .x-field { border-radius: 0; }
+.cat-guide .x-dim { color: #999; }
+.cat-guide .x-savewin .x-btns { padding: 8px 10px; margin: 0; }
+.cat-guide .x-savewin .x-btns span { border-radius: 0; min-width: 52px; text-align: center; }
+.cat-guide .s3.on .x-wdesk { animation: cg-wd 5s infinite; }
+@keyframes cg-wd { 0%, 52% { background: transparent; } 56%, 100% { background: #3d5a80; color: #fff; } }
+.cat-guide[data-os="win"] .s3.on .cg-c3 { animation-name: cg-c3w; }
+@keyframes cg-c3w { 0% { left: 400px; top: 210px; } 10% { left: 230px; top: 120px; } 48% { left: 230px; top: 120px; } 56% { left: 110px; top: 70px; } 70% { left: 110px; top: 70px; } 84% { left: 380px; top: 170px; } 100% { left: 380px; top: 170px; } }
+.cat-guide[data-os="win"] .x-relaunch { border-radius: 0; background: #f3f3f3; padding: 0 0 12px; }
+.cat-guide[data-os="win"] .x-relaunch > b, .cat-guide[data-os="win"] .x-relaunch > span { display: block; padding: 0 14px; }
+.cat-guide[data-os="win"] .x-relaunch > b { padding-top: 10px; }
+.cat-guide[data-os="win"] .x-relaunch .x-wtitle { background: #e5e5e5; color: #222; }
+.cat-guide[data-os="win"] .x-relaunch .x-btns { padding: 0 14px; }
+.cat-guide[data-os="win"] .x-relaunch .x-btns span { border-radius: 0; }
+.cat-guide[data-os="win"] .s5.on .cg-c5 { animation-name: cg-c5w; }
+@keyframes cg-c5w { 0% { left: 200px; top: 210px; } 50% { left: 380px; top: 152px; } 100% { left: 380px; top: 152px; } }
+.cat-guide .x-big { font-size: 22px; color: #777; }
+
+.cat-guide .dialog-actions { flex-wrap: nowrap; }
+.cat-guide .dialog-actions .btn { white-space: nowrap; }
+/* Janela de salvar do Windows: mesmos campos e botões da do Mac, no desenho do Windows */
+.cat-guide .x-savewin .x-field { flex: 1; height: 20px; background: #1e1e1e; border: 1px solid #555; display: flex; align-items: center; padding: 0 6px; color: #fff; overflow: hidden; white-space: nowrap; }
+.cat-guide .x-savewin .x-typed { display: inline-block; overflow: hidden; white-space: nowrap; width: 0; }
+.cat-guide .x-savewin .x-caret { display: inline-block; width: 1px; height: 12px; background: #fff; margin-left: 1px; }
+.cat-guide .x-savewin .x-wmain { height: 72px; }
+.cat-guide .x-savewin .x-btns { display: flex; justify-content: flex-end; gap: 8px; }
+.cat-guide .x-savewin .x-btns span { padding: 3px 14px; background: #4d4d4d; color: #eee; }
+.cat-guide .x-savewin .x-btns span.x-create { background: #2f6fd6; color: #fff; }

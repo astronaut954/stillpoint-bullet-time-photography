@@ -209,6 +209,92 @@
     </div>
   </div>
 
+  <!-- Etapa 20: criar o catálogo vazio do Lightroom Classic (uma vez), com 5 slides animados. data-os = mac | win -->
+  <div id="catGuideOverlay" class="overlay hidden">
+    <div class="dialog cat-guide" data-os="mac" role="dialog" aria-labelledby="cgHead">
+      <h3 id="cgHead">Create the project's catalog first</h3>
+      <p class="cg-lead" id="cgLead"></p>
+      <div class="cg-stage" id="cgStage" aria-hidden="true">
+        <div class="cg-slide s1">
+          <div class="x-flow">
+            <div class="x-cat"><b>Stillpoint Template</b>empty catalog<br>(made once)</div>
+            <div class="x-arrow">→</div>
+            <div class="x-proj">
+              <div class="x-cat"><b id="cgProj1">TesteFeature</b>project catalog</div>
+              <div class="x-cat"><b>Studio Day</b>project catalog</div>
+              <div class="x-cat"><b>Product Launch</b>project catalog</div>
+            </div>
+          </div>
+        </div>
+        <div class="cg-slide s2">
+          <div class="lr">
+            <div class="lr-title"><span>Lightroom Catalog - Adobe Photoshop Lightroom Classic</span><span class="lr-winbtns">—&nbsp;&nbsp;☐&nbsp;&nbsp;✕</span></div>
+            <div class="lr-bar"><b class="os-mac">Lightroom Classic</b><span class="x-file">File</span><span>Edit</span><span>Library</span><span>Photo</span><span>View</span><span>Window</span></div>
+            <div class="lr-body"></div>
+            <div class="lr-menu"><div class="x-target">New Catalog…</div><div>Open Catalog…</div><div>Open Recent ›</div><hr><div>Import Photos and Video…</div><div>Export…</div></div>
+            <div class="cursor cg-c2"></div>
+          </div>
+        </div>
+        <div class="cg-slide s3">
+          <div class="lr">
+            <div class="lr-title"><span>Lightroom Catalog - Adobe Photoshop Lightroom Classic</span><span class="lr-winbtns">—&nbsp;&nbsp;☐&nbsp;&nbsp;✕</span></div>
+            <div class="lr-bar"><b class="os-mac">Lightroom Classic</b><span>File</span><span>Edit</span><span>Library</span></div>
+            <div class="lr-body"></div>
+            <div class="x-save os-mac">
+              <div class="x-row"><label>Save As:</label><div class="x-field"><span class="x-typed">Stillpoint Template</span><span class="x-caret"></span></div></div>
+              <div class="x-row"><label>Where:</label><div class="x-field x-where"><span>Desktop</span><span>⌄</span></div></div>
+              <div class="x-btns"><span>Cancel</span><span class="x-create">Create</span></div>
+            </div>
+            <div class="x-savewin os-win">
+              <div class="x-wtitle">Create Folder with New Catalog<span>✕</span></div>
+              <div class="x-wmain">
+                <div class="x-wnav"><div>Home</div><div class="x-wdesk">Desktop</div><div>Documents</div><div>Pictures</div></div>
+                <div class="x-wfiles"></div>
+              </div>
+              <div class="x-wrow"><label>File name:</label><div class="x-field"><span class="x-typed">Stillpoint Template</span><span class="x-caret"></span></div></div>
+              <div class="x-wrow"><label>Save as type:</label><div class="x-field x-dim">Catalogs (*.lrcat)</div></div>
+              <div class="x-btns"><span class="x-create">Create</span><span>Cancel</span></div>
+            </div>
+            <div class="cursor cg-c3"></div>
+          </div>
+        </div>
+        <div class="cg-slide s4">
+          <div class="lr">
+            <div class="lr-title"><span>Stillpoint Template - Adobe Photoshop Lightroom Classic</span><span class="lr-winbtns">—&nbsp;&nbsp;☐&nbsp;&nbsp;✕</span></div>
+            <div class="lr-bar"><b class="os-mac">Lightroom Classic</b><span>File</span><span>Edit</span><span>Library</span></div>
+            <div class="lr-body">
+              <div class="x-title os-mac">Stillpoint Template.lrcat</div>
+              <div class="x-loading"><div class="x-spin"></div>Opening the new catalog…</div>
+              <div class="x-empty"><span class="x-big">0 photos</span>An empty catalog</div>
+            </div>
+          </div>
+        </div>
+        <div class="cg-slide s5">
+          <div class="lr">
+            <div class="lr-title"><span>Stillpoint Template - Adobe Photoshop Lightroom Classic</span><span class="lr-winbtns">—&nbsp;&nbsp;☐&nbsp;&nbsp;✕</span></div>
+            <div class="lr-bar"><b class="os-mac">Lightroom Classic</b><span>File</span><span>Edit</span><span>Library</span></div>
+            <div class="lr-body"></div>
+            <div class="x-relaunch"><div class="x-wtitle os-win">Open Catalog<span>✕</span></div><b>Relaunch Lightroom with this Catalog?</b><span id="cgRelaunchPath">Do you want to relaunch Lightroom with …/TesteFeature/Lightroom/TesteFeature/TesteFeature.lrcat?</span><div class="x-btns"><span class="os-mac">Cancel</span><span class="x-go">Relaunch</span><span class="os-win">Cancel</span></div></div>
+            <div class="cursor cg-c5"></div>
+          </div>
+        </div>
+      </div>
+      <div class="cg-cap">
+        <div class="cg-step" id="cgStep"></div>
+        <div class="cg-title" id="cgTitle"></div>
+        <div class="cg-text" id="cgText"></div>
+        <div class="cg-status hidden" id="cgStatus" aria-live="polite"><span class="dot"></span><span id="cgStatusText"></span></div>
+      </div>
+      <div class="cg-dots" id="cgDots"></div>
+      <div class="dialog-actions">
+        <button class="btn btn-link btn-small btn-left" id="cgOpen" type="button">Use the open catalog instead</button>
+        <button class="btn btn-link btn-small" id="cgCancel" type="button">Cancel</button>
+        <button class="btn btn-secondary btn-small" id="cgBack" type="button">Back</button>
+        <button class="btn btn-primary btn-small" id="cgNext" type="button">Next</button>
+      </div>
+    </div>
+  </div>
+
   <div id="dialogOverlay" class="overlay hidden">
     <div class="dialog">
       <h3 id="dialogTitle"></h3>

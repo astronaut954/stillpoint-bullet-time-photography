@@ -372,6 +372,83 @@ namespace Adobe
         }
     }
 
+    namespace
+    {
+        fs::path TemplateFolder() { return BridgeFolder() / "template"; }
+        fs::path TemplateCatalog() { return TemplateFolder() / "Stillpoint Template.lrcat"; }
+        int Major(const std::string& version)
+        {
+            try { return std::stoi(version); } catch (...) { return -1; }
+        }
+        // Copia o .lrcat e, se existir, o -wal ao lado (o Lightroom pode ainda não ter passado tudo para o .lrcat)
+        bool CopyCatalog(const fs::path& from, const fs::path& to, std::string& error)
+        {
+            std::error_code ec;
+            fs::create_directories(to.parent_path(), ec);
+            fs::copy_file(from, to, fs::copy_options::overwrite_existing, ec);
+            if (ec)
+            {
+                error = "Could not copy " + Utf8(from) + " (" + ec.message() + ").";
+                return false;
+            }
+            const fs::path wal = from.parent_path() / (from.filename().string() + "-wal");
+            const fs::path walTo = to.parent_path() / (to.filename().string() + "-wal");
+            if (Exists(wal))
+                fs::copy_file(wal, walTo, fs::copy_options::overwrite_existing, ec);
+            else
+                fs::remove(walTo, ec);
+            return true;
+        }
+    }
+
+    TemplateInfo Template()
+    {
+        TemplateInfo info;
+        info.has = Exists(TemplateCatalog());
+        std::ifstream in(TemplateFolder() / "version.txt");
+        std::getline(in, info.version);
+        if (!info.version.empty() && info.version.back() == '\r')
+            info.version.pop_back();
+        return info;
+    }
+
+    bool TemplateOutdated(const TemplateInfo& info, const std::string& lightroomVersion)
+    {
+        if (!info.has)
+            return false;
+        const int a = Major(info.version), b = Major(lightroomVersion);
+        return a >= 0 && b >= 0 && a != b;
+    }
+
+    fs::path DesktopTemplate(const fs::path& desktop)
+    {
+        return desktop / "Stillpoint Template" / "Stillpoint Template.lrcat";
+    }
+
+    bool SaveTemplate(const fs::path& catalog, const std::string& lightroomVersion, std::string& error)
+    {
+        if (!CopyCatalog(catalog, TemplateCatalog(), error))
+            return false;
+        if (!WriteWhole(TemplateFolder() / "version.txt", lightroomVersion + "\n"))
+        {
+            error = "Could not write inside " + Utf8(TemplateFolder()) + ".";
+            return false;
+        }
+        return true;
+    }
+
+    bool MakeCatalogFromTemplate(const fs::path& target, std::string& error)
+    {
+        if (!Exists(TemplateCatalog()))
+        {
+            error = "There is no empty catalog to copy yet.";
+            return false;
+        }
+        if (Exists(target))
+            return true;
+        return CopyCatalog(TemplateCatalog(), target, error);
+    }
+
     std::map<std::string, std::string> CollectionCatalogs()
     {
         std::map<std::string, std::string> out;

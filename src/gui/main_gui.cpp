@@ -2443,6 +2443,38 @@ namespace
             std::sort(found.begin(), found.end());
             return found.empty() ? direct : found.front();
         };
+        // Pasta "Stillpoint Template" da Mesa, que vai para o Lixo quando o Lightroom já tiver saído dela
+        std::filesystem::path adobeTrashLater;
+        // adobeTemplateWatch(): procura o catálogo vazio na Mesa (a janela dos slides pergunta a cada segundo).
+        // Achou: guarda uma cópia, cria o catálogo do projeto aberto e marca a pasta da Mesa para o Lixo.
+        window.bind("adobeTemplateWatch", [&](const std::string&) -> std::string
+        {
+            const std::string desktop = NativeWindow::DesktopFolder();
+            if (desktop.empty())
+                return Json("adobeTemplate").Add("found", false).Str();
+            const auto file = Adobe::DesktopTemplate(std::filesystem::path(std::u8string(desktop.begin(), desktop.end())));
+            std::error_code ec;
+            if (!std::filesystem::exists(file, ec))
+                return Json("adobeTemplate").Add("found", false).Str();
+            const auto lr = adobeFind(Adobe::Program::Lightroom);
+            std::string error;
+            if (!Adobe::SaveTemplate(file, lr.version, error))
+            {
+                Log("Lightroom empty catalog: " + error);
+                return Json("adobeTemplate").Add("found", false).Add("error", error).Str();
+            }
+            Log("Lightroom empty catalog kept (Lightroom Classic " + lr.version + ")");
+            bool made = false;
+            if (project.Available())
+            {
+                const auto target = project.Root() / "Lightroom" / project.Name() / (project.Name() + ".lrcat");
+                made = Adobe::MakeCatalogFromTemplate(target, error);
+                Log(made ? "Lightroom catalog for " + project.Name() + " made from the empty catalog: " + PathToUtf8(target)
+                         : "Lightroom catalog for " + project.Name() + ": " + error);
+            }
+            adobeTrashLater = file.parent_path();
+            return Json("adobeTemplate").Add("found", true).Add("made", made).Str();
+        });
         // adobeShowCatalogFolder(): cria <Projeto>/Lightroom e mostra no Finder/Explorer
         window.bind("adobeShowCatalogFolder", [&](const std::string&) -> std::string
         {
@@ -2501,8 +2533,24 @@ namespace
                 catalog = projectCatalog();
                 std::error_code ec;
                 if (catalog.empty() || !std::filesystem::exists(catalog, ec))
-                    return Json("adobeEdit").Add("ok", false).Add("problem", "catalog")
-                        .Add("folder", PathToUtf8(catalog.parent_path())).Add("name", project.Name()).Str();
+                {
+                    // Sem catálogo no projeto: copia o catálogo vazio guardado; sem ele (ou de outra versão do
+                    // Lightroom), a página abre a janela com os slides para a pessoa criar um
+                    const auto tpl = Adobe::Template();
+                    const auto target = project.Root() / "Lightroom" / project.Name() / (project.Name() + ".lrcat");
+                    std::string error;
+                    if (!tpl.has || Adobe::TemplateOutdated(tpl, lr.version) || !Adobe::MakeCatalogFromTemplate(target, error))
+                    {
+                        if (!error.empty())
+                            Log("Lightroom catalog for " + project.Name() + ": " + error);
+                        return Json("adobeEdit").Add("ok", false).Add("problem", "catalog")
+                            .Add("template", tpl.has ? (Adobe::TemplateOutdated(tpl, lr.version) ? "outdated" : "error") : "missing")
+                            .Add("templateVersion", tpl.version).Add("lrVersion", lr.version)
+                            .Add("folder", PathToUtf8(target.parent_path())).Add("name", project.Name()).Str();
+                    }
+                    Log("Lightroom catalog for " + project.Name() + " made from the empty catalog: " + PathToUtf8(target));
+                    catalog = target;
+                }
             }
             Adobe::Request r;
             r.id = std::to_string(std::time(nullptr)) + "-" + std::to_string(++adobeNextId);
@@ -2560,6 +2608,14 @@ namespace
             const std::string id = args.empty() ? std::string() : args[0];
             const auto status = Adobe::ReadStatus(id);
             const auto alive = Adobe::ReadAlive();
+            // O Lightroom já saiu do catálogo vazio da Mesa: a pasta vai para o Lixo (decisão do dono, 2026-11-06)
+            if (!adobeTrashLater.empty() && alive.fresh && !alive.catalog.empty()
+                && alive.catalog.rfind(PathToUtf8(adobeTrashLater), 0) != 0)
+            {
+                const std::string folder = PathToUtf8(adobeTrashLater);
+                Log(NativeWindow::MoveToSystemTrash(folder) ? "Moved to the Trash: " + folder : "Could not move to the Trash: " + folder);
+                adobeTrashLater.clear();
+            }
             bool running = alive.fresh;
             if (!running)
             {

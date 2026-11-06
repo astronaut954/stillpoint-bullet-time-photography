@@ -7,6 +7,7 @@
 #include <CoreGraphics/CoreGraphics.h>
 
 #include <algorithm>
+#include <cstdlib>
 #include <map>
 #include <set>
 #include <string>
@@ -200,6 +201,21 @@ namespace NativeWindow
         id path = Send<id>(url, "path");
         const char* utf8 = Send<const char*>(path, "UTF8String");
         return utf8 ? utf8 : "";
+    }
+
+    std::string DesktopFolder()
+    {
+        const char* home = std::getenv("HOME");
+        return home ? std::string(home) + "/Desktop" : std::string();
+    }
+
+    bool MoveToSystemTrash(const std::string& path)
+    {
+        id fm = Send<id>(GetClass("NSFileManager"), "defaultManager");
+        id url = Send<id>(GetClass("NSURL"), "fileURLWithPath:", NSStringFrom(path));
+        if (!fm || !url)
+            return false;
+        return Send<BOOL>(fm, "trashItemAtURL:resultingItemURL:error:", url, static_cast<id*>(nullptr), static_cast<id*>(nullptr));
     }
 
     std::string ChooseApplication(const std::string& prompt, const std::string& startFolder)

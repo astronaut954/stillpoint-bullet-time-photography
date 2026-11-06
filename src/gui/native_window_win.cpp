@@ -3,6 +3,8 @@
 #include <windows.h>
 #include <commctrl.h>
 #include <shobjidl.h>
+#include <shellapi.h>
+#include <shlobj.h>
 
 #include <string>
 #include <vector>
@@ -102,6 +104,26 @@ namespace NativeWindow
         }
         dialog->Release();
         return result;
+    }
+
+    std::string DesktopFolder()
+    {
+        wchar_t path[MAX_PATH] = {};
+        if (FAILED(SHGetFolderPathW(nullptr, CSIDL_DESKTOPDIRECTORY, nullptr, 0, path)))
+            return "";
+        return ToUtf8(path);
+    }
+
+    bool MoveToSystemTrash(const std::string& path)
+    {
+        // SHFileOperation quer a lista terminada em dois zeros
+        std::wstring from = ToWide(path);
+        from.push_back(L'\0');
+        SHFILEOPSTRUCTW op{};
+        op.wFunc = FO_DELETE;
+        op.pFrom = from.c_str();
+        op.fFlags = FOF_ALLOWUNDO | FOF_NOCONFIRMATION | FOF_SILENT | FOF_NOERRORUI;
+        return SHFileOperationW(&op) == 0 && !op.fAnyOperationsAborted;
     }
 
     std::string ChooseApplication(const std::string& prompt, const std::string& startFolder)

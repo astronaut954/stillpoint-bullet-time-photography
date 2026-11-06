@@ -83,6 +83,23 @@ namespace Adobe
     bool QueueRemoveCollection(const std::string& session, const std::string& fallbackProject, const std::string& fallbackTitle,
                                const std::string& fallbackCatalog);
 
+    // ---- Catálogo vazio ("Stillpoint Template"), criado uma vez pela pessoa no Lightroom Classic ----
+    // A pessoa salva com File › New Catalog… na Mesa; o Stillpoint guarda uma cópia (só o .lrcat, e o -wal se
+    // houver) em <pasta de dados>/lightroom/template, com a versão do Lightroom, e copia para cada projeto.
+    struct TemplateInfo
+    {
+        bool has = false;
+        std::string version;   // versão do Lightroom quando o modelo foi guardado
+    };
+    TemplateInfo Template();
+    // O modelo é de outra versão principal do Lightroom (15 x 16)?
+    bool TemplateOutdated(const TemplateInfo& info, const std::string& lightroomVersion);
+    // <Mesa>/Stillpoint Template/Stillpoint Template.lrcat (o New Catalog cria a pasta com o nome)
+    std::filesystem::path DesktopTemplate(const std::filesystem::path& desktop);
+    bool SaveTemplate(const std::filesystem::path& catalog, const std::string& lightroomVersion, std::string& error);
+    // Cria o catálogo do projeto a partir do modelo (não sobrescreve um que já exista)
+    bool MakeCatalogFromTemplate(const std::filesystem::path& target, std::string& error);
+
     // Sessão -> catálogo onde a coleção dela está ("" = não anotado)
     std::map<std::string, std::string> CollectionCatalogs();
     // Mesmo catálogo? (no Windows, sem diferença de maiúsculas e barras)
