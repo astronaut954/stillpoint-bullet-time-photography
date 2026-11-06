@@ -123,7 +123,7 @@ function service.processRenderedPhotos(functionContext, exportContext)
 				local key = place.root .. '|' .. place.session
 				clearedBy[key] = clearedBy[key] or { place = place, files = {} }
 				table.insert(clearedBy[key].files, place.file)
-				LrTasks.pcall(function() Bridge.setSent(place.path, nil) end)
+				LrTasks.pcall(function() Bridge.setSent(place.path, photo:getDevelopSettings()) end)
 			end
 			place = nil
 		elseif place then

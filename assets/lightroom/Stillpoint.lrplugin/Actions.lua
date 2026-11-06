@@ -205,7 +205,7 @@ function Actions.exportToStillpoint()
 				local lines = { 'session=' .. group.session, 'project=' .. group.root, 'count=0', 'failed=0', 'complete=0' }
 				for _, item in ipairs(group.cleared) do
 					table.insert(lines, 'cleared=' .. item.place.file)
-					LrTasks.pcall(function() Bridge.setSent(item.place.path, nil) end)
+					LrTasks.pcall(function() Bridge.setSent(item.place.path, item.photo:getDevelopSettings()) end)
 				end
 				Actions.writeMessage('exported', lines)
 				Bridge.note('export to Stillpoint: ' .. group.session .. ', ' .. #group.cleared .. ' edits removed (no edit in Lightroom anymore)')
@@ -339,7 +339,7 @@ function Actions.exportToStillpoint()
 			for _, name in ipairs(files) do table.insert(lines, 'file=' .. name) end
 			for _, item in ipairs(job.group.cleared or {}) do
 				table.insert(lines, 'cleared=' .. item.place.file)
-				LrTasks.pcall(function() Bridge.setSent(item.place.path, nil) end)
+				LrTasks.pcall(function() Bridge.setSent(item.place.path, item.photo:getDevelopSettings()) end)
 			end
 			if done > 0 or failed > 0 then Actions.writeMessage('exported', lines) end
 			Bridge.note('export to Stillpoint: ' .. job.group.session .. ', ' .. done .. ' exported, ' .. failed .. ' failed, ' .. colorSpace)
@@ -506,9 +506,16 @@ function Actions.cancelEditing()
 	local changed = {}
 	for _, item in ipairs(list) do
 		local path = item.place.path
-		local reference, from = Bridge.sent(path), 'last export'
+		-- O que o Stillpoint tem: com editada, a edição do último envio; sem editada, a foto original (como chegou).
+		-- "Quando a sessão abriu" só quando não se sabe o resto (fotos antigas). Antes a abertura vinha na frente, e
+		-- uma edição tirada e mandada ainda contava como mudança (teste automático, 2026-11-06)
+		local reference, from
+		if #Actions.editedFiles(item.place) > 0 then
+			reference, from = Bridge.sent(path), 'last export'
+		else
+			reference, from = Bridge.baseline(path), 'how it arrived (Stillpoint has no edit)'
+		end
 		if not reference then reference, from = Bridge.opened(path), 'when the session opened' end
-		if not reference then reference, from = Bridge.baseline(path), 'how it arrived' end
 		local ok, now = LrTasks.pcall(function() return item.photo:getDevelopSettings() end)
 		local differs = reference and ok and now and not sameSettings(now, reference)
 		if differs then table.insert(changed, { photo = item.photo, settings = reference }) end
@@ -521,9 +528,8 @@ function Actions.cancelEditing()
 			'Discard the changes?',
 			(#changed == 1 and '1 photo of this session was' or (#changed .. ' photos of this session were')) .. ' changed in Lightroom Classic and '
 				.. (#changed == 1 and 'is' or 'are') .. ' not in Stillpoint yet. Discard brings '
-				.. (#changed == 1 and 'it' or 'them') .. ' back to how '
-				.. (#changed == 1 and 'it was' or 'they were') .. ' last sent to Stillpoint (or, if never sent, to how '
-				.. (#changed == 1 and 'it was' or 'they were') .. ' when the session opened). Close and keep changes leaves them in Lightroom Classic only.',
+				.. (#changed == 1 and 'it' or 'them') .. ' back to how Stillpoint has '
+				.. (#changed == 1 and 'it' or 'them') .. ' (the last export, or the original if Stillpoint has no edit). Close and keep changes leaves them in Lightroom Classic only.',
 			'Discard changes', 'Keep editing', 'Close and keep changes')
 		if answer == 'cancel' then return end
 		discard = answer == 'ok'
