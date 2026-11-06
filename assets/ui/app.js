@@ -6127,7 +6127,7 @@
     if (!lr.found) lrBtns.push(button("Get Lightroom Classic", () => window.adobeGetApp("lightroom"), { kind: "btn-link" }));
     status("settingsLrButtons", lrBtns);
     $("settingsLrCatalog").innerHTML = "";
-    $("settingsLrCatalog").appendChild(segmented([["open", "The open catalog"], ["project", "One catalog per project"]], i.catalog || "open", (v) => {
+    $("settingsLrCatalog").appendChild(segmented([["open", "The open catalog"], ["project", "One catalog per project"]], i.catalog || "project", (v) => {
       Promise.resolve(window.adobeSetCatalog(v)).then((x) => { if (x) adobe.info = x; renderAdobeSettings(); log("Lightroom catalog: " + (v === "project" ? "one per project" : "the open catalog"), "tech"); });
     }));
     status("settingsPsStatus", [ps.found ? dot(true, "Found: Photoshop " + (ps.version || "")) : dot(false, "Not found")]);

@@ -804,6 +804,10 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    photo" manda só a foto; várias fotos selecionadas podem ir juntas; bolinha da etiqueta pulsa só com o Lightroom
    aberto (opção A). Para o pedaço 2: exportar de novo uma foto que já tem editada no Stillpoint pergunta antes de
    trocar; "Apply photo 01 to all" pergunta se sobrescreve as fotos que já têm edição ou aplica só nas sem edição.
+   Catálogo: um por projeto é o padrão, "The open catalog" continua como opção (2026-11-05). Criação do catálogo do
+   projeto: opção A (modelo vazio criado uma vez pela pessoa, copiado pelo Stillpoint para cada projeto), com slides
+   animados passo a passo dentro da janela "Create the project's catalog first" (protótipo antes); o app detecta quando
+   refazer o modelo (Lightroom atualizado, catálogo convertido, modelo sumido) e oferece "Use the open catalog instead".
 6. **Etapa 21 — Histórico de edição permanente.** Pedido do dono (2026-11-01): um histórico no estilo
    do painel History do Lightroom Classic, **vinculado ao projeto** (o projeto faz o papel do catálogo
    do Classic: o histórico mora na pasta dele, vai junto se a pasta for movida e só existe com um

@@ -345,51 +345,55 @@ namespace Adobe
 
     namespace
     {
-        std::map<std::string, std::pair<std::string, std::string>> LoadCollections()
+        struct Where { std::string project, title, catalog; };
+        std::map<std::string, Where> LoadCollections()
         {
-            std::map<std::string, std::pair<std::string, std::string>> out;
+            std::map<std::string, Where> out;
             std::ifstream in(BridgeFolder() / "collections.txt", std::ios::binary);
             for (std::string line; std::getline(in, line);)
             {
                 if (!line.empty() && line.back() == '\r')
                     line.pop_back();
-                const auto a = line.find('\t');
-                const auto b = a == std::string::npos ? a : line.find('\t', a + 1);
-                if (b != std::string::npos)
-                    out[line.substr(0, a)] = { line.substr(a + 1, b - a - 1), line.substr(b + 1) };
+                std::vector<std::string> parts;
+                std::stringstream cells(line);
+                for (std::string cell; std::getline(cells, cell, '\t');)
+                    parts.push_back(cell);
+                if (parts.size() >= 3)
+                    out[parts[0]] = { parts[1], parts[2], parts.size() > 3 ? parts[3] : std::string() };
             }
             return out;
         }
-        void SaveCollections(const std::map<std::string, std::pair<std::string, std::string>>& map)
+        void SaveCollections(const std::map<std::string, Where>& map)
         {
             std::ostringstream text;
             for (const auto& [session, where] : map)
-                text << session << '\t' << OneLine(where.first) << '\t' << OneLine(where.second) << '\n';
+                text << session << '\t' << OneLine(where.project) << '\t' << OneLine(where.title) << '\t' << OneLine(where.catalog) << '\n';
             WriteWhole(BridgeFolder() / "collections.txt", text.str());
         }
     }
 
-    void RememberCollection(const std::string& session, const std::string& project, const std::string& title)
+    void RememberCollection(const std::string& session, const std::string& project, const std::string& title, const std::string& catalog)
     {
         auto map = LoadCollections();
-        map[session] = { project, title };
+        map[session] = { project, title, catalog };
         SaveCollections(map);
     }
 
-    bool QueueRemoveCollection(const std::string& session, const std::string& fallbackProject, const std::string& fallbackTitle)
+    bool QueueRemoveCollection(const std::string& session, const std::string& fallbackProject, const std::string& fallbackTitle,
+                               const std::string& fallbackCatalog)
     {
         auto map = LoadCollections();
         if (map.find(session) == map.end())
         {
             if (fallbackTitle.empty())
                 return false;
-            map[session] = { fallbackProject, fallbackTitle };
+            map[session] = { fallbackProject, fallbackTitle, fallbackCatalog };
         }
         const auto it = map.find(session);
         // Um arquivo por pedido: o plugin pega todos os done-*.txt quando estiver aberto
         static int counter = 0;
         const std::string name = "done-" + std::to_string(std::time(nullptr)) + "-" + std::to_string(++counter) + ".txt";
-        const bool ok = WriteWhole(BridgeFolder() / name, "project=" + OneLine(it->second.first) + "\ntitle=" + OneLine(it->second.second) + "\nend=1\n");
+        const bool ok = WriteWhole(BridgeFolder() / name, "project=" + OneLine(it->second.project) + "\ntitle=" + OneLine(it->second.title) + "\ncatalog=" + OneLine(it->second.catalog) + "\nend=1\n");
         if (ok)
         {
             map.erase(it);

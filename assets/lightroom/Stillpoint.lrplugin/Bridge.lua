@@ -219,9 +219,14 @@ local function handleDoneFiles()
 		local name = LrPathUtils.leafName(path)
 		if name:match('^done%-.*%.txt$') then
 			local text = readAll(path)
-			if text and text:find('\nend=1') then
+			local request = text and text:find('\nend=1') and parse(text)
+			-- Coleção de outro catálogo (um por projeto): fica esperando o Lightroom abrir aquele catálogo
+			local otherCatalog = request and request.catalog and request.catalog ~= ''
+				and not samePath(LrApplication.activeCatalog():getPath(), request.catalog)
+			if otherCatalog then
+				Bridge.noteOnce('done editing for another catalog, waiting: ' .. tostring(request.title))
+			elseif request then
 				removeFile(path)
-				local request = parse(text)
 				local LrTasks = import 'LrTasks'
 				local ok, problem = LrTasks.pcall(removeCollection, request.project, request.title)
 				if not ok then Bridge.problem('done editing: ' .. tostring(problem)) end

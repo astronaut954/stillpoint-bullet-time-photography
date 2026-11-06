@@ -1868,7 +1868,8 @@ body.lr-live .edit-dot { opacity: 1; box-shadow: 0 0 6px rgba(var(--noct-pending
   color: var(--noct-text); font: 700 9px/14px var(--noct-font-mono); letter-spacing: .08em; z-index: 2; pointer-events: none; }
 /* Botão sobre a foto grande: aparece com o mouse em cima da foto */
 .stage .stage-tools .stage-hover { opacity: 0; transition: opacity .15s; }
-.stage:hover .stage-tools .stage-hover, .stage .stage-tools .stage-hover:focus-visible { opacity: 1; }
+/* Aparece e some junto com os controles do play (mouse parado 2 s: some) */
+.stage:has(.stage-ctrls.show) .stage-tools .stage-hover, .stage .stage-tools .stage-hover:hover, .stage .stage-tools .stage-hover:focus-visible { opacity: 1; }
 /* Janelas de aviso: passos numerados e pares nome/valor */
 .dialog .dialog-extra { padding: 0 20px 12px; }
 .dlg-steps { margin: 10px 0 0; padding-left: 20px; line-height: 1.7; color: var(--noct-text); }

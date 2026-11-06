@@ -2301,7 +2301,8 @@ namespace
         {
             const auto settings = LoadSettings();
             const auto it = settings.find("lightroomCatalog");
-            return it != settings.end() && it->second == "project" ? std::string("project") : std::string("open");
+            // Padrão: um catálogo por projeto (decisão do dono, 2026-11-05); "open" só se a pessoa escolher
+            return it != settings.end() && it->second == "open" ? std::string("open") : std::string("project");
         };
         auto adobeProgramJson = [&](const Adobe::Found& f, bool lightroom)
         {
@@ -2555,7 +2556,7 @@ namespace
                         // Onde a sessão ficou no Lightroom (para o Done editing tirar a coleção certa, mesmo se o rótulo mudar)
                         const auto sent = adobeSent.find(id);
                         if (sent != adobeSent.end())
-                            Adobe::RememberCollection(it->second.first, sent->second.first, sent->second.second);
+                            Adobe::RememberCollection(it->second.first, sent->second.first, sent->second.second, status.catalog);
                         emitEditing();
                         Log("Lightroom Classic: " + it->second.first + " is in the collection (" + std::to_string(status.added) + " new in the catalog)");
                     }
@@ -2590,7 +2591,7 @@ namespace
                 // A sessão inteira: a coleção dela sai do Lightroom (as fotos e as edições ficam no catálogo). Com o
                 // Lightroom fechado, o plugin tira quando ele abrir.
                 map.erase(args[0]);
-                if (Adobe::QueueRemoveCollection(args[0], "", ""))
+                if (Adobe::QueueRemoveCollection(args[0], "", "", ""))
                     Log("Done editing: the Lightroom Classic collection of " + args[0] + " will be removed");
             }
             else
@@ -2613,7 +2614,15 @@ namespace
             auto map = LoadEditing();
             map.erase(args[0]);
             SaveEditing(map);
-            if (Adobe::QueueRemoveCollection(args[0], projectName, args.size() > 1 ? args[1] : std::string()))
+            std::string catalogNow;
+            if (adobeCatalogMode() == "project" && s != sessions.end() && s->inProject)
+            {
+                const auto c = projectCatalog();
+                std::error_code ec;
+                if (!c.empty() && std::filesystem::exists(c, ec))
+                    catalogNow = PathToUtf8(c);
+            }
+            if (Adobe::QueueRemoveCollection(args[0], projectName, args.size() > 1 ? args[1] : std::string(), catalogNow))
                 Log("Done editing: the Lightroom Classic collection of " + args[0] + " will be removed");
             emitEditing();
             return Json("adobeEditing").Raw("sessions", EditingJson(LoadEditing())).Str();
