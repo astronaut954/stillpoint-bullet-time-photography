@@ -1143,6 +1143,10 @@ body.timing-open .app { --controls-h: clamp(320px, 64vh, 720px); }
   font: 700 10px var(--noct-font-mono); text-transform: uppercase; letter-spacing: .08em; white-space: nowrap; }
 .project-tag.ok { background: var(--noct-primary); color: var(--noct-on-primary); border-color: var(--noct-primary); }
 .project-tag.part { border-color: var(--noct-pending); color: var(--noct-pending); }
+/* Com editadas a etiqueta é um botão (liga e desliga as editadas); desligada: só o contorno tracejado, apagada */
+button.project-tag { cursor: pointer; line-height: inherit; }
+button.project-tag:hover, button.project-tag:focus-visible { outline: 1px solid var(--noct-text); outline-offset: 1px; }
+.project-tag.off, .project-tag.ok.off, .project-tag.part.off { background: transparent; color: var(--noct-text-dim); border: 1px dashed var(--noct-border-strong); text-decoration: line-through; }
 .save-count.warn { color: var(--noct-pending); text-transform: none; letter-spacing: .02em; }
 
 .project-sheet { padding: 0; gap: 0; width: min(1100px, 94vw); }
@@ -2039,3 +2043,6 @@ html.kbd-focus .export-tab.on .export-tab-check input:focus + .save-check { outl
 @keyframes cg-e4 { 0%, 46% { opacity: 0; } 52%, 100% { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .cat-guide .lr { transition: none; } .cat-guide .lr.fade { opacity: 1; } .cat-guide .s1.on .x-flow, .cat-guide .s4.on .lr { animation: none; } }
 @media (prefers-reduced-motion: reduce) { .cat-guide .cursor { transition: none; } .cat-guide .x-field.focus .x-caret { animation: none; } }
+
+/* Export › Outputs: "Use edited photos" na mesma linha de "Same settings for all sessions" */
+.same-row .export-edited-opt { margin-left: 24px; }

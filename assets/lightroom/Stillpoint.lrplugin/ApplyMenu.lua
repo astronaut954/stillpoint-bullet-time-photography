@@ -1,4 +1,4 @@
--- File › Plug-in Extras › "Apply photo 01 edit to the session"
+-- File › Plug-in Extras › "Apply the selected photo's edit to the session"
 local LrTasks = import 'LrTasks'
 local LrDialogs = import 'LrDialogs'
 local Bridge = require 'Bridge'

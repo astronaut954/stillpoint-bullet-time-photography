@@ -814,7 +814,7 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    Go to session in Stillpoint; o app lê os TIFF (sem compressão, LZW ou ZIP; Adobe RGB vira sRGB) e avisa "Edited n / m". Decisões do dono (2026-11-06): quando todas as fotos da sessão têm editada, a etiqueta "In Lightroom" sai e a coleção
    sai do Lightroom (como no Done editing); "Only the new ones" fica; Apply photo 01 copia tudo o que foi mudado no Lightroom;
    sem atalho de teclado; "Stillpoint" como destino na janela File › Export… (feito). As prévias do app mostram a editada
-   quando existe (a alternância Original / Edited é o pedaço 3).
+   quando existe (a alternância Original / Edited é o pedaço 3). Depois (2026-11-06): a etiqueta "Edited n / m" é a alternância (prévias e Export), "Use edited photos" foi da Review para Outputs, "Delete edits" na sessão e nas fotos, e o Apply usa a foto ativa no Lightroom.
 6. **Etapa 21 — Histórico de edição permanente.** Pedido do dono (2026-11-01): um histórico no estilo
    do painel History do Lightroom Classic, **vinculado ao projeto** (o projeto faz o papel do catálogo
    do Classic: o histórico mora na pasta dele, vai junto se a pasta for movida e só existe com um

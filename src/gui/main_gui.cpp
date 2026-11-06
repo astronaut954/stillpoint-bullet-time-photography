@@ -829,7 +829,7 @@ namespace
                 const auto& photo = session.photos[i];
                 Json item("photo");
                 item.Add("file", photo.file).Add("order", photo.order)
-                    .Add("camera", photo.camera).Add("previewable", photo.previewable);
+                    .Add("camera", photo.camera).Add("previewable", photo.previewable).Add("edited", photo.edited);
                 photos += (i ? "," : "") + item.Str();
             }
             photos += "]";
@@ -837,7 +837,7 @@ namespace
             Json item("session");
             item.Add("name", session.name).Add("saved", session.saved).Add("missing", session.missing)
                 .Add("inProject", session.inProject).Add("label", session.label).Add("edited", session.edited)
-                .Add("timing", session.timing).Add("crop", session.crop).Add("align", session.align).Raw("photos", photos);
+                .Add("showEdited", session.showEdited).Add("timing", session.timing).Add("crop", session.crop).Add("align", session.align).Raw("photos", photos);
             list += (firstSession ? "" : ",") + item.Str();
             firstSession = false;
         }
@@ -2332,6 +2332,38 @@ namespace
         window.bind("adobeInfo", [&](const std::string&) -> std::string { return adobeInfoJson(); });
         // adobeLive(): as sessões "In Lightroom" cuja coleção está no catálogo aberto agora no Lightroom (com o plugin
         // respondendo). A bolinha da etiqueta só pulsa nelas (decisão do dono, 2026-11-06).
+        // Etiqueta "Edited n / m": liga e desliga as editadas da sessão (prévias e Export)
+        window.bind("setShowEdited", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            if (args.size() < 2 || !store.SetShowEdited(args[0], args[1] == "1"))
+                return "false";
+            emitSessions();
+            return "true";
+        });
+        // Delete edits: as editadas das fotos (sessão inteira: sem arquivos) vão para o Lixo do sistema
+        window.bind("deleteEdits", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            if (args.empty())
+                return "0";
+            const std::string session = args[0];
+            std::vector<std::string> files(args.begin() + 1, args.end());
+            if (files.empty())
+                for (const auto& s : store.ListSessions())
+                    if (s.name == session)
+                        for (const auto& p : s.photos)
+                            if (p.edited) files.push_back(p.file);
+            int removed = 0;
+            for (const auto& file : files)
+                for (const auto& path : store.EditedFiles(session, file))
+                    if (NativeWindow::MoveToSystemTrash(PathToUtf8(path)))
+                        ++removed;
+            Log("Delete edits: " + std::to_string(removed) + " edited file" + (removed == 1 ? "" : "s") + " of " + session + " moved to the Trash");
+            emitSessions();
+            return std::to_string(removed);
+        });
+
         window.bind("adobeLive", [&](const std::string&) -> std::string
         {
             const auto alive = Adobe::ReadAlive();
@@ -3882,7 +3914,8 @@ namespace
                     // Project: a foto editada (Edited/<sessão>/) no lugar do original, quando pedido
                     auto photoPath = [&](const std::string& file) -> fs::path
                     {
-                        if (job.useEdited && session->inProject)
+                        // Segue a etiqueta "Edited n / m" da sessão (ligada: as editadas; desligada: os originais)
+                        if (session->showEdited && session->inProject)
                         {
                             const fs::path edited = store.EditedFile(job.session, file);
                             if (!edited.empty())
@@ -3890,6 +3923,9 @@ namespace
                         }
                         return source / file;
                     };
+                    if (session->inProject && session->edited > 0)
+                        Log("Export " + job.session + ": " + (session->showEdited ? std::to_string(session->edited) + " edited photo" + (session->edited == 1 ? "" : "s") + " used (from the project's Edited folder)"
+                                                                                  : std::string("edited photos off (Edited tag), originals used")));
                     std::error_code ec;
                     fs::path target = fs::path(folder) / job.folderName;
                     for (int n = 2; !replace && fs::exists(target, ec); ++n)

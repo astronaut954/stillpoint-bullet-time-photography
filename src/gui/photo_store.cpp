@@ -759,6 +759,46 @@ bool PhotoStore::SetLabel(const std::string& session, const std::string& label) 
     return WriteSessionInfoFile(dir, info);
 }
 
+bool PhotoStore::ShowEdited(const std::string& session) const
+{
+    const fs::path dir = SessionDir(session);
+    if (dir.empty())
+        return true;
+    const JsonLite::Value info = ReadSessionInfo(dir);
+    return !(info.isObject() && info.get("showEdited").asString() == "no");
+}
+
+bool PhotoStore::SetShowEdited(const std::string& session, bool show) const
+{
+    const fs::path dir = SessionDir(session);
+    if (dir.empty())
+        return false;
+    JsonLite::Value info = ReadSessionInfo(dir);
+    if (!info.isObject())
+        info = JsonLite::Value::NewObject();
+    info.set("showEdited", show ? "yes" : "no");
+    return WriteSessionInfoFile(dir, info);
+}
+
+std::vector<fs::path> PhotoStore::EditedFiles(const std::string& session, const std::string& file) const
+{
+    std::vector<fs::path> list;
+    if (projectEdited.empty() || session.find_first_of("/\\") != std::string::npos)
+        return list;
+    std::error_code ec;
+    const fs::path dir = projectEdited / session;
+    if (!fs::is_directory(dir, ec))
+        return list;
+    const std::string base = BaseName(file);
+    for (const auto& entry : fs::directory_iterator(dir, ec))
+    {
+        const std::string name = entry.path().filename().string();
+        if (entry.is_regular_file() && name.rfind('.', 0) != 0 && BaseName(name) == base && IsEditedExtension(name))
+            list.push_back(entry.path());
+    }
+    return list;
+}
+
 bool PhotoStore::SetCrop(const std::string& session, const std::string& crop) const
 {
     const fs::path dir = SessionDir(session);
@@ -896,6 +936,7 @@ void PhotoStore::ReadSessions(const fs::path& base, bool inProject, std::vector<
                 session.timing = info.get("timing").asString();
             }
             session.crop = info.get("crop").asString();  // (também fora do Project)
+            session.showEdited = !(info.isObject() && info.get("showEdited").asString() == "no");
             session.align = info.get("align").asString();
         }
 
@@ -932,7 +973,10 @@ void PhotoStore::ReadSessions(const fs::path& base, bool inProject, std::vector<
             }
             photo.previewable = IsJpeg(photo.file) || IsRaw(photo.file);
             if (inProject && !EditedFile(session.name, photo.file).empty())
+            {
                 ++session.edited;
+                photo.edited = true;
+            }
             session.photos.push_back(photo);
         }
 
@@ -976,7 +1020,7 @@ std::string PhotoStore::Preview(const std::string& session, const std::string& f
     std::error_code ec;
     // Project: a foto editada (Edited/<sessão>/) aparece no lugar do original (decisão do dono, 2026-11-01). A prévia
     // dela tem a hora do arquivo no nome: exportar de novo do Lightroom faz uma prévia nova.
-    const fs::path edited = EditedFile(session, file);
+    const fs::path edited = ShowEdited(session) ? EditedFile(session, file) : fs::path();
     std::string cacheName = std::to_string(maxSize) + "_" + file;
     if (!edited.empty())
     {

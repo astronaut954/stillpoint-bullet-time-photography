@@ -1268,6 +1268,9 @@
       };
       const hasFile = !!item.file;
       const sel = sessionGallery.selection;
+      // Fotos (escolhidas) que têm editada em Edited/ (Delete edits)
+      const photoEdited = (it) => { const s = sessions.find((x) => x.name === (it.session || currentSession.name)); const p = s && s.photos.find((x) => x.file === it.file); return !!(p && p.edited); };
+      const editedPicked = () => sel.map((i) => sessionGallery.items[i]).filter((it) => it && it.file && photoEdited(it));
       if (sel.length > 1) {
         popupMenuAt(e.clientX, e.clientY, [
           { html: el("div", "project-menu-label", plural(sel.length, "photo", "photos") + " selected") },
@@ -1275,6 +1278,10 @@
             const picked = sel.map((i) => sessionGallery.items[i]).filter(Boolean);
             const s = sessions.find((x) => x.name === (item.session || currentSession.name));
             if (s && picked.length && !adobeMissingBuild()) startLightroom(s, item.group, "photos", picked.map((x) => x.group));
+          } },
+          { label: "Delete " + plural(editedPicked().length, "edit", "edits") + "…", danger: editedPicked().length > 0, disabled: !editedPicked().length, dim: !editedPicked().length, onClick: () => {
+            const s = sessions.find((x) => x.name === (item.session || currentSession.name));
+            if (s) deleteEdits(s, editedPicked().map((x) => x.file));
           } },
           "-",
           { label: "Delete " + sel.length + " photos…", danger: true, onClick: deleteCurrentPhoto },
@@ -1287,6 +1294,10 @@
         { label: win ? "Show in Explorer" : "Show in Finder", disabled: !hasFile, dim: !hasFile, onClick: () => fileAction("reveal") },
         { label: "Open in default app", disabled: !hasFile, dim: !hasFile, onClick: () => fileAction("open") },
         "-",
+        { label: "Delete edit…", danger: hasFile && photoEdited(item), disabled: !(hasFile && photoEdited(item)), dim: !(hasFile && photoEdited(item)), onClick: () => {
+          const s = sessions.find((x) => x.name === (item.session || currentSession.name));
+          if (s) deleteEdits(s, [item.file]);
+        } },
         { label: "Delete photo " + pad(item.order || sessionGallery.index + 1) + "…", danger: true, onClick: deleteCurrentPhoto },
       ]);
     },
@@ -1488,17 +1499,54 @@
     t.title = "Already exported. It leaves the app when you close Stillpoint (the exported copy stays where you exported it).";
     return t;
   }
-  // Etiqueta de sessão guardada no Project: "In project" ou "Edited n/m" (verde quando completa)
+  // Etiqueta de sessão guardada no Project: "In project" ou "Edited n/m" (verde quando completa). Com editadas, é um
+  // botão: liga e desliga as editadas da sessão nas prévias e no Export (decisão do dono, 2026-11-06)
   function projectTag(s) {
-    const t = document.createElement("span");
     const total = s.photos.length;
     const complete = s.edited > 0 && s.edited >= total;
-    t.className = "project-tag" + (complete ? " ok" : s.edited > 0 ? " part" : "");
+    const on = s.showEdited !== false;
+    const t = document.createElement(s.edited > 0 ? "button" : "span");
+    if (s.edited > 0) t.type = "button";
+    t.className = "project-tag" + (complete ? " ok" : s.edited > 0 ? " part" : "") + (s.edited > 0 && !on ? " off" : "");
     t.textContent = s.edited > 0 ? "Edited " + s.edited + " / " + total : "In project";
-    t.title = complete ? "Every photo has an edited version in the project's Edited folder."
-      : s.edited > 0 ? "Some photos have an edited version in the project's Edited folder; the others do not."
-      : "Kept in the project folder (originals). It stays in the app until you remove it.";
+    if (s.edited > 0) {
+      t.setAttribute("aria-pressed", on ? "true" : "false");
+      t.title = (on ? "Showing the edited photos (from the project's Edited folder) in the previews and in Export. Click to show the originals."
+        : "Showing the originals. Click to show the edited photos (from the project's Edited folder) in the previews and in Export.")
+        + (complete ? "" : " Only some photos have an edited version.");
+      t.addEventListener("click", (e) => { if (e.metaKey || e.ctrlKey || e.shiftKey) return; e.stopPropagation(); setShowEdited(s, !on); });
+    } else t.title = "Kept in the project folder (originals). It stays in the app until you remove it.";
     return t;
+  }
+  // Liga/desliga as editadas da sessão; as prévias guardadas dela são esquecidas e a foto grande é refeita
+  function setShowEdited(s, show) {
+    if (typeof window.setShowEdited !== "function") return;
+    return Promise.resolve(window.setShowEdited(s.name, show ? "1" : "0")).then((ok) => {
+      if (!ok) return;
+      s.showEdited = show;
+      forgetSessionPreviews(s.name);
+      toast((show ? "Edited photos" : "Originals") + " · " + sessionTitle(s), TOAST_MS);
+    });
+  }
+  // Delete edits (decisão do dono, 2026-11-06): as editadas vão para o Lixo do sistema; files vazio = a sessão inteira
+  function deleteEdits(s, files) {
+    if (typeof window.deleteEdits !== "function") { toast("This build cannot do that yet. Build the app again.", 8000); return; }
+    const n = files.length || s.edited;
+    const what = files.length ? plural(n, "edited photo", "edited photos") : "the " + plural(n, "edited photo", "edited photos") + " of " + sessionTitle(s);
+    dialog("Delete " + plural(n, "edit", "edits") + "?",
+      "Moves " + what + " from the project's Edited folder to the " + (upd.info && upd.info.os === "windows" ? "Recycle Bin" : "Trash") + ". The originals and your edits in Lightroom Classic stay as they are.",
+      [{ label: "Cancel" },
+       { label: "Delete " + plural(n, "edit", "edits"), danger: true, onClick: () => {
+         Promise.resolve(window.deleteEdits(s.name, ...files)).then((removed) => {
+           forgetSessionPreviews(s.name);
+           const count = Number(removed) || 0;
+           toast(count ? plural(count, "edited file", "edited files") + " moved to the " + (upd.info && upd.info.os === "windows" ? "Recycle Bin" : "Trash") + " · " + sessionTitle(s) : "No edited files were found.", TOAST_MS);
+         });
+       } }]);
+  }
+  function forgetSessionPreviews(name) {
+    Object.keys(photoCache).forEach((k) => { if (k.startsWith("sessions/" + name + "/") || k.startsWith("order/" + name + "/")) delete photoCache[k]; });
+    if (currentSession && currentSession.name === name) setTimeout(() => { const cur = sessions.find((x) => x.name === name); if (cur && currentSession && currentSession.name === name) showSession(cur, true); }, 300);
   }
   // Etiqueta de sessão com fotos que a câmera recusou no disparo (arquivo ".missing")
   // Fotos apagadas de uma sessão (estão na lixeira): etiqueta "n deleted", no desenho do "n missing"
@@ -1551,8 +1599,7 @@
   // Export to Stillpoint terminou: aviso "Edited n / m · sessão" (a etiqueta da sessão já mudou com a lista nova)
   function lightroomExported(e) {
     // As prévias dessa sessão passam a ser as editadas: esquece as guardadas e mostra de novo
-    Object.keys(photoCache).forEach((k) => { if (k.startsWith("sessions/" + e.session + "/") || k.startsWith("order/" + e.session + "/")) delete photoCache[k]; });
-    if (currentSession && currentSession.name === e.session) setTimeout(() => { const cur = sessions.find((x) => x.name === e.session); if (cur && currentSession && currentSession.name === e.session) showSession(cur, true); }, 300);
+    forgetSessionPreviews(e.session);
     const s = sessions.find((x) => x.name === e.session);
     const title = s ? sessionTitle(s) : sessionLabel(e.session).date;
     let text = e.found && e.total ? "Edited " + e.edited + " / " + e.total + " · " + title : plural(e.count, "edited photo", "edited photos") + " arrived from Lightroom Classic · " + title;
@@ -2830,9 +2877,6 @@
     exp.selected = new Set(exp.project ? projectNames : kept.length ? kept : (exp.exitAfter && unsaved.length ? unsaved : all).map((s) => s.name));
     Object.keys(exp.settings).forEach((k) => { if (!all.some((s) => s.name === k)) delete exp.settings[k]; });
     if (!all.some((s) => s.name === exp.active)) exp.active = (currentSession && all.some((s) => s.name === currentSession.name) && currentSession.name) || all[0].name;
-    if (exp.project && project.exportDefaults) {
-      $("exportEdited").checked = project.exportDefaults.useEdited !== false;
-    }
     exp.photo = 0;
     // Já diferentes ao abrir: a caixa vem com o traço e nada é igualado sozinho
     if (exp.sameFraming && differentSessions(1).size) exp.sameFraming = false;
@@ -2918,7 +2962,7 @@
     // o alinhamento só com as fotos ajustadas (uma entrada vazia não é uma mudança)
     exportable().forEach((x) => { const st = settingsFor(x.name); cropLoad(x, st); alignLoad(x, st); });
     return JSON.stringify({ s: exportable().map((x) => [x.name, settingsFor(x.name)]), same: exp.same, sameFraming: exp.sameFraming,
-      sel: [...exp.selected].sort(), dest: exp.dest || null, edited: $("exportEdited").checked },
+      sel: [...exp.selected].sort(), dest: exp.dest || null },
       (key, v) => (key === "byFile" && v ? Object.fromEntries(Object.entries(v).filter(([, al]) => !alignIsIdentity(al))) : v));
   }
   function expTrack() {
@@ -2951,7 +2995,7 @@
       if (st.align && alignText(st) !== (session.align || "")) alignSave(session, st);
       if (st.crop && (st.crop.ratio + "|" + st.crop.x.toFixed(3) + "|" + st.crop.y.toFixed(3)) !== (session.crop || "")) cropSave(session, st);
     });
-    exp.same = o.same; exp.sameFraming = o.sameFraming !== false; exp.selected = new Set(o.sel); exp.dest = o.dest; $("exportEdited").checked = o.edited;
+    exp.same = o.same; exp.sameFraming = o.sameFraming !== false; exp.selected = new Set(o.sel); exp.dest = o.dest;
     expSnap = snap;
     renderExport();
   }
@@ -3106,8 +3150,7 @@
     const lentBad = chosenSt.some((st) => st.outputs.lenticular && !lentValid(st.lent));
     const photosEmpty = chosenSt.some((st) => st.outputs.photos && !st.photos.original && !st.photos.convert);
     // Project: sessão com só parte das fotos editadas misturaria editadas e originais
-    const partial = exp.project && $("exportEdited").checked
-      ? all.filter((s) => exp.selected.has(s.name) && s.edited > 0 && s.edited < s.photos.length) : [];
+    const partial = all.filter((s) => exp.selected.has(s.name) && s.inProject && s.showEdited !== false && s.edited > 0 && s.edited < s.photos.length);
     // Sessões em "As shot" com proporções misturadas e sem alinhamento (a sequência pula)
     const mixedAsShot = all.filter((s) => { if (!exp.selected.has(s.name)) return false; const st = settingsFor(s.name); const r = ratioInfoCached(s.name); return st.crop.ratio === "asshot" && r && r.mixed && !sessionAligned(s, st); }).length;
     const mixedText = mixedAsShot ? plural(mixedAsShot, "session", "sessions") + " with mixed ratios on As shot" : "";
@@ -3139,7 +3182,6 @@
     $("exportBack").textContent = exp.step === 3 ? "← Outputs" : "← Sessions";
     $("exportSelectAll").disabled = chosen === all.length;
     $("exportUnselectAll").disabled = chosen === 0;
-    $("exportEditedLabel").classList.toggle("hidden", !exp.project || exp.step !== 3);
     renderExportSteps();
     setTimeout(expTrack, 0);  // depois de a mudança terminar (pode haver mais de um redesenho)
   }
@@ -5177,6 +5219,19 @@
           rerender();
         }, () => { exp.same[kd] = false; rerender(); }, nd));
       }
+      if (!always && session.inProject && session.edited > 0) {
+        // "Use edited photos" ao lado de "Same settings for all sessions" (decisão do dono, 2026-11-06): é a mesma
+        // chave da etiqueta "Edited n / m" da sessão (prévias e Export juntos)
+        const last = body.lastElementChild;
+        const row = last && last.classList.contains("same-row") ? last : body.appendChild(el("div", "export-row same-row"));
+        const l = el("label", "log-option export-edited-opt");
+        const c = document.createElement("input"); c.type = "checkbox"; c.className = "cs-check";
+        c.checked = session.showEdited !== false;
+        c.addEventListener("change", () => { Promise.resolve(setShowEdited(session, c.checked)).then(() => rerender()); });
+        l.append(c, document.createTextNode(" Use edited photos"));
+        l.title = plural(session.edited, "photo of this session has", "photos of this session have") + " an edited version in the project's Edited folder. The same as the Edited tag of the session.";
+        row.appendChild(l);
+      }
       rows.appendChild(body);
     }
     if (exp.step === 2 && !OUTPUT_KINDS.some((k) => st.outputs[k])) rows.appendChild(el("div", "export-note exp-none", "Tick at least one output: Photos, Sequence or Lenticular."));
@@ -5308,11 +5363,11 @@
     exp.waiting = true;  // a janela fica aberta até salvar de fato
     // Project: "project" = direto para <Project>/Exports; "edited" = usar as editadas quando houver
     // "dest": o 3º argumento é a pasta (vazio = a padrão), sem perguntar
-    const flags = [deleteRest ? "delete" : "", exp.project && $("exportEdited").checked ? "edited" : "", "dest"].filter(Boolean).join(",");
-    if (exp.project) window.projectExportDefaults(JSON.stringify({ mode: exp.mode, useEdited: $("exportEdited").checked }));
+    // As editadas: cada sessão segue a etiqueta "Edited n / m" (ou "Use edited photos" em Outputs), lida pelo app
+    const flags = [deleteRest ? "delete" : "", "dest"].filter(Boolean).join(",");
+    if (exp.project) window.projectExportDefaults(JSON.stringify({ mode: exp.mode }));
     window.exportSessions(exp.project ? "project" : exp.exitAfter ? "exit" : "", flags, exp.dest || "", ...names.map(exportSpec));
   }
-  $("exportEdited").addEventListener("change", updateExportCount);
 
   // Formatos misturados: salvando como Original, umas câmeras mandaram RAW e outras só JPEG
   // (Quality diferente). Avisa antes, para a pessoa igualar em Camera settings se quiser.
@@ -8751,6 +8806,7 @@
     items.push({ label: "Edit in Lightroom Classic", onClick: () => editSessionInLightroom(s) });
     const inEdit = !!editTagFor(s.name);
     items.push({ label: "Done editing", disabled: !inEdit, dim: !inEdit, onClick: () => doneEditing(s) });
+    if (s.inProject) items.push({ label: "Delete edits…", sub: s.edited > 0 ? s.edited + " edited" : "", danger: s.edited > 0, disabled: !(s.edited > 0), dim: !(s.edited > 0), onClick: () => deleteEdits(s, []) });
     items.push({ label: s.inProject ? "Open originals folder" : "Open folder", onClick: () => {
       if (typeof window.openSessionFolder !== "function") { toast("This build cannot open session folders yet. Build the app again.", 8000); return; }
       window.openSessionFolder(s.name);

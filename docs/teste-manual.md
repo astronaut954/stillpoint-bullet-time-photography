@@ -1768,6 +1768,13 @@ antes de começar: o Stillpoint troca o plugin pelo novo no próximo "Edit in Li
 - [ ] Depois de exportar, as prévias da sessão no Stillpoint (miniaturas e foto grande) mostram a editada.
 - [ ] Com todas as fotos da sessão editadas, a etiqueta "In Lightroom" sai e a coleção sai do Lightroom.
 
+**Etiqueta Edited n / m e Delete edits**
+- [ ] Clicar na etiqueta "Edited n / m" desliga as editadas (etiqueta riscada e tracejada): prévias e Export voltam aos
+      originais; clicar de novo liga. Em Export › Outputs, "Use edited photos" (ao lado de "Same settings for all
+      sessions") é a mesma chave.
+- [ ] Botão direito na sessão › "Delete edits…"; na foto › "Delete edit…"; com várias fotos selecionadas › "Delete n
+      edits…": as editadas vão para o Lixo e as prévias voltam aos originais.
+
 **Go to session in Stillpoint**
 - [ ] Depois de exportar, "Go to session in Stillpoint" (painel ou menu) traz o Stillpoint para a frente com a sessão aberta.
 

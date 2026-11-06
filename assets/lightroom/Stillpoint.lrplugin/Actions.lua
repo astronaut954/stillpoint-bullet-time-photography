@@ -320,6 +320,26 @@ local function sessionPhotos(group)
 	return list
 end
 
+-- A foto de onde a edição sai: a que está ativa no Lightroom (a selecionada, a do Develop), se for da sessão;
+-- senão a foto 01
+function Actions.sourceOf(list)
+	local ok, active = LrTasks.pcall(function() return LrApplication.activeCatalog():getTargetPhoto() end)
+	if ok and active then
+		for _, item in ipairs(list) do
+			if item.photo == active then return item end
+		end
+	end
+	return list[1]
+end
+
+-- "Apply photo 02 edit to all 9" (o número da foto ativa e o total da sessão), para o painel
+function Actions.applyLabel(group)
+	local list = sessionPhotos(group)
+	local source = Actions.sourceOf(list)
+	if not source or #list < 2 then return nil, #list end
+	return string.format('%02d', orderOf(source.place.file)), #list
+end
+
 function Actions.applyPhoto01()
 	local groups = Actions.target()
 	if #groups == 0 then
@@ -332,16 +352,18 @@ function Actions.applyPhoto01()
 	end
 	local group = groups[1]
 	local list = sessionPhotos(group)
-	local first = list[1]
+	local first = Actions.sourceOf(list)
 	if not first or #list < 2 then
 		LrDialogs.message('Nothing to apply to', 'This session has only one photo in Lightroom Classic.', 'info')
 		return
 	end
 	local label = string.format('%02d', orderOf(first.place.file))
 	local others, edited = {}, 0
-	for i = 2, #list do
-		table.insert(others, list[i])
-		if hasOwnEdit(list[i].photo, list[i].place) then edited = edited + 1 end
+	for _, item in ipairs(list) do
+		if item ~= first then
+			table.insert(others, item)
+			if hasOwnEdit(item.photo, item.place) then edited = edited + 1 end
+		end
 	end
 	-- Fotos que já têm edição: sobrescrever ou aplicar só nas sem edição (decisão do dono, 2026-11-05)
 	local targets = others

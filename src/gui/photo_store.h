@@ -14,6 +14,7 @@ struct StoredPhoto
     int order = 0;       // posição da câmera na sequência (01, 02...)
     std::string camera;  // nome da câmera (T7_1...)
     bool previewable = true; // JPEG ou RAW (prévia embutida no arquivo)
+    bool edited = false;     // tem versão editada em <Project>/Edited/<sessão>/
 };
 
 // Item da lixeira (etapa 20): uma sessão inteira ou fotos de uma sessão, guardadas por 15 dias.
@@ -54,6 +55,7 @@ struct StoredSession
     std::string crop;    // recorte escolhido para o Export ("3:2|0.5|0.5": proporção|posição x|posição y), em session.json
     std::string align;   // alinhamento das fotos para o Export ("arquivo:dx,dy,scale,rot;..."), em session.json (pedaço 2 do Framing)
     int edited = 0;      // fotos com versão editada em <Project>/Edited/<sessão>/
+    bool showEdited = true; // usar as editadas nas prévias e no Export (a etiqueta "Edited n / m" liga e desliga), em session.json
     std::string timing;  // resumo do Timing usado ("Sweep · 0.2 s · 1 → 9"), em session.json
 };
 
@@ -100,6 +102,11 @@ public:
     bool WriteSessionInfo(const std::string& session, const std::string& jsonText) const;
     // Arquivo editado de uma foto (em Edited/<sessão>/, mesmo nome-base, o mais recente); vazio se não houver
     std::filesystem::path EditedFile(const std::string& session, const std::string& file) const;
+    // Todas as editadas de uma foto (todos os formatos), para apagar
+    std::vector<std::filesystem::path> EditedFiles(const std::string& session, const std::string& file) const;
+    // Etiqueta "Edited n / m" ligada (prévias e Export usam as editadas) ou desligada (os originais); em session.json
+    bool ShowEdited(const std::string& session) const;
+    bool SetShowEdited(const std::string& session, bool show) const;
 
     std::vector<StoredSession> ListSessions() const;
     int CountSessions() const;

@@ -51,13 +51,13 @@ local function refresh(props)
 	end
 	props.dot = image(props.canExport and 'dot-green.png' or (importing or Actions.state.busy) and 'dot-amber.png' or 'dot-gray.png')
 	props.showGoto = group ~= nil and group.session == Actions.state.lastSession and not Actions.state.busy
-	local others = 0
+	-- "Apply photo 02 edit to all 9": a foto ativa no Lightroom e as fotos da sessão inteira
+	local label, others = nil, 0
 	if group then
-		-- "Apply photo 01 edit to all 9": as fotos da sessão inteira (as escolhidas, se a coleção não existir)
-		local photos = group.collection and group.collection:getPhotos() or group.items
-		others = #photos
+		local ok, l, n = LrTasks.pcall(Actions.applyLabel, group)
+		if ok then label, others = l, n or 0 end
 	end
-	props.applyTitle = others > 1 and ('Apply photo 01 edit to all ' .. others) or 'Apply photo 01 edit to the session'
+	props.applyTitle = label and ('Apply photo ' .. label .. ' edit to all ' .. others) or 'Apply photo edit to the session'
 	props.canApply = props.canExport and others > 1
 end
 
