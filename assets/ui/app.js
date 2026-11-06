@@ -8677,14 +8677,20 @@
           await sleep(700); await move(go, 1000); await click(go); await sleep(1600);
         },
       };
+      if (lr) lr.classList.remove("fade");
       reset();
       const run = scripts[step];
       if (!run || !cur) return;
       if (reduced()) return;   // sem movimento: fica a primeira imagem do passo
       (async () => {
         await sleep(30);
+        let first = true;
         while (alive()) {
-          reset(); await sleep(40);
+          // Antes de recomeçar, tudo some devagar (0,45 s), volta ao começo e reaparece
+          if (!first) { lr.classList.add("fade"); await sleep(480); if (!alive()) { lr.classList.remove("fade"); return; } }
+          reset(); await sleep(40); lr.classList.remove("fade");
+          if (!first) await sleep(500);
+          first = false;
           try { await run(); } catch (e) { return; }
         }
       })();

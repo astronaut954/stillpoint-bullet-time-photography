@@ -1935,8 +1935,6 @@ html.kbd-focus .export-tab.on .export-tab-check input:focus + .save-check { outl
 .cat-guide .s4 .x-empty { opacity: 0; }
 .cat-guide .s4.on .x-empty { animation: cg-e4 4s infinite; }
 .cat-guide .s4.on .x-loading { animation: cg-l4 4s infinite; }
-@keyframes cg-l4 { 0%, 45% { opacity: 1; } 50%, 100% { opacity: 0; } }
-@keyframes cg-e4 { 0%, 48% { opacity: 0; } 54%, 100% { opacity: 1; } }
 .cat-guide .s4 .x-loading, .cat-guide .s4 .x-empty { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .cat-guide .s4 .x-title { position: absolute; top: 4px; left: 0; right: 0; text-align: center; font-size: 11px; color: #aaa; }
 /* Slide 5: Relaunch */
@@ -1952,10 +1950,7 @@ html.kbd-focus .export-tab.on .export-tab-check input:focus + .save-check { outl
 .cat-guide .s1 .x-proj { display: flex; flex-direction: column; gap: 8px; }
 .cat-guide .s1 .x-proj .x-cat { width: 150px; height: 48px; }
 .cat-guide .s1 .x-arrow { color: var(--noct-primary); font-size: 22px; }
-.cat-guide .s1.on .x-proj .x-cat { animation: cg-pop 3s infinite; opacity: 0; }
-.cat-guide .s1.on .x-proj .x-cat:nth-child(2) { animation-delay: .4s; }
-.cat-guide .s1.on .x-proj .x-cat:nth-child(3) { animation-delay: .8s; }
-@keyframes cg-pop { 0% { opacity: 0; transform: translateX(-8px); } 15%, 85% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+.cat-guide .s1.on .x-proj .x-cat { opacity: 0; }
 @media (prefers-reduced-motion: reduce) { .cat-guide .cg-slide *, .cat-guide .cg-slide.on * { animation: none !important; } .cat-guide .s1 .x-proj .x-cat, .cat-guide .lr-menu, .cat-guide .s4 .x-empty { opacity: 1 !important; } }
 /* Mac x Windows: o que só existe num dos dois */
 .cat-guide[data-os="mac"] .os-win, .cat-guide[data-os="win"] .os-mac { display: none !important; }
@@ -2020,4 +2015,35 @@ html.kbd-focus .export-tab.on .export-tab-check input:focus + .save-check { outl
 .cat-guide .x-dd div.hl { background: #4a7bd4; color: #fff; }
 .cat-guide .x-wnav div.hl { background: #3d5a80; color: #fff; }
 .cat-guide .x-wnav div.sel { background: #344a66; color: #fff; }
+/* O menu do Where aparece para fora da caixa (a caixa corta o que passa da borda) */
+.cat-guide .x-save .x-field.x-where { overflow: visible; }
+/* Mac: barra de título da janela com os três botões (fechar, minimizar, tela cheia) à esquerda; a barra de menus fica em cima */
+.cat-guide[data-os="mac"] .lr { display: flex; flex-direction: column; }
+.cat-guide[data-os="mac"] .lr-bar { order: -1; flex: none; }
+.cat-guide[data-os="mac"] .lr-title { display: flex; flex: none; align-items: center; position: relative; height: 24px; padding: 0 9px; background: #323232; border-bottom: 1px solid #1a1a1a; color: #aaa; font-size: 11px; }
+.cat-guide[data-os="mac"] .lr-title .lr-name { position: absolute; left: 70px; right: 70px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cat-guide .lr-lights { display: inline-flex; gap: 7px; }
+.cat-guide .lr-lights i { width: 11px; height: 11px; border-radius: 50%; background: #ff5f57; box-shadow: inset 0 0 0 .5px rgba(0,0,0,.35); }
+.cat-guide .lr-lights i:nth-child(2) { background: #febc2e; }
+.cat-guide .lr-lights i:nth-child(3) { background: #28c840; }
+.cat-guide[data-os="mac"] .lr-body { top: 47px; }
+.cat-guide[data-os="mac"] .x-save { top: 52px; }
+.cat-guide[data-os="mac"] .x-relaunch { top: 56px; }
+/* Antes de recomeçar a animação, tudo some devagar e volta */
+.cat-guide .lr { transition: opacity .45s ease; }
+.cat-guide .lr.fade { opacity: 0; }
+/* Slide 1 e 4 (animação só de CSS): o ciclo termina sumindo tudo */
+.cat-guide .s1.on .x-flow { animation: cg-f1 4.5s infinite; }
+.cat-guide .s1.on .x-proj .x-cat { animation: cg-p1 4.5s infinite; animation-delay: 0s; }
+.cat-guide .s1.on .x-proj .x-cat:nth-child(2) { animation-name: cg-p2; animation-delay: 0s; }
+.cat-guide .s1.on .x-proj .x-cat:nth-child(3) { animation-name: cg-p3; animation-delay: 0s; }
+@keyframes cg-f1 { 0% { opacity: 0; } 8%, 88% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes cg-p1 { 0%, 14% { opacity: 0; transform: translateX(-8px); } 22%, 100% { opacity: 1; transform: none; } }
+@keyframes cg-p2 { 0%, 24% { opacity: 0; transform: translateX(-8px); } 32%, 100% { opacity: 1; transform: none; } }
+@keyframes cg-p3 { 0%, 34% { opacity: 0; transform: translateX(-8px); } 42%, 100% { opacity: 1; transform: none; } }
+.cat-guide .s4.on .lr { animation: cg-f4 4s infinite; }
+@keyframes cg-f4 { 0% { opacity: 0; } 8%, 88% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes cg-l4 { 0%, 42% { opacity: 1; } 48%, 100% { opacity: 0; } }
+@keyframes cg-e4 { 0%, 46% { opacity: 0; } 52%, 100% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .cat-guide .lr { transition: none; } .cat-guide .lr.fade { opacity: 1; } .cat-guide .s1.on .x-flow, .cat-guide .s4.on .lr { animation: none; } }
 @media (prefers-reduced-motion: reduce) { .cat-guide .cursor { transition: none; } .cat-guide .x-field.focus .x-caret { animation: none; } }
