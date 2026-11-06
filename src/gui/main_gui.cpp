@@ -2383,6 +2383,36 @@ namespace
                     first = false;
                 }
             }
+            // ⌘Z no Lightroom trouxe de volta a coleção de uma sessão que já tinha saído: ela volta a ficar
+            // "In Lightroom" aqui também (decisão do dono, 2026-11-06)
+            std::string backList = "[";
+            {
+                auto map = LoadEditing();
+                std::vector<std::string> editing;
+                for (const auto& [session, groups] : map)
+                    if (!groups.empty()) editing.push_back(session);
+                const auto back = Adobe::SessionsBackInCatalog(alive, editing);
+                if (!back.empty())
+                {
+                    const auto stored = store.ListSessions();
+                    for (const auto& session : back)
+                    {
+                        const auto s = std::find_if(stored.begin(), stored.end(), [&](const StoredSession& x) { return x.name == session; });
+                        if (s == stored.end())
+                            continue;
+                        for (const auto& photo : s->photos)
+                        {
+                            char group[64];
+                            std::snprintf(group, sizeof(group), "%02d_", photo.order);
+                            map[session][group + photo.camera] = "lr";
+                        }
+                        backList += std::string(backList.size() > 1 ? "," : "") + JsonString(session);
+                        Log("Lightroom Classic: the collection of " + session + " is back in the catalog (undo in Lightroom): In Lightroom again");
+                    }
+                    SaveEditing(map);
+                    emitEditing();
+                }
+            }
             // Recados do plugin: editadas que chegaram (Export to Stillpoint) e "Go to session in Stillpoint"
             std::string exported = "[";
             bool firstExport = true;
@@ -2435,7 +2465,7 @@ namespace
             if (!goTo.empty())
                 if (auto native = window.window(); native.ok())
                     NativeWindow::Show(native.value());
-            return Json("adobeLive").Add("running", alive.fresh).Raw("sessions", list + "]").Raw("exported", exported + "]").Add("goto", goTo).Str();
+            return Json("adobeLive").Add("running", alive.fresh).Raw("sessions", list + "]").Raw("exported", exported + "]").Add("goto", goTo).Raw("back", backList + "]").Str();
         });
         // adobeEditing(): as fotos que estão no Lightroom/Photoshop, por sessão
         window.bind("adobeEditing", [&](const std::string&) -> std::string
@@ -4121,6 +4151,7 @@ namespace
                             const int n = ++used[key];
                             return n == 1 ? base : base + "-" + std::to_string(n);
                         };
+                        std::set<std::string> copiedEdits;  // RAW e JPG da mesma câmera têm uma editada só
                         std::vector<std::string> files;
                         if (original)
                         {
@@ -4167,6 +4198,24 @@ namespace
                                 fs::copy_file(from, to, fs::copy_options::overwrite_existing, moveError);
                                 if (moveError)
                                     error = "Could not save " + to.filename().string() + ": " + moveError.message();
+                                // Só os originais (sem Converted) e a sessão com editadas ligadas: as editadas vão
+                                // numa subpasta Edited/ ao lado dos originais (decisão do dono, 2026-11-06)
+                                const fs::path edited = photoFormats.size() == 1 && session->inProject && session->showEdited
+                                    ? store.EditedFile(job.session, files[i]) : fs::path();
+                                if (error.empty() && !edited.empty() && !copiedEdits.count(edited.string()))
+                                {
+                                    copiedEdits.insert(edited.string());
+                                    std::smatch m;
+                                    const std::string stem = fs::path(files[i]).stem().string();
+                                    const std::string base = std::regex_match(files[i], m, shortName) ? m[1].str() : stem;
+                                    const fs::path editedDir = formatDir / "Edited";
+                                    fs::create_directories(editedDir, moveError);
+                                    const fs::path editedTo = editedDir / (base + edited.extension().string());
+                                    moveError.clear();
+                                    fs::copy_file(edited, editedTo, fs::copy_options::overwrite_existing, moveError);
+                                    if (moveError)
+                                        error = "Could not save " + editedTo.filename().string() + ": " + moveError.message();
+                                }
                             }
                             else
                                 Export::ConvertPhoto(from, formatDir / shortStem(files[i], "." + photoFormat), photoFormat,
@@ -4518,7 +4567,11 @@ namespace
                     .Raw("deletedAt", std::to_string(item.deletedAt)).Add("order", std::to_string(item.order))
                     .Add("inProject", item.inProject).Add("isProject", item.isProject).Add("reachable", item.reachable)
                     .Add("sessions", item.sessions).Add("parent", item.parent).Add("restored", item.restored)
-                    .Add("edits", item.edits).Add("editsOnly", item.editsOnly).Str();
+                    .Add("edits", item.edits).Add("editsOnly", item.editsOnly).Raw("bases", [&] {
+                        std::string b = "[";
+                        for (size_t i = 0; i < item.bases.size(); ++i) b += (i ? "," : "") + JsonString(item.bases[i]);
+                        return b + "]";
+                    }()).Str();
             return Json("trash").Raw("items", list + "]").Add("days", kTrashDays)
                 .Add("project", project.IsOpen() ? project.Name() : std::string()).Str();
         });

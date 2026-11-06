@@ -1779,6 +1779,15 @@ antes de começar: o Stillpoint troca o plugin pelo novo no próximo "Edit in Li
 - [ ] Export › Photos › Originals: "Keep the originals, exactly as each camera sent them (RAW and non-RAW)" vem
       marcada ao abrir e copia os originais (nunca as editadas).
 
+**⌘Z (decisões do dono, 2026-11-06)**
+- [ ] Clicar na etiqueta Edited é um passo do ⌘Z do Stillpoint.
+- [ ] No Lightroom, Edit › Undo mostra o nome do passo do plugin ("Stillpoint: remove collection …", "Stillpoint: apply
+      photo 02 edit"). Desfazer a retirada de uma coleção faz a sessão voltar a "In Lightroom" no Stillpoint, com o aviso
+      "Back in Lightroom Classic".
+- [ ] Export to Stillpoint exporta a sessão inteira aberta no Lightroom, não só as fotos selecionadas.
+- [ ] Export com só os originais (sem Converted) e a sessão com editadas ligadas: Photos/Edited/ ao lado dos originais.
+- [ ] Lixeira: editada apagada antes da foto fica embaixo da foto (recuada); Restore só depois da foto.
+
 **Go to session in Stillpoint**
 - [ ] Depois de exportar, "Go to session in Stillpoint" (painel ou menu) traz o Stillpoint para a frente com a sessão aberta.
 

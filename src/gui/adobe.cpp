@@ -524,7 +524,47 @@ namespace Adobe
         alive.fresh = at > 0 && now - at < 5 && at - now < 5;
         alive.catalog = Value(pairs, "catalog");
         alive.version = Value(pairs, "version");
+        alive.listsCollections = Value(pairs, "collections") == "1";
+        const auto range = pairs.equal_range("collection");
+        for (auto it = range.first; it != range.second; ++it)
+        {
+            const auto tab = it->second.find('\t');
+            if (tab != std::string::npos)
+                alive.collections.emplace_back(it->second.substr(0, tab), it->second.substr(tab + 1));
+        }
         return alive;
+    }
+
+    std::vector<std::string> SessionsBackInCatalog(const Alive& alive, const std::vector<std::string>& editing)
+    {
+        std::vector<std::string> back;
+        if (!alive.fresh || !alive.listsCollections)
+            return back;
+        // Retiradas ainda na fila: a coleção continua lá até o plugin tirar
+        std::vector<std::pair<std::string, std::string>> pending;
+        std::error_code ec;
+        for (fs::directory_iterator it(BridgeFolder(), ec), end; !ec && it != end; it.increment(ec))
+        {
+            const std::string name = Utf8(it->path().filename());
+            if (name.rfind("done-", 0) != 0)
+                continue;
+            const auto pairs = ReadPairs(it->path());
+            pending.emplace_back(Value(pairs, "project"), Value(pairs, "title"));
+        }
+        for (const auto& [session, where] : LoadCollections())
+        {
+            if (std::find(editing.begin(), editing.end(), session) != editing.end())
+                continue;
+            if (!where.catalog.empty() && !SameCatalog(where.catalog, alive.catalog))
+                continue;
+            const std::string project = where.project.empty() ? "No project" : where.project;
+            const std::pair<std::string, std::string> key(project, where.title);
+            const bool present = std::find(alive.collections.begin(), alive.collections.end(), key) != alive.collections.end();
+            const bool waiting = std::find_if(pending.begin(), pending.end(), [&](const auto& p) { return p.second == where.title; }) != pending.end();
+            if (present && !waiting)
+                back.push_back(session);
+        }
+        return back;
     }
 
     std::vector<std::multimap<std::string, std::string>> TakeMessages(const std::string& prefix)

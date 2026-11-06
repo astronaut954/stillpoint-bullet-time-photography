@@ -169,6 +169,11 @@ function Actions.exportToStillpoint()
 		return
 	end
 	local groups, outside, total = Actions.target()
+	-- A sessão inteira que está aberta no Lightroom, não só as fotos selecionadas (decisão do dono, 2026-11-06)
+	for _, group in ipairs(groups) do
+		local all = Actions.sessionItems(group)
+		if #all > 0 then group.items = all end
+	end
 	if #groups == 0 then
 		LrDialogs.message('Select photos of a Stillpoint project',
 			'Export to Stillpoint works with photos that Stillpoint sent from a project (they are in the project\'s Originals folder). '
@@ -324,6 +329,8 @@ end
 
 -- A foto de onde a edição sai: a que está ativa no Lightroom (a selecionada, a do Develop), se for da sessão;
 -- senão a foto 01
+Actions.sessionItems = sessionPhotos
+
 function Actions.sourceOf(list)
 	local ok, active = LrTasks.pcall(function() return LrApplication.activeCatalog():getTargetPhoto() end)
 	if ok and active then
@@ -386,7 +393,7 @@ function Actions.applyPhoto01()
 	if #targets == 0 then return end
 	local settings = first.photo:getDevelopSettings()
 	local catalog = LrApplication.activeCatalog()
-	catalog:withWriteAccessDo('Apply photo ' .. label .. ' edit', function()
+	catalog:withWriteAccessDo('Stillpoint: apply photo ' .. label .. ' edit', function()
 		for _, item in ipairs(targets) do item.photo:applyDevelopSettings(settings) end
 	end, { timeout = 60 })
 	Bridge.note('apply photo ' .. label .. ' edit: ' .. #targets .. ' photos of ' .. group.session)

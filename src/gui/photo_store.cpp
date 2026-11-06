@@ -1527,6 +1527,16 @@ std::vector<TrashItem> PhotoStore::ListTrash() const
             t.photos = CountTrashPhotos(e.path);
             t.edits = CountTrashEdits(e.path);
             t.bytes = FolderBytes(e.path);
+            std::error_code bec;
+            for (const auto& f : fs::directory_iterator(t.editsOnly ? e.path / kTrashEdited : e.path, bec))
+            {
+                const std::string name = f.path().filename().string();
+                if (!f.is_regular_file(bec) || name.rfind('.', 0) == 0 || name == "session.json")
+                    continue;
+                const std::string base = BaseName(name);
+                if (std::find(t.bases.begin(), t.bases.end(), base) == t.bases.end())
+                    t.bases.push_back(base);
+            }
         }
         t.deletedAt = e.deletedAt;
         t.order = e.order;

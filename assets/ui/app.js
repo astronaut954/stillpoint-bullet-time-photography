@@ -1519,13 +1519,20 @@
     return t;
   }
   // Liga/desliga as editadas da sessão; as prévias guardadas dela são esquecidas e a foto grande é refeita
-  function setShowEdited(s, show) {
+  // É um passo do ⌘Z (decisão do dono, 2026-11-06); undoing = vindo do próprio desfazer/refazer (não grava outro passo)
+  function setShowEdited(s, show, undoing) {
     if (typeof window.setShowEdited !== "function") return;
-    return Promise.resolve(window.setShowEdited(s.name, show ? "1" : "0")).then((ok) => {
-      if (!ok) return;
-      s.showEdited = show;
-      forgetSessionPreviews(s.name);
-      toast((show ? "Edited photos" : "Originals") + " · " + sessionTitle(s), TOAST_MS);
+    const name = s.name;
+    return Promise.resolve(window.setShowEdited(name, show ? "1" : "0")).then((ok) => {
+      if (!ok) return false;
+      const cur = sessions.find((x) => x.name === name) || s;
+      cur.showEdited = show; s.showEdited = show;
+      forgetSessionPreviews(name);
+      toast((show ? "Edited photos" : "Originals") + " · " + sessionTitle(cur) + (undoing ? "" : " · ⌘Z undoes"), TOAST_MS);
+      if (!undoing) recordAction({ label: (show ? "Show edited photos" : "Show originals") + " · " + sessionLabel(name).date,
+        undo: () => setShowEdited(sessions.find((x) => x.name === name) || { name }, !show, true),
+        redo: () => setShowEdited(sessions.find((x) => x.name === name) || { name }, show, true) });
+      return true;
     });
   }
   // Delete edits (decisão do dono, 2026-11-06): as editadas vão para a lixeira do Stillpoint (Trash), num item só
@@ -1595,6 +1602,10 @@
       lrLive = new Set((r && r.sessions) || []);
       apply();
       ((r && r.exported) || []).forEach(lightroomExported);
+      ((r && r.back) || []).forEach((name) => {
+        const s = sessions.find((x) => x.name === name);
+        toast("Back in Lightroom Classic · " + (s ? sessionTitle(s) : sessionLabel(name).date) + " (undone in Lightroom)", 7000);
+      });
       if (r && r.goto) {
         const s = sessions.find((x) => x.name === r.goto);
         if (s) showSession(s); else toast("That session is not in Stillpoint anymore.", 6000, { warn: true });
@@ -9396,13 +9407,14 @@
           if (item.restored) main.appendChild(el("small", "trash-note done", "Restored. It stays here until the " + (item.isProject ? "items from its trash" : "photos deleted before it") + " below are restored or deleted."));
           else if (offDisk) main.appendChild(el("small", "trash-note", "The disk with this project is not connected. Connect it to restore or delete the project."));
           else if (blockedBy && blockedBy.isProject) main.appendChild(el("small", "trash-note", these + " in the trash of the project " + blockedBy.session + ", which was deleted after. Restore the project first."));
+          else if (blockedBy && item.editsOnly) main.appendChild(el("small", "trash-note", "The photo was deleted after " + (item.edits === 1 ? "this edit" : "these edits") + ". Restore the photo first."))
           else if (blockedBy) main.appendChild(el("small", "trash-note", item.photos === 1
             ? "The whole session was deleted after this photo. Restore the session first to bring it back."
             : "The whole session was deleted after these photos. Restore the session first to bring them back."));
           li.appendChild(main);
           if (!item.restored) {
             const restore = button("Restore", () => restoreTrashItem(item, label), { title: item.isProject ? "Put the project folder back" : item.whole ? "Put the session back in the list" : "Put the photos back in their session" });
-            if (blockedBy) { restore.disabled = true; restore.title = blockedBy.isProject ? "Restore the project first" : "Restore the session first"; }
+            if (blockedBy) { restore.disabled = true; restore.title = blockedBy.isProject ? "Restore the project first" : blockedBy.whole ? "Restore the session first" : "Restore the photo first"; }
             if (offDisk) { restore.disabled = true; restore.title = "Connect the disk with this project first"; }
             li.appendChild(restore);
             // Apagar de vez leva junto o que dependia dele (fotos apagadas antes; a lixeira do projeto)
@@ -9432,10 +9444,16 @@
   function trashTree(items) {
     const out = [];
     const used = new Set();
-    const photosOf = (session, pool) => pool.filter((x) => !x.whole && !used.has(x.id) && x.session === session.session && trashLater(session, x));
+    // Editada apagada antes da foto dela (Delete edits e depois Delete photo): fica embaixo da foto, como as fotos
+    // embaixo da sessão (decisão do dono, 2026-11-06)
+    const editParent = (e) => e.editsOnly ? items.find((p) => !p.whole && !p.editsOnly && !p.isProject && !p.restored && p.session === e.session
+      && !!p.inProject === !!e.inProject && trashLater(p, e) && (p.bases || []).some((b) => (e.bases || []).includes(b))) : null;
+    const photosOf = (session, pool) => pool.filter((x) => !x.whole && !used.has(x.id) && x.session === session.session && trashLater(session, x) && !editParent(x));
     const add = (item, level, parentItem, group) => {
       used.add(item.id);
       out.push({ item, level, under: parentItem ? parentItem.id : "", blockedBy: parentItem && !parentItem.restored ? parentItem : null, group });
+      if (!item.whole && !item.editsOnly && !item.isProject)
+        items.filter((e) => !used.has(e.id) && editParent(e) === item).forEach((e) => add(e, level + 1, item, group));
     };
     const addSession = (sess, level, parentItem, pool, group) => {
       add(sess, level, parentItem, group);
@@ -9445,7 +9463,7 @@
     [false, true].forEach((inProject) => {
       const pool = tops.filter((i) => !!i.inProject === inProject);
       // fotos que dependem de uma sessão do mesmo grupo entram depois dela
-      const dependent = (o) => !o.whole && !o.isProject && pool.some((w) => w.whole && !w.isProject && w.session === o.session && trashLater(w, o));
+      const dependent = (o) => (!o.whole && !o.isProject && pool.some((w) => w.whole && !w.isProject && w.session === o.session && trashLater(w, o))) || !!editParent(o);
       pool.forEach((o) => {
         if (used.has(o.id) || dependent(o)) return;
         if (o.isProject) {

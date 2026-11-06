@@ -44,6 +44,8 @@ struct TrashItem
     // Editadas (etapa 20): quantas foram junto (subpasta .edited); editsOnly = item do Delete edits (só editadas)
     int edits = 0;
     bool editsOnly = false;
+    // Nomes-base das fotos do item (das editadas, no item do Delete edits): a lixeira põe a editada embaixo da foto
+    std::vector<std::string> bases;
 };
 
 struct StoredSession

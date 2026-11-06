@@ -104,10 +104,30 @@ local function samePath(a, b)
 	return a == b
 end
 
+-- As coleções do Stillpoint que existem no catálogo aberto ("projeto\tcoleção"): o Stillpoint compara com o que ele
+-- acha que está no Lightroom (o ⌘Z do Lightroom pode trazer de volta uma coleção que o plugin tirou)
+local function stillpointCollections(catalog)
+	local lines = {}
+	local ok = pcall(function()
+		for _, set in ipairs(catalog:getChildCollectionSets()) do
+			if set:getName() == 'Stillpoint' then
+				for _, projectSet in ipairs(set:getChildCollectionSets()) do
+					for _, collection in ipairs(projectSet:getChildCollections()) do
+						table.insert(lines, 'collection=' .. oneLine(projectSet:getName()) .. '\t' .. oneLine(collection:getName()))
+					end
+				end
+			end
+		end
+	end)
+	return ok, lines
+end
+
 local function writeAlive()
 	local catalog = LrApplication.activeCatalog()
-	local text = 'time=' .. os.time() .. '\ncatalog=' .. oneLine(catalog and catalog:getPath() or '') .. '\nversion=' .. Bridge.version() .. '\nend=1\n'
-	writeWhole(bridgeFile('alive.txt'), text)
+	local text = 'time=' .. os.time() .. '\ncatalog=' .. oneLine(catalog and catalog:getPath() or '') .. '\nversion=' .. Bridge.version() .. '\n'
+	local ok, lines = stillpointCollections(catalog)
+	if ok then text = text .. 'collections=1\n' .. (#lines > 0 and (table.concat(lines, '\n') .. '\n') or '') end
+	writeWhole(bridgeFile('alive.txt'), text .. 'end=1\n')
 end
 
 -- Coleção "Stillpoint › <projeto> › <sessão>" (cria o que faltar; devolve a que já existe)
@@ -134,7 +154,7 @@ local function handle(request)
 	local missing = 0
 	-- 1ª escrita: as fotos entram no catálogo no lugar onde estão (sem copiar) e a coleção é criada.
 	-- Objetos criados numa escrita só podem ser usados depois dela: as fotos entram na coleção na 2ª.
-	catalog:withWriteAccessDo('Stillpoint: add session', function()
+	catalog:withWriteAccessDo('Stillpoint: add ' .. tostring(request.title), function()
 		for _, path in ipairs(request.photos) do
 			if not catalog:findPhotoByPath(path) then
 				if LrFileUtils.exists(path) then
@@ -164,7 +184,7 @@ local function handle(request)
 		return
 	end
 	local collection
-	catalog:withWriteAccessDo('Stillpoint: fill the collection', function()
+	catalog:withWriteAccessDo('Stillpoint: collection ' .. tostring(request.title), function()
 		collection = collectionFor(catalog, request)
 		collection:addPhotos(photos)
 	end, { timeout = 60 })
@@ -209,7 +229,7 @@ local function removeCollection(project, title)
 		Bridge.note('done editing: collection "' .. tostring(title) .. '" not found (already removed?)')
 		return
 	end
-	catalog:withWriteAccessDo('Stillpoint: done editing', function()
+	catalog:withWriteAccessDo('Stillpoint: remove collection ' .. tostring(title), function()
 		collection:delete()
 	end, { timeout = 60 })
 	catalog:withWriteAccessDo('Stillpoint: tidy collection sets', function()

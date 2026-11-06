@@ -111,8 +111,14 @@ namespace Adobe
         bool fresh = false;    // o plugin escreveu há menos de 5 s
         std::string catalog;   // catálogo aberto
         std::string version;   // versão do plugin que está rodando
+        // Coleções do Stillpoint no catálogo aberto ("projeto", "coleção"); listsCollections = o plugin mandou a lista
+        bool listsCollections = false;
+        std::vector<std::pair<std::string, std::string>> collections;
     };
     Alive ReadAlive();
+    // Sessões que não estão "In Lightroom" no Stillpoint, mas cuja coleção existe no catálogo aberto (o ⌘Z do Lightroom
+    // trouxe de volta uma coleção que o plugin tirou). Ignora as que têm a retirada ainda esperando (done-*.txt).
+    std::vector<std::string> SessionsBackInCatalog(const Alive& alive, const std::vector<std::string>& editing);
 
     // Recados do plugin (pedaço 2), um arquivo por recado, lidos e apagados aqui:
     //   exported-*.txt  "Export to Stillpoint" terminou (session, project, count, failed, color)
