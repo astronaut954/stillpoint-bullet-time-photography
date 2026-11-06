@@ -8543,6 +8543,9 @@
       { title: "Send this session to Lightroom Classic (asks whether to edit the whole session or just this photo)" });
     b.classList.add("btn-small", "stage-hover");
     sessionGallery.setStageTools([b]);
+    // Ordem do Tab: o botão vem depois dos controles do play (Reverse loop) — vai para o fim da foto grande
+    const tools = b.parentElement;
+    if (tools && tools.parentElement) tools.parentElement.appendChild(tools);
   }
 
   function sessionContextMenu(e, s) {
