@@ -51,7 +51,11 @@ local function writeWhole(path, text)
 	return true
 end
 
+-- No teste automático (SelfTest.lua): a conversa vai para uma pasta à parte e a espera normal fica parada
+Bridge.testFolder = nil
+
 function Bridge.folder()
+	if Bridge.testFolder then return Bridge.testFolder end
 	if not folderPath then
 		local text = readAll(LrPathUtils.child(_PLUGIN.path, 'bridge-path.txt'))
 		if text and trim(text) ~= '' then folderPath = trim(text) end
@@ -143,6 +147,8 @@ local function writeAlive()
 end
 
 -- Coleção "Stillpoint › <projeto> › <sessão>" (cria o que faltar; devolve a que já existe)
+Bridge.writeAlive = function() return writeAlive() end
+
 local function collectionFor(catalog, request)
 	local top = catalog:createCollectionSet('Stillpoint', nil, true)
 	local projectName = request.project ~= nil and request.project ~= '' and request.project or 'No project'
@@ -224,7 +230,7 @@ local function handle(request)
 	pcall(function() local A = require('Actions'); A.state.text = nil end)
 	-- O painel do Stillpoint abre junto (pedaço 2): mostra "Importing…" e depois os botões
 	local LrTasks = import 'LrTasks'
-	LrTasks.pcall(function() require('Panel').show() end)
+	require('Ui').showPanel()
 	if request.catalog and request.catalog ~= '' and not samePath(catalog:getPath(), request.catalog) then
 		writeStatus(request.id, 'wrong-catalog', { catalog = catalog:getPath() })
 		return
@@ -571,7 +577,7 @@ function Bridge.tick()
 		lastAlive = os.time()
 		writeAlive()
 	end
-	if os.time() - startedAt < STARTUP_WAIT then return end  -- Lightroom acabando de abrir
+	if os.time() - startedAt < STARTUP_WAIT and not Bridge.testFolder then return end  -- Lightroom acabando de abrir
 	handleDoneFiles()
 	handleResetFiles()
 	local requestFile = bridgeFile('request.txt')
@@ -660,7 +666,7 @@ function Bridge.start(why)
 				Bridge.note(off and 'turned off in the Plug-in Manager: not answering' or 'turned on again: answering')
 				if off then Bridge.goodbye() end
 			end
-			if not off then
+			if not off and not Bridge.testFolder then
 				local ok, problem = LrTasks.pcall(Bridge.tick)
 				if not ok then Bridge.problem(problem) end
 			end

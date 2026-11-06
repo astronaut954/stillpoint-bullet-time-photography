@@ -1736,6 +1736,12 @@ com rótulo em uma sessão, ex.: "Pose 7").
 
 ## 41. Export to Stillpoint, pedaço 2 (etapa 20; protótipo "Stillpoint no Lightroom Classic")
 
+**Teste automático do plugin (Lightroom de verdade)**
+- [ ] Uma vez: no Lightroom, File › New Catalog…, nome "Stillpoint Self-Test".
+- [ ] Nesse catálogo: File › Plug-in Extras › Stillpoint: run self-test. No fim aparece "n passed, n failed".
+- [ ] Mandar o relatório: `cat ~/Library/Application\ Support/Stillpoint/lightroom/self-test-report.txt`
+
+
 Precisa do Lightroom Classic e de um projeto aberto com uma sessão já mandada ao Lightroom (seção 40). Feche o Lightroom
 antes de começar: o Stillpoint troca o plugin pelo novo no próximo "Edit in Lightroom Classic".
 

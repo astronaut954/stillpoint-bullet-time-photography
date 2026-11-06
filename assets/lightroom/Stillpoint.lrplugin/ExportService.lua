@@ -11,6 +11,7 @@ local LrTasks = import 'LrTasks'
 local LrView = import 'LrView'
 
 local Bridge = require 'Bridge'
+local Ui = require 'Ui'
 local Actions = require 'Actions'
 
 local DIM = LrColor(0.5, 0.5, 0.5)
@@ -95,7 +96,7 @@ end
 
 function service.processRenderedPhotos(functionContext, exportContext)
 	-- O painel do Stillpoint vem para a frente durante o export (pedido do dono, 2026-11-06)
-	LrTasks.pcall(function() require('Panel').show() end)
+	require('Ui').showPanel()
 	local exportSession = exportContext.exportSession
 	local settings = exportContext.propertyTable
 	-- photosToExport() devolve um iterador (não uma lista)
@@ -136,7 +137,7 @@ function service.processRenderedPhotos(functionContext, exportContext)
 	local count = #photos - outside - unedited
 	local skipExisting = false
 	if already > 0 then
-		local answer = LrDialogs.confirm(
+		local answer = Ui.confirm(
 			(already == count and (count == 1 and 'This photo already has' or 'These ' .. count .. ' photos already have') or (already .. ' of these ' .. count .. ' photos already ' .. (already == 1 and 'has' or 'have')))
 				.. ' an edited version in Stillpoint',
 			'Replace the edited version' .. (already == 1 and '' or 's') .. ' with this export?'
@@ -220,7 +221,7 @@ function service.processRenderedPhotos(functionContext, exportContext)
 	Actions.state.busy = false
 	Actions.state.text = plural(done, 'edited photo', 'edited photos') .. ' sent to Stillpoint ✓' .. (failed > 0 and (' · ' .. failed .. ' failed') or '')
 	if outside > 0 then
-		LrDialogs.message(plural(outside, 'photo was', 'photos were') .. ' not exported',
+		Ui.message(plural(outside, 'photo was', 'photos were') .. ' not exported',
 			(outside == 1 and 'It is' or 'They are') .. ' not from a Stillpoint project (not in a project\'s Originals folder).', 'info')
 	end
 	if progress then LrTasks.pcall(function() progress:done() end) end

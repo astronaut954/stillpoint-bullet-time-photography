@@ -21,6 +21,7 @@ return {
 		{ title = 'Go to session in Stillpoint', file = 'GotoMenu.lua' },
 		{ title = 'About the Stillpoint plugin…', file = 'AboutMenu.lua' },
 		{ title = 'Stillpoint: listen again', file = 'Restart.lua' },
+		{ title = 'Stillpoint: run self-test', file = 'SelfTestMenu.lua' },
 	},
 	LrLibraryMenuItems = {
 		{ title = 'Export to Stillpoint', file = 'ExportMenu.lua' },
@@ -29,6 +30,7 @@ return {
 		{ title = 'Go to session in Stillpoint', file = 'GotoMenu.lua' },
 		{ title = 'About the Stillpoint plugin…', file = 'AboutMenu.lua' },
 		{ title = 'Stillpoint: listen again', file = 'Restart.lua' },
+		{ title = 'Stillpoint: run self-test', file = 'SelfTestMenu.lua' },
 	},
 	-- File › Export…: "Stillpoint" em Export To (pasta e nomes do Stillpoint; formato, tamanho e cor mudam)
 	LrExportServiceProvider = { title = 'Stillpoint', file = 'ExportService.lua' },

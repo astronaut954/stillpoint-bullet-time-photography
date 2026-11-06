@@ -18,6 +18,7 @@ local LrTasks = import 'LrTasks'
 local LrView = import 'LrView'
 
 local Bridge = require 'Bridge'
+local Ui = require 'Ui'
 
 local Actions = {}
 local EDITED_EXTENSIONS = { 'tif', 'tiff', 'jpg', 'jpeg', 'png', 'TIF', 'TIFF', 'JPG', 'JPEG', 'PNG' }
@@ -164,9 +165,9 @@ end
 
 -- Pergunta e exporta. Roda dentro de uma tarefa do Lightroom (LrTasks).
 function Actions.exportToStillpoint()
-	LrTasks.pcall(function() require('Panel').show() end)  -- o painel vem para a frente (pedido do dono, 2026-11-06)
+	require('Ui').showPanel()  -- o painel vem para a frente (pedido do dono, 2026-11-06)
 	if Actions.state.busy then
-		LrDialogs.message('Stillpoint is already exporting', 'Wait for the export that is running to finish.', 'info')
+		Ui.message('Stillpoint is already exporting', 'Wait for the export that is running to finish.', 'info')
 		return
 	end
 	local groups, outside, total = Actions.target()
@@ -217,10 +218,10 @@ function Actions.exportToStillpoint()
 		if clearedTotal > 0 then
 			local n = sendCleared(groups)
 			Actions.state.text = plural(n, 'edit', 'edits') .. ' removed in Stillpoint (no edit in Lightroom anymore)'
-			LrDialogs.showBezel(plural(n, 'edit', 'edits') .. ' removed in Stillpoint')
+			Ui.bezel(plural(n, 'edit', 'edits') .. ' removed in Stillpoint')
 			return
 		end
-		LrDialogs.message('Nothing to export yet', 'None of these photos has an edit in Lightroom Classic. Edit a photo and choose Export to Stillpoint again.', 'info')
+		Ui.message('Nothing to export yet', 'None of these photos has an edit in Lightroom Classic. Edit a photo and choose Export to Stillpoint again.', 'info')
 		return
 	end
 	-- Grupos que só tiram editadas (sem foto com edição): mandados depois que a pessoa confirma o export
@@ -228,7 +229,7 @@ function Actions.exportToStillpoint()
 	for _, group in ipairs(groups) do if #group.items == 0 then table.insert(onlyCleared, group) end end
 	groups = withEdits
 	if #groups == 0 then
-		LrDialogs.message('Select photos of a Stillpoint project',
+		Ui.message('Select photos of a Stillpoint project',
 			'Export to Stillpoint works with photos that Stillpoint sent from a project (they are in the project\'s Originals folder). '
 			.. (total > 0 and (plural(outside, 'selected photo is', 'selected photos are') .. ' from somewhere else.') or 'No photo is selected.'), 'info')
 		return
@@ -244,7 +245,7 @@ function Actions.exportToStillpoint()
 	end
 	local skipExisting = false
 	if already > 0 then
-		local answer = LrDialogs.confirm(
+		local answer = Ui.confirm(
 			(already == count and (count == 1 and 'This photo already has' or 'These ' .. count .. ' photos already have') or (already .. ' of these ' .. count .. ' photos already ' .. (already == 1 and 'has' or 'have')))
 				.. ' an edited version in Stillpoint',
 			'Replace the edited version' .. (already == 1 and '' or 's') .. ' with this export?'
@@ -300,7 +301,7 @@ function Actions.exportToStillpoint()
 			},
 			f:static_text { title = 'Folder and names are set by Stillpoint. Stillpoint picks the photos up by itself.', text_color = LrColor(0.55, 0.55, 0.55) },
 		}
-		local result = LrDialogs.presentModalDialog { title = 'Export to Stillpoint', contents = contents, actionVerb = 'Export' }
+		local result = Ui.modal { title = 'Export to Stillpoint', contents = contents, actionVerb = 'Export' }
 		colorSpace = props.colorSpace
 		return result == 'ok'
 	end)
@@ -351,16 +352,16 @@ function Actions.exportToStillpoint()
 	if not ok then
 		Bridge.problem('export to Stillpoint: ' .. tostring(problem))
 		Actions.state.text = nil
-		LrDialogs.message('Export to Stillpoint stopped', tostring(problem), 'critical')
+		Ui.message('Export to Stillpoint stopped', tostring(problem), 'critical')
 		return
 	end
 	Actions.state.text = plural(doneAll, 'edited photo', 'edited photos') .. ' sent to Stillpoint ✓'
 		.. (failedAll > 0 and (' · ' .. failedAll .. ' failed') or '')
 	if failedAll > 0 then
-		LrDialogs.message(plural(failedAll, 'photo', 'photos') .. ' could not be exported',
+		Ui.message(plural(failedAll, 'photo', 'photos') .. ' could not be exported',
 			plural(doneAll, 'photo went', 'photos went') .. ' to Stillpoint. The others are listed in plugin-problems.txt, in Stillpoint\'s lightroom folder.', 'warning')
 	else
-		LrDialogs.showBezel(plural(doneAll, 'edited photo', 'edited photos') .. ' sent to Stillpoint')
+		Ui.bezel(plural(doneAll, 'edited photo', 'edited photos') .. ' sent to Stillpoint')
 	end
 end
 
@@ -430,18 +431,18 @@ end
 function Actions.applyPhoto01()
 	local groups = Actions.target()
 	if #groups == 0 then
-		LrDialogs.message('Select photos of a Stillpoint session', 'Select a photo of the session (any of them) and choose this again.', 'info')
+		Ui.message('Select photos of a Stillpoint session', 'Select a photo of the session (any of them) and choose this again.', 'info')
 		return
 	end
 	if #groups > 1 then
-		LrDialogs.message('Photos of more than one session are selected', 'Select photos of one session only.', 'info')
+		Ui.message('Photos of more than one session are selected', 'Select photos of one session only.', 'info')
 		return
 	end
 	local group = groups[1]
 	local list = sessionPhotos(group)
 	local first = Actions.sourceOf(list)
 	if not first or #list < 2 then
-		LrDialogs.message('Nothing to apply to', 'This session has only one photo in Lightroom Classic.', 'info')
+		Ui.message('Nothing to apply to', 'This session has only one photo in Lightroom Classic.', 'info')
 		return
 	end
 	local label = string.format('%02d', orderOf(first.place.file))
@@ -455,7 +456,7 @@ function Actions.applyPhoto01()
 	-- Fotos que já têm edição: sobrescrever ou aplicar só nas sem edição (decisão do dono, 2026-11-05)
 	local targets = others
 	if edited > 0 then
-		local answer = LrDialogs.confirm(
+		local answer = Ui.confirm(
 			(edited == #others and (#others == 1 and 'The other photo already has its own edit' or ('All ' .. #others .. ' other photos already have their own edit'))
 				or (edited .. ' of the ' .. #others .. ' other photos already ' .. (edited == 1 and 'has its own edit' or 'have their own edit'))),
 			'Overwrite ' .. (edited == 1 and 'its' or 'their') .. ' edit with the edit of photo ' .. label .. '?' .. (edited < #others and ' Or apply it only to the photos without an edit.' or ''),
@@ -475,7 +476,7 @@ function Actions.applyPhoto01()
 		for _, item in ipairs(targets) do item.photo:applyDevelopSettings(settings) end
 	end, { timeout = 60 })
 	Bridge.note('apply photo ' .. label .. ' edit: ' .. #targets .. ' photos of ' .. group.session)
-	LrDialogs.showBezel('Photo ' .. label .. ' edit applied to ' .. plural(#targets, 'photo', 'photos'))
+	Ui.bezel('Photo ' .. label .. ' edit applied to ' .. plural(#targets, 'photo', 'photos'))
 end
 
 -- ---------------- Cancel editing ----------------
@@ -485,16 +486,16 @@ end
 -- (como o Done editing) e avisa o Stillpoint (arquivo cancelled-*.txt), que tira o "In Lightroom" da sessão.
 function Actions.cancelEditing()
 	if Actions.state.busy then
-		LrDialogs.message('Stillpoint is exporting', 'Wait for the export that is running to finish.', 'info')
+		Ui.message('Stillpoint is exporting', 'Wait for the export that is running to finish.', 'info')
 		return
 	end
 	local groups = Actions.target()
 	if #groups == 0 then
-		LrDialogs.message('Select a photo of a Stillpoint session', 'Cancel editing works on the session of the selected photo.', 'info')
+		Ui.message('Select a photo of a Stillpoint session', 'Cancel editing works on the session of the selected photo.', 'info')
 		return
 	end
 	if #groups > 1 then
-		LrDialogs.message('Photos of more than one session are selected', 'Select photos of one session only.', 'info')
+		Ui.message('Photos of more than one session are selected', 'Select photos of one session only.', 'info')
 		return
 	end
 	local group = groups[1]
@@ -516,7 +517,7 @@ function Actions.cancelEditing()
 	end
 	local discard = false
 	if #changed > 0 then
-		local answer = LrDialogs.confirm(
+		local answer = Ui.confirm(
 			'Discard the changes?',
 			(#changed == 1 and '1 photo of this session was' or (#changed .. ' photos of this session were')) .. ' changed in Lightroom Classic and '
 				.. (#changed == 1 and 'is' or 'are') .. ' not in Stillpoint yet. Discard brings '
@@ -534,7 +535,7 @@ function Actions.cancelEditing()
 			if ok and has then edited = edited + 1 end
 		end
 		if edited > 0 then
-			local answer = LrDialogs.confirm(
+			local answer = Ui.confirm(
 				'Cancel editing?',
 				(edited == 1 and '1 photo of this session has' or (edited .. ' photos of this session have')) .. ' an edit in Lightroom Classic. '
 					.. 'Nothing changed since the last export (or since the session opened). The session closes in Lightroom Classic and the edit'
@@ -559,7 +560,7 @@ function Actions.cancelEditing()
 		or 'Session closed in Lightroom Classic'
 	Actions.state.text = said
 	Actions.state.lastSession = group.session
-	LrDialogs.showBezel(said)
+	Ui.bezel(said)
 end
 
 -- ---------------- Go to session in Stillpoint ----------------
@@ -568,12 +569,12 @@ function Actions.goToSession()
 	local groups = Actions.target()
 	local session = groups[1] and groups[1].session or Actions.state.lastSession
 	if not session then
-		LrDialogs.message('Select a photo of a Stillpoint session', 'Stillpoint opens the session of the selected photo.', 'info')
+		Ui.message('Select a photo of a Stillpoint session', 'Stillpoint opens the session of the selected photo.', 'info')
 		return
 	end
 	-- O Stillpoint lê em até 3 s; um pedido com mais de 20 s (Stillpoint fechado) é ignorado quando ele abrir
 	Actions.writeMessage('goto', { 'session=' .. session, 'time=' .. os.time() })
-	LrDialogs.showBezel('Showing the session in Stillpoint')
+	Ui.bezel('Showing the session in Stillpoint')
 end
 
 return Actions
