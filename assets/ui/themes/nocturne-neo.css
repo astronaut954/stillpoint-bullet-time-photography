@@ -2115,3 +2115,8 @@ html.kbd-focus .export-tab.on .export-tab-check input:focus + .save-check { outl
 .export-settings .edit-preview:focus-within .edit-ctrls { opacity: 1; }
 /* Etiqueta In Lightroom fora do Export: clicar abre o Export › Edit */
 .missing-tag.edit-tag.opens { cursor: pointer; }
+/* Miniaturas com o recorte do Framing (lista do Export, Outputs › Photos, Edit, Review): a caixa na forma de sempre
+   (3:2) e a imagem recortada inteira dentro, com fundo preto (pedido do dono, 2026-11-07) */
+.export-item .export-thumb, .export-review .review-thumb { background-size: contain; }
+.export-strip.fit-strip .frame-img { background: #000; }
+.export-strip.fit-strip .frame-img img { object-fit: contain; width: 70px; height: 47px; min-height: 0; }

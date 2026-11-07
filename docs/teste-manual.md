@@ -1870,6 +1870,9 @@ Com câmeras simuladas e o Lightroom Classic com o catálogo do projeto. A janel
 - [ ] Fechar o Export (**Cancel** › **Leave**) com uma sessão no Lightroom e abrir de novo: abre no passo **2 Edit**,
       nessa sessão.
 - [ ] O passo **3 Outputs** não tem mais **Use edited photos**.
+- [ ] Com **1:1** (ou outra proporção) no passo 1: as miniaturas da lista de sessões (esquerda), da fileira do **2 Edit**,
+      da fileira de **3 Outputs › Photos** e da tabela do **4 Review** mostram a foto recortada, inteira, dentro da caixa de
+      sempre (3:2), com faixas pretas; as caixas não mudam de forma.
 
 ## Resultado
 

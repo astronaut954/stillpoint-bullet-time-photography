@@ -3252,7 +3252,9 @@
       li.classList.toggle("different", cmpStep() > 0 && diffNow.has(s.name));
       if (cmpStep() > 0 && diffNow.has(s.name)) li.querySelector(".export-diff").dataset.itip = differenceText(s.name, cmpStep());
       const first = sessionItems(s).find((i) => i.previewable);
-      if (first) sessionPhoto(s.name, first.file, 320).then((url) => { if (url) li.querySelector(".export-thumb").style.backgroundImage = "url(" + url + ")"; });
+      // Com o recorte do Framing (proporção, posição e alinhamento), inteira na caixa de sempre (pedido do dono, 2026-11-07)
+      if (first) sessionPhoto(s.name, first.file, 320).then((url) => (url ? framedUrl(s, sessionItems(s).filter((i) => i.previewable), settingsFor(s.name), first, url, 320) : url))
+        .then((url) => { if (url) li.querySelector(".export-thumb").style.backgroundImage = "url(" + url + ")"; });
       li.addEventListener("click", () => {
         if (exp.aligning && s.name !== exp.active) {
           const tst = settingsFor(s.name);
@@ -4813,7 +4815,7 @@
       // A fileira (ul) fica dentro de uma caixa que rola (div): o WebKit do Mac pintava os
       // filhos diretos da área de rolagem deslocados (sem a borda e o espaço interno deles)
       const stripScroll = el("div", "export-strip-scroll");
-      const strip = el("ul", "export-strip");
+      const strip = el("ul", "export-strip fit-strip");
       stripScroll.appendChild(strip);
       const showPhoto = () => {
         const item = items[exp.photo];
@@ -4836,13 +4838,8 @@
         sessionPhoto(session.name, item.file, 320).then((url) => (url && exp.step === 3 ? framedUrl(session, items, st, item, url, 320) : url))
           .then((url) => {
             if (!url) return;
-            const framed = exp.step === 3 && !(st.crop.ratio === "asshot" && !sessionAligned(session, st));
-            // A caixa da miniatura acompanha a forma do recorte (decisão do dono, 2026-11-04): a mesma altura de
-            // sempre, a largura pela proporção da imagem recortada; a imagem enche a caixa sem cortar
-            if (framed) pic.onload = () => {
-              const r = pic.naturalWidth / Math.max(1, pic.naturalHeight), h = 47, w = Math.max(24, Math.round(h * r));
-              thumb.style.width = w + "px"; li.style.width = (w + 6) + "px"; li.style.flexBasis = (w + 6) + "px"; li.style.setProperty("--frame-w", (w + 6) + "px");
-            };
+            // A caixa fica na forma de sempre e a imagem recortada entra inteira (pedido do dono, 2026-11-07; antes a
+            // caixa acompanhava a forma do recorte)
             pic.src = url;
           });
         li.addEventListener("click", () => { exp.photo = k; showPhoto(); });
@@ -5417,7 +5414,7 @@
     outer.insertBefore(preview, rows);
     // Fileira
     const stripScroll = el("div", "export-strip-scroll");
-    const strip = el("ul", "export-strip");
+    const strip = el("ul", "export-strip fit-strip");
     stripScroll.appendChild(strip);
     const show = (k) => {
       const item = items[k];
@@ -5456,7 +5453,9 @@
       const li = el("li", "frame");
       li.innerHTML = '<div class="frame-img"><img alt=""><span class="frame-badge"></span></div>';
       li.querySelector(".frame-badge").textContent = pad(item.order || k + 1);
-      sessionPhoto(name, item.file, 320).then((url) => { if (url) li.querySelector("img").src = url; });
+      // Com o recorte do passo 1, inteira na caixa de sempre (pedido do dono, 2026-11-07)
+      sessionPhoto(name, item.file, 320).then((url) => (url ? framedUrl(session, items, st, item, url, 320) : url))
+        .then((url) => { if (url) li.querySelector("img").src = url; });
       const corner = el("span", "frame-corner");
       if (inLr(item)) {
         const b = el("span", "frame-app" + (lrLive.has(name) ? " live" : ""));
@@ -5604,7 +5603,8 @@
       const tr = document.createElement("tr");
       const tdT = document.createElement("td"); const th = el("span", "review-thumb"); tdT.appendChild(th);
       const first = sessionItems(s).find((i) => i.previewable);
-      if (first) sessionPhoto(s.name, first.file, 320).then((url) => { if (url) th.style.backgroundImage = "url(" + url + ")"; });
+      if (first) sessionPhoto(s.name, first.file, 320).then((url) => (url ? framedUrl(s, sessionItems(s).filter((i) => i.previewable), st, first, url, 320) : url))
+        .then((url) => { if (url) th.style.backgroundImage = "url(" + url + ")"; });
       const tdS = document.createElement("td");
       tdS.append(document.createTextNode((s.label ? s.label + " · " : "") + label.date), document.createElement("br"), el("span", "dim", plural(sessionItems(s).length, "photo", "photos")));
       const tdF = document.createElement("td");
