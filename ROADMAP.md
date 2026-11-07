@@ -832,6 +832,11 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    (mandar já com o corte aplicado no Lightroom, aviso no painel, cópias já cortadas, efeitos no Stillpoint) — decisão do dono.
    Painel do plugin atrás do Lightroom: opções levadas ao dono (atalho de teclado do Mac para "Show Stillpoint panel",
    botões do painel também no Stillpoint, informação no painel Metadata do Lightroom) — decisão do dono.
+   Vinheta com corte: decisão do dono (2026-11-06) = opção A (o recorte do Export vai para o recorte do Lightroom,
+   a pessoa edita o quadro final). Feito: o recorte (proporção e posição) vai junto no Edit in Lightroom Classic e não
+   conta como edição; sessão com proporções misturadas e sem recorte (Keep as shot / Esc) pergunta "Crop before
+   Lightroom Classic?" (Send as shot / Crop to …). Pendente: o alinhamento (Framing, Align photos do Export) e o que
+   acontece quando o recorte ou o alinhamento mudam depois de editar.
    Feito em 2026-11-06: bolinha âmbar pulsando nas miniaturas e na prévia grande das fotos que estão no Lightroom;
    a coleção do Lightroom refeita na ordem do Stillpoint quando uma foto volta; Delete edits e o ⌘Z dele em fila, na ordem.
 6. **Etapa 21 — Histórico de edição permanente.** Pedido do dono (2026-11-01): um histórico no estilo

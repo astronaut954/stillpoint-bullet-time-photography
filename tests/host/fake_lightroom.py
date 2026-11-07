@@ -49,6 +49,8 @@ class FakeLightroom:
         self.removed = []       # coleções tiradas (para o Edit › Undo)
         self.edit = {}          # caminho -> edição atual (None = original)
         self.saved = {}         # caminho -> edição guardada pelo Delete edit (para o ⌘Z)
+        self.crops = {}         # caminho -> (esquerda, topo, direita, base) pedido pelo Stillpoint
+        self.framing = {}       # título da coleção -> proporção pedida ("asshot" = sem recorte)
         self.log = []
         self.lock = threading.RLock()
         self.counter = 0
@@ -146,6 +148,14 @@ class FakeLightroom:
                     current.append(p)
                 self.edit.setdefault(p, None)
             current.sort(key=os.path.basename)
+            if "framing" in r:
+                self.framing[key[1]] = r["framing"]
+                for p in photos:
+                    self.crops[p] = (0.0, 0.0, 1.0, 1.0)
+                for line in r["_list"].get("crop", []):
+                    parts = line.split("\t")
+                    if len(parts) == 5:
+                        self.crops[parts[0]] = tuple(float(x) for x in parts[1:])
             self.write_alive()
             write_whole(os.path.join(self.bridge, "status.txt"),
                         "id=%s\nstate=done\nadded=%d\nmissing=0\ncatalog=%s\nend=1\n" % (r.get("id", ""), len(photos), self.catalog))

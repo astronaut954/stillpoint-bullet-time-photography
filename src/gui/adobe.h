@@ -60,6 +60,12 @@ namespace Adobe
         std::filesystem::path focus;                // foto que fica ativa no Develop
         std::vector<std::filesystem::path> select;  // fotos selecionadas (a sessão inteira ou só a foto)
         std::vector<std::filesystem::path> photos;  // todas as fotos da sessão (entram na coleção)
+        // Recorte do Export (decisão do dono, 2026-11-06, opção A): a proporção da sessão ("3:2"; "asshot" = sem
+        // recorte) e, por foto, o retângulo que fica (0..1, na foto como ela aparece: esquerda, topo, direita, base).
+        // O plugin aplica no recorte do Lightroom, para a pessoa editar já o quadro final.
+        std::string framing;
+        struct Crop { std::filesystem::path photo; double left = 0, top = 0, right = 1, bottom = 1; };
+        std::vector<Crop> crops;
     };
     bool WriteRequest(const Request& request, std::string& error);
     // Tira o pedido (Cancel), se o plugin ainda não pegou

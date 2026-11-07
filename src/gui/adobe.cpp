@@ -308,6 +308,14 @@ namespace Adobe
             text << "select=" << Utf8(p) << "\n";
         for (const auto& p : request.photos)
             text << "photo=" << Utf8(p) << "\n";
+        if (!request.framing.empty())
+            text << "framing=" << OneLine(request.framing) << "\n";
+        for (const auto& c : request.crops)
+        {
+            char box[96];
+            std::snprintf(box, sizeof(box), "%.6f\t%.6f\t%.6f\t%.6f", c.left, c.top, c.right, c.bottom);
+            text << "crop=" << Utf8(c.photo) << "\t" << box << "\n";
+        }
         text << "end=1\n";  // o plugin só aceita o pedido inteiro
         std::error_code ec;
         fs::remove(BridgeFolder() / "status.txt", ec);

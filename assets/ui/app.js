@@ -8508,7 +8508,37 @@
     startLightroom(s, (open || first || {}).group || "", "session");
   }
   // scope: "session" (todas), "photo" (a do grupo) ou "photos" (as de groups)
-  function startLightroom(s, group, scope, groups) {
+  // Sessão com proporções misturadas e sem recorte escolhido ("Keep as shot" ou Esc no aviso Mixed ratios): pergunta
+  // antes de mandar, porque o recorte vai junto para o Lightroom (opção A, decisão do dono, 2026-11-06)
+  function askCropBeforeLightroom(s, info, done) {
+    const others = el("div", "ratio-others");
+    others.appendChild(el("span", "ratio-others-label", "Other ratios"));
+    RATIO_ORDER.filter((r) => r !== info.suggest).forEach((r) => {
+      const b = el("button", "btn btn-secondary btn-small ratio-chip"); b.type = "button";
+      b.appendChild(document.createTextNode(r + " "));
+      b.appendChild(el("span", "dim", "· keeps " + info.keep[r] + "%"));
+      b.addEventListener("click", () => { ui.dialogOverlay.classList.add("hidden"); done(r); });
+      others.appendChild(b);
+    });
+    dialog("Crop before Lightroom Classic?",
+      ratioText(info) + "\n\nThe photos in this session do not all have the same shape. Crop them to one ratio before they go to Lightroom Classic, so you edit the final frame and edge effects like a vignette stay in place. The originals are not changed.",
+      [{ label: "Send as shot", link: true, left: true, onClick: () => done(null) },
+       { label: "Crop to " + info.suggest + " (keeps " + info.keep[info.suggest] + "%)", primary: true, onClick: () => done(info.suggest) }],
+      others);
+  }
+  function startLightroom(s, group, scope, groups, cropAsked) {
+    if (!cropAsked && !lrJob.id && !sessionCrop[s.name]) {
+      Promise.resolve(measureSessionRatios(s)).then((info) => {
+        if (!info || !info.mixed) { startLightroom(s, group, scope, groups, true); return; }
+        askCropBeforeLightroom(s, info, (r) => {
+          if (!r) { startLightroom(s, group, scope, groups, true); return; }
+          chooseSessionCrop(s.name, r, info);
+          Promise.resolve(typeof window.setSessionCrop === "function" ? window.setSessionCrop(s.name, r + "|0.500|0.500") : null)
+            .then(() => startLightroom(s, group, scope, groups, true), () => startLightroom(s, group, scope, groups, true));
+        });
+      }, () => startLightroom(s, group, scope, groups, true));
+      return;
+    }
     if (lrJob.id) { toast("Lightroom Classic is still opening the last session. Wait for it, or click Cancel in the message below.", 8000, { warn: true }); lrWaitToast(s); return; }
     const list = groups && groups.length ? groups : [];
     Promise.resolve(window.adobeEditInLightroom(s.name, lrCollectionTitle(s), group, scope, ...list)).then((r) => {
@@ -8519,7 +8549,7 @@
     });
   }
   function lightroomProblem(r, s, group, scope, groups) {
-    const again = () => startLightroom(s, group, scope, groups);
+    const again = () => startLightroom(s, group, scope, groups, true);
     if (r.problem === "missing") {
       dialog("Lightroom Classic is not installed", "Edit in Lightroom Classic needs Adobe Lightroom Classic on this computer. If it is installed in another place, choose it with Locate.", [
         { label: "Cancel", link: true, left: true },

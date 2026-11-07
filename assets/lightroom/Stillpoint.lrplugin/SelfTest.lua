@@ -161,12 +161,13 @@ local function aliveText()
 end
 
 -- O pedido "edit" do Stillpoint (Edit in Lightroom Classic), pelo request.txt
-local function openSession(label)
+local function openSession(label, extra)
 	counter = counter + 1
 	local id = 'selftest-' .. os.time() .. '-' .. counter
 	local text = 'id=' .. id .. '\naction=edit\nproject=' .. PROJECT .. '\ntitle=' .. title .. '\ncatalog=' .. catalogPath .. '\nfocus=' .. pathOf(1) .. '\n'
 	for i = 1, #NAMES do text = text .. 'select=' .. pathOf(i) .. '\n' end
 	for i = 1, #NAMES do text = text .. 'photo=' .. pathOf(i) .. '\n' end
+	text = text .. (extra or '')
 	writeFile(LrPathUtils.child(folder, 'request.txt'), text .. 'end=1\n')
 	local state
 	for _ = 1, 40 do
@@ -234,6 +235,39 @@ local function scenarioOpen()
 	names = collectionNames()
 	check('still 4 photos after opening again', names and #names == 4)
 	noUnexpected('opening')
+end
+
+-- O recorte do Export no Lightroom (opção A): a foto 04 chega cortada nas laterais (de 240x160 para 192x160)
+local function croppedSize(i)
+	local ok, d = LrTasks.pcall(function() return photoOf(i):getRawMetadata('croppedDimensions') end)
+	if ok and type(d) == 'table' then return d.width, d.height end
+	return nil
+end
+local function scenarioCrop()
+	section('1b. The Export crop goes to Lightroom (crop= lines)')
+	-- Sessão nova com recorte: como o Stillpoint manda (framing= e uma linha crop= por foto)
+	local extra = 'framing=3:2\ncrop=' .. pathOf(4) .. '\t0.100000\t0.000000\t0.900000\t1.000000\n'
+	openSession('with a crop', extra)
+	local w, h = croppedSize(4)
+	check('photo 04 is cropped in Lightroom (192 x 160)', w and math.abs(w - 192) <= 2 and math.abs(h - 160) <= 2, tostring(w) .. ' x ' .. tostring(h))
+	local w1, h1 = croppedSize(1)
+	check('photo 01 (no crop asked) stays whole (240 x 160)', w1 == 240 and h1 == 160, tostring(w1) .. ' x ' .. tostring(h1))
+	check('the crop is not an edit (it is part of how the photo arrived)', not Actions.hasOwnEdit(photoOf(4), nil),
+		Actions.settingsDiff(Bridge.baseline(pathOf(4)), settingsOf(4)))
+	local keys = {}
+	for k, v in pairs(settingsOf(4)) do if tostring(k):find('Crop') then table.insert(keys, tostring(k) .. '=' .. tostring(v)) end end
+	table.sort(keys)
+	info('crop settings of photo 04: ' .. table.concat(keys, ', '))
+	-- Recorte trocado depois (outra proporção): o Lightroom acompanha e continua sem contar como edição
+	openSession('with another crop', 'framing=1:1\ncrop=' .. pathOf(4) .. '\t0.166667\t0.000000\t0.833333\t1.000000\n')
+	w, h = croppedSize(4)
+	check('crop changed: photo 04 now 160 x 160', w and math.abs(w - 160) <= 2 and math.abs(h - 160) <= 2, tostring(w) .. ' x ' .. tostring(h))
+	check('... still not an edit', not Actions.hasOwnEdit(photoOf(4), nil), Actions.settingsDiff(Bridge.baseline(pathOf(4)), settingsOf(4)))
+	-- Sem recorte (Send as shot): a foto volta inteira
+	openSession('as shot', 'framing=asshot\n')
+	w, h = croppedSize(4)
+	check('as shot: photo 04 whole again (240 x 160)', w == 240 and h == 160, tostring(w) .. ' x ' .. tostring(h))
+	check('... and not an edit', not Actions.hasOwnEdit(photoOf(4), nil), Actions.settingsDiff(Bridge.baseline(pathOf(4)), settingsOf(4)))
 end
 
 local function scenarioHasEdit()
@@ -528,7 +562,7 @@ function SelfTest.run()
 
 	Bridge.testFolder = folder
 	local progress = (import 'LrProgressScope') { title = 'Stillpoint self-test' }
-	local scenarios = { scenarioOpen, scenarioHasEdit, scenarioPanelExport, scenarioCleared, scenarioExportDialog,
+	local scenarios = { scenarioOpen, scenarioCrop, scenarioHasEdit, scenarioPanelExport, scenarioCleared, scenarioExportDialog,
 		scenarioDeleteEdits, scenarioRemoveReadd, scenarioDone, scenarioCancel, scenarioPrefs }
 	for i, scenario in ipairs(scenarios) do
 		progress:setPortionComplete(i - 1, #scenarios)

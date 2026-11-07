@@ -2925,6 +2925,45 @@ namespace
                 r.focus = r.photos.front();
             if (marked.empty())
                 marked.push_back(PhotosForEditing(*session).front().first);
+            // O recorte do Export vai junto (opção A, decisão do dono, 2026-11-06): o mesmo retângulo que o Export
+            // corta de cada foto (Export::ApplyFraming), em frações da foto
+            {
+                std::string ratio = "asshot";
+                double posX = 0.5, posY = 0.5;
+                {
+                    std::stringstream parts(session->crop);
+                    std::string a, b, c;
+                    std::getline(parts, a, '|'); std::getline(parts, b, '|'); std::getline(parts, c, '|');
+                    if (!a.empty()) ratio = a;
+                    try { if (!b.empty()) posX = std::stod(b); if (!c.empty()) posY = std::stod(c); } catch (...) {}
+                }
+                r.framing = ratio;
+                const double target = Export::RatioValue(ratio);
+                if (target > 0)
+                    for (const auto& path : r.photos)
+                    {
+                        int w = 0, h = 0;
+                        if (!Export::PhotoSize(path, w, h) || w <= 0 || h <= 0)
+                            continue;
+                        const double want = w >= h ? target : 1.0 / target;
+                        const double have = static_cast<double>(w) / h;
+                        Adobe::Request::Crop crop;
+                        crop.photo = path;
+                        if (std::abs(have - want) >= 0.005)
+                        {
+                            int nw = w, nh = h;
+                            if (have > want) nw = std::max(1, static_cast<int>(std::lround(h * want)));
+                            else nh = std::max(1, static_cast<int>(std::lround(w / want)));
+                            const int x0 = std::clamp(static_cast<int>(std::lround((w - nw) * std::clamp(posX, 0.0, 1.0))), 0, w - nw);
+                            const int y0 = std::clamp(static_cast<int>(std::lround((h - nh) * std::clamp(posY, 0.0, 1.0))), 0, h - nh);
+                            crop.left = static_cast<double>(x0) / w;
+                            crop.top = static_cast<double>(y0) / h;
+                            crop.right = static_cast<double>(x0 + nw) / w;
+                            crop.bottom = static_cast<double>(y0 + nh) / h;
+                        }
+                        r.crops.push_back(crop);
+                    }
+            }
             std::string error;
             if (!Adobe::WriteRequest(r, error))
                 return Json("adobeEdit").Add("ok", false).Add("problem", "error").Add("error", error).Str();

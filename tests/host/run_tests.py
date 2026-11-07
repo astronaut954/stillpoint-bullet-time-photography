@@ -126,13 +126,26 @@ class T:
 
     # ---------------- o que a pessoa faz no Stillpoint ----------------
 
-    def shoot(self):
+    def dialog_title(self):
+        return self.js("() => !document.getElementById('dialogOverlay').classList.contains('hidden') && document.getElementById('dialogTitle').textContent")
+
+    def dialog_click(self, starts):
+        return self.js("(t) => { const b = [...document.querySelectorAll('#dialogActions button')].find(x => x.textContent.trim().startsWith(t)); if (!b) return false; b.click(); return true; }", starts)
+
+    def shoot(self, keep_as_shot=True):
+        """Fotografa com as câmeras simuladas. O aviso Mixed ratios (só no primeiro disparo de cada combinação de
+        câmeras) é respondido com Keep as shot (padrão) ou com o recorte sugerido."""
         before = {s["name"] for s in self.sessions()}
         self.js("() => { const d = document.getElementById('downloadWait'); if (d) { d.value = '1'; d.dispatchEvent(new Event('input')); d.dispatchEvent(new Event('change')); } }")
         self.wait(lambda: self.js("() => !document.getElementById('shootBtn').disabled"), 20)
         self.page.click("#shootBtn")
         new = self.wait(lambda: [s["name"] for s in self.sessions() if s["name"] not in before and len(s["photos"]) >= 4], 40)
-        time.sleep(1.5)
+        if self.wait(lambda: self.dialog_title() == "Mixed ratios", 4):
+            if keep_as_shot:
+                self.dialog_click("Keep as shot")
+            else:
+                self.js("() => { const b = document.querySelector('#dialogActions button.btn-primary'); b && b.click(); }")
+            time.sleep(0.4)
         self.dismiss()
         return new[0] if new else None
 
@@ -179,8 +192,10 @@ class T:
         self.page.keyboard.press("Control+Shift+z")
         time.sleep(0.15)
 
-    def edit_in_lightroom(self, name):
+    def edit_in_lightroom(self, name, crop_answer="Send as shot"):
         self.session_menu(name, "Edit in Lightroom Classic")
+        if self.wait(lambda: self.dialog_title() == "Crop before Lightroom Classic?", 2):
+            self.dialog_click(crop_answer)
         return self.wait(lambda: self.edit_tag(name), 15)
 
     def open_trash(self):
@@ -433,6 +448,49 @@ def scenario_rapid_in_lightroom(t, name, photos):
     check(t, "... In Lightroom only if Lightroom has the collection (they agree)", bool(tag) == (col is not None), (tag, col))
 
 
+def scenario_crop_before_lightroom(t, name, photos):
+    line("\n== 9. Mixed ratios kept as shot: Stillpoint asks to crop before Lightroom")
+    s1 = t.shoot()
+    check(t, "a new session, Keep as shot", s1 is not None and not (t.session(s1) or {}).get("crop"), t.session(s1) and t.session(s1).get("crop"))
+    if not s1:
+        return
+    t.session_menu(s1, "Edit in Lightroom Classic")
+    title = t.wait(lambda: t.dialog_title(), 6)
+    check(t, "it asks \"Crop before Lightroom Classic?\"", title == "Crop before Lightroom Classic?", title)
+    t.js("() => { const b = [...document.querySelectorAll('#dialogActions button')].find(x => x.textContent.trim().startsWith('Crop to 3:2')); b && b.click(); }")
+    check(t, "Crop to 3:2: the session goes to Lightroom", t.wait(lambda: t.edit_tag(s1), 15))
+    check(t, "the session keeps the crop for Export (3:2)", str((t.session(s1) or {}).get("crop", "")).startswith("3:2"), (t.session(s1) or {}).get("crop"))
+    o = t.originals(s1)
+    sizes = {}
+    from PIL import Image
+    for p in sorted(os.listdir(o)):
+        if p.startswith(".") or p == "session.json":
+            continue
+        with Image.open(os.path.join(o, p)) as im:
+            sizes[os.path.join(o, p)] = im.size
+    ok, details = True, []
+    for path, (w, h) in sizes.items():
+        c = t.lr.crops.get(path)
+        if c is None:
+            ok = False
+            details.append(os.path.basename(path) + ": no crop sent")
+            continue
+        cw, ch = (c[2] - c[0]) * w, (c[3] - c[1]) * h
+        if abs(cw / ch - 1.5) > 0.01:
+            ok = False
+        details.append("%s %dx%d -> %.0fx%.0f" % (os.path.basename(path)[:2], w, h, cw, ch))
+    check(t, "Lightroom gets a 3:2 crop for every photo (the 16:9 ones cut at the sides)", ok, "; ".join(details))
+    s2 = t.shoot()
+    t.session_menu(s2, "Edit in Lightroom Classic")
+    t.wait(lambda: t.js("() => !document.getElementById('dialogOverlay').classList.contains('hidden')"), 6)
+    t.js("() => { const b = [...document.querySelectorAll('#dialogActions button')].find(x => x.textContent.trim() === 'Send as shot'); b && b.click(); }")
+    check(t, "Send as shot: the session goes to Lightroom", t.wait(lambda: t.edit_tag(s2), 15))
+    o2 = t.originals(s2)
+    crops2 = [c for p, c in t.lr.crops.items() if os.path.dirname(p) == o2]
+    check(t, "... with no crop", crops2 and all(c == (0.0, 0.0, 1.0, 1.0) for c in crops2), crops2)
+    check(t, "... and the session still without a crop", not (t.session(s2) or {}).get("crop"), (t.session(s2) or {}).get("crop"))
+
+
 def dismiss_delete(self):
     if self.js("() => !document.getElementById('dialogOverlay').classList.contains('hidden')"):
         self.js("() => { const b = [...document.querySelectorAll('#dialogActions button')].find(x => /^Delete/.test(x.textContent.trim())); b && b.click(); }")
@@ -455,7 +513,7 @@ def main():
             if first:
                 name, photos = first
                 for sc in (scenario_cleared, scenario_delete_edit_undo, scenario_photo_delete_restore,
-                           scenario_remove_from_collection, scenario_delete_session, scenario_cancel, scenario_rapid_in_lightroom):
+                           scenario_remove_from_collection, scenario_delete_session, scenario_cancel, scenario_rapid_in_lightroom, scenario_crop_before_lightroom):
                     try:
                         sc(t, name, photos)
                     except Exception:  # noqa: BLE001

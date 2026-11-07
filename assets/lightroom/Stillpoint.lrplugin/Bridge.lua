@@ -82,6 +82,7 @@ local function parse(text)
 		local key, value = line:match('^([^=]+)=(.*)$')
 		if key == 'photo' then table.insert(request.photos, value)
 		elseif key == 'select' then table.insert(request.select, value)
+		elseif key == 'crop' then request.crops = request.crops or {}; table.insert(request.crops, value)
 		elseif key then request[key] = value end
 	end
 	return request
@@ -211,6 +212,65 @@ function Bridge.baseline(path)
 	return all and all[path]
 end
 
+-- ---------------- recorte do Export no Lightroom ----------------
+
+local CROP_KEYS = { 'CropLeft', 'CropTop', 'CropRight', 'CropBottom', 'CropAngle' }
+Bridge.cropKeys = CROP_KEYS
+
+-- O retângulo vem como a foto aparece; o Lightroom guarda o recorte na foto como o sensor gravou ("AB"): gira de
+-- volta conforme a orientação da foto (AB, BC, CD, DA: cada uma 90° a mais)
+local function cropForOrientation(c, orientation)
+	if orientation == 'BC' then
+		return { left = c.top, top = 1 - c.right, right = c.bottom, bottom = 1 - c.left }
+	elseif orientation == 'CD' then
+		return { left = 1 - c.right, top = 1 - c.bottom, right = 1 - c.left, bottom = 1 - c.top }
+	elseif orientation == 'DA' then
+		return { left = 1 - c.bottom, top = c.left, right = 1 - c.top, bottom = c.right }
+	end
+	return c
+end
+Bridge.cropForOrientation = cropForOrientation
+
+function Bridge.applyFraming(catalog, photos, request, newPaths)
+	local wanted = {}
+	for _, text in ipairs(request.crops or {}) do
+		local p, l, t, r, bt = text:match('^(.*)\t([%d%.%-]+)\t([%d%.%-]+)\t([%d%.%-]+)\t([%d%.%-]+)$')
+		if p then wanted[#wanted + 1] = { path = p, crop = { left = tonumber(l), top = tonumber(t), right = tonumber(r), bottom = tonumber(bt) } } end
+	end
+	local isNew = {}
+	for _, p in ipairs(newPaths or {}) do isNew[p] = true end
+	local changes = {}
+	for _, photo in ipairs(photos) do
+		local path = photo:getRawMetadata('path')
+		local crop = { left = 0, top = 0, right = 1, bottom = 1 }  -- "asshot", ou foto já na proporção
+		for _, w in ipairs(wanted) do if samePath(w.path, path) then crop = w.crop end end
+		local now = photo:getDevelopSettings()
+		local c = cropForOrientation(crop, now.orientation)
+		local settings = { CropLeft = c.left, CropTop = c.top, CropRight = c.right, CropBottom = c.bottom, CropAngle = 0 }
+		local same = true
+		for _, k in ipairs(CROP_KEYS) do
+			if math.abs((tonumber(now[k]) or (k == 'CropRight' or k == 'CropBottom') and 1 or 0) - settings[k]) > 1e-4 then same = false end
+		end
+		if not same then table.insert(changes, { photo = photo, path = path, settings = settings }) end
+	end
+	if #changes == 0 then return end
+	catalog:withWriteAccessDo('Stillpoint: crop to ' .. tostring(request.framing), function()
+		for _, ch in ipairs(changes) do ch.photo:applyDevelopSettings(ch.settings) end
+	end, { timeout = 60 })
+	-- Fotos que já estavam no catálogo: o recorte novo também entra em "como a foto chegou" (não vira edição)
+	for _, ch in ipairs(changes) do
+		if not isNew[ch.path] then
+			local base = Bridge.baseline(ch.path)
+			if base then
+				local after = ch.photo:getDevelopSettings()
+				for _, k in ipairs(CROP_KEYS) do base[k] = after[k] end
+				Bridge.setBaseline(ch.path, base)
+			end
+		end
+	end
+	Bridge.note('crop: ' .. #changes .. ' photos cropped to ' .. tostring(request.framing) .. ' in Lightroom')
+end
+
 -- Fotos da coleção na ordem do Stillpoint (01, 02, 03...). A ordem própria de uma coleção (Custom Order) é a ordem em
 -- que as fotos entraram: uma foto que volta da lixeira entrava no fim (teste do dono, 2026-11-06). Por isso a coleção
 -- é refeita na ordem certa: tira todas e põe de volta (dentro de uma escrita já aberta)
@@ -296,6 +356,12 @@ local function handle(request)
 		collection = collectionFor(catalog, request)
 		putInOrder(collection, photos)
 	end, { timeout = 60 })
+	-- O recorte do Export no recorte do Lightroom (opção A, decisão do dono, 2026-11-06): a pessoa edita já o quadro
+	-- final, e a vinheta (Post-Crop Vignetting) fica no lugar. O recorte faz parte de "como a foto chegou": não conta
+	-- como edição
+	if request.framing then
+		LrTasks.pcall(Bridge.applyFraming, catalog, photos, request, newPaths)
+	end
 	-- Como a foto chegou (sem edição): "tem edição" passa a ser "está diferente disso" (teste do dono, 2026-11-06:
 	-- só o histórico do Lightroom contava, e uma foto sem edição, ou depois do Reset, virava "editada")
 	for _, path in ipairs(newPaths) do
