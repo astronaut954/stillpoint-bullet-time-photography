@@ -132,8 +132,8 @@ class T:
         self.wait(lambda: self.js("() => !document.getElementById('shootBtn').disabled"), 20)
         self.page.click("#shootBtn")
         new = self.wait(lambda: [s["name"] for s in self.sessions() if s["name"] not in before and len(s["photos"]) >= 4], 40)
+        time.sleep(1.5)
         self.dismiss()
-        time.sleep(1)
         return new[0] if new else None
 
     def dismiss(self):
@@ -144,10 +144,12 @@ class T:
                 time.sleep(0.3)
 
     def open_session(self, name):
+        self.dismiss()
         self.page.click('#sessionList li.folder[data-name="%s"]' % name)
         time.sleep(0.8)
 
     def session_menu(self, name, item):
+        self.dismiss()
         self.page.click('#sessionList li.folder[data-name="%s"]' % name, button="right")
         time.sleep(0.3)
         self.menu(item)
@@ -376,9 +378,15 @@ def scenario_cancel(t, name, photos):
     line("\n== 7. Cancel editing in the Lightroom panel")
     if not t.edit_tag(name):
         t.edit_in_lightroom(name)
+    other = next((s["name"] for s in t.sessions() if s["name"] != name), None) or t.shoot()
+    if other:
+        t.open_session(other)
+    if not t.edit_tag(name):
+        t.edit_in_lightroom(name)
     t.lr.cancel_editing(PROJECT, t._title(name), name, t.project)
     check(t, "Cancel editing: no In Lightroom", t.wait(lambda: not t.edit_tag(name)))
     check(t, "the toast says Editing cancelled", t.wait(lambda: "Editing cancelled" in (t.js("() => document.body.innerText") or "")))
+    check(t, "Stillpoint shows the session (comes to the front with it)", t.wait(lambda: t.js("(n) => !!document.querySelector('#sessionList li.folder.active[data-name=\"' + n + '\"]')", name)))
 
 
 def scenario_rapid_in_lightroom(t, name, photos):

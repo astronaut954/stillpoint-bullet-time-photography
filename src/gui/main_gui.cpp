@@ -2436,7 +2436,7 @@ namespace
         {
             const auto alive = Adobe::ReadAlive();
             // Cancel editing no painel do Lightroom (pedido do dono, 2026-11-06): a sessão sai do "In Lightroom" aqui
-            std::string cancelledList = "[";
+            std::string cancelledList = "[", cancelledGoTo;
             {
                 const auto messages = Adobe::TakeMessages("cancelled");
                 if (!messages.empty())
@@ -2455,6 +2455,7 @@ namespace
                         const std::string discarded = Adobe::MessageValue(message, "discarded");
                         Log("Lightroom Classic: editing of " + session + " cancelled in the Stillpoint panel"
                             + (!discarded.empty() && discarded != "0" ? " (" + discarded + " photo(s) back to how Stillpoint has them)" : ""));
+                        cancelledGoTo = session;
                         cancelledList += std::string(cancelledList.size() > 1 ? "," : "")
                             + Json().Add("session", session).Add("discarded", discarded.empty() ? 0 : std::atoi(discarded.c_str())).Str();
                     }
@@ -2675,6 +2676,14 @@ namespace
                 const auto sessions = store.ListSessions();
                 if (std::any_of(sessions.begin(), sessions.end(), [&](const StoredSession& x) { return x.name == last; }))
                     goTo = last;
+            }
+            // Cancel editing no painel do Lightroom: o Stillpoint também vem para a frente com a sessão (pedido do
+            // dono, 2026-11-06)
+            if (goTo.empty() && !cancelledGoTo.empty())
+            {
+                const auto sessions = store.ListSessions();
+                if (std::any_of(sessions.begin(), sessions.end(), [&](const StoredSession& x) { return x.name == cancelledGoTo; }))
+                    goTo = cancelledGoTo;
             }
             for (const auto& message : Adobe::TakeMessages("goto"))
             {
