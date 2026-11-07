@@ -2752,6 +2752,34 @@
     let common = keys[0]; keys.forEach((k) => { if (count[k] > count[common]) common = k; });
     return new Set(chosen.filter((o, i) => keys[i] !== common).map((o) => o.name));
   }
+  // Explicação da etiqueta "Different" (pedido do dono, 2026-11-06): o que esta sessão tem de diferente da
+  // configuração mais comum das sessões marcadas
+  function placeText(x, y) {
+    const h = x < 0.34 ? "left" : x > 0.66 ? "right" : "", v = y < 0.34 ? "top" : y > 0.66 ? "bottom" : "";
+    return h || v ? [v, h].filter(Boolean).join(" ") : "centred";
+  }
+  function framingText(cfg) {
+    const [ratio, x, y] = String(cfg).split("|");
+    return ratio === "asshot" ? "As shot" : ratio + ", " + placeText(+x, +y);
+  }
+  function differenceText(name, step) {
+    const chosen = chosenSessions();
+    if (chosen.length < 2) return "";
+    const common = (kind) => {
+      const keys = chosen.map((o) => stepConfig(o.name, step, kind)), count = {};
+      keys.forEach((k) => { count[k] = (count[k] || 0) + 1; });
+      let c = keys[0]; keys.forEach((k) => { if (count[k] > count[c]) c = k; });
+      return c;
+    };
+    if (step === 1) {
+      const mine = stepConfig(name, 1), most = common();
+      return "Its framing is " + framingText(mine) + "; most of the ticked sessions use " + framingText(most) +
+        ". Tick \u201cSame framing for all ticked sessions\u201d to give all of them the same framing.";
+    }
+    const kinds = OUTPUT_KINDS.filter((k) => stepConfig(name, step, k) !== common(k));
+    const names = kinds.map((k) => (OUTPUTS.find(([id]) => id === k) || [k, k])[1]);
+    return names.length ? "Its " + names.join(" and ") + " settings are not the same as in most of the ticked sessions." : "";
+  }
   // Estado da caixa "Same … for all sessions" (o mesmo nos dois passos): marcada = iguais e ligadas (mudar uma muda
   // todas); traço = algumas diferentes; vazia = iguais, mas cada uma pode mudar sozinha
   function sameState(linked, step, kind) {
@@ -3193,9 +3221,14 @@
         const r = ratioInfoCached(s.name), asShot = sst.crop.ratio === "asshot", aligned = sessionAligned(s, sst);
         const chip = el("span", "export-chip" + (asShot && r && r.mixed && !aligned ? " warn" : !asShot || aligned ? " ok" : ""),
           (asShot ? "As shot" : sst.crop.ratio) + (aligned ? " · aligned" : asShot && r && r.mixed ? " · mixed ratios" : ""));
+        // Âmbar: por que o aviso (pedido do dono, 2026-11-06)
+        if (asShot && r && r.mixed && !aligned)
+          chip.dataset.itip = ratioText(r) + " With As shot, the sequence jumps between shapes. Choose an aspect ratio (" +
+            r.suggest + " keeps " + r.keep[r.suggest] + "%) or align the photos.";
         li.querySelector(".export-summary").replaceWith(chip);
       } else setWarnText(li.querySelector(".export-summary"), settingsText(s));
       li.classList.toggle("different", exp.step < 3 && diffNow.has(s.name));
+      if (exp.step < 3 && diffNow.has(s.name)) li.querySelector(".export-diff").dataset.itip = differenceText(s.name, exp.step);
       const first = sessionItems(s).find((i) => i.previewable);
       if (first) sessionPhoto(s.name, first.file, 320).then((url) => { if (url) li.querySelector(".export-thumb").style.backgroundImage = "url(" + url + ")"; });
       li.addEventListener("click", () => {

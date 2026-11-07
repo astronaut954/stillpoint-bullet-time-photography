@@ -486,7 +486,8 @@ local function scenarioCancel()
 	check('B: Keep editing changes nothing', findCollection() ~= nil and Bridge.same(settingsOf(4), changed) and #m == 0)
 	-- C: Discard changes
 	m = cancel({ 'ok' })
-	check('C: Discard changes: photo 04 back to how Stillpoint has it (no edit there: the original)', Bridge.same(settingsOf(4), Bridge.baseline(pathOf(4))))
+	check('C: Discard changes: photo 04 back to how Stillpoint has it (no edit there: the original)', Bridge.sameEdit(settingsOf(4), Bridge.baseline(pathOf(4))),
+		Actions.settingsDiff(Bridge.baseline(pathOf(4)), settingsOf(4)))
 	check('C: the collection is gone', findCollection() == nil)
 	check('C: Stillpoint is told 1 change discarded', m[1] and m[1].discarded == '1', m[1] and m[1].discarded)
 	check('C: the message says "discarded"', seenTitle('bezel', 'discarded') ~= nil, seenText())

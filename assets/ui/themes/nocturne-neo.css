@@ -720,6 +720,13 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
 .export-thumb { width: 64px; aspect-ratio: 3 / 2; background: #000 center / cover no-repeat; border: 1px solid var(--noct-border); }
 .export-item .folder-date { display: block; }
 .export-item .folder-meta { display: block; }
+/* As etiquetas da sessão quebram linha quando não cabem (antes ficavam espremidas lado a lado) */
+.export-item > span:last-child { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; min-width: 0; }
+.export-item > span:last-child > .folder-date, .export-item > span:last-child > .folder-meta,
+.export-item > span:last-child > .export-summary { flex-basis: 100%; }
+.export-item > span:last-child > .project-tag, .export-item > span:last-child > .export-chip,
+.export-item > span:last-child > .export-diff, .export-item > span:last-child > .missing-tag { margin-top: 2px; }
+.export-chip.warn[data-itip], .export-diff[data-itip] { cursor: help; }
 .export-summary { display: block; margin-top: 3px; font: 10px var(--noct-font-mono); color: var(--noct-primary-dim); text-transform: uppercase; letter-spacing: .06em; }
 
 .export-settings { min-height: 0; overflow: hidden; overflow: clip; padding: 14px 18px; display: flex; flex-direction: column; gap: 14px; }
