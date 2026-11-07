@@ -837,6 +837,14 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    conta como edição; sessão com proporções misturadas e sem recorte (Keep as shot / Esc) pergunta "Crop before
    Lightroom Classic?" (Send as shot / Crop to …). Pendente: o alinhamento (Framing, Align photos do Export) e o que
    acontece quando o recorte ou o alinhamento mudam depois de editar.
+   **Edição dentro do Export (decisões do dono, 2026-11-07, protótipo "Editar dentro do Export"):** opção A = o Export
+   tem 4 passos (1 Sessions — 2 Edit — 3 Outputs — 4 Review); M1 = a janela principal só mostra (etiquetas In Lightroom e
+   Edited n / m, bolinhas LR; clicar numa etiqueta abre o Export › Edit da sessão); reabrir o Export com uma sessão marcada
+   no Lightroom vai direto ao Edit nela; o botão manda só a sessão aberta; "só esta foto" e "Delete edit…" no botão direito
+   da miniatura do Edit; selo ED nas miniaturas e Original / Edited em cima (sem a etiqueta "Not edited" na lista);
+   "Crop before Lightroom Classic?" continua quando as fotos não têm todas a mesma proporção; a prévia do Edit abre tocando
+   (play e Reverse loop ligados) com play/pause e modo teatro; no teatro, ‹ ▶ › Speed − + e Reverse loop como na tela cheia
+   da janela principal. Feito em 2026-11-07. "Use edited photos" saiu do Outputs e foi para o bloco Lightroom Classic do Edit.
    Feito em 2026-11-06: bolinha âmbar pulsando nas miniaturas e na prévia grande das fotos que estão no Lightroom;
    a coleção do Lightroom refeita na ordem do Stillpoint quando uma foto volta; Delete edits e o ⌘Z dele em fila, na ordem.
 6. **Etapa 21 — Histórico de edição permanente.** Pedido do dono (2026-11-01): um histórico no estilo

@@ -1837,6 +1837,40 @@ antes de começar: o Stillpoint troca o plugin pelo novo no próximo "Edit in Li
 - [ ] Com mudanças: pergunta "Discard the changes?" com Discard changes, Keep changes e Cancel; Discard volta as fotos ao
       último envio (ou a como chegaram); Keep deixa as mudanças só no Lightroom; Cancel não faz nada.
 
+## 42. Edição dentro do Export (etapa 20; protótipo "Editar dentro do Export", opção A e M1, aprovado em 2026-11-07)
+
+Com câmeras simuladas e o Lightroom Classic com o catálogo do projeto. A janela Export abre pelo botão **Export sessions**
+(barra de cima, à direita).
+
+**Janela principal (só mostra)**
+- [ ] Botão direito numa sessão: não há mais **Edit in Lightroom Classic**, **Done editing** nem **Delete edits…**.
+- [ ] Botão direito numa foto (miniatura ou foto grande): não há mais **Edit in Lightroom Classic…** nem **Delete edit…**;
+      sobre a foto grande não aparece mais o botão **Edit in Lightroom Classic…**.
+- [ ] Clicar na etiqueta **In Lightroom** ou **Edited n / m** de uma sessão (lista da esquerda ou janela Project) abre o
+      Export direto no passo **2 Edit**, nessa sessão.
+
+**Export › 2 Edit**
+- [ ] Em cima, os passos **1 Sessions — 2 Edit — 3 Outputs — 4 Review**; no passo 1 o botão verde é **Edit →**; no Edit,
+      **← Sessions** e **Outputs →**.
+- [ ] A prévia grande abre tocando, indo e voltando (1, 2, 3, 4, 3, 2…), com o botão de play/pause (canto de baixo à
+      direita) e o de modo teatro (canto de cima à esquerda). A barra de espaço pausa e volta a tocar.
+- [ ] Modo teatro: a prévia cresce, o bloco do Lightroom some e, com o mouse sobre a foto, aparecem no canto de cima à
+      direita ‹, play, ›, **Speed** com − e + e **Reverse loop**, com o mesmo comportamento da tela cheia da janela principal.
+      O botão de modo teatro de novo volta ao normal.
+- [ ] Sessão sem edição: o bloco **Lightroom Classic** diz **Not edited** e tem **Edit in Lightroom Classic**. Clicar manda a
+      sessão; com proporções misturadas e **As shot**, pergunta **Crop before Lightroom Classic?** como antes; escolhendo
+      **Crop to 3:2**, o Framing da sessão no passo 1 passa a 3:2.
+- [ ] Sessão no Lightroom: o bloco diz **In Lightroom Classic · n photos** (bolinha pulsando com o Lightroom aberto) e tem
+      **Done editing**; na fileira, **LR** em cada foto.
+- [ ] Depois de **Export to Stillpoint** no Lightroom: o bloco diz **n of m photos edited** e tem **Edit again in Lightroom
+      Classic**, **Delete edits…** e **Use edited photos**; na fileira, **ED** nas fotos editadas; **Original / Edited**
+      (em cima, à direita) troca a foto mostrada e é a mesma chave da etiqueta **Edited n / m**.
+- [ ] Botão direito numa miniatura da fileira: **Edit just this photo in Lightroom Classic** manda só essa foto; nas
+      editadas, **Delete edit…** pergunta e manda a editada para a lixeira.
+- [ ] Fechar o Export (**Cancel** › **Leave**) com uma sessão no Lightroom e abrir de novo: abre no passo **2 Edit**,
+      nessa sessão.
+- [ ] O passo **3 Outputs** não tem mais **Use edited photos**.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |

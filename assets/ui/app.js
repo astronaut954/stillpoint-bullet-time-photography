@@ -1291,37 +1291,20 @@
       };
       const hasFile = !!item.file;
       const sel = sessionGallery.selection;
-      // Fotos (escolhidas) que têm editada em Edited/ (Delete edits)
-      const photoEdited = (it) => { const s = sessions.find((x) => x.name === (it.session || currentSession.name)); const p = s && s.photos.find((x) => x.file === it.file); return !!(p && p.edited); };
-      const editedPicked = () => sel.map((i) => sessionGallery.items[i]).filter((it) => it && it.file && photoEdited(it));
+      // A edição no Lightroom Classic (mandar, Delete edit) saiu daqui: fica no Export › Edit (M1, decisão do dono,
+      // 2026-11-07)
       if (sel.length > 1) {
         popupMenuAt(e.clientX, e.clientY, [
           { html: el("div", "project-menu-label", plural(sel.length, "photo", "photos") + " selected") },
-          { label: "Edit " + sel.length + " photos in Lightroom Classic", onClick: () => {
-            const picked = sel.map((i) => sessionGallery.items[i]).filter(Boolean);
-            const s = sessions.find((x) => x.name === (item.session || currentSession.name));
-            if (s && picked.length && !adobeMissingBuild()) startLightroom(s, item.group, "photos", picked.map((x) => x.group));
-          } },
-          ...(editedPicked().length ? [{ label: "Delete " + plural(editedPicked().length, "edit", "edits") + "…", danger: true, onClick: () => {
-            const s = sessions.find((x) => x.name === (item.session || currentSession.name));
-            if (s) deleteEdits(s, editedPicked().map((x) => x.file));
-          } }] : []),
           "-",
           { label: "Delete " + sel.length + " photos…", danger: true, onClick: deleteCurrentPhoto },
         ]);
         return;
       }
       popupMenuAt(e.clientX, e.clientY, [
-        { label: "Edit in Lightroom Classic…", disabled: !hasFile, dim: !hasFile, onClick: () => editPhotoInLightroom(item) },
-        "-",
         { label: win ? "Show in Explorer" : "Show in Finder", disabled: !hasFile, dim: !hasFile, onClick: () => fileAction("reveal") },
         { label: "Open in default app", disabled: !hasFile, dim: !hasFile, onClick: () => fileAction("open") },
         "-",
-        // Só nas fotos que têm editada (pedido do dono, 2026-11-06)
-        ...(hasFile && photoEdited(item) ? [{ label: "Delete edit…", danger: true, onClick: () => {
-          const s = sessions.find((x) => x.name === (item.session || currentSession.name));
-          if (s) deleteEdits(s, [item.file]);
-        } }] : []),
         { label: "Delete photo " + pad(item.order || sessionGallery.index + 1) + "…", danger: true, onClick: deleteCurrentPhoto },
       ]);
     },
@@ -1525,7 +1508,9 @@
   }
   // Etiqueta de sessão guardada no Project: "In project" ou "Edited n/m" (verde quando completa). Com editadas, é um
   // botão: liga e desliga as editadas da sessão nas prévias e no Export (decisão do dono, 2026-11-06)
-  function projectTag(s) {
+  // opensEdit (janela principal e Project, M1 de 2026-11-07): o clique abre o Export no passo Edit da sessão; no Export
+  // a etiqueta continua trocando editadas / originais (a mesma chave do Original / Edited e do "Use edited photos")
+  function projectTag(s, opensEdit) {
     const total = s.photos.length;
     const complete = s.edited > 0 && s.edited >= total;
     const on = s.showEdited !== false;
@@ -1533,7 +1518,10 @@
     if (s.edited > 0) t.type = "button";
     t.className = "project-tag" + (complete ? " ok" : s.edited > 0 ? " part" : "") + (s.edited > 0 && !on ? " off" : "");
     t.textContent = s.edited > 0 ? "Edited " + s.edited + " / " + total : "In project";
-    if (s.edited > 0) {
+    if (s.edited > 0 && opensEdit) {
+      t.title = plural(s.edited, "photo has", "photos have") + " an edited version in the project's Edited folder" + (on ? "" : " (showing the originals)") + ". Click to open the session in Export › Edit.";
+      t.addEventListener("click", (e) => { if (e.metaKey || e.ctrlKey || e.shiftKey) return; e.stopPropagation(); openExportEdit(s); });
+    } else if (s.edited > 0) {
       t.setAttribute("aria-pressed", on ? "true" : "false");
       t.title = (on ? "Showing the edited photos (from the project's Edited folder) in the previews and in Export. Click to show the originals."
         : "Showing the originals. Click to show the edited photos (from the project's Edited folder) in the previews and in Export.")
@@ -1607,7 +1595,8 @@
   let editingBySession = {};
   function editingOf(session, group) { const m = editingBySession[session]; return m ? m[group] || "" : ""; }
   // Etiqueta "In Lightroom" / "In Photoshop" (no desenho das outras etiquetas, sem o âmbar de aviso)
-  function editTagFor(session) {
+  // inExport: a etiqueta da lista do Export (lá ela só informa; a lista de lá já troca de sessão)
+  function editTagFor(session, inExport) {
     const m = editingBySession[session];
     if (!m) return null;
     const v = Object.values(m);
@@ -1620,9 +1609,20 @@
     dot.className = "edit-dot";
     t.appendChild(dot);
     t.appendChild(document.createTextNode(lr ? "In Lightroom" : "In Photoshop"));
+    // Fora do Export (M1, 2026-11-07): clicar abre o Export no passo Edit da sessão, onde ficam os botões
+    const outside = !inExport;
     t.dataset.itip = (lr ? plural(lr, "photo of this session is", "photos of this session are") + " being edited in Lightroom Classic" : "")
       + (lr && ps ? "; " : "") + (ps ? plural(ps, "photo is", "photos are") + " open in Photoshop" : "")
-      + ". Right-click the session › Done editing when you finish.";
+      + (outside ? ". Click to open the session in Export › Edit (Done editing is there)." : ". Done editing is in the Lightroom Classic box of step 2 · Edit.");
+    if (outside) {
+      t.classList.add("opens");
+      t.addEventListener("click", (e) => {
+        if (e.metaKey || e.ctrlKey || e.shiftKey || !$("exportOverlay").classList.contains("hidden")) return;
+        e.stopPropagation();
+        const s = sessions.find((x) => x.name === session);
+        if (s) openExportEdit(s);
+      });
+    }
     return t;
   }
   // Opção A (decisão do dono, 2026-11-05): a etiqueta fica até o Done editing; a bolinha só pulsa enquanto o
@@ -1635,7 +1635,9 @@
   function checkLrLive() {
     clearTimeout(lrLiveTimer);
     const apply = () => {
-      document.querySelectorAll(".edit-tag[data-session]").forEach((t) => t.classList.toggle("live", lrLive.has(t.dataset.session)));
+      // (também o bloco Lightroom Classic, a fileira e a legenda da prévia do Export › Edit)
+      document.querySelectorAll(".edit-tag[data-session], .lr-state[data-session], .export-strip .frame-app[data-session], .export-preview .caption-app[data-session]")
+        .forEach((t) => t.classList.toggle("live", lrLive.has(t.dataset.session)));
       sessionGallery.refreshBadges();  // a bolinha das miniaturas e da prévia grande segue a da sessão
     };
     if (typeof window.adobeLive !== "function") { lrLive = new Set(); apply(); return; }
@@ -1688,7 +1690,11 @@
     if (currentSession) sessionHead(currentSession);
     sessionGallery.refreshBadges();
     if (!$("projectOverlay").classList.contains("hidden") && !(document.activeElement && document.activeElement.closest && document.activeElement.closest("#projectList input[type=text]"))) renderProjectWindow();
+    // Export › Edit aberto: a lista, a fileira e o bloco do Lightroom seguem (entrou, Done editing, Cancel editing)
+    if (!$("exportOverlay").classList.contains("hidden") && exp.step === 2) renderExport();
   }
+  // A sessão tem fotos no Lightroom Classic agora (etiqueta In Lightroom)
+  function inLightroom(name) { const m = editingBySession[name]; return !!m && Object.values(m).includes("lr"); }
   function deletedTag(count) {
     const t = document.createElement("span");
     t.className = "missing-tag deleted-tag";
@@ -1849,7 +1855,7 @@
       if (editTagFor(s.name)) li.querySelector(".folder-meta").after(editTagFor(s.name));
       if (projectOpen) {
         // Só a etiqueta de editadas (estar no projeto é a posição na lista)
-        if (s.inProject && s.edited > 0) li.querySelector(".folder-meta").after(projectTag(s));
+        if (s.inProject && s.edited > 0) li.querySelector(".folder-meta").after(projectTag(s, true));
         if (!s.inProject) {
           const add = el("button", "btn btn-link btn-small folder-add", "Add to project ↑");
           // Com Cmd/Ctrl/Shift o clique é de seleção: o botão não age e o clique segue para a linha
@@ -2746,7 +2752,7 @@
   // "Different": as sessões marcadas que fogem da configuração mais comum (empate: a da primeira da lista). Não depende
   // de qual sessão está aberta, então a etiqueta não muda de lugar ao clicar nas sessões.
   function differentSessions(step, kind) {
-    const chosen = chosenSessions(); if (chosen.length < 2) return new Set();
+    const chosen = chosenSessions(); if (!step || chosen.length < 2) return new Set();
     const keys = chosen.map((o) => stepConfig(o.name, step, kind)), count = {};
     keys.forEach((k) => { count[k] = (count[k] || 0) + 1; });
     let common = keys[0]; keys.forEach((k) => { if (count[k] > count[common]) common = k; });
@@ -2981,6 +2987,10 @@
     // "Keep the originals" vem sempre marcada ao abrir (decisão do dono, 2026-11-06)
     Object.values(exp.settings).forEach((st) => { if (st && st.photos) st.photos.original = true; });
     exp.photo = 0;
+    // Reaberto com uma sessão marcada no Lightroom Classic: direto no passo 2 · Edit, nela (decisão do dono, 2026-11-07)
+    const lrOpen = all.filter((s) => exp.selected.has(s.name) && inLightroom(s.name));
+    if (lrOpen.length) { exp.step = 2; if (!lrOpen.some((s) => s.name === exp.active)) exp.active = lrOpen[0].name; }
+    exp.editTheater = false; editPlay.playing = true; editPlay.dir = 1;  // o Edit abre tocando, fora do modo teatro
     // Já diferentes ao abrir: a caixa vem com o traço e nada é igualado sozinho
     if (exp.sameFraming && differentSessions(1).size) exp.sameFraming = false;
     OUTPUT_KINDS.forEach((k) => { if (exp.same[k] && differentSessions(2, k).size) exp.same[k] = false; });
@@ -3084,8 +3094,8 @@
   function expWhere() { return { step: exp.step, active: exp.active, mode: exp.mode, photo: exp.photo || 0, aligning: exp.step === 1 && !!exp.aligning }; }
   function expWhereText(w) {
     const date = sessionLabel(w.active || "").date;
-    const place = w.step === 1 ? (w.aligning ? "Align photos" : "Framing") : w.step === 2 ? "Outputs › " + ((OUTPUTS.find(([k]) => k === w.mode) || [, "Photos"])[1]) : "Review";
-    return place + (w.step === 3 || !date ? "" : " · " + date);
+    const place = w.step === 1 ? (w.aligning ? "Align photos" : "Framing") : w.step === 2 ? "Edit" : w.step === 3 ? "Outputs › " + ((OUTPUTS.find(([k]) => k === w.mode) || [, "Photos"])[1]) : "Review";
+    return place + (w.step === 4 || !date ? "" : " · " + date);
   }
   function expApply(snap) {
     if ($("exportOverlay").classList.contains("hidden")) return false;
@@ -3103,20 +3113,26 @@
     renderExport();
   }
 
-  // ---- Três passos (decisão do dono, 2026-11-04, protótipo "Export em três passos") ----
-  // 1 Sessions: quais sessões e o Framing de cada uma; 2 Outputs: o que sai; 3 Review: conferir, nome e pasta.
-  const EXPORT_STEPS = [[1, "Sessions"], [2, "Outputs"], [3, "Review"]];
+  // ---- Quatro passos (três: decisão do dono, 2026-11-04; o Edit entrou no protótipo A "Editar dentro do Export",
+  // 2026-11-07) ----
+  // 1 Sessions: quais sessões e o Framing de cada uma; 2 Edit: editar no Lightroom Classic (com o recorte do passo 1);
+  // 3 Outputs: o que sai; 4 Review: conferir, nome e pasta.
+  const EXPORT_STEPS = [[1, "Sessions"], [2, "Edit"], [3, "Outputs"], [4, "Review"]];
   const EXPORT_SUBS = {
     1: "Tick the sessions to export and set the framing of each one: the aspect ratio, where the crop sits, and the photo alignment.",
-    2: "Tick what each session should become: photos, a sequence, a lenticular print, or several.",
-    3: "Check what will be exported, name the folders and choose where they go.",
+    2: "Edit the photos in Lightroom Classic, already cut to the framing from step 1. Sessions you do not edit go out as they are.",
+    3: "Tick what each session should become: photos, a sequence, a lenticular print, or several.",
+    4: "Check what will be exported, name the folders and choose where they go.",
   };
+  // O que se compara entre as sessões ("Different", "Same … for all"): 1 = o Framing (passo 1), 2 = as saídas
+  // (passo 3, Outputs); 0 = nada (passos Edit e Review)
+  function cmpStep() { return exp.step === 1 ? 1 : exp.step === 3 ? 2 : 0; }
   function chosenSessions() { return exportable().filter((s) => exp.selected.has(s.name)); }
   // O que impede avançar de cada passo ("" = pode)
   function exportStepProblem(step) {
     const chosen = chosenSessions();
     if (step >= 1 && !chosen.length) return "Tick at least one session";
-    if (step >= 2) {
+    if (step >= 3) {
       const sts = chosen.map((s) => settingsFor(s.name));
       if (sts.some((st) => !OUTPUT_KINDS.some((k) => st.outputs[k]))) return "Tick at least one output for each selected session";
       if (sts.some((st) => st.outputs.photos && !st.photos.original && !st.photos.convert)) return "Photos: choose the originals, a format, or both";
@@ -3130,8 +3146,9 @@
     if (step > exp.step && exportStepProblem(step - 1)) return;  // para a frente só com o passo atual pronto
     exp.step = step;
     exp.aligning = false;
-    if (step === 2 && !OUTPUT_KINDS.includes(exp.mode)) exp.mode = OUTPUT_KINDS.find((k) => settingsFor(exp.active).outputs[k]) || "photos";
-    if (step === 2 && !exp.selected.has(exp.active)) { const first = chosenSessions()[0]; if (first) exp.active = first.name; }
+    exp.editTheater = false;  // o modo teatro do Edit vale só enquanto se está nele
+    if (step === 3 && !OUTPUT_KINDS.includes(exp.mode)) exp.mode = OUTPUT_KINDS.find((k) => settingsFor(exp.active).outputs[k]) || "photos";
+    if ((step === 2 || step === 3) && !exp.selected.has(exp.active)) { const first = chosenSessions()[0]; if (first) exp.active = first.name; }
     renderExport();
   }
   function renderExportSteps() {
@@ -3155,12 +3172,13 @@
   function renderExport() {
     // Reaberto sem nenhuma sessão marcada: volta ao passo 1; no passo 2 a sessão aberta é uma das marcadas
     if (exp.step > 1 && exportStepProblem(1)) exp.step = 1;
-    if (exp.step === 2 && !exp.selected.has(exp.active)) { const f = chosenSessions()[0]; if (f) exp.active = f.name; }
+    if ((exp.step === 2 || exp.step === 3) && !exp.selected.has(exp.active)) { const f = chosenSessions()[0]; if (f) exp.active = f.name; }
     $("exportTitle").textContent = "Export sessions";
     $("exportSub").textContent = EXPORT_SUBS[exp.step];
     renderExportSteps();
     const body = document.querySelector(".export-body");
-    if (body) { body.classList.toggle("step-2", exp.step === 2); body.classList.toggle("step-3", exp.step === 3); }
+    // step-2: lista sem as caixas (só as marcadas: Edit e Outputs); step-3: sem a lista (Review)
+    if (body) { body.classList.toggle("step-2", exp.step === 2 || exp.step === 3); body.classList.toggle("step-3", exp.step === 4); }
     renderExportList();
     renderExportSettings();
     if (renderExportSettings.restoreScroll) renderExportSettings.restoreScroll();  // já com o conteúdo montado
@@ -3178,7 +3196,7 @@
   function exportable() { return exp.project ? sessions.filter((s) => s.inProject) : sessions; }
   // Teclado: o Tab para numa sessão só; ↑ ↓ trocam de sessão (e mostram as opções dela, como o clique)
   const exportRoving = makeRoving({ root: () => $("exportList"), rows: (r) => [...r.querySelectorAll("li.export-item")],
-    controls: (row) => (exp.step === 2 ? [row] : [row.querySelector("input")]), id: (row) => row.dataset.name,  // passo 2: sem caixa, a linha é o controle
+    controls: (row) => (exp.step === 2 || exp.step === 3 ? [row] : [row.querySelector("input")]), id: (row) => row.dataset.name,  // passo 2: sem caixa, a linha é o controle
     onMove: (name, i) => {
       if (exp.active === name) return;
       if (exp.aligning) { const s = sessions.find((x) => x.name === name), tst = s && settingsFor(name); if (s && needsRatio(s, tst)) { askRatioForAlign(s, tst, renderExport); return; } }
@@ -3187,9 +3205,9 @@
     const list = $("exportList");
     const focusWas = exportRoving.where(document.activeElement);
     list.innerHTML = "";
-    const diffNow = differentSessions(exp.step);  // etiqueta "Different" (pela configuração mais comum)
-    // Passo 2: só as sessões marcadas no passo 1
-    exportable().filter((s) => exp.step !== 2 || exp.selected.has(s.name)).forEach((s) => {
+    const diffNow = differentSessions(cmpStep());  // etiqueta "Different" (pela configuração mais comum)
+    // Passos 2 e 3 (Edit e Outputs): só as sessões marcadas no passo 1
+    exportable().filter((s) => (exp.step !== 2 && exp.step !== 3) || exp.selected.has(s.name)).forEach((s) => {
       const label = sessionLabel(s.name);
       const li = document.createElement("li");
       li.className = "export-item" + (s.name === exp.active ? " active" : "") + (exp.selected.has(s.name) ? "" : " off");
@@ -3199,7 +3217,7 @@
       const box = li.querySelector("input");
       box.checked = exp.selected.has(s.name);
       if (!li.title) li.title = label.date;  // na tela de alinhamento a lista mostra só a miniatura: a data fica na dica
-      if (exp.step !== 2) li.tabIndex = exp.aligning && s.name === exp.active ? 0 : -1;
+      if (exp.step === 1 || exp.step === 4) li.tabIndex = exp.aligning && s.name === exp.active ? 0 : -1;
       // legenda instantânea (como a barra da tela cheia): data, fotos e o que vai sair
       li.dataset.tip = [s.label || "", label.date, plural(sessionItems(s).length, "photo", "photos"), label.detail].filter(Boolean).join(" · ");
       { const r = ratioInfoCached(s.name); const warns = []; if (s.missing) warns.push(s.missing + " missing"); if (r && r.mixed) warns.push("Mixed ratios"); if (warns.length) li.dataset.tipWarn = warns.join(" · "); }
@@ -3226,9 +3244,13 @@
           chip.dataset.itip = ratioText(r) + " With As shot, the sequence jumps between shapes. Choose an aspect ratio (" +
             r.suggest + " keeps " + r.keep[r.suggest] + "%) or align the photos.";
         li.querySelector(".export-summary").replaceWith(chip);
+      } else if (exp.step === 2) {
+        // Passo 2 (Edit): no lugar do resumo, a etiqueta In Lightroom (a Edited n / m já está acima)
+        const tag = editTagFor(s.name, true);
+        if (tag) li.querySelector(".export-summary").replaceWith(tag); else li.querySelector(".export-summary").remove();
       } else setWarnText(li.querySelector(".export-summary"), settingsText(s));
-      li.classList.toggle("different", exp.step < 3 && diffNow.has(s.name));
-      if (exp.step < 3 && diffNow.has(s.name)) li.querySelector(".export-diff").dataset.itip = differenceText(s.name, exp.step);
+      li.classList.toggle("different", cmpStep() > 0 && diffNow.has(s.name));
+      if (cmpStep() > 0 && diffNow.has(s.name)) li.querySelector(".export-diff").dataset.itip = differenceText(s.name, cmpStep());
       const first = sessionItems(s).find((i) => i.previewable);
       if (first) sessionPhoto(s.name, first.file, 320).then((url) => { if (url) li.querySelector(".export-thumb").style.backgroundImage = "url(" + url + ")"; });
       li.addEventListener("click", () => {
@@ -3268,6 +3290,12 @@
       text = chosen + " of " + plural(all.length, "session", "sessions") + (mixedAsShot ? " · " + mixedAsShot + " with mixed ratios on As shot" : "");
       warn = !chosen;
     } else if (exp.step === 2) {
+      // Edit: quantas estão no Lightroom agora e quantas têm editadas
+      const list = all.filter((s) => exp.selected.has(s.name));
+      const live = list.filter((s) => { const m = editingBySession[s.name]; return m && Object.values(m).includes("lr"); }).length;
+      const ed = list.filter((s) => s.inProject && s.edited > 0).length;
+      text = [plural(chosen, "session", "sessions"), live ? live + " in Lightroom Classic" : "", ed ? ed + " edited" : ""].filter(Boolean).join(" · ");
+    } else if (exp.step === 3) {
       const kinds = OUTPUTS.filter(([k]) => chosenSt.some((st) => st.outputs[k])).map(([, t]) => t);
       text = noOutput ? "Tick at least one output for each selected session" : photosEmpty ? "Photos: choose the originals, a format, or both" : lentBad ? "Check the lens, printer and size values" : seqEmpty ? "Choose at least one sequence format for each selected session"
         : plural(chosen, "session", "sessions") + (kinds.length ? " · " + kinds.join(", ").replace(/, ([^,]*)$/, " and $1") : "");
@@ -3280,14 +3308,14 @@
     $("exportCount").textContent = text;
     $("exportCount").classList.toggle("warn", warn);
     // Botão verde: avança ("Outputs →", "Review →") e, no passo 3, exporta
-    const next = exp.step === 1 ? "Outputs →" : exp.step === 2 ? "Review →" : chosen ? "Export " + plural(chosen, "session", "sessions") : "Export";
+    const next = exp.step === 1 ? "Edit →" : exp.step === 2 ? "Outputs →" : exp.step === 3 ? "Review →" : chosen ? "Export " + plural(chosen, "session", "sessions") : "Export";
     // Dentro de "Align photos" (decisão do dono, 2026-11-04, caminho A): um botão só, que volta ao Framing
     const aligningNow = exp.step === 1 && !!exp.aligning;
     $("exportConfirm").textContent = aligningNow ? "Done aligning" : next;
-    $("exportConfirm").disabled = aligningNow ? false : exp.step === 1 ? chosen === 0 : chosen === 0 || block;
+    $("exportConfirm").disabled = aligningNow ? false : exp.step <= 2 ? chosen === 0 : chosen === 0 || block;
     $("exportCancel").classList.toggle("hidden", aligningNow);
     $("exportBack").classList.toggle("hidden", exp.step === 1);
-    $("exportBack").textContent = exp.step === 3 ? "← Outputs" : "← Sessions";
+    $("exportBack").textContent = exp.step === 4 ? "← Outputs" : exp.step === 3 ? "← Edit" : "← Sessions";
     $("exportSelectAll").disabled = chosen === all.length;
     $("exportUnselectAll").disabled = chosen === 0;
     renderExportSteps();
@@ -3299,13 +3327,13 @@
   function photoRerender() { renderExportSettings(); if (renderExportSettings.restoreScroll) renderExportSettings.restoreScroll(); }
   function refreshSummaries() {
     if (exp.step === 1) { renderExportList(); updateExportCount(); return; }  // os selos do Framing mudam com a sessão
-    const diffNow = differentSessions(exp.step);
+    const diffNow = differentSessions(cmpStep());
     [...$("exportList").children].forEach((li) => {
       const s = sessions.find((x) => x.name === li.dataset.name);
       if (!s) return;
       const sum = li.querySelector(".export-summary");  // no passo 1 a linha mostra o selo do Framing
       if (sum) setWarnText(sum, settingsText(s));
-      li.classList.toggle("different", exp.step < 3 && diffNow.has(s.name));
+      li.classList.toggle("different", cmpStep() > 0 && diffNow.has(s.name));
     });
     updateExportCount();
   }
@@ -4668,7 +4696,9 @@
     const rerender = () => { syncAll(); renderExportSettings(); if (renderExportSettings.restoreScroll) renderExportSettings.restoreScroll(); refreshSummaries(); rememberExportPrefs(); };
 
     // Passo 3 (Review): tabela, nome e pasta; sem prévia nem lista
-    if (exp.step === 3) { exp.keyNav = null; exp.aligning = false; outer.classList.remove("aligning", "theater"); renderReview(outer, rows, rerender); return; }
+    if (exp.step === 4) { exp.keyNav = null; exp.aligning = false; outer.classList.remove("aligning", "theater", "theater-strip"); renderReview(outer, rows, rerender); return; }
+    // Passo 2 (Edit): prévia que toca, fileira e o bloco do Lightroom Classic (protótipo A, 2026-11-07)
+    if (exp.step === 2) { exp.aligning = false; outer.classList.remove("aligning"); editStep(session, items, st, outer, rows, rerender); return; }
     if (exp.step === 1) exp.mode = "framing";
     else if (!OUTPUT_KINDS.includes(exp.mode)) exp.mode = OUTPUT_KINDS.find((k) => st.outputs[k]) || "photos";
     // Barra de cima: no passo 1 o nome da sessão aberta; no 2, mesma configuração para todas (padrão) ou uma por
@@ -4686,7 +4716,7 @@
     if (exp.step === 1) outer.insertBefore(top, rows);  // passo 1: sem "Hide preview" (decisão do dono, 2026-11-04)
     // (o modo de cada passo já foi fixado acima)
     // Modo teatro (Photos, Sequence e Lenticular): vale para a aba onde foi ligado; trocar de aba ou de passo desliga
-    if (exp.theaterKind !== exp.mode || exp.step !== 2) exp.theater = false;
+    if (exp.theaterKind !== exp.mode || exp.step !== 3) exp.theater = false;
     if (!exp.theater) outer.classList.remove("theater", "theater-strip");
     exp.keyMove = null;
     // Tela "Align photos" (pedaço 2 do Framing): toma a coluna inteira no lugar das abas
@@ -4697,7 +4727,7 @@
     // Na tela de alinhamento a caixa de cada sessão some: a lista vira uma parada só do Tab (a sessão aberta) e
     // ↑ ↓ trocam de sessão (decisão do dono, 2026-11-03)
     // (no passo 2 a linha da lista é o próprio controle do Tab: quem cuida é o exportRoving)
-    if (exp.step !== 2) [...$("exportList").children].forEach((li) => { li.tabIndex = exp.aligning && li.dataset.name === exp.active ? 0 : -1; });
+    if (exp.step === 1 || exp.step === 4) [...$("exportList").children].forEach((li) => { li.tabIndex = exp.aligning && li.dataset.name === exp.active ? 0 : -1; });
     // Entrar ou sair da tela de alinhamento: a coluna surge num fade curto (a lista estreita/alarga com transição no CSS)
     if (exp.aligningShown !== !!exp.aligning) {
       exp.aligningShown = !!exp.aligning;
@@ -4717,7 +4747,7 @@
       const caption = el("div", "stage-caption");
       preview.append(img, caption);
       if (focused && (exp.step === 1 || !exp.previewHidden)) outer.insertBefore(preview, rows);
-      if (focused && exp.step === 2 && (kind === "photos" || kind === "sequence")) {
+      if (focused && exp.step === 3 && (kind === "photos" || kind === "sequence")) {
         // Modo teatro também em Photos e Sequence (decisão do dono, 2026-11-04); em Photos as miniaturas ficam
         const tb = button("", () => { const from = preview.offsetHeight; exp.theater = !exp.theater; exp.theaterKind = kind; applyT(); slideHeight(preview, from);
           if (!exp.theater) { const n = outer.querySelector(".export-rows"); if (n && n.animate) n.animate([{ opacity: 0 }, { opacity: 1 }], { duration: EASE_MS, easing: "ease" }); } },
@@ -4738,7 +4768,7 @@
         const item = items[i];
         if (!item) return;
         // Passo 2: a prévia já com o Framing do passo 1 (proporção, posição e alinhamento), como sai na exportação
-        sessionPhoto(session.name, item.file, 1600).then((url) => (url && exp.step === 2 ? framedUrl(session, items, st, item, url) : url))
+        sessionPhoto(session.name, item.file, 1600).then((url) => (url && exp.step === 3 ? framedUrl(session, items, st, item, url) : url))
           .then((url) => { if (url && exp.active === session.name) img.src = url; });
         caption.innerHTML = "";
         caption.append(el("b", "", text[0]), document.createTextNode(text[1]));
@@ -4803,10 +4833,10 @@
         thumb.appendChild(el("span", "frame-badge", pad(item.order)));
         li.appendChild(thumb);
         // Passo 2: a miniatura também com o Framing do passo 1, inteira na caixa (sem cortar de novo)
-        sessionPhoto(session.name, item.file, 320).then((url) => (url && exp.step === 2 ? framedUrl(session, items, st, item, url, 320) : url))
+        sessionPhoto(session.name, item.file, 320).then((url) => (url && exp.step === 3 ? framedUrl(session, items, st, item, url, 320) : url))
           .then((url) => {
             if (!url) return;
-            const framed = exp.step === 2 && !(st.crop.ratio === "asshot" && !sessionAligned(session, st));
+            const framed = exp.step === 3 && !(st.crop.ratio === "asshot" && !sessionAligned(session, st));
             // A caixa da miniatura acompanha a forma do recorte (decisão do dono, 2026-11-04): a mesma altura de
             // sempre, a largura pela proporção da imagem recortada; a imagem enche a caixa sem cortar
             if (framed) pic.onload = () => {
@@ -5256,7 +5286,7 @@
     const tabs = el("div", "export-tabs");
     tabs.setAttribute("role", "tablist");
     // Passo 2: Photos · Sequence · Lenticular (o Framing é o passo 1)
-    (exp.step === 2 ? OUTPUTS : []).forEach(([kind, title, sub]) => {
+    (exp.step === 3 ? OUTPUTS : []).forEach(([kind, title, sub]) => {
       const always = kind === "framing";
       const on = always || !!st.outputs[kind];
       const current = kind === exp.mode;
@@ -5284,7 +5314,7 @@
       });
       tabs.appendChild(tab);
     });
-    if (exp.step === 2) { pv.classList.add("export-tabs-end"); tabs.appendChild(pv); outer.insertBefore(tabs, rows); }
+    if (exp.step === 3) { pv.classList.add("export-tabs-end"); tabs.appendChild(pv); outer.insertBefore(tabs, rows); }
     {
       const kind = exp.mode;
       const always = kind === "framing";
@@ -5327,29 +5357,232 @@
           rerender();
         }, () => { exp.same[kd] = false; rerender(); }, nd));
       }
-      if (!always && session.inProject && session.edited > 0) {
-        // "Use edited photos" ao lado de "Same settings for all sessions" (decisão do dono, 2026-11-06): é a mesma
-        // chave da etiqueta "Edited n / m" da sessão (prévias e Export juntos)
-        const last = body.lastElementChild;
-        const row = last && last.classList.contains("same-row") ? last : body.appendChild(el("div", "export-row same-row"));
-        const l = el("label", "log-option export-edited-opt");
-        const c = document.createElement("input"); c.type = "checkbox"; c.className = "cs-check";
-        c.checked = session.showEdited !== false;
-        c.addEventListener("change", () => { Promise.resolve(setShowEdited(session, c.checked)).then(() => rerender()); });
-        l.append(c, document.createTextNode(" Use edited photos"));
-        l.title = plural(session.edited, "photo of this session has", "photos of this session have") + " an edited version in the project's Edited folder. The same as the Edited tag of the session.";
-        row.appendChild(l);
-      }
+      // ("Use edited photos" saiu daqui: fica no bloco Lightroom Classic do passo 2, Edit — protótipo A, 2026-11-07)
       rows.appendChild(body);
     }
-    if (exp.step === 2 && !OUTPUT_KINDS.some((k) => st.outputs[k])) rows.appendChild(el("div", "export-note exp-none", "Tick at least one output: Photos, Sequence or Lenticular."));
+    if (exp.step === 3 && !OUTPUT_KINDS.some((k) => st.outputs[k])) rows.appendChild(el("div", "export-note exp-none", "Tick at least one output: Photos, Sequence or Lenticular."));
     slideBlocks(outer, before, rows);
     if (exp.step === 1) return;  // nome e pasta: passo 3; "Apply to all sessions": passo 2
 
     // ("Apply to all sessions" saiu: a caixa "Same settings for all sessions" da aba faz isso)
   }
 
-  // Passo 3 (Review): uma linha por sessão marcada, o nome das pastas e "Export to"
+  // ---- Passo 2 · Edit (protótipo A "Editar dentro do Export", aprovado pelo dono em 2026-11-07) ----
+  // Em cima, Original / Edited (a mesma chave da etiqueta Edited n / m e do "Use edited photos"). A prévia abre tocando,
+  // com play e Reverse loop ligados, e mostra só o play/pause e o modo teatro; no teatro aparecem ‹ ▶ › Speed − + e
+  // Reverse loop, como na tela cheia da janela principal (a mesma velocidade: 1x = 220 ms por foto). Na fileira, LR
+  // (no Lightroom agora) e ED (tem editada); botão direito numa miniatura: só essa foto no Lightroom, Delete edit….
+  // Embaixo, o bloco "Lightroom Classic" com os botões do estado da sessão.
+  const editPlay = { speed: PLAY_SPEEDS.indexOf(1), reverse: true, dir: 1, playing: true };
+  function openExportEdit(s) {
+    if (!s || !sessions.length) return;
+    if (!$("projectOverlay").classList.contains("hidden")) closeProjectWindow();
+    exp.exitAfter = false;
+    openExport();
+    if (!exportable().some((x) => x.name === s.name)) return;
+    if (!exp.selected.has(s.name)) { exp.selected.add(s.name); exp.selectedTouched = true; }
+    exp.active = s.name; exp.photo = 0; exp.step = 2; exp.aligning = false;
+    renderExport();
+  }
+  function editStep(session, items, st, outer, rows, rerender) {
+    exp.keyNav = null; exp.keyMove = null;
+    cropLoad(session, st);
+    const name = session.name;
+    const hasEd = session.inProject && session.edited > 0;
+    const showingEdited = hasEd && session.showEdited !== false;
+    const editedFile = (item) => { const p = session.photos.find((x) => x.file === item.file); return !!(p && p.edited); };
+    const inLr = (item) => editingOf(name, item.group) === "lr";
+    const n = items.length;
+    if (!(exp.photo >= 0 && exp.photo < n)) exp.photo = 0;
+    outer.classList.toggle("theater", !!exp.editTheater);
+    outer.classList.toggle("theater-strip", !!exp.editTheater);
+
+    // Barra de cima: a sessão e Original / Edited
+    const top = el("div", "export-scope");
+    top.appendChild(el("span", "export-step1-title", "Edit · " + sessionLabel(name).date));
+    top.appendChild(el("span", "spacer"));
+    const view = segmented([["original", "Original"], ["edited", "Edited"]], showingEdited ? "edited" : "original",
+      (v) => { if ((v === "edited") === showingEdited) return; Promise.resolve(setShowEdited(session, v === "edited")).then(() => rerender()); },
+      () => (hasEd ? "" : "No edited photos in this session yet"));
+    view.classList.add("edit-view");
+    view.title = "Which version the previews and the export use";
+    top.appendChild(view);
+    outer.insertBefore(top, rows);
+
+    // Prévia grande
+    const preview = el("div", "export-preview edit-preview");
+    const img = document.createElement("img"); img.alt = "";
+    const caption = el("div", "stage-caption");
+    preview.append(img, caption);
+    outer.insertBefore(preview, rows);
+    // Fileira
+    const stripScroll = el("div", "export-strip-scroll");
+    const strip = el("ul", "export-strip");
+    stripScroll.appendChild(strip);
+    const show = (k) => {
+      const item = items[k];
+      if (!item) return;
+      exp.photo = k;
+      sessionPhoto(name, item.file, 1600).then((url) => { if (url && exp.step === 2 && exp.active === name && exp.photo === k) img.src = url; });
+      caption.innerHTML = "";
+      caption.appendChild(el("b", "", pad(item.order || k + 1)));
+      if (inLr(item)) {
+        const d = el("span", "caption-app" + (lrLive.has(name) ? " live" : ""));
+        d.dataset.session = name; d.title = "In Lightroom Classic"; d.innerHTML = '<i class="edit-dot"></i>';
+        caption.appendChild(d);
+      }
+      caption.appendChild(el("span", "", item.title + (item.subtitle ? " · " + item.subtitle : "") + (hasEd && editedFile(item) ? (showingEdited ? " · edited" : " · original") : "")));
+      caption.appendChild(el("span", "caption-file", item.file));
+      [...strip.children].forEach((li, i) => li.classList.toggle("selected", i === k));
+    };
+    // Tocar (como o play da janela principal)
+    let playBtn = null, ctrlPlay = null;
+    const setIcons = () => { const ic = icon(exp.timer ? "pause" : "play"); if (playBtn) playBtn.innerHTML = ic; if (ctrlPlay) ctrlPlay.innerHTML = ic; };
+    const tick = () => {
+      if (n < 2) return;
+      let i = exp.photo;
+      if (!editPlay.reverse) i = (i + 1) % n;
+      else { i += editPlay.dir; if (i >= n) { editPlay.dir = -1; i = n - 2; } else if (i < 0) { editPlay.dir = 1; i = 1; } }
+      show(i);
+    };
+    const play = () => { stopPreview(); editPlay.playing = true; if (n > 1) exp.timer = setInterval(tick, Math.round(220 / PLAY_SPEEDS[editPlay.speed])); setIcons(); };
+    const pause = () => { stopPreview(); editPlay.playing = false; setIcons(); };
+    const toggle = () => { if (exp.timer) pause(); else { editPlay.dir = 1; play(); } };
+    exp.editToggle = toggle;
+    const go = (k) => { pause(); show(Math.max(0, Math.min(n - 1, k))); const li = strip.children[exp.photo]; if (li) li.scrollIntoView({ block: "nearest", inline: "nearest" }); };
+    exp.keyNav = (d) => go(exp.photo + d);
+
+    items.forEach((item, k) => {
+      const li = el("li", "frame");
+      li.innerHTML = '<div class="frame-img"><img alt=""><span class="frame-badge"></span></div>';
+      li.querySelector(".frame-badge").textContent = pad(item.order || k + 1);
+      sessionPhoto(name, item.file, 320).then((url) => { if (url) li.querySelector("img").src = url; });
+      const corner = el("span", "frame-corner");
+      if (inLr(item)) {
+        const b = el("span", "frame-app" + (lrLive.has(name) ? " live" : ""));
+        b.dataset.session = name; b.title = "In Lightroom Classic"; b.innerHTML = '<i class="edit-dot"></i>LR';
+        corner.appendChild(b);
+      }
+      if (editedFile(item)) { const b = el("span", "frame-app ed", "ED"); b.title = "Has an edited version (from Lightroom Classic)"; corner.appendChild(b); }
+      if (corner.childNodes.length) li.appendChild(corner);
+      li.addEventListener("click", () => go(k));
+      // Botão direito: só esta foto no Lightroom Classic; Delete edit… nas que têm editada (decisão do dono, 2026-11-07)
+      li.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        go(k);
+        popupMenuAt(e.clientX, e.clientY, [
+          { label: "Edit just this photo in Lightroom Classic", onClick: () => { if (!adobeMissingBuild()) startLightroom(session, item.group, "photo"); } },
+          ...(editedFile(item) ? ["-", { label: "Delete edit…", danger: true, onClick: () => deleteEdits(session, [item.file]) }] : []),
+        ]);
+      });
+      strip.appendChild(li);
+    });
+    const slot = el("div", "export-strip-slot");
+    slot.appendChild(stripScroll);
+    outer.insertBefore(slot, rows);
+
+    // Play / pause (fora do teatro) e o modo teatro
+    playBtn = button("", toggle, { icon: "pause", title: "Play / pause (space)", kind: "btn-overlay" });
+    playBtn.classList.add("preview-play", "edit-play");
+    preview.appendChild(playBtn);
+    const tb = button("", () => {
+      const from = preview.offsetHeight;
+      exp.editTheater = !exp.editTheater;
+      applyT();
+      slideHeight(preview, from);
+      if (exp.editTheater) reveal(CTRLS_REVEAL_MS);
+      else { const r = outer.querySelector(".export-rows"); if (r && r.animate) r.animate([{ opacity: 0 }, { opacity: 1 }], { duration: EASE_MS, easing: "ease" }); }
+    }, { icon: "theaterIn", title: "Theater mode: larger preview, settings hidden", kind: "btn-secondary" });
+    tb.classList.add("lent-theater-btn");
+    preview.appendChild(tb);
+    // No teatro: ‹ ▶ › Speed e Reverse loop sobre a foto, no canto de cima à direita (somem 2 s depois de o mouse parar)
+    const ctrls = el("div", "cs-review-ctrls stage-ctrls edit-ctrls");
+    ctrlPlay = button("", toggle, { icon: "play", title: "Play the sequence (space)" });
+    const speedLabel = el("span", "play-speed");
+    speedLabel.title = "Playback speed";
+    const slower = button("", () => changeSpeed(-1), { icon: "minus", title: "Slower" });
+    const faster = button("", () => changeSpeed(1), { icon: "plus", title: "Faster" });
+    const renderSpeed = () => {
+      const v = PLAY_SPEEDS[editPlay.speed];
+      speedLabel.textContent = (v % 1 === 0 ? v.toFixed(1) : String(v)) + "x";
+      slower.disabled = editPlay.speed === 0;
+      faster.disabled = editPlay.speed === PLAY_SPEEDS.length - 1;
+    };
+    const changeSpeed = (d) => { editPlay.speed = Math.max(0, Math.min(PLAY_SPEEDS.length - 1, editPlay.speed + d)); renderSpeed(); if (exp.timer) play(); };
+    renderSpeed();
+    const group = el("div", "play-group");
+    group.append(el("span", "play-group-caption", "Speed"), slower, speedLabel, faster);
+    const loop = el("label", "log-option play-option");
+    loop.title = "Play back and forth (1, 2, 3, 2, 1...)";
+    const loopBox = document.createElement("input"); loopBox.type = "checkbox"; loopBox.checked = editPlay.reverse;
+    loopBox.addEventListener("change", () => { editPlay.reverse = loopBox.checked; editPlay.dir = 1; });
+    loop.append(loopBox, document.createTextNode(" Reverse loop"));
+    ctrls.append(button("", () => go(exp.photo - 1), { icon: "left", title: "Previous photo" }), ctrlPlay,
+      button("", () => go(exp.photo + 1), { icon: "right", title: "Next photo" }), group, loop);
+    const reveal = fadeControls(preview, ctrls);
+    const applyT = () => {
+      outer.classList.toggle("theater", !!exp.editTheater);
+      outer.classList.toggle("theater-strip", !!exp.editTheater);
+      tb.classList.toggle("on", !!exp.editTheater);
+      tb.innerHTML = icon(exp.editTheater ? "theaterOut" : "theaterIn");
+      tb.title = exp.editTheater ? "Leave theater mode" : "Theater mode: larger preview, settings hidden";
+      tb.setAttribute("aria-label", tb.title);
+    };
+    applyT();
+    items.forEach((item) => sessionPhoto(name, item.file, 1600));  // todas antes, para tocar sem falhas
+    show(exp.photo);
+    if (editPlay.playing) play(); else setIcons();
+
+    // Bloco Lightroom Classic
+    const box = el("div", "lr-block");
+    const head = el("div", "lr-head");
+    head.appendChild(el("span", "lr-title", "Lightroom Classic"));
+    const actions = el("div", "lr-actions");
+    const send = () => { if (adobeMissingBuild()) return; const it = items[exp.photo] || items[0] || {}; startLightroom(session, it.group || "", "session"); };
+    const total = session.photos.length;
+    const lrN = Object.values(editingBySession[name] || {}).filter((x) => x === "lr").length;
+    let note = null;
+    if (lrN) {
+      const state = el("span", "lr-state" + (lrLive.has(name) ? " live" : ""));
+      state.dataset.session = name;
+      state.innerHTML = '<i class="edit-dot"></i>';
+      state.appendChild(document.createTextNode("In Lightroom Classic · " + plural(lrN, "photo", "photos")));
+      head.appendChild(state);
+      actions.appendChild(button("Done editing", () => doneEditing(session), { title: "Take the session out of Lightroom Classic: its collection leaves the catalog" }));
+      note = el("div", "export-note", "Edit the photos in Lightroom Classic, then click Export to Stillpoint in the Stillpoint panel: the edited photos come back here by themselves.");
+    } else if (hasEd) {
+      head.appendChild(el("span", "lr-state", session.edited + " of " + plural(total, "photo", "photos") + " edited"));
+      actions.appendChild(button("Edit again in Lightroom Classic", send, { title: "Send the session to Lightroom Classic again, with its edits" }));
+      actions.appendChild(button("Delete edits…", () => deleteEdits(session, []), { kind: "btn-danger", title: "Move the edited photos of this session to the trash" }));
+      actions.appendChild(el("span", "spacer"));
+      const use = el("label", "log-option");
+      const c = document.createElement("input"); c.type = "checkbox"; c.className = "cs-check"; c.checked = showingEdited;
+      c.addEventListener("change", () => { Promise.resolve(setShowEdited(session, c.checked)).then(() => rerender()); });
+      use.append(c, document.createTextNode(" Use edited photos"));
+      use.title = "The same as Original / Edited above and the Edited tag of the session";
+      actions.appendChild(use);
+      if (session.edited < total && showingEdited) note = el("div", "export-note lr-warn", "Only some photos are edited: edited and original frames will be mixed in the export.");
+    } else {
+      head.appendChild(el("span", "lr-state", "Not edited"));
+      actions.appendChild(button("Edit in Lightroom Classic", send, { title: "Send the session to Lightroom Classic" }));
+      const framing = st.crop.ratio === "asshot" ? "As shot: nothing is cut" : st.crop.ratio + ", " + placeText(st.crop.x, st.crop.y);
+      note = el("div", "export-note", "Sends the " + plural(total, "photo", "photos") + " to Lightroom Classic, cut to this session's framing (" + framing + "). Edit them there, then click Export to Stillpoint in the Stillpoint panel.");
+    }
+    box.append(head, actions);
+    if (note) box.appendChild(note);
+    rows.appendChild(box);
+  }
+  // Espaço no Export › Edit: play / pause (como na janela principal); num botão com o foco, o próprio botão responde
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== " " || e.repeat || exp.step !== 2 || $("exportOverlay").classList.contains("hidden") || !exp.editToggle) return;
+    if (!$("dialogOverlay").classList.contains("hidden") || openMenu) return;
+    const t = e.target;
+    if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.tagName === "BUTTON" || t.tagName === "LABEL")) return;
+    e.preventDefault(); e.stopImmediatePropagation();  // a janela principal, atrás, não toca junto
+    exp.editToggle();
+  }, true);
+
+  // Passo 4 (Review): uma linha por sessão marcada, o nome das pastas e "Export to"
   function renderReview(outer, rows, rerender) {
     rows.remove();
     // O nome vale para todas as marcadas; a sessão "ativa" tem de ser uma delas (syncAll copia dela)
@@ -5361,7 +5594,7 @@
     const chosen = chosenSessions();
     const editLink = (step, s, mode) => {
       const b = el("button", "review-edit", "Edit"); b.type = "button";
-      b.title = step === 1 ? "Change the framing of this session (step 1)" : "Change the outputs of this session (step 2)";
+      b.title = step === 1 ? "Change the framing of this session (step 1)" : "Change the outputs of this session (step 3)";
       b.addEventListener("click", () => { exp.active = s.name; exp.photo = 0; if (mode) exp.mode = mode; exp.step = step; exp.aligning = false; renderExport(); });
       return b;
     };
@@ -5389,7 +5622,7 @@
       const kinds = OUTPUT_KINDS.filter((k) => st.outputs[k]);
       if (!kinds.length) tdO.appendChild(el("span", "amb", "No output ticked"));
       kinds.forEach((k, i) => { if (i) tdO.appendChild(document.createElement("br")); const line = el("span", "", ""); setWarnText(line, outputText(s, k)); tdO.appendChild(line); });
-      tdO.appendChild(editLink(2, s, kinds[0] || "photos"));
+      tdO.appendChild(editLink(3, s, kinds[0] || "photos"));
       const tdD = document.createElement("td"); tdD.textContent = folderName(s);
       tr.append(tdT, tdS, tdF, tdO, tdD);
       tbody.appendChild(tr);
@@ -5539,7 +5772,7 @@
   $("exportCancel").addEventListener("click", askCloseExport);
   $("exportConfirm").addEventListener("click", () => {
     if (exp.step === 1 && exp.aligning) { exp.aligning = false; renderExport(); return; }  // "Done aligning"
-    if (exp.step < 3) goExportStep(exp.step + 1); else confirmExport();
+    if (exp.step < 4) goExportStep(exp.step + 1); else confirmExport();
   });
   $("exportBack").addEventListener("click", () => goExportStep(exp.step - 1));
   $("progressCancel").addEventListener("click", () => {
@@ -8520,26 +8753,6 @@
     toast("This build cannot open Lightroom Classic yet. Build the app again.", 8000);
     return true;
   }
-  // Uma foto (menu da foto, botão sobre a foto grande): pergunta se vai a sessão inteira
-  function editPhotoInLightroom(item) {
-    if (adobeMissingBuild() || !item) return;
-    const s = sessions.find((x) => x.name === (item.session || (currentSession && currentSession.name)));
-    if (!s) return;
-    const n = sessionItems(s).length;
-    const num = pad(item.order || 1);
-    dialog("Edit the whole session?", "Bullet time edits usually go on every photo of the session. Just this photo sends only photo " + num + " to Lightroom Classic; Edit the whole session sends all " + n + " and opens photo " + num + ".", [
-      { label: "Cancel", link: true, left: true },
-      { label: "Just this photo", onClick: () => startLightroom(s, item.group, "photo") },
-      { label: "Edit the whole session", primary: true, onClick: () => startLightroom(s, item.group, "session") },
-    ]);
-  }
-  function editSessionInLightroom(s) {
-    if (adobeMissingBuild() || !s) return;
-    const first = sessionItems(s)[0];
-    // A sessão aberta: a foto ativa no Lightroom é a que está na foto grande
-    const open = currentSession && currentSession.name === s.name ? sessionGallery.items[sessionGallery.index] : null;
-    startLightroom(s, (open || first || {}).group || "", "session");
-  }
   // scope: "session" (todas), "photo" (a do grupo) ou "photos" (as de groups)
   // Sessão com proporções misturadas e sem recorte escolhido ("Keep as shot" ou Esc no aviso Mixed ratios): pergunta
   // antes de mandar, porque o recorte vai junto para o Lightroom (opção A, decisão do dono, 2026-11-06)
@@ -8566,7 +8779,15 @@
         askCropBeforeLightroom(s, info, (r) => {
           if (!r) { startLightroom(s, group, scope, groups, true); return; }
           chooseSessionCrop(s.name, r, info);
-          Promise.resolve(typeof window.setSessionCrop === "function" ? window.setSessionCrop(s.name, r + "|0.500|0.500") : null)
+          s.crop = r + "|0.500|0.500";
+          // Export aberto (passo Edit): o Framing da sessão passa a esse recorte, centralizado, como se escolhido no passo 1
+          const est = exp.settings[s.name];
+          if (est && est.crop) {
+            Object.assign(est.crop, { ratio: r, x: 0.5, y: 0.5, loaded: true });
+            if (exp.sameFraming && differentSessions(1).size) exp.sameFraming = false;
+          }
+          if (!$("exportOverlay").classList.contains("hidden")) renderExport();
+          Promise.resolve(typeof window.setSessionCrop === "function" ? window.setSessionCrop(s.name, s.crop) : null)
             .then(() => startLightroom(s, group, scope, groups, true), () => startLightroom(s, group, scope, groups, true));
         });
       }, () => startLightroom(s, group, scope, groups, true));
@@ -8756,16 +8977,7 @@
     if (typeof window.adobeEditing !== "function") return;
     Promise.resolve(window.adobeEditing()).then((r) => { if (r && r.sessions) setAdobeEditing(r.sessions); }, () => {});
   }
-  // Botão sobre a foto grande (aparece com o mouse em cima da foto)
-  {
-    const b = button("Edit in Lightroom Classic…", () => { const it = sessionGallery.items[sessionGallery.index]; if (it && !editing.on) editPhotoInLightroom(it); },
-      { title: "Send this session to Lightroom Classic (asks whether to edit the whole session or just this photo)" });
-    b.classList.add("btn-small", "stage-hover");
-    sessionGallery.setStageTools([b]);
-    // Ordem do Tab: o botão vem depois dos controles do play (Reverse loop) — vai para o fim da foto grande
-    const tools = b.parentElement;
-    if (tools && tools.parentElement) tools.parentElement.appendChild(tools);
-  }
+  // (O botão "Edit in Lightroom Classic…" sobre a foto grande saiu: a edição fica no Export › Edit — M1, 2026-11-07)
 
   // ---- Etapa 20: janela "Create the project's catalog first" com 5 slides (protótipo aprovado em 2026-11-06) ----
   // catGuide.open({ variant: "first" | "updated", os: "mac" | "win", project, from, to, api })
@@ -8941,10 +9153,7 @@
     items.push({ label: (s.label ? "Rename label…" : "Add label…"), onClick: () => editSessionLabel(s) });
     if (s.label) items.push({ label: "Remove label", onClick: () => setSessionLabelUndoable(s, "") });
     items.push({ label: "Show session", onClick: () => showSession(s) });
-    items.push({ label: "Edit in Lightroom Classic", onClick: () => editSessionInLightroom(s) });
-    const inEdit = !!editTagFor(s.name);
-    items.push({ label: "Done editing", disabled: !inEdit, dim: !inEdit, onClick: () => doneEditing(s) });
-    if (s.inProject && s.edited > 0) items.push({ label: "Delete edits…", sub: s.edited + " edited", danger: true, onClick: () => deleteEdits(s, []) });
+    // Edit in Lightroom Classic, Done editing e Delete edits… saíram daqui: ficam no Export › Edit (M1, 2026-11-07)
     items.push({ label: s.inProject ? "Open originals folder" : "Open folder", onClick: () => {
       if (typeof window.openSessionFolder !== "function") { toast("This build cannot open session folders yet. Build the app again.", 8000); return; }
       window.openSessionFolder(s.name);
@@ -10070,7 +10279,7 @@
       li.querySelector(".folder-meta").textContent = [label.date, s.timing || label.detail].filter(Boolean).join(" · ");
       li.querySelector(".project-row-count").textContent = String(total);
       const ed = li.querySelector(".project-row-edited");
-      if (s.edited > 0) { const t = projectTag(s); ed.appendChild(t); }
+      if (s.edited > 0) { const t = projectTag(s, true); ed.appendChild(t); }
       else { const t = document.createElement("span"); t.className = "project-tag dim"; t.textContent = "originals"; ed.appendChild(t); }
       // Avisos na coluna Session, embaixo da data, como na lista Sessions (a coluna Edited fica só com as editadas)
       const warnBox = el("span", "project-row-warns");
@@ -10079,14 +10288,7 @@
       if (deletedBySession[s.name]) warnBox.appendChild(deletedTag(deletedBySession[s.name]));
       if (editTagFor(s.name)) warnBox.appendChild(editTagFor(s.name));
       if (warnBox.childNodes.length) li.querySelector(".project-row-main").appendChild(warnBox);
-      // Botão direito numa linha: mandar a sessão para o Lightroom Classic (etapa 20)
-      li.addEventListener("contextmenu", (e) => {
-        if (e.target.closest("input")) return;
-        e.preventDefault();
-        popupMenuAt(e.clientX, e.clientY, [
-          { label: "Edit in Lightroom Classic", onClick: () => editSessionInLightroom(s) },
-        ]);
-      });
+      // (O botão direito "Edit in Lightroom Classic" saiu: a edição fica no Export › Edit — M1, 2026-11-07)
       const first = s.photos.find((p) => p.previewable);
       if (first) sessionPhoto(s.name, first.file, 320).then((url) => { if (url) li.querySelector(".export-thumb").style.backgroundImage = "url(" + url + ")"; });
       li.querySelector(".project-row-play").addEventListener("click", () => { closeProjectWindow(); showSession(s); });

@@ -158,12 +158,13 @@ class T:
 
     def open_session(self, name):
         self.dismiss()
-        self.page.click('#sessionList li.folder[data-name="%s"]' % name)
+        # Na data: no meio da linha pode estar a etiqueta In Lightroom, que abre o Export › Edit
+        self.page.click('#sessionList li.folder[data-name="%s"] .folder-date' % name)
         time.sleep(0.8)
 
     def session_menu(self, name, item):
         self.dismiss()
-        self.page.click('#sessionList li.folder[data-name="%s"]' % name, button="right")
+        self.page.click('#sessionList li.folder[data-name="%s"] .folder-date' % name, button="right")
         time.sleep(0.3)
         self.menu(item)
 
@@ -192,11 +193,71 @@ class T:
         self.page.keyboard.press("Control+Shift+z")
         time.sleep(0.15)
 
-    def edit_in_lightroom(self, name, crop_answer="Send as shot"):
-        self.session_menu(name, "Edit in Lightroom Classic")
+    # ---- Export › 2 Edit (a edição no Lightroom fica no Export desde 2026-11-07; a janela principal só mostra) ----
+    def export_open(self):
+        return self.js("() => !document.getElementById('exportOverlay').classList.contains('hidden')")
+
+    def export_step(self):
+        return self.js("() => { const b = document.querySelector('#exportSteps .export-step.on'); return b ? b.textContent.trim() : null; }")
+
+    def export_edit(self, name):
+        """Abre o Export (Export sessions, na barra de cima) e vai ao passo 2 · Edit da sessão."""
+        self.dismiss()
+        if not self.export_open():
+            self.page.click("#saveBtn")
+            self.wait(lambda: self.export_open(), 5)
+            time.sleep(0.6)
+        if self.export_step() == "1 Sessions":
+            self.js("() => document.getElementById('exportConfirm').click()")
+            self.wait(lambda: self.export_step() == "2 Edit", 5)
+        self.page.click('#exportList li.export-item[data-name="%s"]' % name)
+        time.sleep(0.5)
+
+    def close_export(self):
+        for _ in range(3):
+            if not self.export_open():
+                return True
+            self.dismiss_other()
+            self.js("() => document.getElementById('exportCancel').click()")
+            if self.wait(lambda: self.dialog_title() == "Leave Export sessions?", 3):
+                self.dialog_click("Leave")
+            if self.wait(lambda: not self.export_open(), 3):
+                time.sleep(0.3)
+                return True
+        line("      (could not close Export: dialog %r)" % self.dialog_title())
+        return False
+
+    def dismiss_other(self):
+        t = self.dialog_title()
+        if t and t != "Leave Export sessions?":
+            line("      (closing a dialog: %r)" % t)
+            self.dismiss()
+
+    def lr_block_button(self, starts):
+        return self.js("(t) => { const b = [...document.querySelectorAll('#exportSettings .lr-block button')].find(x => x.textContent.trim().startsWith(t)); if (!b) return false; b.click(); return true; }", starts)
+
+    def strip_menu(self, index, item):
+        """Botão direito numa miniatura da fileira do Export › Edit."""
+        self.page.click("#exportSettings .export-strip > li:nth-child(%d)" % (index + 1), button="right")
+        time.sleep(0.3)
+        self.menu(item)
+
+    def edit_in_lightroom(self, name, crop_answer="Send as shot", keep_open=False):
+        self.export_edit(name)
+        self.lr_block_button("Edit")
         if self.wait(lambda: self.dialog_title() == "Crop before Lightroom Classic?", 2):
             self.dialog_click(crop_answer)
-        return self.wait(lambda: self.edit_tag(name), 15)
+        ok = self.wait(lambda: self.edit_tag(name), 15)
+        if not keep_open:
+            self.close_export()
+        return ok
+
+    def delete_edit(self, name, index):
+        """Delete edit… de uma foto: botão direito na miniatura do Export › Edit, confirma e fecha o Export."""
+        self.export_edit(name)
+        self.strip_menu(index, "Delete edit")
+        self.button("Delete 1 edit")
+        self.close_export()
 
     def open_trash(self):
         self.page.click("#trashBtn")
@@ -309,8 +370,7 @@ def scenario_cleared(t, name, photos):
 def scenario_delete_edit_undo(t, name, photos):
     line("\n== 3. Delete edit, ⌘Z and ⌘⇧Z (also quickly)")
     t.open_session(name)
-    t.photo_menu(0, "Delete edit")
-    t.button("Delete 1 edit")
+    t.delete_edit(name, 0)
     check(t, "Delete edit: Edited tag gone (no edited photo)", t.wait(lambda: t.session(name)["edited"] == 0), t.session(name)["edited"])
     check(t, "Delete edit: photo 01 back to the original in Lightroom", t.wait(lambda: t.lr.edit.get(photos[0]) is None))
     t.undo()
@@ -411,8 +471,7 @@ def scenario_rapid_in_lightroom(t, name, photos):
     t.open_session(name)
     # Delete edit da 01 e desfazer/refazer rápido: a coleção e o In Lightroom ficam
     if t.session(name)["photos"][0]["edited"]:
-        t.photo_menu(0, "Delete edit")
-        t.button("Delete 1 edit")
+        t.delete_edit(name, 0)
         for _ in range(3):
             t.undo()
             t.redo()
@@ -454,11 +513,13 @@ def scenario_crop_before_lightroom(t, name, photos):
     check(t, "a new session, Keep as shot", s1 is not None and not (t.session(s1) or {}).get("crop"), t.session(s1) and t.session(s1).get("crop"))
     if not s1:
         return
-    t.session_menu(s1, "Edit in Lightroom Classic")
+    t.export_edit(s1)
+    t.lr_block_button("Edit")
     title = t.wait(lambda: t.dialog_title(), 6)
     check(t, "it asks \"Crop before Lightroom Classic?\"", title == "Crop before Lightroom Classic?", title)
     t.js("() => { const b = [...document.querySelectorAll('#dialogActions button')].find(x => x.textContent.trim().startsWith('Crop to 3:2')); b && b.click(); }")
     check(t, "Crop to 3:2: the session goes to Lightroom", t.wait(lambda: t.edit_tag(s1), 15))
+    t.close_export()
     check(t, "the session keeps the crop for Export (3:2)", str((t.session(s1) or {}).get("crop", "")).startswith("3:2"), (t.session(s1) or {}).get("crop"))
     o = t.originals(s1)
     sizes = {}
@@ -481,14 +542,108 @@ def scenario_crop_before_lightroom(t, name, photos):
         details.append("%s %dx%d -> %.0fx%.0f" % (os.path.basename(path)[:2], w, h, cw, ch))
     check(t, "Lightroom gets a 3:2 crop for every photo (the 16:9 ones cut at the sides)", ok, "; ".join(details))
     s2 = t.shoot()
-    t.session_menu(s2, "Edit in Lightroom Classic")
+    t.export_edit(s2)
+    t.lr_block_button("Edit")
     t.wait(lambda: t.js("() => !document.getElementById('dialogOverlay').classList.contains('hidden')"), 6)
     t.js("() => { const b = [...document.querySelectorAll('#dialogActions button')].find(x => x.textContent.trim() === 'Send as shot'); b && b.click(); }")
     check(t, "Send as shot: the session goes to Lightroom", t.wait(lambda: t.edit_tag(s2), 15))
+    t.close_export()
     o2 = t.originals(s2)
     crops2 = [c for p, c in t.lr.crops.items() if os.path.dirname(p) == o2]
     check(t, "... with no crop", crops2 and all(c == (0.0, 0.0, 1.0, 1.0) for c in crops2), crops2)
     check(t, "... and the session still without a crop", not (t.session(s2) or {}).get("crop"), (t.session(s2) or {}).get("crop"))
+
+
+def scenario_export_edit(t, name, photos):
+    line("\n== 10. The editing lives in Export › 2 Edit; the main window only shows")
+    s = t.shoot()
+    if not s:
+        check(t, "a new session for this scenario", False)
+        return
+    t.dismiss()
+    t.page.click('#sessionList li.folder[data-name="%s"] .folder-date' % s, button="right")
+    time.sleep(0.3)
+    items = t.js("() => [...document.querySelectorAll('.app-menu button')].map(b => b.textContent.trim())")
+    t.page.keyboard.press("Escape")
+    check(t, "session menu: no Edit in Lightroom Classic / Done editing / Delete edits", items and not any(("Lightroom" in i) or i.startswith("Done editing") or i.startswith("Delete edits") for i in items), items)
+    t.open_session(s)
+    t.page.click("#sessionGallery .carousel > li:nth-child(1)", button="right")
+    time.sleep(0.3)
+    items = t.js("() => [...document.querySelectorAll('.app-menu button')].map(b => b.textContent.trim())")
+    t.page.keyboard.press("Escape")
+    check(t, "photo menu: no Lightroom item", items and not any("Lightroom" in i or i.startswith("Delete edit") for i in items), items)
+    check(t, "no Edit in Lightroom Classic button over the large photo", not t.js("() => [...document.querySelectorAll('#sessionGallery button')].some(b => b.textContent.includes('Lightroom'))"))
+    # Pelo Export: passos e o bloco do Lightroom
+    t.page.click("#saveBtn")
+    t.wait(lambda: t.export_open(), 5)
+    time.sleep(0.5)
+    steps = t.js("() => [...document.querySelectorAll('#exportSteps .export-step')].map(b => b.textContent.trim().replace(' ✓', ''))")
+    check(t, "Export has 4 steps: Sessions, Edit, Outputs, Review", steps == ["1 Sessions", "2 Edit", "3 Outputs", "4 Review"], steps)
+    t.export_edit(s)
+    check(t, "step 1's green button was Edit → and now step 2 · Edit is open", t.export_step() == "2 Edit", t.export_step())
+    check(t, "the footer buttons: ← Sessions and Outputs →", t.js("() => document.getElementById('exportBack').textContent === '← Sessions' && document.getElementById('exportConfirm').textContent === 'Outputs →'"))
+    check(t, "Lightroom Classic box: Not edited · Edit in Lightroom Classic", t.js("() => { const b = document.querySelector('#exportSettings .lr-block'); return !!b && b.textContent.includes('Not edited') && b.textContent.includes('Edit in Lightroom Classic'); }"))
+    check(t, "Original / Edited is there, not clickable with no edits", t.js("() => { const v = document.querySelector('#exportSettings .edit-view'); return !!v && [...v.querySelectorAll('button')].every(b => b.disabled); }"))
+    cap = lambda: t.js("() => { const c = document.querySelector('#exportSettings .edit-preview .stage-caption b'); return c ? c.textContent : null; }")
+    seen = set()
+    for _ in range(12):
+        seen.add(cap())
+        time.sleep(0.12)
+    check(t, "the preview plays by itself (play on)", len(seen) >= 3, sorted(x for x in seen if x))
+    t.js("() => document.activeElement && document.activeElement.blur()")
+    t.page.keyboard.press(" ")
+    time.sleep(0.4)
+    a = cap(); time.sleep(0.8); b = cap()
+    check(t, "space pauses the preview", a == b, (a, b))
+    check(t, "outside theater mode: only play/pause and theater buttons (no ‹ › Speed)", t.js("() => { const c = document.querySelector('#exportSettings .edit-ctrls'); return !!c && getComputedStyle(c).display === 'none' && !!document.querySelector('#exportSettings .edit-play') && !!document.querySelector('#exportSettings .edit-preview .lent-theater-btn'); }"))
+    t.js("() => document.querySelector('#exportSettings .edit-preview .lent-theater-btn').click()")
+    time.sleep(0.5)
+    check(t, "theater mode: ‹ ▶ › Speed and Reverse loop appear; the Lightroom box hides", t.js("() => { const o = document.getElementById('exportSettings'); const c = o.querySelector('.edit-ctrls'); return o.classList.contains('theater') && getComputedStyle(c).display === 'flex' && c.querySelectorAll('button').length === 5 && c.textContent.includes('Reverse loop') && getComputedStyle(o.querySelector('.export-rows')).display === 'none'; }"))
+    t.js("() => { const c = document.querySelector('#exportSettings .edit-ctrls'); [...c.querySelectorAll('button')].find(b => b.title === 'Slower').click(); }")
+    check(t, "Slower: 0.75x", t.js("() => document.querySelector('#exportSettings .edit-ctrls .play-speed').textContent") == "0.75x")
+    t.js("() => document.querySelector('#exportSettings .edit-preview .lent-theater-btn').click()")
+    time.sleep(0.4)
+    # Mandar para o Lightroom pelo bloco
+    t.lr_block_button("Edit in Lightroom Classic")
+    if t.wait(lambda: t.dialog_title() == "Crop before Lightroom Classic?", 2):
+        t.dialog_click("Send as shot")
+    check(t, "Edit in Lightroom Classic from the box: In Lightroom", t.wait(lambda: t.edit_tag(s), 15))
+    check(t, "the box shows In Lightroom Classic · 4 photos and Done editing", t.wait(lambda: t.js("() => { const b = document.querySelector('#exportSettings .lr-block'); return !!b && b.textContent.includes('In Lightroom Classic · 4 photos') && b.textContent.includes('Done editing'); }"), 6))
+    check(t, "the strip shows LR on the 4 photos", t.js("() => document.querySelectorAll('#exportSettings .export-strip .frame-app:not(.ed)').length") == 4)
+    o = t.originals(s)
+    ph = sorted(os.path.join(o, f) for f in os.listdir(o) if not f.startswith(".") and f != "session.json")
+    t.lr.set_edit(ph[0], (220, 80, 40))
+    t.lr.export(o, t.project, s)
+    check(t, "Export to Stillpoint: the box shows 1 of 4 photos edited", t.wait(lambda: t.js("() => { const b = document.querySelector('#exportSettings .lr-block'); return !!b && b.textContent.includes('1 of 4 photos edited'); }"), 10))
+    check(t, "... ED on photo 01 only", t.wait(lambda: t.js("() => [...document.querySelectorAll('#exportSettings .export-strip > li')].map(li => !!li.querySelector('.frame-app.ed'))") == [True, False, False, False], 5))
+    check(t, "... Original / Edited clickable, on Edited", t.js("() => { const v = document.querySelector('#exportSettings .edit-view'); const on = v && v.querySelector('button.on'); return !!on && on.textContent === 'Edited' && ![...v.querySelectorAll('button')].some(b => b.disabled); }"))
+    check(t, "... the partial warning", t.js("() => !!document.querySelector('#exportSettings .lr-warn')"))
+    t.js("() => [...document.querySelectorAll('#exportSettings .edit-view button')].find(b => b.textContent === 'Original').click()")
+    check(t, "Original: the session shows the originals (Edited tag off)", t.wait(lambda: (t.session(s) or {}).get("showEdited") is False, 5), (t.session(s) or {}).get("showEdited"))
+    t.js("() => [...document.querySelectorAll('#exportSettings .edit-view button')].find(b => b.textContent === 'Edited').click()")
+    t.wait(lambda: (t.session(s) or {}).get("showEdited") is not False, 5)
+    # A sessão inteira foi exportada: saiu do Lightroom. Edit again in Lightroom Classic a manda de novo
+    check(t, "the whole session came back: it left Lightroom", t.wait(lambda: not t.edit_tag(s), 10))
+    t.lr_block_button("Edit again in Lightroom Classic")
+    if t.wait(lambda: t.dialog_title() == "Crop before Lightroom Classic?", 2):
+        t.dialog_click("Send as shot")
+    check(t, "Edit again in Lightroom Classic: In Lightroom again", t.wait(lambda: t.edit_tag(s), 15))
+    t.close_export()
+    # Reabrir com a sessão no Lightroom: direto no Edit, nela
+    t.page.click("#saveBtn")
+    t.wait(lambda: t.export_open(), 5)
+    time.sleep(0.6)
+    check(t, "Export opened again with a session In Lightroom: step 2 · Edit", t.export_step() == "2 Edit", t.export_step())
+    check(t, "... on that session", t.js("(n) => { const a = document.querySelector('#exportList li.export-item.active'); return !!a && a.dataset.name === n; }", s))
+    t.close_export()
+    # A etiqueta In Lightroom da janela principal abre o Export › Edit
+    t.js("(n) => document.querySelector('#sessionList li.folder[data-name=\"' + n + '\"] .edit-tag').click()", s)
+    time.sleep(0.6)
+    check(t, "clicking In Lightroom in the session list opens Export › Edit of the session", t.export_open() and t.export_step() == "2 Edit" and t.js("(n) => { const a = document.querySelector('#exportList li.export-item.active'); return !!a && a.dataset.name === n; }", s))
+    t.lr_block_button("Done editing")
+    check(t, "Done editing in the box: In Lightroom goes away", t.wait(lambda: not t.edit_tag(s), 10))
+    check(t, "... the box shows Edit again in Lightroom Classic", t.wait(lambda: t.js("() => { const b = document.querySelector('#exportSettings .lr-block'); return !!b && b.textContent.includes('Edit again in Lightroom Classic'); }"), 6))
+    t.close_export()
 
 
 def dismiss_delete(self):
@@ -513,7 +668,8 @@ def main():
             if first:
                 name, photos = first
                 for sc in (scenario_cleared, scenario_delete_edit_undo, scenario_photo_delete_restore,
-                           scenario_remove_from_collection, scenario_delete_session, scenario_cancel, scenario_rapid_in_lightroom, scenario_crop_before_lightroom):
+                           scenario_remove_from_collection, scenario_delete_session, scenario_cancel, scenario_rapid_in_lightroom, scenario_crop_before_lightroom,
+                           scenario_export_edit):
                     try:
                         sc(t, name, photos)
                     except Exception:  # noqa: BLE001
