@@ -845,6 +845,10 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    "Crop before Lightroom Classic?" continua quando as fotos não têm todas a mesma proporção; a prévia do Edit abre tocando
    (play e Reverse loop ligados) com play/pause e modo teatro; no teatro, ‹ ▶ › Speed − + e Reverse loop como na tela cheia
    da janela principal. Feito em 2026-11-07. "Use edited photos" saiu do Outputs e foi para o bloco Lightroom Classic do Edit.
+   Depois (2026-11-07): o Edit bloqueia o avanço enquanto uma sessão marcada está no Lightroom; lixeira do Export acima da
+   lista (passos 1 a 3) para arrastar fotos e sessões, com as animações da janela principal; foto com editada solta numa
+   lixeira (Export ou janela principal) pergunta se vai só a editada ou a foto; Delete photo… no botão direito do Edit;
+   Delete edits… faz as miniaturas com ED voarem até a lixeira; miniaturas do Export com o recorte, inteiras na caixa 3:2.
    Feito em 2026-11-06: bolinha âmbar pulsando nas miniaturas e na prévia grande das fotos que estão no Lightroom;
    a coleção do Lightroom refeita na ordem do Stillpoint quando uma foto volta; Delete edits e o ⌘Z dele em fila, na ordem.
 6. **Etapa 21 — Histórico de edição permanente.** Pedido do dono (2026-11-01): um histórico no estilo

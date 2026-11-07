@@ -1795,7 +1795,8 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .export-step-sep { color: var(--noct-text-dim); }
 .export-step:focus-visible { outline: 2px solid var(--noct-primary); outline-offset: 2px; }
 /* Passo 2: a lista mostra só as sessões marcadas, sem caixas; passo 3: sem lista */
-.export-body.step-2 .export-sessions .save-tools { display: none; }
+/* Passos Edit e Outputs: sem Select all / Unselect all; a lixeira continua no lugar (pedido do dono, 2026-11-07) */
+.export-body.step-2 .export-sessions .save-tools #exportSelectAll, .export-body.step-2 .export-sessions .save-tools #exportUnselectAll { display: none; }
 .export-body.step-2 .export-item { grid-template-columns: 64px 1fr; }
 .export-body.step-2 .export-item > .export-check { display: none; }
 .export-body.step-3 { grid-template-columns: minmax(0, 1fr); }  /* a lista some: a coluna única é a do Review */
@@ -2120,3 +2121,8 @@ html.kbd-focus .export-tab.on .export-tab-check input:focus + .save-check { outl
 .export-item .export-thumb, .export-review .review-thumb { background-size: contain; }
 .export-strip.fit-strip .frame-img { background: #000; }
 .export-strip.fit-strip .frame-img img { object-fit: contain; width: 70px; height: 47px; min-height: 0; }
+/* Lixeira do Export: acima da lista de sessões (Sessions, Edit e Outputs); a mesma lixeira da barra de cima */
+.export-list-head { display: flex; align-items: center; gap: 4px; }
+.export-list-head .spacer { flex: 1; }
+.export-trash-bar { margin-left: 0; flex: none; white-space: nowrap; height: 26px; padding: 0 8px; }
+.export-item.dragging, .export-strip li.dragging { opacity: .35; }

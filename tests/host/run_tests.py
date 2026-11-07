@@ -661,6 +661,105 @@ def scenario_export_edit(t, name, photos):
     t.close_export()
 
 
+def scenario_export_trash(t, name, photos):
+    line("\n== 11. Export: trash above the session list; drag photos and sessions to it; Edit blocked while in Lightroom")
+    s = t.shoot()
+    if not s:
+        check(t, "a new session for this scenario", False)
+        return
+    t.dismiss()
+    # Só esta sessão marcada (as dos cenários de antes podem estar no Lightroom e também bloqueariam)
+    t.page.click("#saveBtn")
+    t.wait(lambda: t.export_open(), 5)
+    time.sleep(0.5)
+    t.js("() => { const b = document.querySelector('#exportSteps .export-step'); if (!b.classList.contains('on')) b.click(); }")
+    time.sleep(0.4)
+    t.js("() => document.getElementById('exportUnselectAll').click()")
+    t.js("(n) => document.querySelector('#exportList li.export-item[data-name=\"' + n + '\"] .export-check input').click()", s)
+    time.sleep(0.3)
+    t.export_edit(s)
+    vis = lambda: t.js("() => { const b = document.getElementById('exportTrashBtn'); return !!b && !!b.offsetParent && b.getBoundingClientRect().width > 0; }")
+    check(t, "Edit: the trash is above the session list", vis())
+    # Bloqueia enquanto está no Lightroom
+    t.lr_block_button("Edit in Lightroom Classic")
+    if t.wait(lambda: t.dialog_title() == "Crop before Lightroom Classic?", 2):
+        t.dialog_click("Send as shot")
+    t.wait(lambda: t.edit_tag(s), 15)
+    t.wait(lambda: t.js("() => document.getElementById('exportConfirm').disabled"), 6)
+    check(t, "while the session is In Lightroom, Outputs → is blocked", t.js("() => document.getElementById('exportConfirm').disabled"))
+    check(t, "... and the footer says why", "still in Lightroom Classic" in (t.js("() => document.getElementById('exportCount').textContent") or ""), t.js("() => document.getElementById('exportCount').textContent"))
+    o = t.originals(s)
+    ph = sorted(os.path.join(o, f) for f in os.listdir(o) if not f.startswith(".") and f != "session.json")
+    t.lr.set_edit(ph[0], (30, 160, 200))
+    t.lr.export(o, t.project, s)
+    check(t, "after Export to Stillpoint (the session leaves Lightroom): Outputs → works again", t.wait(lambda: not t.js("() => document.getElementById('exportConfirm').disabled"), 12))
+    t.wait(lambda: t.js("() => !!document.querySelector('#exportSettings .export-strip .frame-app.ed')"), 8)
+
+    def drag_to_trash(sel):
+        box = t.js("(q) => { const r = document.querySelector(q).getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }", sel)
+        tb = t.js("() => { const r = document.getElementById('exportTrashBtn').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }")
+        t.page.mouse.move(box[0], box[1])
+        t.page.mouse.down()
+        t.page.mouse.move(box[0] + 20, box[1] + 10, steps=4)
+        t.page.mouse.move(tb[0], tb[1], steps=10)
+        time.sleep(0.15)
+        over = t.js("() => document.getElementById('exportTrashBtn').classList.contains('drop-ok')")
+        t.page.mouse.up()
+        time.sleep(0.5)
+        return over
+
+    count = lambda: len((t.session(s) or {}).get("photos", []))
+    before = count()
+    # Foto com editada: pergunta
+    check(t, "dragging photo 01 over the trash lights it", drag_to_trash("#exportSettings .export-strip > li:nth-child(1)"))
+    check(t, "photo 01 has an edit: it asks \"Delete the edit or the photo?\"", t.wait(lambda: t.dialog_title() == "Delete the edit or the photo?", 3), t.dialog_title())
+    t.dialog_click("Delete edit")
+    check(t, "Delete edit: only the edit goes (Edited tag gone, still %d photos)" % before, t.wait(lambda: (t.session(s) or {}).get("edited", 1) == 0 and count() == before, 8), ((t.session(s) or {}).get("edited"), count()))
+    # Foto sem editada: vai direto
+    drag_to_trash("#exportSettings .export-strip > li:nth-child(2)")
+    check(t, "photo 02 (no edit) dropped on the trash: deleted with no question", t.wait(lambda: count() == before - 1, 8) and not t.dialog_title(), count())
+    t.undo()
+    check(t, "⌘Z brings photo 02 back", t.wait(lambda: count() == before, 8), count())
+    # Botão direito: Delete photo…
+    t.wait(lambda: t.js("() => document.querySelectorAll('#exportSettings .export-strip > li').length") == before, 5)
+    t.strip_menu(2, "Delete photo 03")
+    check(t, "right-click › Delete photo 03… asks", t.wait(lambda: t.dialog_title() == "Delete photo 03?", 3), t.dialog_title())
+    t.dialog_click("Delete")
+    check(t, "... and deletes it", t.wait(lambda: count() == before - 1, 8), count())
+    t.undo()
+    t.wait(lambda: count() == before, 8)
+    # Passo 1: a lixeira também; arrastar a sessão
+    t.js("() => document.querySelector('#exportSteps .export-step').click()")
+    time.sleep(0.6)
+    check(t, "Sessions: the trash is there too", vis())
+    drag_to_trash('#exportList li.export-item[data-name="%s"] .folder-date' % s)
+    check(t, "dragging the session to the trash deletes it", t.wait(lambda: t.session(s) is None, 8))
+    time.sleep(0.5)
+    t.undo()
+    check(t, "⌘Z brings the session back", t.wait(lambda: t.session(s) is not None, 8))
+    t.close_export()
+    # Janela principal: foto com editada solta na lixeira da barra de cima também pergunta
+    t.lr.set_edit(ph[0], (30, 160, 200))
+    t.lr.export(o, t.project, s)
+    t.wait(lambda: (t.session(s) or {}).get("edited", 0) >= 1, 10)
+    t.wait(lambda: str(t.project_tag(s) or "").startswith("Edited"), 10)  # a página já sabe da editada
+    sess = t.session(s) or {}
+    first = sorted(sess.get("photos", []), key=lambda x: x["order"])
+    if first and first[0].get("edited"):
+        t.open_session(s)
+        a = t.js("() => { const r = document.querySelector('#sessionGallery .carousel > li:nth-child(1)').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }")
+        b = t.js("() => { const r = document.getElementById('trashBtn').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }")
+        t.page.mouse.move(a[0], a[1]); t.page.mouse.down()
+        t.page.mouse.move(a[0] + 20, a[1] + 10, steps=4); t.page.mouse.move(b[0], b[1], steps=10)
+        time.sleep(0.15); t.page.mouse.up(); time.sleep(0.4)
+        check(t, "main window: a photo with an edit dropped on the trash asks \"Delete the edit or the photo?\"", t.wait(lambda: t.dialog_title() == "Delete the edit or the photo?", 3), t.dialog_title())
+        t.dialog_click("Cancel")
+        time.sleep(0.3)
+        check(t, "... Cancel: nothing is deleted", len(t.session(s)["photos"]) == len(first) and t.session(s)["edited"] >= 1)
+    else:
+        check(t, "main window check needs photo 01 with an edit (it came back with ⌘Z)", False, [p.get("edited") for p in first])
+
+
 def dismiss_delete(self):
     if self.js("() => !document.getElementById('dialogOverlay').classList.contains('hidden')"):
         self.js("() => { const b = [...document.querySelectorAll('#dialogActions button')].find(x => /^Delete/.test(x.textContent.trim())); b && b.click(); }")
@@ -684,7 +783,7 @@ def main():
                 name, photos = first
                 for sc in (scenario_cleared, scenario_delete_edit_undo, scenario_photo_delete_restore,
                            scenario_remove_from_collection, scenario_delete_session, scenario_cancel, scenario_rapid_in_lightroom, scenario_crop_before_lightroom,
-                           scenario_export_edit):
+                           scenario_export_edit, scenario_export_trash):
                     try:
                         sc(t, name, photos)
                     except Exception:  # noqa: BLE001

@@ -1870,6 +1870,19 @@ Com câmeras simuladas e o Lightroom Classic com o catálogo do projeto. A janel
 - [ ] Fechar o Export (**Cancel** › **Leave**) com uma sessão no Lightroom e abrir de novo: abre no passo **2 Edit**,
       nessa sessão.
 - [ ] O passo **3 Outputs** não tem mais **Use edited photos**.
+- [ ] Com uma sessão marcada no Lightroom (**In Lightroom**), **Outputs →** fica apagado e o rodapé explica por quê; depois de
+      **Export to Stillpoint**, **Cancel editing** ou **Done editing**, volta a funcionar.
+- [ ] **Lixeira do Export:** nos passos **1 Sessions**, **2 Edit** e **3 Outputs** a lixeira fica acima da lista de sessões
+      (à direita de **Unselect all** no passo 1), com o mesmo número de itens da lixeira da barra de cima; clicar abre a **Trash**.
+- [ ] Arrastar uma miniatura (fileira dos passos 1, 2 e 3) até essa lixeira: a lixeira acende; ao soltar, a foto vai para
+      a lixeira sem perguntar (⌘Z traz de volta). Se a foto tem editada, pergunta **Delete the edit or the photo?**
+      (**Delete edit** / **Delete photo** / **Cancel**).
+- [ ] Arrastar uma sessão da lista até a lixeira: a sessão vai para a lixeira com a mesma animação da janela principal.
+- [ ] No **2 Edit**, botão direito numa miniatura: **Delete photo 0n…** pergunta e apaga (a miniatura voa até a lixeira).
+- [ ] **Delete edits…** (bloco Lightroom Classic): depois de confirmar, as miniaturas com **ED** voam até a lixeira e
+      continuam na fileira (só as editadas saem).
+- [ ] Janela principal: soltar na lixeira da barra de cima uma foto que tem editada também pergunta **Delete the edit or the photo?**.
+- [ ] Passo **1 Sessions**: a fileira de miniaturas mostra o recorte escolhido (muda ao trocar o **Aspect ratio**).
 - [ ] Com **1:1** (ou outra proporção) no passo 1: as miniaturas da lista de sessões (esquerda), da fileira do **2 Edit**,
       da fileira de **3 Outputs › Photos** e da tabela do **4 Review** mostram a foto recortada, inteira, dentro da caixa de
       sempre (3:2), com faixas pretas; as caixas não mudam de forma. A prévia grande do **2 Edit** (tocando e no modo teatro)

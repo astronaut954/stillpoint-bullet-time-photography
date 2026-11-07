@@ -1274,7 +1274,11 @@
     onDragStart: () => { stopPlay(); photoKeys = true; const t = trashTarget(); if (t) t.classList.add("drop-here"); },
     onDragEnd: () => document.querySelectorAll(".drop-here").forEach((x) => x.classList.remove("drop-here")),
     dropTarget: (x, y) => { const t = trashTarget(); return t && overNode(x, y, t) ? t : null; },
-    onDropOut: (node, picks) => deletePhotosNow(picks, true),
+    onDropOut: (node, picks) => {
+      const s = currentSession && sessions.find((x) => x.name === currentSession.name);
+      if (!s) return;
+      askDropEdited(s, picks.map((k) => sessionGallery.items[k]).filter(Boolean), () => deletePhotosNow(picks, true));
+    },
     onFreeReorder: () => saveOrder(currentSession),
     load: (item, size) => sessionPhoto(item.session, item.file, size),
     // Botão direito numa foto (miniatura ou foto grande): apagar
@@ -1460,9 +1464,14 @@
   // A sessão mais recente fica selecionada: ao abrir, quando chega uma sessão
   // nova e quando a selecionada é apagada ou salva
   function setSessions(list) {
+    // Sessões ou fotos apagadas / restauradas com o Export aberto (lixeira dele, ⌘Z): não é uma mudança da janela, então
+    // não vira um passo do ⌘Z do Export (a referência recomeça)
+    const shape = (l) => (l || []).map((x) => x.name + ":" + (x.photos || []).length).join("|");
+    const shapeChanged = shape(sessions) !== shape(list);
     setTimeout(() => {
       // Janela de salvar aberta (ex.: salvamento com erro): mostra só o que ainda está no app
       if ($("exportOverlay").classList.contains("hidden") || !sessions.length) return;
+      if (shapeChanged) expSnap = null;
       exp.selected = new Set([...exp.selected].filter((n) => sessions.some((s) => s.name === n)));
       if (!sessions.some((s) => s.name === exp.active)) exp.active = sessions[0].name;
       renderExport();
@@ -1558,29 +1567,55 @@
       "Moves " + what + " from the project's Edited folder to the Stillpoint trash, and puts " + (n === 1 ? "the photo" : "these photos") + " back to the original in Lightroom Classic (now, or as soon as Lightroom opens the catalog of this session). The originals stay as they are. ⌘Z or the Trash brings the edited files back.",
       [{ label: "Cancel" },
        { label: "Delete " + plural(n, "edit", "edits"), danger: true, onClick: () => {
-         const run = () => Promise.resolve(window.deleteEdits(s.name, ...files)).then((r) => {
-           forgetSessionPreviews(s.name);
-           const o = typeof r === "object" && r ? r : { removed: Number(r) || 0, reset: false };
-           return o;
-         });
-         run().then((o) => {
-           if (!o.removed) { toast("No edited files were found.", TOAST_MS); return; }
-           toast(plural(o.removed, "edit", "edits") + " moved to the trash · " + sessionTitle(s) + (o.reset ? " · reset in Lightroom Classic" : "") + " · ⌘Z undoes", TOAST_MS);
-           log("Delete edits: " + plural(o.removed, "edited file", "edited files") + " of " + sessionShort(s) + " moved to the trash" + (o.reset ? "; the photos go back to the original in Lightroom Classic" : ""), "ok");
-           recordAction({ trash: { sessions: [s.name] }, label: "Delete " + plural(o.removed, "edit", "edits") + " · " + sessionLabel(s.name).date,
-             undo: () => Promise.resolve(restoreSession(s.name)).then((ok) => {
-               forgetSessionPreviews(s.name);
-               // No Lightroom: cancela a volta ao original se ainda não foi feita; se já foi, o plugin põe de volta a
-               // edição que guardou antes do Reset (pedido do dono, 2026-11-06)
-               if (o.reset && typeof window.adobeCancelReset === "function")
-                 Promise.resolve(window.adobeCancelReset(s.name, ...(o.files || []))).then((what) => {
-                   if (what === "bringback") toast("The edit also comes back in Lightroom Classic (now, or when Lightroom opens the catalog of this session).", 7000);
-                 });
-               return ok;
-             }),
-             redo: () => run() });
-         });
+         // Export › Edit: as miniaturas que têm editada voam até a lixeira (e ficam: só a editada vai embora)
+         flyNodesToTrash(editThumbs(s.name, files));
+         deleteEditsNow(s, files);
        } }]);
+  }
+  // As miniaturas da fileira do Export › Edit das fotos com editada (files vazio = todas as editadas da sessão)
+  function editThumbs(name, files) {
+    if ($("exportOverlay").classList.contains("hidden") || exp.step !== 2 || exp.active !== name) return [];
+    return [...document.querySelectorAll("#exportSettings .export-strip > li")].filter((li) => li.querySelector(".frame-app.ed") && (!files.length || files.includes(li.dataset.file)));
+  }
+  function deleteEditsNow(s, files) {
+    const run = () => Promise.resolve(window.deleteEdits(s.name, ...files)).then((r) => {
+      forgetSessionPreviews(s.name);
+      const o = typeof r === "object" && r ? r : { removed: Number(r) || 0, reset: false };
+      return o;
+    });
+    run().then((o) => {
+      if (!o.removed) { toast("No edited files were found.", TOAST_MS); return; }
+      toast(plural(o.removed, "edit", "edits") + " moved to the trash · " + sessionTitle(s) + (o.reset ? " · reset in Lightroom Classic" : "") + " · ⌘Z undoes", TOAST_MS);
+      log("Delete edits: " + plural(o.removed, "edited file", "edited files") + " of " + sessionShort(s) + " moved to the trash" + (o.reset ? "; the photos go back to the original in Lightroom Classic" : ""), "ok");
+      recordAction({ trash: { sessions: [s.name] }, label: "Delete " + plural(o.removed, "edit", "edits") + " · " + sessionLabel(s.name).date,
+        undo: () => Promise.resolve(restoreSession(s.name)).then((ok) => {
+          forgetSessionPreviews(s.name);
+          // No Lightroom: cancela a volta ao original se ainda não foi feita; se já foi, o plugin põe de volta a
+          // edição que guardou antes do Reset (pedido do dono, 2026-11-06)
+          if (o.reset && typeof window.adobeCancelReset === "function")
+            Promise.resolve(window.adobeCancelReset(s.name, ...(o.files || []))).then((what) => {
+              if (what === "bringback") toast("The edit also comes back in Lightroom Classic (now, or when Lightroom opens the catalog of this session).", 7000);
+            });
+          return ok;
+        }),
+        redo: () => run() });
+    });
+  }
+  // Foto (ou fotos) soltas na lixeira: as que têm editada perguntam se vai só a editada ou a foto (pedido do dono,
+  // 2026-11-07; o mesmo na janela principal e no Export). onPhoto: apaga as fotos (soltar já é a confirmação)
+  function askDropEdited(s, picked, onPhoto) {
+    // (uma foto RAW + JPEG: qualquer um dos arquivos dela com editada)
+    const edited = picked.filter((it) => s.inProject && s.photos.some((x) => x.edited && (x.file === it.file || (it.files || []).some((f) => f.file === x.file))));
+    if (!edited.length) { onPhoto(); return; }
+    const one = picked.length === 1;
+    const nums = edited.map((x) => pad(x.order || 0)).join(", ");
+    dialog(one ? "Delete the edit or the photo?" : "Delete the edits or the photos?",
+      (edited.length === 1 ? "Photo " + nums + " has" : "Photos " + nums + " have") + " an edited version from Lightroom Classic. " +
+      (edited.length === 1 ? "Delete edit moves only the edited file" : "Delete edits moves only the edited files") + " to the Trash and puts " + (edited.length === 1 ? "the photo" : "them") +
+      " back to the original in Lightroom Classic. " + (one ? "Delete photo moves the photo, with its edit," : "Delete photos moves the " + plural(picked.length, "photo", "photos") + ", with their edits,") + " to the Trash.",
+      [{ label: "Cancel" },
+       { label: edited.length === 1 ? "Delete edit" : "Delete " + plural(edited.length, "edit", "edits"), danger: true, onClick: () => deleteEditsNow(s, edited.map((x) => x.file)) },
+       { label: one ? "Delete photo" : "Delete " + plural(picked.length, "photo", "photos"), danger: true, onClick: onPhoto }]);
   }
   function forgetSessionPreviews(name) {
     Object.keys(photoCache).forEach((k) => { if (k.startsWith("sessions/" + name + "/") || k.startsWith("order/" + name + "/")) delete photoCache[k]; });
@@ -2437,7 +2472,12 @@
   // Apagar sessão: uma cópia da linha voa até o botão da lixeira (encolhendo e sumindo), a linha
   // fecha no lugar e a lixeira dá um pulo; só então a sessão é apagada
   function trashTarget() {
-    // Na tela cheia, o botão da lixeira dela; fora, o da barra de cima
+    // Export aberto: a lixeira acima da lista de sessões (a mesma, em outro lugar); na tela cheia, o botão da lixeira
+    // dela; fora, o da barra de cima
+    if (!$("exportOverlay").classList.contains("hidden")) {
+      const x = $("exportTrashBtn");
+      return x && x.offsetParent && x.getBoundingClientRect().width ? x : null;
+    }
     if (isFullscreen() && fullTrashOpenBtn.offsetParent) return fullTrashOpenBtn;
     const b = $("trashBtn");
     return b && b.offsetParent && b.getBoundingClientRect().width ? b : null;
@@ -2466,9 +2506,12 @@
     if (trash && trash.animate) setTimeout(() => trash.animate([{ transform: "scale(1)" }, { transform: "scale(1.25)" }, { transform: "scale(1)" }], { duration: 240, easing: "ease-out" }), 470 + (nodes.length - 1) * 40);
   }
   function flyToTrash(name, done) {
-    const full = isFullscreen() && currentSession && currentSession.name === name;
-    // Tela cheia: a área da foto (miniaturas + foto grande) vai até o ícone da lixeira da tela cheia
-    const li = full ? ui.sessionGallery.querySelector(".stage")
+    const inExport = !$("exportOverlay").classList.contains("hidden");
+    const full = !inExport && isFullscreen() && currentSession && currentSession.name === name;
+    // Tela cheia: a área da foto (miniaturas + foto grande) vai até o ícone da lixeira da tela cheia; Export: a linha
+    // da lista dele
+    const li = inExport ? [...$("exportList").querySelectorAll("li.export-item")].find((x) => x.dataset.name === name)
+      : full ? ui.sessionGallery.querySelector(".stage")
       : [...ui.sessionList.querySelectorAll("li.folder")].find((x) => x.dataset.name === name);
     // Vai para o ícone da lixeira da barra de cima (na tela cheia, para onde ele fica)
     const trash = trashTarget() || (full ? fullTrashBtn : compactActions[0]);
@@ -3135,6 +3178,12 @@
   function exportStepProblem(step) {
     const chosen = chosenSessions();
     if (step >= 1 && !chosen.length) return "Tick at least one session";
+    // Enquanto uma sessão marcada está no Lightroom Classic, não passa do Edit (pedido do dono, 2026-11-07)
+    if (step >= 2) {
+      const live = chosen.filter((s) => inLightroom(s.name));
+      if (live.length) return (live.length === 1 ? sessionTitle(live[0]) + " is" : plural(live.length, "session is", "sessions are")) +
+        " still in Lightroom Classic: finish there (Export to Stillpoint or Cancel editing) or click Done editing to go on";
+    }
     if (step >= 3) {
       const sts = chosen.map((s) => settingsFor(s.name));
       if (sts.some((st) => !OUTPUT_KINDS.some((k) => st.outputs[k]))) return "Tick at least one output for each selected session";
@@ -3258,7 +3307,9 @@
       // Com o recorte do Framing (proporção, posição e alinhamento), inteira na caixa de sempre (pedido do dono, 2026-11-07)
       if (first) sessionPhoto(s.name, first.file, 320).then((url) => (url ? framedUrl(s, sessionItems(s).filter((i) => i.previewable), settingsFor(s.name), first, url, 320) : url))
         .then((url) => { if (url) li.querySelector(".export-thumb").style.backgroundImage = "url(" + url + ")"; });
+      expSessionDrag(li, s);
       li.addEventListener("click", () => {
+        if (li.dataset.dragged) return;
         if (exp.aligning && s.name !== exp.active) {
           const tst = settingsFor(s.name);
           if (needsRatio(s, tst)) { askRatioForAlign(s, tst, renderExport); return; }  // Cancel: continua na sessão de antes
@@ -3299,7 +3350,8 @@
       const list = all.filter((s) => exp.selected.has(s.name));
       const live = list.filter((s) => { const m = editingBySession[s.name]; return m && Object.values(m).includes("lr"); }).length;
       const ed = list.filter((s) => s.inProject && s.edited > 0).length;
-      text = [plural(chosen, "session", "sessions"), live ? live + " in Lightroom Classic" : "", ed ? ed + " edited" : ""].filter(Boolean).join(" · ");
+      text = exportStepProblem(2) || [plural(chosen, "session", "sessions"), live ? live + " in Lightroom Classic" : "", ed ? ed + " edited" : ""].filter(Boolean).join(" · ");
+      warn = !!exportStepProblem(2);
     } else if (exp.step === 3) {
       const kinds = OUTPUTS.filter(([k]) => chosenSt.some((st) => st.outputs[k])).map(([, t]) => t);
       text = noOutput ? "Tick at least one output for each selected session" : photosEmpty ? "Photos: choose the originals, a format, or both" : lentBad ? "Check the lens, printer and size values" : seqEmpty ? "Choose at least one sequence format for each selected session"
@@ -3317,7 +3369,7 @@
     // Dentro de "Align photos" (decisão do dono, 2026-11-04, caminho A): um botão só, que volta ao Framing
     const aligningNow = exp.step === 1 && !!exp.aligning;
     $("exportConfirm").textContent = aligningNow ? "Done aligning" : next;
-    $("exportConfirm").disabled = aligningNow ? false : exp.step <= 2 ? chosen === 0 : chosen === 0 || block;
+    $("exportConfirm").disabled = aligningNow ? false : exp.step === 1 ? chosen === 0 : exp.step === 2 ? !!exportStepProblem(2) : chosen === 0 || block;
     $("exportCancel").classList.toggle("hidden", aligningNow);
     $("exportBack").classList.toggle("hidden", exp.step === 1);
     $("exportBack").textContent = exp.step === 4 ? "← Outputs" : exp.step === 3 ? "← Edit" : "← Sessions";
@@ -4801,14 +4853,17 @@
           if (sessionAligned(session, st)) stage.appendChild(el("span", "framing-aligned-tag", "Aligned"));
           outer.insertBefore(stage, rows);
           const stripScroll = el("div", "export-strip-scroll");
-          const strip = el("ul", "export-strip");
+          const strip = el("ul", "export-strip fit-strip");
           stripScroll.appendChild(strip);
           items.forEach((item, k) => {
             const li = el("li", "frame" + (k === (exp.photo || 0) ? " selected" : ""));
             li.innerHTML = '<div class="frame-img"><img alt=""><span class="frame-badge"></span></div>';
             li.querySelector(".frame-badge").textContent = pad(item.order || k + 1);
-            sessionPhoto(session.name, item.file, 320).then((url) => { if (url) li.querySelector("img").src = url; });
-            li.addEventListener("click", () => { exp.photo = k; photoRerender(); });
+            // Com o recorte escolhido, como no Edit (pedido do dono, 2026-11-07)
+            sessionPhoto(session.name, item.file, 320).then((url) => (url ? framedUrl(session, items, st, item, url, 320) : url))
+              .then((url) => { if (url) li.querySelector("img").src = url; });
+            li.addEventListener("click", () => { if (li.dataset.dragged) return; exp.photo = k; photoRerender(); });
+            expPhotoDrag(li, session, item);
             strip.appendChild(li);
           });
           exp.keyNav = (d) => { const k = Math.max(0, Math.min(items.length - 1, (exp.photo || 0) + d)); if (k === exp.photo) return; exp.photo = k; photoRerender(); };
@@ -4849,7 +4904,8 @@
             // caixa acompanhava a forma do recorte)
             pic.src = url;
           });
-        li.addEventListener("click", () => { exp.photo = k; showPhoto(); });
+        li.addEventListener("click", () => { if (li.dataset.dragged) return; exp.photo = k; showPhoto(); });
+        expPhotoDrag(li, session, item);
         strip.appendChild(li);
       });
       if (focused) exp.keyNav = (d) => { const k = Math.max(0, Math.min(items.length - 1, exp.photo + d)); if (k === exp.photo) return; exp.photo = k; showPhoto(); const li = strip.children[k]; if (li) li.scrollIntoView({ block: "nearest", inline: "nearest" }); };
@@ -5371,6 +5427,93 @@
     // ("Apply to all sessions" saiu: a caixa "Same settings for all sessions" da aba faz isso)
   }
 
+  // ---- Lixeira do Export (pedido do dono, 2026-11-07): arrastar fotos (fileiras de Sessions, Edit e Outputs) e sessões
+  // (lista da esquerda) até a lixeira acima da lista, como na janela principal; soltar é a confirmação ----
+  function expDragStart(e, li, makeGhost, onDrop, onStart) {
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || exp.aligning || exp.step === 4) return;
+    e.preventDefault();  // sem o arraste de imagem do navegador nem seleção de texto (o clique continua valendo)
+    const d = { x: e.clientX, y: e.clientY, moved: false, ghost: null, over: null };
+    const move = (ev) => {
+      const dx = ev.clientX - d.x, dy = ev.clientY - d.y;
+      if (!d.moved && Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+      const trash = trashTarget();
+      if (!d.moved) {
+        d.moved = true;
+        if (onStart) onStart();
+        li.classList.add("dragging");
+        const r = li.getBoundingClientRect();
+        d.ghost = makeGhost();
+        Object.assign(d.ghost.style, { left: r.left + "px", top: r.top + "px", width: r.width + "px", height: r.height + "px" });
+        document.body.appendChild(d.ghost);
+        if (trash) trash.classList.add("drop-here");
+      }
+      d.ghost.style.transform = "translate(" + dx + "px," + dy + "px)";
+      const over = trash && overNode(ev.clientX, ev.clientY, trash) ? trash : null;
+      if (d.over !== over) { if (d.over) d.over.classList.remove("drop-ok"); if (over) over.classList.add("drop-ok"); d.over = over; }
+    };
+    const end = (ev, cancel) => {
+      window.removeEventListener("pointermove", move, true);
+      window.removeEventListener("pointerup", up, true);
+      window.removeEventListener("pointercancel", cancelIt, true);
+      li.classList.remove("dragging");
+      if (d.ghost) d.ghost.remove();
+      if (d.over) d.over.classList.remove("drop-ok");
+      document.querySelectorAll(".drop-here").forEach((x) => x.classList.remove("drop-here"));
+      if (!d.moved) return;
+      li.dataset.dragged = "1";  // o "click" que vem depois do arraste não conta
+      setTimeout(() => { delete li.dataset.dragged; }, 0);
+      if (!cancel && d.over) onDrop();
+    };
+    const up = (ev) => end(ev, false), cancelIt = (ev) => end(ev, true);
+    window.addEventListener("pointermove", move, true);
+    window.addEventListener("pointerup", up, true);
+    window.addEventListener("pointercancel", cancelIt, true);
+  }
+  // Uma miniatura das fileiras do Export
+  function expPhotoDrag(li, session, item, onStart) {
+    li.addEventListener("pointerdown", (e) => expDragStart(e, li, () => { const g = li.cloneNode(true); g.className = "frame frame-ghost"; return g; },
+      () => {
+        const s = sessions.find((x) => x.name === session.name) || session;
+        askDropEdited(s, [item], () => deleteExportPhotos(s, [item], [li], true));
+      }, onStart));
+  }
+  // Uma sessão da lista do Export (a caixa de marcar e as etiquetas que são botões não começam o arraste)
+  function expSessionDrag(li, s) {
+    li.addEventListener("pointerdown", (e) => {
+      if (e.target.closest(".export-check, button, input")) return;
+      expDragStart(e, li, () => { const g = li.cloneNode(true); g.classList.add("session-ghost"); g.classList.remove("active"); return g; },
+        () => deleteSessionsNow([s.name]));
+    });
+  }
+  // Delete photo… (botão direito na miniatura do Edit): a mesma pergunta da janela principal
+  function askDeleteExportPhoto(s, item, li) {
+    const what = item.title + (item.subtitle ? " (" + item.subtitle + ")" : "") + ". ";
+    dialog("Delete photo " + pad(item.order || 0) + "?",
+      what + (item.files && item.files.length > 1 ? "Its RAW and JPEG files go" : "The file goes") + " to the Trash (top bar), where it stays for " + trash.days + " days.", [
+        { label: "Cancel" },
+        { label: "Delete", danger: true, onClick: () => deleteExportPhotos(s, [item], [li], false) },
+      ]);
+  }
+  // Apaga fotos de uma sessão a partir do Export: como deletePhotosNow da janela principal (a miniatura voa até a
+  // lixeira, ou a lixeira pula quando a foto foi solta nela; ⌘Z traz de volta)
+  function deleteExportPhotos(s, picked, nodes, dropped) {
+    if (!picked.length) return;
+    if (exp.step === 2) { stopPreview(); editPlay.playing = false; }
+    const session = s.name;
+    const one = picked.length === 1, item = picked[0];
+    const groups = picked.map((x) => x.group);
+    if (dropped) {
+      const t = trashTarget();
+      if (t && t.animate) t.animate([{ transform: "scale(1)" }, { transform: "scale(1.25)" }, { transform: "scale(1)" }], { duration: 240, easing: "ease-out" });
+    } else flyNodesToTrash(nodes);
+    nodes.forEach((t) => t && t.animate && t.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, easing: "ease-in", fill: "forwards" }));
+    setTimeout(() => window.deletePhotos(session, ...groups), 270);
+    const label = one ? "Photo " + pad(item.order || 0) : plural(picked.length, "photo", "photos");
+    toast(label + " deleted from the session of " + sessionLabel(session).date);
+    recordAction({ trash: { sessions: [session] }, label: "Delete " + (one ? "photo " + pad(item.order || 0) : plural(picked.length, "photo", "photos")) + " from " + sessionLabel(session).date,
+      undo: () => restoreSession(session), redo: () => window.deletePhotos(session, ...groups) });
+  }
+
   // ---- Passo 2 · Edit (protótipo A "Editar dentro do Export", aprovado pelo dono em 2026-11-07) ----
   // Em cima, Original / Edited (a mesma chave da etiqueta Edited n / m e do "Use edited photos"). A prévia abre tocando,
   // com play e Reverse loop ligados, e mostra só o play/pause e o modo teatro; no teatro aparecem ‹ ▶ › Speed − + e
@@ -5473,14 +5616,19 @@
       }
       if (editedFile(item)) { const b = el("span", "frame-app ed", "ED"); b.title = "Has an edited version (from Lightroom Classic)"; corner.appendChild(b); }
       if (corner.childNodes.length) li.appendChild(corner);
-      li.addEventListener("click", () => go(k));
-      // Botão direito: só esta foto no Lightroom Classic; Delete edit… nas que têm editada (decisão do dono, 2026-11-07)
+      li.dataset.file = item.file;
+      li.addEventListener("click", () => { if (li.dataset.dragged) return; go(k); });
+      expPhotoDrag(li, session, item, pause);
+      // Botão direito: só esta foto no Lightroom Classic; Delete edit… nas que têm editada; Delete photo… (decisões do
+      // dono, 2026-11-07)
       li.addEventListener("contextmenu", (e) => {
         e.preventDefault();
         go(k);
         popupMenuAt(e.clientX, e.clientY, [
           { label: "Edit just this photo in Lightroom Classic", onClick: () => { if (!adobeMissingBuild()) startLightroom(session, item.group, "photo"); } },
-          ...(editedFile(item) ? ["-", { label: "Delete edit…", danger: true, onClick: () => deleteEdits(session, [item.file]) }] : []),
+          "-",
+          ...(editedFile(item) ? [{ label: "Delete edit…", danger: true, onClick: () => deleteEdits(session, [item.file]) }] : []),
+          { label: "Delete photo " + pad(item.order || k + 1) + "…", danger: true, onClick: () => askDeleteExportPhoto(session, item, li) },
         ]);
       });
       strip.appendChild(li);
@@ -9642,6 +9790,13 @@
                           : "Trash: empty. Deleted sessions and photos stay here for " + trash.days + " days.";
     b.setAttribute("aria-label", b.title);
     fullTrashOpenBtn.title = b.title; fullTrashOpenBtn.setAttribute("aria-label", b.title);
+    {
+      const x = $("exportTrashBtn");
+      x.classList.toggle("has", trash.count > 0);
+      x.querySelector(".trash-count-exp").textContent = $("trashCount").textContent;
+      x.querySelector(".trash-size-exp").textContent = $("trashSize").textContent;
+      x.title = b.title + " · drag sessions and photos here to delete them"; x.setAttribute("aria-label", b.title);
+    }
     if ($("trashOverlay") && !$("trashOverlay").classList.contains("hidden")) renderTrash();
   }
   const trashRoving = makeRoving({ root: () => $("trashList"), rows: (r) => [...r.querySelectorAll("li.trash-row")], id: (row) => row.dataset.id });
@@ -9960,6 +10115,7 @@
     }
   }
   $("trashBtn").addEventListener("click", openTrash);
+  $("exportTrashBtn").addEventListener("click", openTrash);
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape" || selectMenu || openMenu || !$("trashOverlay") || $("trashOverlay").classList.contains("hidden") || !$("dialogOverlay").classList.contains("hidden")) return;
     e.preventDefault(); e.stopImmediatePropagation();
