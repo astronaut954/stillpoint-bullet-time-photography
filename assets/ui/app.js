@@ -5420,7 +5420,9 @@
       const item = items[k];
       if (!item) return;
       exp.photo = k;
-      sessionPhoto(name, item.file, 1600).then((url) => { if (url && exp.step === 2 && exp.active === name && exp.photo === k) img.src = url; });
+      // Com o recorte do passo 1, como sai na exportação e como chega ao Lightroom (pedido do dono, 2026-11-07)
+      sessionPhoto(name, item.file, 1600).then((url) => (url ? framedUrl(session, items, st, item, url) : url))
+        .then((url) => { if (url && exp.step === 2 && exp.active === name && exp.photo === k) img.src = url; });
       caption.innerHTML = "";
       caption.appendChild(el("b", "", pad(item.order || k + 1)));
       if (inLr(item)) {
@@ -5528,7 +5530,8 @@
       tb.setAttribute("aria-label", tb.title);
     };
     applyT();
-    items.forEach((item) => sessionPhoto(name, item.file, 1600));  // todas antes, para tocar sem falhas
+    // Todas antes (já recortadas), para tocar sem falhas
+    items.forEach((item) => sessionPhoto(name, item.file, 1600).then((url) => (url ? framedUrl(session, items, st, item, url) : url)));
     show(exp.photo);
     if (editPlay.playing) play(); else setIcons();
 
