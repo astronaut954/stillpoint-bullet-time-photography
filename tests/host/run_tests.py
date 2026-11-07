@@ -579,6 +579,13 @@ def scenario_export_edit(t, name, photos):
     time.sleep(0.5)
     steps = t.js("() => [...document.querySelectorAll('#exportSteps .export-step')].map(b => b.textContent.trim().replace(' ✓', ''))")
     check(t, "Export has 4 steps: Sessions, Edit, Outputs, Review", steps == ["1 Sessions", "2 Edit", "3 Outputs", "4 Review"], steps)
+    # Framing 1:1 no passo 1 (o recorte vai para as miniaturas, a prévia e o Lightroom)
+    t.js("() => { const b = document.querySelector('#exportSteps .export-step'); if (!b.classList.contains('on')) b.click(); }")
+    time.sleep(0.4)
+    t.page.click('#exportList li.export-item[data-name="%s"] .folder-date' % s)
+    time.sleep(0.4)
+    t.js("() => [...document.querySelectorAll('#exportSettings .segmented button')].find(b => b.textContent === '1:1').click()")
+    time.sleep(0.6)
     t.export_edit(s)
     check(t, "step 1's green button was Edit → and now step 2 · Edit is open", t.export_step() == "2 Edit", t.export_step())
     check(t, "the footer buttons: ← Sessions and Outputs →", t.js("() => document.getElementById('exportBack').textContent === '← Sessions' && document.getElementById('exportConfirm').textContent === 'Outputs →'"))
@@ -618,6 +625,14 @@ def scenario_export_edit(t, name, photos):
     check(t, "... ED on photo 01 only", t.wait(lambda: t.js("() => [...document.querySelectorAll('#exportSettings .export-strip > li')].map(li => !!li.querySelector('.frame-app.ed'))") == [True, False, False, False], 5))
     check(t, "... Original / Edited clickable, on Edited", t.js("() => { const v = document.querySelector('#exportSettings .edit-view'); const on = v && v.querySelector('button.on'); return !!on && on.textContent === 'Edited' && ![...v.querySelectorAll('button')].some(b => b.disabled); }"))
     check(t, "... the partial warning", t.js("() => !!document.querySelector('#exportSettings .lr-warn')"))
+    # A prévia e a miniatura mostram a editada que chegou (sem precisar fechar e abrir o Export)
+    t.page.click("#exportSettings .export-strip > li:nth-child(1)")
+    pix = """(sel) => new Promise((done) => { const i = document.querySelector(sel); if (!i || !i.src) return done(null);
+      const im = new Image(); im.onload = () => { const c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight;
+      const x = c.getContext('2d'); x.drawImage(im, 0, 0); done([...x.getImageData(Math.floor(c.width / 2), Math.floor(c.height / 2), 1, 1).data].slice(0, 3)); }; im.onerror = () => done(null); im.src = i.src; })"""
+    near = lambda p: p is not None and abs(p[0] - 220) < 30 and abs(p[1] - 80) < 30 and abs(p[2] - 40) < 30
+    check(t, "... the large preview shows the edited photo 01 right away", t.wait(lambda: near(t.js(pix, "#exportSettings .edit-preview > img")), 8), t.js(pix, "#exportSettings .edit-preview > img"))
+    check(t, "... and so does the thumbnail 01", t.wait(lambda: near(t.js(pix, "#exportSettings .export-strip > li:nth-child(1) img")), 8), t.js(pix, "#exportSettings .export-strip > li:nth-child(1) img"))
     t.js("() => [...document.querySelectorAll('#exportSettings .edit-view button')].find(b => b.textContent === 'Original').click()")
     check(t, "Original: the session shows the originals (Edited tag off)", t.wait(lambda: (t.session(s) or {}).get("showEdited") is False, 5), (t.session(s) or {}).get("showEdited"))
     t.js("() => [...document.querySelectorAll('#exportSettings .edit-view button')].find(b => b.textContent === 'Edited').click()")

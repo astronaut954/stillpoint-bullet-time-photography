@@ -1584,6 +1584,9 @@
   }
   function forgetSessionPreviews(name) {
     Object.keys(photoCache).forEach((k) => { if (k.startsWith("sessions/" + name + "/") || k.startsWith("order/" + name + "/")) delete photoCache[k]; });
+    // As recortadas (Export) também: a editada que chegou do Lightroom (ou saiu) troca a imagem de origem
+    [...framedCache.keys()].forEach((k) => { if (k.startsWith(name + "|")) framedCache.delete(k); });
+    if (!$("exportOverlay").classList.contains("hidden")) setTimeout(() => { if (!$("exportOverlay").classList.contains("hidden")) renderExport(); }, 0);
     if (currentSession && currentSession.name === name) setTimeout(() => { const cur = sessions.find((x) => x.name === name); if (cur && currentSession && currentSession.name === name) showSession(cur, true); }, 300);
   }
   // Etiqueta de sessão com fotos que a câmera recusou no disparo (arquivo ".missing")
@@ -4118,6 +4121,10 @@
     const px = maxPx || 1600;
     cropLoad(session, st); alignLoad(session, st);
     if (st.crop.ratio === "asshot" && !sessionAligned(session, st)) return Promise.resolve(url);
+    // A editada que veio do Lightroom já vem com o recorte (ele foi junto no Edit in Lightroom Classic): não corta de novo
+    const cur = sessions.find((x) => x.name === session.name) || session;
+    const ph = cur.photos && cur.photos.find((x) => x.file === item.file);
+    if (cur.inProject && cur.showEdited !== false && ph && ph.edited) return Promise.resolve(url);
     const key = [session.name, item.file, st.crop.ratio, st.crop.x, st.crop.y, alignText(st), px].join("|");
     if (framedCache.has(key)) return framedCache.get(key);
     const p = Promise.all(items.map((it) => photoSizeOf(session.name, it.file).then((sz) => [it.file, sz]))).then((pairs) => {
