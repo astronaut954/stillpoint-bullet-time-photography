@@ -5107,6 +5107,27 @@ namespace
             });
         }
 
+        // Plugin do Lightroom já instalado e mais velho que o deste app, com o Lightroom fechado: troca agora, ao abrir
+        // o app (antes só trocava no Edit in Lightroom Classic ou no Reinstall plugin, e o teste do plugin rodava o
+        // velho; 2026-11-06)
+        {
+            const std::string installed = Adobe::InstalledPluginVersion();
+            const auto source = Platform::ResourcesDirectory() / "assets" / "lightroom" / "Stillpoint.lrplugin";
+            const std::string bundled = Adobe::BundledPluginVersion(source, AppVersion());
+            const auto lr = adobeFind(Adobe::Program::Lightroom);
+            const bool lrOpen = Adobe::ReadAlive().fresh || (lr.found && Platform::ApplicationRunning(lr.path));
+            if (!installed.empty() && installed != bundled && !lrOpen)
+            {
+                std::string error;
+                if (Adobe::InstallPlugin(source, bundled, error))
+                    Log("Lightroom plugin updated to " + bundled + " (was " + installed + ")");
+                else
+                    Log("Lightroom plugin update failed: " + error);
+            }
+            else if (!installed.empty() && installed != bundled)
+                Log("Lightroom plugin " + installed + " is older than " + bundled + ": it updates the next time Stillpoint opens with Lightroom Classic closed");
+        }
+
         {
             // Abertura desligada em Settings (pref.splash=off): a página já vem sem ela
             std::string page = LoadPage("index.html", theme);
