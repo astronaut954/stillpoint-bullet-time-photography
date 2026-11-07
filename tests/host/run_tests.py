@@ -1,0 +1,474 @@
+"""Teste automático do Stillpoint no Linux: o app de verdade (StillpointHost, sem janela), a página de verdade num
+Chromium sem tela, câmeras simuladas e um Lightroom de mentira (fake_lightroom.py) pelos arquivos do plugin.
+Confere o que o Stillpoint faz com o que vem do Lightroom: etiquetas In Lightroom e Edited n / m, selos LR, lixeira,
+⌘Z / ⌘⇧Z (inclusive rápidos), restaurar, Cancel editing, edição tirada.
+
+    cmake -S tests/host -B build/host-test -DCMAKE_BUILD_TYPE=Release && cmake --build build/host-test -j
+    python3 tests/host/run_tests.py [nome-do-cenário ...]
+
+Relatório em build/host-test/report.txt (e capturas de tela de cada falha ao lado).
+"""
+import json
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+import time
+import traceback
+
+from playwright.sync_api import sync_playwright
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
+BUILD = os.path.join(ROOT, "build", "host-test")
+sys.path.insert(0, HERE)
+from fake_lightroom import FakeLightroom  # noqa: E402
+
+PORT = 8765 + (os.getpid() % 200)
+PROJECT = "TestProject"
+
+report, passed, failed = [], 0, 0
+
+
+def line(text):
+    report.append(text)
+    print(text, flush=True)
+
+
+class T:
+    """Tudo de uma rodada: pastas, o app, o Lightroom de mentira e a página."""
+
+    def __init__(self, pw):
+        self.tmp = tempfile.mkdtemp(prefix="stillpoint-host-")
+        self.home = os.path.join(self.tmp, "home")
+        self.data = os.path.join(self.tmp, "data")
+        self.project = os.path.join(self.tmp, "Projects", PROJECT)
+        os.makedirs(self.home)
+        os.makedirs(self.data)
+        for sub in ("Originals", "Edited", "Exports"):
+            os.makedirs(os.path.join(self.project, sub))
+        with open(os.path.join(self.project, "stillpoint-project.json"), "w") as f:
+            json.dump({"stillpoint": "project", "version": 1, "name": PROJECT, "created": "2026-11-06T00:00:00", "sessions": []}, f)
+        self.catalog = os.path.join(self.project, "Lightroom", PROJECT, PROJECT + ".lrcat")
+        os.makedirs(os.path.dirname(self.catalog))
+        open(self.catalog, "w").close()
+        lr_app = os.path.join(self.tmp, "Adobe Lightroom Classic.app")
+        os.makedirs(lr_app)
+        with open(os.path.join(self.data, "settings.txt"), "w") as f:
+            f.write("project=%s\nlightroomPath=%s\npref.splash=off\n" % (self.project, lr_app))
+        env = dict(os.environ, HOME=self.home, STILLPOINT_DATA=self.data, STILLPOINT_RESOURCES=ROOT,
+                   STILLPOINT_FAKE_CAMERAS="4", STILLPOINT_TEST_PORT=str(PORT), STILLPOINT_TEST_LR_RUNNING="1")
+        self.app_log = open(os.path.join(self.tmp, "app-stderr.txt"), "w")
+        self.app = subprocess.Popen([os.path.join(BUILD, "StillpointHost")], env=env, stdout=self.app_log, stderr=self.app_log)
+        self.lr = FakeLightroom(os.path.join(self.data, "lightroom"), self.catalog)
+        self.browser = pw.chromium.launch()
+        self.page = self.browser.new_page(viewport={"width": 1440, "height": 900})
+        self.errors = []
+        self.page.on("pageerror", lambda e: self.errors.append(str(e)))
+        for _ in range(100):
+            try:
+                self.page.goto("http://127.0.0.1:%d/" % PORT)
+                break
+            except Exception:  # noqa: BLE001
+                time.sleep(0.1)
+        self.page.wait_for_selector("#shootBtn", timeout=15000)
+        time.sleep(1.5)
+
+    def close(self):
+        try:
+            self.browser.close()
+        finally:
+            self.lr.stop()
+            self.app.kill()
+            self.app.wait()
+
+    # ---------------- o que o app tem ----------------
+
+    def js(self, expr, *args):
+        return self.page.evaluate(expr, *args)
+
+    def sessions(self):
+        return self.js("() => window.listSessions()") or []
+
+    def session(self, name):
+        return next((s for s in self.sessions() if s["name"] == name), None)
+
+    def editing(self):
+        return (self.js("() => window.adobeEditing()") or {}).get("sessions", {})
+
+    def trash(self):
+        return (self.js("() => window.trashList()") or {}).get("items", [])
+
+    def edit_tag(self, name):
+        """A etiqueta In Lightroom da sessão na lista (o que a pessoa vê)."""
+        return self.js("(n) => !!document.querySelector('#sessionList li.folder[data-name=\"' + n + '\"] .edit-tag')", name)
+
+    def project_tag(self, name):
+        return self.js("(n) => { const t = document.querySelector('#sessionList li.folder[data-name=\"' + n + '\"] .project-tag'); return t ? t.textContent : null; }", name)
+
+    def badges(self):
+        """Fotos com o selo LR na fileira de miniaturas (sessão aberta)."""
+        return self.js("() => [...document.querySelectorAll('#sessionGallery .carousel > li')].map((li, i) => !!li.querySelector('.frame-app'))")
+
+    def wait(self, cond, timeout=12, step=0.3):
+        end = time.time() + timeout
+        last = None
+        while time.time() < end:
+            try:
+                last = cond()
+                if last:
+                    return last
+            except Exception as e:  # noqa: BLE001
+                last = e
+            time.sleep(step)
+        return last if not last else False
+
+    # ---------------- o que a pessoa faz no Stillpoint ----------------
+
+    def shoot(self):
+        before = {s["name"] for s in self.sessions()}
+        self.js("() => { const d = document.getElementById('downloadWait'); if (d) { d.value = '1'; d.dispatchEvent(new Event('input')); d.dispatchEvent(new Event('change')); } }")
+        self.wait(lambda: self.js("() => !document.getElementById('shootBtn').disabled"), 20)
+        self.page.click("#shootBtn")
+        new = self.wait(lambda: [s["name"] for s in self.sessions() if s["name"] not in before and len(s["photos"]) >= 4], 40)
+        self.dismiss()
+        time.sleep(1)
+        return new[0] if new else None
+
+    def dismiss(self):
+        """Fecha avisos que aparecem sozinhos (Mixed ratios etc.)."""
+        for _ in range(3):
+            if self.js("() => !document.getElementById('dialogOverlay').classList.contains('hidden')"):
+                self.js("() => { const b = document.querySelector('#dialogActions button.btn-primary') || document.querySelector('#dialogActions button'); b && b.click(); }")
+                time.sleep(0.3)
+
+    def open_session(self, name):
+        self.page.click('#sessionList li.folder[data-name="%s"]' % name)
+        time.sleep(0.8)
+
+    def session_menu(self, name, item):
+        self.page.click('#sessionList li.folder[data-name="%s"]' % name, button="right")
+        time.sleep(0.3)
+        self.menu(item)
+
+    def photo_menu(self, index, item):
+        self.page.click("#sessionGallery .carousel > li:nth-child(%d)" % (index + 1), button="right")
+        time.sleep(0.3)
+        self.menu(item)
+
+    def menu(self, item):
+        ok = self.js("(t) => { const b = [...document.querySelectorAll('.app-menu button')].find(x => x.textContent.trim().startsWith(t)); if (!b) return false; b.click(); return true; }", item)
+        if not ok:
+            raise RuntimeError("menu item not found: " + item)
+        time.sleep(0.4)
+
+    def button(self, text):
+        ok = self.js("(t) => { const b = [...document.querySelectorAll('button')].find(x => x.textContent.trim() === t && x.offsetParent); if (!b) return false; b.click(); return true; }", text)
+        if not ok:
+            raise RuntimeError("button not found: " + text)
+        time.sleep(0.4)
+
+    def undo(self):
+        self.page.keyboard.press("Control+z")
+        time.sleep(0.15)
+
+    def redo(self):
+        self.page.keyboard.press("Control+Shift+z")
+        time.sleep(0.15)
+
+    def edit_in_lightroom(self, name):
+        self.session_menu(name, "Edit in Lightroom Classic")
+        return self.wait(lambda: self.edit_tag(name), 15)
+
+    def open_trash(self):
+        self.page.click("#trashBtn")
+        self.page.wait_for_selector("#trashOverlay:not(.hidden)", timeout=5000)
+        time.sleep(0.6)
+
+    def close_trash(self):
+        self.js("() => { const o = document.getElementById('trashOverlay'); const b = o && [...o.querySelectorAll('button')].find(x => x.textContent.trim() === 'Close'); b && b.click(); }")
+        time.sleep(0.4)
+
+    def restore_in_trash(self, match=None, item_id=None):
+        """Restore na linha da lixeira: a do item item_id, ou a primeira cujo texto tem match."""
+        ok = self.js("([m, id]) => { const li = [...document.querySelectorAll('#trashOverlay li.trash-row')].find(x => id ? x.dataset.id === id : x.textContent.includes(m)); if (!li) return false; const b = [...li.querySelectorAll('button')].find(x => x.textContent.trim() === 'Restore'); if (!b) return false; b.click(); return true; }", [match, item_id])
+        time.sleep(0.6)
+        self.dismiss_restore_all()
+        return ok
+
+    def dismiss_restore_all(self):
+        if self.js("() => !document.getElementById('dialogOverlay').classList.contains('hidden')"):
+            self.js("() => { const b = [...document.querySelectorAll('#dialogActions button')].find(x => x.textContent.trim() === 'Restore all') || document.querySelector('#dialogActions button.btn-primary'); b && b.click(); }")
+            time.sleep(0.6)
+
+    # ---------------- o que o Lightroom tem ----------------
+
+    def originals(self, name):
+        return os.path.join(self.project, "Originals", name)
+
+    def lr_collection(self, name):
+        title = self.lr_title(name)
+        for (project, t), photos in self.lr.collections.items():
+            if t == title:
+                return [os.path.basename(p) for p in photos]
+        return None
+
+    def lr_title(self, name):
+        return self.js("(n) => { const s = (window.__lastSessions || []).find(x => x.name === n); return null; }", name) or self._title(name)
+
+    def _title(self, name):
+        # O título que o Stillpoint deu à coleção (está no pedido que o Lightroom recebeu)
+        for (project, t) in list(self.lr.collections.keys()) + [k for k, _ in self.lr.removed]:
+            return t
+        return None
+
+    def shot(self, label):
+        path = os.path.join(BUILD, "fail-%s.png" % "".join(c if c.isalnum() else "-" for c in label)[:60])
+        try:
+            self.page.screenshot(path=path)
+        except Exception:  # noqa: BLE001
+            pass
+        return path
+
+
+def check(t, name, ok, detail=None):
+    global passed, failed
+    if ok:
+        passed += 1
+        line("PASS  " + name)
+    else:
+        failed += 1
+        line("FAIL  " + name + ("   [%s]" % detail if detail is not None else ""))
+        line("      screenshot: " + t.shot(name))
+    return ok
+
+
+def photo_state(t, name):
+    """Por foto: tem editada no Stillpoint? tem edição no Lightroom?"""
+    s = t.session(name)
+    out = []
+    for p in sorted(s["photos"], key=lambda x: x["order"]):
+        path = os.path.join(t.originals(name), p["file"])
+        out.append((p["file"], bool(p["edited"]), t.lr.edit.get(path) is not None))
+    return out
+
+
+# =================== cenários ===================
+
+def scenario_open_and_export(t):
+    line("\n== 1. Edit in Lightroom Classic, then Export to Stillpoint from Lightroom")
+    name = t.shoot()
+    check(t, "a session was shot with the 4 simulated cameras", name is not None)
+    if not name:
+        return None
+    t.open_session(name)
+    check(t, "Edit in Lightroom Classic: the session shows In Lightroom", t.edit_in_lightroom(name))
+    col = t.wait(lambda: t.lr_collection(name))
+    check(t, "Lightroom has the collection with the 4 photos", col and len(col) == 4, col)
+    check(t, "the 4 thumbnails show the LR badge", t.wait(lambda: all(t.badges()) and len(t.badges()) == 4), t.badges())
+    # Edita 01 e 02 no Lightroom e exporta a sessão inteira
+    o = t.originals(name)
+    files = sorted(os.listdir(o))
+    photos = [os.path.join(o, f) for f in files if not f.startswith(".") and f != "session.json"]
+    t.lr.set_edit(photos[0], (200, 40, 40))
+    t.lr.set_edit(photos[1], (40, 200, 40))
+    t.lr.export(o, t.project, name)
+    check(t, "after the export: Edited 2 / 4", t.wait(lambda: t.project_tag(name) == "Edited 2 / 4"), t.project_tag(name))
+    check(t, "the whole session was looked at: it leaves Lightroom (no In Lightroom)", t.wait(lambda: not t.edit_tag(name)))
+    check(t, "and the collection leaves Lightroom", t.wait(lambda: t.lr_collection(name) is None), t.lr_collection(name))
+    return name, photos
+
+
+def scenario_cleared(t, name, photos):
+    line("\n== 2. An edit taken off in Lightroom and exported leaves Stillpoint")
+    check(t, "Edit in Lightroom Classic again", t.edit_in_lightroom(name))
+    t.lr.set_edit(photos[1], None)
+    t.lr.export(t.originals(name), t.project, name)
+    check(t, "Edited 1 / 4", t.wait(lambda: t.project_tag(name) == "Edited 1 / 4"), t.project_tag(name))
+    check(t, "the edit of photo 02 is in the trash", t.wait(lambda: any(i.get("editsOnly") and i["session"] == name for i in t.trash())))
+
+
+def scenario_delete_edit_undo(t, name, photos):
+    line("\n== 3. Delete edit, ⌘Z and ⌘⇧Z (also quickly)")
+    t.open_session(name)
+    t.photo_menu(0, "Delete edit")
+    t.button("Delete 1 edit")
+    check(t, "Delete edit: Edited tag gone (no edited photo)", t.wait(lambda: t.session(name)["edited"] == 0), t.session(name)["edited"])
+    check(t, "Delete edit: photo 01 back to the original in Lightroom", t.wait(lambda: t.lr.edit.get(photos[0]) is None))
+    t.undo()
+    check(t, "⌘Z: the edit is back in Stillpoint", t.wait(lambda: t.session(name)["edited"] == 1))
+    check(t, "⌘Z: the edit is back in Lightroom", t.wait(lambda: t.lr.edit.get(photos[0]) is not None))
+    check(t, "⌘Z: the session does not go back to Lightroom (no In Lightroom)", not t.wait(lambda: t.edit_tag(name), 4))
+    check(t, "⌘Z: no collection in Lightroom", t.lr_collection(name) is None, t.lr_collection(name))
+    for _ in range(4):
+        t.redo()
+        t.undo()
+    t.redo()
+    time.sleep(6)
+    st = photo_state(t, name)
+    check(t, "⌘⇧Z/⌘Z quickly, ending on ⌘⇧Z: no edit in Stillpoint", not st[0][1], st)
+    check(t, "... and no edit in Lightroom (both the same)", st[0][1] == st[0][2], st)
+    t.undo()
+    time.sleep(6)
+    st = photo_state(t, name)
+    check(t, "one more ⌘Z: the edit in both", st[0][1] and st[0][2], st)
+    check(t, "no In Lightroom after all that", not t.edit_tag(name))
+    check(t, "no collection in Lightroom after all that", t.lr_collection(name) is None, t.lr_collection(name))
+
+
+def scenario_photo_delete_restore(t, name, photos):
+    line("\n== 4. Delete photo / restore while in Lightroom")
+    check(t, "Edit in Lightroom Classic again", t.edit_in_lightroom(name))
+    t.open_session(name)
+    t.photo_menu(2, "Delete photo 03")
+    t.button("Delete")
+    check(t, "photo 03 leaves the Lightroom collection", t.wait(lambda: t.lr_collection(name) is not None and len(t.lr_collection(name)) == 3), t.lr_collection(name))
+    t.undo()
+    check(t, "⌘Z: photo 03 back in the collection", t.wait(lambda: t.lr_collection(name) is not None and len(t.lr_collection(name)) == 4), t.lr_collection(name))
+    t.photo_menu(2, "Delete photo 03")
+    t.button("Delete")
+    t.wait(lambda: len(t.lr_collection(name) or []) == 3)
+    t.open_trash()
+    t.restore_in_trash("Photo 03")
+    t.close_trash()
+    check(t, "Restore in the trash: photo 03 back in the collection", t.wait(lambda: len(t.lr_collection(name) or []) == 4), t.lr_collection(name))
+    check(t, "the 4 thumbnails show the LR badge", t.wait(lambda: len(t.badges()) == 4 and all(t.badges())), t.badges())
+
+
+def scenario_remove_from_collection(t, name, photos):
+    line("\n== 5. Remove from Collection inside Lightroom")
+    title = t._title(name)
+    t.lr.remove_from_collection(PROJECT, title, [os.path.basename(photos[1])])
+    check(t, "photo 02 loses the LR badge", t.wait(lambda: t.badges()[1] is False), t.badges())
+    t.lr.undo_remove_from_collection(PROJECT, title, [photos[1]])
+    check(t, "Edit › Undo in Lightroom: the badge is back", t.wait(lambda: t.badges()[1] is True), t.badges())
+    t.lr.remove_from_collection(PROJECT, title, [os.path.basename(p) for p in photos])
+    check(t, "all photos removed from the collection: no In Lightroom", t.wait(lambda: not t.edit_tag(name)))
+    t.lr.undo_remove_from_collection(PROJECT, title, photos)
+    check(t, "Edit › Undo in Lightroom: In Lightroom again", t.wait(lambda: t.edit_tag(name)))
+
+
+def scenario_delete_session(t, name, photos):
+    line("\n== 6. Session deleted in Stillpoint while in Lightroom")
+    t.session_menu(name, "Delete session")
+    t.dismiss_delete()
+    check(t, "the session is in the trash", t.wait(lambda: t.session(name) is None))
+    check(t, "its collection leaves Lightroom", t.wait(lambda: t.lr_collection(name) is None), t.lr_collection(name))
+    t.open_trash()
+    item = next((i for i in t.trash() if i["session"] == name and i.get("whole") and not i.get("restored") and not i.get("isProject")), None)
+    check(t, "the trash lists the whole session", item is not None, [(i["session"], i.get("whole")) for i in t.trash()])
+    check(t, "its Restore button is clicked", item is not None and t.restore_in_trash(item_id=item["id"]))
+    t.close_trash()
+    check(t, "Restore in the trash: the session is back", t.wait(lambda: t.session(name) is not None))
+    check(t, "... without In Lightroom (only an action in Lightroom puts it back there)", not t.wait(lambda: t.edit_tag(name), 5))
+    check(t, "... and Lightroom has no collection", t.lr_collection(name) is None, t.lr_collection(name))
+    check(t, "Edit in Lightroom Classic again", t.edit_in_lightroom(name))
+    t.session_menu(name, "Delete session")
+    t.dismiss_delete()
+    t.wait(lambda: t.lr_collection(name) is None)
+    t.lr.undo_collection_removal()
+    check(t, "Edit › Undo in Lightroom: the session comes back from the trash", t.wait(lambda: t.session(name) is not None, 15))
+    check(t, "... with In Lightroom", t.wait(lambda: t.edit_tag(name)))
+
+
+def scenario_cancel(t, name, photos):
+    line("\n== 7. Cancel editing in the Lightroom panel")
+    if not t.edit_tag(name):
+        t.edit_in_lightroom(name)
+    t.lr.cancel_editing(PROJECT, t._title(name), name, t.project)
+    check(t, "Cancel editing: no In Lightroom", t.wait(lambda: not t.edit_tag(name)))
+    check(t, "the toast says Editing cancelled", t.wait(lambda: "Editing cancelled" in (t.js("() => document.body.innerText") or "")))
+
+
+def scenario_rapid_in_lightroom(t, name, photos):
+    line("\n== 8. ⌘Z / ⌘⇧Z quickly while the session is in Lightroom")
+    if not t.edit_tag(name):
+        check(t, "Edit in Lightroom Classic again", t.edit_in_lightroom(name))
+    t.open_session(name)
+    # Delete edit da 01 e desfazer/refazer rápido: a coleção e o In Lightroom ficam
+    if t.session(name)["photos"][0]["edited"]:
+        t.photo_menu(0, "Delete edit")
+        t.button("Delete 1 edit")
+        for _ in range(3):
+            t.undo()
+            t.redo()
+        t.undo()
+        time.sleep(6)
+        st = photo_state(t, name)
+        check(t, "Delete edit + quick ⌘Z/⌘⇧Z, ending on ⌘Z: the edit in both programs", st[0][1] and st[0][2], st)
+        check(t, "... still In Lightroom", t.edit_tag(name))
+        check(t, "... the collection still has the 4 photos", len(t.lr_collection(name) or []) == 4, t.lr_collection(name))
+    # Apagar a foto 04 e desfazer/refazer rápido
+    t.photo_menu(3, "Delete photo 04")
+    t.button("Delete")
+    for _ in range(3):
+        t.undo()
+        t.redo()
+    t.undo()
+    time.sleep(6)
+    here = [p["file"] for p in t.session(name)["photos"]]
+    col = t.lr_collection(name) or []
+    check(t, "Delete photo + quick ⌘Z/⌘⇧Z, ending on ⌘Z: 4 photos in Stillpoint", len(here) == 4, here)
+    check(t, "... and the same 4 in the Lightroom collection", sorted(here) == sorted(col), (here, col))
+    check(t, "... every thumbnail with the LR badge", t.wait(lambda: len(t.badges()) == 4 and all(t.badges())), t.badges())
+    # Apagar a sessão e desfazer/refazer rápido, terminando com ela de volta
+    t.session_menu(name, "Delete session")
+    t.dismiss_delete()
+    for _ in range(3):
+        t.undo()
+        t.redo()
+    t.undo()
+    time.sleep(7)
+    check(t, "Delete session + quick ⌘Z/⌘⇧Z, ending on ⌘Z: the session is here", t.session(name) is not None)
+    tag, col = t.edit_tag(name), t.lr_collection(name)
+    check(t, "... In Lightroom only if Lightroom has the collection (they agree)", bool(tag) == (col is not None), (tag, col))
+
+
+def dismiss_delete(self):
+    if self.js("() => !document.getElementById('dialogOverlay').classList.contains('hidden')"):
+        self.js("() => { const b = [...document.querySelectorAll('#dialogActions button')].find(x => /^Delete/.test(x.textContent.trim())); b && b.click(); }")
+        time.sleep(0.6)
+
+
+T.dismiss_delete = dismiss_delete
+
+
+def main():
+    with sync_playwright() as pw:
+        t = T(pw)
+        try:
+            line("Stillpoint host test · " + time.strftime("%Y-%m-%d %H:%M:%S") + " · data in " + t.tmp)
+            first = None
+            try:
+                first = scenario_open_and_export(t)
+            except Exception:  # noqa: BLE001
+                check(t, "scenario 1 ran to the end", False, traceback.format_exc(limit=3))
+            if first:
+                name, photos = first
+                for sc in (scenario_cleared, scenario_delete_edit_undo, scenario_photo_delete_restore,
+                           scenario_remove_from_collection, scenario_delete_session, scenario_cancel, scenario_rapid_in_lightroom):
+                    try:
+                        sc(t, name, photos)
+                    except Exception:  # noqa: BLE001
+                        check(t, sc.__name__ + " ran to the end", False, traceback.format_exc(limit=3))
+            line("\n%d passed, %d failed" % (passed, failed))
+            if t.errors:
+                line("page errors: " + " | ".join(t.errors[:10]))
+            line("\n---- fake Lightroom log ----")
+            report.extend(t.lr.log)
+        finally:
+            t.close()
+            report.append("\n---- app stderr (tail) ----")
+            try:
+                with open(os.path.join(t.tmp, "app-stderr.txt")) as f:
+                    report.extend(f.read().splitlines()[-40:])
+            except OSError:
+                pass
+            with open(os.path.join(BUILD, "report.txt"), "w") as f:
+                f.write("\n".join(report) + "\n")
+    return 1 if failed else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
