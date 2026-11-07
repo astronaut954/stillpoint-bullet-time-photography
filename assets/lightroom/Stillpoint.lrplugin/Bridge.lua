@@ -159,6 +159,27 @@ end
 function Bridge.importing() return importingCount end
 
 -- Duas edições iguais? (números com tolerância; tabelas por dentro)
+-- Duas edições de foto iguais? Como Bridge.same, mas um ajuste que o Lightroom acrescenta sozinho depois que a foto
+-- chega (uma lista vazia, ou a FilterList) não conta como edição: no catálogo do dono a FilterList aparecia em
+-- todas as fotos e as 9 contavam como editadas com só 2 editadas (plugin-log, 2026-11-06)
+local ADDED_BY_LIGHTROOM = { FilterList = true }
+local function emptyTable(v)
+	return type(v) == 'table' and next(v) == nil
+end
+function Bridge.sameEdit(a, b)
+	if type(a) ~= 'table' or type(b) ~= 'table' then return Bridge.same(a, b) end
+	local keys = {}
+	for k in pairs(a) do keys[k] = true end
+	for k in pairs(b) do keys[k] = true end
+	for k in pairs(keys) do
+		local va, vb = a[k], b[k]
+		local skip = (va == nil or vb == nil) and (ADDED_BY_LIGHTROOM[k] or emptyTable(va) or emptyTable(vb))
+		if not skip and not Bridge.same(va, vb) then return false end
+	end
+	return true
+end
+Bridge.addedByLightroom = ADDED_BY_LIGHTROOM
+
 function Bridge.same(a, b)
 	if type(a) ~= type(b) then return false end
 	if type(a) == 'number' then return math.abs(a - b) < 1e-6 end
@@ -407,7 +428,7 @@ local function resetPhotos(request)
 		local path = photo:getRawMetadata('path')
 		local base = Bridge.baseline(path)
 		local now = photo:getDevelopSettings()
-		if base and Bridge.same(now, base) then return false end
+		if base and Bridge.sameEdit(now, base) then return false end
 		local prefs = LrPrefs.prefsForPlugin()
 		local saved = prefs.savedEdits or {}
 		saved[path] = now

@@ -253,6 +253,18 @@ local function scenarioHasEdit()
 		check('photo 0' .. i .. ' still without an edit after being opened in Develop', not has,
 			has and Actions.settingsDiff(Bridge.baseline(pathOf(i)), settingsOf(i)) or nil)
 	end
+	-- Um ajuste que o Lightroom acrescenta sozinho (a FilterList) não é edição
+	do
+		local base = Bridge.baseline(pathOf(3))
+		local now = {}
+		for k, v in pairs(base or {}) do now[k] = v end
+		now.FilterList = { { kind = 'test' } }
+		base = base or {}
+		local saved = base.FilterList
+		base.FilterList = nil
+		check('a FilterList that Lightroom adds by itself is not an edit', Bridge.sameEdit(now, base))
+		base.FilterList = saved
+	end
 	edit(1, 0.7); edit(2, -0.5)
 	check('photo 01 with an edit', Actions.hasOwnEdit(photoOf(1), nil))
 	check('photo 02 with an edit', Actions.hasOwnEdit(photoOf(2), nil))

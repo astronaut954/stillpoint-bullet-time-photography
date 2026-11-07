@@ -368,7 +368,7 @@ end
 -- ---------------- Apply photo 01 edit to the session ----------------
 
 -- A foto já tem edição própria no Lightroom? (o SDK nem sempre diz: nesse caso conta a editada no Stillpoint)
-local sameSettings = Bridge.same
+local sameSettings = Bridge.sameEdit
 
 -- O que mudou entre duas edições, em texto curto: "Exposure2012 (0 → -2.75), WhiteBalance (As Shot → Custom)"
 function Actions.settingsDiff(before, after)
@@ -383,7 +383,9 @@ function Actions.settingsDiff(before, after)
 		return tostring(v)
 	end
 	for _, k in ipairs(keys) do
-		if not Bridge.same(before and before[k], after and after[k]) then
+		local va, vb = before and before[k], after and after[k]
+		local addedBy = (va == nil or vb == nil) and (Bridge.addedByLightroom[k] or (type(va) == 'table' and next(va) == nil) or (type(vb) == 'table' and next(vb) == nil))
+		if not addedBy and not Bridge.same(va, vb) then
 			table.insert(parts, tostring(k) .. ' (' .. show(before and before[k]) .. ' → ' .. show(after and after[k]) .. ')')
 		end
 	end
