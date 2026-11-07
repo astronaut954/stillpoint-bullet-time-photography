@@ -239,6 +239,20 @@ end
 local function scenarioHasEdit()
 	section('2. Which photos have an edit')
 	for i = 1, #NAMES do check('photo 0' .. i .. ' starts without an edit', not Actions.hasOwnEdit(photoOf(i), nil)) end
+	-- Cada foto aberta no Develop, como a pessoa faz (o Lightroom pode completar a edição guardada da foto ao abrir;
+	-- teste do dono, 2026-11-06: 9 de 9 editadas com 2 editadas)
+	selectSession()
+	LrTasks.pcall(function() (import 'LrApplicationView').switchToModule('develop') end)
+	for i = 1, #NAMES do
+		LrTasks.pcall(function() LrApplication.activeCatalog():setSelectedPhotos(photoOf(i), {}) end)
+		LrTasks.sleep(2)
+	end
+	LrTasks.sleep(1)
+	for i = 1, #NAMES do
+		local has = Actions.hasOwnEdit(photoOf(i), nil)
+		check('photo 0' .. i .. ' still without an edit after being opened in Develop', not has,
+			has and Actions.settingsDiff(Bridge.baseline(pathOf(i)), settingsOf(i)) or nil)
+	end
 	edit(1, 0.7); edit(2, -0.5)
 	check('photo 01 with an edit', Actions.hasOwnEdit(photoOf(1), nil))
 	check('photo 02 with an edit', Actions.hasOwnEdit(photoOf(2), nil))

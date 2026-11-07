@@ -370,13 +370,50 @@ end
 -- A foto já tem edição própria no Lightroom? (o SDK nem sempre diz: nesse caso conta a editada no Stillpoint)
 local sameSettings = Bridge.same
 
+-- O que mudou entre duas edições, em texto curto: "Exposure2012 (0 → -2.75), WhiteBalance (As Shot → Custom)"
+function Actions.settingsDiff(before, after)
+	local keys, seen = {}, {}
+	for k in pairs(before or {}) do if not seen[k] then seen[k] = true; table.insert(keys, k) end end
+	for k in pairs(after or {}) do if not seen[k] then seen[k] = true; table.insert(keys, k) end end
+	table.sort(keys, function(x, y) return tostring(x) < tostring(y) end)
+	local parts = {}
+	local function show(v)
+		if v == nil then return 'nothing' end
+		if type(v) == 'table' then return 'a list' end
+		return tostring(v)
+	end
+	for _, k in ipairs(keys) do
+		if not Bridge.same(before and before[k], after and after[k]) then
+			table.insert(parts, tostring(k) .. ' (' .. show(before and before[k]) .. ' → ' .. show(after and after[k]) .. ')')
+		end
+	end
+	if #parts > 12 then
+		local n = #parts
+		parts = { table.unpack and table.unpack(parts, 1, 12) or unpack(parts, 1, 12) }
+		table.insert(parts, '… ' .. (n - 12) .. ' more')
+	end
+	return table.concat(parts, ', ')
+end
+
 local function hasOwnEdit(photo, place)
 	-- Com a edição de quando a foto chegou guardada: tem edição = está diferente dela
 	local path = photo:getRawMetadata('path')
 	local base = path and Bridge.baseline(path)
 	if base then
 		local ok, now = LrTasks.pcall(function() return photo:getDevelopSettings() end)
-		if ok and now then return not sameSettings(now, base) end
+		if ok and now then
+			if sameSettings(now, base) then return false end
+			-- Anota no plugin-log.txt o que mudou (uma vez por foto e por mudança): é o que mostra por que uma foto
+			-- que a pessoa não editou contou como editada (teste do dono, 2026-11-06: 9 de 9 com 2 editadas)
+			local diff = Actions.settingsDiff(base, now)
+			local signature = path .. '|' .. diff
+			Actions.diffSeen = Actions.diffSeen or {}
+			if not Actions.diffSeen[signature] then
+				Actions.diffSeen[signature] = true
+				Bridge.note('has an edit: ' .. LrPathUtils.leafName(path) .. ' differs from how it arrived in ' .. diff)
+			end
+			return true
+		end
 	end
 	for _, key in ipairs({ 'hasAdjustments', 'editCount' }) do
 		local ok, value = LrTasks.pcall(function() return photo:getRawMetadata(key) end)
