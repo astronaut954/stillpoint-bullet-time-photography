@@ -3298,7 +3298,8 @@
         setTimeout(() => { if (!$("exportOverlay").classList.contains("hidden")) { refreshSummaries(); photoRerender(); } }, 0);
       });
       li.querySelector(".export-check").addEventListener("click", (e) => e.stopPropagation());
-      li.querySelector(".folder-date").textContent = label.date;
+      // Com o nome dado à sessão, como na lista da janela principal ("Teste · 30 Oct, 01:51:00"; pedido do dono, 2026-11-10)
+      li.querySelector(".folder-date").textContent = sessionTitle(s);
       li.querySelector(".folder-meta").textContent = [plural(sessionItems(s).length, "photo", "photos"), label.detail].filter(Boolean).join(" · ");
       if (deletedBySession[s.name]) li.querySelector(".folder-meta").after(deletedTag(deletedBySession[s.name]));
       if (s.missing > 0) li.querySelector(".folder-meta").after(missingTag(s.missing));
@@ -4821,7 +4822,7 @@
     if (!session) return;
     const items = sessionItems(session).filter((i) => i.previewable);
     const st = settingsFor(session.name);
-    const label = sessionLabel(session.name).date;
+    const label = sessionTitle(sessions.find((x) => x.name === session.name) || session);
     const rerender = () => { syncAll(); renderExportSettings(); if (renderExportSettings.restoreScroll) renderExportSettings.restoreScroll(); refreshSummaries(); rememberExportPrefs(); };
 
     // Passo 3 (Review): tabela, nome e pasta; sem prévia nem lista
@@ -5535,7 +5536,7 @@
 
     // Barra de cima: a sessão e Original / Edited
     const top = el("div", "export-scope");
-    top.appendChild(el("span", "export-step1-title", "Edit · " + sessionLabel(name).date));
+    top.appendChild(el("span", "export-step1-title", "Edit · " + sessionTitle(sessions.find((x) => x.name === name) || session)));
     top.appendChild(el("span", "spacer"));
     const view = segmented([["original", "Original"], ["edited", "Edited"]], showingEdited ? "edited" : "original",
       (v) => { if ((v === "edited") === showingEdited) return; Promise.resolve(setShowEdited(session, v === "edited")).then(() => rerender()); },
