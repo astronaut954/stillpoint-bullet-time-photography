@@ -231,11 +231,48 @@ local function cropForOrientation(c, orientation)
 end
 Bridge.cropForOrientation = cropForOrientation
 
+-- Recorte com giro (foto alinhada no Stillpoint; decisão do dono, 2026-11-10: o alinhamento vai junto). O Stillpoint
+-- manda os dois cantos (de cima à esquerda e de baixo à direita) do retângulo girado, na foto como ela aparece, o
+-- ângulo e o tamanho da foto em pixels. O Lightroom guarda o recorte do mesmo jeito (os dois cantos do retângulo
+-- girado, em frações da foto, e CropAngle), mas na foto como o sensor gravou: os cantos são levados para lá e, como
+-- lá "em cima à esquerda" pode ser outro canto, o retângulo é desgirado, lido de novo e girado de volta.
+-- Devolve left, top, right, bottom (do sensor) e o ângulo.
+local function cropWithAngle(c, angle, width, height, orientation)
+	local function toSensor(x, y)
+		if orientation == 'BC' then return y, 1 - x
+		elseif orientation == 'CD' then return 1 - x, 1 - y
+		elseif orientation == 'DA' then return 1 - y, x end
+		return x, y
+	end
+	local sw, sh = width, height
+	if orientation == 'BC' or orientation == 'DA' then sw, sh = height, width end
+	local px, py = toSensor(c.left, c.top)
+	local qx, qy = toSensor(c.right, c.bottom)
+	px, py, qx, qy = px * sw, py * sh, qx * sw, qy * sh
+	local cx, cy = (px + qx) / 2, (py + qy) / 2
+	-- Os lados do retângulo estão a -ângulo dos eixos (y para baixo): girar por +ângulo deixa o retângulo reto
+	local rad = math.rad(angle)
+	local cs, sn = math.cos(rad), math.sin(rad)
+	local function turn(x, y, s) return x * cs - y * s, x * s + y * cs end
+	local ax, ay = turn(px - cx, py - cy, sn)
+	local bx, by = turn(qx - cx, qy - cy, sn)
+	local x0, x1, y0, y1 = math.min(ax, bx), math.max(ax, bx), math.min(ay, by), math.max(ay, by)
+	local lx, ly = turn(x0, y0, -sn)
+	local rx, ry = turn(x1, y1, -sn)
+	return { left = (cx + lx) / sw, top = (cy + ly) / sh, right = (cx + rx) / sw, bottom = (cy + ry) / sh }, angle
+end
+Bridge.cropWithAngle = cropWithAngle
+
 function Bridge.applyFraming(catalog, photos, request, newPaths)
 	local wanted = {}
 	for _, text in ipairs(request.crops or {}) do
-		local p, l, t, r, bt = text:match('^(.*)\t([%d%.%-]+)\t([%d%.%-]+)\t([%d%.%-]+)\t([%d%.%-]+)$')
-		if p then wanted[#wanted + 1] = { path = p, crop = { left = tonumber(l), top = tonumber(t), right = tonumber(r), bottom = tonumber(bt) } } end
+		-- Com giro: mais três campos (ângulo, largura e altura da foto em pixels)
+		local p, l, t, r, bt, ang, pw, ph = text:match('^(.*)\t([%d%.%-]+)\t([%d%.%-]+)\t([%d%.%-]+)\t([%d%.%-]+)\t([%d%.%-]+)\t(%d+)\t(%d+)$')
+		if not p then p, l, t, r, bt = text:match('^(.*)\t([%d%.%-]+)\t([%d%.%-]+)\t([%d%.%-]+)\t([%d%.%-]+)$') end
+		if p then
+			wanted[#wanted + 1] = { path = p, crop = { left = tonumber(l), top = tonumber(t), right = tonumber(r), bottom = tonumber(bt) },
+				angle = tonumber(ang), width = tonumber(pw), height = tonumber(ph) }
+		end
 	end
 	local isNew = {}
 	for _, p in ipairs(newPaths or {}) do isNew[p] = true end
@@ -243,10 +280,16 @@ function Bridge.applyFraming(catalog, photos, request, newPaths)
 	for _, photo in ipairs(photos) do
 		local path = photo:getRawMetadata('path')
 		local crop = { left = 0, top = 0, right = 1, bottom = 1 }  -- "asshot", ou foto já na proporção
-		for _, w in ipairs(wanted) do if samePath(w.path, path) then crop = w.crop end end
+		local turned = nil
+		for _, w in ipairs(wanted) do if samePath(w.path, path) then crop = w.crop; turned = w end end
 		local now = photo:getDevelopSettings()
-		local c = cropForOrientation(crop, now.orientation)
-		local settings = { CropLeft = c.left, CropTop = c.top, CropRight = c.right, CropBottom = c.bottom, CropAngle = 0 }
+		local c, angle
+		if turned and turned.angle and math.abs(turned.angle) > 1e-6 and (turned.width or 0) > 0 and (turned.height or 0) > 0 then
+			c, angle = cropWithAngle(crop, turned.angle, turned.width, turned.height, now.orientation)
+		else
+			c, angle = cropForOrientation(crop, now.orientation), 0
+		end
+		local settings = { CropLeft = c.left, CropTop = c.top, CropRight = c.right, CropBottom = c.bottom, CropAngle = angle }
 		local same = true
 		for _, k in ipairs(CROP_KEYS) do
 			if math.abs((tonumber(now[k]) or (k == 'CropRight' or k == 'CropBottom') and 1 or 0) - settings[k]) > 1e-4 then same = false end

@@ -2939,7 +2939,62 @@ namespace
                 }
                 r.framing = ratio;
                 const double target = Export::RatioValue(ratio);
-                if (target > 0)
+                // O mesmo canvas da exportação (proporção, posição e o alinhamento de cada foto): cada foto vai com o
+                // retângulo (e o giro) que o Export tiraria dela (decisão do dono, 2026-11-10: o alinhamento vai junto)
+                bool byCanvas = false;
+                {
+                    Export::Framing framing;
+                    framing.ratio = target > 0 ? ratio : std::string();
+                    framing.posX = posX; framing.posY = posY;
+                    // Uma foto por câmera, como na exportação (RAW + JPEG: o JPEG; é dele o alinhamento guardado)
+                    std::map<std::string, std::string> perGroup;
+                    for (const auto& photo : session->photos)
+                    {
+                        if (!photo.previewable) continue;
+                        const std::string group = PhotoGroup(photo);
+                        if (!perGroup.count(group) || IsJpegPhoto(photo.file)) perGroup[group] = photo.file;
+                    }
+                    const auto aligns = Export::ParseAlign(session->align);
+                    std::vector<std::pair<int, int>> sizes;
+                    std::vector<std::string> groups;
+                    bool allSizes = !perGroup.empty();
+                    for (const auto& [group, file] : perGroup)
+                    {
+                        auto it = aligns.find(file);
+                        framing.align.push_back(it == aligns.end() ? Export::Align() : it->second);
+                        int w = 0, h = 0;
+                        if (!Export::PhotoSize(dir / file, w, h)) { w = 0; h = 0; allSizes = false; }
+                        sizes.push_back({ w, h });
+                        groups.push_back(group);
+                    }
+                    bool sameShape = allSizes && !sizes.empty() && sizes[0].second > 0;
+                    for (const auto& sz : sizes)
+                        if (!sameShape || sz.second <= 0 ||
+                            std::abs(static_cast<double>(sz.first) / sz.second - static_cast<double>(sizes[0].first) / sizes[0].second) > 0.02)
+                            sameShape = false;
+                    const bool wanted = target > 0 || (sameShape && framing.Aligned());
+                    if (wanted && allSizes && Export::ComputeCommonFrame(framing, sizes))
+                    {
+                        byCanvas = true;
+                        if (target <= 0) r.framing = "aligned";
+                        for (const auto& [group, file] : PhotosForEditing(*session))
+                        {
+                            const auto path = dir / file;
+                            if (std::find(r.photos.begin(), r.photos.end(), path) == r.photos.end()) continue;
+                            const auto at = std::find(groups.begin(), groups.end(), group);
+                            if (at == groups.end()) continue;
+                            const size_t k = static_cast<size_t>(at - groups.begin());
+                            Export::CropBox box;
+                            if (!Export::CanvasCrop(framing, k, sizes[k].first, sizes[k].second, box)) continue;
+                            Adobe::Request::Crop crop;
+                            crop.photo = path;
+                            crop.left = box.left; crop.top = box.top; crop.right = box.right; crop.bottom = box.bottom;
+                            crop.angle = box.angle; crop.width = sizes[k].first; crop.height = sizes[k].second;
+                            r.crops.push_back(crop);
+                        }
+                    }
+                }
+                if (target > 0 && !byCanvas)
                     for (const auto& path : r.photos)
                     {
                         int w = 0, h = 0;
@@ -3311,13 +3366,14 @@ namespace
                 const std::string session = args.size() > 0 ? args[0] : "";
                 const std::string file = args.size() > 1 ? args[1] : "";
                 const int size = numbers.empty() ? 1600 : std::clamp(numbers.back(), 64, 4000);
+                const bool original = args.size() > 2 && args[2] == "original";  // getPhoto(sessão, arquivo, tamanho, "original")
 
                 // from e to por cópia: a biblioteca chama esta função numa cópia temporária
                 // do fecho, então uma referência a eles ficaria pendurada quando a thread
                 // das prévias rodasse (foi um travamento no Mac em 2026-10-16)
-                previews.Post([&, from, to, id, session, file, size]
+                previews.Post([&, from, to, id, session, file, size, original]
                 {
-                    const std::string jpeg = from->Preview(session, file, size);
+                    const std::string jpeg = from->Preview(session, file, size, original);
                     to->resolve(id, 0, jpeg.empty() ? "null" : JsonString("data:image/jpeg;base64," + Base64Encode(jpeg)));
                 });
             }, nullptr);
@@ -4296,7 +4352,10 @@ namespace
                             framing.align.push_back(it == aligns.end() ? Export::Align() : it->second);
                             int w = 0, h = 0;
                             if (exportCancel) break;
-                            if (!Export::PhotoSize(photoPath(f), w, h)) { w = 0; h = 0; allSizes = false; }
+                            // O canvas sai das originais. A editada (do Lightroom) já vem com o recorte e o alinhamento
+                            // que foram junto no "Edit in Lightroom Classic": não é transformada de novo.
+                            if (!Export::PhotoSize(source / f, w, h)) { w = 0; h = 0; allSizes = false; }
+                            if (photoPath(f) != source / f) framing.align.back().framed = true;
                             sizes.push_back({ w, h });
                         }
                         // "As shot" (decisão do dono, 2026-11-04, revista no mesmo dia): numa sessão com proporções

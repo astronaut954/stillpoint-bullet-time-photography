@@ -1863,24 +1863,34 @@ Com câmeras simuladas e o Lightroom Classic com o catálogo do projeto. A janel
 - [ ] Sessão no Lightroom: o bloco diz **In Lightroom Classic · n photos** (bolinha pulsando com o Lightroom aberto) e tem
       **Done editing**; na fileira, **LR** em cada foto.
 - [ ] Depois de **Export to Stillpoint** no Lightroom: o bloco diz **n of m photos edited** e tem **Edit again in Lightroom
-      Classic**, **Delete edits…** e **Use edited photos**; na fileira, **ED** nas fotos editadas; **Original / Edited**
+      Classic**, **Revert to original…** (vermelho) e **Use edited photos**; na fileira, **ED** nas fotos editadas; **Original / Edited**
       (em cima, à direita) troca a foto mostrada e é a mesma chave da etiqueta **Edited n / m**.
 - [ ] Botão direito numa miniatura da fileira: **Edit just this photo in Lightroom Classic** manda só essa foto; nas
-      editadas, **Delete edit…** pergunta e manda a editada para a lixeira.
+      editadas, também **Revert to original…** (pergunta **Revert 1 photo to the original?**; **Revert to original** manda a
+      editada para a lixeira e a foto volta ao original, também no Lightroom; ⌘Z desfaz). Não há **Delete photo** aqui.
 - [ ] Fechar o Export (**Cancel** › **Leave**) com uma sessão no Lightroom e abrir de novo: abre no passo **2 Edit**,
       nessa sessão.
 - [ ] O passo **3 Outputs** não tem mais **Use edited photos**.
 - [ ] Com uma sessão marcada no Lightroom (**In Lightroom**), **Outputs →** fica apagado e o rodapé explica por quê; depois de
       **Export to Stillpoint**, **Cancel editing** ou **Done editing**, volta a funcionar.
-- [ ] **Lixeira do Export:** nos passos **1 Sessions**, **2 Edit** e **3 Outputs** a lixeira fica acima da lista de sessões
-      (à direita de **Unselect all** no passo 1), com o mesmo número de itens da lixeira da barra de cima; clicar abre a **Trash**.
-- [ ] Arrastar uma miniatura (fileira dos passos 1, 2 e 3) até essa lixeira: a lixeira acende; ao soltar, a foto vai para
-      a lixeira sem perguntar (⌘Z traz de volta). Se a foto tem editada, pergunta **Delete the edit or the photo?**
-      (**Delete edit** / **Delete photo** / **Cancel**).
-- [ ] Arrastar uma sessão da lista até a lixeira: a sessão vai para a lixeira com a mesma animação da janela principal.
-- [ ] No **2 Edit**, botão direito numa miniatura: **Delete photo 0n…** pergunta e apaga (a miniatura voa até a lixeira).
-- [ ] **Delete edits…** (bloco Lightroom Classic): depois de confirmar, as miniaturas com **ED** voam até a lixeira e
-      continuam na fileira (só as editadas saem).
+- [ ] **Sem lixeira no Export** (decisão de 2026-11-10): não há lixeira acima da lista de sessões em nenhum passo, e não
+      dá para arrastar fotos nem sessões para apagar dentro do Export. O passo 1 continua com **Select all** / **Unselect all**.
+- [ ] **Framing travado:** sessão com alguma foto editada, passo **1 Sessions**: **Aspect ratio**, os pontos de **Position**,
+      **Align photos** e **Same framing for all ticked sessions** ficam apagados e não respondem; arrastar a foto na prévia não
+      move; a etiqueta da prévia diz **original · the framing is locked**; aparece a caixa **Framing locked.** com o botão
+      **Go to 2 Edit** (leva ao passo 2); o selo da sessão na lista ganha um cadeado.
+- [ ] Sessão no Lightroom (**In Lightroom**): o mesmo, com o texto **Framing locked while this session is in Lightroom Classic**.
+- [ ] **Revert to original…** de todas as editadas (bloco Lightroom Classic do **2 Edit**): de volta ao passo 1, o Framing
+      destrava. ⌘Z do Revert: trava de novo.
+- [ ] Sessão sem edição, com **Same framing for all ticked sessions** e outra sessão marcada que está travada: aparece a linha
+      **n ticked session(s) keep(s) … framing**, e mudar a proporção não muda a da sessão travada.
+- [ ] Passo 1 e **Align photos** mostram sempre as fotos originais (inteiras, sem o recorte nem os ajustes do Lightroom), mesmo
+      com **Edited** ligado; nenhuma foto aparece esticada.
+- [ ] **Alinhamento no Lightroom:** sessão com fotos alinhadas no **Align photos** (com giro em pelo menos uma), **Edit in
+      Lightroom Classic**: no Lightroom, cada foto abre com o recorte dela (a ferramenta Crop mostra o quadro deslocado e, na
+      foto girada, o ângulo); passando pelas fotos, o assunto fica no mesmo lugar. Depois de **Export to Stillpoint**, as
+      editadas voltam já alinhadas e do mesmo tamanho.
+- [ ] No catálogo **Self-Test**, **Stillpoint: run self-test**: o relatório tem a linha do recorte girado ("with a turned crop") sem FAIL.
 - [ ] Janela principal: soltar na lixeira da barra de cima uma foto que tem editada também pergunta **Delete the edit or the photo?**.
 - [ ] Passo **1 Sessions**: a fileira de miniaturas mostra o recorte escolhido (muda ao trocar o **Aspect ratio**).
 - [ ] Com **1:1** (ou outra proporção) no passo 1: as miniaturas da lista de sessões (esquerda), da fileira do **2 Edit**,

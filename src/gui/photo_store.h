@@ -123,7 +123,9 @@ public:
     void MarkSaved(const std::string& session) const;
 
     // JPEG reduzido (lado maior = maxSize), com cache em disco. "" se não der.
-    std::string Preview(const std::string& session, const std::string& file, int maxSize) const;
+    // original: sempre a foto original, mesmo com as editadas ligadas (o Framing e o alinhamento do Export são
+    // escolhidos em cima da original)
+    std::string Preview(const std::string& session, const std::string& file, int maxSize, bool original = false) const;
 
     // Move as sessões para a pasta escolhida: só as de "names" ou, se vazio, todas.
     // Retorna quantas foram movidas; em caso de erro, preenche errorMessage.

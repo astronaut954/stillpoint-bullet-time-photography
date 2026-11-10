@@ -1027,7 +1027,7 @@ void PhotoStore::MarkSaved(const std::string& session) const
         std::ofstream(dir / kSavedMark) << "saved\n";
 }
 
-std::string PhotoStore::Preview(const std::string& session, const std::string& file, int maxSize) const
+std::string PhotoStore::Preview(const std::string& session, const std::string& file, int maxSize, bool original) const
 {
     const fs::path dir = SessionPath(session);
     if (dir.empty() || file.find_first_of("/\\") != std::string::npos || !(IsJpeg(file) || IsRaw(file)))
@@ -1036,7 +1036,7 @@ std::string PhotoStore::Preview(const std::string& session, const std::string& f
     std::error_code ec;
     // Project: a foto editada (Edited/<sessão>/) aparece no lugar do original (decisão do dono, 2026-11-01). A prévia
     // dela tem a hora do arquivo no nome: exportar de novo do Lightroom faz uma prévia nova.
-    const fs::path edited = ShowEdited(session) ? EditedFile(session, file) : fs::path();
+    const fs::path edited = !original && ShowEdited(session) ? EditedFile(session, file) : fs::path();
     std::string cacheName = std::to_string(maxSize) + "_" + file;
     if (!edited.empty())
     {

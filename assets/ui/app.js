@@ -501,6 +501,8 @@
     return photoCache[key];
   }
   const sessionPhoto = (s, f, size) => photo(window.getPhoto, "sessions", s, f, size);
+  // Sempre a original, mesmo com as editadas ligadas: o Framing e o Align photos do Export são escolhidos em cima dela
+  const sessionPhotoOriginal = (s, f, size) => photo((a, b, c) => window.getPhoto(a, f, c, "original"), "sessions", s, f + "|original", size);
   const orderPhoto = (s, f, size) => photo(window.getOrderPhoto, "order", s, f, size);
 
   // =================== Galeria: carrossel + foto grande ===================
@@ -1562,22 +1564,21 @@
   function deleteEdits(s, files) {
     if (typeof window.deleteEdits !== "function") { toast("This build cannot do that yet. Build the app again.", 8000); return; }
     const n = files.length || s.edited;
-    const what = files.length ? plural(n, "edited photo", "edited photos") : "the " + plural(n, "edited photo", "edited photos") + " of " + sessionTitle(s);
-    dialog("Delete " + plural(n, "edit", "edits") + "?",
-      "Moves " + what + " from the project's Edited folder to the Stillpoint trash, and puts " + (n === 1 ? "the photo" : "these photos") + " back to the original in Lightroom Classic (now, or as soon as Lightroom opens the catalog of this session). The originals stay as they are. ⌘Z or the Trash brings the edited files back.",
+    // Revert to original (o nome no Export desde a decisão L1 do dono, 2026-11-10)
+    const nums = sessionItems(s).filter((it) => (files.length ? files.includes(it.file) : s.photos.some((x) => x.edited && x.file === it.file))).map((it) => pad(it.order || 0));
+    const date = sessionLabel(s.name).date;
+    const who = nums.length === n && n <= 6
+      ? (n === 1 ? "Photo " + nums[0] + " of " + date + " goes" : "Photos " + nums.slice(0, -1).join(", ") + " and " + nums[n - 1] + " of " + date + " go")
+      : "The " + plural(n, "edited photo", "edited photos") + " of " + date + (n === 1 ? " goes" : " go");
+    dialog("Revert " + plural(n, "photo", "photos") + " to the original?",
+      who + " back to the original, here and in Lightroom Classic (now, or as soon as Lightroom opens the catalog of this session). " +
+      (n === 1 ? "The edited file goes to the Stillpoint trash: ⌘Z or the Trash brings it back." : "The edited files go to the Stillpoint trash: ⌘Z or the Trash brings them back.") +
+      (n >= s.edited ? " With no edited photo left, the framing of the session unlocks in step 1." : ""),
       [{ label: "Cancel" },
-       { label: "Delete " + plural(n, "edit", "edits"), danger: true, onClick: () => {
-         // Export › Edit: as miniaturas que têm editada voam até a lixeira (e ficam: só a editada vai embora)
-         flyNodesToTrash(editThumbs(s.name, files));
-         deleteEditsNow(s, files);
-       } }]);
+       { label: "Revert to original", danger: true, onClick: () => deleteEditsNow(s, files, true) }]);
   }
-  // As miniaturas da fileira do Export › Edit das fotos com editada (files vazio = todas as editadas da sessão)
-  function editThumbs(name, files) {
-    if ($("exportOverlay").classList.contains("hidden") || exp.step !== 2 || exp.active !== name) return [];
-    return [...document.querySelectorAll("#exportSettings .export-strip > li")].filter((li) => li.querySelector(".frame-app.ed") && (!files.length || files.includes(li.dataset.file)));
-  }
-  function deleteEditsNow(s, files) {
+  // reverted: pedido como Revert to original (Export); o aviso fala assim
+  function deleteEditsNow(s, files, reverted) {
     const run = () => Promise.resolve(window.deleteEdits(s.name, ...files)).then((r) => {
       forgetSessionPreviews(s.name);
       const o = typeof r === "object" && r ? r : { removed: Number(r) || 0, reset: false };
@@ -1585,9 +1586,9 @@
     });
     run().then((o) => {
       if (!o.removed) { toast("No edited files were found.", TOAST_MS); return; }
-      toast(plural(o.removed, "edit", "edits") + " moved to the trash · " + sessionTitle(s) + (o.reset ? " · reset in Lightroom Classic" : "") + " · ⌘Z undoes", TOAST_MS);
+      toast((reverted ? plural(o.removed, "photo", "photos") + " back to the original" : plural(o.removed, "edit", "edits") + " moved to the trash") + " · " + sessionTitle(s) + (o.reset ? " · reset in Lightroom Classic" : "") + " · ⌘Z undoes", TOAST_MS);
       log("Delete edits: " + plural(o.removed, "edited file", "edited files") + " of " + sessionShort(s) + " moved to the trash" + (o.reset ? "; the photos go back to the original in Lightroom Classic" : ""), "ok");
-      recordAction({ trash: { sessions: [s.name] }, label: "Delete " + plural(o.removed, "edit", "edits") + " · " + sessionLabel(s.name).date,
+      recordAction({ trash: { sessions: [s.name] }, label: (reverted ? "Revert " + plural(o.removed, "photo", "photos") + " to the original" : "Delete " + plural(o.removed, "edit", "edits")) + " · " + sessionLabel(s.name).date,
         undo: () => Promise.resolve(restoreSession(s.name)).then((ok) => {
           forgetSessionPreviews(s.name);
           // No Lightroom: cancela a volta ao original se ainda não foi feita; se já foi, o plugin põe de volta a
@@ -2472,12 +2473,8 @@
   // Apagar sessão: uma cópia da linha voa até o botão da lixeira (encolhendo e sumindo), a linha
   // fecha no lugar e a lixeira dá um pulo; só então a sessão é apagada
   function trashTarget() {
-    // Export aberto: a lixeira acima da lista de sessões (a mesma, em outro lugar); na tela cheia, o botão da lixeira
-    // dela; fora, o da barra de cima
-    if (!$("exportOverlay").classList.contains("hidden")) {
-      const x = $("exportTrashBtn");
-      return x && x.offsetParent && x.getBoundingClientRect().width ? x : null;
-    }
+    // Na tela cheia, o botão da lixeira dela; fora, o da barra de cima (o Export não tem lixeira: decisão L1 do dono,
+    // 2026-11-10)
     if (isFullscreen() && fullTrashOpenBtn.offsetParent) return fullTrashOpenBtn;
     const b = $("trashBtn");
     return b && b.offsetParent && b.getBoundingClientRect().width ? b : null;
@@ -3295,6 +3292,7 @@
         if (asShot && r && r.mixed && !aligned)
           chip.dataset.itip = ratioText(r) + " With As shot, the sequence jumps between shapes. Choose an aspect ratio (" +
             r.suggest + " keeps " + r.keep[r.suggest] + "%) or align the photos.";
+        if (framingLocked(s)) { chip.classList.add("chip-locked"); chip.insertAdjacentHTML("beforeend", LOCK_SVG); chip.title = "Framing locked: this session has edits or is in Lightroom Classic"; }
         li.querySelector(".export-summary").replaceWith(chip);
       } else if (exp.step === 2) {
         // Passo 2 (Edit): no lugar do resumo, a etiqueta In Lightroom (a Edited n / m já está acima)
@@ -3305,11 +3303,11 @@
       if (cmpStep() > 0 && diffNow.has(s.name)) li.querySelector(".export-diff").dataset.itip = differenceText(s.name, cmpStep());
       const first = sessionItems(s).find((i) => i.previewable);
       // Com o recorte do Framing (proporção, posição e alinhamento), inteira na caixa de sempre (pedido do dono, 2026-11-07)
-      if (first) sessionPhoto(s.name, first.file, 320).then((url) => (url ? framedUrl(s, sessionItems(s).filter((i) => i.previewable), settingsFor(s.name), first, url, 320) : url))
+      // (no passo 1, a original: é sobre ela que o Framing é escolhido)
+      if (first) (exp.step === 1 ? sessionPhotoOriginal : sessionPhoto)(s.name, first.file, 320)
+        .then((url) => (url ? framedUrl(s, sessionItems(s).filter((i) => i.previewable), settingsFor(s.name), first, url, 320, exp.step === 1) : url))
         .then((url) => { if (url) li.querySelector(".export-thumb").style.backgroundImage = "url(" + url + ")"; });
-      expSessionDrag(li, s);
       li.addEventListener("click", () => {
-        if (li.dataset.dragged) return;
         if (exp.aligning && s.name !== exp.active) {
           const tst = settingsFor(s.name);
           if (needsRatio(s, tst)) { askRatioForAlign(s, tst, renderExport); return; }  // Cancel: continua na sessão de antes
@@ -3886,10 +3884,20 @@
   // Uma fonte só: a sessão (o programa grava em session.json) e a memória do app (a etiqueta "Mixed ratios" usa)
   // Framing igual em todas as sessões marcadas (caixa no passo 1, ligada por padrão): a mudança na sessão aberta vai
   // para as outras (proporção e posição; o alinhamento é por foto e fica em cada sessão)
+  // Framing travado (decisão do dono, 2026-11-10, protótipo "Recorte travado no Export"): a sessão com alguma foto
+  // editada ou no Lightroom Classic não muda de proporção, posição nem alinhamento (as editadas levam o enquadramento
+  // com que foram). Destrava quando não sobra editada (Revert to original) e ela não está no Lightroom.
+  function framingLocked(s) {
+    const cur = sessions.find((x) => x.name === s.name) || s;
+    return inLightroom(cur.name) || (!!cur.inProject && cur.edited > 0);
+  }
+  const LOCK_SVG = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6.5" width="9" height="6"></rect><path d="M4.5 6.5V4.5a2.5 2.5 0 0 1 5 0v2"></path></svg>';
+  function framingWords(st) { return st.crop.ratio === "asshot" ? "As shot" : st.crop.ratio + ", " + placeText(st.crop.x, st.crop.y); }
   function cropShare(session, st) {
+    if (framingLocked(session)) return;
     cropSave(session, st);
     if (!exp.sameFraming || $("exportOverlay").classList.contains("hidden") || !exp.selected.has(session.name)) return;
-    chosenSessions().forEach((o) => { if (o.name === session.name) return; const ost = settingsFor(o.name); cropLoad(o, ost); ost.crop = Object.assign({}, st.crop, { loaded: true }); cropSave(o, ost); });
+    chosenSessions().forEach((o) => { if (o.name === session.name || framingLocked(o)) return; const ost = settingsFor(o.name); cropLoad(o, ost); ost.crop = Object.assign({}, st.crop, { loaded: true }); cropSave(o, ost); });
   }
   // A caixa "Same … for all ticked sessions" (passos 1 e 2): o mesmo desenho e o mesmo comportamento.
   // Clicar com traço ou vazia: todas passam a usar a configuração da sessão aberta e ficam ligadas (desfaz com ⌘Z);
@@ -3921,7 +3929,7 @@
   }
   // Prévia do recorte (seção Framing): a foto escolhida apagada fora do quadro, o quadro aceso e arrastável.
   // onPick(i): trocar de foto; a instrução dos gestos fica na etiqueta de baixo.
-  function cropStage(session, items, st, targetRatio, onChange) {
+  function cropStage(session, items, st, targetRatio, onChange, locked) {
     const box = el("div", "crop-box crop-stage");
     const img = document.createElement("img"); img.alt = "";
     const frame = el("div", "crop-frame");
@@ -3956,7 +3964,7 @@
         const touched = !alignIsIdentity(alignOf(st, item.file)) && sessionAligned(session, st);
         slack = touched ? null : { x: (sz.w * al.scale - canvas.w) * K, y: (sz.h * al.scale - canvas.h) * K };
         const free = slack && (slack.x > 1 || slack.y > 1);
-        label(free ? "Drag the photo to choose the part that stays · ← → other photos" : touched ? "This photo is aligned: move it in Align photos · ← → other photos" : "Nothing to cut: the photo fills the frame · ← → other photos");
+        label(locked ? "original · the framing is locked · ← → other photos" : free ? "Drag the photo to choose the part that stays · ← → other photos" : touched ? "This photo is aligned: move it in Align photos · ← → other photos" : "Nothing to cut: the photo fills the frame · ← → other photos");
         return;
       }
       // Sem proporção ("As shot") ou antes de saber os tamanhos: a foto inteira, sem quadro
@@ -3967,14 +3975,16 @@
       frame.style.display = "none";
       label(targetRatio ? "Measuring the photos…" : "As shot: nothing is cut · choose a ratio below");
     };
-    if (item) sessionPhoto(session.name, item.file, 1600).then((url) => { if (!url) return; img.onload = () => { nat = { w: img.naturalWidth, h: img.naturalHeight }; layout(); }; img.src = url; });
+    // A original: a posição e o tamanho são calculados em pixels dela (a editada do Lightroom já vem recortada e
+    // aparecia esticada aqui; teste do dono, 2026-11-07)
+    if (item) sessionPhotoOriginal(session.name, item.file, 1600).then((url) => { if (!url) return; img.onload = () => { nat = { w: img.naturalWidth, h: img.naturalHeight }; layout(); }; img.src = url; });
     Promise.all(items.map((it) => photoSizeOf(session.name, it.file).then((sz) => [it.file, sz]))).then((pairs) => {
       sizesAll = {}; pairs.forEach(([f, sz]) => { if (sz) sizesAll[f] = sz; }); layout();
     });
     if (window.ResizeObserver) new ResizeObserver(layout).observe(box);
     let drag = null;
     box.addEventListener("dragstart", (e) => e.preventDefault());  // sem o arraste nativo da imagem (prendia o mouse)
-    box.addEventListener("pointerdown", (e) => { if (!slack || e.target.closest("button")) return; drag = { x: e.clientX, y: e.clientY, cx: st.crop.x, cy: st.crop.y }; box.setPointerCapture(e.pointerId); document.body.classList.add("photo-drag"); e.preventDefault(); });
+    box.addEventListener("pointerdown", (e) => { if (locked || !slack || e.target.closest("button")) return; drag = { x: e.clientX, y: e.clientY, cx: st.crop.x, cy: st.crop.y }; box.setPointerCapture(e.pointerId); document.body.classList.add("photo-drag"); e.preventDefault(); });
     let cropRaf = 0;
     box.addEventListener("pointermove", (e) => {
       if (!drag || !slack) return;
@@ -4008,11 +4018,32 @@
   function framingRows(session, st, box, rerender) {
     cropLoad(session, st);
     const info = ratioInfoCached(session.name);
+    const locked = framingLocked(session);
     const r = row("Aspect ratio");
-    r.appendChild(segmented(CROP_RATIOS, st.crop.ratio, (v) => { st.crop.ratio = v; cropShare(session, st); rerender(); }));
+    const seg = segmented(CROP_RATIOS, st.crop.ratio, (v) => { st.crop.ratio = v; cropShare(session, st); rerender(); },
+      () => (locked ? "The framing is locked: this session has edits or is in Lightroom Classic" : ""));
+    if (locked) seg.classList.add("locked-ctl");
+    r.appendChild(seg);
     if (st.crop.ratio !== "asshot" && info && info.keep && info.keep[st.crop.ratio] != null) r.appendChild(el("span", "export-keep", "keeps " + info.keep[st.crop.ratio] + "%"));
     box.appendChild(r);
-    if (info && info.mixed && st.crop.ratio === "asshot" && !sessionAligned(session, st)) box.appendChild(mixedWarn("Mixed ratios · " + ratioText(info).replace(/^Camera/, "camera") + " " + MIXED_EFFECT));
+    if (locked) {
+      // No lugar do aviso das proporções: por que está travado e como destravar
+      const cur = sessions.find((x) => x.name === session.name) || session;
+      const lrN = Object.values(editingBySession[session.name] || {}).filter((x) => x === "lr").length;
+      const note = el("div", "lock-note");
+      note.innerHTML = LOCK_SVG;
+      const text = el("div", "");
+      text.appendChild(el("b", "", lrN ? "Framing locked" : "Framing locked."));
+      text.appendChild(document.createTextNode(lrN
+        ? " while this session is in Lightroom Classic (the " + plural(lrN, "photo", "photos") + " went with " + framingWords(st) + "). Finish there (Export to Stillpoint or Cancel editing), or click Done editing in step 2 · Edit."
+        : " " + plural(cur.edited, "photo of this session was", "photos of this session were") + " edited in Lightroom Classic with this framing (" + framingWords(st) + "). To change it, revert " + (cur.edited === 1 ? "it to the original" : "them to the originals") + " in step 2 · Edit (Revert to original…): the framing unlocks when no photo is edited."));
+      text.appendChild(document.createElement("br"));
+      const go = button("Go to 2 Edit", () => goExportStep(2), { title: "Open step 2 · Edit on this session" });
+      go.classList.add("btn-small");
+      text.appendChild(go);
+      note.appendChild(text);
+      box.appendChild(note);
+    } else if (info && info.mixed && st.crop.ratio === "asshot" && !sessionAligned(session, st)) box.appendChild(mixedWarn("Mixed ratios · " + ratioText(info).replace(/^Camera/, "camera") + " " + MIXED_EFFECT));
     else if (info && info.mixed) box.appendChild(el("div", "export-note", "Mixed ratios · " + ratioText(info).replace(/^Camera/, "camera") + " Every photo goes through the same frame, so nothing jumps."));
     addTip(box, "The shape every export gets: converted photos, the sequence and the lenticular print (Fill) are cut to it; the originals are never cropped. " +
       "One crop for the whole session, and every converted photo comes out with the same pixel size (the smallest camera's).", "Aspect ratio");
@@ -4022,9 +4053,11 @@
       const names = ["Top left", "Top", "Top right", "Left", "Center", "Right", "Bottom left", "Bottom", "Bottom right"];
       [0, 0.5, 1].forEach((y, yi) => [0, 0.5, 1].forEach((x, xi) => {
         const d = el("button", "crop-dot" + (Math.abs(x - st.crop.x) < 0.01 && Math.abs(y - st.crop.y) < 0.01 ? " on" : "")); d.type = "button"; d.title = names[yi * 3 + xi];
+        if (locked) d.disabled = true;
         d.addEventListener("click", () => { st.crop.x = x; st.crop.y = y; cropShare(session, st); rerender(); });
         dots.appendChild(d);
       }));
+      if (locked) dots.classList.add("locked-ctl");
       pos.append(dots, el("span", "export-note-inline", "Or drag the photo in the preview. One crop for the whole session."));
       box.appendChild(pos);
     }
@@ -4169,15 +4202,16 @@
   // A foto como sai na exportação: cortada ao canvas (com a proporção) e com o alinhamento da sessão. Montada num
   // canvas a partir da prévia; guardada por foto e Framing. Sem proporção nem alinhamento, a própria prévia.
   const framedCache = new Map();
-  function framedUrl(session, items, st, item, url, maxPx) {
+  // orig: url é da foto original (passo 1 do Export), então é recortada mesmo quando a sessão mostra as editadas
+  function framedUrl(session, items, st, item, url, maxPx, orig) {
     const px = maxPx || 1600;
     cropLoad(session, st); alignLoad(session, st);
     if (st.crop.ratio === "asshot" && !sessionAligned(session, st)) return Promise.resolve(url);
     // A editada que veio do Lightroom já vem com o recorte (ele foi junto no Edit in Lightroom Classic): não corta de novo
     const cur = sessions.find((x) => x.name === session.name) || session;
     const ph = cur.photos && cur.photos.find((x) => x.file === item.file);
-    if (cur.inProject && cur.showEdited !== false && ph && ph.edited) return Promise.resolve(url);
-    const key = [session.name, item.file, st.crop.ratio, st.crop.x, st.crop.y, alignText(st), px].join("|");
+    if (!orig && cur.inProject && cur.showEdited !== false && ph && ph.edited) return Promise.resolve(url);
+    const key = [session.name, item.file, st.crop.ratio, st.crop.x, st.crop.y, alignText(st), px, orig ? "o" : ""].join("|");
     if (framedCache.has(key)) return framedCache.get(key);
     const p = Promise.all(items.map((it) => photoSizeOf(session.name, it.file).then((sz) => [it.file, sz]))).then((pairs) => {
       const sizes = {}; pairs.forEach(([f, sz]) => { if (sz) sizes[f] = sz; });
@@ -4256,7 +4290,7 @@
       if (!alignIsIdentity(st.align.byFile[it.file])) li.classList.add("aligned");
       // Proporções misturadas: a mesma marca da tela principal (borda tracejada âmbar e a proporção no canto)
       if (mixedInfo && mixedInfo.mixed && mixedInfo.marked.includes(it.group)) { li.classList.add("ratio-warn"); li.appendChild(el("span", "frame-ratio", mixedInfo.byGroup[it.group] || "")); }
-      sessionPhoto(session.name, it.file, 320).then((url) => { if (url) li.querySelector("img").src = url; });
+      sessionPhotoOriginal(session.name, it.file, 320).then((url) => { if (url) li.querySelector("img").src = url; });
       li.addEventListener("click", () => { exp.photo = k; photoRerender(); });
       strip.appendChild(li);
     });
@@ -4494,7 +4528,7 @@
       const im = document.createElement("img"); im.alt = "";
       l.appendChild(im);
       if (key) { const tint = el("div", "align-tint"); tint.style.background = REF_COLORS[key]; l.appendChild(tint); }
-      sessionPhoto(session.name, it.file, 1600).then((url) => { if (url) im.src = url; });
+      sessionPhotoOriginal(session.name, it.file, 1600).then((url) => { if (url) im.src = url; });
       return l;
     };
     // As referências embaixo, tingidas; a foto atual por cima. Cada camada com a sua opacidade (onion skin)
@@ -4842,12 +4876,15 @@
         // (Aspect ratio, Same size, Position) continuam à vista; o resto da janela (Name etc.) some. ⤡ volta.
         if (focused && (exp.step === 1 || !exp.previewHidden)) {  // passo 1: a prévia está sempre à vista
           preview.remove();
-          const stage = cropStage(session, items, st, st.crop.ratio !== "asshot" ? RATIOS[st.crop.ratio] : 0, (changed) => { cropShare(session, st); if (changed) rerender(); });
+          const locked = framingLocked(session);
+          const stage = cropStage(session, items, st, st.crop.ratio !== "asshot" ? RATIOS[st.crop.ratio] : 0, (changed) => { cropShare(session, st); if (changed) rerender(); }, locked);
+          if (locked) stage.classList.add("locked");
           stage.classList.add("export-preview", "framing-stage");
           // "Align photos" (pedaço 2): abre a tela de alinhamento no lugar do ⤢ (decisão do dono, 2026-11-03, protótipo X1)
           const alignBtn = button("Align photos", () => { if (needsRatio(session, st)) askRatioForAlign(session, st, rerender); else { exp.aligning = true; rerender(); } },
             { icon: "alignPhotos", title: "Align photos: move, resize and rotate each photo over the others", kind: "btn-secondary" });
           alignBtn.classList.add("framing-align-btn");
+          if (locked) { alignBtn.disabled = true; alignBtn.classList.add("locked-ctl"); alignBtn.title = "The framing is locked: this session has edits or is in Lightroom Classic"; }
           alignBtn.addEventListener("pointerdown", (e) => e.stopPropagation());
           stage.appendChild(alignBtn);
           if (sessionAligned(session, st)) stage.appendChild(el("span", "framing-aligned-tag", "Aligned"));
@@ -4859,11 +4896,10 @@
             const li = el("li", "frame" + (k === (exp.photo || 0) ? " selected" : ""));
             li.innerHTML = '<div class="frame-img"><img alt=""><span class="frame-badge"></span></div>';
             li.querySelector(".frame-badge").textContent = pad(item.order || k + 1);
-            // Com o recorte escolhido, como no Edit (pedido do dono, 2026-11-07)
-            sessionPhoto(session.name, item.file, 320).then((url) => (url ? framedUrl(session, items, st, item, url, 320) : url))
+            // Com o recorte escolhido (pedido do dono, 2026-11-07), sempre sobre a original (2026-11-10)
+            sessionPhotoOriginal(session.name, item.file, 320).then((url) => (url ? framedUrl(session, items, st, item, url, 320, true) : url))
               .then((url) => { if (url) li.querySelector("img").src = url; });
-            li.addEventListener("click", () => { if (li.dataset.dragged) return; exp.photo = k; photoRerender(); });
-            expPhotoDrag(li, session, item);
+            li.addEventListener("click", () => { exp.photo = k; photoRerender(); });
             strip.appendChild(li);
           });
           exp.keyNav = (d) => { const k = Math.max(0, Math.min(items.length - 1, (exp.photo || 0) + d)); if (k === exp.photo) return; exp.photo = k; photoRerender(); };
@@ -4904,8 +4940,7 @@
             // caixa acompanhava a forma do recorte)
             pic.src = url;
           });
-        li.addEventListener("click", () => { if (li.dataset.dragged) return; exp.photo = k; showPhoto(); });
-        expPhotoDrag(li, session, item);
+        li.addEventListener("click", () => { exp.photo = k; showPhoto(); });
         strip.appendChild(li);
       });
       if (focused) exp.keyNav = (d) => { const k = Math.max(0, Math.min(items.length - 1, exp.photo + d)); if (k === exp.photo) return; exp.photo = k; showPhoto(); const li = strip.children[k]; if (li) li.scrollIntoView({ block: "nearest", inline: "nearest" }); };
@@ -5402,10 +5437,17 @@
         const nd = differentSessions(1).size;
         body.appendChild(sameBox("Same framing for all ticked sessions", sameState(exp.sameFraming, 1), () => {
           exp.sameFraming = true;
-          chosenSessions().forEach((o) => { if (o.name === session.name) return; const ost = settingsFor(o.name); cropLoad(o, ost); ost.crop = Object.assign({}, st.crop, { loaded: true }); cropSave(o, ost); });
+          chosenSessions().forEach((o) => { if (o.name === session.name || framingLocked(o)) return; const ost = settingsFor(o.name); cropLoad(o, ost); ost.crop = Object.assign({}, st.crop, { loaded: true }); cropSave(o, ost); });
           toast("Same framing on " + plural(chosenSessions().length, "session", "sessions") + " · ⌘Z undoes");
           rerender();
         }, () => { exp.sameFraming = false; rerender(); }, nd, "The aspect ratio and the crop position. The photo alignment stays per session."));
+        const sameRow = body.lastElementChild;
+        if (framingLocked(session)) { sameRow.classList.add("locked-ctl"); sameRow.querySelectorAll("input, button").forEach((x) => { x.disabled = true; }); }
+        else {
+          // As travadas ficam como estão (decisão do dono, 2026-11-10)
+          const kept = chosenSessions().filter((o) => o.name !== session.name && framingLocked(o)).length;
+          if (kept) { const k = el("div", "keep-note"); k.innerHTML = LOCK_SVG; k.appendChild(document.createTextNode(plural(kept, "ticked session keeps its framing: it has", "ticked sessions keep their framing: they have") + " edits or " + (kept === 1 ? "is" : "are") + " in Lightroom Classic.")); body.appendChild(k); }
+        }
       }
       if (!always && chosenSessions().length > 1) {
         // Passo 2: a mesma caixa, uma por saída, na última linha da aba
@@ -5425,93 +5467,6 @@
     if (exp.step === 1) return;  // nome e pasta: passo 3; "Apply to all sessions": passo 2
 
     // ("Apply to all sessions" saiu: a caixa "Same settings for all sessions" da aba faz isso)
-  }
-
-  // ---- Lixeira do Export (pedido do dono, 2026-11-07): arrastar fotos (fileiras de Sessions, Edit e Outputs) e sessões
-  // (lista da esquerda) até a lixeira acima da lista, como na janela principal; soltar é a confirmação ----
-  function expDragStart(e, li, makeGhost, onDrop, onStart) {
-    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || exp.aligning || exp.step === 4) return;
-    e.preventDefault();  // sem o arraste de imagem do navegador nem seleção de texto (o clique continua valendo)
-    const d = { x: e.clientX, y: e.clientY, moved: false, ghost: null, over: null };
-    const move = (ev) => {
-      const dx = ev.clientX - d.x, dy = ev.clientY - d.y;
-      if (!d.moved && Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
-      const trash = trashTarget();
-      if (!d.moved) {
-        d.moved = true;
-        if (onStart) onStart();
-        li.classList.add("dragging");
-        const r = li.getBoundingClientRect();
-        d.ghost = makeGhost();
-        Object.assign(d.ghost.style, { left: r.left + "px", top: r.top + "px", width: r.width + "px", height: r.height + "px" });
-        document.body.appendChild(d.ghost);
-        if (trash) trash.classList.add("drop-here");
-      }
-      d.ghost.style.transform = "translate(" + dx + "px," + dy + "px)";
-      const over = trash && overNode(ev.clientX, ev.clientY, trash) ? trash : null;
-      if (d.over !== over) { if (d.over) d.over.classList.remove("drop-ok"); if (over) over.classList.add("drop-ok"); d.over = over; }
-    };
-    const end = (ev, cancel) => {
-      window.removeEventListener("pointermove", move, true);
-      window.removeEventListener("pointerup", up, true);
-      window.removeEventListener("pointercancel", cancelIt, true);
-      li.classList.remove("dragging");
-      if (d.ghost) d.ghost.remove();
-      if (d.over) d.over.classList.remove("drop-ok");
-      document.querySelectorAll(".drop-here").forEach((x) => x.classList.remove("drop-here"));
-      if (!d.moved) return;
-      li.dataset.dragged = "1";  // o "click" que vem depois do arraste não conta
-      setTimeout(() => { delete li.dataset.dragged; }, 0);
-      if (!cancel && d.over) onDrop();
-    };
-    const up = (ev) => end(ev, false), cancelIt = (ev) => end(ev, true);
-    window.addEventListener("pointermove", move, true);
-    window.addEventListener("pointerup", up, true);
-    window.addEventListener("pointercancel", cancelIt, true);
-  }
-  // Uma miniatura das fileiras do Export
-  function expPhotoDrag(li, session, item, onStart) {
-    li.addEventListener("pointerdown", (e) => expDragStart(e, li, () => { const g = li.cloneNode(true); g.className = "frame frame-ghost"; return g; },
-      () => {
-        const s = sessions.find((x) => x.name === session.name) || session;
-        askDropEdited(s, [item], () => deleteExportPhotos(s, [item], [li], true));
-      }, onStart));
-  }
-  // Uma sessão da lista do Export (a caixa de marcar e as etiquetas que são botões não começam o arraste)
-  function expSessionDrag(li, s) {
-    li.addEventListener("pointerdown", (e) => {
-      if (e.target.closest(".export-check, button, input")) return;
-      expDragStart(e, li, () => { const g = li.cloneNode(true); g.classList.add("session-ghost"); g.classList.remove("active"); return g; },
-        () => deleteSessionsNow([s.name]));
-    });
-  }
-  // Delete photo… (botão direito na miniatura do Edit): a mesma pergunta da janela principal
-  function askDeleteExportPhoto(s, item, li) {
-    const what = item.title + (item.subtitle ? " (" + item.subtitle + ")" : "") + ". ";
-    dialog("Delete photo " + pad(item.order || 0) + "?",
-      what + (item.files && item.files.length > 1 ? "Its RAW and JPEG files go" : "The file goes") + " to the Trash (top bar), where it stays for " + trash.days + " days.", [
-        { label: "Cancel" },
-        { label: "Delete", danger: true, onClick: () => deleteExportPhotos(s, [item], [li], false) },
-      ]);
-  }
-  // Apaga fotos de uma sessão a partir do Export: como deletePhotosNow da janela principal (a miniatura voa até a
-  // lixeira, ou a lixeira pula quando a foto foi solta nela; ⌘Z traz de volta)
-  function deleteExportPhotos(s, picked, nodes, dropped) {
-    if (!picked.length) return;
-    if (exp.step === 2) { stopPreview(); editPlay.playing = false; }
-    const session = s.name;
-    const one = picked.length === 1, item = picked[0];
-    const groups = picked.map((x) => x.group);
-    if (dropped) {
-      const t = trashTarget();
-      if (t && t.animate) t.animate([{ transform: "scale(1)" }, { transform: "scale(1.25)" }, { transform: "scale(1)" }], { duration: 240, easing: "ease-out" });
-    } else flyNodesToTrash(nodes);
-    nodes.forEach((t) => t && t.animate && t.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, easing: "ease-in", fill: "forwards" }));
-    setTimeout(() => window.deletePhotos(session, ...groups), 270);
-    const label = one ? "Photo " + pad(item.order || 0) : plural(picked.length, "photo", "photos");
-    toast(label + " deleted from the session of " + sessionLabel(session).date);
-    recordAction({ trash: { sessions: [session] }, label: "Delete " + (one ? "photo " + pad(item.order || 0) : plural(picked.length, "photo", "photos")) + " from " + sessionLabel(session).date,
-      undo: () => restoreSession(session), redo: () => window.deletePhotos(session, ...groups) });
   }
 
   // ---- Passo 2 · Edit (protótipo A "Editar dentro do Export", aprovado pelo dono em 2026-11-07) ----
@@ -5617,18 +5572,15 @@
       if (editedFile(item)) { const b = el("span", "frame-app ed", "ED"); b.title = "Has an edited version (from Lightroom Classic)"; corner.appendChild(b); }
       if (corner.childNodes.length) li.appendChild(corner);
       li.dataset.file = item.file;
-      li.addEventListener("click", () => { if (li.dataset.dragged) return; go(k); });
-      expPhotoDrag(li, session, item, pause);
-      // Botão direito: só esta foto no Lightroom Classic; Delete edit… nas que têm editada; Delete photo… (decisões do
-      // dono, 2026-11-07)
+      li.addEventListener("click", () => go(k));
+      // Botão direito: só esta foto no Lightroom Classic; Revert to original… nas que têm editada (o Export não apaga
+      // fotos: decisão L1 do dono, 2026-11-10)
       li.addEventListener("contextmenu", (e) => {
         e.preventDefault();
         go(k);
         popupMenuAt(e.clientX, e.clientY, [
           { label: "Edit just this photo in Lightroom Classic", onClick: () => { if (!adobeMissingBuild()) startLightroom(session, item.group, "photo"); } },
-          "-",
-          ...(editedFile(item) ? [{ label: "Delete edit…", danger: true, onClick: () => deleteEdits(session, [item.file]) }] : []),
-          { label: "Delete photo " + pad(item.order || k + 1) + "…", danger: true, onClick: () => askDeleteExportPhoto(session, item, li) },
+          ...(editedFile(item) ? ["-", { label: "Revert to original…", danger: true, onClick: () => deleteEdits(session, [item.file]) }] : []),
         ]);
       });
       strip.appendChild(li);
@@ -5698,7 +5650,7 @@
     const send = () => { if (adobeMissingBuild()) return; const it = items[exp.photo] || items[0] || {}; startLightroom(session, it.group || "", "session"); };
     const total = session.photos.length;
     const lrN = Object.values(editingBySession[name] || {}).filter((x) => x === "lr").length;
-    let note = null;
+    let note = null, lockNote = null;
     if (lrN) {
       const state = el("span", "lr-state" + (lrLive.has(name) ? " live" : ""));
       state.dataset.session = name;
@@ -5710,7 +5662,7 @@
     } else if (hasEd) {
       head.appendChild(el("span", "lr-state", session.edited + " of " + plural(total, "photo", "photos") + " edited"));
       actions.appendChild(button("Edit again in Lightroom Classic", send, { title: "Send the session to Lightroom Classic again, with its edits" }));
-      actions.appendChild(button("Delete edits…", () => deleteEdits(session, []), { kind: "btn-danger", title: "Move the edited photos of this session to the trash" }));
+      actions.appendChild(button("Revert to original…", () => deleteEdits(session, []), { kind: "btn-danger", title: "Put the edited photos of this session back to the original: the edited files go to the trash" }));
       actions.appendChild(el("span", "spacer"));
       const use = el("label", "log-option");
       const c = document.createElement("input"); c.type = "checkbox"; c.className = "cs-check"; c.checked = showingEdited;
@@ -5719,6 +5671,7 @@
       use.title = "The same as Original / Edited above and the Edited tag of the session";
       actions.appendChild(use);
       if (session.edited < total && showingEdited) note = el("div", "export-note lr-warn", "Only some photos are edited: edited and original frames will be mixed in the export.");
+      lockNote = el("div", "export-note", "The framing of this session (" + framingWords(st) + ") stays locked in step 1 while it has edited photos.");
     } else {
       head.appendChild(el("span", "lr-state", "Not edited"));
       actions.appendChild(button("Edit in Lightroom Classic", send, { title: "Send the session to Lightroom Classic" }));
@@ -5727,6 +5680,7 @@
     }
     box.append(head, actions);
     if (note) box.appendChild(note);
+    if (lockNote) box.appendChild(lockNote);
     rows.appendChild(box);
   }
   // Espaço no Export › Edit: play / pause (como na janela principal); num botão com o foco, o próprio botão responde
@@ -9790,13 +9744,6 @@
                           : "Trash: empty. Deleted sessions and photos stay here for " + trash.days + " days.";
     b.setAttribute("aria-label", b.title);
     fullTrashOpenBtn.title = b.title; fullTrashOpenBtn.setAttribute("aria-label", b.title);
-    {
-      const x = $("exportTrashBtn");
-      x.classList.toggle("has", trash.count > 0);
-      x.querySelector(".trash-count-exp").textContent = $("trashCount").textContent;
-      x.querySelector(".trash-size-exp").textContent = $("trashSize").textContent;
-      x.title = b.title + " · drag sessions and photos here to delete them"; x.setAttribute("aria-label", b.title);
-    }
     if ($("trashOverlay") && !$("trashOverlay").classList.contains("hidden")) renderTrash();
   }
   const trashRoving = makeRoving({ root: () => $("trashList"), rows: (r) => [...r.querySelectorAll("li.trash-row")], id: (row) => row.dataset.id });
@@ -10115,7 +10062,6 @@
     }
   }
   $("trashBtn").addEventListener("click", openTrash);
-  $("exportTrashBtn").addEventListener("click", openTrash);
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape" || selectMenu || openMenu || !$("trashOverlay") || $("trashOverlay").classList.contains("hidden") || !$("dialogOverlay").classList.contains("hidden")) return;
     e.preventDefault(); e.stopImmediatePropagation();

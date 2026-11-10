@@ -39,6 +39,9 @@ namespace Export
         double base = 1;  // o tamanho escolhido pela pessoa; scale pode ser maior (cresce para cobrir a área ao girar)
         bool touched = false;  // a pessoa mexeu nesta foto na tela; senão ela fica na posição do recorte (posX/posY)
         bool noop = false;     // a foto já é o canvas inteiro, sem ajuste: nada a fazer (fica como saiu da câmera)
+        // A foto já vem enquadrada e alinhada de fora (a editada do Lightroom Classic, que recebeu o recorte e o
+        // alinhamento no "Edit in Lightroom Classic"): não é transformada de novo, só levada ao tamanho do canvas
+        bool framed = false;
         bool Identity() const { return std::abs(dx) < 1e-6 && std::abs(dy) < 1e-6 && std::abs(scale - 1) < 1e-9 && std::abs(rot) < 1e-9; }
     };
     // Texto guardado em session.json ("align"): "<arquivo>:dx,dy,scale,rot[,base];<arquivo>:..."
@@ -71,6 +74,11 @@ namespace Export
     bool ComputeCommonFrame(Framing& framing, const std::vector<std::pair<int, int>>& sizes);
     // Transforma a foto k (move, redimensiona, gira) e corta ao quadro comum; nada sem alinhamento
     void ApplyAlign(RgbFrame& frame, const Framing& framing, size_t k);
+    // O retângulo do canvas dentro da foto k (w×h pixels), como recorte: os cantos de cima à esquerda e de baixo à
+    // direita do retângulo (girado) em frações da foto, e o giro em graus (o mesmo sentido do Align: positivo = a foto
+    // gira no sentido horário na saída). false sem canvas. Usado para mandar o enquadramento ao Lightroom Classic.
+    struct CropBox { double left = 0, top = 0, right = 1, bottom = 1, angle = 0; };
+    bool CanvasCrop(const Framing& framing, size_t k, int w, int h, CropBox& out);
     // Largura e altura de uma foto (decodifica; RAW usa a prévia embutida)
     bool PhotoSize(const std::filesystem::path& photo, int& width, int& height);
 

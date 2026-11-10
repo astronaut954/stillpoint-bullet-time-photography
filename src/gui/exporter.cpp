@@ -911,6 +911,17 @@ namespace Export
         const Align& a = framing.align[k];
         const int W = std::max(1, static_cast<int>(std::lround(framing.commonW)));
         const int H = std::max(1, static_cast<int>(std::lround(framing.commonH)));
+        if (a.framed)
+        {
+            // Já enquadrada e alinhada (a editada do Lightroom): só o tamanho do canvas, para casar com as outras
+            if (frame.width != W || frame.height != H)
+            {
+                std::vector<unsigned char> resized(static_cast<size_t>(W) * H * 3);
+                stbir_resize_uint8_srgb(frame.pixels.data(), frame.width, frame.height, 0, resized.data(), W, H, 0, STBIR_RGB);
+                frame.pixels = std::move(resized); frame.width = W; frame.height = H;
+            }
+            return;
+        }
         const double rad = a.rot * kPi / 180.0, cs = std::cos(rad), sn = std::sin(rad);
         const double cx = frame.width / 2.0, cy = frame.height / 2.0;
         const int sw = frame.width, sh = frame.height;
@@ -940,6 +951,24 @@ namespace Export
             }
         }
         frame.pixels = std::move(out); frame.width = W; frame.height = H;
+    }
+
+    bool CanvasCrop(const Framing& framing, size_t k, int w, int h, CropBox& out)
+    {
+        if (!framing.Canvas() || k >= framing.align.size() || w <= 0 || h <= 0) return false;
+        const Align& a = framing.align[k];
+        const double rad = a.rot * kPi / 180.0, cs = std::cos(rad), sn = std::sin(rad);
+        // Do canvas para a foto (a mesma conta do ApplyAlign), para os dois cantos
+        const auto toPhoto = [&](double px, double py, double& fx, double& fy)
+        {
+            const double x = px - a.dx, y = py - a.dy;
+            fx = (w / 2.0 + (x * cs + y * sn) / a.scale) / w;
+            fy = (h / 2.0 + (-x * sn + y * cs) / a.scale) / h;
+        };
+        toPhoto(framing.commonX, framing.commonY, out.left, out.top);
+        toPhoto(framing.commonX + framing.commonW, framing.commonY + framing.commonH, out.right, out.bottom);
+        out.angle = a.rot;
+        return true;
     }
 
     Quality ParseQuality(const std::string& text)

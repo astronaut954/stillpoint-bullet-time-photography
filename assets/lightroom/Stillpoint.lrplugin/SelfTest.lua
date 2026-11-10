@@ -263,6 +263,19 @@ local function scenarioCrop()
 	w, h = croppedSize(4)
 	check('crop changed: photo 04 now 160 x 160', w and math.abs(w - 160) <= 2 and math.abs(h - 160) <= 2, tostring(w) .. ' x ' .. tostring(h))
 	check('... still not an edit', not Actions.hasOwnEdit(photoOf(4), nil), Actions.settingsDiff(Bridge.baseline(pathOf(4)), settingsOf(4)))
+	-- Recorte com giro (foto alinhada no Stillpoint, 2026-11-10): quadrado de 120 x 120 no centro, girado 5 graus.
+	-- Os dois cantos do retângulo girado, o ângulo e o tamanho da foto (240 x 160)
+	openSession('with a turned crop', 'framing=1:1\ncrop=' .. pathOf(4) .. '\t0.229163\t0.159110\t0.770837\t0.840890\t5.0000\t240\t160\n')
+	w, h = croppedSize(4)
+	check('turned crop: photo 04 is 120 x 120', w and math.abs(w - 120) <= 2 and math.abs(h - 120) <= 2, tostring(w) .. ' x ' .. tostring(h))
+	do
+		local now = settingsOf(4)
+		check('... Lightroom kept the angle (CropAngle 5)', math.abs((tonumber(now.CropAngle) or 0) - 5) < 0.01, 'CropAngle=' .. tostring(now.CropAngle))
+		check('... and the two corners as sent', math.abs((tonumber(now.CropLeft) or 0) - 0.229163) < 0.002 and math.abs((tonumber(now.CropTop) or 0) - 0.159110) < 0.002
+			and math.abs((tonumber(now.CropRight) or 0) - 0.770837) < 0.002 and math.abs((tonumber(now.CropBottom) or 0) - 0.840890) < 0.002,
+			'CropLeft=' .. tostring(now.CropLeft) .. ' CropTop=' .. tostring(now.CropTop) .. ' CropRight=' .. tostring(now.CropRight) .. ' CropBottom=' .. tostring(now.CropBottom))
+	end
+	check('... still not an edit', not Actions.hasOwnEdit(photoOf(4), nil), Actions.settingsDiff(Bridge.baseline(pathOf(4)), settingsOf(4)))
 	-- Sem recorte (Send as shot): a foto volta inteira
 	openSession('as shot', 'framing=asshot\n')
 	w, h = croppedSize(4)

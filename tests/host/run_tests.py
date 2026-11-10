@@ -253,10 +253,10 @@ class T:
         return ok
 
     def delete_edit(self, name, index):
-        """Delete edit… de uma foto: botão direito na miniatura do Export › Edit, confirma e fecha o Export."""
+        """Revert to original… de uma foto: botão direito na miniatura do Export › Edit, confirma e fecha o Export."""
         self.export_edit(name)
-        self.strip_menu(index, "Delete edit")
-        self.button("Delete 1 edit")
+        self.strip_menu(index, "Revert to original")
+        self.button("Revert to original")
         self.close_export()
 
     def open_trash(self):
@@ -662,12 +662,17 @@ def scenario_export_edit(t, name, photos):
 
 
 def scenario_export_trash(t, name, photos):
-    line("\n== 11. Export: trash above the session list; drag photos and sessions to it; Edit blocked while in Lightroom")
+    line("\n== 11. Export: no trash; framing locked after editing; Revert to original; alignment goes to Lightroom")
     s = t.shoot()
     if not s:
         check(t, "a new session for this scenario", False)
         return
     t.dismiss()
+    # Uma foto girada 5 graus no Align photos: o recorte de cada foto vai para o Lightroom com o ângulo
+    o = t.originals(s)
+    ph = sorted(os.path.join(o, f) for f in os.listdir(o) if not f.startswith(".") and f != "session.json")
+    t.js("(a) => window.setSessionAlign(a[0], a[1] + ':0.00,0.00,1.00000,5.000,1.00000')", [s, os.path.basename(ph[0])])
+    t.wait(lambda: "5.000" in str((t.session(s) or {}).get("align", "")), 5)
     # Só esta sessão marcada (as dos cenários de antes podem estar no Lightroom e também bloqueariam)
     t.page.click("#saveBtn")
     t.wait(lambda: t.export_open(), 5)
@@ -679,64 +684,56 @@ def scenario_export_trash(t, name, photos):
     time.sleep(0.3)
     t.export_edit(s)
     vis = lambda: t.js("() => { const b = document.getElementById('exportTrashBtn'); return !!b && !!b.offsetParent && b.getBoundingClientRect().width > 0; }")
-    check(t, "Edit: the trash is above the session list", vis())
+    check(t, "Edit: no trash in the Export", not vis())
     # Bloqueia enquanto está no Lightroom
     t.lr_block_button("Edit in Lightroom Classic")
     if t.wait(lambda: t.dialog_title() == "Crop before Lightroom Classic?", 2):
-        t.dialog_click("Send as shot")
+        t.dialog_click("Crop to")  # com proporção: as câmeras simuladas têm formas diferentes, e o alinhamento pede uma
     t.wait(lambda: t.edit_tag(s), 15)
     t.wait(lambda: t.js("() => document.getElementById('exportConfirm').disabled"), 6)
     check(t, "while the session is In Lightroom, Outputs → is blocked", t.js("() => document.getElementById('exportConfirm').disabled"))
     check(t, "... and the footer says why", "still in Lightroom Classic" in (t.js("() => document.getElementById('exportCount').textContent") or ""), t.js("() => document.getElementById('exportCount').textContent"))
-    o = t.originals(s)
-    ph = sorted(os.path.join(o, f) for f in os.listdir(o) if not f.startswith(".") and f != "session.json")
+    turned = t.lr.crops.get(ph[0]) or ()
+    check(t, "the turned photo goes to Lightroom with its own crop and the angle (5 degrees)", len(turned) == 7 and abs(turned[4] - 5) < 0.01, [list(turned), (t.session(s) or {}).get("align"), sorted(t.lr.crops)[-4:], ph[0]])
+    other = t.lr.crops.get(ph[1]) or ()
+    check(t, "... and the others with the crop of the common area, no angle", len(other) == 4 and other != (0.0, 0.0, 1.0, 1.0), list(other))
+    step1 = lambda: (t.js("() => document.querySelector('#exportSteps .export-step').click()"), time.sleep(0.7))
+    lock = lambda: t.js("""() => ({ note: (document.querySelector('#exportSettings .lock-note') || {}).textContent || '',
+        seg: [...document.querySelectorAll('#exportSettings .segmented button')].some(b => /^(1:1|16:9|As shot)$/.test(b.textContent.trim()) && !b.disabled),
+        align: [...document.querySelectorAll('#exportSettings .framing-align-btn')].map(b => b.disabled),
+        chip: !!document.querySelector('#exportList li.export-item.active .export-chip.chip-locked') })""")
+    step1()
+    k = lock()
+    check(t, "Sessions, while in Lightroom: Framing locked (note, ratio buttons and Align photos off, lock on the chip)",
+          k["note"].startswith("Framing locked while this session is in Lightroom Classic") and not k["seg"] and k["align"] == [True] and k["chip"], k)
+    t.js("() => { const b = [...document.querySelectorAll('#exportSettings .lock-note button')].find(x => x.textContent.trim() === 'Go to 2 Edit'); b && b.click(); }")
+    check(t, "... Go to 2 Edit opens the Edit step", t.wait(lambda: t.js("() => !!document.querySelector('#exportSettings .lr-block')"), 4))
     t.lr.set_edit(ph[0], (30, 160, 200))
     t.lr.export(o, t.project, s)
     check(t, "after Export to Stillpoint (the session leaves Lightroom): Outputs → works again", t.wait(lambda: not t.js("() => document.getElementById('exportConfirm').disabled"), 12))
     t.wait(lambda: t.js("() => !!document.querySelector('#exportSettings .export-strip .frame-app.ed')"), 8)
 
-    def drag_to_trash(sel):
-        box = t.js("(q) => { const r = document.querySelector(q).getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }", sel)
-        tb = t.js("() => { const r = document.getElementById('exportTrashBtn').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }")
-        t.page.mouse.move(box[0], box[1])
-        t.page.mouse.down()
-        t.page.mouse.move(box[0] + 20, box[1] + 10, steps=4)
-        t.page.mouse.move(tb[0], tb[1], steps=10)
-        time.sleep(0.15)
-        over = t.js("() => document.getElementById('exportTrashBtn').classList.contains('drop-ok')")
-        t.page.mouse.up()
-        time.sleep(0.5)
-        return over
-
     count = lambda: len((t.session(s) or {}).get("photos", []))
     before = count()
-    # Foto com editada: pergunta
-    check(t, "dragging photo 01 over the trash lights it", drag_to_trash("#exportSettings .export-strip > li:nth-child(1)"))
-    check(t, "photo 01 has an edit: it asks \"Delete the edit or the photo?\"", t.wait(lambda: t.dialog_title() == "Delete the edit or the photo?", 3), t.dialog_title())
-    t.dialog_click("Delete edit")
-    check(t, "Delete edit: only the edit goes (Edited tag gone, still %d photos)" % before, t.wait(lambda: (t.session(s) or {}).get("edited", 1) == 0 and count() == before, 8), ((t.session(s) or {}).get("edited"), count()))
-    # Foto sem editada: vai direto
-    drag_to_trash("#exportSettings .export-strip > li:nth-child(2)")
-    check(t, "photo 02 (no edit) dropped on the trash: deleted with no question", t.wait(lambda: count() == before - 1, 8) and not t.dialog_title(), count())
-    t.undo()
-    check(t, "⌘Z brings photo 02 back", t.wait(lambda: count() == before, 8), count())
-    # Botão direito: Delete photo…
-    t.wait(lambda: t.js("() => document.querySelectorAll('#exportSettings .export-strip > li').length") == before, 5)
-    t.strip_menu(2, "Delete photo 03")
-    check(t, "right-click › Delete photo 03… asks", t.wait(lambda: t.dialog_title() == "Delete photo 03?", 3), t.dialog_title())
-    t.dialog_click("Delete")
-    check(t, "... and deletes it", t.wait(lambda: count() == before - 1, 8), count())
-    t.undo()
-    t.wait(lambda: count() == before, 8)
-    # Passo 1: a lixeira também; arrastar a sessão
-    t.js("() => document.querySelector('#exportSteps .export-step').click()")
-    time.sleep(0.6)
-    check(t, "Sessions: the trash is there too", vis())
-    drag_to_trash('#exportList li.export-item[data-name="%s"] .folder-date' % s)
-    check(t, "dragging the session to the trash deletes it", t.wait(lambda: t.session(s) is None, 8))
-    time.sleep(0.5)
-    t.undo()
-    check(t, "⌘Z brings the session back", t.wait(lambda: t.session(s) is not None, 8))
+    step1()
+    k = lock()
+    check(t, "Sessions, with an edited photo: Framing locked, and the note says how to unlock",
+          k["note"].startswith("Framing locked. 1 photo of this session was edited") and "Revert to original" in k["note"] and not k["seg"] and k["align"] == [True] and k["chip"], k)
+    t.export_edit(s)
+    # Botão direito: sem Delete photo; Revert to original só na editada
+    menu = lambda i: (t.page.click("#exportSettings .export-strip > li:nth-child(%d)" % i, button="right"), time.sleep(0.3),
+                      t.js("() => [...document.querySelectorAll('.app-menu button')].map(x => x.textContent.trim()).filter(Boolean)"))[2]
+    m1 = menu(1); t.page.keyboard.press("Escape"); time.sleep(0.2)
+    m2 = menu(2); t.page.keyboard.press("Escape"); time.sleep(0.2)
+    check(t, "right-click on the edited photo: Revert to original…, no Delete photo", any(x.startswith("Revert to original") for x in m1) and not any(x.startswith("Delete") for x in m1), m1)
+    check(t, "right-click on a photo with no edit: only Edit just this photo", m2 and not any(x.startswith("Revert") or x.startswith("Delete") for x in m2), m2)
+    t.lr_block_button("Revert to original")
+    check(t, "Revert to original… asks \"Revert 1 photo to the original?\"", t.wait(lambda: t.dialog_title() == "Revert 1 photo to the original?", 3), t.dialog_title())
+    t.dialog_click("Revert to original")
+    check(t, "Revert to original: only the edit goes (still %d photos)" % before, t.wait(lambda: (t.session(s) or {}).get("edited", 1) == 0 and count() == before, 8), ((t.session(s) or {}).get("edited"), count()))
+    step1()
+    k = lock()
+    check(t, "... and the Framing unlocks in Sessions", not k["note"] and k["seg"] and k["align"] == [False] and not k["chip"], k)
     t.close_export()
     # Janela principal: foto com editada solta na lixeira da barra de cima também pergunta
     t.lr.set_edit(ph[0], (30, 160, 200))
@@ -793,9 +790,10 @@ def main():
                 check(t, "scenario 1 ran to the end", False, traceback.format_exc(limit=3))
             if first:
                 name, photos = first
-                for sc in (scenario_cleared, scenario_delete_edit_undo, scenario_photo_delete_restore,
+                only = os.environ.get("STILLPOINT_TEST_ONLY", "")  # para depurar: só os cenários com este nome
+                for sc in [x for x in (scenario_cleared, scenario_delete_edit_undo, scenario_photo_delete_restore,
                            scenario_remove_from_collection, scenario_delete_session, scenario_cancel, scenario_rapid_in_lightroom, scenario_crop_before_lightroom,
-                           scenario_export_edit, scenario_export_trash):
+                           scenario_export_edit, scenario_export_trash) if only in x.__name__]:
                     try:
                         sc(t, name, photos)
                     except Exception:  # noqa: BLE001

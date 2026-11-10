@@ -312,8 +312,12 @@ namespace Adobe
             text << "framing=" << OneLine(request.framing) << "\n";
         for (const auto& c : request.crops)
         {
-            char box[96];
-            std::snprintf(box, sizeof(box), "%.6f\t%.6f\t%.6f\t%.6f", c.left, c.top, c.right, c.bottom);
+            char box[160];
+            // Com giro: mais três campos (ângulo, largura e altura da foto). Sem giro, a linha de sempre.
+            if (std::abs(c.angle) > 1e-6 && c.width > 0 && c.height > 0)
+                std::snprintf(box, sizeof(box), "%.6f\t%.6f\t%.6f\t%.6f\t%.4f\t%d\t%d", c.left, c.top, c.right, c.bottom, c.angle, c.width, c.height);
+            else
+                std::snprintf(box, sizeof(box), "%.6f\t%.6f\t%.6f\t%.6f", c.left, c.top, c.right, c.bottom);
             text << "crop=" << Utf8(c.photo) << "\t" << box << "\n";
         }
         text << "end=1\n";  // o plugin só aceita o pedido inteiro

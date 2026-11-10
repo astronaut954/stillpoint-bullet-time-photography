@@ -154,7 +154,7 @@ class FakeLightroom:
                     self.crops[p] = (0.0, 0.0, 1.0, 1.0)
                 for line in r["_list"].get("crop", []):
                     parts = line.split("\t")
-                    if len(parts) == 5:
+                    if len(parts) in (5, 8):  # com giro: mais o ângulo e o tamanho da foto
                         self.crops[parts[0]] = tuple(float(x) for x in parts[1:])
             self.write_alive()
             write_whole(os.path.join(self.bridge, "status.txt"),

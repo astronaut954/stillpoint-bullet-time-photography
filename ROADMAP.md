@@ -849,6 +849,12 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    lista (passos 1 a 3) para arrastar fotos e sessões, com as animações da janela principal; foto com editada solta numa
    lixeira (Export ou janela principal) pergunta se vai só a editada ou a foto; Delete photo… no botão direito do Edit;
    Delete edits… faz as miniaturas com ED voarem até a lixeira; miniaturas do Export com o recorte, inteiras na caixa 3:2.
+   Depois (2026-11-10, protótipo "Recorte travado no Export" aprovado): o Framing da sessão (proporção, posição e
+   alinhamento) fica travado no passo 1 enquanto ela tem foto editada ou está no Lightroom; destrava com Revert to
+   original de todas as editadas. A lixeira do Export saiu (o Export não apaga fotos nem sessões); "Delete edits" virou
+   "Revert to original" no Export. O passo 1 e o Align photos usam sempre as originais. O alinhamento vai para o
+   Lightroom como recorte por foto (com ângulo) e as editadas voltam alinhadas; no Export elas só são redimensionadas.
+   Inferência ainda sem teste no Lightroom real: o sentido do ângulo do recorte (CropAngle).
    Feito em 2026-11-06: bolinha âmbar pulsando nas miniaturas e na prévia grande das fotos que estão no Lightroom;
    a coleção do Lightroom refeita na ordem do Stillpoint quando uma foto volta; Delete edits e o ⌘Z dele em fila, na ordem.
 6. **Etapa 21 — Histórico de edição permanente.** Pedido do dono (2026-11-01): um histórico no estilo

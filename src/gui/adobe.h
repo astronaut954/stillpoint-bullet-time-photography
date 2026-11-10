@@ -64,7 +64,9 @@ namespace Adobe
         // recorte) e, por foto, o retângulo que fica (0..1, na foto como ela aparece: esquerda, topo, direita, base).
         // O plugin aplica no recorte do Lightroom, para a pessoa editar já o quadro final.
         std::string framing;
-        struct Crop { std::filesystem::path photo; double left = 0, top = 0, right = 1, bottom = 1; };
+        // angle != 0 (foto alinhada com giro): left/top e right/bottom são os cantos do retângulo girado, e width/height
+        // o tamanho da foto em pixels (o plugin precisa dele para girar em pixels)
+        struct Crop { std::filesystem::path photo; double left = 0, top = 0, right = 1, bottom = 1, angle = 0; int width = 0, height = 0; };
         std::vector<Crop> crops;
     };
     bool WriteRequest(const Request& request, std::string& error);
