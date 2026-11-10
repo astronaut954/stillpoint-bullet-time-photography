@@ -263,6 +263,120 @@ local function cropWithAngle(c, angle, width, height, orientation)
 end
 Bridge.cropWithAngle = cropWithAngle
 
+-- O caminho de volta (R5, decisão do dono, 2026-11-10: o recorte ajustado no Lightroom vira o alinhamento da foto no
+-- Stillpoint): o recorte guardado no Lightroom (os dois cantos do retângulo girado, na foto como o sensor gravou, e
+-- o ângulo) escrito do jeito do Stillpoint (os cantos de cima à esquerda e de baixo à direita na foto como ela
+-- aparece). width e height: a foto como ela aparece, em pixels.
+local function cropFromSensor(c, angle, width, height, orientation)
+	local function fromSensor(x, y)
+		if orientation == 'BC' then return 1 - y, x
+		elseif orientation == 'CD' then return 1 - x, 1 - y
+		elseif orientation == 'DA' then return y, 1 - x end
+		return x, y
+	end
+	local px, py = fromSensor(c.left, c.top)
+	local qx, qy = fromSensor(c.right, c.bottom)
+	px, py, qx, qy = px * width, py * height, qx * width, qy * height
+	local cx, cy = (px + qx) / 2, (py + qy) / 2
+	local rad = math.rad(angle)
+	local cs, sn = math.cos(rad), math.sin(rad)
+	local function turn(x, y, s) return x * cs - y * s, x * s + y * cs end
+	local ax, ay = turn(px - cx, py - cy, sn)
+	local bx, by = turn(qx - cx, qy - cy, sn)
+	local x0, x1, y0, y1 = math.min(ax, bx), math.max(ax, bx), math.min(ay, by), math.max(ay, by)
+	local lx, ly = turn(x0, y0, -sn)
+	local rx, ry = turn(x1, y1, -sn)
+	return { left = (cx + lx) / width, top = (cy + ly) / height, right = (cx + rx) / width, bottom = (cy + ry) / height }
+end
+Bridge.cropFromSensor = cropFromSensor
+
+-- Largura e altura (em pixels) do retângulo do recorte, pelos ajustes da foto. sw, sh: a foto como o sensor gravou
+local function cropShape(settings, sw, sh)
+	local l, t = tonumber(settings.CropLeft) or 0, tonumber(settings.CropTop) or 0
+	local r, b = tonumber(settings.CropRight) or 1, tonumber(settings.CropBottom) or 1
+	local rad = math.rad(tonumber(settings.CropAngle) or 0)
+	local cs, sn = math.cos(rad), math.sin(rad)
+	local dx, dy = (r - l) * sw, (b - t) * sh
+	return math.abs(dx * cs - dy * sn), math.abs(dx * sn + dy * cs)
+end
+Bridge.cropShape = cropShape
+
+local RATIO_NAMES = { { 1, '1:1' }, { 3 / 2, '3:2' }, { 2 / 3, '2:3' }, { 4 / 3, '4:3' }, { 3 / 4, '3:4' }, { 16 / 9, '16:9' }, { 9 / 16, '9:16' },
+	{ 5 / 4, '5:4' }, { 4 / 5, '4:5' }, { 7 / 5, '7:5' }, { 5 / 7, '5:7' }, { 2, '2:1' }, { 1 / 2, '1:2' } }
+function Bridge.ratioName(w, h)
+	if not (w and h) or h <= 0 then return '?' end
+	local r = w / h
+	for _, n in ipairs(RATIO_NAMES) do
+		if math.abs(r - n[1]) / n[1] < 0.004 then return n[2] end
+	end
+	return string.format('%.2f:1', r)
+end
+
+-- O recorte que o Stillpoint mandou para cada foto (o enquadramento da sessão): o Export to Stillpoint confere a
+-- proporção contra ele e, quando o recorte foi ajustado, manda o novo para o Stillpoint
+function Bridge.setSentCrop(path, value) prefsPut('sentCrops', path, value) end
+function Bridge.sentCrop(path)
+	local LrPrefs = import 'LrPrefs'
+	local all = LrPrefs.prefsForPlugin().sentCrops
+	return all and all[path]
+end
+
+local function sensorSize(sent, orientation)
+	if orientation == 'BC' or orientation == 'DA' then return sent.height, sent.width end
+	return sent.width, sent.height
+end
+
+-- A proporção do recorte de agora é a que o Stillpoint mandou? Sem tolerância (decisão do dono, 2026-11-10): só a
+-- folga de 1 pixel, que é o arredondamento do próprio arquivo. nil = está certa (ou a sessão foi sem enquadramento:
+-- "As shot" sem alinhamento não é conferida). Senão { have = '3:2', want = '1:1' }
+function Bridge.shapeProblem(path, now)
+	local sent = Bridge.sentCrop(path)
+	if not sent or not ((sent.width or 0) > 0 and (sent.height or 0) > 0) then return nil end
+	local sw, sh = sensorSize(sent, now.orientation)
+	local w0, h0 = cropShape(sent, sw, sh)
+	local w1, h1 = cropShape(now, sw, sh)
+	if w0 <= 0 or h0 <= 0 or w1 <= 0 or h1 <= 0 then return nil end
+	if math.min(math.abs(w1 - h1 * w0 / h0), math.abs(h1 - w1 * h0 / w0)) < 1 then return nil end
+	local turned = now.orientation == 'BC' or now.orientation == 'DA'
+	return { have = turned and Bridge.ratioName(h1, w1) or Bridge.ratioName(w1, h1),
+		want = (sent.framing and sent.framing:match('^%d+:%d+$')) and sent.framing or (turned and Bridge.ratioName(h0, w0) or Bridge.ratioName(w0, h0)) }
+end
+
+-- O recorte de agora, do jeito do Stillpoint, quando é diferente do que ele mandou (a pessoa moveu, redimensionou
+-- ou girou no Lightroom): "esq<TAB>topo<TAB>dir<TAB>base<TAB>ângulo". nil = igual ao mandado
+function Bridge.cropChanged(path, now)
+	local sent = Bridge.sentCrop(path)
+	if not sent or not ((sent.width or 0) > 0 and (sent.height or 0) > 0) then return nil end
+	local same = true
+	for _, k in ipairs(CROP_KEYS) do
+		if math.abs((tonumber(now[k]) or ((k == 'CropRight' or k == 'CropBottom') and 1 or 0)) - (tonumber(sent[k]) or 0)) > 2e-5 then same = false end
+	end
+	if same then return nil end
+	local angle = tonumber(now.CropAngle) or 0
+	local c = cropFromSensor({ left = tonumber(now.CropLeft) or 0, top = tonumber(now.CropTop) or 0, right = tonumber(now.CropRight) or 1, bottom = tonumber(now.CropBottom) or 1 },
+		angle, sent.width, sent.height, now.orientation)
+	return string.format('%.7f\t%.7f\t%.7f\t%.7f\t%.5f', c.left, c.top, c.right, c.bottom, angle)
+end
+
+-- Put back the Stillpoint crop: as fotos voltam ao recorte que o Stillpoint mandou
+function Bridge.putBackCrop(catalog, photos)
+	local changes = {}
+	for _, photo in ipairs(photos) do
+		local sent = Bridge.sentCrop(photo:getRawMetadata('path'))
+		if sent then
+			local settings = {}
+			for _, k in ipairs(CROP_KEYS) do settings[k] = sent[k] end
+			table.insert(changes, { photo = photo, settings = settings })
+		end
+	end
+	if #changes == 0 then return 0 end
+	catalog:withWriteAccessDo('Stillpoint: put back the Stillpoint crop', function()
+		for _, ch in ipairs(changes) do ch.photo:applyDevelopSettings(ch.settings) end
+	end, { timeout = 60 })
+	Bridge.note('crop: ' .. #changes .. ' photos put back to the Stillpoint crop')
+	return #changes
+end
+
 function Bridge.applyFraming(catalog, photos, request, newPaths)
 	local wanted = {}
 	for _, text in ipairs(request.crops or {}) do
@@ -290,6 +404,13 @@ function Bridge.applyFraming(catalog, photos, request, newPaths)
 			c, angle = cropForOrientation(crop, now.orientation), 0
 		end
 		local settings = { CropLeft = c.left, CropTop = c.top, CropRight = c.right, CropBottom = c.bottom, CropAngle = angle }
+		-- O enquadramento mandado, para conferir a proporção no Export to Stillpoint ("As shot" sem alinhamento: nada)
+		if turned and (turned.width or 0) > 0 and (turned.height or 0) > 0 and tostring(request.framing) ~= 'asshot' then
+			Bridge.setSentCrop(path, { CropLeft = c.left, CropTop = c.top, CropRight = c.right, CropBottom = c.bottom, CropAngle = angle,
+				width = turned.width, height = turned.height, framing = tostring(request.framing) })
+		else
+			Bridge.setSentCrop(path, nil)
+		end
 		local same = true
 		for _, k in ipairs(CROP_KEYS) do
 			if math.abs((tonumber(now[k]) or (k == 'CropRight' or k == 'CropBottom') and 1 or 0) - settings[k]) > 1e-4 then same = false end
@@ -700,6 +821,43 @@ end
 
 Bridge.handleQueued = handleResetFiles  -- (os testes chamam direto)
 
+-- Recado do Stillpoint (notice-*.txt): uma editada chegou na pasta Edited com outra proporção e não foi usada (o
+-- arquivo foi salvo por fora do plugin). Mostra o aviso e deixa a foto selecionada. Com outro catálogo aberto, espera.
+local function handleNoticeFiles()
+	for path in LrFileUtils.files(Bridge.folder()) do
+		local name = LrPathUtils.leafName(path)
+		if name:match('^notice%-.*%.txt$') then
+			local text = readAll(path)
+			local request = text and text:find('\nend=1') and parse(text)
+			if request and request.photos[1] then
+				local catalog = LrApplication.activeCatalog()
+				local found = {}
+				for _, p in ipairs(request.photos) do
+					local photo = catalog:findPhotoByPath(p)
+					if photo then table.insert(found, photo) end
+				end
+				if #found > 0 then
+					removeFile(path)
+					local LrTasks = import 'LrTasks'
+					LrTasks.pcall(function() catalog:setSelectedPhotos(found[1], found) end)
+					local n = #request.photos
+					local Ui = require 'Ui'
+					Bridge.note('notice: ' .. n .. ' edited photos of ' .. tostring(request.session) .. ' not used by Stillpoint (' .. tostring(request.have) .. ', session ' .. tostring(request.want) .. ')')
+					Ui.message('Stillpoint did not use ' .. n .. ' edited ' .. (n == 1 and 'photo' or 'photos'),
+						(n == 1 and 'A file' or n .. ' files') .. ' arrived in the project\'s Edited folder with another shape (' .. tostring(request.have)
+						.. '). The session ' .. tostring(request.title or request.session) .. ' is ' .. tostring(request.want) .. '.\n\n'
+						.. 'Stillpoint keeps ' .. (n == 1 and 'the file but shows the original of photo ' or 'the files but shows the originals of photos ') .. tostring(request.numbers or '') .. '.\n\n'
+						.. 'To fix: set the crop of ' .. (n == 1 and 'this photo' or 'these photos') .. ' to ' .. tostring(request.want)
+						.. ' and click Export to Stillpoint. ' .. (n == 1 and 'The photo is' or 'The photos are') .. ' selected in the filmstrip.', 'warning')
+				else
+					Bridge.noteOnce('notice for photos that are not in this catalog, waiting: ' .. tostring(request.session))
+				end
+			end
+		end
+	end
+end
+Bridge.handleNotices = handleNoticeFiles
+
 -- Uma volta da espera (a cada meio segundo)
 function Bridge.tick()
 	if not Bridge.folder() then return end
@@ -710,6 +868,11 @@ function Bridge.tick()
 	if os.time() - startedAt < STARTUP_WAIT and not Bridge.testFolder then return end  -- Lightroom acabando de abrir
 	handleDoneFiles()
 	handleResetFiles()
+	do
+		local LrTasks = import 'LrTasks'
+		local ok, problem = LrTasks.pcall(handleNoticeFiles)
+		if not ok then Bridge.problem('notice: ' .. tostring(problem)) end
+	end
 	local requestFile = bridgeFile('request.txt')
 	local text = readAll(requestFile)
 	if not text then return end

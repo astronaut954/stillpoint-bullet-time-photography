@@ -135,6 +135,15 @@ function service.processRenderedPhotos(functionContext, exportContext)
 		end
 	end
 	local count = #photos - outside - unedited
+	-- Proporção trocada em alguma foto: nada é exportado (decisão do dono, 2026-11-10)
+	do
+		local all = {}
+		for photo, place in pairs(places) do table.insert(all, { photo = photo, place = place }) end
+		if Actions.shapeBlock(all) then
+			for _, rendition in exportContext:renditions() do LrTasks.pcall(function() rendition:skipRender() end) end
+			return
+		end
+	end
 	local skipExisting = false
 	if already > 0 then
 		local answer = Ui.confirm(
@@ -195,6 +204,8 @@ function service.processRenderedPhotos(functionContext, exportContext)
 					local key = place.root .. '|' .. place.session
 					if not bySession[key] then bySession[key] = { place = place, files = {} }; table.insert(order, bySession[key]) end
 					table.insert(bySession[key].files, LrPathUtils.leafName(target))
+					bySession[key].crops = bySession[key].crops or {}
+					Actions.cropLines(bySession[key].crops, place.file, place.path, rendition.photo)
 				end
 			else
 				failed = failed + 1
@@ -212,6 +223,7 @@ function service.processRenderedPhotos(functionContext, exportContext)
 		local lines = { 'session=' .. s.place.session, 'project=' .. s.place.root, 'count=' .. #s.files, 'failed=0',
 			'color=' .. tostring(settings.LR_export_colorSpace), 'format=' .. tostring(settings.LR_format) }
 		for _, name in ipairs(s.files) do table.insert(lines, 'file=' .. name) end
+		for _, text in ipairs(s.crops or {}) do table.insert(lines, text) end
 		local key = s.place.root .. '|' .. s.place.session
 		for _, name in ipairs(clearedBy[key] and clearedBy[key].files or {}) do table.insert(lines, 'cleared=' .. name) end
 		Actions.writeMessage('exported', lines)

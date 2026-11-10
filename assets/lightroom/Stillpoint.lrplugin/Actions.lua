@@ -121,6 +121,99 @@ function Actions.writeMessage(prefix, lines)
 	return true
 end
 
+-- ---------------- Proporção trocada: bloqueia o Export to Stillpoint ----------------
+
+-- Fotos com o recorte numa proporção diferente da que o Stillpoint mandou (decisão do dono, 2026-11-10: mover,
+-- redimensionar e girar o recorte pode; mudar a proporção não). items: { photo, place }. Com alguma errada: mostra
+-- o alerta, deixa as fotos erradas selecionadas e devolve true (nada é exportado). "Put back the Stillpoint crop"
+-- devolve a elas o recorte mandado; a pessoa exporta de novo.
+function Actions.shapeBlock(items)
+	local wrong = {}
+	for _, item in ipairs(items) do
+		local ok, now = LrTasks.pcall(function() return item.photo:getDevelopSettings() end)
+		local problem = ok and now and Bridge.shapeProblem(item.place.path, now) or nil
+		if problem then table.insert(wrong, { item = item, have = problem.have, want = problem.want }) end
+	end
+	if #wrong == 0 then return false end
+	table.sort(wrong, function(a, b) return orderOf(a.item.place.file) < orderOf(b.item.place.file) end)
+	local numbers, photos = {}, {}
+	for _, w in ipairs(wrong) do
+		table.insert(numbers, string.format('%02d', orderOf(w.item.place.file)))
+		table.insert(photos, w.item.photo)
+	end
+	local want = wrong[1].want
+	local n = #wrong
+	local list = n == 1 and ('photo ' .. numbers[1]) or ('photos ' .. table.concat(numbers, ', ', 1, n - 1) .. ' and ' .. numbers[n])
+	local catalog = LrApplication.activeCatalog()
+	LrTasks.pcall(function() catalog:setSelectedPhotos(photos[1], photos) end)
+	Actions.state.text = 'Export blocked: ' .. list .. (n == 1 and ' is' or ' are') .. ' not ' .. want .. '. Fix the crop and export again.'
+	Bridge.note('export to Stillpoint blocked: ' .. list .. ' not ' .. want)
+	local title = 'Export to Stillpoint blocked: ' .. plural(n, 'photo is', 'photos are') .. ' not ' .. want
+	local answer
+	if Ui.answers then
+		answer = Ui.confirm(title, list, 'OK', '< exclude >', 'Put back the Stillpoint crop')
+	else
+		local bold = WIN_ENV and 'Segoe UI Bold' or 'HelveticaNeue-Bold'
+		local drawn
+		drawn, answer = LrTasks.pcall(LrFunctionContext.callWithContext, 'Stillpoint shape alert', function()
+			local f = LrView.osFactory()
+			local rows = { spacing = 2 }
+			for i, w in ipairs(wrong) do
+				if i > 12 then
+					table.insert(rows, f:static_text { title = '… ' .. (n - 12) .. ' more' })
+					break
+				end
+				table.insert(rows, f:row {
+					f:static_text { title = numbers[i], font = '<system/bold>', width_in_chars = 3 },
+					f:static_text { title = w.item.place.file, width_in_chars = 34, truncation = 'middle' },
+					f:static_text { title = 'now ' .. w.have, text_color = LrColor(0.85, 0.55, 0.10) },
+				})
+			end
+			local contents = f:column {
+				spacing = 12,
+				f:row {
+					spacing = 12,
+					f:static_text { title = '⚠', font = { name = bold, size = 38 }, text_color = LrColor(0.95, 0.65, 0.15) },
+					f:column {
+						spacing = 3,
+						f:static_text { title = title, font = { name = bold, size = 16 } },
+						f:static_text { title = 'Nothing was exported.', text_color = LrColor(0.55, 0.55, 0.55) },
+					},
+				},
+				f:static_text { title = 'This session goes to Stillpoint as ' .. want .. '. A bullet time sequence needs the same shape on every photo, and '
+					.. (n == 1 and 'this photo was' or 'these photos were') .. ' cropped to another shape:', width_in_chars = 56, height_in_lines = 2 },
+				f:group_box { title = '', fill_horizontal = 1, f:column(rows) },
+				f:static_text { title = 'To fix: open the Crop tool (R) on ' .. (n == 1 and 'the photo' or 'each photo') .. ', set Aspect to ' .. want:gsub(':', ' x ')
+					.. ', then click Export to Stillpoint again. Moving, resizing and turning the crop is fine. '
+					.. (n == 1 and 'The photo is' or 'The ' .. n .. ' photos are') .. ' selected in the filmstrip.', width_in_chars = 56, height_in_lines = 3 },
+			}
+			return LrDialogs.presentModalDialog { title = 'Stillpoint', contents = contents, actionVerb = 'OK',
+				cancelVerb = '< exclude >', otherVerb = 'Put back the Stillpoint crop' }
+		end)
+		-- Se o Lightroom recusar algum detalhe do desenho: a pergunta simples, com os mesmos botões
+		if not drawn then
+			Bridge.problem('shape alert: ' .. tostring(answer))
+			answer = LrDialogs.confirm(title, 'Nothing was exported. This session goes to Stillpoint as ' .. want .. ', and ' .. list
+				.. (n == 1 and ' was' or ' were') .. ' cropped to another shape. Set the crop to ' .. want .. ' and click Export to Stillpoint again. '
+				.. (n == 1 and 'The photo is' or 'The photos are') .. ' selected in the filmstrip.', 'OK', '< exclude >', 'Put back the Stillpoint crop')
+		end
+	end
+	if answer == 'other' then
+		local done = Bridge.putBackCrop(catalog, photos)
+		Actions.state.text = 'Crop of ' .. list .. ' put back to the Stillpoint framing. Export again.'
+		Ui.bezel('Stillpoint crop put back on ' .. plural(done, 'photo', 'photos'))
+	end
+	return true
+end
+
+-- As linhas "crop=" do recado de exportação: o recorte de agora das fotos em que ele foi ajustado no Lightroom (vira
+-- o alinhamento da foto no Stillpoint)
+function Actions.cropLines(lines, file, path, photo)
+	local ok, now = LrTasks.pcall(function() return photo:getDevelopSettings() end)
+	local text = ok and now and Bridge.cropChanged(path, now) or nil
+	if text then table.insert(lines, 'crop=' .. file .. '\t' .. text) end
+end
+
 -- ---------------- Export to Stillpoint ----------------
 
 local function exportGroup(group, items, colorSpace, progress, doneBefore, total)
@@ -234,6 +327,14 @@ function Actions.exportToStillpoint()
 			.. (total > 0 and (plural(outside, 'selected photo is', 'selected photos are') .. ' from somewhere else.') or 'No photo is selected.'), 'info')
 		return
 	end
+	-- Proporção trocada em alguma foto: nada é exportado (decisão do dono, 2026-11-10)
+	do
+		local all = {}
+		for _, group in ipairs(groups) do
+			for _, item in ipairs(group.items) do table.insert(all, item) end
+		end
+		if Actions.shapeBlock(all) then return end
+	end
 	-- Fotos que já têm editada no Stillpoint: pergunta antes de trocar (decisão do dono, 2026-11-05)
 	local already, count = 0, 0
 	for _, group in ipairs(groups) do
@@ -337,6 +438,9 @@ function Actions.exportToStillpoint()
 			local lines = { 'session=' .. job.group.session, 'project=' .. job.group.root, 'count=' .. done, 'failed=' .. failed, 'color=' .. colorSpace,
 				'complete=' .. ((job.group.complete and not skipExisting) and '1' or '0') }
 			for _, name in ipairs(files) do table.insert(lines, 'file=' .. name) end
+			for _, item in ipairs(job.items) do
+				if sentNames[LrPathUtils.removeExtension(item.place.file):lower()] then Actions.cropLines(lines, item.place.file, item.place.path, item.photo) end
+			end
 			for _, item in ipairs(job.group.cleared or {}) do
 				table.insert(lines, 'cleared=' .. item.place.file)
 				LrTasks.pcall(function() Bridge.setSent(item.place.path, item.photo:getDevelopSettings()) end)
@@ -510,6 +614,9 @@ function Actions.applyPhoto01()
 	end
 	if #targets == 0 then return end
 	local settings = first.photo:getDevelopSettings()
+	-- O recorte não vai junto (decisão do dono, 2026-11-10): cada foto tem o seu, que é o alinhamento dela
+	for _, k in ipairs(Bridge.cropKeys) do settings[k] = nil end
+	settings.orientation = nil
 	local catalog = LrApplication.activeCatalog()
 	catalog:withWriteAccessDo('Stillpoint: apply photo ' .. label .. ' edit', function()
 		for _, item in ipairs(targets) do item.photo:applyDevelopSettings(settings) end

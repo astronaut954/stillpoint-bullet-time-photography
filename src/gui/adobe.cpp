@@ -313,8 +313,9 @@ namespace Adobe
         for (const auto& c : request.crops)
         {
             char box[160];
-            // Com giro: mais três campos (ângulo, largura e altura da foto). Sem giro, a linha de sempre.
-            if (std::abs(c.angle) > 1e-6 && c.width > 0 && c.height > 0)
+            // Com o tamanho da foto conhecido: mais três campos (ângulo, largura e altura da foto), para o plugin
+            // conferir a proporção do recorte no Export to Stillpoint. Sem ele, a linha de sempre.
+            if (c.width > 0 && c.height > 0)
                 std::snprintf(box, sizeof(box), "%.6f\t%.6f\t%.6f\t%.6f\t%.4f\t%d\t%d", c.left, c.top, c.right, c.bottom, c.angle, c.width, c.height);
             else
                 std::snprintf(box, sizeof(box), "%.6f\t%.6f\t%.6f\t%.6f", c.left, c.top, c.right, c.bottom);
@@ -520,6 +521,20 @@ namespace Adobe
         const bool ok = WriteWhole(BridgeFolder() / name, "project=" + OneLine(it->second.project) + "\ntitle=" + OneLine(it->second.title) + "\ncatalog=" + OneLine(it->second.catalog) + "\nend=1\n");
         SaveCollections(map);
         return ok;
+    }
+
+    bool QueueNotice(const std::string& session, const std::string& title, const std::vector<fs::path>& photos,
+                     const std::string& numbers, const std::string& have, const std::string& want)
+    {
+        if (photos.empty())
+            return false;
+        static int counter = 0;
+        const std::string name = "notice-" + std::to_string(std::time(nullptr)) + "-" + std::to_string(++counter) + ".txt";
+        std::string text = "session=" + OneLine(session) + "\ntitle=" + OneLine(title) + "\nnumbers=" + OneLine(numbers)
+            + "\nhave=" + OneLine(have) + "\nwant=" + OneLine(want) + "\n";
+        for (const auto& p : photos)
+            text += "photo=" + Utf8(p) + "\n";
+        return WriteWhole(BridgeFolder() / name, text + "end=1\n");
     }
 
     bool QueuePhotos(const std::string& kind, const std::string& session, const std::vector<fs::path>& photos)

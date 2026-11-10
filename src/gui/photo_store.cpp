@@ -11,10 +11,12 @@
 #include <chrono>
 #include <cmath>
 #include <cctype>
+#include <cstdio>
 #include <fstream>
 #include <iterator>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <regex>
 #include <sstream>
 #include <system_error>
@@ -735,7 +737,215 @@ namespace
     }
 }
 
+namespace
+{
+    // Largura e altura de uma editada sem abrir a imagem inteira (JPEG e PNG pelo cabeçalho; TIFF pelas etiquetas)
+    bool ImageShape(const fs::path& file, int& width, int& height)
+    {
+        width = height = 0;
+        if (IsTiff(file.filename().string()))
+        {
+            std::ifstream in(file, std::ios::binary);
+            unsigned char head[8];
+            if (!in.read(reinterpret_cast<char*>(head), 8)) return false;
+            const bool little = head[0] == 'I' && head[1] == 'I';
+            if (!little && !(head[0] == 'M' && head[1] == 'M')) return false;
+            const auto u16 = [&](const unsigned char* b) -> unsigned long { return little ? (b[0] | (b[1] << 8)) : ((b[0] << 8) | b[1]); };
+            const auto u32 = [&](const unsigned char* b) -> unsigned long
+            {
+                return little ? (b[0] | (b[1] << 8) | (b[2] << 16) | (static_cast<unsigned long>(b[3]) << 24))
+                              : ((static_cast<unsigned long>(b[0]) << 24) | (b[1] << 16) | (b[2] << 8) | b[3]);
+            };
+            if (u16(head + 2) != 42) return false;
+            in.seekg(static_cast<std::streamoff>(u32(head + 4)));
+            unsigned char n[2];
+            if (!in.read(reinterpret_cast<char*>(n), 2)) return false;
+            const unsigned long count = u16(n);
+            unsigned long orientation = 1;
+            for (unsigned long i = 0; i < count && i < 4096; ++i)
+            {
+                unsigned char e[12];
+                if (!in.read(reinterpret_cast<char*>(e), 12)) break;
+                const unsigned long tag = u16(e), type = u16(e + 2);
+                const unsigned long value = type == 3 ? u16(e + 8) : u32(e + 8);
+                if (tag == 256) width = static_cast<int>(value);
+                else if (tag == 257) height = static_cast<int>(value);
+                else if (tag == 274) orientation = value;
+            }
+            if (orientation >= 5 && orientation <= 8) std::swap(width, height);
+            return width > 0 && height > 0;
+        }
+        int comp = 0;
+#ifdef _WIN32
+        FILE* f = _wfopen(file.c_str(), L"rb");
+#else
+        FILE* f = std::fopen(file.c_str(), "rb");
+#endif
+        if (!f) return false;
+        const int ok = stbi_info_from_file(f, &width, &height, &comp);
+        std::fclose(f);
+        return ok && width > 0 && height > 0;
+    }
+
+    std::string ShapeName(double w, double h)
+    {
+        if (w <= 0 || h <= 0) return "?";
+        static const std::pair<double, const char*> names[] = { { 1.0, "1:1" }, { 1.5, "3:2" }, { 2.0 / 3, "2:3" }, { 4.0 / 3, "4:3" }, { 0.75, "3:4" },
+            { 16.0 / 9, "16:9" }, { 9.0 / 16, "9:16" }, { 1.25, "5:4" }, { 0.8, "4:5" }, { 1.4, "7:5" }, { 5.0 / 7, "5:7" }, { 2.0, "2:1" }, { 0.5, "1:2" } };
+        const double r = w / h;
+        for (const auto& [value, name] : names)
+            if (std::abs(r - value) / value < 0.004) return name;
+        char text[32];
+        std::snprintf(text, sizeof(text), "%.2f:1", r);
+        return text;
+    }
+
+    double RatioOf(const std::string& ratio)
+    {
+        if (ratio == "3:2") return 1.5;
+        if (ratio == "4:3") return 4.0 / 3.0;
+        if (ratio == "16:9") return 16.0 / 9.0;
+        if (ratio == "1:1") return 1.0;
+        return 0;
+    }
+
+    // A mesma forma, com a folga de 1 pixel do arredondamento do arquivo (sem tolerância: decisão do dono, 2026-11-10)
+    bool SameShape(double w, double h, double W, double H)
+    {
+        return std::abs(w - h * W / H) <= 1.0 || std::abs(h - w * H / W) <= 1.0;
+    }
+
+    struct RefusedEntry { std::string stamp, label, want; };
+    std::mutex refusedMutex;
+    std::map<std::string, RefusedEntry> refusedCache;
+
+    // "arquivo:valores;..." -> arquivo -> valores
+    std::map<std::string, std::string> AlignItems(const std::string& text)
+    {
+        std::map<std::string, std::string> out;
+        std::stringstream items(text);
+        for (std::string item; std::getline(items, item, ';');)
+        {
+            const size_t colon = item.rfind(':');
+            if (colon != std::string::npos && colon > 0) out[item.substr(0, colon)] = item.substr(colon + 1);
+        }
+        return out;
+    }
+}
+
+// A editada tem a forma do enquadramento da sessão? "" = tem (ou não há o que conferir: "As shot" sem alinhamento).
+// Senão, a forma dela ("3:2") e, em want, a da sessão.
+std::string PhotoStore::RefusedLabel(const std::string& session, const fs::path& edited, std::string* want) const
+{
+    const fs::path dir = SessionDir(session);
+    if (dir.empty()) return {};
+    std::error_code ec;
+    const auto stampOf = [&](const fs::path& p)
+    {
+        const auto t = fs::last_write_time(p, ec);
+        return ec ? std::string("-") : std::to_string(t.time_since_epoch().count());
+    };
+    const std::string stamp = stampOf(edited) + "|" + std::to_string(fs::file_size(edited, ec)) + "|" + stampOf(dir / kSessionInfo);
+    const std::string key = edited.string();
+    {
+        std::lock_guard<std::mutex> lock(refusedMutex);
+        const auto it = refusedCache.find(key);
+        if (it != refusedCache.end() && it->second.stamp == stamp)
+        {
+            if (want) *want = it->second.want;
+            return it->second.label;
+        }
+    }
+    RefusedEntry entry;
+    entry.stamp = stamp;
+    const JsonLite::Value info = ReadSessionInfo(dir);
+    std::string ratio = "asshot";
+    {
+        const std::string crop = info.get("crop").asString();
+        const std::string first = crop.substr(0, crop.find('|'));
+        if (!first.empty()) ratio = first;
+    }
+    double W = 0, H = 0;
+    bool eitherWay = false;
+    {
+        // O canvas com que a sessão foi para o Lightroom, se foi com esta proporção
+        const std::string canvas = info.get("lrCanvas").asString();
+        const size_t bar = canvas.find('|');
+        if (bar != std::string::npos && canvas.substr(bar + 1) == ratio)
+        {
+            const size_t comma = canvas.find(',');
+            try { W = std::stod(canvas.substr(0, comma)); H = std::stod(canvas.substr(comma + 1, bar - comma - 1)); } catch (...) { W = H = 0; }
+        }
+    }
+    if (!(W > 0 && H > 0) && RatioOf(ratio) > 0) { W = RatioOf(ratio); H = 1; eitherWay = true; }
+    int w = 0, h = 0;
+    if (W > 0 && H > 0 && ImageShape(edited, w, h) && !SameShape(w, h, W, H) && !(eitherWay && SameShape(w, h, H, W)))
+    {
+        entry.label = ShapeName(w, h);
+        entry.want = RatioOf(ratio) > 0 ? ratio : ShapeName(W, H);
+    }
+    if (want) *want = entry.want;
+    std::lock_guard<std::mutex> lock(refusedMutex);
+    refusedCache[key] = entry;
+    return entry.label;
+}
+
 fs::path PhotoStore::EditedFile(const std::string& session, const std::string& file) const
+{
+    // A editada com outra proporção fica na pasta, mas não é usada (decisão do dono, 2026-11-10)
+    const fs::path best = EditedFilePick(session, file);
+    if (!best.empty() && !RefusedLabel(session, best, nullptr).empty())
+        return {};
+    return best;
+}
+
+std::string PhotoStore::EditedStamp() const
+{
+    std::string stamp;
+    if (projectEdited.empty()) return stamp;
+    std::error_code ec;
+    for (fs::directory_iterator it(projectEdited, ec), end; !ec && it != end; it.increment(ec))
+    {
+        if (!it->is_directory(ec)) continue;
+        const auto t = fs::last_write_time(it->path(), ec);
+        stamp += it->path().filename().string() + ":" + (ec ? "-" : std::to_string(t.time_since_epoch().count())) + ";";
+    }
+    return stamp;
+}
+
+std::string PhotoStore::AlignLr(const std::string& session) const
+{
+    const fs::path dir = SessionDir(session);
+    return dir.empty() ? std::string() : ReadSessionInfo(dir).get("alignLr").asString();
+}
+
+bool PhotoStore::SetAlignLr(const std::string& session, const std::string& align) const
+{
+    const fs::path dir = SessionDir(session);
+    if (dir.empty())
+        return false;
+    JsonLite::Value info = ReadSessionInfo(dir);
+    if (!info.isObject())
+        info = JsonLite::Value::NewObject();
+    info.set("alignLr", align);
+    return WriteSessionInfoFile(dir, info);
+}
+
+bool PhotoStore::SetLrCanvas(const std::string& session, const std::string& canvas) const
+{
+    const fs::path dir = SessionDir(session);
+    if (dir.empty())
+        return false;
+    JsonLite::Value info = ReadSessionInfo(dir);
+    if (!info.isObject())
+        info = JsonLite::Value::NewObject();
+    if (info.get("lrCanvas").asString() == canvas)
+        return true;
+    info.set("lrCanvas", canvas);
+    return WriteSessionInfoFile(dir, info);
+}
+
+fs::path PhotoStore::EditedFilePick(const std::string& session, const std::string& file) const
 {
     if (projectEdited.empty() || session.find_first_of("/\\") != std::string::npos)
         return {};
@@ -944,6 +1154,7 @@ void PhotoStore::ReadSessions(const fs::path& base, bool inProject, std::vector<
         StoredSession session;
         session.name = dir.path().filename().string();
         session.inProject = inProject;
+        std::string alignLr;
         {
             const JsonLite::Value info = ReadSessionInfo(dir.path());
             if (inProject)
@@ -954,6 +1165,7 @@ void PhotoStore::ReadSessions(const fs::path& base, bool inProject, std::vector<
             session.crop = info.get("crop").asString();  // (também fora do Project)
             session.showEdited = !(info.isObject() && info.get("showEdited").asString() == "no");
             session.align = info.get("align").asString();
+            alignLr = inProject ? info.get("alignLr").asString() : std::string();
         }
 
         session.saved = fs::exists(dir.path() / kSavedMark, ec);
@@ -988,12 +1200,39 @@ void PhotoStore::ReadSessions(const fs::path& base, bool inProject, std::vector<
                 photo.camera = match[2].str();
             }
             photo.previewable = IsJpeg(photo.file) || IsRaw(photo.file);
-            if (inProject && !EditedFile(session.name, photo.file).empty())
+            if (inProject)
             {
-                ++session.edited;
-                photo.edited = true;
+                const fs::path edit = EditedFilePick(session.name, photo.file);
+                if (!edit.empty())
+                {
+                    photo.refused = RefusedLabel(session.name, edit, &photo.refusedWant);
+                    if (photo.refused.empty())
+                    {
+                        ++session.edited;
+                        photo.edited = true;
+                    }
+                }
             }
             session.photos.push_back(photo);
+        }
+        // O alinhamento que veio do Lightroom vale para as fotos que têm editada (por cima do da sessão)
+        if (!alignLr.empty())
+        {
+            auto items = AlignItems(session.align);
+            bool changed = false;
+            for (const auto& [file, values] : AlignItems(alignLr))
+            {
+                const std::string base = BaseName(file);
+                const bool has = std::any_of(session.photos.begin(), session.photos.end(),
+                    [&](const StoredPhoto& p) { return p.edited && BaseName(p.file) == base; });
+                if (has) { items[file] = values; changed = true; }
+            }
+            if (changed)
+            {
+                std::string text;
+                for (const auto& [file, values] : items) text += (text.empty() ? "" : ";") + file + ":" + values;
+                session.align = text;
+            }
         }
 
         std::sort(session.photos.begin(), session.photos.end(),

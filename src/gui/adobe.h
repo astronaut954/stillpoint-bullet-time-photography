@@ -112,6 +112,10 @@ namespace Adobe
     // Delete edits (decisão do dono, 2026-11-06): as fotos voltam ao original também no Lightroom (reset-*.txt; o plugin
     // faz quando o catálogo da sessão estiver aberto). CancelReset tira o pedido que ainda não foi feito (o ⌘Z).
     bool QueueReset(const std::string& session, const std::vector<std::filesystem::path>& photos);
+    // Recado para o plugin mostrar no Lightroom: editadas que chegaram na pasta Edited com outra proporção e não
+    // foram usadas (decisão do dono, 2026-11-10). photos: os originais; numbers: "02" ou "02, 03"
+    bool QueueNotice(const std::string& session, const std::string& title, const std::vector<std::filesystem::path>& photos,
+                     const std::string& numbers, const std::string& have, const std::string& want);
     bool CancelReset(const std::string& session);
     // Pedidos ao plugin sobre fotos da coleção da sessão (feitos quando o catálogo dela estiver aberto):
     //   "bringback" a edição volta no Lightroom (o ⌘Z do Delete edits; o plugin guardou a edição antes do Reset)

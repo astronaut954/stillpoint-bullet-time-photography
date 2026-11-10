@@ -78,6 +78,8 @@ namespace Export
     // direita do retângulo (girado) em frações da foto, e o giro em graus (o mesmo sentido do Align: positivo = a foto
     // gira no sentido horário na saída). false sem canvas. Usado para mandar o enquadramento ao Lightroom Classic.
     struct CropBox { double left = 0, top = 0, right = 1, bottom = 1, angle = 0; };
+    // O caminho de volta: o recorte de uma foto (cantos e ângulo, como em CanvasCrop) vira o alinhamento dela no canvas
+    bool AlignFromCrop(const Framing& framing, int w, int h, double left, double top, double right, double bottom, double angle, Align& out);
     bool CanvasCrop(const Framing& framing, size_t k, int w, int h, CropBox& out);
     // Largura e altura de uma foto (decodifica; RAW usa a prévia embutida)
     bool PhotoSize(const std::filesystem::path& photo, int& width, int& height);

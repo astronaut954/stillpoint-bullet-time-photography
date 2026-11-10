@@ -1684,6 +1684,14 @@
       lrLive = new Set((r && r.sessions) || []);
       apply();
       ((r && r.exported) || []).forEach(lightroomExported);
+      // Editadas com outra proporção na pasta Edited: não são usadas (decisão do dono, 2026-11-10)
+      ((r && r.refused) || []).forEach((x) => {
+        const s = sessions.find((y) => y.name === x.session);
+        const text = (x.count === 1 ? "Photo " + x.numbers + " · edited file not used: it is " : "Photos " + x.numbers + " · edited files not used: they are ") + x.have + " and the session is " + x.want;
+        toast(text + (s ? " · " + sessionTitle(s) : ""), 9000, { warn: true });
+        log(text + " · " + (s ? sessionTitle(s) : sessionLabel(x.session).date) + ". The file stays in the Edited folder.", "warn");
+        forgetSessionPreviews(x.session);
+      });
       ((r && r.gone) || []).forEach((name) => {
         const s = sessions.find((x) => x.name === name);
         toast("Closed in Lightroom Classic · " + (s ? sessionTitle(s) : sessionLabel(name).date) + " (its collection is gone from the catalog)", 7000);
@@ -1718,6 +1726,14 @@
     let text = e.found && e.total ? "Edited " + e.edited + " / " + e.total + " · " + title : plural(e.count, "edited photo", "edited photos") + " arrived from Lightroom Classic · " + title;
     if (e.cleared > 0) text += " · " + plural(e.cleared, "edit", "edits") + " removed (no edit in Lightroom anymore; in the trash)";
     if (e.failed > 0) text += " · " + plural(e.failed, "photo", "photos") + " could not be exported";
+    // O recorte ajustado no Lightroom virou o alinhamento dessas fotos (decisão do dono, 2026-11-10)
+    const aligned = (e.aligned || []).map((n) => pad(n));
+    if (aligned.length) {
+      const which = aligned.length === 1 ? "photo " + aligned[0] : "photos " + aligned.slice(0, -1).join(", ") + " and " + aligned[aligned.length - 1];
+      text += " · alignment of " + which + " updated from Lightroom Classic";
+      log("Lightroom Classic: the crop adjusted there is now the alignment of " + which + " · " + title, "ok");
+      if (!$("exportOverlay").classList.contains("hidden")) renderExport();
+    }
     toast(text, e.failed > 0 ? 9000 : TOAST_MS, e.failed > 0 ? { warn: true } : undefined);
   }
   function setAdobeEditing(map) {
@@ -3148,6 +3164,9 @@
       // O recorte e o alinhamento moram também em session.json: desfazer/refazer grava lá
       const session = sessions.find((x) => x.name === name);
       if (!session) return;
+      // (Framing travado: o recorte e o alinhamento da sessão não são regravados por um passo antigo; o alinhamento
+      // é lido de novo do app)
+      if (framingLocked(session)) { if (st.align) st.align.loaded = false; return; }
       if (st.align && alignText(st) !== (session.align || "")) alignSave(session, st);
       if (st.crop && (st.crop.ratio + "|" + st.crop.x.toFixed(3) + "|" + st.crop.y.toFixed(3)) !== (session.crop || "")) cropSave(session, st);
     });
@@ -4084,10 +4103,22 @@
   const ALIGN_ID = () => ({ dx: 0, dy: 0, scale: 1, rot: 0, base: 1 });
   function alignIsIdentity(a) { return !a || (Math.abs(a.dx) < 1e-6 && Math.abs(a.dy) < 1e-6 && Math.abs(a.scale - 1) < 1e-9 && Math.abs(a.rot) < 1e-9); }
   function alignLoad(session, st) {
-    if (st.align.loaded) return;
+    // O alinhamento também muda por fora desta janela: o recorte ajustado no Lightroom Classic vira o alinhamento da
+    // foto quando a editada chega, e volta ao de antes quando ela sai (decisão do dono, 2026-11-10). Lê de novo quando
+    // o texto que o app manda muda (e não é o que esta janela acabou de gravar).
+    const cur = sessions.find((x) => x.name === session.name) || session;
+    const host = String(cur.align || "");
+    if (st.align.loaded) {
+      if (host === st.align.host) return;
+      st.align.host = host;
+      if (host === alignText(st)) return;
+    }
+    // (mudança que veio do app, não desta janela: não vira um passo do ⌘Z do Export)
+    if (st.align.loaded) expSnap = null;
     st.align.loaded = true;
+    st.align.host = host;
     st.align.byFile = {};
-    String(session.align || "").split(";").forEach((item) => {
+    host.split(";").forEach((item) => {
       const colon = item.lastIndexOf(":");
       if (colon <= 0) return;
       const [dx, dy, scale, rot, base] = item.slice(colon + 1).split(",").map(Number);
@@ -5570,6 +5601,15 @@
         corner.appendChild(b);
       }
       if (editedFile(item)) { const b = el("span", "frame-app ed", "ED"); b.title = "Has an edited version (from Lightroom Classic)"; corner.appendChild(b); }
+      {
+        // Editada com outra proporção: não é usada (a miniatura mostra a original, com o triângulo)
+        const ph = session.photos.find((x) => x.file === item.file);
+        if (ph && ph.refused) {
+          const b = el("span", "frame-app refused"); b.innerHTML = ALERT_SVG;
+          b.title = "The edited file is " + ph.refused + " and the session is " + (ph.refusedWant || "another shape") + ": it is not used";
+          corner.appendChild(b);
+        }
+      }
       if (corner.childNodes.length) li.appendChild(corner);
       li.dataset.file = item.file;
       li.addEventListener("click", () => go(k));
@@ -5651,6 +5691,8 @@
     const total = session.photos.length;
     const lrN = Object.values(editingBySession[name] || {}).filter((x) => x === "lr").length;
     let note = null, lockNote = null;
+    // Editadas que chegaram com outra proporção (não usadas)
+    const refused = session.photos.filter((x) => x.refused);
     if (lrN) {
       const state = el("span", "lr-state" + (lrLive.has(name) ? " live" : ""));
       state.dataset.session = name;
@@ -5660,7 +5702,7 @@
       actions.appendChild(button("Done editing", () => doneEditing(session), { title: "Take the session out of Lightroom Classic: its collection leaves the catalog" }));
       note = el("div", "export-note", "Edit the photos in Lightroom Classic, then click Export to Stillpoint in the Stillpoint panel: the edited photos come back here by themselves.");
     } else if (hasEd) {
-      head.appendChild(el("span", "lr-state", session.edited + " of " + plural(total, "photo", "photos") + " edited"));
+      head.appendChild(el("span", "lr-state", session.edited + " of " + plural(total, "photo", "photos") + " edited" + (refused.length ? " · " + refused.length + " not used" : "")));
       actions.appendChild(button("Edit again in Lightroom Classic", send, { title: "Send the session to Lightroom Classic again, with its edits" }));
       actions.appendChild(button("Revert to original…", () => deleteEdits(session, []), { kind: "btn-danger", title: "Put the edited photos of this session back to the original: the edited files go to the trash" }));
       actions.appendChild(el("span", "spacer"));
@@ -5673,7 +5715,7 @@
       if (session.edited < total && showingEdited) note = el("div", "export-note lr-warn", "Only some photos are edited: edited and original frames will be mixed in the export.");
       lockNote = el("div", "export-note", "The framing of this session (" + framingWords(st) + ") stays locked in step 1 while it has edited photos.");
     } else {
-      head.appendChild(el("span", "lr-state", "Not edited"));
+      head.appendChild(el("span", "lr-state", "Not edited" + (refused.length ? " · " + refused.length + " not used" : "")));
       actions.appendChild(button("Edit in Lightroom Classic", send, { title: "Send the session to Lightroom Classic" }));
       const framing = st.crop.ratio === "asshot" ? "As shot: nothing is cut" : st.crop.ratio + ", " + placeText(st.crop.x, st.crop.y);
       note = el("div", "export-note", "Sends the " + plural(total, "photo", "photos") + " to Lightroom Classic, cut to this session's framing (" + framing + "). Edit them there, then click Export to Stillpoint in the Stillpoint panel.");
@@ -5681,6 +5723,8 @@
     box.append(head, actions);
     if (note) box.appendChild(note);
     if (lockNote) box.appendChild(lockNote);
+    refused.forEach((x) => box.appendChild(el("div", "export-note lr-warn", "Photo " + pad(x.order || 0) + ": the edited file is " + x.refused + ", but the session is " + (x.refusedWant || "another shape") +
+      ". It stays in the Edited folder and is not used. Fix the crop in Lightroom Classic and export it again.")));
     rows.appendChild(box);
   }
   // Espaço no Export › Edit: play / pause (como na janela principal); num botão com o foco, o próprio botão responde

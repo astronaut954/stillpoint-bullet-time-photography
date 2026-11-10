@@ -1891,6 +1891,32 @@ Com câmeras simuladas e o Lightroom Classic com o catálogo do projeto. A janel
       foto girada, o ângulo); passando pelas fotos, o assunto fica no mesmo lugar. Depois de **Export to Stillpoint**, as
       editadas voltam já alinhadas e do mesmo tamanho.
 - [ ] No catálogo **Self-Test**, **Stillpoint: run self-test**: o relatório tem a linha do recorte girado ("with a turned crop") sem FAIL.
+- [ ] **Recorte ajustado no Lightroom (decisões de 2026-11-10):** sessão em 1:1 no Lightroom; na ferramenta Crop, mover,
+      redimensionar ou girar o recorte de uma foto **sem mudar a proporção** e fazer algum ajuste; **Export to Stillpoint**: a
+      foto chega, o aviso diz **alignment of photo 0n updated from Lightroom Classic**, e o passo **1 Sessions** mostra a foto
+      original na posição nova (selo **1:1 · aligned**). Trocar **Original / Edited** no **2 Edit** não faz a foto pular.
+- [ ] **Revert to original** dessa foto: o alinhamento volta ao que era antes de ela ir. ⌘Z: volta o do Lightroom.
+- [ ] **Edit again in Lightroom Classic**: no Lightroom a foto abre com o recorte que a pessoa tinha deixado lá.
+- [ ] Recorte mexido e **Done editing** ou **Cancel editing** sem exportar: nada muda no Stillpoint.
+- [ ] **Proporção trocada bloqueia:** no Lightroom, mudar a proporção do recorte de uma ou duas fotos (por exemplo, de 1 x 1
+      para 3 x 2) e clicar em **Export to Stillpoint** (painel do Stillpoint): aparece a janela **Export to Stillpoint blocked:
+      n photo(s) … not 1:1**, com a lista das fotos, **now 3:2** e como corrigir; nada é exportado; as fotos erradas ficam
+      selecionadas; a caixa de estado do painel diz **Export blocked: …**. Botões: **Put back the Stillpoint crop** e **OK**.
+- [ ] **OK**, corrigir a proporção à mão (Crop, Aspect 1 x 1) e exportar de novo: funciona.
+- [ ] **Put back the Stillpoint crop**: as fotos da lista voltam ao recorte que o Stillpoint mandou; exportar de novo funciona.
+- [ ] O mesmo bloqueio em **File › Export…** com **Export To: Stillpoint**.
+- [ ] **Apply photo 0n edit to all n** (painel): copia os ajustes, mas o recorte de cada foto fica como estava.
+- [ ] **Arquivo com outra proporção salvo à mão:** exportar do Lightroom para disco (File › Export…, Hard Drive) uma foto da sessão
+      com outra proporção, com o mesmo nome do original, para dentro de `<projeto>/Edited/<sessão>/`. Em até alguns segundos
+      o Stillpoint mostra o aviso âmbar **Photo 0n · edited file not used: it is 3:2 and the session is 1:1**; no **2 Edit**, a
+      miniatura da foto continua com a original e ganha um triângulo âmbar, o bloco **Lightroom Classic** diz **… · 1 not used**
+      e tem a linha **Photo 0n: the edited file is 3:2, but the session is 1:1…**; o arquivo continua na pasta.
+- [ ] No Lightroom (aberto, no catálogo da sessão) aparece **Stillpoint did not use 1 edited photo**, com a foto selecionada.
+- [ ] Trocar o arquivo por um com a proporção certa: o triângulo e a linha somem e a foto passa a contar como editada.
+- [ ] Sessão **As shot** sem alinhamento: nenhuma conferência de proporção, nem no Lightroom nem no Stillpoint.
+- [ ] **Stillpoint: run self-test** (catálogo **Self-Test**): as linhas da seção 1b sobre a proporção ("shape check, no tolerance",
+      "crop moved and resized", "another shape", "Put back the Stillpoint crop") sem FAIL. É o teste que diz se conferir sem
+      tolerância é viável no Lightroom de verdade.
 - [ ] Janela principal: soltar na lixeira da barra de cima uma foto que tem editada também pergunta **Delete the edit or the photo?**.
 - [ ] Passo **1 Sessions**: a fileira de miniaturas mostra o recorte escolhido (muda ao trocar o **Aspect ratio**).
 - [ ] Com **1:1** (ou outra proporção) no passo 1: as miniaturas da lista de sessões (esquerda), da fileira do **2 Edit**,

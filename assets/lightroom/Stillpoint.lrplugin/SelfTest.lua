@@ -276,8 +276,48 @@ local function scenarioCrop()
 			'CropLeft=' .. tostring(now.CropLeft) .. ' CropTop=' .. tostring(now.CropTop) .. ' CropRight=' .. tostring(now.CropRight) .. ' CropBottom=' .. tostring(now.CropBottom))
 	end
 	check('... still not an edit', not Actions.hasOwnEdit(photoOf(4), nil), Actions.settingsDiff(Bridge.baseline(pathOf(4)), settingsOf(4)))
+	-- Proporção do recorte (R5, decisões do dono de 2026-11-10): sem tolerância, só a folga de 1 pixel. O que o
+	-- Lightroom devolve depois de gravar o recorte precisa passar na conferência
+	do
+		local path, sent = pathOf(4), Bridge.sentCrop(pathOf(4))
+		check('the crop Stillpoint sent is kept for the shape check', sent ~= nil and sent.width == 240 and sent.height == 160 and sent.framing == '1:1',
+			sent and (tostring(sent.width) .. ' x ' .. tostring(sent.height) .. ' ' .. tostring(sent.framing)) or 'nothing kept')
+		local problem = Bridge.shapeProblem(path, settingsOf(4))
+		check('shape check, no tolerance: the crop as sent passes (what Lightroom gives back is exact enough)', problem == nil,
+			problem and ('have ' .. problem.have .. ', want ' .. problem.want) or nil)
+		check('... and it does not count as adjusted', Bridge.cropChanged(path, settingsOf(4)) == nil, tostring(Bridge.cropChanged(path, settingsOf(4))))
+		-- A pessoa move e encolhe o recorte, sem mudar a proporção (120 x 120 -> 96 x 96, sem giro)
+		write('move crop', function() photoOf(4):applyDevelopSettings({ CropLeft = 0.2, CropTop = 0.1, CropRight = 0.6, CropBottom = 0.7, CropAngle = 0 }) end)
+		problem = Bridge.shapeProblem(path, settingsOf(4))
+		check('crop moved and resized, same shape: passes', problem == nil, problem and ('have ' .. problem.have .. ', want ' .. problem.want) or nil)
+		local changed = Bridge.cropChanged(path, settingsOf(4))
+		check('... and the new crop goes to Stillpoint (to become the alignment)', (function()
+			if not changed then return false end
+			local l, t, r, b, a = changed:match('^([%d%.%-]+)\t([%d%.%-]+)\t([%d%.%-]+)\t([%d%.%-]+)\t([%d%.%-]+)$')
+			return l ~= nil and math.abs(tonumber(l) - 0.2) < 1e-4 and math.abs(tonumber(t) - 0.1) < 1e-4 and math.abs(tonumber(r) - 0.6) < 1e-4
+				and math.abs(tonumber(b) - 0.7) < 1e-4 and math.abs(tonumber(a)) < 1e-3
+		end)(), tostring(changed))
+		check('... it counts as an edit', Actions.hasOwnEdit(photoOf(4), nil))
+		-- A mesma coisa com giro: o recorte girado 5 graus de antes, 10% menor em volta do mesmo centro
+		write('turned crop, smaller', function() photoOf(4):applyDevelopSettings({ CropLeft = 0.2562467, CropTop = 0.1932, CropRight = 0.7437533, CropBottom = 0.8068, CropAngle = 5 }) end)
+		problem = Bridge.shapeProblem(path, settingsOf(4))
+		check('turned crop resized, same shape: passes', problem == nil, problem and ('have ' .. problem.have .. ', want ' .. problem.want) or nil)
+		-- Proporção trocada (3:2): bloqueia; "Put back the Stillpoint crop" devolve o recorte mandado
+		write('3:2 crop', function() photoOf(4):applyDevelopSettings({ CropLeft = 0.25, CropTop = 0.25, CropRight = 0.75, CropBottom = 0.75, CropAngle = 0 }) end)
+		problem = Bridge.shapeProblem(path, settingsOf(4))
+		check('another shape (3:2 in a 1:1 session): caught', problem ~= nil and problem.have == '3:2' and problem.want == '1:1',
+			problem and ('have ' .. problem.have .. ', want ' .. problem.want) or 'passed')
+		dialogs({ 'other' })
+		local blocked = Actions.shapeBlock({ { photo = photoOf(4), place = Actions.placeOf(photoOf(4)) } })
+		check('Export to Stillpoint is blocked, with the alert', blocked == true and seenTitle('confirm', 'Export to Stillpoint blocked: 1 photo is not 1:1'), seenText())
+		check('Put back the Stillpoint crop: the shape is right again', Bridge.shapeProblem(path, settingsOf(4)) == nil)
+		check('... and the crop is the one Stillpoint sent', Bridge.cropChanged(path, settingsOf(4)) == nil, tostring(Bridge.cropChanged(path, settingsOf(4))))
+		check('... not an edit anymore', not Actions.hasOwnEdit(photoOf(4), nil), Actions.settingsDiff(Bridge.baseline(pathOf(4)), settingsOf(4)))
+		dialogs()
+	end
 	-- Sem recorte (Send as shot): a foto volta inteira
 	openSession('as shot', 'framing=asshot\n')
+	check('as shot: no shape check for the session', Bridge.sentCrop(pathOf(4)) == nil)
 	w, h = croppedSize(4)
 	check('as shot: photo 04 whole again (240 x 160)', w == 240 and h == 160, tostring(w) .. ' x ' .. tostring(h))
 	check('... and not an edit', not Actions.hasOwnEdit(photoOf(4), nil), Actions.settingsDiff(Bridge.baseline(pathOf(4)), settingsOf(4)))

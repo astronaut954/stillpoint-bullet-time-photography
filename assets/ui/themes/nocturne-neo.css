@@ -2096,6 +2096,9 @@ html.kbd-focus .export-tab.on .export-tab-check input:focus + .save-check { outl
 .edit-view button { height: 26px; padding: 0 10px; font-size: 10px; }
 /* Selo "ED" na miniatura: a foto tem editada (verde, sem bolinha) */
 .frame-app.ed { color: var(--noct-primary); border-color: var(--noct-primary); }
+/* Editada com outra proporção (não usada): triângulo âmbar no canto da miniatura */
+.frame-app.refused { color: var(--noct-pending); border-color: var(--noct-pending); display: inline-flex; padding: 1px 2px; }
+.frame-app.refused svg { width: 11px; height: 11px; }
 /* Bloco "Lightroom Classic": o estado da sessão e os botões dele */
 .lr-block { border: 1px solid var(--noct-border); background: var(--noct-surface-inner); padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
 .lr-block .lr-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }

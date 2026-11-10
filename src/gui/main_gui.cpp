@@ -830,6 +830,8 @@ namespace
                 Json item("photo");
                 item.Add("file", photo.file).Add("order", photo.order)
                     .Add("camera", photo.camera).Add("previewable", photo.previewable).Add("edited", photo.edited);
+                if (!photo.refused.empty())
+                    item.Add("refused", photo.refused).Add("refusedWant", photo.refusedWant);
                 photos += (i ? "," : "") + item.Str();
             }
             photos += "]";
@@ -2432,6 +2434,9 @@ namespace
         // Cancel editing no painel do Lightroom: a hora do recado, por sessão. Enquanto o alive.txt for de antes dela, a
         // coleção que ainda aparece nele não conta como "voltou"
         std::map<std::string, long long> lrCancelledAt;
+        std::string editedStamp;         // pastas de Edited/ da última olhada
+        bool editedStampKnown = false;
+        std::chrono::steady_clock::time_point editedChecked{};
         window.bind("adobeLive", [&](const std::string&) -> std::string
         {
             const auto alive = Adobe::ReadAlive();
@@ -2634,6 +2639,117 @@ namespace
                         Log("Lightroom Classic: " + std::to_string(clearedCount) + " photo(s) of " + session
                             + " have no edit in Lightroom anymore: their edited files went to the trash" + (error.empty() ? "" : " (" + error + ")"));
                     }
+                    std::string alignedList = "[";
+                    {
+                        // O recorte que a pessoa ajustou no Lightroom (mesma proporção: movido, redimensionado ou girado)
+                        // vira o alinhamento da foto (decisão do dono, 2026-11-10). Fica em "alignLr" e vale enquanto a
+                        // foto tiver editada; a foto exportada sem recorte ajustado perde o que tinha de antes.
+                        const auto stem = [](const std::string& name)
+                        {
+                            std::string s = name.substr(0, name.rfind('.'));
+                            for (char& c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+                            return s;
+                        };
+                        std::map<std::string, std::string> cropBy;  // nome-base -> "esq<TAB>topo<TAB>dir<TAB>base<TAB>ângulo"
+                        for (auto [it, end] = message.equal_range("crop"); it != end; ++it)
+                        {
+                            const size_t tab = it->second.find('\t');
+                            if (tab != std::string::npos && tab > 0) cropBy[stem(it->second.substr(0, tab))] = it->second.substr(tab + 1);
+                        }
+                        std::set<std::string> arrived;
+                        for (auto [it, end] = message.equal_range("file"); it != end; ++it)
+                            if (!it->second.empty()) arrived.insert(stem(it->second));
+                        const auto before = store.ListSessions();
+                        const auto cur = std::find_if(before.begin(), before.end(), [&](const StoredSession& x) { return x.name == session; });
+                        if (cur != before.end() && (!cropBy.empty() || !arrived.empty()))
+                        {
+                            std::map<std::string, std::string> items;
+                            {
+                                std::stringstream parts(store.AlignLr(session));
+                                for (std::string item; std::getline(parts, item, ';');)
+                                {
+                                    const size_t colon = item.rfind(':');
+                                    if (colon != std::string::npos && colon > 0) items[item.substr(0, colon)] = item.substr(colon + 1);
+                                }
+                            }
+                            const std::string was = store.AlignLr(session);
+                            for (auto it = items.begin(); it != items.end();)
+                                it = arrived.count(stem(it->first)) && !cropBy.count(stem(it->first)) ? items.erase(it) : std::next(it);
+                            if (!cropBy.empty())
+                            {
+                                // O canvas da sessão, como no Edit in Lightroom Classic e na exportação
+                                const auto dir = store.SessionDir(session);
+                                std::string ratio = "asshot";
+                                double posX = 0.5, posY = 0.5;
+                                {
+                                    std::stringstream parts(cur->crop);
+                                    std::string a, b, c;
+                                    std::getline(parts, a, '|'); std::getline(parts, b, '|'); std::getline(parts, c, '|');
+                                    if (!a.empty()) ratio = a;
+                                    try { if (!b.empty()) posX = std::stod(b); if (!c.empty()) posY = std::stod(c); } catch (...) {}
+                                }
+                                Export::Framing framing;
+                                framing.ratio = Export::RatioValue(ratio) > 0 ? ratio : std::string();
+                                framing.posX = posX; framing.posY = posY;
+                                std::map<std::string, std::string> perGroup;
+                                for (const auto& photo : cur->photos)
+                                {
+                                    if (!photo.previewable) continue;
+                                    const std::string group = PhotoGroup(photo);
+                                    if (!perGroup.count(group) || IsJpegPhoto(photo.file)) perGroup[group] = photo.file;
+                                }
+                                const auto aligns = Export::ParseAlign(cur->align);
+                                std::vector<std::pair<int, int>> sizes;
+                                std::vector<std::string> files;
+                                bool allSizes = !perGroup.empty();
+                                for (const auto& [group, file] : perGroup)
+                                {
+                                    auto it = aligns.find(file);
+                                    framing.align.push_back(it == aligns.end() ? Export::Align() : it->second);
+                                    int w = 0, h = 0;
+                                    if (!Export::PhotoSize(dir / file, w, h)) { w = 0; h = 0; allSizes = false; }
+                                    sizes.push_back({ w, h });
+                                    files.push_back(file);
+                                }
+                                if (allSizes && Export::ComputeCommonFrame(framing, sizes))
+                                {
+                                    bool firstAligned = true;
+                                    for (size_t k = 0; k < files.size(); ++k)
+                                    {
+                                        const auto at = cropBy.find(stem(files[k]));
+                                        if (at == cropBy.end()) continue;
+                                        double v[5] = { 0, 0, 1, 1, 0 };
+                                        {
+                                            std::stringstream nums(at->second);
+                                            size_t i = 0;
+                                            for (std::string n; i < 5 && std::getline(nums, n, '\t'); ++i)
+                                                try { v[i] = std::stod(n); } catch (...) {}
+                                        }
+                                        Export::Align a;
+                                        if (!Export::AlignFromCrop(framing, sizes[k].first, sizes[k].second, v[0], v[1], v[2], v[3], v[4], a)) continue;
+                                        char text[160];
+                                        if (std::abs(a.dx) < 0.005) a.dx = 0;  // (sem "-0.00")
+                                        if (std::abs(a.dy) < 0.005) a.dy = 0;
+                                        if (std::abs(a.rot) < 0.0005) a.rot = 0;
+                                        std::snprintf(text, sizeof(text), "%.2f,%.2f,%.5f,%.3f,%.5f", a.dx, a.dy, a.scale, a.rot,
+                                            framing.align[k].base > 0 ? framing.align[k].base : 1.0);
+                                        items[files[k]] = text;
+                                        const auto ph = std::find_if(cur->photos.begin(), cur->photos.end(), [&](const StoredPhoto& p) { return p.file == files[k]; });
+                                        alignedList += (firstAligned ? "" : ",") + std::to_string(ph != cur->photos.end() ? ph->order : static_cast<int>(k) + 1);
+                                        firstAligned = false;
+                                    }
+                                }
+                            }
+                            std::string text;
+                            for (const auto& [file, values] : items) text += (text.empty() ? "" : ";") + file + ":" + values;
+                            if (text != was)
+                            {
+                                store.SetAlignLr(session, text);
+                                Log("Lightroom Classic: the crop adjusted there is now the alignment of " + session);
+                            }
+                        }
+                    }
+                    alignedList += "]";
                     const auto sessions = store.ListSessions();
                     int count = 0, failed = 0;
                     try { count = std::stoi(Adobe::MessageValue(message, "count")); } catch (...) {}
@@ -2662,12 +2778,67 @@ namespace
                         }
                     }
                     exported += (firstExport ? "" : ",") + Json().Add("finished", finished).Add("session", session).Add("count", count).Add("failed", failed).Add("cleared", clearedCount)
-                        .Add("edited", edited).Add("total", total).Add("found", s != sessions.end()).Str();
+                        .Add("edited", edited).Add("total", total).Add("found", s != sessions.end()).Raw("aligned", alignedList).Str();
                     firstExport = false;
                 }
                 emitSessions();
                 emitEditing();
             }
+            // Editadas que apareceram (ou saíram) na pasta Edited por fora do plugin: a lista de sessões se atualiza. E
+            // as que chegaram com outra proporção não são usadas: avisa aqui (uma vez por arquivo) e manda o recado ao
+            // Lightroom (decisão do dono, 2026-11-10)
+            std::string refusedList = "[";
+            if (project.IsOpen() && std::chrono::steady_clock::now() - editedChecked >= std::chrono::seconds(2))
+            {
+                editedChecked = std::chrono::steady_clock::now();
+                const std::string stamp = store.EditedStamp();
+                const bool changed = stamp != editedStamp;
+                if (changed && editedStampKnown && exports.empty())
+                    emitSessions();
+                if (changed || !editedStampKnown)
+                {
+                    editedStamp = stamp;
+                    editedStampKnown = true;
+                    const fs::path seenFile = Adobe::BridgeFolder() / "refused-seen.txt";
+                    std::set<std::string> seen, now;
+                    {
+                        std::ifstream in(seenFile);
+                        for (std::string line; std::getline(in, line);)
+                            if (!line.empty()) seen.insert(line);
+                    }
+                    bool firstRefused = true;
+                    for (const auto& s : store.ListSessions())
+                    {
+                        if (!s.inProject) continue;
+                        std::vector<std::filesystem::path> fresh;
+                        std::string numbers, have, want;
+                        for (const auto& p : s.photos)
+                        {
+                            if (p.refused.empty()) continue;
+                            const std::string key = s.name + "|" + p.file + "|" + p.refused;
+                            now.insert(key);
+                            if (seen.count(key)) continue;
+                            fresh.push_back(store.SessionDir(s.name) / p.file);
+                            char number[16];
+                            std::snprintf(number, sizeof(number), "%02d", p.order);
+                            numbers += (numbers.empty() ? "" : ", ") + std::string(number);
+                            have = p.refused; want = p.refusedWant;
+                        }
+                        if (fresh.empty()) continue;
+                        Log("Edited file not used: photo " + numbers + " of " + s.name + " is " + have + " and the session is " + want);
+                        Adobe::QueueNotice(s.name, s.label.empty() ? s.name : s.label, fresh, numbers, have, want);
+                        refusedList += (firstRefused ? "" : ",") + Json().Add("session", s.name).Add("numbers", numbers)
+                            .Add("count", static_cast<int>(fresh.size())).Add("have", have).Add("want", want).Str();
+                        firstRefused = false;
+                    }
+                    if (now != seen)
+                    {
+                        std::ofstream out(seenFile, std::ios::binary | std::ios::trunc);
+                        for (const auto& key : now) out << key << "\n";
+                    }
+                }
+            }
+            refusedList += "]";
             std::string goTo;
             // Editadas que chegaram do Lightroom: o Stillpoint vem para a frente com a sessão aberta (pedido do dono, 2026-11-06)
             if (!exports.empty())
@@ -2696,7 +2867,7 @@ namespace
             if (!goTo.empty())
                 if (auto native = window.window(); native.ok())
                     NativeWindow::Show(native.value());
-            return Json("adobeLive").Add("running", alive.fresh).Raw("sessions", list + "]").Raw("exported", exported + "]").Add("goto", goTo).Raw("back", backList + "]").Raw("gone", goneList + "]")
+            return Json("adobeLive").Add("running", alive.fresh).Raw("sessions", list + "]").Raw("exported", exported + "]").Raw("refused", refusedList).Add("goto", goTo).Raw("back", backList + "]").Raw("gone", goneList + "]")
                 .Raw("restoredBack", restoredBackList + "]").Raw("cancelled", cancelledList + "]").Str();
         });
         // adobeEditing(): as fotos que estão no Lightroom/Photoshop, por sessão
@@ -2977,6 +3148,12 @@ namespace
                     {
                         byCanvas = true;
                         if (target <= 0) r.framing = "aligned";
+                        {
+                            // O canvas com que a sessão vai: a conferência das editadas que chegarem usa a forma dele
+                            char canvas[96];
+                            std::snprintf(canvas, sizeof(canvas), "%.3f,%.3f|", framing.commonW, framing.commonH);
+                            store.SetLrCanvas(args[0], canvas + ratio);
+                        }
                         for (const auto& [group, file] : PhotosForEditing(*session))
                         {
                             const auto path = dir / file;
@@ -2994,6 +3171,8 @@ namespace
                         }
                     }
                 }
+                if (!byCanvas)
+                    store.SetLrCanvas(args[0], "");
                 if (target > 0 && !byCanvas)
                     for (const auto& path : r.photos)
                     {
@@ -3004,6 +3183,7 @@ namespace
                         const double have = static_cast<double>(w) / h;
                         Adobe::Request::Crop crop;
                         crop.photo = path;
+                        crop.width = w; crop.height = h;
                         if (std::abs(have - want) >= 0.005)
                         {
                             int nw = w, nh = h;

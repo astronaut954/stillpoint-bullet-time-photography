@@ -855,6 +855,17 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    "Revert to original" no Export. O passo 1 e o Align photos usam sempre as originais. O alinhamento vai para o
    Lightroom como recorte por foto (com ângulo) e as editadas voltam alinhadas; no Export elas só são redimensionadas.
    Inferência ainda sem teste no Lightroom real: o sentido do ângulo do recorte (CropAngle).
+   Depois (2026-11-10, protótipo "Ajuste de recorte no Lightroom (R5)" e decisões do dono): o recorte ajustado no
+   Lightroom com a mesma proporção (movido, redimensionado, girado) vira o alinhamento da foto no Stillpoint
+   ("alignLr" em session.json: vale enquanto a foto tem editada; Revert to original e ⌘Z voltam ao de antes).
+   Proporção trocada bloqueia o Export to Stillpoint (painel e File › Export) com um alerta e os botões OK e
+   Put back the Stillpoint crop; sem tolerância, só a folga de 1 pixel do arredondamento. Editada que chega na
+   pasta Edited com outra proporção (salva por fora do plugin) fica na pasta e não é usada, com aviso, triângulo na
+   miniatura, linha no bloco Lightroom Classic e recado ao Lightroom (notice-*.txt). "As shot" sem alinhamento
+   não é conferida. Apply photo edit to all não copia mais o recorte. O Stillpoint olha as pastas de Edited a
+   cada 2 s para notar arquivos salvos por fora. Não coberto: foto girada 90° dentro do Lightroom.
+   Inferências sem teste no Lightroom real: a leitura do recorte com precisão para conferir sem tolerância (o
+   autoteste do plugin tem os casos), a seleção das fotos erradas e a janela do alerta desenhada pelo plugin.
    Feito em 2026-11-06: bolinha âmbar pulsando nas miniaturas e na prévia grande das fotos que estão no Lightroom;
    a coleção do Lightroom refeita na ordem do Stillpoint quando uma foto volta; Delete edits e o ⌘Z dele em fila, na ordem.
 6. **Etapa 21 — Histórico de edição permanente.** Pedido do dono (2026-11-01): um histórico no estilo

@@ -15,6 +15,9 @@ struct StoredPhoto
     std::string camera;  // nome da câmera (T7_1...)
     bool previewable = true; // JPEG ou RAW (prévia embutida no arquivo)
     bool edited = false;     // tem versão editada em <Project>/Edited/<sessão>/
+    // Há um arquivo na pasta Edited com outra proporção (ex.: "3:2"): não é usado (decisão do dono, 2026-11-10);
+    // refusedWant = a proporção da sessão (ex.: "1:1")
+    std::string refused, refusedWant;
 };
 
 // Item da lixeira (etapa 20): uma sessão inteira ou fotos de uma sessão, guardadas por 15 dias.
@@ -106,6 +109,15 @@ public:
     bool SetLabel(const std::string& session, const std::string& label) const;
     bool SetCrop(const std::string& session, const std::string& crop) const;  // Parte 4 da Proporção
     bool SetAlign(const std::string& session, const std::string& align) const;  // pedaço 2 do Framing
+    // Alinhamento que veio do Lightroom Classic (o recorte ajustado lá; decisão do dono, 2026-11-10), no mesmo texto
+    // do "align", em session.json ("alignLr"). Vale só para as fotos que têm editada: ListSessions já devolve o
+    // "align" com ele por cima; sem a editada (Revert to original, ⌘Z) volta a valer o que era antes de a foto ir.
+    std::string AlignLr(const std::string& session) const;
+    bool SetAlignLr(const std::string& session, const std::string& align) const;
+    // O canvas com que a sessão foi para o Lightroom ("largura,altura|proporção"): a conferência das editadas usa
+    bool SetLrCanvas(const std::string& session, const std::string& canvas) const;
+    // Muda quando entra ou sai arquivo de alguma pasta de Edited/ (para notar editadas salvas por fora do plugin)
+    std::string EditedStamp() const;
     bool WriteSessionInfo(const std::string& session, const std::string& jsonText) const;
     // Arquivo editado de uma foto (em Edited/<sessão>/, mesmo nome-base, o mais recente); vazio se não houver
     std::filesystem::path EditedFile(const std::string& session, const std::string& file) const;
@@ -187,6 +199,8 @@ private:
     void ReadSessions(const std::filesystem::path& base, bool inProject, std::vector<StoredSession>& out) const;
 
     std::filesystem::path root;
+    std::filesystem::path EditedFilePick(const std::string& session, const std::string& file) const;
+    std::string RefusedLabel(const std::string& session, const std::filesystem::path& edited, std::string* want) const;
     std::filesystem::path projectRoot;    // <Project>/Originals (vazio = sem Project)
     std::filesystem::path projectEdited;  // <Project>/Edited
 };

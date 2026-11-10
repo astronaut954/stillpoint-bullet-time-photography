@@ -953,6 +953,22 @@ namespace Export
         frame.pixels = std::move(out); frame.width = W; frame.height = H;
     }
 
+    bool AlignFromCrop(const Framing& framing, int w, int h, double left, double top, double right, double bottom, double angle, Align& out)
+    {
+        if (!framing.Canvas() || w <= 0 || h <= 0) return false;
+        const double rad = angle * kPi / 180.0, cs = std::cos(rad), sn = std::sin(rad);
+        const double u1 = left * w - w / 2.0, v1 = top * h - h / 2.0, u2 = right * w - w / 2.0, v2 = bottom * h - h / 2.0;
+        const double across = (u2 - u1) * cs - (v2 - v1) * sn;  // largura do recorte, em pixels da foto
+        if (across < 1) return false;
+        out = Align();
+        out.scale = framing.commonW / across;
+        out.rot = angle;
+        out.dx = framing.commonX - out.scale * (u1 * cs - v1 * sn);
+        out.dy = framing.commonY - out.scale * (u1 * sn + v1 * cs);
+        out.base = out.scale;
+        out.touched = true;
+        return true;
+    }
     bool CanvasCrop(const Framing& framing, size_t k, int w, int h, CropBox& out)
     {
         if (!framing.Canvas() || k >= framing.align.size() || w <= 0 || h <= 0) return false;

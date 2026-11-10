@@ -8,6 +8,7 @@ Confere o que o Stillpoint faz com o que vem do Lightroom: etiquetas In Lightroo
 
 Relatório em build/host-test/report.txt (e capturas de tela de cada falha ao lado).
 """
+from PIL import Image
 import json
 import os
 import shutil
@@ -317,7 +318,7 @@ def check(t, name, ok, detail=None):
         line("PASS  " + name)
     else:
         failed += 1
-        line("FAIL  " + name + ("   [%s]" % detail if detail is not None else ""))
+        line("FAIL  " + name + ("   [%s]" % (detail,) if detail is not None else ""))
         line("      screenshot: " + t.shot(name))
     return ok
 
@@ -696,7 +697,7 @@ def scenario_export_trash(t, name, photos):
     turned = t.lr.crops.get(ph[0]) or ()
     check(t, "the turned photo goes to Lightroom with its own crop and the angle (5 degrees)", len(turned) == 7 and abs(turned[4] - 5) < 0.01, [list(turned), (t.session(s) or {}).get("align"), sorted(t.lr.crops)[-4:], ph[0]])
     other = t.lr.crops.get(ph[1]) or ()
-    check(t, "... and the others with the crop of the common area, no angle", len(other) == 4 and other != (0.0, 0.0, 1.0, 1.0), list(other))
+    check(t, "... and the others with the crop of the common area, no angle", len(other) == 7 and other[4] == 0 and other[:4] != (0.0, 0.0, 1.0, 1.0), list(other))
     step1 = lambda: (t.js("() => document.querySelector('#exportSteps .export-step').click()"), time.sleep(0.7))
     lock = lambda: t.js("""() => ({ note: (document.querySelector('#exportSettings .lock-note') || {}).textContent || '',
         seg: [...document.querySelectorAll('#exportSettings .segmented button')].some(b => /^(1:1|16:9|As shot)$/.test(b.textContent.trim()) && !b.disabled),
@@ -769,6 +770,99 @@ def scenario_export_trash(t, name, photos):
     time.sleep(0.3)
 
 
+def scenario_lightroom_crop(t, name, photos):
+    line("\n== 12. Crop adjusted in Lightroom becomes the alignment; an edited file with another shape is not used")
+    s = t.shoot()
+    if not s:
+        check(t, "a new session for this scenario", False)
+        return
+    t.dismiss()
+    o = t.originals(s)
+    ph = sorted(os.path.join(o, f) for f in os.listdir(o) if not f.startswith(".") and f != "session.json")
+    f2 = os.path.basename(ph[1])
+    t.page.click("#saveBtn")
+    t.wait(lambda: t.export_open(), 5)
+    time.sleep(0.5)
+    t.js("() => { const b = document.querySelector('#exportSteps .export-step'); if (!b.classList.contains('on')) b.click(); }")
+    time.sleep(0.4)
+    t.js("() => document.getElementById('exportUnselectAll').click()")
+    t.js("(n) => document.querySelector('#exportList li.export-item[data-name=\"' + n + '\"] .export-check input').click()", s)
+    time.sleep(0.3)
+    t.export_edit(s)
+
+    def send(first):
+        t.lr_block_button("Edit")
+        if first and t.wait(lambda: t.dialog_title() == "Crop before Lightroom Classic?", 2):
+            t.dialog_click("Crop to")
+        t.wait(lambda: t.edit_tag(s), 15)
+        time.sleep(0.5)
+
+    send(True)
+    sent = t.lr.crops.get(ph[1]) or ()
+    check(t, "the photo goes to Lightroom with its crop and its size (for the shape check)", len(sent) == 7 and sent[5] > 0 and sent[6] > 0, list(sent))
+    if len(sent) != 7:
+        return
+    align0 = (t.session(s) or {}).get("align", "")
+    # A pessoa move o recorte da foto 02 no Lightroom (mesmo tamanho, 3% para o lado que tem espaço) e exporta
+    d = 0.03 if sent[2] + 0.03 <= 1 else -0.03
+    if not (0 <= sent[0] + d and sent[2] + d <= 1):
+        d = 0.0
+        moved = (sent[0] + 0.02, sent[1] + 0.02, sent[2] - 0.02, sent[3] - 0.02, 0.0)  # sem espaço para os lados: menor
+    else:
+        moved = (sent[0] + d, sent[1], sent[2] + d, sent[3], 0.0)
+    t.lr.set_edit(ph[1], (40, 150, 210))
+    t.lr.export(o, t.project, s, crops={ph[1]: moved})
+    check(t, "Export to Stillpoint with the crop moved: the alignment of photo 02 changes in Stillpoint",
+          t.wait(lambda: f2 + ":" in str((t.session(s) or {}).get("align", "")) and (t.session(s) or {}).get("align", "") != align0, 12), (t.session(s) or {}).get("align"))
+    check(t, "... and the toast says so", t.wait(lambda: "alignment of photo 02 updated from Lightroom Classic" in (t.js("() => document.getElementById('toast').textContent") or ""), 6),
+          t.js("() => document.getElementById('toast').textContent"))
+    check(t, "... the photo counts as edited (same shape: it is used)", (t.session(s) or {}).get("edited") == 1, (t.session(s) or {}).get("edited"))
+    align1 = (t.session(s) or {}).get("align", "")
+    # Ida e volta: mandar de novo leva ao Lightroom o mesmo recorte que a pessoa deixou
+    t.wait(lambda: not t.edit_tag(s), 10)
+    t.export_edit(s)
+    send(False)
+    back = t.lr.crops.get(ph[1]) or ()
+    close = len(back) == 7 and all(abs(back[i] - moved[i]) < 2e-4 for i in range(4)) and abs(back[4]) < 1e-3
+    check(t, "Edit again in Lightroom Classic: photo 02 goes with the crop the person left there", close, [list(back), list(moved)])
+    t.lr_block_button("Done editing")
+    t.wait(lambda: not t.edit_tag(s), 10)
+    time.sleep(0.5)
+    # Revert to original: o alinhamento volta ao de antes de a foto ir; ⌘Z traz o do Lightroom de volta
+    t.lr_block_button("Revert to original")
+    t.wait(lambda: t.dialog_title().startswith("Revert 1 photo"), 3)
+    t.dialog_click("Revert to original")
+    check(t, "Revert to original: the alignment goes back to what it was before the photo went",
+          t.wait(lambda: (t.session(s) or {}).get("edited") == 0 and (t.session(s) or {}).get("align", "") == align0, 8), (t.session(s) or {}).get("align"))
+    t.undo()
+    check(t, "⌘Z: the edited photo and the alignment from Lightroom come back",
+          t.wait(lambda: (t.session(s) or {}).get("edited") == 1 and (t.session(s) or {}).get("align", "") == align1, 8), [(t.session(s) or {}).get("align"), align1, (t.session(s) or {}).get("edited")])
+    # Um arquivo salvo à mão na pasta Edited com outra proporção: não é usado
+    ed = os.path.join(t.project, "Edited", s)
+    f3 = os.path.splitext(os.path.basename(ph[2]))[0] + ".jpg"
+    want = t.lr.shape(sent)
+    wrong = (200, 100) if abs(want[0] / want[1] - 2.0) > 0.2 else (100, 100)
+    Image.new("RGB", wrong, (200, 60, 60)).save(os.path.join(ed, f3), quality=85)
+    ref = lambda: next((p.get("refused") for p in (t.session(s) or {}).get("photos", []) if p["order"] == 3), None)
+    check(t, "a file saved by hand with another shape: photo 03 is marked, not counted as edited",
+          t.wait(lambda: bool(ref()), 10) and (t.session(s) or {}).get("edited") == 1, (ref(), (t.session(s) or {}).get("edited")))
+    check(t, "... the toast warns", t.wait(lambda: "edited file not used" in (t.js("() => document.getElementById('toast').textContent") or ""), 6),
+          t.js("() => document.getElementById('toast').textContent"))
+    notices = [f for f in os.listdir(t.lr.bridge) if f.startswith("notice-")]
+    text = open(os.path.join(t.lr.bridge, notices[0])).read() if notices else ""
+    check(t, "... and a notice goes to Lightroom (photo, shapes)", "photo=" + ph[2] in text and "have=" in text and "want=" in text and "end=1" in text, text)
+    t.export_edit(s)
+    time.sleep(0.8)
+    check(t, "... Edit: the triangle on thumbnail 03", t.wait(lambda: t.js("() => !!document.querySelector('#exportSettings .export-strip > li:nth-child(3) .frame-app.refused')"), 5))
+    block = t.js("() => document.querySelector('#exportSettings .lr-block').textContent") or ""
+    check(t, "... and the line in the Lightroom Classic box", "1 not used" in block and "Photo 03: the edited file is" in block, block)
+    # O arquivo certo no lugar: passa a valer
+    Image.new("RGB", (max(1, round(want[0] / 4)), max(1, round(want[1] / 4))), (60, 200, 60)).save(os.path.join(ed, f3), quality=85)
+    check(t, "the file replaced by one with the right shape: photo 03 is edited, no mark",
+          t.wait(lambda: not ref() and (t.session(s) or {}).get("edited") == 2, 10), (ref(), (t.session(s) or {}).get("edited")))
+    t.close_export()
+
+
 def dismiss_delete(self):
     if self.js("() => !document.getElementById('dialogOverlay').classList.contains('hidden')"):
         self.js("() => { const b = [...document.querySelectorAll('#dialogActions button')].find(x => /^Delete/.test(x.textContent.trim())); b && b.click(); }")
@@ -793,7 +887,7 @@ def main():
                 only = os.environ.get("STILLPOINT_TEST_ONLY", "")  # para depurar: só os cenários com este nome
                 for sc in [x for x in (scenario_cleared, scenario_delete_edit_undo, scenario_photo_delete_restore,
                            scenario_remove_from_collection, scenario_delete_session, scenario_cancel, scenario_rapid_in_lightroom, scenario_crop_before_lightroom,
-                           scenario_export_edit, scenario_export_trash) if only in x.__name__]:
+                           scenario_export_edit, scenario_export_trash, scenario_lightroom_crop) if only in x.__name__]:
                     try:
                         sc(t, name, photos)
                     except Exception:  # noqa: BLE001

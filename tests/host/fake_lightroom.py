@@ -179,9 +179,20 @@ class FakeLightroom:
         with self.lock:
             self.edit[path] = value
 
-    def export(self, session_dir, root, session):
+    def shape(self, crop):
+        """Largura e altura (em pixels da foto) do recorte: (esq, topo, dir, base, ângulo, largura, altura)."""
+        import math
+        l, t, r, b, angle, w, h = crop
+        rad = math.radians(angle)
+        dx, dy = (r - l) * w, (b - t) * h
+        return abs(dx * math.cos(rad) - dy * math.sin(rad)), abs(dx * math.sin(rad) + dy * math.cos(rad))
+
+    def export(self, session_dir, root, session, crops=None):
         """Export to Stillpoint (o painel): a sessão inteira; só as fotos com edição vão; as sem edição que têm
-        editada no Stillpoint mandam tirá-la (cleared=); complete=1."""
+        editada no Stillpoint mandam tirá-la (cleared=); complete=1. crops: {foto: (esq, topo, dir, base, ângulo)}
+        = o recorte que a pessoa ajustou no Lightroom (vai no recado; a editada sai com a forma dele). Sem isso, a
+        editada sai com a forma do recorte que o Stillpoint mandou."""
+        crops = crops or {}
         with self.lock:
             edited_dir = os.path.join(root, "Edited", session)
             os.makedirs(edited_dir, exist_ok=True)
@@ -192,12 +203,21 @@ class FakeLightroom:
                 target = os.path.join(edited_dir, base + ".jpg")
                 if self.edit.get(p) is not None:
                     color = self.edit[p]
-                    Image.new("RGB", (120, 80), color).save(target, quality=85)
+                    size = (120, 80)
+                    sent = self.crops.get(p) or ()
+                    if len(sent) == 7:
+                        now = tuple(crops[p]) + tuple(sent[5:]) if p in crops else sent
+                        cw, ch = self.shape(now)
+                        if cw > 0 and ch > 0:
+                            size = (max(1, round(cw / 4)), max(1, round(ch / 4)))
+                    Image.new("RGB", size, color).save(target, quality=85)
                     files.append(os.path.basename(target))
                 elif os.path.exists(target):
                     cleared.append(os.path.basename(p))
             lines = ["session=" + session, "project=" + root, "count=%d" % len(files), "failed=0", "color=AdobeRGB", "complete=1"]
-            lines += ["file=" + f for f in files] + ["cleared=" + c for c in cleared]
+            lines += ["file=" + f for f in files]
+            lines += ["crop=%s\t%.7f\t%.7f\t%.7f\t%.7f\t%.5f" % ((os.path.basename(p),) + tuple(crops[p])) for p in photos if p in crops and self.edit.get(p) is not None]
+            lines += ["cleared=" + c for c in cleared]
             self.message("exported", lines)
             self.note("export %s: %d files, cleared %s" % (session, len(files), cleared))
             return files, cleared
