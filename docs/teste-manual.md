@@ -1744,6 +1744,11 @@ com rótulo em uma sessão, ex.: "Pose 7").
       `powershell -ExecutionPolicy Bypass -File tests\lightroom\run_selftest.ps1` (Windows). Abre o Lightroom no catálogo de
       teste (o último em que o autoteste rodou), pede o autoteste ao plugin e mostra o relatório. Precisa do plugin novo:
       abrir o Stillpoint uma vez antes.
+- [ ] **Teste que junta o Stillpoint e o Lightroom de verdade (2026-11-10):** com o Stillpoint e o Lightroom fechados,
+      `bash tests/e2e/run_e2e.sh` (Mac) ou `powershell -ExecutionPolicy Bypass -File tests\e2e\run_e2e.ps1` (Windows). O
+      Stillpoint abre no projeto de teste (`build/self-test-project`, só nessa rodada), abre o Lightroom no catálogo dele e
+      roda sozinho: sessão nova em 1:1, recorte movido virando alinhamento, Edit again, bloqueio da proporção e Put back,
+      Revert to original e o ⌘Z, arquivo recusado. Não clicar em nada durante o teste. No fim: "n passed, 0 failed".
 - [ ] O relatório tem a seção **9b. Crop adjusted in Lightroom: the whole way** (bloqueio pelo painel e pelo File › Export…,
       Put back the Stillpoint crop, recorte ajustado no recado, Apply sem recorte, recado do arquivo recusado) sem FAIL.
 

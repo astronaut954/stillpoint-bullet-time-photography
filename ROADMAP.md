@@ -870,6 +870,12 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    (tests/lightroom/run_selftest.sh e .ps1: o arquivo selftest-request.txt na pasta da conversa dispara o teste).
    Autoteste no Lightroom de verdade (Mac, 2026-11-10, 141 de 142): a conferência de proporção sem tolerância
    funciona; o sinal do ângulo do recorte do Lightroom é o contrário do do Stillpoint (corrigido no plugin).
+   Teste que junta o Stillpoint e o Lightroom de verdade (tests/e2e; decisões do dono de 2026-11-10): com
+   STILLPOINT_E2E no ambiente, o app abre o projeto de teste só nessa rodada (settings.txt não muda), roda o roteiro
+   tests/e2e/e2e.js dentro da página e manda comandos de teste ao plugin (TestCmd.lua, só em catálogo "Self-Test").
+   O roteiro é conferido no Linux contra o Lightroom de mentira (tests/e2e/check_linux.py, 30 de 30).
+   O alinhamento vindo do Lightroom fica enquanto a foto tem editada (não sai mais numa exportação sem recorte
+   ajustado); sai quando a foto vai de novo ao Lightroom sem editada.
    Feito em 2026-11-06: bolinha âmbar pulsando nas miniaturas e na prévia grande das fotos que estão no Lightroom;
    a coleção do Lightroom refeita na ordem do Stillpoint quando uma foto volta; Delete edits e o ⌘Z dele em fila, na ordem.
 6. **Etapa 21 — Histórico de edição permanente.** Pedido do dono (2026-11-01): um histórico no estilo

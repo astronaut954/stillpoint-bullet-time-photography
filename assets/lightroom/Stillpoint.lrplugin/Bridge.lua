@@ -989,6 +989,9 @@ function Bridge.start(why)
 				else
 					local ok, problem = LrTasks.pcall(Bridge.tick)
 					if not ok then Bridge.problem(problem) end
+					-- Comandos de teste do Stillpoint (o teste com o Lightroom de verdade): ver TestCmd.lua
+					local done, why = LrTasks.pcall(function() return require('TestCmd').handle() end)
+					if not done then Bridge.problem('test command: ' .. tostring(why)) end
 				end
 			end
 			LrTasks.sleep(0.5)

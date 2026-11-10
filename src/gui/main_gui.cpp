@@ -1063,8 +1063,21 @@ namespace
         // <Project>/Originals (decisão do dono do projeto, 2026-10-29).
         Project project;
         {
-            const auto settings = LoadSettings();
+            auto settings = LoadSettings();
             std::string error;
+            // Teste do Stillpoint com o Lightroom de verdade (tests/e2e; decisões do dono, 2026-11-10): só nesta rodada
+            // o app abre o projeto de teste. settings.txt não muda: na próxima vez abre o projeto da pessoa.
+            if (const char* e2eProject = std::getenv("STILLPOINT_E2E_PROJECT"); std::getenv("STILLPOINT_E2E") && e2eProject && *e2eProject)
+            {
+                const std::filesystem::path folder = std::filesystem::u8path(e2eProject);
+                std::error_code ec;
+                std::filesystem::create_directories(folder, ec);
+                std::string made;
+                if (!Project::IsProject(folder))
+                    Project::Create(folder, "", made);
+                settings["project"] = e2eProject;
+                Log("Test run (STILLPOINT_E2E): project " + std::string(e2eProject) + (made.empty() ? "" : " (" + made + ")"));
+            }
             if (settings.count("project") && !settings.at("project").empty())
                 if (!project.Open(std::filesystem::path(settings.at("project")), error))
                 {
@@ -2430,6 +2443,71 @@ namespace
             return Adobe::QueuePhotos("bringback", args[0], paths) ? "\"bringback\"" : "\"none\"";
         });
 
+        // ---- Teste com o Lightroom de verdade (tests/e2e/run_e2e.sh; decisões do dono, 2026-11-10) ----
+        // Só existem com STILLPOINT_E2E=<arquivo do relatório> no ambiente (o comando do terminal): o roteiro
+        // (STILLPOINT_E2E_SCRIPT) roda dentro da página e usa estas funções para escrever o relatório, mandar comandos
+        // de teste ao plugin (testcmd-*.txt; o plugin só obedece num catálogo com "Self-Test" no nome) e pôr um
+        // arquivo na pasta Edited como se tivesse sido salvo por fora.
+        if (const char* e2eReport = std::getenv("STILLPOINT_E2E"); e2eReport && *e2eReport)
+        {
+            const std::filesystem::path reportFile = std::filesystem::u8path(e2eReport);
+            window.bind("e2eInfo", [&](const std::string&) -> std::string
+            {
+                return Json("e2e").Add("originals", PathToUtf8(store.ProjectOriginals())).Add("edited", PathToUtf8(store.ProjectEdited()))
+                    .Add("project", project.IsOpen() ? project.Name() : std::string()).Add("bridge", PathToUtf8(Adobe::BridgeFolder())).Str();
+            });
+            window.bind("e2eReport", [reportFile](const std::string& request) -> std::string
+            {
+                const auto args = ParseStringArgs(request);
+                std::ofstream out(reportFile, std::ios::binary | std::ios::app);
+                if (!args.empty()) out << args[0] << "\n";
+                return "true";
+            });
+            // e2eLrSend(texto): um comando para o plugin; devolve o número dele. e2eLrResult(número): a resposta ("" = ainda não)
+            window.bind("e2eLrSend", [&](const std::string& request) -> std::string
+            {
+                static int counter = 0;
+                const auto args = ParseStringArgs(request);
+                const std::string id = std::to_string(std::time(nullptr)) + "-" + std::to_string(++counter);
+                std::error_code ec;
+                std::filesystem::create_directories(Adobe::BridgeFolder(), ec);
+                const auto file = Adobe::BridgeFolder() / ("testcmd-" + id + ".txt");
+                const auto temp = Adobe::BridgeFolder() / ("testcmd-" + id + ".tmp");
+                {
+                    std::ofstream out(temp, std::ios::binary);
+                    out << "id=" << id << "\n" << (args.empty() ? std::string() : args[0]) << "\nend=1\n";
+                }
+                std::filesystem::rename(temp, file, ec);
+                return "\"" + id + "\"";
+            });
+            window.bind("e2eLrResult", [&](const std::string& request) -> std::string
+            {
+                const auto args = ParseStringArgs(request);
+                if (args.empty()) return "\"\"";
+                const auto file = Adobe::BridgeFolder() / ("testresult-" + args[0] + ".txt");
+                std::ifstream in(file, std::ios::binary);
+                std::string text((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+                if (text.find("\nend=1") == std::string::npos) return "\"\"";
+                in.close();
+                std::error_code ec;
+                std::filesystem::remove(file, ec);
+                return Json("e2eLr").Add("text", text).Str();
+            });
+            // e2eImage(sessão, arquivo original, proporção): uma "editada" salva por fora, com essa proporção; proporção 0 apaga
+            window.bind("e2eImage", [&](const std::string& request) -> std::string
+            {
+                const auto args = ParseStringArgs(request);
+                if (args.size() < 3 || store.ProjectEdited().empty()) return "false";
+                const auto file = store.ProjectEdited() / args[0] / (args[1].substr(0, args[1].rfind('.')) + ".jpg");
+                std::error_code ec;
+                double ratio = 0;
+                try { ratio = std::stod(args[2]); } catch (...) {}
+                if (ratio <= 0) { std::filesystem::remove(file, ec); return "true"; }
+                std::filesystem::create_directories(file.parent_path(), ec);
+                return WriteTestPhoto(file, 1, 1, ratio) ? "true" : "false";
+            });
+        }
+
         std::set<std::string> lrSeen;  // sessões cuja coleção o Stillpoint já viu no catálogo (para notar quando ela some)
         // Cancel editing no painel do Lightroom: a hora do recado, por sessão. Enquanto o alive.txt for de antes dela, a
         // coleção que ainda aparece nele não conta como "voltou"
@@ -2643,7 +2721,7 @@ namespace
                     {
                         // O recorte que a pessoa ajustou no Lightroom (mesma proporção: movido, redimensionado ou girado)
                         // vira o alinhamento da foto (decisão do dono, 2026-11-10). Fica em "alignLr" e vale enquanto a
-                        // foto tiver editada; a foto exportada sem recorte ajustado perde o que tinha de antes.
+                        // foto tiver editada.
                         const auto stem = [](const std::string& name)
                         {
                             std::string s = name.substr(0, name.rfind('.'));
@@ -2673,8 +2751,9 @@ namespace
                                 }
                             }
                             const std::string was = store.AlignLr(session);
-                            for (auto it = items.begin(); it != items.end();)
-                                it = arrived.count(stem(it->first)) && !cropBy.count(stem(it->first)) ? items.erase(it) : std::next(it);
+                            // (a foto que chega sem linha de recorte está como o Stillpoint mandou, e o que ele mandou já
+                            // contava com o alinhamento vindo do Lightroom: ele fica. O que não vale mais sai no próximo
+                            // Edit in Lightroom Classic)
                             if (!cropBy.empty())
                             {
                                 // O canvas da sessão, como no Edit in Lightroom Classic e na exportação
@@ -3109,6 +3188,26 @@ namespace
                     try { if (!b.empty()) posX = std::stod(b); if (!c.empty()) posY = std::stod(c); } catch (...) {}
                 }
                 r.framing = ratio;
+                {
+                    // O alinhamento que veio do Lightroom só vale para a foto que está com editada. A foto que vai agora
+                    // sem editada (Revert to original) vai com o alinhamento da sessão: o que ela tinha do Lightroom sai
+                    std::map<std::string, std::string> items;
+                    const std::string was = store.AlignLr(args[0]);
+                    std::stringstream parts(was);
+                    for (std::string item; std::getline(parts, item, ';');)
+                    {
+                        const size_t colon = item.rfind(':');
+                        if (colon == std::string::npos || colon == 0) continue;
+                        const std::string file = item.substr(0, colon);
+                        const std::string base = file.substr(0, file.rfind('.'));
+                        const bool edited = std::any_of(session->photos.begin(), session->photos.end(),
+                            [&](const StoredPhoto& p) { return p.edited && p.file.substr(0, p.file.rfind('.')) == base; });
+                        if (edited) items[file] = item.substr(colon + 1);
+                    }
+                    std::string text;
+                    for (const auto& [file, values] : items) text += (text.empty() ? "" : ";") + file + ":" + values;
+                    if (text != was) store.SetAlignLr(args[0], text);
+                }
                 const double target = Export::RatioValue(ratio);
                 // O mesmo canvas da exportação (proporção, posição e o alinhamento de cada foto): cada foto vai com o
                 // retângulo (e o giro) que o Export tiraria dela (decisão do dono, 2026-11-10: o alinhamento vai junto)
@@ -5425,6 +5524,15 @@ namespace
                 const auto pos = page.find(marker);
                 if (pos != std::string::npos)
                     page.insert(pos + marker.size(), " data-off=\"1\"");
+            }
+            // Teste com o Lightroom de verdade: o roteiro roda dentro da página
+            if (const char* e2eScript = std::getenv("STILLPOINT_E2E_SCRIPT"); std::getenv("STILLPOINT_E2E") && e2eScript && *e2eScript)
+            {
+                std::ifstream in(std::filesystem::u8path(e2eScript), std::ios::binary);
+                const std::string script((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+                const auto pos = page.rfind("</body>");
+                if (!script.empty() && pos != std::string::npos)
+                    page.insert(pos, "<script>\n" + script + "\n</script>\n");
             }
             window.set_html(page);
         }

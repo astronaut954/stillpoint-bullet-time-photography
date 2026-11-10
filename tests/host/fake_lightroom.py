@@ -51,6 +51,9 @@ class FakeLightroom:
         self.saved = {}         # caminho -> edição guardada pelo Delete edit (para o ⌘Z)
         self.crops = {}         # caminho -> (esquerda, topo, direita, base) pedido pelo Stillpoint
         self.framing = {}       # título da coleção -> proporção pedida ("asshot" = sem recorte)
+        self.now = {}           # caminho -> recorte que "a pessoa" deixou no Lightroom (esq, topo, dir, base, ângulo)
+        self.exposure = {}      # caminho -> Exposure2012 posto pelo teste
+        self.seen = None        # janelas anotadas (modo de teste: comando record); None = fora do modo
         self.log = []
         self.lock = threading.RLock()
         self.counter = 0
@@ -117,6 +120,8 @@ class FakeLightroom:
                     if self.edit.get(p) is not None:  # já no original: não troca a guardada
                         self.saved[p] = self.edit[p]
                     self.edit[p] = None
+                    self.now.pop(p, None)
+                    self.exposure.pop(p, None)
                 self.note("reset %s" % [os.path.basename(p) for p in photos])
             elif kind == "bringback":
                 for p in photos:
@@ -135,6 +140,31 @@ class FakeLightroom:
                 current.sort(key=os.path.basename)
                 self.note("readd %s" % [os.path.basename(p) for p in photos])
             self.write_alive()
+        # Comandos de teste do Stillpoint (o teste com o Lightroom de verdade, tests/e2e): o mesmo que TestCmd.lua
+        for name in sorted(os.listdir(self.bridge)):
+            if name.startswith("testcmd-") and name.endswith(".txt"):
+                path = os.path.join(self.bridge, name)
+                r = read_pairs(path)
+                if r is None:
+                    continue
+                os.remove(path)
+                try:
+                    out = self.test_command(r)
+                    lines = ["ok=1"] + ["%s=%s" % (k, v) for k, v in out.items()]
+                except Exception as e:  # noqa: BLE001
+                    lines = ["ok=0", "error=%s" % e]
+                self.note("test command %s: %s" % (r.get("cmd"), lines[0]))
+                write_whole(os.path.join(self.bridge, "testresult-%s.txt" % r.get("id")), "\n".join(lines) + "\nend=1\n")
+        # Recado do Stillpoint (arquivo recusado): com as janelas anotadas (modo de teste), fica na lista
+        if self.seen is not None:
+            for name in sorted(os.listdir(self.bridge)):
+                if name.startswith("notice-") and name.endswith(".txt"):
+                    r = read_pairs(os.path.join(self.bridge, name))
+                    if r is None:
+                        continue
+                    os.remove(os.path.join(self.bridge, name))
+                    n = len(r["_list"].get("photo", []))
+                    self.seen.append('message "Stillpoint did not use %d edited %s"' % (n, "photo" if n == 1 else "photos"))
         # Edit in Lightroom Classic
         req_path = os.path.join(self.bridge, "request.txt")
         r = read_pairs(req_path)
@@ -156,10 +186,89 @@ class FakeLightroom:
                     parts = line.split("\t")
                     if len(parts) in (5, 8):  # com giro: mais o ângulo e o tamanho da foto
                         self.crops[parts[0]] = tuple(float(x) for x in parts[1:])
+                        self.now.pop(parts[0], None)  # (o plugin reaplica o recorte mandado)
             self.write_alive()
             write_whole(os.path.join(self.bridge, "status.txt"),
                         "id=%s\nstate=done\nadded=%d\nmissing=0\ncatalog=%s\nend=1\n" % (r.get("id", ""), len(photos), self.catalog))
             self.note("edit request %s: %d photos" % (r.get("id"), len(photos)))
+
+    def current_crop(self, p):
+        """O recorte de agora da foto, no jeito do Stillpoint: (esq, topo, dir, base, ângulo, largura, altura)."""
+        sent = self.crops.get(p) or ()
+        if len(sent) != 7:
+            return None
+        return tuple(self.now[p]) + tuple(sent[5:]) if p in self.now else sent
+
+    def test_command(self, r):
+        cmd = r.get("cmd")
+        photos = r["_list"].get("photo", [])
+        if cmd == "ping":
+            return {"catalog": self.catalog, "version": "fake"}
+        if cmd == "record":
+            self.seen = None if r.get("off") == "1" else []
+            return {}
+        if cmd == "seen":
+            text = " | ".join(self.seen or [])
+            if self.seen is not None:
+                self.seen = []
+            return {"seen": text}
+        if cmd == "settings":
+            p = photos[0]
+            if p not in self.edit:
+                raise RuntimeError("photo not in this catalog: " + p)
+            c = self.current_crop(p) or (0.0, 0.0, 1.0, 1.0, 0.0, 0, 0)
+            out = {"CropLeft": c[0], "CropTop": c[1], "CropRight": c[2], "CropBottom": c[3], "CropAngle": -c[4],
+                   "Exposure2012": self.exposure.get(p, 0), "edit": "1" if self.edit.get(p) is not None else "0", "changed": ""}
+            if c[5]:
+                w, h = self.shape(c)
+                out["width"], out["height"] = round(w), round(h)
+            if p in self.now:
+                out["changed"] = "%.7f %.7f %.7f %.7f %.5f" % tuple(self.now[p])
+            return out
+        if cmd == "develop":
+            p = photos[0]
+            if p not in self.edit:
+                raise RuntimeError("photo not in this catalog: " + p)
+            sets = {}
+            for item in r["_list"].get("set", []):
+                k, _, v = item.partition("=")
+                sets[k] = float(v)
+            if "Exposure2012" in sets:
+                self.exposure[p] = sets["Exposure2012"]
+                self.edit[p] = (40, 150, 210) if sets["Exposure2012"] else None
+            if any(k.startswith("Crop") for k in sets):
+                c = self.current_crop(p) or (0.0, 0.0, 1.0, 1.0, 0.0)
+                self.now[p] = (sets.get("CropLeft", c[0]), sets.get("CropTop", c[1]), sets.get("CropRight", c[2]), sets.get("CropBottom", c[3]),
+                               -sets["CropAngle"] if "CropAngle" in sets else c[4])
+                if self.edit.get(p) is None:
+                    self.edit[p] = (40, 150, 210)
+            return {}
+        if cmd == "export":
+            answers = [a for a in (r.get("answers") or "").split(",") if a]
+            session_dir = os.path.dirname(photos[0])
+            wrong = []
+            for p in sorted(photos):
+                if self.edit.get(p) is None or p not in self.now:
+                    continue
+                sent = self.crops.get(p) or ()
+                if len(sent) != 7:
+                    continue
+                w0, h0 = self.shape(sent)
+                w1, h1 = self.shape(self.current_crop(p))
+                if min(abs(w1 - h1 * w0 / h0), abs(h1 - w1 * h0 / w0)) >= 1:
+                    wrong.append(p)
+            if wrong:
+                answer = answers[0] if answers else "cancel"
+                if answer == "other":
+                    for p in wrong:
+                        del self.now[p]
+                names = ", ".join(os.path.basename(p)[:2] for p in wrong)
+                return {"seen": 'confirm "Export to Stillpoint blocked: %d %s not ..." -> %s' % (len(wrong), "photo is" if len(wrong) == 1 else "photos are", answer),
+                        "state": ("Crop of photo %s put back" if answer == "other" else "Export blocked: photo %s") % names}
+            crops = {p: self.now[p] for p in photos if p in self.now and self.edit.get(p) is not None}
+            files, _ = self.export(session_dir, os.path.dirname(os.path.dirname(session_dir)), os.path.basename(session_dir), crops=crops)
+            return {"seen": 'modal "Export to Stillpoint" -> ok', "state": "%d edited photos sent to Stillpoint" % len(files)}
+        raise RuntimeError("unknown test command: %s" % cmd)
 
     def remove_collection(self, project, title, why):
         key = (project, title)
