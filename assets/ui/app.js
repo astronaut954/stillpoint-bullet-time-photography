@@ -10476,13 +10476,14 @@
     $("projectDeleteBtn").textContent = n > 1 ? "Delete " + n + " sessions…" : n === 1 ? "Delete 1 session…" : "Delete…";
     $("projectSelectAll").disabled = n === list.length;
     $("projectUnselectAll").disabled = n === 0;
-    const editedOnes = list.filter((s) => s.edited > 0 && s.edited >= s.photos.length);
+    // "Edited only": as sessões com alguma foto editada (pedido do dono, 2026-11-10; antes só as com todas editadas)
+    const editedOnes = list.filter((s) => s.edited > 0);
     $("projectSelectEdited").disabled = !editedOnes.length;
     $("projectHint").textContent = project.available === false ? "The project folder is not reachable." : "";
   }
   $("projectSelectAll").addEventListener("click", () => { projectSelTouched = true; projectSessions().forEach((s) => projectSel.add(s.name)); renderProjectWindow(); });
   $("projectUnselectAll").addEventListener("click", () => { projectSelTouched = true; projectSel.clear(); renderProjectWindow(); });
-  $("projectSelectEdited").addEventListener("click", () => { projectSelTouched = true; projectSel.clear(); projectSessions().filter((s) => s.edited > 0 && s.edited >= s.photos.length).forEach((s) => projectSel.add(s.name)); renderProjectWindow(); });
+  $("projectSelectEdited").addEventListener("click", () => { projectSelTouched = true; projectSel.clear(); projectSessions().filter((s) => s.edited > 0).forEach((s) => projectSel.add(s.name)); renderProjectWindow(); });
   $("projectCloseBtn").addEventListener("click", closeProjectWindow);
   $("projectFolderBtn").addEventListener("click", () => window.projectOpenFolder());
   $("projectSwitchBtn").addEventListener("click", () => pickProject());  // a janela Project fica aberta por baixo

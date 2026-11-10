@@ -677,7 +677,7 @@ Sem câmeras (`STILLPOINT_FAKE_CAMERAS=9`) e depois com câmeras. Desenho em `do
 - [ ] **Janela Project ("Project window…" no menu da barra):** lista com caixinha, miniatura, rótulo
       editável (clicar, digitar "Pose 7", Enter → aparece na lista de sessões como "Pose 7 · Oct 22,
       14:30"), data e Timing, nº de fotos, etiqueta "originals" / "Edited n / m"; "Show" abre a
-      sessão; "Edited only" marca só as completas; "Remove from project" com confirmação; "Open
+      sessão; "Edited only" marca as que têm alguma foto editada (desde 2026-11-10; antes só as completas); "Remove from project" com confirmação; "Open
       folder" abre a pasta; "Close project" (confirmação) tira as sessões da lista sem apagar.
 - [ ] **Edited/:** copiar à mão 3 fotos de uma sessão de 9 para `Edited/<sessão>/` com o mesmo
       nome (pode ser o próprio JPG renomeado para .jpg) e voltar ao app (clicar nele): a etiqueta

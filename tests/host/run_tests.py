@@ -758,6 +758,18 @@ def scenario_export_trash(t, name, photos):
         check(t, "... Cancel: nothing is deleted", len(t.session(s)["photos"]) == len(first) and t.session(s)["edited"] >= 1)
     else:
         check(t, "main window check needs photo 01 with an edit (it came back with ⌘Z)", False, [p.get("edited") for p in first])
+    # Janela Project › Edited only: as sessões com alguma foto editada (pedido do dono, 2026-11-10)
+    t.dismiss()
+    t.js("() => { const b = document.getElementById('projectWindowBtn'); b.classList.remove('hidden'); b.click(); }")
+    t.wait(lambda: t.js("() => !document.getElementById('projectOverlay').classList.contains('hidden')"), 5)
+    time.sleep(0.4)
+    t.js("() => document.getElementById('projectSelectEdited').click()")
+    time.sleep(0.4)
+    want = sorted(x["name"] for x in t.sessions() if x.get("inProject") and x.get("edited", 0) > 0)
+    got = sorted(t.js("() => [...document.querySelectorAll('#projectList li')].filter(li => { const c = li.querySelector('input[type=checkbox]'); return c && c.checked; }).map(li => li.dataset.name)") or [])
+    check(t, "Project window › Edited only ticks every session with an edited photo (partly edited too)", want and got == want, (got, want))
+    t.js("() => document.getElementById('projectCloseBtn').click()")
+    time.sleep(0.3)
 
 
 def dismiss_delete(self):
