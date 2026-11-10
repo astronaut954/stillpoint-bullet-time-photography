@@ -957,6 +957,16 @@ Junto com essas etapas (sem etapa própria):
 
 ## Futuro (não planejado ainda)
 
+- **Orientação do Aspect ratio: horizontal ou vertical (pedido em 2026-11-10).** No Framing do Export, poder trocar
+  a orientação da proporção: em vez de As shot, 3:2, 4:3, 16:9 e 1:1, a versão vertical (As shot, 2:3, 3:4, 16:9 e
+  1:1, como o dono escreveu). A decidir antes de implementar: se na vertical o 16:9 vira 9:16; onde fica o controle
+  da orientação; e como isso conversa com a regra de hoje (a proporção vale para o lado maior: foto em pé fica em
+  pé), com o alinhamento, com o Framing travado e com a conferência de proporção das editadas do Lightroom.
+- **Filtro na janela Project (pedido em 2026-11-10).** Um botão de filtro na Project window para filtrar as sessões
+  por data, hora, minuto, número de fotos, etiqueta (o nome dado à sessão) e outros atributos que se mostrarem úteis
+  (a pensar: editadas, no Lightroom, salvas, proporção, fotos faltando). Pensar junto a experiência das ações em
+  cima do filtro: apagar sessões com facilidade e, por exemplo, desmarcar as que não estão no filtro. Antes de
+  implementar: lista de atributos, desenho do filtro e das ações (protótipo).
 - **Metering mode nas Camera settings (pedido em 2026-10-23; etapa 18).** Mostrar e mudar o modo de medição
   de cada câmera (matricial/evaluative, parcial, pontual, ponderada ao centro) na tabela do Camera
   settings e na linha All cameras, como ISO e os outros. No EDSDK é a propriedade MeteringMode
