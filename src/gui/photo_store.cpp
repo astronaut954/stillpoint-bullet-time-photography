@@ -843,7 +843,8 @@ std::string PhotoStore::RefusedLabel(const std::string& session, const fs::path&
     const auto stampOf = [&](const fs::path& p)
     {
         const auto t = fs::last_write_time(p, ec);
-        return ec ? std::string("-") : std::to_string(t.time_since_epoch().count());
+        // (no Mac a contagem do relógio de arquivos é um inteiro de 128 bits, que o std::to_string não aceita)
+        return ec ? std::string("-") : std::to_string(static_cast<long long>(std::chrono::duration_cast<std::chrono::microseconds>(t.time_since_epoch()).count()));
     };
     const std::string stamp = stampOf(edited) + "|" + std::to_string(fs::file_size(edited, ec)) + "|" + stampOf(dir / kSessionInfo);
     const std::string key = edited.string();
@@ -908,7 +909,8 @@ std::string PhotoStore::EditedStamp() const
     {
         if (!it->is_directory(ec)) continue;
         const auto t = fs::last_write_time(it->path(), ec);
-        stamp += it->path().filename().string() + ":" + (ec ? "-" : std::to_string(t.time_since_epoch().count())) + ";";
+        stamp += it->path().filename().string() + ":"
+            + (ec ? "-" : std::to_string(static_cast<long long>(std::chrono::duration_cast<std::chrono::microseconds>(t.time_since_epoch()).count()))) + ";";
     }
     return stamp;
 }
