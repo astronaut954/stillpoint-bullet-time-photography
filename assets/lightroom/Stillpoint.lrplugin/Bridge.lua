@@ -294,7 +294,7 @@ Bridge.cropFromSensor = cropFromSensor
 local function cropShape(settings, sw, sh)
 	local l, t = tonumber(settings.CropLeft) or 0, tonumber(settings.CropTop) or 0
 	local r, b = tonumber(settings.CropRight) or 1, tonumber(settings.CropBottom) or 1
-	local rad = math.rad(tonumber(settings.CropAngle) or 0)
+	local rad = math.rad(-(tonumber(settings.CropAngle) or 0))  -- (o sinal do Lightroom é o contrário: ver applyFraming)
 	local cs, sn = math.cos(rad), math.sin(rad)
 	local dx, dy = (r - l) * sw, (b - t) * sh
 	return math.abs(dx * cs - dy * sn), math.abs(dx * sn + dy * cs)
@@ -352,7 +352,8 @@ function Bridge.cropChanged(path, now)
 		if math.abs((tonumber(now[k]) or ((k == 'CropRight' or k == 'CropBottom') and 1 or 0)) - (tonumber(sent[k]) or 0)) > 2e-5 then same = false end
 	end
 	if same then return nil end
-	local angle = tonumber(now.CropAngle) or 0
+	local angle = -(tonumber(now.CropAngle) or 0)  -- no sinal do Stillpoint
+	if angle == 0 then angle = 0 end  -- (sem "-0")
 	local c = cropFromSensor({ left = tonumber(now.CropLeft) or 0, top = tonumber(now.CropTop) or 0, right = tonumber(now.CropRight) or 1, bottom = tonumber(now.CropBottom) or 1 },
 		angle, sent.width, sent.height, now.orientation)
 	return string.format('%.7f\t%.7f\t%.7f\t%.7f\t%.5f', c.left, c.top, c.right, c.bottom, angle)
@@ -403,10 +404,12 @@ function Bridge.applyFraming(catalog, photos, request, newPaths)
 		else
 			c, angle = cropForOrientation(crop, now.orientation), 0
 		end
-		local settings = { CropLeft = c.left, CropTop = c.top, CropRight = c.right, CropBottom = c.bottom, CropAngle = angle }
+		-- O ângulo do Lightroom tem o sinal contrário ao do Stillpoint (autoteste no Lightroom de verdade, 2026-11-10: com
+		-- o mesmo sinal, o recorte de 120 x 120 girado 5 graus saía com 139 x 97): os cantos são os mesmos, CropAngle troca
+		local settings = { CropLeft = c.left, CropTop = c.top, CropRight = c.right, CropBottom = c.bottom, CropAngle = -angle }
 		-- O enquadramento mandado, para conferir a proporção no Export to Stillpoint ("As shot" sem alinhamento: nada)
 		if turned and (turned.width or 0) > 0 and (turned.height or 0) > 0 and tostring(request.framing) ~= 'asshot' then
-			Bridge.setSentCrop(path, { CropLeft = c.left, CropTop = c.top, CropRight = c.right, CropBottom = c.bottom, CropAngle = angle,
+			Bridge.setSentCrop(path, { CropLeft = c.left, CropTop = c.top, CropRight = c.right, CropBottom = c.bottom, CropAngle = -angle,
 				width = turned.width, height = turned.height, framing = tostring(request.framing) })
 		else
 			Bridge.setSentCrop(path, nil)

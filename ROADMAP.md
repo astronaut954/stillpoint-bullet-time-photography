@@ -868,6 +868,8 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    autoteste do plugin tem os casos), a seleção das fotos erradas e a janela do alerta desenhada pelo plugin.
    Autoteste do plugin ampliado (seção 9b: o caminho inteiro do recorte ajustado) e pedido pelo terminal
    (tests/lightroom/run_selftest.sh e .ps1: o arquivo selftest-request.txt na pasta da conversa dispara o teste).
+   Autoteste no Lightroom de verdade (Mac, 2026-11-10, 141 de 142): a conferência de proporção sem tolerância
+   funciona; o sinal do ângulo do recorte do Lightroom é o contrário do do Stillpoint (corrigido no plugin).
    Feito em 2026-11-06: bolinha âmbar pulsando nas miniaturas e na prévia grande das fotos que estão no Lightroom;
    a coleção do Lightroom refeita na ordem do Stillpoint quando uma foto volta; Delete edits e o ⌘Z dele em fila, na ordem.
 6. **Etapa 21 — Histórico de edição permanente.** Pedido do dono (2026-11-01): um histórico no estilo

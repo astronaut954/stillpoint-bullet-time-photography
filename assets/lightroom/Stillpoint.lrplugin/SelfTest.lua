@@ -270,7 +270,7 @@ local function scenarioCrop()
 	check('turned crop: photo 04 is 120 x 120', w and math.abs(w - 120) <= 2 and math.abs(h - 120) <= 2, tostring(w) .. ' x ' .. tostring(h))
 	do
 		local now = settingsOf(4)
-		check('... Lightroom kept the angle (CropAngle 5)', math.abs((tonumber(now.CropAngle) or 0) - 5) < 0.01, 'CropAngle=' .. tostring(now.CropAngle))
+		check('... Lightroom kept the angle (CropAngle -5: its sign is the opposite of Stillpoint\'s)', math.abs((tonumber(now.CropAngle) or 0) + 5) < 0.01, 'CropAngle=' .. tostring(now.CropAngle))
 		check('... and the two corners as sent', math.abs((tonumber(now.CropLeft) or 0) - 0.229163) < 0.002 and math.abs((tonumber(now.CropTop) or 0) - 0.159110) < 0.002
 			and math.abs((tonumber(now.CropRight) or 0) - 0.770837) < 0.002 and math.abs((tonumber(now.CropBottom) or 0) - 0.840890) < 0.002,
 			'CropLeft=' .. tostring(now.CropLeft) .. ' CropTop=' .. tostring(now.CropTop) .. ' CropRight=' .. tostring(now.CropRight) .. ' CropBottom=' .. tostring(now.CropBottom))
@@ -299,7 +299,13 @@ local function scenarioCrop()
 		end)(), tostring(changed))
 		check('... it counts as an edit', Actions.hasOwnEdit(photoOf(4), nil))
 		-- A mesma coisa com giro: o recorte girado 5 graus de antes, 10% menor em volta do mesmo centro
-		write('turned crop, smaller', function() photoOf(4):applyDevelopSettings({ CropLeft = 0.2562467, CropTop = 0.1932, CropRight = 0.7437533, CropBottom = 0.8068, CropAngle = 5 }) end)
+		write('turned crop, smaller', function() photoOf(4):applyDevelopSettings({ CropLeft = 0.2562467, CropTop = 0.1932, CropRight = 0.7437533, CropBottom = 0.8068, CropAngle = -5 }) end)
+		do
+			local tw, th = croppedSize(4)
+			check('turned crop resized: photo 04 is 108 x 108 in Lightroom', tw and math.abs(tw - 108) <= 2 and math.abs(th - 108) <= 2, tostring(tw) .. ' x ' .. tostring(th))
+			local changed5 = Bridge.cropChanged(path, settingsOf(4)) or ''
+			check('... and it goes to Stillpoint with the angle in Stillpoint\'s sign (5)', math.abs((tonumber(changed5:match('\t([%d%.%-]+)$')) or 0) - 5) < 0.01, changed5)
+		end
 		problem = Bridge.shapeProblem(path, settingsOf(4))
 		check('turned crop resized, same shape: passes', problem == nil, problem and ('have ' .. problem.have .. ', want ' .. problem.want) or nil)
 		-- Proporção trocada (3:2): bloqueia; "Put back the Stillpoint crop" devolve o recorte mandado
