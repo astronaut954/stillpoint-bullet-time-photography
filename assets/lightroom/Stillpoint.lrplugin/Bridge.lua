@@ -827,13 +827,14 @@ Bridge.handleQueued = handleResetFiles  -- (os testes chamam direto)
 -- Recado do Stillpoint (notice-*.txt): uma editada chegou na pasta Edited com outra proporção e não foi usada (o
 -- arquivo foi salvo por fora do plugin). Mostra o aviso e deixa a foto selecionada. Com outro catálogo aberto, espera.
 local function handleNoticeFiles()
+	local catalog = LrApplication.activeCatalog()
+	local select, parts, total = {}, {}, 0
 	for path in LrFileUtils.files(Bridge.folder()) do
 		local name = LrPathUtils.leafName(path)
 		if name:match('^notice%-.*%.txt$') then
 			local text = readAll(path)
 			local request = text and text:find('\nend=1') and parse(text)
 			if request and request.photos[1] then
-				local catalog = LrApplication.activeCatalog()
 				local found = {}
 				for _, p in ipairs(request.photos) do
 					local photo = catalog:findPhotoByPath(p)
@@ -841,23 +842,33 @@ local function handleNoticeFiles()
 				end
 				if #found > 0 then
 					removeFile(path)
-					local LrTasks = import 'LrTasks'
-					LrTasks.pcall(function() catalog:setSelectedPhotos(found[1], found) end)
+					for _, photo in ipairs(found) do table.insert(select, photo) end
 					local n = #request.photos
-					local Ui = require 'Ui'
+					total = total + n
 					Bridge.note('notice: ' .. n .. ' edited photos of ' .. tostring(request.session) .. ' not used by Stillpoint (' .. tostring(request.have) .. ', session ' .. tostring(request.want) .. ')')
-					Ui.message('Stillpoint did not use ' .. n .. ' edited ' .. (n == 1 and 'photo' or 'photos'),
-						(n == 1 and 'A file' or n .. ' files') .. ' arrived in the project\'s Edited folder with another shape (' .. tostring(request.have)
-						.. '). The session ' .. tostring(request.title or request.session) .. ' is ' .. tostring(request.want) .. '.\n\n'
-						.. 'Stillpoint keeps ' .. (n == 1 and 'the file but shows the original of photo ' or 'the files but shows the originals of photos ') .. tostring(request.numbers or '') .. '.\n\n'
-						.. 'To fix: set the crop of ' .. (n == 1 and 'this photo' or 'these photos') .. ' to ' .. tostring(request.want)
-						.. ' and click Export to Stillpoint. ' .. (n == 1 and 'The photo is' or 'The photos are') .. ' selected in the filmstrip.', 'warning')
+					table.insert(parts, 'Session ' .. tostring(request.title or request.session) .. ' (' .. tostring(request.want) .. '): '
+						.. (n == 1 and 'photo ' or 'photos ') .. tostring(request.numbers or '') .. (n == 1 and ' is ' or ' are ') .. tostring(request.have) .. '.')
 				else
 					Bridge.noteOnce('notice for photos that are not in this catalog, waiting: ' .. tostring(request.session))
 				end
 			end
 		end
 	end
+	if total == 0 then return end
+	local LrTasks = import 'LrTasks'
+	LrTasks.pcall(function() catalog:setSelectedPhotos(select[1], select) end)
+	local Ui = require 'Ui'
+	local function show()
+		Ui.message('Stillpoint did not use ' .. total .. ' edited ' .. (total == 1 and 'photo' or 'photos'),
+			(total == 1 and 'A file' or total .. ' files') .. ' arrived in the project\'s Edited folder with another shape than the session.\n\n'
+			.. table.concat(parts, '\n') .. '\n\n'
+			.. 'Stillpoint keeps ' .. (total == 1 and 'the file but shows the original.' or 'the files but shows the originals.') .. '\n\n'
+			.. 'To fix: set the crop of ' .. (total == 1 and 'this photo' or 'these photos') .. ' to the shape of the session and click Export to Stillpoint. '
+			.. (total == 1 and 'The photo is' or 'The photos are') .. ' selected in the filmstrip.', 'warning')
+	end
+	-- Numa tarefa à parte: a janela fica aberta até a pessoa clicar em OK, e a conversa com o Stillpoint não pode
+	-- parar por isso (teste do dono, 2026-11-10: com o recado na tela, o Edit in Lightroom Classic ficava sem resposta)
+	if Ui.answers then show() else LrTasks.startAsyncTask(show, 'Stillpoint notice') end
 end
 Bridge.handleNotices = handleNoticeFiles
 

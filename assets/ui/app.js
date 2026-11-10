@@ -3293,6 +3293,9 @@
         exp.selectedTouched = true; if (box.checked) exp.selected.add(s.name); else exp.selected.delete(s.name);
         li.classList.toggle("off", !box.checked);
         updateExportCount();
+        // As etiquetas Different e a coluna da direita (Same framing…, quantas ficam como estão) dependem de quais
+        // sessões estão marcadas (vídeo do dono, 2026-11-10: só mudavam ao clicar numa sessão)
+        setTimeout(() => { if (!$("exportOverlay").classList.contains("hidden")) { refreshSummaries(); photoRerender(); } }, 0);
       });
       li.querySelector(".export-check").addEventListener("click", (e) => e.stopPropagation());
       li.querySelector(".folder-date").textContent = label.date;
@@ -5923,8 +5926,8 @@
   }
 
   ui.saveBtn.addEventListener("click", () => startSave(false));
-  $("exportSelectAll").addEventListener("click", () => { exp.selectedTouched = true; exp.selected = new Set(exportable().map((s) => s.name)); renderExportList(); updateExportCount(); });
-  $("exportUnselectAll").addEventListener("click", () => { exp.selectedTouched = true; exp.selected.clear(); renderExportList(); updateExportCount(); });
+  $("exportSelectAll").addEventListener("click", () => { exp.selectedTouched = true; exp.selected = new Set(exportable().map((s) => s.name)); renderExportList(); updateExportCount(); photoRerender(); });
+  $("exportUnselectAll").addEventListener("click", () => { exp.selectedTouched = true; exp.selected.clear(); renderExportList(); updateExportCount(); photoRerender(); });
   $("exportCancel").addEventListener("click", askCloseExport);
   $("exportConfirm").addEventListener("click", () => {
     if (exp.step === 1 && exp.aligning) { exp.aligning = false; renderExport(); return; }  // "Done aligning"
