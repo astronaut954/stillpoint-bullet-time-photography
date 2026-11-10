@@ -866,6 +866,8 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    cada 2 s para notar arquivos salvos por fora. Não coberto: foto girada 90° dentro do Lightroom.
    Inferências sem teste no Lightroom real: a leitura do recorte com precisão para conferir sem tolerância (o
    autoteste do plugin tem os casos), a seleção das fotos erradas e a janela do alerta desenhada pelo plugin.
+   Autoteste do plugin ampliado (seção 9b: o caminho inteiro do recorte ajustado) e pedido pelo terminal
+   (tests/lightroom/run_selftest.sh e .ps1: o arquivo selftest-request.txt na pasta da conversa dispara o teste).
    Feito em 2026-11-06: bolinha âmbar pulsando nas miniaturas e na prévia grande das fotos que estão no Lightroom;
    a coleção do Lightroom refeita na ordem do Stillpoint quando uma foto volta; Delete edits e o ⌘Z dele em fila, na ordem.
 6. **Etapa 21 — Histórico de edição permanente.** Pedido do dono (2026-11-01): um histórico no estilo

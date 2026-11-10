@@ -1740,6 +1740,12 @@ com rótulo em uma sessão, ex.: "Pose 7").
 - [ ] Uma vez: no Lightroom, File › New Catalog…, nome "Stillpoint Self-Test".
 - [ ] Nesse catálogo: File › Plug-in Extras › Stillpoint: run self-test. No fim aparece "n passed, n failed".
 - [ ] Mandar o relatório: `cat ~/Library/Application\ Support/Stillpoint/lightroom/self-test-report.txt`
+- [ ] Pelo terminal, sem clicar no menu (2026-11-10): `bash tests/lightroom/run_selftest.sh` (Mac) ou
+      `powershell -ExecutionPolicy Bypass -File tests\lightroom\run_selftest.ps1` (Windows). Abre o Lightroom no catálogo de
+      teste (o último em que o autoteste rodou), pede o autoteste ao plugin e mostra o relatório. Precisa do plugin novo:
+      abrir o Stillpoint uma vez antes.
+- [ ] O relatório tem a seção **9b. Crop adjusted in Lightroom: the whole way** (bloqueio pelo painel e pelo File › Export…,
+      Put back the Stillpoint crop, recorte ajustado no recado, Apply sem recorte, recado do arquivo recusado) sem FAIL.
 
 
 Precisa do Lightroom Classic e de um projeto aberto com uma sessão já mandada ao Lightroom (seção 40). Feche o Lightroom

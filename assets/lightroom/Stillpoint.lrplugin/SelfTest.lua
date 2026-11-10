@@ -574,6 +574,108 @@ local function scenarioCancel()
 	noUnexpected('cancel editing')
 end
 
+-- O caminho inteiro do recorte ajustado no Lightroom (decisões do dono, 2026-11-10): pelo Export to Stillpoint de
+-- verdade (painel e File › Export…), o recado com o recorte novo, o Apply sem recorte e o recado do arquivo recusado
+local function scenarioShape()
+	section('9b. Crop adjusted in Lightroom: the whole way (export, block, apply, notice)')
+	-- Sessão 1:1: cada foto com o seu recorte (160 x 160 no centro) e o tamanho dela
+	local extra = 'framing=1:1\n'
+	for i = 1, #NAMES do extra = extra .. 'crop=' .. pathOf(i) .. '\t0.166667\t0.000000\t0.833333\t1.000000\t0.0000\t240\t160\n' end
+	openSession('1:1 session', extra)
+	for i = 1, #NAMES do toBaseline(i) end
+	for i = 1, #NAMES do
+		if LrFileUtils.exists(editedOf(i)) == 'file' then LrFileUtils.delete(editedOf(i)) end
+	end
+	takeMessages('exported')
+	local w, h = croppedSize(2)
+	check('every photo is 160 x 160 in Lightroom', w and math.abs(w - 160) <= 2 and math.abs(h - 160) <= 2, tostring(w) .. ' x ' .. tostring(h))
+	-- Foto 02: uma edição e o recorte movido (mesmo tamanho). Foto 03: uma edição e o recorte em 3:2
+	edit(2, 0.5)
+	write('move crop of 02', function() photoOf(2):applyDevelopSettings({ CropLeft = 0.2, CropTop = 0, CropRight = 0.866667, CropBottom = 1, CropAngle = 0 }) end)
+	edit(3, 0.3)
+	write('3:2 crop on 03', function() photoOf(3):applyDevelopSettings({ CropLeft = 0.1, CropTop = 0.1, CropRight = 0.9, CropBottom = 0.9, CropAngle = 0 }) end)
+	-- Export to Stillpoint (painel): bloqueado; OK não muda nada
+	selectSession()
+	dialogs({ 'ok' })
+	local ok, problem = LrTasks.pcall(Actions.exportToStillpoint)
+	check('panel export with a 3:2 photo: runs', ok, problem)
+	check('... the alert names the photo', seenTitle('confirm', 'Export to Stillpoint blocked: 1 photo is not 1:1') ~= nil and seenTitle('confirm', 'photo 03') ~= nil, seenText())
+	check('... nothing is exported (no message, no file)', #takeMessages('exported') == 0 and LrFileUtils.exists(editedOf(2)) ~= 'file' and LrFileUtils.exists(editedOf(3)) ~= 'file')
+	check('... the panel says why', tostring(Actions.state.text):find('Export blocked: photo 03 is not 1:1', 1, true) ~= nil, tostring(Actions.state.text))
+	do
+		local selected = LrApplication.activeCatalog():getTargetPhotos() or {}
+		check('... the wrong photo is selected in Lightroom', #selected == 1 and selected[1] == photoOf(3), #selected .. ' selected')
+	end
+	check('... OK leaves the crop of 03 as the person made it', Bridge.shapeProblem(pathOf(3), settingsOf(3)) ~= nil)
+	noUnexpected('blocked export, OK')
+	-- File › Export… › Stillpoint: o mesmo bloqueio
+	do
+		local photos = {}
+		for i = 1, #NAMES do table.insert(photos, photoOf(i)) end
+		dialogs({ 'ok' })
+		local ran, why = LrTasks.pcall(function()
+			local exportSession = LrExportSession {
+				photosToExport = photos,
+				exportSettings = { LR_exportServiceProvider = _PLUGIN.id, LR_exportServiceProviderTitle = 'Stillpoint', LR_format = 'TIFF', LR_export_bitDepth = 8,
+					LR_tiff_compressionMethod = 'compressionMethod_None', LR_export_colorSpace = 'sRGB', LR_size_doConstrain = false,
+					LR_collisionHandling = 'overwrite', stillpointReady = true },
+			}
+			exportSession:doExportOnCurrentTask()
+		end)
+		check('File › Export… with a 3:2 photo: runs', ran, why)
+		check('... blocked too', seenTitle('confirm', 'Export to Stillpoint blocked') ~= nil, seenText())
+		check('... nothing is exported', #takeMessages('exported') == 0 and LrFileUtils.exists(editedOf(2)) ~= 'file' and LrFileUtils.exists(editedOf(3)) ~= 'file')
+		Actions.state.busy = false
+	end
+	-- Put back the Stillpoint crop: a 03 volta ao recorte mandado; exportar de novo funciona
+	selectSession()
+	dialogs({ 'other' })
+	LrTasks.pcall(Actions.exportToStillpoint)
+	check('Put back the Stillpoint crop: photo 03 is 1:1 again', Bridge.shapeProblem(pathOf(3), settingsOf(3)) == nil and Bridge.cropChanged(pathOf(3), settingsOf(3)) == nil)
+	check('... still nothing exported (the person exports again)', #takeMessages('exported') == 0)
+	selectSession()
+	dialogs({ 'ok' })  -- a janela do export: Export
+	ok, problem = LrTasks.pcall(Actions.exportToStillpoint)
+	check('export again: runs', ok, problem)
+	check('Edited/02 and Edited/03 exist', LrFileUtils.exists(editedOf(2)) == 'file' and LrFileUtils.exists(editedOf(3)) == 'file')
+	do
+		local m = takeMessages('exported')
+		local crops = m[1] and m[1].list.crop or {}
+		check('one message, with one crop line (photo 02, the one that was moved)', #m == 1 and #crops == 1 and crops[1]:sub(1, #NAMES[2] + 1) == NAMES[2] .. '\t', table.concat(crops, ' | '))
+		local l, t, r, b, a = (crops[1] or ''):match('^.-\t([%d%.%-]+)\t([%d%.%-]+)\t([%d%.%-]+)\t([%d%.%-]+)\t([%d%.%-]+)$')
+		check('... with the crop as the person left it', l ~= nil and math.abs(tonumber(l) - 0.2) < 1e-4 and math.abs(tonumber(t)) < 1e-4
+			and math.abs(tonumber(r) - 0.866667) < 1e-4 and math.abs(tonumber(b) - 1) < 1e-4 and math.abs(tonumber(a)) < 1e-3, tostring(crops[1]))
+	end
+	noUnexpected('export after the put back')
+	-- Apply photo edit to all: os ajustes vão, o recorte de cada foto fica
+	do
+		local cropOf1 = settingsOf(1).CropLeft
+		LrTasks.pcall(function() LrApplication.activeCatalog():setSelectedPhotos(photoOf(2), { photoOf(1), photoOf(2), photoOf(3), photoOf(4) }) end)
+		LrTasks.sleep(0.5)
+		dialogs({ 'ok' })  -- "already have their own edit": Overwrite
+		ok, problem = LrTasks.pcall(Actions.applyPhoto01)
+		check('Apply photo 02 edit to all: runs', ok, problem)
+		check('... the edit of 02 goes to 01 (exposure)', math.abs((tonumber(settingsOf(1).Exposure2012) or 0) - 0.5) < 0.01, tostring(settingsOf(1).Exposure2012))
+		check('... but 01 keeps its own crop', math.abs((tonumber(settingsOf(1).CropLeft) or 0) - (tonumber(cropOf1) or 0)) < 1e-4 and Bridge.cropChanged(pathOf(1), settingsOf(1)) == nil,
+			'CropLeft ' .. tostring(cropOf1) .. ' -> ' .. tostring(settingsOf(1).CropLeft))
+		info('windows: ' .. seenText())
+	end
+	-- Recado do Stillpoint: um arquivo com outra proporção não foi usado
+	do
+		dialogs()
+		local notice = LrPathUtils.child(folder, 'notice-' .. os.time() .. '-1.txt')
+		writeFile(notice, 'session=' .. session .. '\ntitle=' .. title .. '\nnumbers=04\nhave=3:2\nwant=1:1\nphoto=' .. pathOf(4) .. '\nend=1\n')
+		tick(2)
+		check('notice from Stillpoint: the message appears', seenTitle('message', 'Stillpoint did not use 1 edited photo') ~= nil, seenText())
+		check('... the notice file is gone', LrFileUtils.exists(notice) ~= 'file')
+		local selected = LrApplication.activeCatalog():getTargetPhotos() or {}
+		check('... and photo 04 is selected', #selected == 1 and selected[1] == photoOf(4), #selected .. ' selected')
+	end
+	-- Arruma: as fotos como chegaram, a sessão de novo sem enquadramento
+	for i = 1, #NAMES do toBaseline(i) end
+	openSession('as shot again', 'framing=asshot\n')
+end
+
 local function scenarioPrefs()
 	section('10. What the plugin keeps (preferences)')
 	local count = 0
@@ -583,10 +685,19 @@ end
 
 -- ---------------- começo e fim ----------------
 
-function SelfTest.run()
+-- options.quiet: pedido pelo terminal (tests/lightroom/run_selftest): nenhuma janela; o relatório diz tudo
+function SelfTest.run(options)
+	local quiet = options and options.quiet
 	local catalog = LrApplication.activeCatalog()
 	catalogPath = catalog:getPath()
 	if not LrPathUtils.leafName(catalogPath):lower():find('self%-test') then
+		if quiet then
+			if Bridge.folder() then
+				writeFile(LrPathUtils.child(Bridge.folder(), 'self-test-report.txt'), 'NOT RUN: Lightroom Classic is open on ' .. catalogPath
+					.. '\nThe self-test only runs in a catalog with "Self-Test" in its name (File > New Catalog..., name "Stillpoint Self-Test").\n')
+			end
+			return
+		end
 		LrDialogs.message('Open the test catalog first',
 			'The self-test adds 4 small photos to the catalog, and a plugin cannot take photos out of a catalog. '
 			.. 'Use File › New Catalog…, name it "Stillpoint Self-Test", and choose this again there.', 'info')
@@ -597,6 +708,8 @@ function SelfTest.run()
 		LrDialogs.message('Stillpoint is not set up', 'Open Stillpoint once so it installs the plugin, then try again.', 'info')
 		return
 	end
+	-- Onde está o catálogo de teste: o comando do terminal abre o Lightroom nele
+	writeFile(LrPathUtils.child(realFolder, 'selftest-catalog.txt'), catalogPath .. '\n')
 	report, passed, failed = {}, 0, 0
 	session = os.date('%Y-%m-%d_%H-%M-%S')
 	title = 'Self-test · ' .. session
@@ -617,7 +730,7 @@ function SelfTest.run()
 	Bridge.testFolder = folder
 	local progress = (import 'LrProgressScope') { title = 'Stillpoint self-test' }
 	local scenarios = { scenarioOpen, scenarioCrop, scenarioHasEdit, scenarioPanelExport, scenarioCleared, scenarioExportDialog,
-		scenarioDeleteEdits, scenarioRemoveReadd, scenarioDone, scenarioCancel, scenarioPrefs }
+		scenarioDeleteEdits, scenarioRemoveReadd, scenarioDone, scenarioCancel, scenarioShape, scenarioPrefs }
 	for i, scenario in ipairs(scenarios) do
 		progress:setPortionComplete(i - 1, #scenarios)
 		local ok, problem = LrTasks.pcall(scenario)
@@ -638,6 +751,7 @@ function SelfTest.run()
 	if problems then line('---- plugin-problems.txt of the test ----'); line(problems) end
 	local reportPath = LrPathUtils.child(realFolder, 'self-test-report.txt')
 	writeFile(reportPath, table.concat(report, '\n') .. '\n')
+	if quiet then return end
 	LrDialogs.message('Stillpoint self-test: ' .. passed .. ' passed, ' .. failed .. ' failed',
 		'The report is in ' .. reportPath .. '. You can open your own catalog again (File › Open Recent).', failed > 0 and 'warning' or 'info')
 end

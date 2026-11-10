@@ -960,8 +960,22 @@ function Bridge.start(why)
 				if off then Bridge.goodbye() end
 			end
 			if not off and not Bridge.testFolder then
-				local ok, problem = LrTasks.pcall(Bridge.tick)
-				if not ok then Bridge.problem(problem) end
+				-- Autoteste pedido pelo terminal (tests/lightroom/run_selftest): selftest-request.txt na pasta da conversa
+				local wanted = Bridge.folder() and LrPathUtils.child(Bridge.folder(), 'selftest-request.txt')
+				if wanted and LrFileUtils.exists(wanted) == 'file' then
+					removeFile(wanted)
+					Bridge.note('self-test asked from the terminal')
+					local ran, problem = LrTasks.pcall(function() require('SelfTest').run({ quiet = true }) end)
+					if not ran then
+						Bridge.testFolder = nil
+						require('Ui').answers = nil
+						Bridge.problem('self-test: ' .. tostring(problem))
+						writeWhole(LrPathUtils.child(Bridge.folder(), 'self-test-report.txt'), 'NOT FINISHED: the self-test stopped\n' .. tostring(problem) .. '\n')
+					end
+				else
+					local ok, problem = LrTasks.pcall(Bridge.tick)
+					if not ok then Bridge.problem(problem) end
+				end
 			end
 			LrTasks.sleep(0.5)
 		end
