@@ -5469,11 +5469,19 @@
       }
       if (always && chosenSessions().length > 1) {
         // Passo 1: "Same framing for all ticked sessions" (ligada por padrão; o alinhamento é por foto e não é copiado)
-        const nd = differentSessions(1).size;
-        body.appendChild(sameBox("Same framing for all ticked sessions", sameState(exp.sameFraming, 1), () => {
+        // As travadas não contam: marcar a caixa não muda o Framing delas (pedido do dono, 2026-11-10)
+        const free = chosenSessions().filter((o) => !framingLocked(o)), keptN = chosenSessions().length - free.length;
+        let nd = 0;
+        if (free.length > 1) {
+          const keys = free.map((o) => stepConfig(o.name, 1)), count = {};
+          keys.forEach((k) => { count[k] = (count[k] || 0) + 1; });
+          let common = keys[0]; keys.forEach((k) => { if (count[k] > count[common]) common = k; });
+          nd = keys.filter((k) => k !== common).length;
+        }
+        body.appendChild(sameBox("Same framing for all ticked sessions", nd > 0 ? "mixed" : exp.sameFraming ? "on" : "off", () => {
           exp.sameFraming = true;
           chosenSessions().forEach((o) => { if (o.name === session.name || framingLocked(o)) return; const ost = settingsFor(o.name); cropLoad(o, ost); ost.crop = Object.assign({}, st.crop, { loaded: true }); cropSave(o, ost); });
-          toast("Same framing on " + plural(chosenSessions().length, "session", "sessions") + " · ⌘Z undoes");
+          toast("Same framing on " + plural(free.length, "session", "sessions") + (keptN ? " · " + plural(keptN, "locked session", "locked sessions") + " kept" : "") + " · ⌘Z undoes");
           rerender();
         }, () => { exp.sameFraming = false; rerender(); }, nd, "The aspect ratio and the crop position. The photo alignment stays per session."));
         const sameRow = body.lastElementChild;
