@@ -1899,7 +1899,7 @@ Com câmeras simuladas e o Lightroom Classic com o catálogo do projeto. A janel
 - [ ] No catálogo **Self-Test**, **Stillpoint: run self-test**: o relatório tem a linha do recorte girado ("with a turned crop") sem FAIL.
 - [ ] **Recorte ajustado no Lightroom (decisões de 2026-11-10):** sessão em 1:1 no Lightroom; na ferramenta Crop, mover,
       redimensionar ou girar o recorte de uma foto **sem mudar a proporção** e fazer algum ajuste; **Export to Stillpoint**: a
-      foto chega, o aviso diz **alignment of photo 0n updated from Lightroom Classic**, e o passo **1 Sessions** mostra a foto
+      foto chega, o aviso diz **photo 0n aligned from Lightroom** (acima do rodapé do Export, sem cobrir os botões), e o passo **1 Sessions** mostra a foto
       original na posição nova (selo **1:1 · aligned**). Trocar **Original / Edited** no **2 Edit** não faz a foto pular.
 - [ ] **Revert to original** dessa foto: o alinhamento volta ao que era antes de ela ir. ⌘Z: volta o do Lightroom.
 - [ ] **Edit again in Lightroom Classic**: no Lightroom a foto abre com o recorte que a pessoa tinha deixado lá.

@@ -304,6 +304,12 @@
     t.classList.toggle("kind-redo", o.kind === "redo");
     t.querySelector(".toast-close").addEventListener("click", hideToast);
     t.classList.remove("hidden", "fading");
+    // Com o Export aberto, o aviso fica acima do rodapé dele, sem cobrir os botões (decisão do dono, 2026-11-10)
+    {
+      const foot = !$("exportOverlay").classList.contains("hidden") && document.querySelector("#exportOverlay .export-foot");
+      const r = foot ? foot.getBoundingClientRect() : null;
+      t.style.bottom = r && r.height ? Math.round(window.innerHeight - r.top + 10) + "px" : "";
+    }
     toast.dwell = ms || TOAST_MS;
     armToast();
     // Tudo que o app avisa fica também na Activity (sem repetir quando quem chamou já registrou);
@@ -1730,7 +1736,7 @@
     const aligned = (e.aligned || []).map((n) => pad(n));
     if (aligned.length) {
       const which = aligned.length === 1 ? "photo " + aligned[0] : "photos " + aligned.slice(0, -1).join(", ") + " and " + aligned[aligned.length - 1];
-      text += " · alignment of " + which + " updated from Lightroom Classic";
+      text += " · " + which + " aligned from Lightroom";  // (curto: o aviso comprido cobria os botões; decisão do dono, 2026-11-10)
       log("Lightroom Classic: the crop adjusted there is now the alignment of " + which + " · " + title, "ok");
       if (!$("exportOverlay").classList.contains("hidden")) renderExport();
     }

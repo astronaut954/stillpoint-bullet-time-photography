@@ -814,7 +814,7 @@ def scenario_lightroom_crop(t, name, photos):
     t.lr.export(o, t.project, s, crops={ph[1]: moved})
     check(t, "Export to Stillpoint with the crop moved: the alignment of photo 02 changes in Stillpoint",
           t.wait(lambda: f2 + ":" in str((t.session(s) or {}).get("align", "")) and (t.session(s) or {}).get("align", "") != align0, 12), (t.session(s) or {}).get("align"))
-    check(t, "... and the toast says so", t.wait(lambda: "alignment of photo 02 updated from Lightroom Classic" in (t.js("() => document.getElementById('toast').textContent") or ""), 6),
+    check(t, "... and the toast says so", t.wait(lambda: "photo 02 aligned from Lightroom" in (t.js("() => document.getElementById('toast').textContent") or ""), 6),
           t.js("() => document.getElementById('toast').textContent"))
     check(t, "... the photo counts as edited (same shape: it is used)", (t.session(s) or {}).get("edited") == 1, (t.session(s) or {}).get("edited"))
     align1 = (t.session(s) or {}).get("align", "")
