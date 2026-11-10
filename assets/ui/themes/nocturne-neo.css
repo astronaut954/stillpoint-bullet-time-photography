@@ -2125,7 +2125,7 @@ html.kbd-focus .export-tab.on .export-tab-check input:focus + .save-check { outl
 .export-strip.fit-strip .frame-img img { object-fit: contain; width: 70px; height: 47px; min-height: 0; }
 /* Framing travado (sessão com editadas ou no Lightroom Classic; protótipo "Recorte travado no Export", 2026-11-10) */
 .locked-ctl { opacity: .38; pointer-events: none; }
-.lock-note { display: flex; gap: 10px; align-items: flex-start; margin: 2px 0 6px; padding: 10px 12px; border: 1px solid var(--noct-border); border-radius: 8px; background: var(--noct-surface); color: var(--noct-text-muted); font-size: 12px; line-height: 1.5; }
+.lock-note { display: flex; gap: 10px; align-items: flex-start; margin: 2px 0 6px; padding: 10px 12px; border: 1px solid var(--noct-border); background: var(--noct-surface); color: var(--noct-text-muted); font-size: 12px; line-height: 1.5; }
 .lock-note svg, .keep-note svg { flex: none; margin-top: 2px; color: var(--noct-pending); }
 .lock-note b { color: var(--noct-text); }
 .lock-note .btn { margin-top: 8px; }
