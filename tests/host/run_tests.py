@@ -1115,6 +1115,21 @@ def scenario_flip(t, name, photos):
     t.undo()
     time.sleep(0.9)
     check(t, "undo of Apply to all: back to photo 01 left to right and photo 03 top to bottom", [flip_of(k) for k in range(4)] == ["1", "0", "2", "0"], saved())
+    # Os dois sentidos na foto 02 (a que tem a etiqueta 16:9): a marca tem um ícone só e não encosta na etiqueta
+    t.page.click("#exportSettings .export-strip > li:nth-child(2)")
+    time.sleep(1.2)
+    t.page.click("#exportSettings .flip-btn[data-flip=h]")
+    time.sleep(0.9)
+    t.page.click("#exportSettings .flip-btn[data-flip=v]")
+    time.sleep(0.9)
+    both = t.js("""() => { const li = document.querySelectorAll('#exportSettings .export-strip .frame')[1], m = li.querySelector('.frame-flip'), r = li.querySelector('.frame-ratio');
+        if (!m) return null; const a = m.getBoundingClientRect(), b = r ? r.getBoundingClientRect() : null;
+        return { icons: m.querySelectorAll('svg').length, title: m.title, gap: b ? Math.round(b.left - a.right) : 99 }; }""")
+    check(t, "flipped both ways: the thumbnail mark is one icon and stays clear of the 16:9 tag", flip_of(1) == "3" and both and both["icons"] == 1 and both["title"] == "Flipped both ways" and both["gap"] >= 2, both)
+    t.js("() => [...document.querySelectorAll('#exportSettings .align-resets button')].find(b => b.textContent.trim() === 'Reset photo').click()")
+    time.sleep(0.9)
+    t.page.click("#exportSettings .export-strip > li:nth-child(3)")
+    time.sleep(1.2)
     t.js("() => [...document.querySelectorAll('#exportSettings .align-resets button')].find(b => b.textContent.trim() === 'Reset photo').click()")
     time.sleep(0.9)
     check(t, "Reset photo takes the flip off too (photo 03)", flip_of(2) == "0" and flip_of(0) == "1", saved())

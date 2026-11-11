@@ -4215,6 +4215,8 @@
   const FLIP_SVG = {
     h: '<svg width="30" height="22" viewBox="0 0 22 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true"><path d="M11 .5v15" stroke-dasharray="2 2"/><path d="M8.5 3v10H2.5z"/><path d="M13.5 3v10h6z" fill="currentColor"/></svg>',
     v: '<svg width="30" height="22" viewBox="0 0 22 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true"><path d="M2 8h18" stroke-dasharray="2 2"/><path d="M6 6h10V1.5z"/><path d="M6 10h10v4.5z" fill="currentColor"/></svg>',
+    // os dois sentidos num ícone só (a marca da miniatura): os dois eixos, a foto num canto e ela espelhada no canto oposto
+    hv: '<svg width="30" height="22" viewBox="0 0 22 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true"><path d="M11 .5v15M2 8h18" stroke-dasharray="2 2"/><path d="M8.5 6V1.5L3 6z"/><path d="M13.5 10v4.5L19 10z" fill="currentColor"/></svg>',
   };
   let alignPrefs = { prev: true, next: true, opacity: 0.6 };
   try { Object.assign(alignPrefs, JSON.parse(localStorage.getItem("stillpoint.alignPrefs") || "{}") || {}); } catch (e) {}
@@ -4491,7 +4493,9 @@
       if (flipOf) {
         li.querySelector("img").style.transform = flipCss(flipOf).trim();
         const mark = el("span", "frame-flip");
-        mark.innerHTML = (flipOf & 1 ? FLIP_SVG.h : "") + (flipOf & 2 ? FLIP_SVG.v : "");
+        // (um ícone só, qualquer que seja o sentido: com dois, a marca encostava na etiqueta da proporção; decisão do
+        // dono, 2026-11-11, opção A do protótipo)
+        mark.innerHTML = flipOf === 3 ? FLIP_SVG.hv : flipOf & 1 ? FLIP_SVG.h : FLIP_SVG.v;
         mark.title = "Flipped " + (flipOf === 3 ? "both ways" : flipOf & 1 ? "left to right" : "top to bottom");
         li.querySelector(".frame-img").appendChild(mark);
       }
