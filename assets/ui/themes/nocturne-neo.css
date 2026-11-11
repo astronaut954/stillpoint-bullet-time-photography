@@ -1668,7 +1668,8 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .flip-row .flip-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .flip-row .btn { margin: 0; }
 .flip-row .flip-btn { height: 30px; padding: 0; display: grid; place-items: center; }
-.flip-row .flip-btn svg { display: block; width: 30px; height: 22px; }
+/* (ícones menores: com 30 px ficaram chamativos demais; teste do dono, 2026-11-11) */
+.flip-row .flip-btn svg { display: block; width: 19px; height: 14px; }
 .flip-row .flip-btn.on { background: var(--noct-primary); color: var(--noct-on-primary); border-color: var(--noct-primary); }
 .flip-row .flip-all { grid-column: 2; white-space: nowrap; padding-left: 0; padding-right: 0; text-align: center; justify-content: center; }
 .frame-flip { position: absolute; left: 3px; bottom: 3px; display: inline-flex; gap: 2px; align-items: center; padding: 1px 3px; background: rgba(0, 0, 0, .82); border: 1px solid var(--noct-primary); color: var(--noct-primary); line-height: 0; }
