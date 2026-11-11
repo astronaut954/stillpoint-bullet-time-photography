@@ -5723,13 +5723,7 @@
       head.appendChild(el("span", "lr-state", session.edited + " of " + plural(total, "photo", "photos") + " edited" + (refused.length ? " · " + refused.length + " not used" : "")));
       actions.appendChild(button("Edit again in Lightroom Classic", send, { title: "Send the session to Lightroom Classic again, with its edits" }));
       actions.appendChild(button("Revert to original…", () => deleteEdits(session, []), { kind: "btn-danger", title: "Put the edited photos of this session back to the original: the edited files go to the trash" }));
-      actions.appendChild(el("span", "spacer"));
-      const use = el("label", "log-option");
-      const c = document.createElement("input"); c.type = "checkbox"; c.className = "cs-check"; c.checked = showingEdited;
-      c.addEventListener("change", () => { Promise.resolve(setShowEdited(session, c.checked)).then(() => rerender()); });
-      use.append(c, document.createTextNode(" Use edited photos"));
-      use.title = "The same as Original / Edited above and the Edited tag of the session";
-      actions.appendChild(use);
+      // (a caixa "Use edited photos" saiu: fica só o Original / Edited de cima, que é a mesma chave; decisão do dono, 2026-11-10)
       if (session.edited < total && showingEdited) note = el("div", "export-note lr-warn", "Only some photos are edited: edited and original frames will be mixed in the export.");
       lockNote = el("div", "export-note", "The framing of this session (" + framingWords(st) + ") stays locked in step 1 while it has edited photos.");
     } else {

@@ -1874,7 +1874,7 @@ Com câmeras simuladas e o Lightroom Classic com o catálogo do projeto. A janel
 - [ ] Sessão no Lightroom: o bloco diz **In Lightroom Classic · n photos** (bolinha pulsando com o Lightroom aberto) e tem
       **Done editing**; na fileira, **LR** em cada foto.
 - [ ] Depois de **Export to Stillpoint** no Lightroom: o bloco diz **n of m photos edited** e tem **Edit again in Lightroom
-      Classic**, **Revert to original…** (vermelho) e **Use edited photos**; na fileira, **ED** nas fotos editadas; **Original / Edited**
+      Classic** e **Revert to original…** (vermelho), sem a caixa **Use edited photos** (saiu em 2026-11-10); na fileira, **ED** nas fotos editadas; **Original / Edited**
       (em cima, à direita) troca a foto mostrada e é a mesma chave da etiqueta **Edited n / m**.
 - [ ] Botão direito numa miniatura da fileira: **Edit just this photo in Lightroom Classic** manda só essa foto; nas
       editadas, também **Revert to original…** (pergunta **Revert 1 photo to the original?**; **Revert to original** manda a
