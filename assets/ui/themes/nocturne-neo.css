@@ -1718,7 +1718,7 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .missing-tag.mixed-tag { border-style: dashed; cursor: help; }
 .gallery-title .missing-tag { display: inline-block; margin: 0 0 0 10px; vertical-align: 2px; }
 .missing-tag.deleted-tag { cursor: help; }
-.project-row-warns { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 3px; }
+.project-row-warns { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 3px; padding-left: 8px; }  /* alinhadas ao rótulo e à linha da data (pedido do dono, 2026-11-11) */
 .project-row-warns .missing-tag { margin-top: 0; }
 .frame.ratio-warn { border-color: var(--noct-pending); border-style: dashed; }
 .frame.ratio-warn.selected { box-shadow: 0 0 16px rgba(var(--noct-pending-rgb), .25); }
