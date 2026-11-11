@@ -1761,7 +1761,7 @@ antes de começar: o Stillpoint troca o plugin pelo novo no próximo "Edit in Li
       PROJECT, SESSION, "Importing n photos…" e depois "Ready to edit. Export when you are done.", botões
       "Export to Stillpoint" e "Apply photo 01 edit to all n".
 - [ ] File › Plug-in Extras: "Export to Stillpoint", "Apply photo 01 edit to the session", "Show Stillpoint panel",
-      "Go to session in Stillpoint", "About the Stillpoint plugin…", "Stillpoint: listen again". Fechar o painel e usar
+      "Go to session in Stillpoint", "Cancel editing" (desde 2026-11-10; faz o mesmo do botão do painel), "About the Stillpoint plugin…", "Stillpoint: listen again". Fechar o painel e usar
       "Show Stillpoint panel" abre de novo.
 
 **Export to Stillpoint**
