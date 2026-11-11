@@ -529,7 +529,14 @@ local function scenarioDeleteEdits()
 	local edited = settingsOf(1)
 	local base = Bridge.baseline(pathOf(1))
 	queue('reset', { pathOf(1) }); tick(2)
-	check('reset: photo 01 back to how it arrived', Bridge.same(settingsOf(1), base))
+	-- (o Lightroom às vezes demora um instante a mostrar os ajustes que acabou de receber: falhou uma vez em sete
+	-- rodadas, 2026-11-11, sem dizer por quê. Espera até 3 s e, se falhar, diz o que ficou diferente)
+	local back = false
+	for _ = 1, 10 do
+		if Bridge.same(settingsOf(1), base) then back = true; break end
+		LrTasks.sleep(0.3)
+	end
+	check('reset: photo 01 back to how it arrived', back, Actions.settingsDiff(base, settingsOf(1)))
 	local saved = LrPrefs.prefsForPlugin().savedEdits
 	check('reset: its edit is saved for ⌘Z', saved and saved[pathOf(1)] ~= nil)
 	queue('bringback', { pathOf(1) }); tick(2)
