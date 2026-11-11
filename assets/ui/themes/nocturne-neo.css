@@ -1572,7 +1572,10 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .export-row.dimmed { opacity: .5; }
 .export-keep { font: 11px var(--noct-font-mono); color: var(--noct-text-dim); margin-left: 6px; }
 /* Orientação do Aspect ratio: os dois botões com ícone, colados nas proporções (protótipo aprovado em 2026-11-11) */
-.ratio-group { display: inline-flex; align-items: center; gap: 6px; }
+.ratio-group { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; max-width: 100%; }
+/* (na coluna estreita do Align photos os dois botões descem para a linha de baixo, em vez de sair da tela) */
+.ratio-group .segmented { flex: none; }
+.ratio-group .segmented button { white-space: nowrap; }
 .orient-seg button { display: inline-flex; align-items: center; justify-content: center; padding-left: 9px; padding-right: 9px; }
 .orient-seg svg { display: block; }
 .export-note.exp-warn { color: var(--noct-pending); }
