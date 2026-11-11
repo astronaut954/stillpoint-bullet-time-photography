@@ -5727,7 +5727,8 @@
       if (session.edited < total && showingEdited) note = el("div", "export-note lr-warn", "Only some photos are edited: edited and original frames will be mixed in the export.");
       lockNote = el("div", "export-note", "The framing of this session (" + framingWords(st) + ") stays locked in step 1 while it has edited photos.");
     } else {
-      head.appendChild(el("span", "lr-state", "Not edited" + (refused.length ? " · " + refused.length + " not used" : "")));
+      // (sem "Not edited": a falta de etiqueta já diz, como nas miniaturas; decisão do dono, 2026-11-10)
+      if (refused.length) head.appendChild(el("span", "lr-state", refused.length + " not used"));
       actions.appendChild(button("Edit in Lightroom Classic", send, { title: "Send the session to Lightroom Classic" }));
       const framing = st.crop.ratio === "asshot" ? "As shot: nothing is cut" : st.crop.ratio + ", " + placeText(st.crop.x, st.crop.y);
       note = el("div", "export-note", "Sends the " + plural(total, "photo", "photos") + " to Lightroom Classic, cut to this session's framing (" + framing + "). Edit them there, then click Export to Stillpoint in the Stillpoint panel.");

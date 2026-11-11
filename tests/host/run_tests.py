@@ -590,7 +590,7 @@ def scenario_export_edit(t, name, photos):
     t.export_edit(s)
     check(t, "step 1's green button was Edit → and now step 2 · Edit is open", t.export_step() == "2 Edit", t.export_step())
     check(t, "the footer buttons: ← Sessions and Outputs →", t.js("() => document.getElementById('exportBack').textContent === '← Sessions' && document.getElementById('exportConfirm').textContent === 'Outputs →'"))
-    check(t, "Lightroom Classic box: Not edited · Edit in Lightroom Classic", t.js("() => { const b = document.querySelector('#exportSettings .lr-block'); return !!b && b.textContent.includes('Not edited') && b.textContent.includes('Edit in Lightroom Classic'); }"))
+    check(t, "Lightroom Classic box: Edit in Lightroom Classic, with no Not edited text", t.js("() => { const b = document.querySelector('#exportSettings .lr-block'); return !!b && !b.textContent.includes('Not edited') && b.textContent.includes('Edit in Lightroom Classic'); }"))
     check(t, "Original / Edited is there, not clickable with no edits", t.js("() => { const v = document.querySelector('#exportSettings .edit-view'); return !!v && [...v.querySelectorAll('button')].every(b => b.disabled); }"))
     cap = lambda: t.js("() => { const c = document.querySelector('#exportSettings .edit-preview .stage-caption b'); return c ? c.textContent : null; }")
     seen = set()

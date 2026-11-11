@@ -1868,7 +1868,7 @@ Com câmeras simuladas e o Lightroom Classic com o catálogo do projeto. A janel
 - [ ] Modo teatro: a prévia cresce, o bloco do Lightroom some e, com o mouse sobre a foto, aparecem no canto de cima à
       direita ‹, play, ›, **Speed** com − e + e **Reverse loop**, com o mesmo comportamento da tela cheia da janela principal.
       O botão de modo teatro de novo volta ao normal.
-- [ ] Sessão sem edição: o bloco **Lightroom Classic** diz **Not edited** e tem **Edit in Lightroom Classic**. Clicar manda a
+- [ ] Sessão sem edição: o bloco **Lightroom Classic** tem só **Edit in Lightroom Classic** (sem o texto **Not edited**, que saiu em 2026-11-10). Clicar manda a
       sessão; com proporções misturadas e **As shot**, pergunta **Crop before Lightroom Classic?** como antes; escolhendo
       **Crop to 3:2**, o Framing da sessão no passo 1 passa a 3:2.
 - [ ] Sessão no Lightroom: o bloco diz **In Lightroom Classic · n photos** (bolinha pulsando com o Lightroom aberto) e tem
