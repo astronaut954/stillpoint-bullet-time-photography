@@ -874,6 +874,7 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    STILLPOINT_E2E no ambiente, o app abre o projeto de teste só nessa rodada (settings.txt não muda), roda o roteiro
    tests/e2e/e2e.js dentro da página e manda comandos de teste ao plugin (TestCmd.lua, só em catálogo "Self-Test").
    O roteiro é conferido no Linux contra o Lightroom de mentira (tests/e2e/check_linux.py, 30 de 30).
+   Rodou no Mac do dono com o Lightroom Classic 15.6 de verdade em 2026-11-10: 30 de 30.
    O alinhamento vindo do Lightroom fica enquanto a foto tem editada (não sai mais numa exportação sem recorte
    ajustado); sai quando a foto vai de novo ao Lightroom sem editada.
    Feito em 2026-11-06: bolinha âmbar pulsando nas miniaturas e na prévia grande das fotos que estão no Lightroom;

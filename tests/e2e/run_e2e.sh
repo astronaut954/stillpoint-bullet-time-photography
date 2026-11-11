@@ -21,6 +21,7 @@ rm -f "$REPORT"
 STILLPOINT_FAKE_CAMERAS=4 STILLPOINT_E2E="$REPORT" STILLPOINT_E2E_SCRIPT="$ROOT/tests/e2e/e2e.js" \
   STILLPOINT_E2E_PROJECT="$BASE/Stillpoint Self-Test" "$APP" >/dev/null 2>&1 &
 PID=$!
+disown $PID 2>/dev/null  # (sem a linha "Terminated" do shell quando o teste fecha o app)
 echo "Test running: Stillpoint and Lightroom Classic open by themselves. Do not click in them (about 5 minutes)."
 SHOWN=0
 for _ in $(seq 1 1500); do
