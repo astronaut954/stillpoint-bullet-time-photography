@@ -3185,7 +3185,9 @@
     exportable().forEach((x) => { const st = settingsFor(x.name); cropLoad(x, st); alignLoad(x, st); });
     return JSON.stringify({ s: exportable().map((x) => [x.name, settingsFor(x.name)]), same: exp.same, sameFraming: exp.sameFraming,
       sel: [...exp.selected].sort(), dest: exp.dest || null },
-      (key, v) => (key === "byFile" && v ? Object.fromEntries(Object.entries(v).filter(([, al]) => !alignIsIdentity(al))) : v));
+      // ("host" é só a lembrança do último texto que o app mandou: não é uma escolha da pessoa e não entra na foto,
+      // senão virava um passo do ⌘Z que não muda nada; teste do dono, 2026-11-11)
+      (key, v) => (key === "host" ? undefined : key === "byFile" && v ? Object.fromEntries(Object.entries(v).filter(([, al]) => !alignIsIdentity(al))) : v));
   }
   function expTrack() {
     if ($("exportOverlay").classList.contains("hidden")) return;
@@ -3210,6 +3212,7 @@
     if ($("exportOverlay").classList.contains("hidden")) return false;
     const o = JSON.parse(snap);
     o.s.forEach(([name, st]) => {
+      const prev = exp.settings[name];
       exp.settings[name] = st;
       // O recorte e o alinhamento moram também em session.json: desfazer/refazer grava lá
       const session = sessions.find((x) => x.name === name);
@@ -3217,8 +3220,11 @@
       // (Framing travado: o recorte e o alinhamento da sessão não são regravados por um passo antigo; o alinhamento
       // é lido de novo do app)
       if (framingLocked(session)) { if (st.align) st.align.loaded = false; return; }
-      if (st.align && alignText(st) !== (session.align || "")) alignSave(session, st);
-      if (st.crop && cropText(st) !== (session.crop || "")) cropSave(session, st);
+      // Grava quando difere do que a sessão tem OU do que a janela tinha antes deste passo (a lista de sessões pode
+      // estar com um texto antigo: sem isto o desfazer mudava a tela e não o session.json; teste do dono, 2026-11-11)
+      const changed = (text, get) => { try { return !!(prev && get(prev) !== text); } catch (e) { return true; } };
+      if (st.align) { const text = alignText(st); if (text !== (session.align || "") || changed(text, (p) => (p.align && p.align.loaded ? alignText(p) : text))) alignSave(session, st); }
+      if (st.crop) { const text = cropText(st); if (text !== (session.crop || "") || changed(text, (p) => (p.crop && p.crop.loaded ? cropText(p) : text))) cropSave(session, st); }
     });
     exp.same = o.same; exp.sameFraming = o.sameFraming !== false; exp.selected = new Set(o.sel); rememberSelection(); exp.dest = o.dest;
     expSnap = snap;
@@ -4209,7 +4215,9 @@
     if (st.align.loaded) {
       if (host === st.align.host) return;
       st.align.host = host;
-      if (host === alignText(st)) return;
+      // (o texto que chega pode ser um que esta janela gravou há instantes, com a pessoa já um passo à frente: não é
+      // uma mudança de fora, e reler aqui desfazia o último ajuste e apagava passos do ⌘Z; teste do dono, 2026-11-11)
+      if (host === alignText(st) || (alignSent[session.name] || []).includes(host)) return;
     }
     // (mudança que veio do app, não desta janela: não vira um passo do ⌘Z do Export)
     if (st.align.loaded) expSnap = null;
@@ -4227,8 +4235,11 @@
     return Object.keys(st.align.byFile).filter((f) => !alignIsIdentity(st.align.byFile[f]))
       .map((f) => { const a = st.align.byFile[f]; return f + ":" + a.dx.toFixed(2) + "," + a.dy.toFixed(2) + "," + a.scale.toFixed(5) + "," + a.rot.toFixed(3) + "," + (a.base || a.scale).toFixed(5); }).join(";");
   }
+  const alignSent = {};  // por sessão: os últimos textos de alinhamento que esta janela mandou gravar
   function alignSave(session, st) {
     const text = alignText(st);
+    const sent = alignSent[session.name] || (alignSent[session.name] = []);
+    sent.push(text); if (sent.length > 40) sent.shift();
     session.align = text;
     if (typeof window.setSessionAlign === "function") window.setSessionAlign(session.name, text);
   }

@@ -972,6 +972,54 @@ def scenario_selection_kept(t, name, photos):
     check(t, "Select all leaves nothing recorded as unticked", saved == ["pref.exportOff={}"], saved)
 
 
+def scenario_align_undo(t, name, photos):
+    line("\n== 16. Undo and redo in Align photos (quick steps, orientation in the middle)")
+    s = t.shoot()
+    t.dismiss()
+    if not s:
+        check(t, "a new session for this scenario", False)
+        return
+    t.page.click("#saveBtn")
+    t.wait(lambda: t.export_open(), 5)
+    time.sleep(0.6)
+    t.js("() => { const b = document.querySelector('#exportSteps .export-step'); if (!b.classList.contains('on')) b.click(); }")
+    time.sleep(0.4)
+    t.page.click('#exportList li.export-item[data-name="%s"] .folder-date' % s)
+    time.sleep(0.6)
+    t.js("() => [...document.querySelectorAll('#exportSettings .segmented:not(.orient-seg) button')].find(x => x.textContent.trim() === '16:9').click()")
+    time.sleep(0.8)
+    t.js("() => document.querySelector('#exportSettings .framing-align-btn').click()")
+    time.sleep(1.5)
+    size = lambda: t.js("() => (document.querySelector('#exportSettings input[aria-label=Size]') || {}).value")
+    vert = lambda: t.js("() => { const b = document.querySelectorAll('#exportSettings .orient-seg button')[1]; return !!b && b.classList.contains('on'); }")
+    saved = lambda: (t.session(s) or {}).get("align") or ""
+    def bigger():
+        b = t.page.locator('#exportSettings .align-ctl', has_text="Size").locator("button").nth(1)
+        for _ in range(3):
+            b.click(modifiers=["Shift"])
+            time.sleep(0.25)   # mais depressa do que a gravação volta do app
+        time.sleep(0.6)
+    bigger()
+    check(t, "three steps of Size: 103.0", size() == "103.0", size())
+    t.js("() => document.querySelectorAll('#exportSettings .orient-seg button')[1].click()")
+    time.sleep(1.2)
+    bigger()
+    check(t, "vertical, then three more: 106.0", size() == "106.0" and vert(), (size(), vert()))
+    def go(keys, want_size, want_vert, label):
+        for k in keys:
+            (t.undo if k == "u" else t.redo)()
+            time.sleep(0.8)
+        check(t, label, size() == want_size and vert() == want_vert and ("%.5f" % (float(want_size) / 100)) in saved(), (size(), vert(), saved()))
+    go("u", "105.0", True, "undo: one step back (105.0), and it is what is saved")
+    go("u", "104.0", True, "undo again: 104.0")
+    go("rr", "106.0", True, "redo twice: 106.0")
+    go("r", "106.0", True, "redo with nothing left: stays at 106.0")
+    go("uuu", "103.0", True, "undo three times: 103.0, still vertical")
+    go("u", "103.0", False, "one more undo: back to horizontal")
+    go("rr", "104.0", True, "redo twice: vertical and 104.0")
+    t.close_export()
+
+
 def scenario_orientation(t, name, photos):
     line("\n== 14. Orientation of the aspect ratio (Horizontal / Vertical)")
     s = t.shoot()
@@ -1073,7 +1121,7 @@ def main():
                 only = os.environ.get("STILLPOINT_TEST_ONLY", "")  # para depurar: só os cenários com este nome
                 for sc in [x for x in (scenario_cleared, scenario_delete_edit_undo, scenario_photo_delete_restore,
                            scenario_remove_from_collection, scenario_delete_session, scenario_cancel, scenario_rapid_in_lightroom, scenario_crop_before_lightroom,
-                           scenario_export_edit, scenario_export_trash, scenario_lightroom_crop, scenario_undo_own_item, scenario_orientation, scenario_selection_kept) if only in x.__name__]:
+                           scenario_export_edit, scenario_export_trash, scenario_lightroom_crop, scenario_undo_own_item, scenario_orientation, scenario_selection_kept, scenario_align_undo) if only in x.__name__]:
                     try:
                         sc(t, name, photos)
                     except Exception:  # noqa: BLE001
