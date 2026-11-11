@@ -1,3 +1,6 @@
+#if defined(_WIN32) && !defined(_CRT_SECURE_NO_WARNINGS)
+#define _CRT_SECURE_NO_WARNINGS  // getenv: com /sdl, o aviso do Visual Studio vira erro
+#endif
 #include "adobe.h"
 
 #include "platform/platform.h"

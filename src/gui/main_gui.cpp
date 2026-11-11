@@ -522,6 +522,11 @@ namespace
     // Modo debug (Settings): pasta com as fotos e as medidas de cada Test shot
     std::filesystem::path DebugRoot() { return Platform::AppDataFolder() / "Debug"; }
 
+    // Texto UTF-8 -> caminho (o u8path do C++17 é marcado como antigo no C++20, e no Visual Studio o aviso vira erro)
+    std::filesystem::path Utf8ToPath(const std::string& text)
+    {
+        return std::filesystem::path(std::u8string(text.begin(), text.end()));
+    }
     // Caminho como texto UTF-8 (para mandar à página)
     std::string PathToUtf8(const std::filesystem::path& path)
     {
@@ -1069,7 +1074,7 @@ namespace
             // o app abre o projeto de teste. settings.txt não muda: na próxima vez abre o projeto da pessoa.
             if (const char* e2eProject = std::getenv("STILLPOINT_E2E_PROJECT"); std::getenv("STILLPOINT_E2E") && e2eProject && *e2eProject)
             {
-                const std::filesystem::path folder = std::filesystem::u8path(e2eProject);
+                const std::filesystem::path folder = Utf8ToPath(e2eProject);
                 std::error_code ec;
                 std::filesystem::create_directories(folder, ec);
                 std::string made;
@@ -2466,7 +2471,7 @@ namespace
         // arquivo na pasta Edited como se tivesse sido salvo por fora.
         if (const char* e2eReport = std::getenv("STILLPOINT_E2E"); e2eReport && *e2eReport)
         {
-            const std::filesystem::path reportFile = std::filesystem::u8path(e2eReport);
+            const std::filesystem::path reportFile = Utf8ToPath(e2eReport);
             window.bind("e2eInfo", [&](const std::string&) -> std::string
             {
                 return Json("e2e").Add("originals", PathToUtf8(store.ProjectOriginals())).Add("edited", PathToUtf8(store.ProjectEdited()))
@@ -2535,7 +2540,7 @@ namespace
             std::error_code ec;
             if (it == catalogs.end() || it->second.empty() || !lr.found)
                 return Json("adobeOpenCatalog").Add("ok", false).Add("error", lr.found ? "The catalog of this session is not known." : "Lightroom Classic was not found.").Str();
-            const std::filesystem::path catalog = std::filesystem::u8path(it->second);
+            const std::filesystem::path catalog = Utf8ToPath(it->second);
             if (!std::filesystem::exists(catalog, ec))
                 return Json("adobeOpenCatalog").Add("ok", false).Add("error", "The catalog is not there anymore: " + it->second).Str();
             const bool ok = Platform::OpenWithApplication(lr.path, { catalog });
@@ -2600,7 +2605,7 @@ namespace
                     if (!here)
                     {
                         elsewhere += (firstElsewhere ? "" : ",") + Json().Add("session", session)
-                            .Add("catalog", PathToUtf8(std::filesystem::u8path(it->second).stem())).Str();
+                            .Add("catalog", PathToUtf8(Utf8ToPath(it->second).stem())).Str();
                         firstElsewhere = false;
                         continue;
                     }
@@ -5581,7 +5586,7 @@ namespace
             // Teste com o Lightroom de verdade: o roteiro roda dentro da página
             if (const char* e2eScript = std::getenv("STILLPOINT_E2E_SCRIPT"); std::getenv("STILLPOINT_E2E") && e2eScript && *e2eScript)
             {
-                std::ifstream in(std::filesystem::u8path(e2eScript), std::ios::binary);
+                std::ifstream in(Utf8ToPath(e2eScript), std::ios::binary);
                 const std::string script((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
                 const auto pos = page.rfind("</body>");
                 if (!script.empty() && pos != std::string::npos)
