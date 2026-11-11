@@ -972,6 +972,19 @@ Junto com essas etapas (sem etapa própria):
   da proporção ("3:2/v|x|y" em session.json; sem "/h" ou "/v" acompanha as fotos). Vai para o Lightroom no recorte de
   cada foto. A tela Align photos tem os mesmos dois botões e nomeia o canvas na orientação que vale. Não mexido: os
   avisos de proporção da janela principal ("Crop on export to 3:2") continuam sem orientação.
+- **Alinhamento automático das fotos (pedido em 2026-11-11, a estudar).** Referência do dono: o Xangle Camera Server
+  ("Easy camera alignment for bullet-time photography - no calibration bar required!",
+  https://www.youtube.com/watch?v=eYGbaLTg2-8). O que o vídeo e a descrição dizem: 8 Canon SL1; uma primeira foto é
+  mandada para a nuvem ("registration", ~25 s), que devolve arquivos de texto com a posição de cada câmera no espaço
+  3D; depois o "alignment" corrige as imagens de qualquer disparo seguinte usando essas posições (registra uma vez,
+  reaplica em todas as sessões enquanto o rig não muda). Como eles calculam por dentro não está dito no vídeo. O
+  caminho conhecido para isso (inferência, não confirmado para o Xangle): achar pontos em comum entre as fotos e
+  resolver a posição das câmeras (structure from motion; há bibliotecas abertas, como COLMAP e OpenCV), escolher um
+  ponto central no sujeito e calcular, para cada câmera, o deslocamento, o tamanho e o giro que põem esse ponto no
+  mesmo lugar. No Stillpoint o resultado caberia nos controles que o Align photos já tem (Move X, Move Y, Size,
+  Rotate). Decisões pendentes do dono antes de qualquer desenho: rodar no computador ou em servidor; o que fazer em
+  cena sem textura (fundo liso), onde esse cálculo falha; e se vale começar por uma versão mais simples (a pessoa
+  marca o mesmo ponto em cada foto).
 - **Espelhar a foto no Align photos (pedido em 2026-11-11).** Controles de flip horizontal e flip vertical no Align
   photos (hoje só existem Move X, Move Y, Size e Rotate; espelhar só pelo Lightroom, e a foto volta espelhada como
   editada). Mexe no Align photos, nas prévias, no exportador e no recorte que vai para o Lightroom. Decisões pendentes
