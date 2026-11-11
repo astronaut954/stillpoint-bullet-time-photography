@@ -1662,6 +1662,19 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .align-ctl { display: grid; grid-template-columns: 62px 30px 72px 30px; align-items: center; gap: 6px; }
 .align-ctl .align-num { width: 72px; text-align: left; }
 .align-ctl .btn { margin: 0; }
+/* Flip (protótipo aprovado, 2026-11-11): a mesma grade das linhas de cima; os dois botões ocupam a largura do
+   "− número +" (30 + 6 + 72 + 6 + 30) e o Apply to all fica embaixo deles */
+.flip-row { display: grid; grid-template-columns: 62px 144px; align-items: center; gap: 6px; }
+.flip-row .flip-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.flip-row .btn { margin: 0; }
+.flip-row .flip-btn { height: 30px; padding: 0; display: grid; place-items: center; }
+.flip-row .flip-btn svg { display: block; width: 30px; height: 22px; }
+.flip-row .flip-btn.on { background: var(--noct-primary); color: var(--noct-on-primary); border-color: var(--noct-primary); }
+.flip-row .flip-all { grid-column: 2; white-space: nowrap; padding-left: 0; padding-right: 0; text-align: center; justify-content: center; }
+.frame-flip { position: absolute; left: 3px; bottom: 3px; display: inline-flex; gap: 2px; align-items: center; padding: 1px 3px; background: rgba(0, 0, 0, .82); border: 1px solid var(--noct-primary); color: var(--noct-primary); line-height: 0; }
+.frame-flip svg { width: 15px; height: 11px; }
+/* (a miniatura espelhada é desenhada por cima do que não tem posição: o número da foto continua à vista) */
+.export-strip .frame-badge { z-index: 1; }
 .align-cf { margin-top: 2px; }
 .align-unit { font: 9px var(--noct-font-mono); color: var(--noct-text-dim); letter-spacing: .04em; min-width: 0; line-height: 1.3; }
 .align-resets { display: flex; flex-wrap: wrap; gap: 8px; }

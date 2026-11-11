@@ -3198,7 +3198,7 @@
       sel: [...exp.selected].sort(), dest: exp.dest || null },
       // ("host" é só a lembrança do último texto que o app mandou: não é uma escolha da pessoa e não entra na foto,
       // senão virava um passo do ⌘Z que não muda nada; teste do dono, 2026-11-11)
-      (key, v) => (key === "host" ? undefined : key === "byFile" && v ? Object.fromEntries(Object.entries(v).filter(([, al]) => !alignIsIdentity(al))) : v));
+      (key, v) => (key === "host" ? undefined : key === "byFile" && v ? Object.fromEntries(Object.entries(v).filter(([, al]) => !alignBlank(al))) : v));
   }
   function expTrack() {
     if ($("exportOverlay").classList.contains("hidden")) return;
@@ -4087,7 +4087,7 @@
         const w = sz.w * K, h = sz.h * K;
         img.style.width = w + "px"; img.style.height = h + "px";
         img.style.left = (cx + al.dx * K - w / 2) + "px"; img.style.top = (cy + al.dy * K - h / 2) + "px";
-        img.style.transform = "scale(" + al.scale + ") rotate(" + al.rot + "deg)";
+        img.style.transform = "scale(" + al.scale + ") rotate(" + al.rot + "deg)" + flipCss(alignFlip(al));
         frame.style.transform = "";
         frame.style.width = canvas.w * K + "px"; frame.style.height = canvas.h * K + "px";
         frame.style.left = (cx + canvas.x * K) + "px"; frame.style.top = (cy + canvas.y * K) + "px";
@@ -4211,12 +4211,23 @@
     }
     return photoSizes[key];
   }
+  // Ícones do Flip: a foto (triângulo de contorno) e ela espelhada (triângulo cheio) dos dois lados de um eixo tracejado
+  const FLIP_SVG = {
+    h: '<svg width="30" height="22" viewBox="0 0 22 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true"><path d="M11 .5v15" stroke-dasharray="2 2"/><path d="M8.5 3v10H2.5z"/><path d="M13.5 3v10h6z" fill="currentColor"/></svg>',
+    v: '<svg width="30" height="22" viewBox="0 0 22 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true"><path d="M2 8h18" stroke-dasharray="2 2"/><path d="M6 6h10V1.5z"/><path d="M6 10h10v4.5z" fill="currentColor"/></svg>',
+  };
   let alignPrefs = { prev: true, next: true, opacity: 0.6 };
   try { Object.assign(alignPrefs, JSON.parse(localStorage.getItem("stillpoint.alignPrefs") || "{}") || {}); } catch (e) {}
   function saveAlignPrefs() { try { localStorage.setItem("stillpoint.alignPrefs", JSON.stringify(alignPrefs)); } catch (e) {} }
   // base: o tamanho escolhido pela pessoa; scale: o tamanho em uso (o base, ou mais, quando o giro obriga a crescer
   // para continuar cobrindo a área útil; volta ao base conforme o giro é desfeito)
-  const ALIGN_ID = () => ({ dx: 0, dy: 0, scale: 1, rot: 0, base: 1 });
+  // flip: o espelhamento da foto (Align photos › Flip; pedido do dono, 2026-11-11): 1 = na horizontal, 2 = na vertical,
+  // 3 = as duas. A foto é espelhada nela mesma, antes do tamanho, do giro e do deslocamento. Não conta como ajuste de
+  // posição: uma foto só espelhada continua seguindo a posição do recorte (alignIsIdentity não olha o flip).
+  const ALIGN_ID = () => ({ dx: 0, dy: 0, scale: 1, rot: 0, base: 1, flip: 0 });
+  function alignFlip(a) { return (a && a.flip) | 0; }
+  function alignBlank(a) { return alignIsIdentity(a) && !alignFlip(a); }  // nem ajuste nem espelhamento: não é guardada
+  function flipCss(flip) { return flip ? " scale(" + (flip & 1 ? -1 : 1) + ", " + (flip & 2 ? -1 : 1) + ")" : ""; }
   function alignIsIdentity(a) { return !a || (Math.abs(a.dx) < 1e-6 && Math.abs(a.dy) < 1e-6 && Math.abs(a.scale - 1) < 1e-9 && Math.abs(a.rot) < 1e-9); }
   function alignLoad(session, st) {
     // O alinhamento também muda por fora desta janela: o recorte ajustado no Lightroom Classic vira o alinhamento da
@@ -4239,13 +4250,13 @@
     host.split(";").forEach((item) => {
       const colon = item.lastIndexOf(":");
       if (colon <= 0) return;
-      const [dx, dy, scale, rot, base] = item.slice(colon + 1).split(",").map(Number);
-      st.align.byFile[item.slice(0, colon)] = { dx: dx || 0, dy: dy || 0, scale: scale > 0 ? scale : 1, rot: rot || 0, base: base > 0 ? base : (scale > 0 ? scale : 1) };
+      const [dx, dy, scale, rot, base, flip] = item.slice(colon + 1).split(",").map(Number);
+      st.align.byFile[item.slice(0, colon)] = { dx: dx || 0, dy: dy || 0, scale: scale > 0 ? scale : 1, rot: rot || 0, base: base > 0 ? base : (scale > 0 ? scale : 1), flip: (flip | 0) & 3 };
     });
   }
   function alignText(st) {
-    return Object.keys(st.align.byFile).filter((f) => !alignIsIdentity(st.align.byFile[f]))
-      .map((f) => { const a = st.align.byFile[f]; return f + ":" + a.dx.toFixed(2) + "," + a.dy.toFixed(2) + "," + a.scale.toFixed(5) + "," + a.rot.toFixed(3) + "," + (a.base || a.scale).toFixed(5); }).join(";");
+    return Object.keys(st.align.byFile).filter((f) => !alignBlank(st.align.byFile[f]))
+      .map((f) => { const a = st.align.byFile[f]; return f + ":" + a.dx.toFixed(2) + "," + a.dy.toFixed(2) + "," + a.scale.toFixed(5) + "," + a.rot.toFixed(3) + "," + (a.base || a.scale).toFixed(5) + (alignFlip(a) ? "," + alignFlip(a) : ""); }).join(";");
   }
   const alignSent = {};  // por sessão: os últimos textos de alinhamento que esta janela mandou gravar
   function alignSave(session, st) {
@@ -4262,7 +4273,7 @@
   // alinhar; numa sessão toda igual, "As shot" já é uma forma só (o canvas é a própria foto) e o alinhamento vale.
   function sessionMixed(session) { const r = ratioInfoCached(session.name); return !!(r && r.mixed); }
   function needsRatio(session, st) { cropLoad(session, st); return st.crop.ratio === "asshot" && sessionMixed(session); }
-  function sessionAligned(session, st) { alignLoad(session, st); cropLoad(session, st); return !needsRatio(session, st) && Object.keys(st.align.byFile).some((f) => !alignIsIdentity(st.align.byFile[f])); }
+  function sessionAligned(session, st) { alignLoad(session, st); cropLoad(session, st); return !needsRatio(session, st) && Object.keys(st.align.byFile).some((f) => !alignBlank(st.align.byFile[f])); }
   // "Align photos" com "As shot": pede uma proporção antes (a escolhida aparece depois na tela de alinhamento)
   // Escolher: a sessão passa a essa proporção e a tela "Align photos" abre nela (vinda da aba Framing ou de outra
   // sessão, já dentro de "Align photos"). Cancel: nada muda. ⌘Z desfaz a escolha e volta para onde estava; ⇧⌘Z abre
@@ -4346,7 +4357,7 @@
     if (alignIsIdentity(al)) {
       const base = { dx: 0, dy: 0, scale: 1, rot: 0, base: 1 };
       const need = minCoverOf(sz.w, sz.h, base, 1, frame) || 1;
-      return { dx: (0.5 - st.crop.x) * (sz.w * need - frame.w), dy: (0.5 - st.crop.y) * (sz.h * need - frame.h), scale: need, rot: 0, base: 1 };
+      return { dx: (0.5 - st.crop.x) * (sz.w * need - frame.w), dy: (0.5 - st.crop.y) * (sz.h * need - frame.h), scale: need, rot: 0, base: 1, flip: alignFlip(al) };
     }
     const need = minCoverOf(sz.w, sz.h, al, Math.max(0.05, al.base || al.scale), frame);
     return Object.assign({}, al, { scale: need ? Math.max(al.scale, need) : al.scale });
@@ -4355,6 +4366,36 @@
   // A foto como sai na exportação: cortada ao canvas (com a proporção) e com o alinhamento da sessão. Montada num
   // canvas a partir da prévia; guardada por foto e Framing. Sem proporção nem alinhamento, a própria prévia.
   const framedCache = new Map();
+  // O espelhamento que vale para a foto agora: como o alinhamento, só quando a exportação usa o canvas (uma proporção
+  // escolhida, ou a sessão toda na mesma forma)
+  function flipInUse(session, st, file) {
+    alignLoad(session, st); cropLoad(session, st);
+    return sessionAligned(session, st) || st.crop.ratio !== "asshot" ? alignFlip(alignOf(st, file)) : 0;
+  }
+  // A imagem espelhada, sem mais nada (a editada do Lightroom, e as fotos do passo 2 do Export, que aparecem inteiras)
+  function mirroredUrl(url, flip, maxPx) {
+    if (!flip || !url) return Promise.resolve(url);
+    const px = maxPx || 1600, key = ["flip", url, flip, px].join("|");
+    if (framedCache.has(key)) return framedCache.get(key);
+    const p = new Promise((done) => {
+      const im = new Image();
+      im.onload = () => {
+        const k = Math.min(1, px / Math.max(im.naturalWidth, im.naturalHeight, 1));
+        const c = document.createElement("canvas");
+        c.width = Math.max(1, Math.round(im.naturalWidth * k)); c.height = Math.max(1, Math.round(im.naturalHeight * k));
+        const ctx = c.getContext("2d");
+        ctx.imageSmoothingQuality = "high";
+        ctx.translate(c.width / 2, c.height / 2); ctx.scale(flip & 1 ? -1 : 1, flip & 2 ? -1 : 1);
+        ctx.drawImage(im, -c.width / 2, -c.height / 2, c.width, c.height);
+        let out = url; try { out = c.toDataURL("image/jpeg", 0.9); } catch (e) {}
+        done(out);
+      };
+      im.onerror = () => done(url);
+      im.src = url;
+    });
+    framedCache.set(key, p);
+    return p;
+  }
   // orig: url é da foto original (passo 1 do Export), então é recortada mesmo quando a sessão mostra as editadas
   function framedUrl(session, items, st, item, url, maxPx, orig) {
     const px = maxPx || 1600;
@@ -4363,7 +4404,10 @@
     // A editada que veio do Lightroom já vem com o recorte (ele foi junto no Edit in Lightroom Classic): não corta de novo
     const cur = sessions.find((x) => x.name === session.name) || session;
     const ph = cur.photos && cur.photos.find((x) => x.file === item.file);
-    if (!orig && cur.inProject && cur.showEdited !== false && ph && ph.edited) return Promise.resolve(url);
+    if (!orig && cur.inProject && cur.showEdited !== false && ph && ph.edited) {
+      // (o Lightroom recebe a foto sem espelhar e a devolve assim: o espelhamento é posto aqui; decisão do dono, 2026-11-11)
+      return mirroredUrl(url, flipInUse(session, st, item.file), px);
+    }
     const key = [session.name, item.file, cropKey(st), st.crop.x, st.crop.y, alignText(st), px, orig ? "o" : ""].join("|");
     if (framedCache.has(key)) return framedCache.get(key);
     const p = Promise.all(items.map((it) => photoSizeOf(session.name, it.file).then((sz) => [it.file, sz]))).then((pairs) => {
@@ -4383,6 +4427,7 @@
           ctx.translate(al.dx * k, al.dy * k);
           ctx.rotate(al.rot * Math.PI / 180);
           ctx.scale(al.scale, al.scale);
+          if (alignFlip(al)) ctx.scale(al.flip & 1 ? -1 : 1, al.flip & 2 ? -1 : 1);
           ctx.drawImage(im, -sz.w * k / 2, -sz.h * k / 2, sz.w * k, sz.h * k);
           let out = url; try { out = c.toDataURL("image/jpeg", 0.9); } catch (e) {}
           done(out);
@@ -4440,7 +4485,16 @@
       li.innerHTML = '<div class="frame-img"><img alt=""><span class="frame-badge"></span></div>';
       li.querySelector(".frame-badge").textContent = pad(it.order || k + 1);
       ["prev", "next"].forEach((key) => { if (alignPrefs[key] && refIndex[key] === k && k !== cur) { const dot = el("span", "align-refdot"); dot.style.background = REF_COLORS[key]; li.appendChild(dot); } });
-      if (!alignIsIdentity(st.align.byFile[it.file])) li.classList.add("aligned");
+      if (!alignBlank(st.align.byFile[it.file])) li.classList.add("aligned");
+      // Espelhada: a miniatura aparece espelhada, com a marca do sentido no canto (protótipo aprovado, 2026-11-11)
+      const flipOf = alignFlip(st.align.byFile[it.file]);
+      if (flipOf) {
+        li.querySelector("img").style.transform = flipCss(flipOf).trim();
+        const mark = el("span", "frame-flip");
+        mark.innerHTML = (flipOf & 1 ? FLIP_SVG.h : "") + (flipOf & 2 ? FLIP_SVG.v : "");
+        mark.title = "Flipped " + (flipOf === 3 ? "both ways" : flipOf & 1 ? "left to right" : "top to bottom");
+        li.querySelector(".frame-img").appendChild(mark);
+      }
       // Proporções misturadas: a mesma marca da tela principal (borda tracejada âmbar e a proporção no canto)
       if (mixedInfo && mixedInfo.mixed && mixedInfo.marked.includes(it.group)) { li.classList.add("ratio-warn"); li.appendChild(el("span", "frame-ratio", mixedInfo.byGroup[it.group] || "")); }
       sessionPhotoOriginal(session.name, it.file, 320).then((url) => { if (url) li.querySelector("img").src = url; });
@@ -4621,6 +4675,40 @@
     control("dy", "Move Y", "Pixels of the original · steps of 1 (⇧ 10)", 1, 10, 0, () => a.dy, (c, d) => { c.dy += d; });
     control("scale", "Size", "Percent of the original · steps of 0.1 (⇧ 1)", 0.1, 1, 1, () => a.scale * 100, (c, d) => { c.scale = Math.max(0.05, Math.min(20, c.scale + d / 100)); });
     control("rot", "Rotate", "Degrees, clockwise · steps of 0.05 (⇧ 0.5)", 0.05, 0.5, 2, () => a.rot, (c, d) => { c.rot = Math.round((c.rot + d) * 1000) / 1000; });
+    // Flip (protótipo aprovado pelo dono, 2026-11-11): dois botões que ligam e desligam, da largura do "− número +" das
+    // linhas de cima, e "Apply to all" embaixo deles, que dá a todas as fotos da sessão o espelhamento desta. O
+    // espelhamento não mexe na posição: fica na entrada guardada da foto, sem passar pelo ajuste em curso.
+    {
+      const setFlip = (file, flip) => {
+        const e = st.align.byFile[file];
+        if (e) { e.flip = flip; if (alignBlank(e)) delete st.align.byFile[file]; }
+        else if (flip) st.align.byFile[file] = Object.assign(ALIGN_ID(), { flip });
+      };
+      const flipRow = el("div", "flip-row");
+      const pair = el("span", "flip-pair");
+      [[1, "h", "Flip this photo left to right"], [2, "v", "Flip this photo top to bottom"]].forEach(([bit, key, tip]) => {
+        const b = el("button", "btn btn-small btn-secondary flip-btn" + (alignFlip(a) & bit ? " on" : ""));
+        b.type = "button"; b.title = tip; b.setAttribute("aria-label", tip); b.setAttribute("aria-pressed", alignFlip(a) & bit ? "true" : "false");
+        b.dataset.flip = key; b.innerHTML = FLIP_SVG[key];
+        b.addEventListener("click", () => {
+          clearTimeout(saveTimer); clearTimeout(saveSoonTimer);
+          a.flip = alignFlip(a) ^ bit;
+          setFlip(item.file, a.flip);
+          alignSave(session, st); expTrack(); rerender();
+        });
+        pair.appendChild(b);
+      });
+      const all = button("Apply to all", () => {
+        clearTimeout(saveTimer); clearTimeout(saveSoonTimer);
+        const flip = alignFlip(a);
+        items.forEach((it) => setFlip(it.file, flip));
+        alignSave(session, st); expTrack(); rerender();
+        toast((flip ? "Flip of photo " + pad(item.order || cur + 1) + " on the " + plural(n, "photo", "photos") : "No photo is flipped now") + " · ⌘Z undoes");
+      }, { kind: "btn-secondary", title: "Give every photo of this session the flip of this one" });
+      all.classList.add("flip-all");
+      flipRow.append(el("span", "align-lab", "Flip"), pair, all);
+      self.appendChild(flipRow);
+    }
     const resets = el("div", "align-resets");
     // Fit to canvas: a foto centrada, com o giro que tem, no menor tamanho que ainda cobre a área útil
     resets.appendChild(button("Fit to canvas", () => {
@@ -4676,7 +4764,7 @@
     // Fim de uma mudança: vai para a sessão, para session.json (logo em seguida) e vira um passo do desfazer
     const save = () => {
       clearTimeout(saveSoonTimer);
-      if (alignIsIdentity(a)) delete st.align.byFile[item.file]; else st.align.byFile[item.file] = Object.assign({}, a);
+      if (alignBlank(a)) delete st.align.byFile[item.file]; else st.align.byFile[item.file] = Object.assign({}, a);
       clearTimeout(saveTimer); saveTimer = setTimeout(() => alignSave(session, st), 150);
       expTrack();
     };
@@ -4733,6 +4821,7 @@
         l.style.display = ""; l.style.width = w + "px"; l.style.height = h + "px";
         l.style.left = (cx + al.dx * scaleK - w / 2) + "px"; l.style.top = (cy + al.dy * scaleK - h / 2) + "px";
         l.style.transform = "scale(" + al.scale + ") rotate(" + al.rot + "deg)";
+        l.querySelector("img").style.transform = flipCss(alignFlip(al)).trim();  // (a moldura e as alças não espelham)
         l.style.opacity = l.classList.contains("align-ref") ? opOf(refKeyOf[k]) : alignPrefs.opacity;
         if (+k === cur) { box.style.display = ""; box.style.width = w + "px"; box.style.height = h + "px"; box.style.left = l.style.left; box.style.top = l.style.top; box.style.transform = l.style.transform;
           // alças com o mesmo tamanho na tela, seja qual for o zoom da foto
@@ -5032,7 +5121,7 @@
         const item = items[i];
         if (!item) return;
         // Passo 2: a prévia já com o Framing do passo 1 (proporção, posição e alinhamento), como sai na exportação
-        sessionPhoto(session.name, item.file, 1600).then((url) => (url && exp.step === 3 ? framedUrl(session, items, st, item, url) : url))
+        sessionPhoto(session.name, item.file, 1600).then((url) => (url && exp.step === 3 ? framedUrl(session, items, st, item, url) : mirroredUrl(url, flipInUse(session, st, item.file), 1600)))
           .then((url) => { if (url && exp.active === session.name) img.src = url; });
         caption.innerHTML = "";
         caption.append(el("b", "", text[0]), document.createTextNode(text[1]));
@@ -5102,7 +5191,7 @@
         thumb.appendChild(el("span", "frame-badge", pad(item.order)));
         li.appendChild(thumb);
         // Passo 2: a miniatura também com o Framing do passo 1, inteira na caixa (sem cortar de novo)
-        sessionPhoto(session.name, item.file, 320).then((url) => (url && exp.step === 3 ? framedUrl(session, items, st, item, url, 320) : url))
+        sessionPhoto(session.name, item.file, 320).then((url) => (url && exp.step === 3 ? framedUrl(session, items, st, item, url, 320) : mirroredUrl(url, flipInUse(session, st, item.file), 320)))
           .then((url) => {
             if (!url) return;
             // A caixa fica na forma de sempre e a imagem recortada entra inteira (pedido do dono, 2026-11-07; antes a
@@ -5919,7 +6008,7 @@
       const tdS = document.createElement("td");
       tdS.append(document.createTextNode((s.label ? s.label + " · " : "") + label.date), document.createElement("br"), el("span", "dim", plural(sessionItems(s).length, "photo", "photos")));
       const tdF = document.createElement("td");
-      const r = ratioInfoCached(s.name), aligned = needsRatio(s, st) ? 0 : Object.keys(st.align.byFile).filter((f) => !alignIsIdentity(st.align.byFile[f])).length;
+      const r = ratioInfoCached(s.name), aligned = needsRatio(s, st) ? 0 : Object.keys(st.align.byFile).filter((f) => !alignBlank(st.align.byFile[f])).length;
       const names = { 0: "left", 0.5: "centre", 1: "right" }, vnames = { 0: "top", 0.5: "", 1: "bottom" };
       const warned = st.crop.ratio === "asshot" && r && r.mixed && !aligned;
       if (warned) { const w = mixedWarn("As shot · mixed ratios: the sequence will jump and the lenticular subject changes size"); const e = editLink(1, s, "framing"); e.classList.add("in-warn"); w.lastChild.append(" ", e); tdF.appendChild(w); }

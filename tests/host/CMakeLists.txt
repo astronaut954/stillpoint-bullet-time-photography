@@ -52,3 +52,8 @@ target_include_directories(StillpointHost BEFORE PRIVATE "${CMAKE_CURRENT_SOURCE
 target_include_directories(StillpointHost PRIVATE ${R}/src/gui ${R}/include ${R}/src/core "${stb_SOURCE_DIR}")
 target_compile_definitions(StillpointHost PRIVATE STILLPOINT_VERSION="${STILLPOINT_VERSION}" STILLPOINT_TEST_HOST=1)
 target_link_libraries(StillpointHost PRIVATE stillpoint_export pthread)
+
+# As contas do exportador conferidas direto (espelhamento da foto, 2026-11-11); o run_tests.py roda e mostra o resultado
+add_executable(ExporterMathTest exporter_math_test.cpp)
+target_include_directories(ExporterMathTest PRIVATE ${R}/src/gui ${R}/include ${R}/src/core "${stb_SOURCE_DIR}")
+target_link_libraries(ExporterMathTest PRIVATE stillpoint_export pthread)

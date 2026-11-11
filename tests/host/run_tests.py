@@ -1037,6 +1037,129 @@ def scenario_align_undo(t, name, photos):
     t.close_export()
 
 
+def scenario_flip(t, name, photos):
+    line("\n== 17. Flip in Align photos (per photo, Apply to all, undo, and what goes to Lightroom)")
+    math = os.path.join(BUILD, "ExporterMathTest")
+    if os.path.exists(math):
+        out = subprocess.run([math], capture_output=True, text=True)
+        for ln in out.stdout.splitlines():
+            if ln.startswith(("PASS", "FAIL")):
+                check(t, "exporter: " + ln[6:].split("   [")[0], ln.startswith("PASS"), ln)
+    else:
+        check(t, "the exporter math test was built (ExporterMathTest)", False, math)
+    s = t.shoot()
+    t.dismiss()
+    if not s:
+        check(t, "a new session for this scenario", False)
+        return
+    o = t.originals(s)
+    ph = sorted(os.path.join(o, f) for f in os.listdir(o) if not f.startswith(".") and f != "session.json")
+    t.page.click("#saveBtn")
+    t.wait(lambda: t.export_open(), 5)
+    time.sleep(0.6)
+    t.js("() => { const b = document.querySelector('#exportSteps .export-step'); if (!b.classList.contains('on')) b.click(); }")
+    time.sleep(0.4)
+    t.js("() => document.getElementById('exportUnselectAll').click()")
+    t.js("(n) => document.querySelector('#exportList li.export-item[data-name=\"' + n + '\"] .export-check input').click()", s)
+    t.page.click('#exportList li.export-item[data-name="%s"] .folder-date' % s)
+    time.sleep(0.6)
+    t.js("() => [...document.querySelectorAll('#exportSettings .segmented:not(.orient-seg) button')].find(x => x.textContent.trim() === '1:1').click()")
+    time.sleep(0.8)
+    t.js("() => document.querySelector('#exportSettings .framing-align-btn').click()")
+    time.sleep(1.8)
+    saved = lambda: (t.session(s) or {}).get("align") or ""
+    entry = lambda k: dict(x.rsplit(":", 1) for x in saved().split(";") if ":" in x).get(os.path.basename(ph[k]), "")
+    flip_of = lambda k: (entry(k).split(",") + ["0"] * 6)[5]
+    state = lambda: t.js("""() => ({
+        on: [...document.querySelectorAll('#exportSettings .flip-btn')].map(b => b.classList.contains('on')),
+        marks: [...document.querySelectorAll('#exportSettings .export-strip .frame')].map(li => !!li.querySelector('.frame-flip')),
+        thumbs: [...document.querySelectorAll('#exportSettings .export-strip .frame img')].map(i => i.style.transform),
+        stage: (document.querySelector('#exportSettings .align-current img') || {style: {}}).style.transform,
+        row: (() => { const r = document.querySelector('#exportSettings .flip-row'), p = document.querySelector('#exportSettings .align-panel'); if (!r) return null;
+                      const a = r.getBoundingClientRect(), b = p.getBoundingClientRect(), pair = r.querySelector('.flip-pair').getBoundingClientRect(),
+                            ctl = document.querySelector('#exportSettings .align-ctl'), first = ctl.querySelector('button').getBoundingClientRect(), last = [...ctl.querySelectorAll('button')].pop().getBoundingClientRect();
+                      return { inside: a.right <= b.right + 0.5, left: Math.round(pair.left - first.left), right: Math.round(pair.right - last.right) }; })() })""")
+    st = state()
+    check(t, "the Flip row is there, under Rotate, as wide as the − number + above it", st["row"] == {"inside": True, "left": 0, "right": 0}, st["row"])
+    check(t, "nothing flipped at first", st["on"] == [False, False] and not any(st["marks"]), st)
+    # A foto 01 para a esquerda do quadro (Position › Left), depois espelhada na horizontal
+    t.js("() => document.querySelector('#exportSettings .crop-dot[title=\"Left\"]').click()")
+    time.sleep(0.8)
+    moved = entry(0)
+    t.page.click("#exportSettings .flip-btn[data-flip=h]")
+    time.sleep(0.9)
+    st = state()
+    check(t, "Flip left to right on photo 01: the button is on, the photo and its thumbnail are mirrored, the thumbnail has the mark",
+          st["on"] == [True, False] and "scale(-1, 1)" in st["stage"] and "scale(-1, 1)" in st["thumbs"][0] and st["marks"] == [True, False, False, False], st)
+    check(t, "... saved with the flip, and the position did not change", flip_of(0) == "1" and entry(0).split(",")[:4] == moved.split(",")[:4], (moved, entry(0)))
+    # Uma foto só espelhada (sem mexer no lugar) é guardada também
+    t.page.click("#exportSettings .export-strip > li:nth-child(3)")
+    time.sleep(1.2)
+    t.page.click("#exportSettings .flip-btn[data-flip=v]")
+    time.sleep(0.9)
+    st = state()
+    check(t, "Flip top to bottom on photo 03 (not moved): saved as a flip only", flip_of(2) == "2" and entry(2).startswith("0.00,0.00,1.00000,0.000") and st["marks"][2] and "scale(1, -1)" in st["stage"], (entry(2), st))
+    t.undo()
+    time.sleep(0.9)
+    check(t, "undo: photo 03 is not flipped anymore, photo 01 still is", flip_of(2) == "0" and flip_of(0) == "1", saved())
+    t.redo()
+    time.sleep(0.9)
+    check(t, "redo: flipped again", flip_of(2) == "2", saved())
+    # Apply to all: todas com o espelhamento da foto aberta (a 03: na vertical)
+    t.page.click("#exportSettings .flip-all")
+    time.sleep(0.9)
+    st = state()
+    check(t, "Apply to all: the four photos get the flip of photo 03", [flip_of(k) for k in range(4)] == ["2"] * 4 and all(st["marks"]), (saved(), st["marks"]))
+    check(t, "... photo 01 keeps where it was moved to", entry(0).split(",")[:4] == moved.split(",")[:4], (moved, entry(0)))
+    check(t, "... and the toast says so", "Flip of photo 03 on the 4 photos" in (t.js("() => document.getElementById('toast').textContent") or ""), t.js("() => document.getElementById('toast').textContent"))
+    t.undo()
+    time.sleep(0.9)
+    check(t, "undo of Apply to all: back to photo 01 left to right and photo 03 top to bottom", [flip_of(k) for k in range(4)] == ["1", "0", "2", "0"], saved())
+    t.js("() => [...document.querySelectorAll('#exportSettings .align-resets button')].find(b => b.textContent.trim() === 'Reset photo').click()")
+    time.sleep(0.9)
+    check(t, "Reset photo takes the flip off too (photo 03)", flip_of(2) == "0" and flip_of(0) == "1", saved())
+    # Para o Lightroom a foto vai sem espelhar: o recorte da 01 é o do outro lado do espelho
+    dx = float(entry(0).split(",")[0])
+    t.js("() => document.getElementById('exportConfirm').click()")  # Done aligning
+    time.sleep(0.8)
+    t.export_edit(s)
+    t.lr_block_button("Edit")
+    t.wait(lambda: t.edit_tag(s), 15)
+    time.sleep(0.5)
+    sent = t.lr.crops.get(ph[0]) or ()
+    from PIL import Image
+    with Image.open(ph[0]) as im:
+        w, h = im.size
+    with Image.open(ph[1]) as im:
+        w2, h2 = im.size
+    side = min(w, h, w2, h2)   # o canvas 1:1: o maior quadrado que cabe em todas as fotos
+    want_left = (w / 2 - side / 2 + dx) / w   # espelhada: o deslocamento troca de sinal
+    plain_left = (w / 2 - side / 2 - dx) / w
+    check(t, "photo 01 was moved off centre (so the mirror shows in the crop)", abs(dx) > 1, dx)
+    check(t, "Lightroom gets photo 01 not mirrored: the crop is the mirror of the Stillpoint one", len(sent) == 7 and abs(sent[0] - want_left) < 0.002 and abs(sent[0] - plain_left) > 0.01,
+          (list(sent), want_left, plain_left))
+    # A editada volta sem mexer no recorte: a foto continua espelhada no Stillpoint
+    t.lr.set_edit(ph[0], (40, 150, 210))
+    t.lr.export(o, t.project, s)
+    t.wait(lambda: (t.session(s) or {}).get("edited", 0) >= 1, 12)
+    time.sleep(1.0)
+    check(t, "after Export to Stillpoint the photo is edited and still flipped", (t.session(s) or {}).get("edited", 0) >= 1 and flip_of(0) == "1", saved())
+    # ... e movendo o recorte no Lightroom, o alinhamento que volta continua espelhado
+    d = 0.02 if sent[2] + 0.02 <= 1 else -0.02
+    t.export_edit(s)
+    t.lr_block_button("Edit")
+    t.wait(lambda: t.edit_tag(s), 15)
+    time.sleep(0.5)
+    sent = t.lr.crops.get(ph[0]) or sent
+    t.lr.set_edit(ph[0], (50, 150, 210))
+    t.lr.export(o, t.project, s, crops={ph[0]: (sent[0] + d, sent[1], sent[2] + d, sent[3], sent[4])})
+    time.sleep(2.5)
+    new_dx = float((entry(0).split(",") + ["0"])[0] or 0)
+    check(t, "crop moved in Lightroom on a flipped photo: the alignment moves the mirrored way and stays flipped",
+          flip_of(0) == "1" and abs((new_dx - dx) - d * w) < 1.5, (dx, new_dx, d * w, entry(0)))
+    t.close_export()
+
+
 def scenario_orientation(t, name, photos):
     line("\n== 14. Orientation of the aspect ratio (Horizontal / Vertical)")
     s = t.shoot()
@@ -1141,7 +1264,7 @@ def main():
                 only = os.environ.get("STILLPOINT_TEST_ONLY", "")  # para depurar: só os cenários com este nome
                 for sc in [x for x in (scenario_cleared, scenario_delete_edit_undo, scenario_photo_delete_restore,
                            scenario_remove_from_collection, scenario_delete_session, scenario_cancel, scenario_rapid_in_lightroom, scenario_crop_before_lightroom,
-                           scenario_export_edit, scenario_export_trash, scenario_lightroom_crop, scenario_undo_own_item, scenario_orientation, scenario_selection_kept, scenario_align_undo) if only in x.__name__]:
+                           scenario_export_edit, scenario_export_trash, scenario_lightroom_crop, scenario_undo_own_item, scenario_orientation, scenario_selection_kept, scenario_align_undo, scenario_flip) if only in x.__name__]:
                     try:
                         sc(t, name, photos)
                     except Exception:  # noqa: BLE001

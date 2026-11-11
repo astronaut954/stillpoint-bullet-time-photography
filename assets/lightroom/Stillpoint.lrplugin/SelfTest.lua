@@ -332,6 +332,14 @@ local function scenarioCrop()
 		-- Gira como o menu Photo > Rotate Right (só a foto 04 selecionada: até o Lightroom 11.3 girava a seleção inteira)
 		local dimsOf = function() local w, h = croppedSize(4); return { width = w or 0, height = h or 0 } end
 		local canRotate = type(photoOf(4).rotateRight) == 'function'
+		-- (só para saber: o Stillpoint espelha a foto por conta dele; decisão do dono, 2026-11-11, porque o plugin não tinha
+		-- como espelhar no Lightroom. Se esta linha um dia disser "yes", dá para mandar a foto já espelhada.)
+		local flips = {}
+		for _, name in ipairs({ 'flipHorizontal', 'flipVertical', 'flipLeftRight', 'flipTopBottom', 'mirror' }) do
+			local ok, kind = LrTasks.pcall(function() return type(photoOf(4)[name]) end)
+			if ok and kind == 'function' then table.insert(flips, name) end
+		end
+		info('this Lightroom lets the plugin flip a photo: ' .. (#flips > 0 and ('yes (' .. table.concat(flips, ', ') .. ')') or 'no'))
 		check('this Lightroom lets the plugin rotate a photo (photo:rotateRight)', canRotate)
 		if canRotate then
 			LrTasks.pcall(function() LrApplication.activeCatalog():setSelectedPhotos(photoOf(4), {}) end)

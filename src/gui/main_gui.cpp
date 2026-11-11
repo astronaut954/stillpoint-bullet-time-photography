@@ -2853,14 +2853,16 @@ namespace
                                                 try { v[i] = std::stod(n); } catch (...) {}
                                         }
                                         Export::Align a;
-                                        if (!Export::AlignFromCrop(framing, sizes[k].first, sizes[k].second, v[0], v[1], v[2], v[3], v[4], a)) continue;
+                                        if (!Export::AlignFromCrop(framing, sizes[k].first, sizes[k].second, v[0], v[1], v[2], v[3], v[4], a,
+                                                framing.align[k].flipH, framing.align[k].flipV)) continue;
                                         char text[160];
                                         if (std::abs(a.dx) < 0.005) a.dx = 0;  // (sem "-0.00")
                                         if (std::abs(a.dy) < 0.005) a.dy = 0;
                                         if (std::abs(a.rot) < 0.0005) a.rot = 0;
                                         std::snprintf(text, sizeof(text), "%.2f,%.2f,%.5f,%.3f,%.5f", a.dx, a.dy, a.scale, a.rot,
                                             framing.align[k].base > 0 ? framing.align[k].base : 1.0);
-                                        items[files[k]] = text;
+                                        // (a foto espelhada no Stillpoint continua espelhada: o Lightroom a recebeu sem espelhar)
+                                        items[files[k]] = std::string(text) + (a.Flipped() ? "," + std::to_string((a.flipH ? 1 : 0) + (a.flipV ? 2 : 0)) : std::string());
                                         const auto ph = std::find_if(cur->photos.begin(), cur->photos.end(), [&](const StoredPhoto& p) { return p.file == files[k]; });
                                         alignedList += (firstAligned ? "" : ",") + std::to_string(ph != cur->photos.end() ? ph->order : static_cast<int>(k) + 1);
                                         firstAligned = false;

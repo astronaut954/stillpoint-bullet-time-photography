@@ -1879,6 +1879,10 @@ Com câmeras simuladas e o Lightroom Classic com o catálogo do projeto. A janel
       e a linha **Canvas … px (2:3)**).
 - [x] Com **Same framing for all ticked sessions** marcado, a orientação vai junto para as outras sessões marcadas (menos as travadas).
 - [x] **Seleção das sessões guardada (2026-11-11):** em **Export sessions**, desmarque algumas sessões, saia do Stillpoint e abra de novo: as mesmas continuam desmarcadas. Uma sessão fotografada depois entra marcada. Vale por projeto.
+- [ ] **Flip no Align photos (2026-11-11):** em **Align photos**, painel **This photo**, a linha **Flip** tem dois botões de ícone da largura do **− número +** e, embaixo, **Apply to all**. O primeiro espelha a foto aberta da esquerda para a direita, o segundo de cima para baixo; cada um liga e desliga. A miniatura fica espelhada e ganha a marca no canto de baixo, à esquerda.
+- [ ] **Apply to all** dá a todas as fotos o espelhamento da foto aberta (aviso "Flip of photo NN on the N photos · ⌘Z undoes"); ⌘Z desfaz de uma vez. **Reset photo** e **Reset all** tiram o espelhamento.
+- [ ] A foto espelhada aparece espelhada nas prévias dos passos 1, 2 e 3 e sai espelhada nos arquivos convertidos (**Photos › Converted**, **Sequence**, **Lenticular**); a pasta **Originals** continua como a câmera mandou.
+- [ ] **Edit in Lightroom Classic** com foto espelhada: no Lightroom a foto aparece sem espelhar, com o recorte no trecho certo; de volta ao Stillpoint a editada aparece e sai espelhada.
 - [x] Sessão em **2:3** › **Edit in Lightroom Classic**: no Lightroom cada foto abre com o recorte em pé; a editada volta em pé e é
       usada. Com foto editada, os dois botões ficam travados junto com o resto do Framing.
 - [ ] Exportar essa sessão (Photos convertidas, Sequence): os arquivos saem em pé, 2:3.

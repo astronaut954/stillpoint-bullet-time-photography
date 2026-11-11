@@ -42,9 +42,15 @@ namespace Export
         // A foto já vem enquadrada e alinhada de fora (a editada do Lightroom Classic, que recebeu o recorte e o
         // alinhamento no "Edit in Lightroom Classic"): não é transformada de novo, só levada ao tamanho do canvas
         bool framed = false;
+        // Espelhamento da foto (Align photos › Flip; pedido do dono, 2026-11-11): a foto é espelhada nela mesma, antes
+        // do tamanho, do giro e do deslocamento. Não conta como ajuste de posição: uma foto só espelhada continua
+        // seguindo a posição do recorte (posX/posY).
+        bool flipH = false, flipV = false;
+        bool Flipped() const { return flipH || flipV; }
         bool Identity() const { return std::abs(dx) < 1e-6 && std::abs(dy) < 1e-6 && std::abs(scale - 1) < 1e-9 && std::abs(rot) < 1e-9; }
     };
-    // Texto guardado em session.json ("align"): "<arquivo>:dx,dy,scale,rot[,base];<arquivo>:..."
+    // Texto guardado em session.json ("align"): "<arquivo>:dx,dy,scale,rot[,base[,flip]];<arquivo>:..."
+    // (flip: 1 = espelhada na horizontal, 2 = na vertical, 3 = as duas)
     std::map<std::string, Align> ParseAlign(const std::string& text);
 
     // Orientação do Aspect ratio (pedido do dono, 2026-11-10): a proporção pode vir com "/h" (deitado) ou "/v" (em pé),
@@ -86,7 +92,14 @@ namespace Export
     // gira no sentido horário na saída). false sem canvas. Usado para mandar o enquadramento ao Lightroom Classic.
     struct CropBox { double left = 0, top = 0, right = 1, bottom = 1, angle = 0; };
     // O caminho de volta: o recorte de uma foto (cantos e ângulo, como em CanvasCrop) vira o alinhamento dela no canvas
-    bool AlignFromCrop(const Framing& framing, int w, int h, double left, double top, double right, double bottom, double angle, Align& out);
+    // flipH / flipV: o espelhamento que a foto tem no Stillpoint (o Lightroom recebe a foto sem espelhar: ver Mirrored)
+    bool AlignFromCrop(const Framing& framing, int w, int h, double left, double top, double right, double bottom, double angle, Align& out,
+        bool flipH = false, bool flipV = false);
+    // A foto espelhada vista "do outro lado do espelho": o alinhamento que, na foto SEM espelhar, dá a saída espelhada
+    // (e o caminho de volta: a conta é a mesma nos dois sentidos). O Lightroom não espelha a foto pelo plugin
+    // (decisão do dono, 2026-11-11: a foto vai sem espelhar e o Stillpoint espelha na volta), então o recorte que vai
+    // para lá é o deste alinhamento, e o que volta de lá passa por aqui de novo.
+    Align Mirrored(const Align& a, bool flipH, bool flipV);
     bool CanvasCrop(const Framing& framing, size_t k, int w, int h, CropBox& out);
     // Largura e altura de uma foto (decodifica; RAW usa a prévia embutida)
     bool PhotoSize(const std::filesystem::path& photo, int& width, int& height);

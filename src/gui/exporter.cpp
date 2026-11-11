@@ -824,17 +824,20 @@ namespace Export
             const size_t colon = item.rfind(':');
             if (colon == std::string::npos || colon == 0) continue;
             Align a;
-            double v[5] = { 0, 0, 1, 0, 0 };
+            double v[6] = { 0, 0, 1, 0, 0, 0 };
             std::stringstream nums(item.substr(colon + 1));
             size_t k = 0;
-            for (std::string n; k < 5 && std::getline(nums, n, ',');)
+            for (std::string n; k < 6 && std::getline(nums, n, ',');)
             {
                 try { v[k] = std::stod(n); } catch (...) {}
                 ++k;
             }
             a.dx = v[0]; a.dy = v[1]; a.scale = std::clamp(v[2], 0.05, 20.0); a.rot = v[3];
             a.base = v[4] > 0 ? std::clamp(v[4], 0.05, 20.0) : a.scale;
-            a.touched = true;
+            const int flip = static_cast<int>(std::lround(v[5]));
+            a.flipH = (flip & 1) != 0; a.flipV = (flip & 2) != 0;
+            // (uma foto só espelhada não foi mexida de lugar: segue a posição do recorte, como as outras)
+            a.touched = !a.Identity() || !a.Flipped();
             out[item.substr(0, colon)] = a;
         }
         return out;
@@ -842,7 +845,7 @@ namespace Export
     bool Framing::Aligned() const
     {
         for (const Align& a : align)
-            if (a.touched && !a.Identity()) return true;
+            if ((a.touched && !a.Identity()) || a.Flipped()) return true;
         return false;
     }
     namespace
@@ -912,7 +915,7 @@ namespace Export
                 a.base = 1.0; a.scale = need > 0 ? need : 1.0;
                 a.dx = (0.5 - std::clamp(framing.posX, 0.0, 1.0)) * (w * a.scale - cw);
                 a.dy = (0.5 - std::clamp(framing.posY, 0.0, 1.0)) * (h * a.scale - ch);
-                a.noop = std::abs(a.scale - 1.0) < 1e-9 && std::abs(w - cw) < 0.5 && std::abs(h - ch) < 0.5;
+                a.noop = !a.Flipped() && std::abs(a.scale - 1.0) < 1e-9 && std::abs(w - cw) < 0.5 && std::abs(h - ch) < 0.5;
             }
             else
             {
@@ -938,6 +941,18 @@ namespace Export
                 stbir_resize_uint8_srgb(frame.pixels.data(), frame.width, frame.height, 0, resized.data(), W, H, 0, STBIR_RGB);
                 frame.pixels = std::move(resized); frame.width = W; frame.height = H;
             }
+            // (a editada chega do Lightroom sem espelhar: o espelhamento da foto é feito aqui)
+            if (a.Flipped())
+            {
+                std::vector<unsigned char> flipped(frame.pixels.size());
+                for (int y = 0; y < H; ++y)
+                    for (int x = 0; x < W; ++x)
+                    {
+                        const int sx = a.flipH ? W - 1 - x : x, sy = a.flipV ? H - 1 - y : y;
+                        std::memcpy(&flipped[(static_cast<size_t>(y) * W + x) * 3], &frame.pixels[(static_cast<size_t>(sy) * W + sx) * 3], 3);
+                    }
+                frame.pixels = std::move(flipped);
+            }
             return;
         }
         const double rad = a.rot * kPi / 180.0, cs = std::cos(rad), sn = std::sin(rad);
@@ -951,7 +966,9 @@ namespace Export
             {
                 // Do canvas para a foto: desfaz o deslocamento, o giro e o tamanho
                 const double px = framing.commonX + x + 0.5 - a.dx;
-                const double ux = (px * cs + py * sn) / a.scale, uy = (-px * sn + py * cs) / a.scale;
+                double ux = (px * cs + py * sn) / a.scale, uy = (-px * sn + py * cs) / a.scale;
+                if (a.flipH) ux = -ux;  // a foto espelhada: o ponto vem do outro lado dela
+                if (a.flipV) uy = -uy;
                 const double fx = std::clamp(cx + ux - 0.5, 0.0, sw - 1.0), fy = std::clamp(cy + uy - 0.5, 0.0, sh - 1.0);
                 const int x0 = static_cast<int>(fx), y0 = static_cast<int>(fy);
                 const int x1 = std::min(x0 + 1, sw - 1), y1 = std::min(y0 + 1, sh - 1);
@@ -971,7 +988,17 @@ namespace Export
         frame.pixels = std::move(out); frame.width = W; frame.height = H;
     }
 
-    bool AlignFromCrop(const Framing& framing, int w, int h, double left, double top, double right, double bottom, double angle, Align& out)
+    Align Mirrored(const Align& a, bool flipH, bool flipV)
+    {
+        // Espelhar a saída na horizontal troca o sinal do deslocamento em x e o sentido do giro; na vertical, o do
+        // deslocamento em y e o do giro; as duas juntas são meia volta: os dois deslocamentos trocam e o giro fica
+        Align m = a;
+        if (flipH) { m.dx = -m.dx; m.rot = -m.rot; }
+        if (flipV) { m.dy = -m.dy; m.rot = -m.rot; }
+        return m;
+    }
+    bool AlignFromCrop(const Framing& framing, int w, int h, double left, double top, double right, double bottom, double angle, Align& out,
+        bool flipH, bool flipV)
     {
         if (!framing.Canvas() || w <= 0 || h <= 0) return false;
         const double rad = angle * kPi / 180.0, cs = std::cos(rad), sn = std::sin(rad);
@@ -985,12 +1012,16 @@ namespace Export
         out.dy = framing.commonY - out.scale * (u1 * sn + v1 * cs);
         out.base = out.scale;
         out.touched = true;
+        // (o recorte veio da foto sem espelhar: de volta para o lado de cá do espelho)
+        out = Mirrored(out, flipH, flipV);
+        out.flipH = flipH; out.flipV = flipV;
         return true;
     }
     bool CanvasCrop(const Framing& framing, size_t k, int w, int h, CropBox& out)
     {
         if (!framing.Canvas() || k >= framing.align.size() || w <= 0 || h <= 0) return false;
-        const Align& a = framing.align[k];
+        // (a foto vai sem espelhar para o Lightroom: o recorte é o do alinhamento visto do outro lado do espelho)
+        const Align a = Mirrored(framing.align[k], framing.align[k].flipH, framing.align[k].flipV);
         const double rad = a.rot * kPi / 180.0, cs = std::cos(rad), sn = std::sin(rad);
         // Do canvas para a foto (a mesma conta do ApplyAlign), para os dois cantos
         const auto toPhoto = [&](double px, double py, double& fx, double& fy)
