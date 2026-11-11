@@ -340,6 +340,27 @@ local function scenarioCrop()
 			if ok and kind == 'function' then table.insert(flips, name) end
 		end
 		info('this Lightroom lets the plugin flip a photo: ' .. (#flips > 0 and ('yes (' .. table.concat(flips, ', ') .. ')') or 'no'))
+		-- (pergunta do dono, 2026-11-11: dá para o Lightroom mostrar a foto espelhada? Lista o que a foto oferece ao
+		-- plugin com nome de girar, espelhar ou orientar, em vez de adivinhar nomes; e o que o Lightroom diz da orientação)
+		do
+			local found, where = {}, 'not readable'
+			local function scan(t)
+				if type(t) ~= 'table' then return end
+				where = 'read'
+				for k, v in pairs(t) do
+					local name = tostring(k):lower()
+					if type(v) == 'function' and (name:find('flip') or name:find('rotat') or name:find('mirror') or name:find('orient')) then found[tostring(k)] = true end
+				end
+			end
+			LrTasks.pcall(function() scan(photoOf(4)) end)
+			LrTasks.pcall(function() local mt = getmetatable(photoOf(4)); scan(mt); scan(mt and mt.__index) end)
+			local names = {}
+			for k in pairs(found) do table.insert(names, k) end
+			table.sort(names)
+			info('what a photo offers the plugin to turn or flip (' .. where .. '): ' .. (#names > 0 and table.concat(names, ', ') or 'nothing found'))
+			local okRaw, raw = LrTasks.pcall(function() return photoOf(4):getRawMetadata('orientation') end)
+			info('orientation as Lightroom reports it: develop ' .. tostring(settingsOf(4).orientation) .. ', metadata ' .. (okRaw and tostring(raw) or 'not available'))
+		end
 		check('this Lightroom lets the plugin rotate a photo (photo:rotateRight)', canRotate)
 		if canRotate then
 			LrTasks.pcall(function() LrApplication.activeCatalog():setSelectedPhotos(photoOf(4), {}) end)
