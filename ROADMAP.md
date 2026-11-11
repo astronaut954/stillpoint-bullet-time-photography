@@ -972,6 +972,10 @@ Junto com essas etapas (sem etapa própria):
   da proporção ("3:2/v|x|y" em session.json; sem "/h" ou "/v" acompanha as fotos). Vai para o Lightroom no recorte de
   cada foto. A tela Align photos tem os mesmos dois botões e nomeia o canvas na orientação que vale. Não mexido: os
   avisos de proporção da janela principal ("Crop on export to 3:2") continuam sem orientação.
+- **Espelhar a foto no Align photos (pedido em 2026-11-11).** Controles de flip horizontal e flip vertical no Align
+  photos (hoje só existem Move X, Move Y, Size e Rotate; espelhar só pelo Lightroom, e a foto volta espelhada como
+  editada). Mexe no Align photos, nas prévias, no exportador e no recorte que vai para o Lightroom. Decisões pendentes
+  do dono antes de desenhar: por foto ou da sessão inteira; se entra também o giro de 90°; como aparece na miniatura.
 - **O projeto guarda o estado do rig (pedido em 2026-11-11).** Cada projeto guardar e trazer de volta, ao ser aberto: as
   últimas configurações de todas as câmeras (Camera settings), as configurações e a última seleção do painel Bullet time
   (Countdown, Sessions, Download wait, Timing), a ordem das câmeras, "e dentre outros". Hoje isso é do aplicativo, não
