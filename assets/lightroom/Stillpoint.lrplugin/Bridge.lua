@@ -905,10 +905,14 @@ local function handleNoticeFiles()
 			end)
 		end
 		if #sources > 0 then LrTasks.pcall(function() catalog:setActiveSources(sources) end) end
-		-- (o Lightroom demora a trocar a vista: escolhe a foto algumas vezes)
-		for _ = 1, (Ui.answers and 1 or 4) do
+		-- O Lightroom demora a trocar a vista: escolhe a foto algumas vezes
+		-- (autoteste no Lightroom de verdade, 2026-11-11: escolhida uma vez só, logo depois da troca, a foto não ficava)
+		for _ = 1, 6 do
+			LrTasks.sleep(0.4)
 			LrTasks.pcall(function() catalog:setSelectedPhotos(select[1], select) end)
-			if not Ui.answers then LrTasks.sleep(0.3) end
+			LrTasks.sleep(0.2)
+			local ok, target = LrTasks.pcall(function() return catalog:getTargetPhoto() end)
+			if ok and target == select[1] then break end
 		end
 	end
 	local function show()

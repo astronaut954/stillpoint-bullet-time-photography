@@ -733,7 +733,8 @@ local function scenarioShape()
 		LrTasks.sleep(1)
 		check('notice with the photo out of view: the message appears', seenTitle('message', 'Stillpoint did not use 1 edited photo') ~= nil, seenText())
 		local selected = catalog:getTargetPhotos() or {}
-		check('... Lightroom shows the photo and selects it (photo 04)', #selected == 1 and selected[1] == photoOf(4), #selected .. ' selected')
+		check('... Lightroom shows the photo and selects it (photo 04)', #selected == 1 and selected[1] == photoOf(4),
+			#selected .. ' selected: ' .. tostring(selected[1] and LrPathUtils.leafName(selected[1]:getRawMetadata('path'))))
 	end
 	-- Arruma: as fotos como chegaram, a sessão de novo sem enquadramento
 	for i = 1, #NAMES do toBaseline(i) end
