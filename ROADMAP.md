@@ -972,6 +972,12 @@ Junto com essas etapas (sem etapa própria):
   da proporção ("3:2/v|x|y" em session.json; sem "/h" ou "/v" acompanha as fotos). Vai para o Lightroom no recorte de
   cada foto. A tela Align photos tem os mesmos dois botões e nomeia o canvas na orientação que vale. Não mexido: os
   avisos de proporção da janela principal ("Crop on export to 3:2") continuam sem orientação.
+- **O projeto guarda o estado do rig (pedido em 2026-11-11).** Cada projeto guardar e trazer de volta, ao ser aberto: as
+  últimas configurações de todas as câmeras (Camera settings), as configurações e a última seleção do painel Bullet time
+  (Countdown, Sessions, Download wait, Timing), a ordem das câmeras, "e dentre outros". Hoje isso é do aplicativo, não
+  do projeto. Decisões pendentes do dono antes de desenhar: a lista exata do que entra; o que fazer quando as câmeras
+  ligadas não são as mesmas do projeto (outra quantidade, outros modelos); se abrir o projeto aplica as configurações
+  nas câmeras sozinho ou pergunta antes; e o que vale fora de projeto.
 - **Filtro na janela Project (pedido em 2026-11-10).** Um botão de filtro na Project window para filtrar as sessões
   por data, hora, minuto, número de fotos, etiqueta (o nome dado à sessão) e outros atributos que se mostrarem úteis
   (a pensar: editadas, no Lightroom, salvas, proporção, fotos faltando). Pensar junto a experiência das ações em

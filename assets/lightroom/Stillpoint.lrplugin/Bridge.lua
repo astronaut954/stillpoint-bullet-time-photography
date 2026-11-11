@@ -321,6 +321,7 @@ function Bridge.sentCrop(path)
 	return all and all[path]
 end
 
+local function quarterTurn(orientation) return orientation == 'BC' or orientation == 'DA' end
 local function sensorSize(sent, orientation)
 	if orientation == 'BC' or orientation == 'DA' then return sent.height, sent.width end
 	return sent.width, sent.height
@@ -332,14 +333,20 @@ end
 function Bridge.shapeProblem(path, now)
 	local sent = Bridge.sentCrop(path)
 	if not sent or not ((sent.width or 0) > 0 and (sent.height or 0) > 0) then return nil end
-	local sw, sh = sensorSize(sent, now.orientation)
+	-- A foto girada 90° no Lightroom (Photo > Rotate) troca a proporção do que sai (3:2 vira 2:3) sem mexer nos números
+	-- do recorte: compara como a foto aparece, na orientação em que foi mandada e na de agora (teste do dono,
+	-- 2026-11-11: a girada passava aqui e só era recusada depois, já no Stillpoint)
+	local base = sent.orientation or now.orientation
+	local sw, sh = sensorSize(sent, base)
 	local w0, h0 = cropShape(sent, sw, sh)
 	local w1, h1 = cropShape(now, sw, sh)
 	if w0 <= 0 or h0 <= 0 or w1 <= 0 or h1 <= 0 then return nil end
+	if quarterTurn(base) then w0, h0 = h0, w0 end
+	if quarterTurn(now.orientation) then w1, h1 = h1, w1 end
 	if math.min(math.abs(w1 - h1 * w0 / h0), math.abs(h1 - w1 * h0 / w0)) < 1 then return nil end
-	local turned = now.orientation == 'BC' or now.orientation == 'DA'
-	return { have = turned and Bridge.ratioName(h1, w1) or Bridge.ratioName(w1, h1),
-		want = (sent.framing and sent.framing:match('^%d+:%d+$')) and sent.framing or (turned and Bridge.ratioName(h0, w0) or Bridge.ratioName(w0, h0)) }
+	return { have = Bridge.ratioName(w1, h1),
+		want = (sent.framing and sent.framing:match('^%d+:%d+$')) and sent.framing or Bridge.ratioName(w0, h0),
+		turned = quarterTurn(base) ~= quarterTurn(now.orientation) }
 end
 
 -- O recorte de agora, do jeito do Stillpoint, quando é diferente do que ele mandou (a pessoa moveu, redimensionou
@@ -367,6 +374,7 @@ function Bridge.putBackCrop(catalog, photos)
 		if sent then
 			local settings = {}
 			for _, k in ipairs(CROP_KEYS) do settings[k] = sent[k] end
+			settings.orientation = sent.orientation  -- (a foto girada no Lightroom volta a ficar como foi mandada)
 			table.insert(changes, { photo = photo, settings = settings })
 		end
 	end
@@ -410,7 +418,7 @@ function Bridge.applyFraming(catalog, photos, request, newPaths)
 		-- O enquadramento mandado, para conferir a proporção no Export to Stillpoint ("As shot" sem alinhamento: nada)
 		if turned and (turned.width or 0) > 0 and (turned.height or 0) > 0 and tostring(request.framing) ~= 'asshot' then
 			Bridge.setSentCrop(path, { CropLeft = c.left, CropTop = c.top, CropRight = c.right, CropBottom = c.bottom, CropAngle = -angle,
-				width = turned.width, height = turned.height, framing = tostring(request.framing) })
+				width = turned.width, height = turned.height, framing = tostring(request.framing), orientation = now.orientation })
 		else
 			Bridge.setSentCrop(path, nil)
 		end

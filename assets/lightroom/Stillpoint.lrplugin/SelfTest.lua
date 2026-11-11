@@ -321,6 +321,29 @@ local function scenarioCrop()
 		check('... not an edit anymore', not Actions.hasOwnEdit(photoOf(4), nil), Actions.settingsDiff(Bridge.baseline(pathOf(4)), settingsOf(4)))
 		dialogs()
 	end
+	-- Foto girada 90° no Lightroom (Photo > Rotate; teste do dono, 2026-11-11): os números do recorte não mudam, mas o
+	-- que sai troca de proporção (3:2 vira 2:3). Bloqueia como proporção trocada; Put back desfaz o giro
+	openSession('for the rotation check', 'framing=3:2\ncrop=' .. pathOf(4) .. '\t0.000000\t0.000000\t1.000000\t1.000000\t0.0000\t240\t160\n')
+	do
+		local path = pathOf(4)
+		local before = settingsOf(4).orientation
+		check('the orientation the photo was sent with is kept', Bridge.sentCrop(path) ~= nil and Bridge.sentCrop(path).orientation == before, tostring(before))
+		check('3:2 as sent passes', Bridge.shapeProblem(path, settingsOf(4)) == nil)
+		local turnedTo = (before == 'BC' or before == 'DA') and 'AB' or 'BC'
+		write('rotate', function() photoOf(4):applyDevelopSettings({ orientation = turnedTo }) end)
+		check('Lightroom takes a rotation from the plugin', settingsOf(4).orientation == turnedTo, tostring(before) .. ' -> ' .. tostring(settingsOf(4).orientation))
+		local w4, h4 = croppedSize(4)
+		check('rotated photo 04 is standing (160 x 240)', w4 and math.abs(w4 - 160) <= 2 and math.abs(h4 - 240) <= 2, tostring(w4) .. ' x ' .. tostring(h4))
+		local problem = Bridge.shapeProblem(path, settingsOf(4))
+		check('rotated 90 degrees in a 3:2 session: caught as 2:3', problem ~= nil and problem.have == '2:3' and problem.want == '3:2' and problem.turned == true,
+			problem and ('have ' .. problem.have .. ', want ' .. problem.want) or 'passed')
+		dialogs({ 'other' })
+		local blocked = Actions.shapeBlock({ { photo = photoOf(4), place = Actions.placeOf(photoOf(4)) } })
+		check('Export to Stillpoint is blocked for the rotated photo', blocked == true and seenTitle('confirm', 'Export to Stillpoint blocked: 1 photo is not 3:2'), seenText())
+		check('Put back the Stillpoint crop: the photo is turned back', settingsOf(4).orientation == before, tostring(settingsOf(4).orientation))
+		check('... and the shape is right again', Bridge.shapeProblem(path, settingsOf(4)) == nil)
+		dialogs()
+	end
 	-- Sem recorte (Send as shot): a foto volta inteira
 	openSession('as shot', 'framing=asshot\n')
 	check('as shot: no shape check for the session', Bridge.sentCrop(pathOf(4)) == nil)

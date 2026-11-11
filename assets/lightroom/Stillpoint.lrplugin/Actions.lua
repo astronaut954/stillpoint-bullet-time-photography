@@ -132,7 +132,7 @@ function Actions.shapeBlock(items)
 	for _, item in ipairs(items) do
 		local ok, now = LrTasks.pcall(function() return item.photo:getDevelopSettings() end)
 		local problem = ok and now and Bridge.shapeProblem(item.place.path, now) or nil
-		if problem then table.insert(wrong, { item = item, have = problem.have, want = problem.want }) end
+		if problem then table.insert(wrong, { item = item, have = problem.have, want = problem.want, turned = problem.turned }) end
 	end
 	if #wrong == 0 then return false end
 	table.sort(wrong, function(a, b) return orderOf(a.item.place.file) < orderOf(b.item.place.file) end)
@@ -166,7 +166,7 @@ function Actions.shapeBlock(items)
 				table.insert(rows, f:row {
 					f:static_text { title = numbers[i], font = '<system/bold>', width_in_chars = 3 },
 					f:static_text { title = w.item.place.file, width_in_chars = 34, truncation = 'middle' },
-					f:static_text { title = 'now ' .. w.have, text_color = LrColor(0.85, 0.55, 0.10) },
+					f:static_text { title = 'now ' .. w.have .. (w.turned and ', rotated' or ''), text_color = LrColor(0.85, 0.55, 0.10) },
 				})
 			end
 			local contents = f:column {
