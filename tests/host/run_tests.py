@@ -695,12 +695,15 @@ def scenario_export_trash(t, name, photos):
     check(t, "while the session is In Lightroom, Outputs → is blocked", t.js("() => document.getElementById('exportConfirm').disabled"))
     check(t, "... and the footer says why", "still in Lightroom Classic" in (t.js("() => document.getElementById('exportCount').textContent") or ""), t.js("() => document.getElementById('exportCount').textContent"))
     # O Lightroom aberto em outro catálogo: o bloco diz qual abrir (decisão do dono, 2026-11-10)
-    block = lambda: t.js("() => (document.querySelector('#exportSettings .lr-block .lr-state') || {}).textContent || ''")
+    block = lambda: t.js("() => (document.querySelector('#exportSettings .lr-block') || {}).textContent || ''")
     check(t, "in the catalog of the session: the box does not name the catalog", "open the catalog" not in block(), block())
     home = t.lr.catalog
     t.lr.catalog = os.path.join(os.path.dirname(home), "Another.lrcat")
     check(t, "Lightroom open on another catalog: the box says which catalog to open",
           t.wait(lambda: "open the catalog " + os.path.splitext(os.path.basename(home))[0] + " to see them" in block(), 12), block())
+    t.js("() => document.querySelector('#exportSettings .lr-block .lr-catalog-link').click()")
+    opened = lambda: open(os.path.join(t.data, "test-opened.txt")).read() if os.path.exists(os.path.join(t.data, "test-opened.txt")) else ""
+    check(t, "... the text is a link that opens that catalog in Lightroom", t.wait(lambda: opened().strip().splitlines()[-1].endswith("| " + home), 6), opened()[-300:])
     t.lr.catalog = home
     check(t, "... back on the catalog of the session: the text goes away", t.wait(lambda: "open the catalog" not in block(), 12), block())
     turned = t.lr.crops.get(ph[0]) or ()

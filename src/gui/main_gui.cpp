@@ -2524,6 +2524,25 @@ namespace
             });
         }
 
+        // adobeOpenCatalog(sessão): abre no Lightroom Classic o catálogo onde está a coleção da sessão (o link "open the
+        // catalog … to see them" do Export › Edit; pedido do dono, 2026-11-10). O Lightroom pergunta se troca (Relaunch).
+        window.bind("adobeOpenCatalog", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            const auto catalogs = Adobe::CollectionCatalogs();
+            const auto it = args.empty() ? catalogs.end() : catalogs.find(args[0]);
+            const auto lr = adobeFind(Adobe::Program::Lightroom);
+            std::error_code ec;
+            if (it == catalogs.end() || it->second.empty() || !lr.found)
+                return Json("adobeOpenCatalog").Add("ok", false).Add("error", lr.found ? "The catalog of this session is not known." : "Lightroom Classic was not found.").Str();
+            const std::filesystem::path catalog = std::filesystem::u8path(it->second);
+            if (!std::filesystem::exists(catalog, ec))
+                return Json("adobeOpenCatalog").Add("ok", false).Add("error", "The catalog is not there anymore: " + it->second).Str();
+            const bool ok = Platform::OpenWithApplication(lr.path, { catalog });
+            Log("Lightroom Classic: opening the catalog " + it->second);
+            return Json("adobeOpenCatalog").Add("ok", ok).Add("error", ok ? "" : "Could not open Lightroom Classic.").Str();
+        });
+
         std::set<std::string> lrSeen;  // sessões cuja coleção o Stillpoint já viu no catálogo (para notar quando ela some)
         // Cancel editing no painel do Lightroom: a hora do recado, por sessão. Enquanto o alive.txt for de antes dela, a
         // coleção que ainda aparece nele não conta como "voltou"

@@ -1875,7 +1875,8 @@ Com câmeras simuladas e o Lightroom Classic com o catálogo do projeto. A janel
       (botão direito › **Delete photo 03…** › **Delete**); depois, no **Export › 2 Edit**, **Revert to original…** da editada;
       fechar o Export e desfazer as duas com ⌘Z, uma por vez: cada ⌘Z traz só o que aquela ação apagou.
 - [ ] Sessão no Lightroom, com o Lightroom aberto em **outro** catálogo (File › Open Recent): o bloco diz **In Lightroom Classic ·
-      n photos · open the catalog <nome> to see them**; de volta ao catálogo da sessão, o trecho some (em alguns segundos).
+      n photos** e, ao lado, o link **open the catalog <nome> to see them**; clicar no link manda o Lightroom abrir esse catálogo
+      (o Lightroom pergunta **Relaunch**); de volta ao catálogo da sessão, o link some (em alguns segundos).
 - [ ] Sessão no Lightroom: o bloco diz **In Lightroom Classic · n photos** (bolinha pulsando com o Lightroom aberto) e tem
       **Done editing**; na fileira, **LR** em cada foto.
 - [ ] Depois de **Export to Stillpoint** no Lightroom: o bloco diz **n of m photos edited** e tem **Edit again in Lightroom

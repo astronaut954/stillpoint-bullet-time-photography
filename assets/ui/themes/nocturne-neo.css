@@ -2096,6 +2096,11 @@ html.kbd-focus .export-tab.on .export-tab-check input:focus + .save-check { outl
 .edit-view button { height: 26px; padding: 0 10px; font-size: 10px; }
 /* Selo "ED" na miniatura: a foto tem editada (verde, sem bolinha) */
 .frame-app.ed { color: var(--noct-primary); border-color: var(--noct-primary); }
+/* Link "open the catalog … to see them" no bloco Lightroom Classic: texto sublinhado, sem cara de botão */
+.lr-block .lr-catalog-link { background: transparent; border: 0; padding: 0; margin-left: 0; height: auto; min-height: 0; font: 12px var(--noct-font-mono); letter-spacing: 0; text-transform: none;
+  color: var(--noct-primary); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.lr-block .lr-catalog-link:hover { color: var(--noct-text); background: transparent; }
+.lr-block .lr-catalog-link:focus-visible { outline: 2px solid var(--noct-primary); outline-offset: 2px; }
 /* Editada com outra proporção (não usada): triângulo âmbar no canto da miniatura */
 .frame-app.refused { color: var(--noct-pending); border-color: var(--noct-pending); display: inline-flex; padding: 1px 2px; }
 .frame-app.refused svg { width: 11px; height: 11px; }

@@ -5735,10 +5735,22 @@
       const state = el("span", "lr-state" + (lrLive.has(name) ? " live" : ""));
       state.dataset.session = name;
       state.innerHTML = '<i class="edit-dot"></i>';
-      state.appendChild(document.createTextNode("In Lightroom Classic · " + plural(lrN, "photo", "photos") +
-        // O Lightroom está aberto em outro catálogo: qual abrir para ver as fotos (decisão do dono, 2026-11-10)
-        (lrElsewhere[name] ? " · open the catalog " + lrElsewhere[name] + " to see " + (lrN === 1 ? "it" : "them") : "")));
+      state.appendChild(document.createTextNode("In Lightroom Classic · " + plural(lrN, "photo", "photos")));
       head.appendChild(state);
+      // O Lightroom está aberto em outro catálogo: qual abrir para ver as fotos; o texto é um link que manda o Lightroom
+      // abrir esse catálogo (decisões do dono, 2026-11-10)
+      if (lrElsewhere[name]) {
+        const cat = lrElsewhere[name];
+        const link = button("open the catalog " + cat + " to see " + (lrN === 1 ? "it" : "them"), () => {
+          if (typeof window.adobeOpenCatalog !== "function") { toast("This build cannot do that yet. Build the app again.", 8000); return; }
+          Promise.resolve(window.adobeOpenCatalog(name)).then((r) => {
+            if (r && r.ok) toast("Opening the catalog " + cat + " in Lightroom Classic · click Relaunch there", 7000);
+            else toast((r && r.error) || "Could not open the catalog.", 8000, { warn: true });
+          });
+        }, { title: "Open the catalog " + cat + " in Lightroom Classic (Lightroom asks to relaunch)" });
+        link.classList.add("lr-catalog-link");
+        head.appendChild(link);
+      }
       actions.appendChild(button("Done editing", () => doneEditing(session), { title: "Take the session out of Lightroom Classic: its collection leaves the catalog" }));
       note = el("div", "export-note", "Edit the photos in Lightroom Classic, then click Export to Stillpoint in the Stillpoint panel: the edited photos come back here by themselves.");
     } else if (hasEd) {
