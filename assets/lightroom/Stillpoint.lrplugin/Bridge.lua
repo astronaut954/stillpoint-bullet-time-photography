@@ -330,7 +330,7 @@ end
 -- A proporção do recorte de agora é a que o Stillpoint mandou? Sem tolerância (decisão do dono, 2026-11-10): só a
 -- folga de 1 pixel, que é o arredondamento do próprio arquivo. nil = está certa (ou a sessão foi sem enquadramento:
 -- "As shot" sem alinhamento não é conferida). Senão { have = '3:2', want = '1:1' }
-function Bridge.shapeProblem(path, now)
+function Bridge.shapeProblem(path, now, dims)
 	local sent = Bridge.sentCrop(path)
 	if not sent or not ((sent.width or 0) > 0 and (sent.height or 0) > 0) then return nil end
 	-- A foto girada 90° no Lightroom (Photo > Rotate) troca a proporção do que sai (3:2 vira 2:3) sem mexer nos números
@@ -343,10 +343,17 @@ function Bridge.shapeProblem(path, now)
 	if w0 <= 0 or h0 <= 0 or w1 <= 0 or h1 <= 0 then return nil end
 	if quarterTurn(base) then w0, h0 = h0, w0 end
 	if quarterTurn(now.orientation) then w1, h1 = h1, w1 end
+	-- O tamanho que o Lightroom diz que a foto tem agora (croppedDimensions), quando veio: deitado ou em pé decide,
+	-- mesmo que a orientação lida acima não tenha acompanhado o giro
+	if dims and (tonumber(dims.width) or 0) > 0 and (tonumber(dims.height) or 0) > 0 and math.abs(w1 - h1) >= 1
+		and math.abs(dims.width - dims.height) >= 1 and (dims.width > dims.height) ~= (w1 > h1) then
+		w1, h1 = h1, w1
+	end
 	if math.min(math.abs(w1 - h1 * w0 / h0), math.abs(h1 - w1 * h0 / w0)) < 1 then return nil end
 	return { have = Bridge.ratioName(w1, h1),
 		want = (sent.framing and sent.framing:match('^%d+:%d+$')) and sent.framing or Bridge.ratioName(w0, h0),
-		turned = quarterTurn(base) ~= quarterTurn(now.orientation) }
+		-- (girada: o que saiu é a proporção pedida deitada/em pé ao contrário)
+		turned = math.min(math.abs(w1 - h1 * h0 / w0), math.abs(h1 - w1 * w0 / h0)) < 1 }
 end
 
 -- O recorte de agora, do jeito do Stillpoint, quando é diferente do que ele mandou (a pessoa moveu, redimensionou
@@ -374,15 +381,35 @@ function Bridge.putBackCrop(catalog, photos)
 		if sent then
 			local settings = {}
 			for _, k in ipairs(CROP_KEYS) do settings[k] = sent[k] end
-			settings.orientation = sent.orientation  -- (a foto girada no Lightroom volta a ficar como foi mandada)
-			table.insert(changes, { photo = photo, settings = settings })
+			table.insert(changes, { photo = photo, settings = settings, orientation = sent.orientation })
 		end
 	end
 	if #changes == 0 then return 0 end
 	catalog:withWriteAccessDo('Stillpoint: put back the Stillpoint crop', function()
 		for _, ch in ipairs(changes) do ch.photo:applyDevelopSettings(ch.settings) end
 	end, { timeout = 60 })
-	Bridge.note('crop: ' .. #changes .. ' photos put back to the Stillpoint crop')
+	-- Foto girada no Lightroom (Photo > Rotate): gira de volta, 90° por vez, até ficar como foi mandada. O Lightroom não
+	-- aceita a orientação pelo applyDevelopSettings (autoteste no Lightroom de verdade, 2026-11-11); photo:rotateLeft()
+	-- gira, e até o Lightroom 11.3 girava a seleção inteira: por isso só a foto fica selecionada na hora
+	local LrTasks = import 'LrTasks'
+	local turnedBack = 0
+	for _, ch in ipairs(changes) do
+		local function orientation()
+			local ok, now = LrTasks.pcall(function() return ch.photo:getDevelopSettings() end)
+			return ok and now and now.orientation or nil
+		end
+		if ch.orientation and orientation() and orientation() ~= ch.orientation and type(ch.photo.rotateLeft) == 'function' then
+			for _ = 1, 3 do
+				LrTasks.pcall(function()
+					catalog:setSelectedPhotos(ch.photo, {})
+					catalog:withWriteAccessDo('Stillpoint: turn the photo back', function() ch.photo:rotateLeft() end, { timeout = 30 })
+				end)
+				LrTasks.sleep(0.3)
+				if orientation() == ch.orientation then turnedBack = turnedBack + 1; break end
+			end
+		end
+	end
+	Bridge.note('crop: ' .. #changes .. ' photos put back to the Stillpoint crop' .. (turnedBack > 0 and (', ' .. turnedBack .. ' turned back') or ''))
 	return #changes
 end
 

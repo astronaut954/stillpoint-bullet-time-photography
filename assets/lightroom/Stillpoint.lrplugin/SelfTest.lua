@@ -329,19 +329,36 @@ local function scenarioCrop()
 		local before = settingsOf(4).orientation
 		check('the orientation the photo was sent with is kept', Bridge.sentCrop(path) ~= nil and Bridge.sentCrop(path).orientation == before, tostring(before))
 		check('3:2 as sent passes', Bridge.shapeProblem(path, settingsOf(4)) == nil)
-		local turnedTo = (before == 'BC' or before == 'DA') and 'AB' or 'BC'
-		write('rotate', function() photoOf(4):applyDevelopSettings({ orientation = turnedTo }) end)
-		check('Lightroom takes a rotation from the plugin', settingsOf(4).orientation == turnedTo, tostring(before) .. ' -> ' .. tostring(settingsOf(4).orientation))
-		local w4, h4 = croppedSize(4)
-		check('rotated photo 04 is standing (160 x 240)', w4 and math.abs(w4 - 160) <= 2 and math.abs(h4 - 240) <= 2, tostring(w4) .. ' x ' .. tostring(h4))
-		local problem = Bridge.shapeProblem(path, settingsOf(4))
-		check('rotated 90 degrees in a 3:2 session: caught as 2:3', problem ~= nil and problem.have == '2:3' and problem.want == '3:2' and problem.turned == true,
-			problem and ('have ' .. problem.have .. ', want ' .. problem.want) or 'passed')
-		dialogs({ 'other' })
-		local blocked = Actions.shapeBlock({ { photo = photoOf(4), place = Actions.placeOf(photoOf(4)) } })
-		check('Export to Stillpoint is blocked for the rotated photo', blocked == true and seenTitle('confirm', 'Export to Stillpoint blocked: 1 photo is not 3:2'), seenText())
-		check('Put back the Stillpoint crop: the photo is turned back', settingsOf(4).orientation == before, tostring(settingsOf(4).orientation))
-		check('... and the shape is right again', Bridge.shapeProblem(path, settingsOf(4)) == nil)
+		-- Gira como o menu Photo > Rotate Right (só a foto 04 selecionada: até o Lightroom 11.3 girava a seleção inteira)
+		local dimsOf = function() local w, h = croppedSize(4); return { width = w or 0, height = h or 0 } end
+		local canRotate = type(photoOf(4).rotateRight) == 'function'
+		check('this Lightroom lets the plugin rotate a photo (photo:rotateRight)', canRotate)
+		if canRotate then
+			LrTasks.pcall(function() LrApplication.activeCatalog():setSelectedPhotos(photoOf(4), {}) end)
+			LrTasks.pcall(function() write('rotate', function() photoOf(4):rotateRight() end) end)
+			LrTasks.sleep(0.5)
+			local w4, h4 = croppedSize(4)
+			info('after Rotate Right: orientation ' .. tostring(before) .. ' -> ' .. tostring(settingsOf(4).orientation) .. ', size ' .. tostring(w4) .. ' x ' .. tostring(h4))
+			check('the rotation shows in what the plugin reads (orientation or size)', settingsOf(4).orientation ~= before or (w4 and h4 and w4 < h4),
+				tostring(settingsOf(4).orientation) .. ', ' .. tostring(w4) .. ' x ' .. tostring(h4))
+			local problem = Bridge.shapeProblem(path, settingsOf(4), dimsOf())
+			check('rotated 90 degrees in a 3:2 session: caught as 2:3', problem ~= nil and problem.have == '2:3' and problem.want == '3:2' and problem.turned == true,
+				problem and ('have ' .. problem.have .. ', want ' .. problem.want) or 'passed')
+			dialogs({ 'other' })
+			local blocked = Actions.shapeBlock({ { photo = photoOf(4), place = Actions.placeOf(photoOf(4)) } })
+			check('Export to Stillpoint is blocked for the rotated photo', blocked == true and seenTitle('confirm', 'Export to Stillpoint blocked: 1 photo is not 3:2'), seenText())
+			LrTasks.sleep(0.5)
+			w4, h4 = croppedSize(4)
+			info('after Put back: orientation ' .. tostring(settingsOf(4).orientation) .. ', size ' .. tostring(w4) .. ' x ' .. tostring(h4))
+			check('Put back the Stillpoint crop: the photo is turned back', settingsOf(4).orientation == before and w4 and h4 and w4 > h4,
+				tostring(settingsOf(4).orientation) .. ', ' .. tostring(w4) .. ' x ' .. tostring(h4))
+			check('... and the shape is right again', Bridge.shapeProblem(path, settingsOf(4), dimsOf()) == nil)
+			-- (se o Put back não girou de volta, o teste desfaz o giro para não estragar o resto)
+			if settingsOf(4).orientation ~= before or not (w4 and h4 and w4 > h4) then
+				LrTasks.pcall(function() write('rotate back', function() photoOf(4):rotateLeft() end) end)
+				LrTasks.sleep(0.5)
+			end
+		end
 		dialogs()
 	end
 	-- Sem recorte (Send as shot): a foto volta inteira

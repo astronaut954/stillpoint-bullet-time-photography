@@ -131,7 +131,8 @@ function Actions.shapeBlock(items)
 	local wrong = {}
 	for _, item in ipairs(items) do
 		local ok, now = LrTasks.pcall(function() return item.photo:getDevelopSettings() end)
-		local problem = ok and now and Bridge.shapeProblem(item.place.path, now) or nil
+		local okDims, dims = LrTasks.pcall(function() return item.photo:getRawMetadata('croppedDimensions') end)
+		local problem = ok and now and Bridge.shapeProblem(item.place.path, now, okDims and type(dims) == 'table' and dims or nil) or nil
 		if problem then table.insert(wrong, { item = item, have = problem.have, want = problem.want, turned = problem.turned }) end
 	end
 	if #wrong == 0 then return false end
@@ -200,6 +201,7 @@ function Actions.shapeBlock(items)
 	end
 	if answer == 'other' then
 		local done = Bridge.putBackCrop(catalog, photos)
+		LrTasks.pcall(function() catalog:setSelectedPhotos(photos[1], photos) end)
 		Actions.state.text = 'Crop of ' .. list .. ' put back to the Stillpoint framing. Export again.'
 		Ui.bezel('Stillpoint crop put back on ' .. plural(done, 'photo', 'photos'))
 	end
