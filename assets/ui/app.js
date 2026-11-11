@@ -4598,6 +4598,17 @@
       inp.setAttribute("aria-label", label);
       const typed = () => { const v = parseFloat(inp.value.replace(",", ".")); if (!isNaN(v)) stepOnce((c) => apply(c, v - get())); else sync(); };
       inp.addEventListener("change", typed);
+      // ⌘Z / ⇧⌘Z com o cursor nesta caixa: desfaz e refaz o ajuste da foto, como fora dela (decisão do dono, 2026-11-11;
+      // nos outros campos de texto o desfazer é o do texto). Com um número digitado e ainda não confirmado, o primeiro
+      // ⌘Z só descarta esse número.
+      inp.addEventListener("keydown", (e) => {
+        if (!(e.metaKey || e.ctrlKey) || e.altKey || (e.key !== "z" && e.key !== "Z" && e.key !== "y")) return;
+        e.preventDefault();
+        if (!ui.dialogOverlay.classList.contains("hidden")) return;
+        if (inp.value !== get().toFixed(decimals)) { inp.value = get().toFixed(decimals); return; }
+        inp.blur();
+        if (e.key === "y" || e.shiftKey) doRedo(); else doUndo();
+      });
       inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { typed(); inp.blur(); } if (e.key === "ArrowUp" || e.key === "ArrowDown") { e.preventDefault(); stepOnce((c) => apply(c, (e.key === "ArrowUp" ? 1 : -1) * (e.shiftKey ? bigStep : step))); } e.stopPropagation(); });
       const minus = holdButton("minus", "−" + step + " (⇧ " + bigStep + "); hold to repeat", step, bigStep, (c, amt) => apply(c, -amt));
       const plus = holdButton("plus", "+" + step + " (⇧ " + bigStep + "); hold to repeat", step, bigStep, (c, amt) => apply(c, amt));

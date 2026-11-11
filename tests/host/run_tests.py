@@ -1017,6 +1017,23 @@ def scenario_align_undo(t, name, photos):
     go("uuu", "103.0", True, "undo three times: 103.0, still vertical")
     go("u", "103.0", False, "one more undo: back to horizontal")
     go("rr", "104.0", True, "redo twice: vertical and 104.0")
+    # Com o cursor dentro da caixa do número: o ⌘Z desfaz o ajuste da foto (decisão do dono, 2026-11-11)
+    box = t.page.locator('#exportSettings input[aria-label=Size]')
+    box.click(); box.fill("90"); t.page.keyboard.press("Enter")   # o cursor continua na caixa depois do Enter
+    time.sleep(0.8)
+    check(t, "typing 90 in Size and Enter: the photo is at 90.0", size() == "90.0" and "0.90000" in saved(), (size(), saved()))
+    inside = t.js("() => document.activeElement && document.activeElement.classList.contains('align-num')")
+    t.undo()
+    time.sleep(0.9)
+    check(t, "undo with the cursor in a number box: back to 104.0, saved", inside and size() == "104.0" and "1.04000" in saved(), (inside, size(), saved()))
+    box = t.page.locator('#exportSettings input[aria-label=Size]')
+    box.click(); box.fill("77")
+    t.undo()
+    time.sleep(0.6)
+    check(t, "a number typed and not confirmed: the first undo only drops it", size() == "104.0" and "1.04000" in saved(), (size(), saved()))
+    t.js("() => document.activeElement && document.activeElement.blur()")
+    time.sleep(0.4)
+    check(t, "... and leaving the box changes nothing", size() == "104.0" and "1.04000" in saved(), (size(), saved()))
     t.close_export()
 
 
