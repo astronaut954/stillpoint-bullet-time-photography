@@ -61,12 +61,28 @@ class T:
         env = dict(os.environ, HOME=self.home, STILLPOINT_DATA=self.data, STILLPOINT_RESOURCES=ROOT,
                    STILLPOINT_FAKE_CAMERAS="4", STILLPOINT_TEST_PORT=str(PORT), STILLPOINT_TEST_LR_RUNNING="1")
         self.app_log = open(os.path.join(self.tmp, "app-stderr.txt"), "w")
+        self.env = env
         self.app = subprocess.Popen([os.path.join(BUILD, "StillpointHost")], env=env, stdout=self.app_log, stderr=self.app_log)
         self.lr = FakeLightroom(os.path.join(self.data, "lightroom"), self.catalog)
         self.browser = pw.chromium.launch()
         self.page = self.browser.new_page(viewport={"width": 1440, "height": 900})
         self.errors = []
         self.page.on("pageerror", lambda e: self.errors.append(str(e)))
+        for _ in range(100):
+            try:
+                self.page.goto("http://127.0.0.1:%d/" % PORT)
+                break
+            except Exception:  # noqa: BLE001
+                time.sleep(0.1)
+        self.page.wait_for_selector("#shootBtn", timeout=15000)
+        time.sleep(1.5)
+
+    def restart_app(self):
+        """Fecha o Stillpoint e abre de novo, com os mesmos dados (o que ficou gravado é o que volta)."""
+        self.app.kill()
+        self.app.wait()
+        time.sleep(0.5)
+        self.app = subprocess.Popen([os.path.join(BUILD, "StillpointHost")], env=self.env, stdout=self.app_log, stderr=self.app_log)
         for _ in range(100):
             try:
                 self.page.goto("http://127.0.0.1:%d/" % PORT)
@@ -917,6 +933,45 @@ def scenario_undo_own_item(t, name, photos):
     check(t, "⌘Z again: photo 03 back, still only it", t.wait(lambda: count() == before, 8) and (t.session(s) or {}).get("edited") == 0, ((t.session(s) or {}).get("edited"), count()))
 
 
+def scenario_selection_kept(t, name, photos):
+    line("\n== 15. Export selection is kept after closing Stillpoint; a new session comes ticked")
+    a = t.shoot()
+    t.dismiss()
+    if not a:
+        check(t, "a new session for this scenario", False)
+        return
+    ticked = lambda: t.js("() => [...document.querySelectorAll('#exportList li.export-item')].filter(li => li.querySelector('.export-check input').checked).map(li => li.dataset.name)")
+    listed = lambda: t.js("() => [...document.querySelectorAll('#exportList li.export-item')].map(li => li.dataset.name)")
+    def open_export():
+        t.page.click("#saveBtn")
+        t.wait(lambda: t.export_open(), 5)
+        time.sleep(0.6)
+    open_export()
+    t.js("() => document.getElementById('exportUnselectAll').click()")
+    t.js("(n) => document.querySelector('#exportList li.export-item[data-name=\"' + n + '\"] .export-check input').click()", a)
+    time.sleep(0.3)
+    check(t, "only the one session is ticked", ticked() == [a], ticked())
+    before = listed()
+    t.close_export()
+    time.sleep(0.6)
+    t.restart_app()
+    t.dismiss()
+    open_export()
+    check(t, "after opening Stillpoint again: the same sessions are listed", listed() == before, (listed(), before))
+    check(t, "after opening Stillpoint again: still only that session ticked", ticked() == [a], ticked())
+    t.close_export()
+    b = t.shoot()
+    t.dismiss()
+    open_export()
+    check(t, "a new session comes ticked, the others stay as left", sorted(ticked()) == sorted([a, b]), ticked())
+    t.js("() => document.getElementById('exportSelectAll').click()")
+    time.sleep(0.3)
+    t.close_export()
+    time.sleep(0.6)
+    saved = [l for l in open(os.path.join(t.data, "settings.txt")).read().splitlines() if l.startswith("pref.exportOff=")]
+    check(t, "Select all leaves nothing recorded as unticked", saved == ["pref.exportOff={}"], saved)
+
+
 def scenario_orientation(t, name, photos):
     line("\n== 14. Orientation of the aspect ratio (Horizontal / Vertical)")
     s = t.shoot()
@@ -1018,7 +1073,7 @@ def main():
                 only = os.environ.get("STILLPOINT_TEST_ONLY", "")  # para depurar: só os cenários com este nome
                 for sc in [x for x in (scenario_cleared, scenario_delete_edit_undo, scenario_photo_delete_restore,
                            scenario_remove_from_collection, scenario_delete_session, scenario_cancel, scenario_rapid_in_lightroom, scenario_crop_before_lightroom,
-                           scenario_export_edit, scenario_export_trash, scenario_lightroom_crop, scenario_undo_own_item, scenario_orientation) if only in x.__name__]:
+                           scenario_export_edit, scenario_export_trash, scenario_lightroom_crop, scenario_undo_own_item, scenario_orientation, scenario_selection_kept) if only in x.__name__]:
                     try:
                         sc(t, name, photos)
                     except Exception:  # noqa: BLE001

@@ -2955,10 +2955,26 @@
     clearTimeout(exportPrefsTimer);
     exportPrefsTimer = setTimeout(() => window.savePref("export", JSON.stringify(exportPrefs)), 300);
   }
+  // Seleção das sessões no Export, guardada por projeto (decisão do dono, 2026-11-11): ficam
+  // gravadas as DESMARCADAS, então sessão nova entra marcada. Vale também ao fechar o Stillpoint.
+  let exportOff = {};
+  function selectionKey() { return (project && project.open && project.folder) || "-"; }
+  function rememberSelection() {
+    if (exp.project || typeof window.savePref !== "function") return;
+    const off = exportable().filter((x) => !exp.selected.has(x.name)).map((x) => x.name);
+    const key = selectionKey();
+    delete exportOff[key];
+    if (off.length) exportOff[key] = off;
+    const keys = Object.keys(exportOff);
+    keys.slice(0, Math.max(0, keys.length - 30)).forEach((k) => delete exportOff[k]);
+    window.savePref("exportOff", JSON.stringify(exportOff));
+  }
   const startPrefs = { splash: true };  // abertura (logo + chuva de código) ao abrir o app
   function loadPrefs(info) {
     const prefs = (info && info.prefs) || {};
     try { exportPrefs = prefs.export ? JSON.parse(prefs.export) : null; } catch (e) { exportPrefs = null; }
+    try { exportOff = prefs.exportOff ? JSON.parse(prefs.exportOff) : {}; } catch (e) { exportOff = {}; }
+    if (!exportOff || typeof exportOff !== "object" || Array.isArray(exportOff)) exportOff = {};
     if (exportPrefs && exportPrefs.same && typeof exportPrefs.same === "object") exp.same = Object.assign({ photos: true, sequence: true, lenticular: true }, exportPrefs.same);
     else if (exportPrefs && typeof exportPrefs.sameForAll === "boolean") exp.same = { photos: exportPrefs.sameForAll, sequence: exportPrefs.sameForAll, lenticular: exportPrefs.sameForAll };
     if (exportPrefs && typeof exportPrefs.sameFraming === "boolean") exp.sameFraming = exportPrefs.sameFraming;
@@ -3071,7 +3087,9 @@
     const unsaved = all.filter((s) => !s.saved);
     // Seleção: a do Project (vinda da janela Project), a que a pessoa deixou da última vez
     // (só as sessões que ainda existem) ou todas
-    const kept = exp.selectedTouched ? [...exp.selected].filter((n) => all.some((s) => s.name === n)) : [];
+    // (gravada por projeto: as desmarcadas ficam de fora, sessão nova entra marcada) ou todas
+    const off = new Set(exp.project ? [] : exportOff[selectionKey()] || []);
+    const kept = off.size ? all.filter((s) => !off.has(s.name)).map((s) => s.name) : [];
     exp.selected = new Set(exp.project ? projectNames : kept.length ? kept : (exp.exitAfter && unsaved.length ? unsaved : all).map((s) => s.name));
     Object.keys(exp.settings).forEach((k) => { if (!all.some((s) => s.name === k)) delete exp.settings[k]; });
     if (!all.some((s) => s.name === exp.active)) exp.active = (currentSession && all.some((s) => s.name === currentSession.name) && currentSession.name) || all[0].name;
@@ -3202,7 +3220,7 @@
       if (st.align && alignText(st) !== (session.align || "")) alignSave(session, st);
       if (st.crop && cropText(st) !== (session.crop || "")) cropSave(session, st);
     });
-    exp.same = o.same; exp.sameFraming = o.sameFraming !== false; exp.selected = new Set(o.sel); exp.dest = o.dest;
+    exp.same = o.same; exp.sameFraming = o.sameFraming !== false; exp.selected = new Set(o.sel); rememberSelection(); exp.dest = o.dest;
     expSnap = snap;
     renderExport();
   }
@@ -3322,7 +3340,7 @@
       li.dataset.tip = [s.label || "", label.date, plural(sessionItems(s).length, "photo", "photos"), label.detail].filter(Boolean).join(" · ");
       { const r = ratioInfoCached(s.name); const warns = []; if (s.missing) warns.push(s.missing + " missing"); if (r && r.mixed) warns.push("Mixed ratios"); if (warns.length) li.dataset.tipWarn = warns.join(" · "); }
       box.addEventListener("change", () => {
-        exp.selectedTouched = true; if (box.checked) exp.selected.add(s.name); else exp.selected.delete(s.name);
+        exp.selectedTouched = true; if (box.checked) exp.selected.add(s.name); else exp.selected.delete(s.name); rememberSelection();
         li.classList.toggle("off", !box.checked);
         updateExportCount();
         // As etiquetas Different e a coluna da direita (Same framing…, quantas ficam como estão) dependem de quais
@@ -5607,7 +5625,7 @@
     exp.exitAfter = false;
     openExport();
     if (!exportable().some((x) => x.name === s.name)) return;
-    if (!exp.selected.has(s.name)) { exp.selected.add(s.name); exp.selectedTouched = true; }
+    if (!exp.selected.has(s.name)) { exp.selected.add(s.name); exp.selectedTouched = true; rememberSelection(); }
     exp.active = s.name; exp.photo = 0; exp.step = 2; exp.aligning = false;
     renderExport();
   }
@@ -6026,8 +6044,8 @@
   }
 
   ui.saveBtn.addEventListener("click", () => startSave(false));
-  $("exportSelectAll").addEventListener("click", () => { exp.selectedTouched = true; exp.selected = new Set(exportable().map((s) => s.name)); renderExportList(); updateExportCount(); photoRerender(); });
-  $("exportUnselectAll").addEventListener("click", () => { exp.selectedTouched = true; exp.selected.clear(); renderExportList(); updateExportCount(); photoRerender(); });
+  $("exportSelectAll").addEventListener("click", () => { exp.selectedTouched = true; exp.selected = new Set(exportable().map((s) => s.name)); rememberSelection(); renderExportList(); updateExportCount(); photoRerender(); });
+  $("exportUnselectAll").addEventListener("click", () => { exp.selectedTouched = true; exp.selected.clear(); rememberSelection(); renderExportList(); updateExportCount(); photoRerender(); });
   $("exportCancel").addEventListener("click", askCloseExport);
   $("exportConfirm").addEventListener("click", () => {
     if (exp.step === 1 && exp.aligning) { exp.aligning = false; renderExport(); return; }  // "Done aligning"

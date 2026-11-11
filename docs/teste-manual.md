@@ -1878,6 +1878,7 @@ Com câmeras simuladas e o Lightroom Classic com o catálogo do projeto. A janel
 - [ ] **Align photos** tem os mesmos dois botões ao lado das proporções; em pé, o canvas aparece como **2:3** (etiqueta do quadro
       e a linha **Canvas … px (2:3)**).
 - [ ] Com **Same framing for all ticked sessions** marcado, a orientação vai junto para as outras sessões marcadas (menos as travadas).
+- [ ] **Seleção das sessões guardada (2026-11-11):** em **Export sessions**, desmarque algumas sessões, saia do Stillpoint e abra de novo: as mesmas continuam desmarcadas. Uma sessão fotografada depois entra marcada. Vale por projeto.
 - [ ] Sessão em **2:3** › **Edit in Lightroom Classic**: no Lightroom cada foto abre com o recorte em pé; a editada volta em pé e é
       usada. Com foto editada, os dois botões ficam travados junto com o resto do Framing.
 - [ ] Exportar essa sessão (Photos convertidas, Sequence): os arquivos saem em pé, 2:3.
