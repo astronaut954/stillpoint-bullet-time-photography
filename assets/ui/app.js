@@ -1488,7 +1488,10 @@
     sessions = list || [];
     updateButtons();
     // Proporções: sessões novas de um disparo são medidas já (e avisam se misturadas); o resto na fila
-    sessions.forEach((x) => { const r = String(x.crop || "").split("|")[0].split("/")[0]; if (RATIOS[r]) sessionCrop[x.name] = r; });
+    sessions.forEach((x) => {
+      const [r, o] = String(x.crop || "").split("|")[0].split("/");
+      if (RATIOS[r]) { sessionCrop[x.name] = r; if (o === "h" || o === "v") sessionOrient[x.name] = o; else delete sessionOrient[x.name]; }
+    });
     const fresh = known.length ? sessions.filter((x) => !known.includes(x.name)) : [];
     const afterShoot = busyAction === "shoot" || Date.now() - lastShootAt < 20000;
     if (afterShoot) fresh.forEach((x) => measureSessionRatios(x).then((info) => maybeWarnMixed(x, info, fresh.map((f) => f.name))));
@@ -2175,22 +2178,30 @@
   function ratioShortText(info) {
     return info.present.filter((r) => r !== info.common).map((r) => Object.keys(info.byGroup).filter((g) => info.byGroup[g] === r).length + " shot " + r).join(", ");
   }
+  // A orientação escolhida no Export (sessão → "h" / "v"; sem escolha, a das fotos) vale também nos avisos da janela
+  // principal: em pé, 3:2 aparece como 2:3 e o "keeps" é o da orientação (pedido do dono, 2026-11-11)
+  const sessionOrient = {};
+  function mainOrient(name, info) { return (name && sessionOrient[name]) || (info && info.natural) || "h"; }
+  function mainRatioName(name, r, info) { return mainOrient(name, info) === "v" ? RATIO_TURNED[r] || r : r; }
+  function mainKeep(name, r, info) { return mainOrient(name, info) !== ((info && info.natural) || "h") && info.keepTurned ? info.keepTurned[r] : info.keep[r]; }
   function mixedTipText(name, info) {
-    return ratioText(info) + (sessionCrop[name] ? " Crop on export: " + sessionCrop[name] + " (keeps " + info.keep[sessionCrop[name]] + "%)." : "");
+    const r = sessionCrop[name];
+    return ratioText(info) + (r ? " Crop on export: " + mainRatioName(name, r, info) + " (keeps " + mainKeep(name, r, info) + "%)." : "");
   }
   function mixedTag(name, info) {
     const t = el("span", "missing-tag mixed-tag", "Mixed ratios");
     t.dataset.itip = mixedTipText(name, info);
     return t;
   }
-  function ratioButtonLabel(r, info) { return "Crop on export to " + r + " (keeps " + info.keep[r] + "%)"; }
+  function ratioButtonLabel(r, info) { return "Crop on export to " + mainRatioName("", r, info) + " (keeps " + info.keep[r] + "%)"; }
   function chooseSessionCrop(name, r, info) {
     sessionCrop[name] = r;
+    delete sessionOrient[name];
     saveSessionCrop();
     const s = sessions.find((x) => x.name === name);
     if (s) { s.crop = r + "|0.500|0.500"; if (typeof window.setSessionCrop === "function") window.setSessionCrop(name, s.crop); }
     if (exp.settings[name]) exp.settings[name].crop.loaded = false;  // o Export relê a escolha
-    log("Crop on export: " + r + " for " + sessionLabel(name).date, "ok", "Keeps " + info.keep[r] + "% of the photos on average. The photos are not changed; Export sessions will use it.");
+    log("Crop on export: " + mainRatioName(name, r, info) + " for " + sessionLabel(name).date, "ok", "Keeps " + info.keep[r] + "% of the photos on average. The photos are not changed; Export sessions will use it.");
     if (currentSession && currentSession.name === name) sessionHead(currentSession);
   }
   // Aviso (janela), uma vez por combinação de câmeras/proporções por uso do app
@@ -4042,6 +4053,7 @@
   function cropSave(session, st) {
     const text = cropText(st);
     if (st.crop.ratio !== "asshot") sessionCrop[session.name] = st.crop.ratio; else delete sessionCrop[session.name];
+    if (st.crop.orient && st.crop.ratio !== "asshot") sessionOrient[session.name] = st.crop.orient; else delete sessionOrient[session.name];
     saveSessionCrop();
     session.crop = text;
     if (typeof window.setSessionCrop === "function") window.setSessionCrop(session.name, text);

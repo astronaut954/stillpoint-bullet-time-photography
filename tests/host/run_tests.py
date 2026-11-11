@@ -1095,6 +1095,9 @@ def scenario_orientation(t, name, photos):
     time.sleep(0.8)
     check(t, "with an edited photo the orientation is locked too", orient() == ["off disabled", "on disabled"], orient())
     t.close_export()
+    time.sleep(0.8)
+    tip = t.js("(n) => { const g = document.querySelector('#sessionList li.folder[data-name=\"' + n + '\"] .mixed-tag'); return g ? g.dataset.itip : null; }", s)
+    check(t, "main window: the Mixed ratios note names the crop standing (2:3), not 3:2", bool(tip) and "Crop on export: 2:3 (keeps" in tip, tip)
 
 
 def dismiss_delete(self):
