@@ -987,7 +987,9 @@ Junto com essas etapas (sem etapa própria):
   marca o mesmo ponto em cada foto).
 - **Espelhar a foto no Align photos (pedido em 2026-11-11; feito no mesmo dia na branch `etapa-20-lightroom`,
   protótipo aprovado: linha Flip com dois ícones, Apply to all e a marca na miniatura; sem giro de 90°, que já se faz
-  digitando 90 no Rotate; para o Lightroom a foto vai sem espelhar e o Stillpoint espelha na volta).** Texto do pedido: Controles de flip horizontal e flip vertical no Align
+  digitando 90 no Rotate; para o Lightroom a foto vai sem espelhar e o Stillpoint espelha na volta; o Lightroom
+  Classic 15.6 não deixa o plugin espelhar, conferido no autoteste, e o dono decidiu deixar assim em vez de mandar
+  cópia espelhada; a marca na miniatura é um ícone só).** Texto do pedido: Controles de flip horizontal e flip vertical no Align
   photos (hoje só existem Move X, Move Y, Size e Rotate; espelhar só pelo Lightroom, e a foto volta espelhada como
   editada). Mexe no Align photos, nas prévias, no exportador e no recorte que vai para o Lightroom. Decisões pendentes
   do dono antes de desenhar: por foto ou da sessão inteira; se entra também o giro de 90°; como aparece na miniatura.
