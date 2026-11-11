@@ -4592,8 +4592,12 @@
     {
       const info = ratioInfoCached(session.name);
       const r = row("Aspect ratio");
-      r.appendChild(segmented(ratioOptions(session.name, st), st.crop.ratio, (v) => { st.crop.ratio = v; cropShare(session, st); rerender(); },
-        (v) => (v === "asshot" && sessionMixed(session) ? "Aligned photos need a ratio. To keep each photo as shot, go back to Framing and choose As shot there (the alignment is kept for later)." : "")));
+      const ratioSeg = segmented(ratioOptions(session.name, st), st.crop.ratio, (v) => { st.crop.ratio = v; cropShare(session, st); rerender(); },
+        (v) => (v === "asshot" && sessionMixed(session) ? "Aligned photos need a ratio. To keep each photo as shot, go back to Framing and choose As shot there (the alignment is kept for later)." : ""));
+      // Os dois botões da orientação também aqui, colados nas proporções como no passo 1 (pedido do dono, 2026-11-11)
+      const group = el("span", "ratio-group");
+      group.append(ratioSeg, orientControl(session, st, false, (v) => { st.crop.orient = v; cropShare(session, st); rerender(); }));
+      r.appendChild(group);
       { const keep = keepShown(session.name, st); if (keep != null) r.appendChild(el("span", "export-keep", "keeps " + keep + "%")); }
       arRows.appendChild(r);
       addTip(arRows, "The shape every export gets, for the whole session; the crop frame stays where the Framing tab put it.", "Aspect ratio");
@@ -4683,7 +4687,8 @@
           const inv = 1 / al.scale; [...box.children].forEach((hd) => { hd.style.setProperty("--inv", inv); }); }
       });
       // Proporção de um tamanho: a mais próxima das quatro; "~" quando não é exata
-      const rn = (w, h) => { const n = ratioName(w, h); const exact = Math.abs(Math.max(w, h) / Math.min(w, h) - RATIOS[n]) < 0.01; return exact ? n : "~" + n; };
+      // (em pé, 3:2 é 2:3: o mesmo nome dos botões do Aspect ratio)
+      const rn = (w, h) => { const n = ratioName(w, h); const exact = Math.abs(Math.max(w, h) / Math.min(w, h) - RATIOS[n]) < 0.01; const shown = h > w ? RATIO_TURNED[n] || n : n; return exact ? shown : "~" + shown; };
       // Um quadro só: o canvas, que é o recorte (neon, sólido); fora dele a prévia escurece
       common.style.display = "none";
       ratio.style.display = ""; ratio.classList.add("free");

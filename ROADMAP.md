@@ -970,7 +970,7 @@ Junto com essas etapas (sem etapa própria):
   pé); em Vertical a lista vira As shot, 2:3, 3:4, 9:16 e 1:1 e o recorte fica em pé dentro da foto deitada (e o
   contrário). Apagados em As shot e 1:1 e com o Framing travado. Same framing copia a orientação junto. Guardada junto
   da proporção ("3:2/v|x|y" em session.json; sem "/h" ou "/v" acompanha as fotos). Vai para o Lightroom no recorte de
-  cada foto. Não mexido: a tela Align photos mostra os nomes na orientação que vale, mas não tem os dois botões; e os
+  cada foto. A tela Align photos tem os mesmos dois botões e nomeia o canvas na orientação que vale. Não mexido: os
   avisos de proporção da janela principal ("Crop on export to 3:2") continuam sem orientação.
 - **Filtro na janela Project (pedido em 2026-11-10).** Um botão de filtro na Project window para filtrar as sessões
   por data, hora, minuto, número de fotos, etiqueta (o nome dado à sessão) e outros atributos que se mostrarem úteis

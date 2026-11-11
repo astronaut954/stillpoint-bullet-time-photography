@@ -960,6 +960,17 @@ def scenario_orientation(t, name, photos):
     pick("2:3")
     time.sleep(0.6)
     check(t, "back to 2:3: Vertical is still the choice", orient() == ["off", "on"] and (t.session(s) or {}).get("crop", "").startswith("3:2/v|"), (orient(), (t.session(s) or {}).get("crop")))
+    # Align photos tem os mesmos dois botões
+    t.js("() => document.querySelector('#exportSettings .framing-align-btn').click()")
+    check(t, "Align photos: the two orientation buttons are there, Vertical lit", t.wait(lambda: orient() == ["off", "on"], 6), orient())
+    canvas = lambda: t.js("() => (document.querySelector('#exportSettings').textContent.match(/Canvas \\d+ × \\d+ px \\(([^)]+)\\)/) || [])[1] || ''")
+    check(t, "... and the canvas is named 2:3", t.wait(lambda: canvas() == "2:3", 6), canvas())
+    t.js("() => document.querySelectorAll('#exportSettings .orient-seg button')[0].click()")
+    check(t, "... Horizontal there: the session is saved as 3:2/h", t.wait(lambda: (t.session(s) or {}).get("crop", "").startswith("3:2/h|"), 6), (t.session(s) or {}).get("crop"))
+    t.js("() => document.querySelectorAll('#exportSettings .orient-seg button')[1].click()")
+    t.wait(lambda: (t.session(s) or {}).get("crop", "").startswith("3:2/v|"), 6)
+    t.js("() => document.getElementById('exportConfirm').click()")  # Done aligning
+    time.sleep(0.8)
     # No Lightroom: cada foto vai com o recorte em pé, e a editada em pé é aceita
     t.export_edit(s)
     t.lr_block_button("Edit")
