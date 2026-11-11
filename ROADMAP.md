@@ -1080,6 +1080,10 @@ Atualizar esta tabela sempre que uma função mudar de status.
   2026-11-11, Mac e Windows.** Testada pelo dono no Mac com câmeras simuladas e o Lightroom Classic de verdade (seção 42
   do roteiro). **Pendente:** no Windows compilou mas nada desta etapa foi testado; câmeras reais; o recado do arquivo
   recusado não se repetir depois de abrir outro projeto (só o uso confirma); a parte do Photoshop da etapa 20 não foi feita.
+  **Depois da 2.18.0 (2026-11-11, na branch):** foto girada 90° no Lightroom (Photo › Rotate) bloqueia o Export to
+  Stillpoint como proporção trocada, e Put back the Stillpoint crop gira de volta (`photo:rotateLeft`; o
+  `applyDevelopSettings` não aceita orientação). **Decisão do dono (2026-11-11):** foto espelhada no Lightroom (Flip
+  Horizontal / Flip Vertical) é aceita como está, sem aviso: é uma edição como outra qualquer.
 - **[Resolvido na 2.17.0, publicada em 2026-11-05] Live view com várias sessões num disparo (anotado pelo dono em 2026-11-02):** quando "Sessions"
   é maior que 1, o Live view (modo operador e modo audiência) só mostra uma sessão; não dá para
   navegar entre as sessões do mesmo bullet time. **Decidido em 2026-11-05 (protótipo "Live view: várias sessões"):**
