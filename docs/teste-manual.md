@@ -1956,6 +1956,38 @@ Com câmeras simuladas e o Lightroom Classic com o catálogo do projeto. A janel
       sempre (3:2), com faixas pretas; as caixas não mudam de forma. A prévia grande do **2 Edit** (tocando e no modo teatro)
       também mostra a foto recortada.
 
+## 43. O projeto guarda o estado do rig (protótipo "Estado do rig" aprovado em 2026-11-11)
+
+Decisões do dono (2026-11-11): entra tudo (painel **Bullet time**, ordem das câmeras, configurações das câmeras); ao
+abrir um projeto com câmeras diferentes, o Stillpoint lê as câmeras e pergunta antes de aplicar; câmera faltando ou
+nova só avisa; com o projeto aberto, cada mudança vai para ele na hora; **Keep the cameras as they are** não muda o
+projeto; sem projeto, padrão de fábrica e nada é guardado. O estado fica no arquivo `stillpoint-rig.json`, na pasta do
+projeto. As câmeras simuladas voltam ao padrão cada vez que o Stillpoint abre (é o que permite ver o aviso sem câmeras
+de verdade).
+
+- [ ] Com um projeto aberto, mudar **Countdown**, **Sessions**, **Download wait** e o **Timing** (painel **Bullet time**,
+      embaixo à direita); fechar o Stillpoint (⌘Q) e abrir de novo: os quatro voltam como ficaram.
+- [ ] Mudar a ordem das câmeras (setas da lista **Cameras**, embaixo à esquerda); fechar e abrir: a ordem volta.
+- [ ] Em **Camera settings** (botão acima da lista **Cameras**), mudar o **ISO** de uma câmera; fechar e abrir: aparece o
+      aviso **The cameras are not as this project left them**, com uma linha na tabela (a câmera, **ISO**, o valor da
+      câmera agora e o valor do projeto) e os botões **Keep the cameras as they are** e **Apply the project settings**.
+- [ ] **Keep the cameras as they are**: nada muda nas câmeras; o aviso não volta enquanto o projeto estiver aberto;
+      fechar e abrir o Stillpoint: o aviso aparece de novo, com a mesma linha.
+- [ ] **Apply the project settings**: aviso **Project settings applied to 1 camera** (canto de baixo); em **Camera settings** a
+      câmera está com o valor do projeto.
+- [ ] Trocar de projeto (seletor de projeto, barra de cima): o painel **Bullet time** e a ordem das câmeras passam a ser
+      os do outro projeto; voltar ao primeiro: voltam os dele.
+- [ ] Fechar o projeto (seletor de projeto › **Close project**): **Countdown 0**, **Sessions 1**, **Download wait 10**,
+      **All at once**, câmeras na ordem em que conectaram; nenhuma pergunta; mudanças feitas sem projeto não vão para
+      projeto nenhum.
+- [ ] Abrir o Stillpoint com menos câmeras do que o projeto tem (`STILLPOINT_FAKE_CAMERAS=8`), sem diferença de
+      configuração: só o aviso âmbar **The rig is not the one of this project · … not connected**; as outras fecham o
+      buraco na lista; abrir de novo com as 9: a câmera volta ao lugar dela.
+- [ ] Abrir com uma câmera a mais (`STILLPOINT_FAKE_CAMERAS=10`): aviso âmbar **… is new**; ela entra no fim da lista.
+- [ ] Câmeras reais: mudar uma configuração no corpo da câmera com o Stillpoint fechado e abrir o projeto: o aviso
+      mostra a diferença; **Apply the project settings** põe a câmera como o projeto guardou.
+- [ ] Windows: os itens acima.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |

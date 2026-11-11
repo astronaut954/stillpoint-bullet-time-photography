@@ -42,6 +42,7 @@ add_executable(StillpointHost
     ${R}/src/gui/chart.cpp
     ${R}/src/gui/project.cpp
     ${R}/src/gui/adobe.cpp
+    ${R}/src/gui/rig_state.cpp
     ${R}/src/gui/native_window_stub.cpp
     ${R}/src/core/path_utils.cpp
     platform_linux_test.cpp
@@ -54,6 +55,7 @@ target_compile_definitions(StillpointHost PRIVATE STILLPOINT_VERSION="${STILLPOI
 target_link_libraries(StillpointHost PRIVATE stillpoint_export pthread)
 
 # As contas do exportador conferidas direto (espelhamento da foto, 2026-11-11); o run_tests.py roda e mostra o resultado
-add_executable(ExporterMathTest exporter_math_test.cpp)
+add_executable(ExporterMathTest exporter_math_test.cpp ${R}/src/gui/rig_state.cpp)
+target_include_directories(ExporterMathTest BEFORE PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/edsdk_stub")
 target_include_directories(ExporterMathTest PRIVATE ${R}/src/gui ${R}/include ${R}/src/core "${stb_SOURCE_DIR}")
 target_link_libraries(ExporterMathTest PRIVATE stillpoint_export pthread)

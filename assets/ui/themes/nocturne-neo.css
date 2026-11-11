@@ -2162,3 +2162,16 @@ html.kbd-focus .export-tab.on .export-tab-check input:focus + .save-check { outl
 .keep-note { display: flex; gap: 8px; align-items: flex-start; margin-top: 6px; color: var(--noct-text-muted); font-size: 12px; }
 .export-chip.chip-locked svg { width: 10px; height: 10px; margin-left: 5px; vertical-align: -1px; }
 .crop-stage.locked { cursor: default; }
+
+/* O aviso do estado do rig (protótipo aprovado, 2026-11-11): a tabela das diferenças e as linhas do rig */
+.rig-dialog { max-width: 720px; width: 720px; }
+.rig-diff { margin: 14px 0 4px; }
+.rig-diff table { width: 100%; border-collapse: collapse; font: 12px var(--noct-font-mono); }
+.rig-diff th { text-align: left; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; font-size: 10px; color: var(--noct-text-muted); padding: 0 10px 6px 0; border-bottom: 1px solid var(--noct-border); }
+.rig-diff td { padding: 6px 10px 6px 0; color: var(--noct-text); vertical-align: top; }
+.rig-diff tr.first td { border-top: 1px solid var(--noct-border); }
+.rig-diff tbody tr:first-child td { border-top: 0; }
+.rig-diff td.num { color: var(--noct-text-muted); width: 24px; }
+.rig-diff td.proj { color: var(--noct-primary); }
+.rig-diff p.rig-line { padding: 0; margin: 8px 0 0; font: 12px var(--noct-font-mono); color: var(--noct-text-muted); }
+.rig-diff .rig-line b { color: var(--noct-pending); font-weight: 500; }

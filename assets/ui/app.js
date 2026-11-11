@@ -458,6 +458,7 @@
     const oldExtra = ui.dialogText.parentElement.querySelector(".dialog-extra");
     if (oldExtra) oldExtra.remove();
     if (extra) { extra.classList.add("dialog-extra"); ui.dialogText.after(extra); }
+    ui.dialogText.parentElement.classList.toggle("rig-dialog", !!(extra && extra.classList.contains("rig-diff")));  // (o aviso do rig é mais largo)
     actions.forEach((a) => {
       const b = document.createElement("button");
       b.className = "btn " + (a.danger ? "btn-danger" : a.primary ? "btn-primary" : a.link ? "btn-link" : "btn-secondary") + (a.left ? " btn-left" : "");
@@ -492,7 +493,8 @@
       const digits = input.value.replace(/\D/g, "").slice(0, 3);
       if (digits !== input.value) input.value = digits;
     });
-    input.addEventListener("blur", () => { input.value = String(intValue(input, min, fallback)); });
+    input.addEventListener("blur", () => { input.value = String(intValue(input, min, fallback)); rigPanelSave(); });
+    input.addEventListener("change", () => rigPanelSave());
     input.addEventListener("keydown", (e) => {
       if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
       e.preventDefault();
@@ -6305,6 +6307,7 @@
       });
       renderCameras();
       readyStatus();
+      rigCamerasChanged();
       refreshSessionTitles();
 
       renderActivity();
@@ -6644,6 +6647,21 @@
       if (same) return;  // releitura sem mudança: nada a redesenhar
       renderCameras();
       if (!$("camSettingsOverlay").classList.contains("hidden")) csRender();
+    },
+    // O estado do rig do Project (rigCheck no app)
+    rigBusy() { rigCheckSoon(2500); },
+    rigAsk(e) { rigAsk(e); },
+    rigNotice(e) {
+      const parts = (e.missing || []).map((c) => c.name + " not connected").concat((e.fresh || []).map((c) => c.name + " is new"));
+      const text = "The rig is not the one of this project · " + parts.join(" · ");
+      toast(text, 9000, { warn: true });
+      log(text, "warn");
+    },
+    rigAnswered(e) {
+      if (!e.applied) { log("Cameras kept as they are; the project keeps its settings."); return; }
+      const text = "Project settings applied to " + plural(e.cameras, "camera", "cameras");
+      if (e.failed) { toast(text + " · " + plural(e.failed, "setting", "settings") + " not accepted", 9000, { warn: true }); log(text + ". Not accepted: " + e.error, "warn"); }
+      else { toast(text); log(text); }
     },
     cameraSettingResult(e) {
       const keys = e.key === "kelvin" || e.key === "wb" ? ["wb", "kelvin"] : [e.key];
@@ -9130,9 +9148,81 @@
     // O tamanho (bytes) só vem quando a janela Project pede; nas outras atualizações fica o último
     if (p.open && p.bytes === undefined && project.open && project.folder === p.folder && project.bytes !== undefined) p.bytes = project.bytes;
     project = p;
+    // O estado do rig é de cada Project (pedido do dono, 2026-11-11): quando o Project muda (abrir, trocar, fechar), o
+    // painel Bullet time mostra o que ele guardou (sem Project: o padrão de fábrica) e as câmeras são conferidas
+    const rigNow = p.open ? String(p.folder || "") : "";
+    if (rigNow !== rigFolder) { rigFolder = rigNow; rigPanelApply(p.open ? p.rigPanel : ""); rigCheckSoon(500); }
     renderProjectBar();
     renderSessionList();
     if (!$("projectOverlay").classList.contains("hidden")) renderProjectWindow();
+  }
+  // ---- O estado do rig por Project ----
+  let rigFolder = null;   // a pasta do Project cujo estado está na tela ("" = sem Project; null = ainda nenhum)
+  let rigApplying = false;
+  function rigPanelApply(text) {
+    let p = null;
+    try { p = text ? JSON.parse(text) : null; } catch (e) { p = null; }
+    const int = (v, min, fallback) => { const n = parseInt(v, 10); return Number.isFinite(n) && n >= min ? Math.min(999, n) : fallback; };
+    rigApplying = true;
+    ui.countdown.value = String(int(p && p.countdown, 0, 0));
+    ui.sessions.value = String(int(p && p.sessions, 1, 1));
+    ui.downloadWait.value = String(int(p && p.downloadWait, 1, 10));
+    timing = JSON.parse(JSON.stringify(TIMING_DEFAULT));
+    if (p && p.timing) timingLoad(JSON.stringify(p.timing));
+    renderTiming();
+    rigApplying = false;
+  }
+  // Cada mudança no painel vai para o Project aberto na hora (decisão do dono); sem Project, nada é guardado
+  function rigPanelSave() {
+    if (rigApplying || !project.open || typeof window.rigPanelSave !== "function") return;
+    window.rigPanelSave(JSON.stringify({ countdown: intValue(ui.countdown, 0, 0), sessions: intValue(ui.sessions, 1, 1),
+      downloadWait: intValue(ui.downloadWait, 1, 10), timing }));
+  }
+  // Confere as câmeras com o Project (o app põe a ordem guardada, lê as câmeras e compara): quando o Project muda e
+  // quando as câmeras ficam prontas. Ocupado, ou com um aviso aberto, espera.
+  let rigTimer = 0, rigCamKey = "";
+  function rigCheckSoon(ms) {
+    clearTimeout(rigTimer);
+    rigTimer = setTimeout(() => {
+      if (typeof window.rigCheck !== "function") return;
+      if (busy || !ui.dialogOverlay.classList.contains("hidden")) { rigCheckSoon(1500); return; }
+      window.rigCheck();
+    }, ms);
+  }
+  function rigCamerasChanged() {
+    const pending = cameras.some((c) => !c.connected && (c.starting || c.state === "connecting"));
+    const ready = cameras.filter((c) => c.connected).map((c) => c.name).sort().join(",");
+    if (pending || ready === rigCamKey) return;
+    rigCamKey = ready;
+    if (ready) rigCheckSoon(2000);
+  }
+  // O aviso (protótipo aprovado pelo dono, 2026-11-11): a tabela das diferenças, as duas linhas do rig e os dois botões
+  function rigAsk(e) {
+    // Sempre o modelo com o nome (como no protótipo): a câmera que falta não está na lista para desempatar
+    const label = (name, model) => model ? model + " (" + name + ")" : name;
+    const box = el("div", "rig-diff");
+    const table = document.createElement("table");
+    table.innerHTML = '<thead><tr><th colspan="2">Camera</th><th>Setting</th><th>On the camera now</th><th>In this project</th></tr></thead>';
+    const body = document.createElement("tbody");
+    let last = "";
+    (e.diffs || []).forEach((d) => {
+      const tr = document.createElement("tr");
+      const first = d.camera !== last; last = d.camera;
+      if (first) tr.className = "first";
+      [[first ? pad(d.order) : "", "num"], [first ? label(d.camera, d.model) : "", ""], [d.setting, ""], [d.now, ""], [d.want, "proj"]].forEach(([text, cls]) => {
+        const td = document.createElement("td"); if (cls) td.className = cls; td.textContent = text; tr.appendChild(td);
+      });
+      body.appendChild(tr);
+    });
+    table.appendChild(body); box.appendChild(table);
+    const line = (bold, text) => { const p = el("p", "rig-line"); p.appendChild(el("b", "", bold)); p.appendChild(document.createTextNode(" " + text)); box.appendChild(p); };
+    (e.missing || []).forEach((c) => line("Not connected:", label(c.name, c.model) + ", camera " + pad(c.order) + " of this project."));
+    (e.fresh || []).forEach((c) => line("New:", label(c.name, c.model) + " is not in this project yet. It stays as it is."));
+    log("The cameras are not as project " + e.project + " left them: " + plural(e.differing, "camera differs", "cameras differ") + ".", "warn");
+    dialog("The cameras are not as this project left them",
+      e.project + " was saved with other settings on " + e.differing + " of the " + plural(e.connected, "camera", "cameras") + " connected now.",
+      [{ label: "Keep the cameras as they are", onClick: () => window.rigAnswer("keep") },
+       { label: "Apply the project settings", primary: true, onClick: () => window.rigAnswer("apply") }], box);
   }
   function fmtBytes(b) {
     if (!(b > 0)) return "";
@@ -10855,7 +10945,7 @@
   function timingSave() {
     clearTimeout(timingSaveTimer);
     timingSaveTimer = setTimeout(() => {
-      if (typeof window.saveTiming === "function") window.saveTiming(JSON.stringify(timing));
+      rigPanelSave();  // (o Timing é de cada Project; sem Project, vale o padrão de fábrica e nada é guardado)
       const t = $("timingText"); if (t && t.textContent) log("Timing: " + t.textContent, "tech");
     }, 300);
   }
@@ -11331,8 +11421,9 @@
     loadPrefs(info);
     if (info && info.project) setProject(info.project);
     if (info && info.projectsFolder) { projectsFolder = info.projectsFolder; renderProjectsFolder(); }
-    timingLoad(info && info.timing);
-    renderTiming();
+    // (o Timing deixou de ser lembrado no aplicativo inteiro: vem do Project aberto, ou é o padrão; decisão do dono, 2026-11-11)
+    if (rigFolder === null) { rigFolder = ""; rigPanelApply(""); rigCheckSoon(1500); }
+    else renderTiming();
     if (info && info.live) {
       try { const l = JSON.parse(info.live); sound = { sound: l.sound !== false, sounds: l.sounds !== false }; } catch (e) {}
     }

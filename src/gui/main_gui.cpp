@@ -35,6 +35,7 @@
 #include "native_window.h"
 #include "photo_store.h"
 #include "project.h"
+#include "rig_state.h"
 #include "exporter.h"
 #include "camera_settings.h"
 #include "auto_match.h"
@@ -626,11 +627,16 @@ namespace
         return list + "]";
     }
 
+    // Chamado a cada leitura das configurações (na thread das câmeras): o estado do rig do Project acompanha o que
+    // muda nas câmeras (rig_state.h)
+    std::function<void(const std::vector<CameraSettings>&)> g_onSettingsRead;
+
     // Lê tudo uma vez, confere o disparo único e manda para a página
     void EmitCameraSettings(CameraFleet& controller, GuiListener& listener, std::map<std::string, bool>& warned)
     {
         auto all = ReadAllSettings(controller);
         EnsureSingleShot(controller, all, warned);
+        if (g_onSettingsRead) g_onSettingsRead(all);
         listener.Emit(Json("cameraSettings").Raw("cameras", CameraSettingsJson(controller, all)));
     }
 
@@ -1096,11 +1102,14 @@ namespace
         }
         // withSize: soma o tamanho das pastas do Project (percorre todos os arquivos — lento com muitos
         // RAW ou HD externo), só quando a janela Project pede; a barra e a lista não precisam
+        std::function<std::string()> rigPanelText;  // definido adiante (estado do rig do Project)
         auto projectJson = [&](bool withSize = false)
         {
             Json info("project");
             if (!project.IsOpen())
                 return info.Add("open", false).Str();
+            // O painel Bullet time guardado neste Project (a página aplica quando o Project muda)
+            info.Add("rigPanel", rigPanelText ? rigPanelText() : std::string());
             int sessions = 0, edited = 0, photos = 0;
             std::vector<std::string> folders;
             for (const auto& session : store.ListSessions())
@@ -1260,6 +1269,104 @@ namespace
             emitTrash();
         };
 
+        // =================== O estado do rig por Project (rig_state.h; pedido do dono, 2026-11-11) ===================
+        // O arquivo e a memória são mexidos pela thread das câmeras (leituras, ordem) e pela da janela (o painel,
+        // abrir e fechar o Project): tudo sob rigMutex.
+        std::mutex rigMutex;
+        std::filesystem::path rigFolder;       // a pasta do Project aberto (vazia = sem Project)
+        Rig::State rigState;
+        Rig::Memory rigMemory;
+        bool rigOrderApplied = false;          // a ordem guardada já foi posta nas câmeras desde que o Project abriu
+        bool rigHadCameras = false;            // o Project já tinha câmeras guardadas ao abrir (senão, nada a avisar)
+        Rig::Check rigAsked;                   // as diferenças perguntadas, esperando a resposta
+        std::vector<std::string> rigConnectOrder;  // números de série na ordem em que as câmeras apareceram (sem Project)
+        std::function<void()> rigAfterTask;
+        auto rigSave = [&] { if (!rigFolder.empty()) Rig::Save(Rig::FileIn(rigFolder), rigState); };
+        // As câmeras ligadas, na ordem do app: (número de série, nome)
+        auto rigConnected = [&]
+        {
+            std::vector<const CameraContext*> ordered;
+            for (const auto& cam : controller.GetCameras())
+                if (cam.sessionOpen) ordered.push_back(&cam);
+            std::sort(ordered.begin(), ordered.end(), [](const CameraContext* a, const CameraContext* b) { return a->orderPrefix < b->orderPrefix; });
+            std::vector<std::pair<std::string, std::string>> out;
+            for (const CameraContext* cam : ordered) out.push_back({ cam->portName, cam->shortName });
+            return out;
+        };
+        auto rigSerials = [&]
+        {
+            std::vector<std::string> out;
+            for (const auto& [serial, name] : rigConnected()) out.push_back(serial);
+            return out;
+        };
+        // Uma leitura das câmeras no formato do rig
+        auto rigReading = [&](const std::vector<CameraSettings>& all)
+        {
+            std::vector<Rig::Camera> now;
+            for (const CameraSettings& s : all)
+                for (const auto& cam : controller.GetCameras())
+                    if (cam.shortName == s.camera && cam.sessionOpen && s.reason.find("not connected") == std::string::npos
+                        && s.reason.find("not responding") == std::string::npos)
+                        now.push_back(Rig::Read(s, cam.portName, cam.orderPrefix));
+            return now;
+        };
+        // A ordem de agora vai para o Project (as câmeras dele que não estão ligadas ficam no lugar delas)
+        auto rigNoteOrder = [&]
+        {
+            if (rigFolder.empty() || !rigOrderApplied) return;
+            const auto merged = Rig::MergeOrder(rigState.order, rigSerials());
+            if (merged == rigState.order) return;
+            rigState.order = merged;
+            rigSave();
+        };
+        rigAfterTask = [&] { std::lock_guard<std::mutex> lock(rigMutex); rigNoteOrder(); };
+        g_onSettingsRead = [&](const std::vector<CameraSettings>& all)
+        {
+            std::lock_guard<std::mutex> lock(rigMutex);
+            if (rigFolder.empty()) return;
+            // (a câmera que o Project não conhece só entra na conferência, rigCheck, que é quem avisa dela)
+            if (Rig::Absorb(rigState, rigReading(all), rigMemory, false)) rigSave();
+        };
+        rigPanelText = [&] { std::lock_guard<std::mutex> lock(rigMutex); return rigState.panel; };
+        // Abrir, trocar ou fechar o Project (thread da janela): carrega o estado dele e esquece o que estava resolvido
+        auto rigProjectChanged = [&](const std::filesystem::path& folder)
+        {
+            bool closed = false;
+            {
+                std::lock_guard<std::mutex> lock(rigMutex);
+                if (folder == rigFolder) return;
+                closed = folder.empty();
+                rigFolder = folder;
+                rigState = folder.empty() ? Rig::State() : Rig::Load(Rig::FileIn(folder));
+                rigHadCameras = !rigState.cameras.empty();
+                rigMemory.Clear();
+                rigAsked = Rig::Check();
+                rigOrderApplied = false;
+            }
+            // Sem Project: as câmeras voltam à ordem em que conectaram (decisão do dono); as configurações delas ficam
+            if (closed)
+                cameras.Post([&]
+                {
+                    if (busy) return;
+                    std::vector<std::string> names;
+                    {
+                        std::lock_guard<std::mutex> lock(rigMutex);
+                        const auto connected = rigConnected();
+                        for (const auto& serial : rigConnectOrder)
+                            for (const auto& [s, name] : connected)
+                                if (s == serial) names.push_back(name);
+                        std::vector<std::string> current;
+                        for (const auto& [s, name] : connected) current.push_back(name);
+                        if (names.size() != current.size() || names == current) names.clear();
+                    }
+                    if (names.empty()) return;
+                    controller.SetCameraOrder(names);
+                    listener.Emit(CamerasSnapshot(controller));
+                });
+        };
+        // O Project que já veio aberto das preferências (aberto lá em cima, antes disto existir)
+        if (project.Available()) rigProjectChanged(project.Root());
+
         // Executa um pedido na thread das câmeras, avisando a página de "ocupado"
         auto run = [&](const std::string& action, std::function<void()> task)
         {
@@ -1269,6 +1376,7 @@ namespace
             cameras.Post([&, task]
             {
                 task();
+                if (rigAfterTask) rigAfterTask();  // a ordem das câmeras, se mudou, vai para o Project
                 listener.Emit(CamerasSnapshot(controller));
                 busy = false;
                 listener.Emit(Json("busy").Add("busy", false));
@@ -1827,6 +1935,7 @@ namespace
                 store.SetProject(project.Originals(), project.Edited());
             else
                 store.SetProject({}, {});
+            rigProjectChanged(project.Available() ? project.Root() : std::filesystem::path());
             store.PurgeTrash(kTrashDays);  // a lixeira do Project também perde o que passou do prazo
             if (sdkReady)
                 controller.SetOutputFolder(project.Available() ? project.Originals().string() : store.Root().string());
@@ -3611,6 +3720,146 @@ namespace
                     return;
                 EmitCameraSettings(controller, listener, singleShotWarned);
             });
+            return "null";
+        });
+
+        // ---- O estado do rig do Project ----
+        // rigPanelSave(json): o painel Bullet time (Countdown, Sessions, Download wait, Timing) vai para o Project aberto
+        window.bind("rigPanelSave", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            if (args.empty()) return "null";
+            std::lock_guard<std::mutex> lock(rigMutex);
+            if (rigFolder.empty() || rigState.panel == args[0]) return "null";
+            rigState.panel = args[0];
+            rigSave();
+            return "null";
+        });
+        // rigCheck(): a página chama quando o Project muda e quando as câmeras ficam prontas. Põe a ordem guardada,
+        // lê as câmeras e compara com o Project. Com diferença, manda "rigAsk" (a página pergunta); só com o rig
+        // diferente (câmera faltando ou nova), "rigNotice"; ocupado, "rigBusy" (a página tenta de novo).
+        window.bind("rigCheck", [&](const std::string&) -> std::string
+        {
+            cameras.Post([&]
+            {
+                if (busy || controller.HasPendingConnections()) { listener.Emit(Json("rigBusy")); return; }
+                const auto camerasJson = [](const std::vector<Rig::Camera>& list)
+                {
+                    std::string out = "[";
+                    for (size_t i = 0; i < list.size(); ++i)
+                        out += (i ? "," : "") + Json("camera").Add("name", list[i].name).Add("model", list[i].model).Add("order", list[i].order).Str();
+                    return out + "]";
+                };
+                std::vector<std::string> names;
+                {
+                    std::lock_guard<std::mutex> lock(rigMutex);
+                    const auto connected = rigConnected();
+                    for (const auto& [serial, name] : connected)
+                        if (std::find(rigConnectOrder.begin(), rigConnectOrder.end(), serial) == rigConnectOrder.end())
+                            rigConnectOrder.push_back(serial);
+                    if (rigFolder.empty() || connected.empty()) return;
+                    // A ordem do Project: as conhecidas na ordem guardada, as novas no fim
+                    std::vector<std::string> current, serials;
+                    for (const auto& [serial, name] : connected) { serials.push_back(serial); current.push_back(name); }
+                    for (const auto& serial : Rig::OrderFor(rigState, serials))
+                        for (const auto& [s, name] : connected)
+                            if (s == serial) names.push_back(name);
+                    if (names == current) names.clear();
+                }
+                if (!names.empty())
+                {
+                    controller.SetCameraOrder(names);
+                    listener.Emit(CamerasSnapshot(controller));
+                }
+                auto all = ReadAllSettings(controller);
+                std::lock_guard<std::mutex> lock(rigMutex);
+                if (rigFolder.empty()) return;
+                rigOrderApplied = true;
+                rigNoteOrder();
+                const auto now = rigReading(all);
+                const Rig::Check check = Rig::Compare(rigState, now, rigMemory);
+                // O que há de diferente no rig (câmera faltando ou nova); só o que ainda não foi dito vira recado
+                std::string signature;
+                bool news = false;
+                for (const auto& c : check.missing) { const std::string one = "-" + c.serial + ";"; signature += one; news = news || rigMemory.reported.find(one) == std::string::npos; }
+                for (const auto& c : check.fresh) { const std::string one = "+" + c.serial + ";"; signature += one; news = news || rigMemory.reported.find(one) == std::string::npos; }
+                if (!check.diffs.empty())
+                {
+                    rigAsked = check;
+                    rigMemory.reported = signature;  // (o aviso já mostra as duas linhas do rig)
+                    std::string rows = "[";
+                    for (size_t i = 0; i < check.diffs.size(); ++i)
+                    {
+                        const Rig::Diff& d = check.diffs[i];
+                        rows += (i ? "," : "") + Json("diff").Add("camera", d.name).Add("model", d.model).Add("order", d.order)
+                            .Add("key", d.key).Add("setting", Rig::KeyName(d.key)).Add("now", d.now.label).Add("want", d.want.label).Str();
+                    }
+                    listener.Emit(Json("rigAsk").Add("project", project.Name()).Add("differing", check.differing).Add("connected", check.connected)
+                        .Raw("diffs", rows + "]").Raw("missing", camerasJson(check.missing)).Raw("fresh", camerasJson(check.fresh)));
+                    return;
+                }
+                // Nada a perguntar: as câmeras passam a conferidas e o Project acompanha o que mudar nelas
+                Rig::Keep(rigMemory, check, now);
+                const bool hadCameras = rigHadCameras;
+                if (Rig::Absorb(rigState, now, rigMemory)) rigSave();
+                rigHadCameras = true;
+                if (hadCameras && news)
+                    listener.Emit(Json("rigNotice").Raw("missing", camerasJson(check.missing)).Raw("fresh", camerasJson(check.fresh)));
+                rigMemory.reported = signature;
+            });
+            return "null";
+        });
+        // rigAnswer("apply" | "keep"): a resposta ao aviso. apply: as câmeras recebem o que o Project guardou; keep: nada
+        // muda nas câmeras e o Project continua com o que tinha.
+        window.bind("rigAnswer", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            const bool apply = !args.empty() && args[0] == "apply";
+            auto answer = [&, apply]
+            {
+                Rig::Check asked;
+                {
+                    std::lock_guard<std::mutex> lock(rigMutex);
+                    asked = rigAsked;
+                    rigAsked = Rig::Check();
+                }
+                std::vector<std::string> errors;
+                std::set<std::string> touched;
+                if (apply)
+                    for (const std::string& key : Rig::Keys())  // na ordem certa (balanço de branco antes da temperatura...)
+                        for (const Rig::Diff& d : asked.diffs)
+                        {
+                            if (d.key != key) continue;
+                            for (const auto& cam : controller.GetCameras())
+                            {
+                                if (!cam.sessionOpen || cam.portName != d.serial) continue;
+                                std::string error;
+                                if (controller.WriteSetting(cam, key, d.want.value, error)) touched.insert(d.serial);
+                                else errors.push_back(cam.shortName + " · " + Rig::KeyName(key) + ": " + error);
+                            }
+                        }
+                auto all = ReadAllSettings(controller);
+                EnsureSingleShot(controller, all, singleShotWarned);
+                {
+                    std::lock_guard<std::mutex> lock(rigMutex);
+                    if (!rigFolder.empty())
+                    {
+                        // O que continuou diferente (não foi aplicado, ou a câmera recusou) fica como está na câmera, sem
+                        // mexer no Project; daqui em diante o Project acompanha o que mudar
+                        const auto now = rigReading(all);
+                        Rig::Keep(rigMemory, Rig::Compare(rigState, now, rigMemory), now);
+                        if (Rig::Absorb(rigState, now, rigMemory)) rigSave();
+                        rigHadCameras = true;
+                    }
+                }
+                std::string text;
+                for (const auto& e : errors) text += (text.empty() ? "" : " ") + e;
+                listener.Emit(Json("rigAnswered").Add("applied", apply).Add("cameras", static_cast<int>(touched.size()))
+                    .Add("failed", static_cast<int>(errors.size())).Add("error", text));
+                listener.Emit(Json("cameraSettings").Raw("cameras", CameraSettingsJson(controller, all)));
+            };
+            if (apply) run("rig", answer);
+            else cameras.Post(answer);
             return "null";
         });
 

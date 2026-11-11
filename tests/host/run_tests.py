@@ -59,7 +59,8 @@ class T:
         with open(os.path.join(self.data, "settings.txt"), "w") as f:
             f.write("project=%s\nlightroomPath=%s\npref.splash=off\n" % (self.project, lr_app))
         env = dict(os.environ, HOME=self.home, STILLPOINT_DATA=self.data, STILLPOINT_RESOURCES=ROOT,
-                   STILLPOINT_FAKE_CAMERAS="4", STILLPOINT_TEST_PORT=str(PORT), STILLPOINT_TEST_LR_RUNNING="1")
+                   STILLPOINT_FAKE_CAMERAS="4", STILLPOINT_TEST_PORT=str(PORT), STILLPOINT_TEST_LR_RUNNING="1",
+                   STILLPOINT_TEST_CAMERAS=os.path.join(self.tmp, "cameras-changed.txt"))
         self.app_log = open(os.path.join(self.tmp, "app-stderr.txt"), "w")
         self.env = env
         self.app = subprocess.Popen([os.path.join(BUILD, "StillpointHost")], env=env, stdout=self.app_log, stderr=self.app_log)
@@ -1255,6 +1256,147 @@ def scenario_orientation(t, name, photos):
     check(t, "main window: the Mixed ratios note names the crop standing (2:3), not 3:2", bool(tip) and "Crop on export: 2:3 (keeps" in tip, tip)
 
 
+def scenario_rig_state(t, name, photos):
+    line("\n== 18. The project keeps the rig: Bullet time panel, camera order and camera settings")
+    rig_file = os.path.join(t.project, "stillpoint-rig.json")
+    changed_file = t.env["STILLPOINT_TEST_CAMERAS"]
+    def rig():
+        try:
+            with open(rig_file) as f:
+                return json.load(f)
+        except (OSError, ValueError):
+            return {}
+    cam = lambda serial: next((c for c in rig().get("cameras", []) if c["serial"] == serial), {"settings": {}})
+    value = lambda serial, key: cam(serial)["settings"].get(key, {}).get("value")
+    on_screen = lambda: t.js("() => [...document.querySelectorAll('#cameraList li.camera, #cameras li.camera, li.camera')].map(li => (li.textContent.match(/(SL3|T7)_\\d+/) || [''])[0])")
+    panel = lambda: t.js("() => ['countdown', 'sessions', 'downloadWait'].map(id => document.getElementById(id).value)")
+    toast = lambda: t.js("() => { const x = document.getElementById('toast'); return x.classList.contains('hidden') ? '' : x.querySelector('.toast-text').textContent; }")
+    rows = lambda: t.js("() => [...document.querySelectorAll('#dialogOverlay .rig-diff tbody tr')].map(tr => [...tr.children].map(td => td.textContent).join('|'))")
+    lines = lambda: t.js("() => [...document.querySelectorAll('#dialogOverlay .rig-diff .rig-line')].map(p => p.textContent)")
+    text = lambda: t.js("() => document.getElementById('dialogText').textContent")
+    TITLE = "The cameras are not as this project left them"
+    def set_input(id_, v):
+        t.js("([id, v]) => { const d = document.getElementById(id); d.value = v; d.dispatchEvent(new Event('input')); d.dispatchEvent(new Event('change')); d.dispatchEvent(new Event('blur')); }", [id_, v])
+    def restart(cameras=4, changed=""):
+        t.dismiss()
+        t.env["STILLPOINT_FAKE_CAMERAS"] = str(cameras)
+        if changed:
+            with open(changed_file, "w") as f:
+                f.write(changed)
+        t.restart_app()
+
+    t.dismiss()
+    t.wait(lambda: len(rig().get("cameras", [])) == 4, 15)
+    check(t, "the project took the cameras as they are, without asking", len(rig().get("cameras", [])) == 4 and rig().get("order") == ["fake1", "fake2", "fake3", "fake4"] and t.dialog_title() != TITLE, rig().get("order"))
+
+    # O painel Bullet time
+    set_input("countdown", "3")
+    t.wait(lambda: rig().get("panel", {}).get("countdown") == 3, 5)
+    p = rig().get("panel", {})
+    check(t, "a change in the Bullet time panel goes to the project right away", p.get("countdown") == 3 and p.get("sessions") == 1 and "timing" in p, p)
+
+    # Uma configuração de câmera e a ordem
+    t.js("() => window.setCameraSetting('SL3_1', 'iso', '100')")
+    t.wait(lambda: value("fake1", "iso") == 100, 8)
+    check(t, "a camera setting changed in Stillpoint goes to the project", value("fake1", "iso") == 100 and cam("fake1")["settings"]["iso"]["label"] == "ISO 100", cam("fake1"))
+    t.js("() => window.setOrder('T7_1', 'SL3_1', 'SL3_2', 'T7_2')")
+    t.wait(lambda: rig().get("order") == ["fake2", "fake1", "fake3", "fake4"], 8)
+    check(t, "the camera order changed by hand goes to the project", rig().get("order") == ["fake2", "fake1", "fake3", "fake4"], rig().get("order"))
+
+    # Fechar e abrir o Stillpoint: as câmeras (de mentira) voltam ao padrão, o Project tem ISO 100 na SL3_1
+    before = open(rig_file).read()
+    restart()
+    asked = t.wait(lambda: t.dialog_title() == TITLE, 20)
+    check(t, "opening again with a camera changed: Stillpoint asks before touching the cameras", bool(asked), t.dialog_title())
+    check(t, "... the text counts the cameras", text() == PROJECT + " was saved with other settings on 1 of the 4 cameras connected now.", text())
+    check(t, "... one row: the camera, the setting, how it is now and how the project has it", rows() == ["02|Canon EOS Rebel SL3 (SL3_1)|ISO|ISO 400|ISO 100"], rows())
+    check(t, "... the two buttons of the approved layout", t.js("() => [...document.querySelectorAll('#dialogActions button')].map(b => b.textContent.trim())") == ["Keep the cameras as they are", "Apply the project settings"])
+    check(t, "the Bullet time panel comes back as the project left it", panel()[0] == "3", panel())
+    check(t, "the cameras come back in the order of the project", on_screen()[:4] == ["T7_1", "SL3_1", "SL3_2", "T7_2"], on_screen())
+    try:
+        t.page.screenshot(path=os.path.join(BUILD, "rig-dialog.png"))
+    except Exception:  # noqa: BLE001
+        pass
+    t.dialog_click("Keep the cameras as they are")
+    time.sleep(4)
+    check(t, "Keep the cameras as they are: the project file does not change", open(rig_file).read() == before)
+    check(t, "... and Stillpoint does not ask again while the project stays open", t.dialog_title() != TITLE, t.dialog_title())
+    t.js("() => window.setCameraSetting('SL3_1', 'tv', '200')")
+    t.wait(lambda: value("fake1", "tv") == 200, 8)
+    check(t, "... what is changed afterwards is saved; the difference that was kept is not", value("fake1", "tv") == 200 and value("fake1", "iso") == 100, cam("fake1"))
+
+    # De novo, agora com Apply; a T7_2 de mentira foi mexida no corpo (ISO 800) e não aceita o ISO de volta
+    restart(changed="T7_2 iso 800\n")
+    asked = t.wait(lambda: t.dialog_title() == TITLE, 20)
+    check(t, "next time the project opens, Stillpoint asks again", bool(asked) and len(rows()) == 3 and "on 2 of the 4 cameras" in text(), (rows(), text()))
+    t.dialog_click("Apply the project settings")
+    said = t.wait(lambda: toast().startswith("Project settings applied") and toast(), 15)
+    check(t, "Apply the project settings: the toast counts the cameras and says what a camera refused", said == "Project settings applied to 1 camera · 1 setting not accepted", said)
+    time.sleep(1.5)
+    check(t, "... the project keeps its value for the refused setting", value("fake4", "iso") == 400 and value("fake1", "iso") == 100 and value("fake1", "tv") == 200, (cam("fake4"), cam("fake1")))
+    # (as câmeras receberam mesmo: uma mudança qualquer faz o app reler; se a SL3_1 não estivesse em ISO 100, o Project mudaria)
+    t.js("() => window.readCameraSettings()")
+    time.sleep(2)
+    check(t, "... and the cameras really got the project values", value("fake1", "iso") == 100 and value("fake1", "tv") == 200 and t.dialog_title() != TITLE, cam("fake1"))
+
+    # Uma câmera do Project desligada e outra diferente: o aviso traz a linha da que falta
+    restart(cameras=3)
+    asked = t.wait(lambda: t.dialog_title() == TITLE, 20)
+    check(t, "a camera not connected and another one changed: the dialog says both", bool(asked) and "on 1 of the 3 cameras" in text() and
+          lines() == ["Not connected: Canon EOS Rebel T7 (T7_2), camera 04 of this project."], (text(), lines()))
+    t.dialog_click("Keep the cameras as they are")
+    time.sleep(4)
+    check(t, "... and the warning toast does not repeat what the dialog said", not toast().startswith("The rig is not"), toast())
+
+    # Uma câmera do Project desligada e as outras iguais: só o recado âmbar
+    same = "SL3_1 iso 100\nSL3_1 tv 200\n"
+    restart(cameras=3, changed=same)
+    said = t.wait(lambda: toast().startswith("The rig is not") and toast(), 20)
+    check(t, "a camera of the project not connected, nothing to apply: only the warning toast", said == "The rig is not the one of this project · T7_2 not connected" and t.dialog_title() != TITLE, (said, t.dialog_title()))
+    check(t, "... it is a warning (amber)", t.js("() => document.getElementById('toast').classList.contains('kind-warn')"))
+    check(t, "... the missing camera keeps its place in the project", rig().get("order") == ["fake2", "fake1", "fake3", "fake4"] and len(rig().get("cameras", [])) == 4, rig().get("order"))
+    check(t, "... and the others close the gap on screen", on_screen()[:3] == ["T7_1", "SL3_1", "SL3_2"], on_screen())
+
+    # Uma câmera nova: fica como está, entra no fim
+    restart(cameras=5, changed=same)
+    said = t.wait(lambda: toast().startswith("The rig is not") and toast(), 20)
+    fifth = (on_screen() + [""] * 5)[4]
+    check(t, "a camera the project does not know: the warning toast names it", bool(said) and said.endswith(" is new") and "not connected" not in said, said)
+    check(t, "... it goes to the end, the missing one back to its place", on_screen()[:4] == ["T7_1", "SL3_1", "SL3_2", "T7_2"] and fifth != "", on_screen())
+    t.wait(lambda: len(rig().get("cameras", [])) == 5, 8)
+    check(t, "... and the project now knows it", len(rig().get("cameras", [])) == 5 and rig().get("order") == ["fake2", "fake1", "fake3", "fake4", "fake5"], rig().get("order"))
+
+    # Sem Project: padrão de fábrica e a ordem em que as câmeras conectaram; nada é gravado
+    before = open(rig_file).read()
+    t.js("() => window.projectClose()")
+    t.wait(lambda: panel() == ["0", "1", "10"], 8)
+    check(t, "closing the project: the Bullet time panel goes to the factory default", panel() == ["0", "1", "10"], panel())
+    t.wait(lambda: on_screen()[:2] == ["SL3_1", "T7_1"], 8)
+    check(t, "... the cameras go back to the order they connected in", on_screen()[:4] == ["SL3_1", "T7_1", "SL3_2", "T7_2"], on_screen())
+    set_input("countdown", "7")
+    t.js("() => window.setCameraSetting('SL3_2', 'av', '110')")
+    time.sleep(2.5)
+    check(t, "... and nothing done without a project is written to it", open(rig_file).read() == before and t.dialog_title() != TITLE)
+    # Abrir o Project de novo: a SL3_2 ficou diferente (f/11 na câmera, f/8 no Project)
+    t.js("(f) => window.projectOpen(f)", t.project)
+    asked = t.wait(lambda: t.dialog_title() == TITLE, 20)
+    check(t, "opening the project again: the panel is the project's, and Stillpoint asks about the camera changed meanwhile", bool(asked) and panel()[0] == "3" and
+          len(rows()) == 1 and rows()[0].endswith("(SL3_2)|Aperture|f/11|f/8"), (panel(), rows()))
+    check(t, "... with the cameras in the order of the project again", on_screen()[:4] == ["T7_1", "SL3_1", "SL3_2", "T7_2"], on_screen())
+    t.dialog_click("Apply the project settings")
+    said = t.wait(lambda: toast().startswith("Project settings applied") and toast(), 15)
+    check(t, "... Apply: one camera, nothing refused", said == "Project settings applied to 1 camera", said)
+    # Deixa como estava para o que vier depois
+    set_input("countdown", "0")
+    t.js("() => window.setOrder('SL3_1', 'T7_1', 'SL3_2', 'T7_2', '" + fifth + "')")
+    time.sleep(1.5)
+    restart(changed="SL3_1 iso 100\nSL3_1 tv 200\n")
+    time.sleep(3)
+    t.js("() => window.setCameraSetting('SL3_1', 'iso', '400')")
+    t.js("() => window.setCameraSetting('SL3_1', 'tv', '125')")
+    time.sleep(2)
+
+
 def dismiss_delete(self):
     if self.js("() => !document.getElementById('dialogOverlay').classList.contains('hidden')"):
         self.js("() => { const b = [...document.querySelectorAll('#dialogActions button')].find(x => /^Delete/.test(x.textContent.trim())); b && b.click(); }")
@@ -1279,7 +1421,7 @@ def main():
                 only = os.environ.get("STILLPOINT_TEST_ONLY", "")  # para depurar: só os cenários com este nome
                 for sc in [x for x in (scenario_cleared, scenario_delete_edit_undo, scenario_photo_delete_restore,
                            scenario_remove_from_collection, scenario_delete_session, scenario_cancel, scenario_rapid_in_lightroom, scenario_crop_before_lightroom,
-                           scenario_export_edit, scenario_export_trash, scenario_lightroom_crop, scenario_undo_own_item, scenario_orientation, scenario_selection_kept, scenario_align_undo, scenario_flip) if only in x.__name__]:
+                           scenario_export_edit, scenario_export_trash, scenario_lightroom_crop, scenario_undo_own_item, scenario_orientation, scenario_selection_kept, scenario_align_undo, scenario_flip, scenario_rig_state) if only in x.__name__]:
                     try:
                         sc(t, name, photos)
                     except Exception:  # noqa: BLE001
