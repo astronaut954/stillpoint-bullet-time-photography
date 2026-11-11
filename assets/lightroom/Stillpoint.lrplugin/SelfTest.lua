@@ -717,6 +717,24 @@ local function scenarioShape()
 		local selected = LrApplication.activeCatalog():getTargetPhotos() or {}
 		check('... and photo 04 is selected', #selected == 1 and selected[1] == photoOf(4), #selected .. ' selected')
 	end
+	-- O mesmo recado com o Lightroom mostrando outro lugar, sem a foto na tira (teste do dono, 2026-11-11: o aviso
+	-- dizia "selected in the filmstrip" com a tira vazia): o plugin mostra onde a foto está e a seleciona
+	do
+		dialogs()
+		local catalog = LrApplication.activeCatalog()
+		local away = LrTasks.pcall(function() catalog:setActiveSources({ catalog.kQuickCollectionIdentifier }) end)
+		LrTasks.sleep(1)
+		local shown = 0
+		LrTasks.pcall(function() shown = #(catalog:getMultipleSelectedOrAllPhotos() or {}) end)
+		info('Lightroom moved to the Quick Collection first: ' .. tostring(away) .. ', ' .. shown .. ' photos in view')
+		local notice = LrPathUtils.child(folder, 'notice-' .. os.time() .. '-2.txt')
+		writeFile(notice, 'session=' .. session .. '\ntitle=' .. title .. '\nnumbers=04\nhave=3:2\nwant=1:1\nphoto=' .. pathOf(4) .. '\nend=1\n')
+		tick(2)
+		LrTasks.sleep(1)
+		check('notice with the photo out of view: the message appears', seenTitle('message', 'Stillpoint did not use 1 edited photo') ~= nil, seenText())
+		local selected = catalog:getTargetPhotos() or {}
+		check('... Lightroom shows the photo and selects it (photo 04)', #selected == 1 and selected[1] == photoOf(4), #selected .. ' selected')
+	end
 	-- Arruma: as fotos como chegaram, a sessão de novo sem enquadramento
 	for i = 1, #NAMES do toBaseline(i) end
 	openSession('as shot again', 'framing=asshot\n')

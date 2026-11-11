@@ -891,9 +891,28 @@ local function handleNoticeFiles()
 	end
 	if total == 0 then return end
 	local LrTasks = import 'LrTasks'
-	LrTasks.pcall(function() catalog:setSelectedPhotos(select[1], select) end)
 	local Ui = require 'Ui'
+	-- A foto precisa estar na vista do Lightroom para ficar selecionada na tira (decisão do dono, 2026-11-11: o aviso
+	-- dizia "selected in the filmstrip" com a tira vazia): mostra a coleção onde ela está, ou a pasta dela
+	local function reveal()
+		local sources, seen = {}, {}
+		for _, photo in ipairs(select) do
+			LrTasks.pcall(function()
+				local collections = photo:getContainedCollections()
+				local source = collections and collections[1] or catalog:getFolderByPath(LrPathUtils.parent(photo:getRawMetadata('path')))
+				local key = source and tostring(source.localIdentifier or source)
+				if source and not seen[key] then seen[key] = true; table.insert(sources, source) end
+			end)
+		end
+		if #sources > 0 then LrTasks.pcall(function() catalog:setActiveSources(sources) end) end
+		-- (o Lightroom demora a trocar a vista: escolhe a foto algumas vezes)
+		for _ = 1, (Ui.answers and 1 or 4) do
+			LrTasks.pcall(function() catalog:setSelectedPhotos(select[1], select) end)
+			if not Ui.answers then LrTasks.sleep(0.3) end
+		end
+	end
 	local function show()
+		reveal()
 		Ui.message('Stillpoint did not use ' .. total .. ' edited ' .. (total == 1 and 'photo' or 'photos'),
 			(total == 1 and 'A file' or total .. ' files') .. ' arrived in the project\'s Edited folder with another shape than the session.\n\n'
 			.. table.concat(parts, '\n') .. '\n\n'
