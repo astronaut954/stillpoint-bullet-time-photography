@@ -1101,6 +1101,7 @@ Atualizar esta tabela sempre que uma função mudar de status.
   2026-11-11, Mac e Windows.** Testada pelo dono no Mac com câmeras simuladas e o Lightroom Classic de verdade (seção 42
   do roteiro). **Pendente:** no Windows compilou mas nada desta etapa foi testado; câmeras reais; o recado do arquivo
   recusado não se repetir depois de abrir outro projeto (só o uso confirma); a parte do Photoshop da etapa 20 não foi feita.
+  **2.19.0 publicada em 2026-11-11, Mac e Windows** (Flip no Align photos). No Windows compilou; nada testado lá.
   **2.18.1 publicada em 2026-11-11, Mac e Windows** (etiquetas alinhadas na janela Project, aviso Mixed ratios com a
   orientação, ⌘Z na caixa do número do Align photos, giro de 90° no Lightroom, recado do arquivo recusado mostrando a
   foto). No Windows compilou; nada testado lá.
