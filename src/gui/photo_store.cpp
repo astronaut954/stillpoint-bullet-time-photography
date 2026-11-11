@@ -1935,14 +1935,15 @@ bool PhotoStore::RestoreEntry(const fs::path& trash, std::string& errorMessage, 
     return true;
 }
 
-bool PhotoStore::Restore(const std::string& session, std::string& errorMessage, std::vector<std::string>* restored) const
+bool PhotoStore::Restore(const std::string& session, std::string& errorMessage, std::vector<std::string>* restored, long long after) const
 {
     // O Desfazer: o item mais recente desta sessão (nas duas lixeiras)
     const fs::path projectTrash = projectRoot.empty() ? fs::path() : projectRoot.parent_path() / kProjectTrash;
     const TrashEntry* best = nullptr;
     auto all = TrashEntries(root / kTrashFolder, projectTrash);
     for (auto& e : all)
-        if (e.info["session"] == session && e.info["restored"] != "1" && (!best || e.order > best->order))
+        if (e.info["session"] == session && e.info["restored"] != "1"
+            && (after >= 0 ? (e.order > after && (!best || e.order < best->order)) : (!best || e.order > best->order)))
             best = &e;
     if (session.empty() || !best)
     {

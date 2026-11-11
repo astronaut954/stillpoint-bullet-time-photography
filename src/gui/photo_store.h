@@ -155,7 +155,10 @@ public:
     // recente dessa sessão (o Desfazer); RestoreTrashItem/DeleteTrashItem agem num item da janela
     // Trash. PurgeTrash(dias) apaga de vez o que passou do prazo; EmptyTrash() apaga tudo (a do
     // app e a do Project aberto).
-    bool Restore(const std::string& session, std::string& errorMessage, std::vector<std::string>* restored = nullptr) const;
+    // after >= 0 (o Desfazer de uma ação; decisão do dono, 2026-11-10): o primeiro item dessa sessão apagado depois
+    // dessa ordem, que é o que aquela ação criou, e não o mais recente da sessão
+    bool Restore(const std::string& session, std::string& errorMessage, std::vector<std::string>* restored = nullptr,
+                 long long after = -1) const;
     void EmptyTrash() const;
     void PurgeTrash(int days) const;
     std::vector<TrashItem> ListTrash() const;

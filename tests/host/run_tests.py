@@ -872,6 +872,48 @@ def scenario_lightroom_crop(t, name, photos):
     t.close_export()
 
 
+def scenario_undo_own_item(t, name, photos):
+    line("\n== 13. ⌘Z after deleting a photo brings back only what that action deleted")
+    s = t.shoot()
+    if not s:
+        check(t, "a new session for this scenario", False)
+        return
+    t.dismiss()
+    o = t.originals(s)
+    ph = sorted(os.path.join(o, f) for f in os.listdir(o) if not f.startswith(".") and f != "session.json")
+    # Só esta sessão marcada no Export (os cenários de antes deixam outras marcadas)
+    t.page.click("#saveBtn")
+    t.wait(lambda: t.export_open(), 5)
+    time.sleep(0.5)
+    t.js("() => { const b = document.querySelector('#exportSteps .export-step'); if (!b.classList.contains('on')) b.click(); }")
+    time.sleep(0.4)
+    t.js("() => document.getElementById('exportUnselectAll').click()")
+    t.js("(n) => document.querySelector('#exportList li.export-item[data-name=\"' + n + '\"] .export-check input').click()", s)
+    time.sleep(0.3)
+    t.edit_in_lightroom(s)
+    t.lr.set_edit(ph[0], (30, 160, 200))
+    t.lr.export(o, t.project, s)
+    t.wait(lambda: (t.session(s) or {}).get("edited") == 1, 12)
+    count = lambda: len((t.session(s) or {}).get("photos", []))
+    before = count()
+    t.open_session(s)
+    t.photo_menu(2, "Delete photo 03")
+    t.button("Delete")
+    check(t, "photo 03 deleted", t.wait(lambda: count() == before - 1, 8), count())
+    # Outra coisa da mesma sessão vai para a lixeira depois, sem ser uma ação da janela (como a editada que o
+    # Lightroom manda tirar): a editada da foto 01
+    t.js("(n) => window.deleteEdits(n)", s)
+    check(t, "later, the edit of photo 01 goes to the trash too", t.wait(lambda: (t.session(s) or {}).get("edited") == 0, 8), (t.session(s) or {}).get("edited"))
+    t.undo()
+    check(t, "⌘Z: photo 03 comes back", t.wait(lambda: count() == before, 8), count())
+    time.sleep(1.0)
+    check(t, "... and only it (the edit of 01 stays in the trash)", (t.session(s) or {}).get("edited") == 0 and count() == before, ((t.session(s) or {}).get("edited"), count()))
+    t.redo()
+    check(t, "⌘⇧Z: photo 03 deleted again", t.wait(lambda: count() == before - 1, 8), count())
+    t.undo()
+    check(t, "⌘Z again: photo 03 back, still only it", t.wait(lambda: count() == before, 8) and (t.session(s) or {}).get("edited") == 0, ((t.session(s) or {}).get("edited"), count()))
+
+
 def dismiss_delete(self):
     if self.js("() => !document.getElementById('dialogOverlay').classList.contains('hidden')"):
         self.js("() => { const b = [...document.querySelectorAll('#dialogActions button')].find(x => /^Delete/.test(x.textContent.trim())); b && b.click(); }")
@@ -896,7 +938,7 @@ def main():
                 only = os.environ.get("STILLPOINT_TEST_ONLY", "")  # para depurar: só os cenários com este nome
                 for sc in [x for x in (scenario_cleared, scenario_delete_edit_undo, scenario_photo_delete_restore,
                            scenario_remove_from_collection, scenario_delete_session, scenario_cancel, scenario_rapid_in_lightroom, scenario_crop_before_lightroom,
-                           scenario_export_edit, scenario_export_trash, scenario_lightroom_crop) if only in x.__name__]:
+                           scenario_export_edit, scenario_export_trash, scenario_lightroom_crop, scenario_undo_own_item) if only in x.__name__]:
                     try:
                         sc(t, name, photos)
                     except Exception:  # noqa: BLE001

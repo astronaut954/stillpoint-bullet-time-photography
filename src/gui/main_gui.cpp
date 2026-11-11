@@ -2229,6 +2229,14 @@ namespace
             for (const auto& f : files) paths.push_back(dir / f);
             Adobe::QueuePhotos("readd", session, paths);
         };
+        // trashOrder(): a ordem do item mais recente da lixeira (0 = vazia), lida antes de apagar algo que se desfaz
+        window.bind("trashOrder", [&](const std::string&) -> std::string
+        {
+            long long top = 0;
+            for (const auto& item : store.ListTrash())
+                top = std::max(top, item.order);
+            return "\"" + std::to_string(top) + "\"";  // (como texto: é um número grande demais para a página)
+        });
         window.bind("restoreSession", [&](const std::string& request) -> std::string
         {
             const auto args = ParseStringArgs(request);
@@ -2239,15 +2247,23 @@ namespace
             // estava no Lightroom só fica "In Lightroom" de novo por uma ação de dentro do Lightroom, como o ⌘Z dele
             // (decisão do dono, 2026-11-06)
             const bool wholeSession = !args.empty() && !std::filesystem::is_directory(store.SessionDir(args[0]), dirEc);
-            // O item que o Desfazer vai trazer (o mais recente da sessão): editadas não mexem na coleção
+            // restoreSession(sessão, ordem): o Desfazer de uma ação traz só o que ela apagou, que é o primeiro item da
+            // sessão depois dessa ordem (trashOrder() lido antes de apagar; decisão do dono, 2026-11-10). Sem a ordem:
+            // o item mais recente da sessão.
+            long long after = -1;
+            if (args.size() > 1)
+                try { after = std::stoll(args[1]); } catch (...) { after = -1; }
+            // O item que o Desfazer vai trazer: editadas não mexem na coleção
             bool editsOnly = false;
             {
                 long long best = -1;
                 if (!args.empty())
                     for (const auto& item : store.ListTrash())
-                        if (item.session == args[0] && !item.restored && item.order > best) { best = item.order; editsOnly = item.editsOnly; }
+                        if (item.session == args[0] && !item.restored
+                            && (after >= 0 ? (item.order > after && (best < 0 || item.order < best)) : item.order > best))
+                        { best = item.order; editsOnly = item.editsOnly; }
             }
-            const bool ok = !args.empty() && store.Restore(args[0], error, &restoredFiles);
+            const bool ok = !args.empty() && store.Restore(args[0], error, &restoredFiles, after);
             if (!ok)
                 Log("Restore failed: " + error);
             // Fotos que voltaram para uma sessão que está aqui: voltam também para a coleção dela no Lightroom

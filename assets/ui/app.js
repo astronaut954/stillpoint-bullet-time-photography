@@ -1583,9 +1583,18 @@
       [{ label: "Cancel" },
        { label: "Revert to original", danger: true, onClick: () => deleteEditsNow(s, files, true) }]);
   }
+  // O ⌘Z de apagar fotos ou editadas desfaz só aquela ação (decisão do dono, 2026-11-10): antes de apagar, guarda a
+  // ordem do item mais recente da lixeira; o desfazer traz o primeiro item da sessão depois dela. (Antes trazia o item
+  // mais recente da sessão, que podia ser de outra coisa apagada depois, como uma editada tirada pelo Lightroom.)
+  function trashMark(m) {
+    // (a ordem é um número grande demais para a página: fica como texto)
+    if (typeof window.trashOrder !== "function") { m.order = ""; return Promise.resolve(); }
+    return Promise.resolve(window.trashOrder()).then((v) => { m.order = /^\d+$/.test(String(v)) ? String(v) : ""; }, () => { m.order = ""; });
+  }
   // reverted: pedido como Revert to original (Export); o aviso fala assim
   function deleteEditsNow(s, files, reverted) {
-    const run = () => Promise.resolve(window.deleteEdits(s.name, ...files)).then((r) => {
+    const mark = { order: "" };
+    const run = () => trashMark(mark).then(() => window.deleteEdits(s.name, ...files)).then((r) => {
       forgetSessionPreviews(s.name);
       const o = typeof r === "object" && r ? r : { removed: Number(r) || 0, reset: false };
       return o;
@@ -1595,7 +1604,7 @@
       toast((reverted ? plural(o.removed, "photo", "photos") + " back to the original" : plural(o.removed, "edit", "edits") + " moved to the trash") + " · " + sessionTitle(s) + (o.reset ? " · reset in Lightroom Classic" : "") + " · ⌘Z undoes", TOAST_MS);
       log("Delete edits: " + plural(o.removed, "edited file", "edited files") + " of " + sessionShort(s) + " moved to the trash" + (o.reset ? "; the photos go back to the original in Lightroom Classic" : ""), "ok");
       recordAction({ trash: { sessions: [s.name] }, label: (reverted ? "Revert " + plural(o.removed, "photo", "photos") + " to the original" : "Delete " + plural(o.removed, "edit", "edits")) + " · " + sessionLabel(s.name).date,
-        undo: () => Promise.resolve(restoreSession(s.name)).then((ok) => {
+        undo: () => Promise.resolve(restoreSession(s.name, mark.order)).then((ok) => {
           forgetSessionPreviews(s.name);
           // No Lightroom: cancela a volta ao original se ainda não foi feita; se já foi, o plugin põe de volta a
           // edição que guardou antes do Reset (pedido do dono, 2026-11-06)
@@ -2470,15 +2479,16 @@
     if (big && big.animate && big.getAttribute("src")) big.animate([{ opacity: 1, transform: "scale(1)" }, { opacity: 0, transform: "scale(.85)" }], { duration: 260, easing: "ease-in", fill: "forwards" });
     // A foto grande volta a aparecer quando a próxima carregar (ou, se nada mudar, em 1,5 s)
     const reveal = () => { if (big) big.getAnimations().forEach((a) => a.cancel()); thumbs.forEach((t) => t.isConnected && t.getAnimations().forEach((a) => a.cancel())); };
+    const mark = { order: "" }, marked = trashMark(mark);
     setTimeout(() => {
-      window.deletePhotos(session, ...groups);
+      marked.then(() => window.deletePhotos(session, ...groups));
       if (big) big.addEventListener("load", reveal, { once: true });
       setTimeout(reveal, 1500);
     }, 270);
     const label = one ? "Photo " + pad(item.order || 0) : plural(picked.length, "photo", "photos");
     toast(label + " deleted from the session of " + sessionLabel(session).date);
     recordAction({ trash: { sessions: [session] }, label: "Delete " + (one ? "photo " + pad(item.order || 0) : plural(picked.length, "photo", "photos")) + " from " + sessionLabel(session).date,
-      undo: () => restoreSession(session), redo: () => window.deletePhotos(session, ...groups) });
+      undo: () => restoreSession(session, mark.order), redo: () => trashMark(mark).then(() => window.deletePhotos(session, ...groups)) });
   }
 
   // Mostra uma sessão que acabou de voltar (relê a lista antes, para ela já estar lá)
@@ -2493,9 +2503,10 @@
   }
   function deleteCurrentSession() { if (currentSession) deleteSessionAsk(currentSession); }
   // Traz de volta da lixeira do app (sessão inteira ou as fotos apagadas); false se não deu
-  function restoreSession(name) {
+  // after (opcional): a ordem da lixeira lida antes de apagar (trashMark); traz só o que aquela ação apagou
+  function restoreSession(name, after) {
     if (typeof window.restoreSession !== "function") { toast("This build cannot restore deleted sessions yet. Build the app again.", 8000); return false; }
-    return Promise.resolve(window.restoreSession(name)).then((r) => {
+    return Promise.resolve(after ? window.restoreSession(name, String(after)) : window.restoreSession(name)).then((r) => {
       if (r && r.ok) return true;
       toast((r && r.error) || "Could not restore the session.", 8000);
       return false;

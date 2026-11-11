@@ -1871,6 +1871,9 @@ Com câmeras simuladas e o Lightroom Classic com o catálogo do projeto. A janel
 - [ ] Sessão sem edição: o bloco **Lightroom Classic** tem só **Edit in Lightroom Classic** (sem o texto **Not edited**, que saiu em 2026-11-10). Clicar manda a
       sessão; com proporções misturadas e **As shot**, pergunta **Crop before Lightroom Classic?** como antes; escolhendo
       **Crop to 3:2**, o Framing da sessão no passo 1 passa a 3:2.
+- [ ] **⌘Z desfaz só aquela ação (2026-11-10):** numa sessão com uma foto editada, apagar a foto 03 na janela principal
+      (botão direito › **Delete photo 03…** › **Delete**); depois, no **Export › 2 Edit**, **Revert to original…** da editada;
+      fechar o Export e desfazer as duas com ⌘Z, uma por vez: cada ⌘Z traz só o que aquela ação apagou.
 - [ ] Sessão no Lightroom, com o Lightroom aberto em **outro** catálogo (File › Open Recent): o bloco diz **In Lightroom Classic ·
       n photos · open the catalog <nome> to see them**; de volta ao catálogo da sessão, o trecho some (em alguns segundos).
 - [ ] Sessão no Lightroom: o bloco diz **In Lightroom Classic · n photos** (bolinha pulsando com o Lightroom aberto) e tem
