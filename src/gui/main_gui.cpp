@@ -2549,7 +2549,10 @@ namespace
                     if (alive.fresh && alive.time > it->second) it = lrCancelledAt.erase(it); else ++it;
             }
             std::string list = "[";
-            bool first = true;
+            // Sessões In Lightroom cuja coleção está noutro catálogo que não o aberto agora (o bloco do Export › Edit
+            // diz qual catálogo abrir; decisão do dono, 2026-11-10)
+            std::string elsewhere = "[";
+            bool first = true, firstElsewhere = true;
             if (alive.fresh)
             {
                 const auto catalogs = Adobe::CollectionCatalogs();
@@ -2560,7 +2563,12 @@ namespace
                     const auto it = catalogs.find(session);
                     const bool here = it == catalogs.end() || it->second.empty() || Adobe::SameCatalog(it->second, alive.catalog);
                     if (!here)
+                    {
+                        elsewhere += (firstElsewhere ? "" : ",") + Json().Add("session", session)
+                            .Add("catalog", PathToUtf8(std::filesystem::u8path(it->second).stem())).Str();
+                        firstElsewhere = false;
                         continue;
+                    }
                     list += (first ? "" : ",") + JsonString(session);
                     first = false;
                 }
@@ -2946,7 +2954,7 @@ namespace
             if (!goTo.empty())
                 if (auto native = window.window(); native.ok())
                     NativeWindow::Show(native.value());
-            return Json("adobeLive").Add("running", alive.fresh).Raw("sessions", list + "]").Raw("exported", exported + "]").Raw("refused", refusedList).Add("goto", goTo).Raw("back", backList + "]").Raw("gone", goneList + "]")
+            return Json("adobeLive").Add("running", alive.fresh).Raw("sessions", list + "]").Raw("elsewhere", elsewhere + "]").Raw("exported", exported + "]").Raw("refused", refusedList).Add("goto", goTo).Raw("back", backList + "]").Raw("gone", goneList + "]")
                 .Raw("restoredBack", restoredBackList + "]").Raw("cancelled", cancelledList + "]").Str();
         });
         // adobeEditing(): as fotos que estão no Lightroom/Photoshop, por sessão

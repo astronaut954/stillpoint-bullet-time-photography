@@ -1675,6 +1675,7 @@
   // Só nas sessões cuja coleção está no catálogo aberto agora (decisão do dono, 2026-11-06)
   let lrLiveTimer = 0;
   let lrLive = new Set();
+  let lrElsewhere = {};  // sessão -> nome do catálogo onde está a coleção dela, quando o Lightroom está aberto em outro
   // A cada 3 s: quais sessões "In Lightroom" estão no catálogo aberto (bolinha pulsando) e os recados do plugin
   // (editadas que chegaram com Export to Stillpoint; Go to session in Stillpoint)
   function checkLrLive() {
@@ -1688,6 +1689,14 @@
     if (typeof window.adobeLive !== "function") { lrLive = new Set(); apply(); return; }
     Promise.resolve(window.adobeLive()).then((r) => {
       lrLive = new Set((r && r.sessions) || []);
+      {
+        const next = {};
+        ((r && r.elsewhere) || []).forEach((x) => { next[x.session] = x.catalog; });
+        const changed = JSON.stringify(next) !== JSON.stringify(lrElsewhere);
+        lrElsewhere = next;
+        // (o texto do bloco Lightroom Classic do Export › Edit diz qual catálogo abrir)
+        if (changed && !$("exportOverlay").classList.contains("hidden") && exp.step === 2) photoRerender();
+      }
       apply();
       ((r && r.exported) || []).forEach(lightroomExported);
       // Editadas com outra proporção na pasta Edited: não são usadas (decisão do dono, 2026-11-10)
@@ -5715,7 +5724,9 @@
       const state = el("span", "lr-state" + (lrLive.has(name) ? " live" : ""));
       state.dataset.session = name;
       state.innerHTML = '<i class="edit-dot"></i>';
-      state.appendChild(document.createTextNode("In Lightroom Classic · " + plural(lrN, "photo", "photos")));
+      state.appendChild(document.createTextNode("In Lightroom Classic · " + plural(lrN, "photo", "photos") +
+        // O Lightroom está aberto em outro catálogo: qual abrir para ver as fotos (decisão do dono, 2026-11-10)
+        (lrElsewhere[name] ? " · open the catalog " + lrElsewhere[name] + " to see " + (lrN === 1 ? "it" : "them") : "")));
       head.appendChild(state);
       actions.appendChild(button("Done editing", () => doneEditing(session), { title: "Take the session out of Lightroom Classic: its collection leaves the catalog" }));
       note = el("div", "export-note", "Edit the photos in Lightroom Classic, then click Export to Stillpoint in the Stillpoint panel: the edited photos come back here by themselves.");

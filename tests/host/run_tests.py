@@ -694,6 +694,15 @@ def scenario_export_trash(t, name, photos):
     t.wait(lambda: t.js("() => document.getElementById('exportConfirm').disabled"), 6)
     check(t, "while the session is In Lightroom, Outputs → is blocked", t.js("() => document.getElementById('exportConfirm').disabled"))
     check(t, "... and the footer says why", "still in Lightroom Classic" in (t.js("() => document.getElementById('exportCount').textContent") or ""), t.js("() => document.getElementById('exportCount').textContent"))
+    # O Lightroom aberto em outro catálogo: o bloco diz qual abrir (decisão do dono, 2026-11-10)
+    block = lambda: t.js("() => (document.querySelector('#exportSettings .lr-block .lr-state') || {}).textContent || ''")
+    check(t, "in the catalog of the session: the box does not name the catalog", "open the catalog" not in block(), block())
+    home = t.lr.catalog
+    t.lr.catalog = os.path.join(os.path.dirname(home), "Another.lrcat")
+    check(t, "Lightroom open on another catalog: the box says which catalog to open",
+          t.wait(lambda: "open the catalog " + os.path.splitext(os.path.basename(home))[0] + " to see them" in block(), 12), block())
+    t.lr.catalog = home
+    check(t, "... back on the catalog of the session: the text goes away", t.wait(lambda: "open the catalog" not in block(), 12), block())
     turned = t.lr.crops.get(ph[0]) or ()
     check(t, "the turned photo goes to Lightroom with its own crop and the angle (5 degrees)", len(turned) == 7 and abs(turned[4] - 5) < 0.01, [list(turned), (t.session(s) or {}).get("align"), sorted(t.lr.crops)[-4:], ph[0]])
     other = t.lr.crops.get(ph[1]) or ()
