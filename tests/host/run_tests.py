@@ -917,6 +917,72 @@ def scenario_undo_own_item(t, name, photos):
     check(t, "⌘Z again: photo 03 back, still only it", t.wait(lambda: count() == before, 8) and (t.session(s) or {}).get("edited") == 0, ((t.session(s) or {}).get("edited"), count()))
 
 
+def scenario_orientation(t, name, photos):
+    line("\n== 14. Orientation of the aspect ratio (Horizontal / Vertical)")
+    s = t.shoot()
+    if not s:
+        check(t, "a new session for this scenario", False)
+        return
+    t.dismiss()
+    o = t.originals(s)
+    ph = sorted(os.path.join(o, f) for f in os.listdir(o) if not f.startswith(".") and f != "session.json")
+    t.page.click("#saveBtn")
+    t.wait(lambda: t.export_open(), 5)
+    time.sleep(0.5)
+    t.js("() => { const b = document.querySelector('#exportSteps .export-step'); if (!b.classList.contains('on')) b.click(); }")
+    time.sleep(0.4)
+    t.js("() => document.getElementById('exportUnselectAll').click()")
+    t.js("(n) => document.querySelector('#exportList li.export-item[data-name=\"' + n + '\"] .export-check input').click()", s)
+    time.sleep(0.3)
+    t.page.click('#exportList li.export-item[data-name="%s"] .folder-date' % s)
+    time.sleep(0.6)
+    ratios = lambda: t.js("() => [...document.querySelectorAll('#exportSettings .ratio-group .segmented:not(.orient-seg) button')].map(b => b.textContent.trim() + (b.classList.contains('on') ? '*' : ''))")
+    orient = lambda: t.js("() => [...document.querySelectorAll('#exportSettings .orient-seg button')].map(b => (b.classList.contains('on') ? 'on' : 'off') + (b.disabled ? ' disabled' : ''))")
+    chip = lambda: t.js("(n) => (document.querySelector('#exportList li.export-item[data-name=\"' + n + '\"] .export-chip') || {}).textContent || ''", s)
+    pick = lambda label: t.js("(l) => [...document.querySelectorAll('#exportSettings .ratio-group .segmented:not(.orient-seg) button')].find(b => b.textContent.trim() === l).click()", label)
+    pick("As shot")
+    time.sleep(0.6)
+    check(t, "As shot: the two orientation buttons are there, off", orient() == ["off disabled", "off disabled"], orient())
+    pick("3:2")
+    time.sleep(0.8)
+    check(t, "3:2 on photos lying down: Horizontal is lit", t.wait(lambda: orient() == ["on", "off"], 6), orient())
+    check(t, "... the session keeps 3:2 with no orientation written (it follows the photos)", (t.session(s) or {}).get("crop", "").startswith("3:2|"), (t.session(s) or {}).get("crop"))
+    t.js("() => document.querySelectorAll('#exportSettings .orient-seg button')[1].click()")
+    check(t, "Vertical: the list becomes As shot, 2:3, 3:4, 9:16, 1:1 with 2:3 chosen", t.wait(lambda: ratios() == ["As shot", "2:3*", "3:4", "9:16", "1:1"], 6), ratios())
+    check(t, "... Vertical is lit", orient() == ["off", "on"], orient())
+    check(t, "... the session is saved as 3:2/v", t.wait(lambda: (t.session(s) or {}).get("crop", "").startswith("3:2/v|"), 6), (t.session(s) or {}).get("crop"))
+    check(t, "... the tag in the list says 2:3", t.wait(lambda: chip().startswith("2:3"), 6), chip())
+    frame = t.js("() => { const r = document.querySelector('#exportSettings .crop-frame').getBoundingClientRect(); return [r.width, r.height]; }")
+    check(t, "... the frame in the preview stands up (2:3)", frame[1] > 0 and abs(frame[0] / frame[1] - 2 / 3) < 0.02, frame)
+    pick("1:1")
+    time.sleep(0.6)
+    check(t, "1:1: the orientation buttons go off", orient() == ["off disabled", "off disabled"], orient())
+    pick("2:3")
+    time.sleep(0.6)
+    check(t, "back to 2:3: Vertical is still the choice", orient() == ["off", "on"] and (t.session(s) or {}).get("crop", "").startswith("3:2/v|"), (orient(), (t.session(s) or {}).get("crop")))
+    # No Lightroom: cada foto vai com o recorte em pé, e a editada em pé é aceita
+    t.export_edit(s)
+    t.lr_block_button("Edit")
+    if t.wait(lambda: t.dialog_title() == "Crop before Lightroom Classic?", 2):
+        t.dialog_click("Send")
+    t.wait(lambda: t.edit_tag(s), 15)
+    time.sleep(0.5)
+    sent = t.lr.crops.get(ph[0]) or ()
+    shape = t.lr.shape(sent) if len(sent) == 7 else (0, 1)
+    check(t, "Edit in Lightroom Classic: photo 01 goes with a standing 2:3 crop", abs(shape[0] / shape[1] - 2 / 3) < 0.01, [list(sent), shape])
+    title = next((v for k, v in t.lr.framing.items()), None)
+    check(t, "... and the request names it 2:3", "2:3" in list(t.lr.framing.values()), list(t.lr.framing.values())[-3:])
+    t.lr.set_edit(ph[0], (30, 160, 200))
+    t.lr.export(o, t.project, s)
+    check(t, "the edited photo comes back standing and is used (Edited 1, not refused)",
+          t.wait(lambda: (t.session(s) or {}).get("edited") == 1, 12) and not any(p.get("refused") for p in (t.session(s) or {}).get("photos", [])),
+          [(t.session(s) or {}).get("edited"), [p.get("refused") for p in (t.session(s) or {}).get("photos", [])]])
+    t.js("() => document.querySelector('#exportSteps .export-step').click()")
+    time.sleep(0.8)
+    check(t, "with an edited photo the orientation is locked too", orient() == ["off disabled", "on disabled"], orient())
+    t.close_export()
+
+
 def dismiss_delete(self):
     if self.js("() => !document.getElementById('dialogOverlay').classList.contains('hidden')"):
         self.js("() => { const b = [...document.querySelectorAll('#dialogActions button')].find(x => /^Delete/.test(x.textContent.trim())); b && b.click(); }")
@@ -941,7 +1007,7 @@ def main():
                 only = os.environ.get("STILLPOINT_TEST_ONLY", "")  # para depurar: só os cenários com este nome
                 for sc in [x for x in (scenario_cleared, scenario_delete_edit_undo, scenario_photo_delete_restore,
                            scenario_remove_from_collection, scenario_delete_session, scenario_cancel, scenario_rapid_in_lightroom, scenario_crop_before_lightroom,
-                           scenario_export_edit, scenario_export_trash, scenario_lightroom_crop, scenario_undo_own_item) if only in x.__name__]:
+                           scenario_export_edit, scenario_export_trash, scenario_lightroom_crop, scenario_undo_own_item, scenario_orientation) if only in x.__name__]:
                     try:
                         sc(t, name, photos)
                     except Exception:  # noqa: BLE001

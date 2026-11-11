@@ -47,6 +47,13 @@ namespace Export
     // Texto guardado em session.json ("align"): "<arquivo>:dx,dy,scale,rot[,base];<arquivo>:..."
     std::map<std::string, Align> ParseAlign(const std::string& text);
 
+    // Orientação do Aspect ratio (pedido do dono, 2026-11-10): a proporção pode vir com "/h" (deitado) ou "/v" (em pé),
+    // ex.: "3:2/v". Sem isso, acompanha as fotos, como sempre foi (foto em pé fica em pé).
+    // RatioTarget: largura / altura do recorte para um quadro w x h (0 = sem proporção).
+    // RatioLabel: como a proporção aparece para a pessoa nesse quadro ("2:3" quando o recorte é em pé).
+    double RatioTarget(const std::string& ratio, double w, double h);
+    std::string RatioLabel(const std::string& ratio, double w, double h);
+
     struct Framing
     {
         std::string ratio;

@@ -1571,6 +1571,10 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 /* Parte 4 da Proporção: Export — Aspect ratio, recorte, Same size, Placement */
 .export-row.dimmed { opacity: .5; }
 .export-keep { font: 11px var(--noct-font-mono); color: var(--noct-text-dim); margin-left: 6px; }
+/* Orientação do Aspect ratio: os dois botões com ícone, colados nas proporções (protótipo aprovado em 2026-11-11) */
+.ratio-group { display: inline-flex; align-items: center; gap: 6px; }
+.orient-seg button { display: inline-flex; align-items: center; justify-content: center; padding-left: 9px; padding-right: 9px; }
+.orient-seg svg { display: block; }
 .export-note.exp-warn { color: var(--noct-pending); }
 .export-note-inline { font: 11px var(--noct-font-mono); color: var(--noct-text-dim); margin-left: 8px; }
 /* Aba Framing: a prévia (recorte sobre a foto) em cima, como nas outras abas, e as configurações embaixo.

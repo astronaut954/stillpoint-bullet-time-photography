@@ -1488,7 +1488,7 @@
     sessions = list || [];
     updateButtons();
     // Proporções: sessões novas de um disparo são medidas já (e avisam se misturadas); o resto na fila
-    sessions.forEach((x) => { const r = String(x.crop || "").split("|")[0]; if (RATIOS[r]) sessionCrop[x.name] = r; });
+    sessions.forEach((x) => { const r = String(x.crop || "").split("|")[0].split("/")[0]; if (RATIOS[r]) sessionCrop[x.name] = r; });
     const fresh = known.length ? sessions.filter((x) => !known.includes(x.name)) : [];
     const afterShoot = busyAction === "shoot" || Date.now() - lastShootAt < 20000;
     if (afterShoot) fresh.forEach((x) => measureSessionRatios(x).then((info) => maybeWarnMixed(x, info, fresh.map((f) => f.name))));
@@ -2109,10 +2109,11 @@
     if (have && have.key === key) return ratioPending[session.name] || Promise.resolve(have);
     const items = sessionItems(session);
     const found = {};
+    let tall = 0;  // fotos em pé
     const probes = items.filter((i) => i.file && i.previewable).map((item) => sessionPhoto(session.name, item.file, 320).then((url) => new Promise((done) => {
       if (!url) return done();
       const probe = new Image();
-      probe.onload = () => { found[item.group] = ratioName(probe.naturalWidth, probe.naturalHeight); done(); };
+      probe.onload = () => { found[item.group] = ratioName(probe.naturalWidth, probe.naturalHeight); if (probe.naturalHeight > probe.naturalWidth) tall++; done(); };
       probe.onerror = () => done();
       probe.src = url;
     })));
@@ -2131,7 +2132,12 @@
       RATIO_ORDER.forEach((t) => { keep[t] = groups.length ? Math.round(groups.reduce((sum, g) => sum + keepFraction(found[g], t), 0) / groups.length * 100) : 100; });
       // Sugestão: a proporção presente na sessão que perde menos pixels
       const suggest = present.slice().sort((a, b) => keep[b] - keep[a] || counts[b] - counts[a])[0] || common;
-      const info = { key, done: true, byGroup: found, counts, present, common, marked, keep, suggest, mixed: present.length > 1 };
+      // Orientação do Aspect ratio (pedido do dono, 2026-11-10): a das fotos (a maioria) e quanto sobra, em média, ao
+      // recortar para cada proporção na orientação contrária (foto deitada, recorte em pé: 1 / (foto × recorte))
+      const natural = tall > groups.length / 2 ? "v" : "h";
+      const keepTurned = {};
+      RATIO_ORDER.forEach((t) => { keepTurned[t] = groups.length ? Math.round(groups.reduce((sum, g) => sum + 1 / ((RATIOS[found[g]] || 1) * RATIOS[t]), 0) / groups.length * 100) : 100; });
+      const info = { key, done: true, byGroup: found, counts, present, common, marked, keep, keepTurned, natural, suggest, mixed: present.length > 1 };
       ratioInfo[session.name] = info;
       if (info.mixed && !ratioLogged.has(session.name)) { ratioLogged.add(session.name); log("Mixed ratios: " + ratioText(info, session), "warn", "Open Camera settings to match the cameras, or crop on export."); }
       // Na tela: miniaturas, cabeçalho e lista
@@ -2830,7 +2836,7 @@
   // O que se compara entre as sessões em cada passo: o Framing (passo 1) ou as saídas (passo 2; uma saída ou todas)
   function stepConfig(name, step, kind) {
     const st = settingsFor(name);
-    if (step === 1) { const s = sessions.find((x) => x.name === name); if (s) cropLoad(s, st); return st.crop.ratio + "|" + st.crop.x.toFixed(3) + "|" + st.crop.y.toFixed(3); }
+    if (step === 1) { const s = sessions.find((x) => x.name === name); if (s) cropLoad(s, st); return cropText(st); }
     const kinds = kind ? [kind] : OUTPUT_KINDS;
     return JSON.stringify(kinds.map((k) => [!!st.outputs[k], st[OUTPUT_KEY_OF[k]]]));
   }
@@ -2850,8 +2856,8 @@
     return h || v ? [v, h].filter(Boolean).join(" ") : "centred";
   }
   function framingText(cfg) {
-    const [ratio, x, y] = String(cfg).split("|");
-    return ratio === "asshot" ? "As shot" : ratio + ", " + placeText(+x, +y);
+    const [key, x, y] = String(cfg).split("|"), [ratio, orient] = key.split("/");
+    return ratio === "asshot" ? "As shot" : (orient === "v" ? RATIO_TURNED[ratio] || ratio : ratio) + (orient === "h" ? " horizontal" : "") + ", " + placeText(+x, +y);
   }
   function differenceText(name, step) {
     const chosen = chosenSessions();
@@ -2913,7 +2919,7 @@
                    // sameSize sempre ligado (decisão do dono, 2026-11-03): um recorte para a sessão inteira, todas as fotos no mesmo tamanho
                    photos: { original: true, convert: false, format: "jpg", quality: "high", sameSize: true },
                    // Parte 4 da Proporção: um recorte por sessão (Converted e Sequence; Lenticular usa só a posição)
-                   crop: { ratio: "asshot", x: 0.5, y: 0.5, loaded: false },
+                   crop: { ratio: "asshot", orient: "", x: 0.5, y: 0.5, loaded: false },
                    // Pedaço 2 do Framing: alinhamento por foto (arquivo → { dx, dy, scale, rot }), em session.json
                    align: { byFile: {}, loaded: false },
                    seq: { formats: ["mp4"], fps: 6, loops: 3, reverse: true, height: 1080, alsoPhotos: true, quality: "high" },
@@ -3028,7 +3034,7 @@
     const st = settingsFor(session.name);
     if (kind === "framing") {
       const info = ratioInfoCached(session.name);
-      const r = st.crop.ratio === "asshot" || !st.crop.ratio ? "As shot" : st.crop.ratio;
+      const r = ratioShown(session.name, st);
       return r + (info && info.mixed && r === "As shot" ? " ⚠ mixed ratios" : "");
     }
     if (kind === "photos") {
@@ -3194,7 +3200,7 @@
       // é lido de novo do app)
       if (framingLocked(session)) { if (st.align) st.align.loaded = false; return; }
       if (st.align && alignText(st) !== (session.align || "")) alignSave(session, st);
-      if (st.crop && (st.crop.ratio + "|" + st.crop.x.toFixed(3) + "|" + st.crop.y.toFixed(3)) !== (session.crop || "")) cropSave(session, st);
+      if (st.crop && cropText(st) !== (session.crop || "")) cropSave(session, st);
     });
     exp.same = o.same; exp.sameFraming = o.sameFraming !== false; exp.selected = new Set(o.sel); exp.dest = o.dest;
     expSnap = snap;
@@ -3336,7 +3342,7 @@
         const sst = settingsFor(s.name); cropLoad(s, sst);
         const r = ratioInfoCached(s.name), asShot = sst.crop.ratio === "asshot", aligned = sessionAligned(s, sst);
         const chip = el("span", "export-chip" + (asShot && r && r.mixed && !aligned ? " warn" : !asShot || aligned ? " ok" : ""),
-          (asShot ? "As shot" : sst.crop.ratio) + (aligned ? " · aligned" : asShot && r && r.mixed ? " · mixed ratios" : ""));
+          ratioShown(s.name, sst) + (aligned ? " · aligned" : asShot && r && r.mixed ? " · mixed ratios" : ""));
         // Âmbar: por que o aviso (pedido do dono, 2026-11-06)
         if (asShot && r && r.mixed && !aligned)
           chip.dataset.itip = ratioText(r) + " With As shot, the sequence jumps between shapes. Choose an aspect ratio (" +
@@ -3921,12 +3927,53 @@
   }
   // ---- Parte 4 da Proporção: linha "Aspect ratio", recorte (um por sessão), "Same size" e Placement ----
   const CROP_RATIOS = [["asshot", "As shot"], ["3:2", "3:2"], ["4:3", "4:3"], ["16:9", "16:9"], ["1:1", "1:1"]];
+  // ---- Orientação do Aspect ratio (pedido do dono, 2026-11-10; protótipo "Orientação do Aspect ratio") ----
+  // st.crop.orient: "" (acompanha as fotos, como sempre foi), "h" (deitado) ou "v" (em pé). Vai junto da proporção no
+  // texto guardado e mandado ao app ("3:2/v|0.5|0.5"); em As shot e 1:1 não muda nada e não é guardada.
+  const RATIO_TURNED = { "3:2": "2:3", "4:3": "3:4", "16:9": "9:16", "1:1": "1:1" };
+  function cropKey(st) { const r = st.crop.ratio || "asshot"; return r + (st.crop.orient && r !== "asshot" && r !== "1:1" ? "/" + st.crop.orient : ""); }
+  function cropText(st) { return cropKey(st) + "|" + st.crop.x.toFixed(3) + "|" + st.crop.y.toFixed(3); }
+  // A orientação que vale: a escolhida, ou a das fotos da sessão
+  function orientOf(name, st) { const info = ratioInfoCached(name); return st.crop.orient || (info && info.natural) || "h"; }
+  // Como a proporção aparece na tela: em pé, 3:2 é 2:3
+  function ratioShown(name, st) { const r = st.crop.ratio; return r === "asshot" || !r ? "As shot" : orientOf(name, st) === "v" ? RATIO_TURNED[r] || r : r; }
+  function ratioOptions(name, st) { const v = orientOf(name, st) === "v"; return CROP_RATIOS.map(([k, l]) => [k, v && RATIO_TURNED[k] ? RATIO_TURNED[k] : l]); }
+  // Quanto sobra das fotos nessa proporção e orientação (null se ainda não foi medido)
+  function keepShown(name, st) {
+    const info = ratioInfoCached(name), r = st.crop.ratio;
+    if (!info || !info.keep || r === "asshot" || info.keep[r] == null) return null;
+    return orientOf(name, st) !== (info.natural || "h") && info.keepTurned ? info.keepTurned[r] : info.keep[r];
+  }
+  const ORIENT_SVG = {
+    h: '<svg width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="1.5" y="2.5" width="15" height="9"></rect></svg>',
+    v: '<svg width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="5" y="0.8" width="8" height="12.4"></rect></svg>',
+  };
+  // Os dois botões com ícone, ao lado das proporções. Apagados em As shot e 1:1 (a orientação não muda nada) e com o
+  // Framing travado
+  function orientControl(session, st, locked, onPick) {
+    const seg = el("span", "segmented orient-seg");
+    const none = st.crop.ratio === "asshot" || st.crop.ratio === "1:1";
+    const now = orientOf(session.name, st);
+    [["h", "Horizontal"], ["v", "Vertical"]].forEach(([value, name]) => {
+      const b = el("button", !none && value === now ? "on" : "");
+      b.innerHTML = ORIENT_SVG[value];
+      b.title = locked ? "The framing is locked: this session has edits or is in Lightroom Classic" : none ? name + " (makes no difference with As shot and 1:1)" : name;
+      b.setAttribute("aria-label", name);
+      if (none || locked) b.disabled = true;
+      b.addEventListener("click", () => onPick(value));
+      seg.appendChild(b);
+    });
+    if (none || locked) seg.classList.add("locked-ctl");
+    return seg;
+  }
   // A escolha guardada na sessão (session.json, também fora do Project) entra uma vez por abertura
   function cropLoad(session, st) {
     if (st.crop.loaded) return;
     st.crop.loaded = true;
-    const [ratio, x, y] = String(session.crop || (sessionCrop[session.name] ? sessionCrop[session.name] + "|0.5|0.5" : "")).split("|");
+    const [ratioAndOrient, x, y] = String(session.crop || (sessionCrop[session.name] ? sessionCrop[session.name] + "|0.5|0.5" : "")).split("|");
+    const [ratio, orient] = String(ratioAndOrient || "").split("/");
     if (ratio === "asshot" || RATIOS[ratio]) st.crop.ratio = ratio;
+    st.crop.orient = orient === "h" || orient === "v" ? orient : "";
     if (x !== undefined && !isNaN(+x)) st.crop.x = Math.max(0, Math.min(1, +x));
     if (y !== undefined && !isNaN(+y)) st.crop.y = Math.max(0, Math.min(1, +y));
   }
@@ -3941,7 +3988,7 @@
     return inLightroom(cur.name) || (!!cur.inProject && cur.edited > 0);
   }
   const LOCK_SVG = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6.5" width="9" height="6"></rect><path d="M4.5 6.5V4.5a2.5 2.5 0 0 1 5 0v2"></path></svg>';
-  function framingWords(st) { return st.crop.ratio === "asshot" ? "As shot" : st.crop.ratio + ", " + placeText(st.crop.x, st.crop.y); }
+  function framingWords(st, name) { return st.crop.ratio === "asshot" ? "As shot" : (name ? ratioShown(name, st) : st.crop.ratio) + ", " + placeText(st.crop.x, st.crop.y); }
   function cropShare(session, st) {
     if (framingLocked(session)) return;
     cropSave(session, st);
@@ -3965,11 +4012,11 @@
     return r;
   }
   function framingAllSame() {
-    const list = chosenSessions().map((o) => { const ost = settingsFor(o.name); cropLoad(o, ost); return ost.crop.ratio + "|" + ost.crop.x.toFixed(3) + "|" + ost.crop.y.toFixed(3); });
+    const list = chosenSessions().map((o) => { const ost = settingsFor(o.name); cropLoad(o, ost); return cropText(ost); });
     return list.every((x) => x === list[0]);
   }
   function cropSave(session, st) {
-    const text = st.crop.ratio + "|" + st.crop.x.toFixed(3) + "|" + st.crop.y.toFixed(3);
+    const text = cropText(st);
     if (st.crop.ratio !== "asshot") sessionCrop[session.name] = st.crop.ratio; else delete sessionCrop[session.name];
     saveSessionCrop();
     session.crop = text;
@@ -4069,11 +4116,14 @@
     const info = ratioInfoCached(session.name);
     const locked = framingLocked(session);
     const r = row("Aspect ratio");
-    const seg = segmented(CROP_RATIOS, st.crop.ratio, (v) => { st.crop.ratio = v; cropShare(session, st); rerender(); },
+    const seg = segmented(ratioOptions(session.name, st), st.crop.ratio, (v) => { st.crop.ratio = v; cropShare(session, st); rerender(); },
       () => (locked ? "The framing is locked: this session has edits or is in Lightroom Classic" : ""));
     if (locked) seg.classList.add("locked-ctl");
-    r.appendChild(seg);
-    if (st.crop.ratio !== "asshot" && info && info.keep && info.keep[st.crop.ratio] != null) r.appendChild(el("span", "export-keep", "keeps " + info.keep[st.crop.ratio] + "%"));
+    // As proporções e, coladas nelas, os dois botões da orientação (protótipo aprovado em 2026-11-11)
+    const group = el("span", "ratio-group");
+    group.append(seg, orientControl(session, st, locked, (v) => { st.crop.orient = v; cropShare(session, st); rerender(); }));
+    r.appendChild(group);
+    { const keep = keepShown(session.name, st); if (keep != null) r.appendChild(el("span", "export-keep", "keeps " + keep + "%")); }
     box.appendChild(r);
     if (locked) {
       // No lugar do aviso das proporções: por que está travado e como destravar
@@ -4084,8 +4134,8 @@
       const text = el("div", "");
       text.appendChild(el("b", "", lrN ? "Framing locked" : "Framing locked."));
       text.appendChild(document.createTextNode(lrN
-        ? " while this session is in Lightroom Classic (the " + plural(lrN, "photo", "photos") + " went with " + framingWords(st) + "). Finish there (Export to Stillpoint or Cancel editing), or click Done editing in step 2 · Edit."
-        : " " + plural(cur.edited, "photo of this session was", "photos of this session were") + " edited in Lightroom Classic with this framing (" + framingWords(st) + "). To change it, revert " + (cur.edited === 1 ? "it to the original" : "them to the originals") + " in step 2 · Edit (Revert to original…): the framing unlocks when no photo is edited."));
+        ? " while this session is in Lightroom Classic (the " + plural(lrN, "photo", "photos") + " went with " + framingWords(st, session.name) + "). Finish there (Export to Stillpoint or Cancel editing), or click Done editing in step 2 · Edit."
+        : " " + plural(cur.edited, "photo of this session was", "photos of this session were") + " edited in Lightroom Classic with this framing (" + framingWords(st, session.name) + "). To change it, revert " + (cur.edited === 1 ? "it to the original" : "them to the originals") + " in step 2 · Edit (Revert to original…): the framing unlocks when no photo is edited."));
       text.appendChild(document.createElement("br"));
       const go = button("Go to 2 Edit", () => goExportStep(2), { title: "Open step 2 · Edit on this session" });
       go.classList.add("btn-small");
@@ -4235,7 +4285,8 @@
     });
     let cw = right - left, ch = bottom - top;
     const r = st && st.crop.ratio !== "asshot" ? RATIOS[st.crop.ratio] : 0;
-    if (r && cw > 0 && ch > 0) { const t = cw >= ch ? r : 1 / r; if (cw / ch > t) cw = ch * t; else ch = cw / t; }
+    // (a orientação escolhida manda; sem escolha, a do quadro que as fotos deixam: foto em pé fica em pé)
+    if (r && cw > 0 && ch > 0) { const o = st.crop.orient, t = (o ? o === "h" : cw >= ch) ? r : 1 / r; if (cw / ch > t) cw = ch * t; else ch = cw / t; }
     if (cw < 16 || ch < 16) return null;
     return { x: -cw / 2, y: -ch / 2, w: cw, h: ch };
   }
@@ -4272,7 +4323,7 @@
     const cur = sessions.find((x) => x.name === session.name) || session;
     const ph = cur.photos && cur.photos.find((x) => x.file === item.file);
     if (!orig && cur.inProject && cur.showEdited !== false && ph && ph.edited) return Promise.resolve(url);
-    const key = [session.name, item.file, st.crop.ratio, st.crop.x, st.crop.y, alignText(st), px, orig ? "o" : ""].join("|");
+    const key = [session.name, item.file, cropKey(st), st.crop.x, st.crop.y, alignText(st), px, orig ? "o" : ""].join("|");
     if (framedCache.has(key)) return framedCache.get(key);
     const p = Promise.all(items.map((it) => photoSizeOf(session.name, it.file).then((sz) => [it.file, sz]))).then((pairs) => {
       const sizes = {}; pairs.forEach(([f, sz]) => { if (sz) sizes[f] = sz; });
@@ -4541,9 +4592,9 @@
     {
       const info = ratioInfoCached(session.name);
       const r = row("Aspect ratio");
-      r.appendChild(segmented(CROP_RATIOS, st.crop.ratio, (v) => { st.crop.ratio = v; cropShare(session, st); rerender(); },
+      r.appendChild(segmented(ratioOptions(session.name, st), st.crop.ratio, (v) => { st.crop.ratio = v; cropShare(session, st); rerender(); },
         (v) => (v === "asshot" && sessionMixed(session) ? "Aligned photos need a ratio. To keep each photo as shot, go back to Framing and choose As shot there (the alignment is kept for later)." : "")));
-      if (st.crop.ratio !== "asshot" && info && info.keep && info.keep[st.crop.ratio] != null) r.appendChild(el("span", "export-keep", "keeps " + info.keep[st.crop.ratio] + "%"));
+      { const keep = keepShown(session.name, st); if (keep != null) r.appendChild(el("span", "export-keep", "keeps " + keep + "%")); }
       arRows.appendChild(r);
       addTip(arRows, "The shape every export gets, for the whole session; the crop frame stays where the Framing tab put it.", "Aspect ratio");
       const pos = row("Position");
@@ -5182,7 +5233,7 @@
         const horizontal = l.effect !== "3d";
         // A imagem inteira é cara de montar: fica guardada enquanto nada que entra nela muda (sessão, fotos,
         // lâmina, tamanho, marcas, recorte, Placement, faixa)
-        const cacheKey = [session.name, items.map((i) => i.file).join(","), JSON.stringify(l), st.crop.ratio, st.crop.x, st.crop.y, alignText(st), lentBand].join("|");
+        const cacheKey = [session.name, items.map((i) => i.file).join(","), JSON.stringify(l), cropKey(st), st.crop.x, st.crop.y, alignText(st), lentBand].join("|");
         const cached = exp.lentFull;
         if (cached && cached.key === cacheKey && cached.full) {
           full = cached.full; lentBuiltAt = cached.builtAt; setLoupeTag();
@@ -5479,7 +5530,7 @@
       if (!always) {
         const sum = el("div", "export-tab-sum");
         // O resumo lembra o Framing do passo 1 (não muda aqui)
-        const cut = st.crop.ratio !== "asshot" && kind !== "lenticular" ? " · cut to " + st.crop.ratio + " (step 1)" : "";
+        const cut = st.crop.ratio !== "asshot" && kind !== "lenticular" ? " · cut to " + ratioShown(session.name, st) + " (step 1)" : "";
         setWarnText(sum, on ? outputText(session, kind) + cut : "Off · tick the box in the tab to export it");
         body.appendChild(sum);
       }
@@ -5759,12 +5810,12 @@
       actions.appendChild(button("Revert to original…", () => deleteEdits(session, []), { kind: "btn-danger", title: "Put the edited photos of this session back to the original: the edited files go to the trash" }));
       // (a caixa "Use edited photos" saiu: fica só o Original / Edited de cima, que é a mesma chave; decisão do dono, 2026-11-10)
       if (session.edited < total && showingEdited) note = el("div", "export-note lr-warn", "Only some photos are edited: edited and original frames will be mixed in the export.");
-      lockNote = el("div", "export-note", "The framing of this session (" + framingWords(st) + ") stays locked in step 1 while it has edited photos.");
+      lockNote = el("div", "export-note", "The framing of this session (" + framingWords(st, session.name) + ") stays locked in step 1 while it has edited photos.");
     } else {
       // (sem "Not edited": a falta de etiqueta já diz, como nas miniaturas; decisão do dono, 2026-11-10)
       if (refused.length) head.appendChild(el("span", "lr-state", refused.length + " not used"));
       actions.appendChild(button("Edit in Lightroom Classic", send, { title: "Send the session to Lightroom Classic" }));
-      const framing = st.crop.ratio === "asshot" ? "As shot: nothing is cut" : st.crop.ratio + ", " + placeText(st.crop.x, st.crop.y);
+      const framing = st.crop.ratio === "asshot" ? "As shot: nothing is cut" : ratioShown(session.name, st) + ", " + placeText(st.crop.x, st.crop.y);
       note = el("div", "export-note", "Sends the " + plural(total, "photo", "photos") + " to Lightroom Classic, cut to this session's framing (" + framing + "). Edit them there, then click Export to Stillpoint in the Stillpoint panel.");
     }
     box.append(head, actions);
@@ -5817,7 +5868,7 @@
       if (warned) { const w = mixedWarn("As shot · mixed ratios: the sequence will jump and the lenticular subject changes size"); const e = editLink(1, s, "framing"); e.classList.add("in-warn"); w.lastChild.append(" ", e); tdF.appendChild(w); }
       else {
         const pos = st.crop.ratio === "asshot" ? "" : " · " + ([vnames[st.crop.y], names[st.crop.x]].filter((x) => x && x !== undefined).join(" ") || "custom position");
-        tdF.appendChild(document.createTextNode((st.crop.ratio === "asshot" ? "As shot" : st.crop.ratio) + pos));
+        tdF.appendChild(document.createTextNode(ratioShown(s.name, st) + pos));
         if (aligned) { tdF.appendChild(document.createElement("br")); tdF.appendChild(el("span", "dim", plural(aligned, "photo", "photos") + " aligned")); }
       }
       if (!warned) tdF.appendChild(editLink(1, s, "framing"));
@@ -5899,7 +5950,7 @@
       o.lenticular ? 1 : 0, lentPitch(l), l.dpi, (l.widthCm / CM_PER_IN).toFixed(4), (l.heightCm / CM_PER_IN).toFixed(4), l.effect, l.reverse ? 1 : 0,
       l.cropMarks ? 1 : 0, l.alignMarks ? 1 : 0, l.bleedMm || 0, l.lpi,
       // Parte 4 da Proporção: 25 proporção | 26 posição x | 27 posição y | 28 same size | 29 placement | 30 faixa
-      st.crop.ratio || "asshot", st.crop.x.toFixed(3), st.crop.y.toFixed(3), 1, l.placement || "fill", lentBand].join("|");
+      cropKey(st), st.crop.x.toFixed(3), st.crop.y.toFixed(3), 1, l.placement || "fill", lentBand].join("|");
   }
 
   function runExport(deleteRest) {

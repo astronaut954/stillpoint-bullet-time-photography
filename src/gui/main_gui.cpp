@@ -3237,7 +3237,7 @@ namespace
                     if (!a.empty()) ratio = a;
                     try { if (!b.empty()) posX = std::stod(b); if (!c.empty()) posY = std::stod(c); } catch (...) {}
                 }
-                r.framing = ratio;
+                r.framing = ratio.substr(0, ratio.find('/'));  // (sem a orientação; com o canvas calculado vira o nome que a pessoa vê)
                 {
                     // O alinhamento que veio do Lightroom só vale para a foto que está com editada. A foto que vai agora
                     // sem editada (Revert to original) vai com o alinhamento da sessão: o que ela tinha do Lightroom sai
@@ -3296,7 +3296,8 @@ namespace
                     if (wanted && allSizes && Export::ComputeCommonFrame(framing, sizes))
                     {
                         byCanvas = true;
-                        if (target <= 0) r.framing = "aligned";
+                        // (o nome que a pessoa vê: "2:3" quando o recorte é em pé)
+                        r.framing = target > 0 ? Export::RatioLabel(ratio, framing.commonW, framing.commonH) : std::string("aligned");
                         {
                             // O canvas com que a sessão vai: a conferência das editadas que chegarem usa a forma dele
                             char canvas[96];
@@ -3328,7 +3329,7 @@ namespace
                         int w = 0, h = 0;
                         if (!Export::PhotoSize(path, w, h) || w <= 0 || h <= 0)
                             continue;
-                        const double want = w >= h ? target : 1.0 / target;
+                        const double want = Export::RatioTarget(ratio, w, h);
                         const double have = static_cast<double>(w) / h;
                         Adobe::Request::Crop crop;
                         crop.photo = path;
@@ -4834,13 +4835,15 @@ namespace
                                 int w = 0, h = 0;
                                 if (framing.Canvas()) { w = static_cast<int>(std::lround(framing.commonW)); h = static_cast<int>(std::lround(framing.commonH)); }
                                 else if (!Export::PhotoSize(photoPath(f), w, h)) continue;
-                                const double r = Export::RatioValue(job.framing.ratio);
-                                int cw = std::max(w, h), ch = std::min(w, h);  // deitada
-                                if (r > 0)
+                                // O recorte dessa foto na proporção e na orientação escolhidas; depois, deitado (como sempre)
+                                const double t = Export::RatioTarget(job.framing.ratio, w, h);
+                                int cw = w, ch = h;
+                                if (t > 0 && cw > 0 && ch > 0)
                                 {
-                                    if (static_cast<double>(cw) / ch > r) cw = static_cast<int>(std::lround(ch * r));
-                                    else ch = static_cast<int>(std::lround(cw / r));
+                                    if (static_cast<double>(cw) / ch > t) cw = static_cast<int>(std::lround(ch * t));
+                                    else ch = static_cast<int>(std::lround(cw / t));
                                 }
+                                if (cw < ch) std::swap(cw, ch);
                                 const long long area = static_cast<long long>(cw) * ch;
                                 if (bestArea < 0 || area < bestArea) { bestArea = area; targetW = cw; targetH = ch; }
                             }

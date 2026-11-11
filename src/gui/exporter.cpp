@@ -762,20 +762,38 @@ namespace
 
 namespace Export
 {
-    double RatioValue(const std::string& ratio)
+    double RatioValue(const std::string& text)
     {
+        const std::string ratio = text.substr(0, text.find('/'));  // (sem a orientação: "3:2/v")
         if (ratio == "3:2") return 3.0 / 2.0;
         if (ratio == "4:3") return 4.0 / 3.0;
         if (ratio == "16:9") return 16.0 / 9.0;
         if (ratio == "1:1") return 1.0;
         return 0;
     }
+    double RatioTarget(const std::string& ratio, double w, double h)
+    {
+        const double r = RatioValue(ratio);
+        if (r <= 0) return 0;
+        const size_t slash = ratio.find('/');
+        const char orient = slash != std::string::npos && slash + 1 < ratio.size() ? ratio[slash + 1] : 0;
+        // A orientação escolhida manda; sem escolha, a proporção vale para o lado maior: foto em pé fica em pé
+        const bool landscape = orient == 'h' ? true : orient == 'v' ? false : w >= h;
+        return landscape ? r : 1.0 / r;
+    }
+    std::string RatioLabel(const std::string& ratio, double w, double h)
+    {
+        const std::string base = ratio.substr(0, ratio.find('/'));
+        const double t = RatioTarget(ratio, w, h);
+        if (t <= 0 || t >= 1.0 - 1e-9) return base;
+        const size_t colon = base.find(':');
+        return colon == std::string::npos ? base : base.substr(colon + 1) + ":" + base.substr(0, colon);
+    }
     void ApplyFraming(RgbFrame& frame, const Framing& framing)
     {
         const double r = RatioValue(framing.ratio);
         if (r <= 0 || frame.width <= 0 || frame.height <= 0) return;
-        // A proporção vale para o lado maior: foto em pé fica em pé
-        const double target = frame.width >= frame.height ? r : 1.0 / r;
+        const double target = RatioTarget(framing.ratio, frame.width, frame.height);
         const double have = static_cast<double>(frame.width) / frame.height;
         if (std::abs(have - target) < 0.005) return;
         int nw = frame.width, nh = frame.height;
@@ -874,7 +892,7 @@ namespace Export
         const double r = RatioValue(framing.ratio);
         if (r > 0 && cw > 0 && ch > 0)
         {
-            const double t = cw >= ch ? r : 1.0 / r;
+            const double t = RatioTarget(framing.ratio, cw, ch);
             if (cw / ch > t) cw = ch * t; else ch = cw / t;
         }
         if (cw < 16 || ch < 16) { framing.align.clear(); return false; }

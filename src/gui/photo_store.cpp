@@ -800,8 +800,9 @@ namespace
         return text;
     }
 
-    double RatioOf(const std::string& ratio)
+    double RatioOf(const std::string& text)
     {
+        const std::string ratio = text.substr(0, text.find('/'));  // (sem a orientação: "3:2/v")
         if (ratio == "3:2") return 1.5;
         if (ratio == "4:3") return 4.0 / 3.0;
         if (ratio == "16:9") return 16.0 / 9.0;
@@ -883,7 +884,8 @@ std::string PhotoStore::RefusedLabel(const std::string& session, const fs::path&
     if (W > 0 && H > 0 && ImageShape(edited, w, h) && !SameShape(w, h, W, H) && !(eitherWay && SameShape(w, h, H, W)))
     {
         entry.label = ShapeName(w, h);
-        entry.want = RatioOf(ratio) > 0 ? ratio : ShapeName(W, H);
+        // (com o canvas conhecido, a forma dele: "2:3" quando o recorte é em pé)
+        entry.want = eitherWay ? ratio.substr(0, ratio.find('/')) : ShapeName(W, H);
     }
     if (want) *want = entry.want;
     std::lock_guard<std::mutex> lock(refusedMutex);

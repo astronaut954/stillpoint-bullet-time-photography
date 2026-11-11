@@ -1871,6 +1871,14 @@ Com câmeras simuladas e o Lightroom Classic com o catálogo do projeto. A janel
 - [ ] Sessão sem edição: o bloco **Lightroom Classic** tem só **Edit in Lightroom Classic** (sem o texto **Not edited**, que saiu em 2026-11-10). Clicar manda a
       sessão; com proporções misturadas e **As shot**, pergunta **Crop before Lightroom Classic?** como antes; escolhendo
       **Crop to 3:2**, o Framing da sessão no passo 1 passa a 3:2.
+- [ ] **Orientação do Aspect ratio (2026-11-11):** no passo **1 Sessions**, ao lado das proporções, dois botões com ícone (retângulo
+      deitado e retângulo em pé; a dica diz **Horizontal** / **Vertical**). Sessão com fotos deitadas e **3:2**: o deitado está
+      aceso. Clicar no em pé: a lista vira **As shot, 2:3, 3:4, 9:16, 1:1**, o quadro da prévia fica em pé dentro da foto, as
+      miniaturas, o selo da sessão na lista (**2:3**) e **keeps n%** acompanham. Em **As shot** e **1:1** os dois ficam apagados.
+- [ ] Com **Same framing for all ticked sessions** marcado, a orientação vai junto para as outras sessões marcadas (menos as travadas).
+- [ ] Sessão em **2:3** › **Edit in Lightroom Classic**: no Lightroom cada foto abre com o recorte em pé; a editada volta em pé e é
+      usada. Com foto editada, os dois botões ficam travados junto com o resto do Framing.
+- [ ] Exportar essa sessão (Photos convertidas, Sequence): os arquivos saem em pé, 2:3.
 - [ ] **⌘Z desfaz só aquela ação (2026-11-10):** numa sessão com uma foto editada, apagar a foto 03 na janela principal
       (botão direito › **Delete photo 03…** › **Delete**); depois, no **Export › 2 Edit**, **Revert to original…** da editada;
       fechar o Export e desfazer as duas com ⌘Z, uma por vez: cada ⌘Z traz só o que aquela ação apagou.
