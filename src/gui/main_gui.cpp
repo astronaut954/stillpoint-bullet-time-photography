@@ -2910,9 +2910,11 @@ namespace
                             if (!line.empty()) seen.insert(line);
                     }
                     bool firstRefused = true;
+                    std::set<std::string> listed;  // as sessões do projeto aberto agora
                     for (const auto& s : store.ListSessions())
                     {
                         if (!s.inProject) continue;
+                        listed.insert(s.name);
                         std::vector<std::filesystem::path> fresh;
                         std::string numbers, have, want;
                         for (const auto& p : s.photos)
@@ -2934,6 +2936,11 @@ namespace
                             .Add("count", static_cast<int>(fresh.size())).Add("have", have).Add("want", want).Str();
                         firstRefused = false;
                     }
+                    // Os avisos já dados de sessões de outros projetos ficam guardados: com outro projeto aberto (ou o de
+                    // teste) elas não estão na lista, e sem isso o recado voltava a aparecer ao reabrir o projeto delas
+                    // (teste do dono, 2026-11-10)
+                    for (const auto& key : seen)
+                        if (!listed.count(key.substr(0, key.find('|')))) now.insert(key);
                     if (now != seen)
                     {
                         std::ofstream out(seenFile, std::ios::binary | std::ios::trunc);
