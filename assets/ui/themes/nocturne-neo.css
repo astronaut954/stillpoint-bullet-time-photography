@@ -1576,6 +1576,10 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 /* (na coluna estreita do Align photos os dois botões descem para a linha de baixo, em vez de sair da tela) */
 .ratio-group .segmented { flex: none; }
 .ratio-group .segmented button { white-space: nowrap; }
+/* Align photos: as proporções ocupam a largura do painel e encolhem com ele, sem sair para fora (teste do dono, 2026-11-11) */
+.align-rows .ratio-group { display: flex; width: 100%; }
+.align-rows .ratio-group .segmented:not(.orient-seg) { flex: 1 1 100%; display: flex; min-width: 0; max-width: 100%; box-sizing: border-box; }
+.align-rows .ratio-group .segmented:not(.orient-seg) button { flex: 1 1 auto; min-width: 0; padding-left: 4px; padding-right: 4px; }
 .orient-seg button { display: inline-flex; align-items: center; justify-content: center; padding-left: 9px; padding-right: 9px; }
 .orient-seg svg { display: block; }
 .export-note.exp-warn { color: var(--noct-pending); }
