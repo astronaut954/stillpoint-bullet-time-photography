@@ -2033,6 +2033,13 @@ a explicação fica no **?** ao lado do título; o aviso âmbar e a linha do Fra
 - [ ] Com uma editada recusada, o bloco **Lightroom Classic** tem **Revert to original…** (e o botão direito da
       miniatura também): a recusada vai para a lixeira, o triângulo some e a foto volta ao original; ⌘Z traz o arquivo
       de volta (pedido do dono, 2026-11-12).
+- [ ] Faixa **Edited photos** (protótipo aprovado em 2026-11-12): com editada ou recusada na sessão, acima dos dois
+      programas, com o estado (**1 of 9 photos edited · 1 not used**), **Revert to original…** à direita e os avisos
+      embaixo, em textos curtos (**Edited and original photos will be mixed in the export.** · **Framing locked (…)
+      while there are edited photos.** · **Photo 02 not used: it is 5:7, the session is 1:1. Fix the crop and save
+      again, or revert it.**). Sem editada nem recusada, a faixa não aparece. Com a sessão no Lightroom, sem o botão.
+- [ ] **Lightroom Classic** e **Photoshop** lado a lado, só com os botões de cada um; com a janela estreita o
+      **Photoshop** desce para baixo.
 - [ ] Foto com **Flip** no Align photos: abre no Photoshop sem espelhar e aparece espelhada no Stillpoint depois de salva.
 - [ ] Foto que já tem editada do Lightroom: **Edit photo 0n in Photoshop** abre a própria editada (sem criar outra); ao
       salvar, o bloco passa a **Photo 0n edited in Photoshop**.

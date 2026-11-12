@@ -609,7 +609,7 @@ def scenario_export_edit(t, name, photos):
     t.export_edit(s)
     check(t, "step 1's green button was Edit → and now step 2 · Edit is open", t.export_step() == "2 Edit", t.export_step())
     check(t, "the footer buttons: ← Sessions and Outputs →", t.js("() => document.getElementById('exportBack').textContent === '← Sessions' && document.getElementById('exportConfirm').textContent === 'Outputs →'"))
-    check(t, "Lightroom Classic box: Edit in Lightroom Classic, with no Not edited text", t.js("() => { const b = document.querySelector('#exportSettings .lr-block'); return !!b && !b.textContent.includes('Not edited') && b.textContent.includes('Edit in Lightroom Classic'); }"))
+    check(t, "Lightroom Classic box: Edit in Lightroom Classic, with no Not edited text", t.js("() => { const b = document.querySelector('#exportSettings .app-pair').parentElement; return !!b && !b.textContent.includes('Not edited') && b.textContent.includes('Edit in Lightroom Classic'); }"))
     check(t, "Original / Edited is there, not clickable with no edits", t.js("() => { const v = document.querySelector('#exportSettings .edit-view'); return !!v && [...v.querySelectorAll('button')].every(b => b.disabled); }"))
     cap = lambda: t.js("() => { const c = document.querySelector('#exportSettings .edit-preview .stage-caption b'); return c ? c.textContent : null; }")
     seen = set()
@@ -635,13 +635,13 @@ def scenario_export_edit(t, name, photos):
     if t.wait(lambda: t.dialog_title() == "Crop before Lightroom Classic?", 2):
         t.dialog_click("Send as shot")
     check(t, "Edit in Lightroom Classic from the box: In Lightroom", t.wait(lambda: t.edit_tag(s), 15))
-    check(t, "the box shows In Lightroom Classic · 4 photos and Done editing", t.wait(lambda: t.js("() => { const b = document.querySelector('#exportSettings .lr-block'); return !!b && b.textContent.includes('In Lightroom Classic · 4 photos') && b.textContent.includes('Done editing'); }"), 6))
+    check(t, "the box shows In Lightroom Classic · 4 photos and Done editing", t.wait(lambda: t.js("() => { const b = document.querySelector('#exportSettings .app-pair').parentElement; return !!b && b.textContent.includes('In Lightroom Classic · 4 photos') && b.textContent.includes('Done editing'); }"), 6))
     check(t, "the strip shows LR on the 4 photos", t.js("() => document.querySelectorAll('#exportSettings .export-strip .frame-app:not(.ed)').length") == 4)
     o = t.originals(s)
     ph = sorted(os.path.join(o, f) for f in os.listdir(o) if not f.startswith(".") and f != "session.json")
     t.lr.set_edit(ph[0], (220, 80, 40))
     t.lr.export(o, t.project, s)
-    check(t, "Export to Stillpoint: the box shows 1 of 4 photos edited", t.wait(lambda: t.js("() => { const b = document.querySelector('#exportSettings .lr-block'); return !!b && b.textContent.includes('1 of 4 photos edited'); }"), 10))
+    check(t, "Export to Stillpoint: the box shows 1 of 4 photos edited", t.wait(lambda: t.js("() => { const b = document.querySelector('#exportSettings .app-pair').parentElement; return !!b && b.textContent.includes('1 of 4 photos edited'); }"), 10))
     check(t, "... ED on photo 01 only", t.wait(lambda: t.js("() => [...document.querySelectorAll('#exportSettings .export-strip > li')].map(li => !!li.querySelector('.frame-app.ed'))") == [True, False, False, False], 5))
     check(t, "... Original / Edited clickable, on Edited", t.js("() => { const v = document.querySelector('#exportSettings .edit-view'); const on = v && v.querySelector('button.on'); return !!on && on.textContent === 'Edited' && ![...v.querySelectorAll('button')].some(b => b.disabled); }"))
     check(t, "... the partial warning", t.js("() => !!document.querySelector('#exportSettings .lr-warn')"))
@@ -677,7 +677,7 @@ def scenario_export_edit(t, name, photos):
     check(t, "clicking In Lightroom in the session list opens Export › Edit of the session", t.export_open() and t.export_step() == "2 Edit" and t.js("(n) => { const a = document.querySelector('#exportList li.export-item.active'); return !!a && a.dataset.name === n; }", s))
     t.lr_block_button("Done editing")
     check(t, "Done editing in the box: In Lightroom goes away", t.wait(lambda: not t.edit_tag(s), 10))
-    check(t, "... the box shows Edit again in Lightroom Classic", t.wait(lambda: t.js("() => { const b = document.querySelector('#exportSettings .lr-block'); return !!b && b.textContent.includes('Edit again in Lightroom Classic'); }"), 6))
+    check(t, "... the box shows Edit again in Lightroom Classic", t.wait(lambda: t.js("() => { const b = document.querySelector('#exportSettings .app-pair').parentElement; return !!b && b.textContent.includes('Edit again in Lightroom Classic'); }"), 6))
     t.close_export()
 
 
@@ -714,7 +714,7 @@ def scenario_export_trash(t, name, photos):
     check(t, "while the session is In Lightroom, Outputs → is blocked", t.js("() => document.getElementById('exportConfirm').disabled"))
     check(t, "... and the footer says why", "still in Lightroom Classic" in (t.js("() => document.getElementById('exportCount').textContent") or ""), t.js("() => document.getElementById('exportCount').textContent"))
     # O Lightroom aberto em outro catálogo: o bloco diz qual abrir (decisão do dono, 2026-11-10)
-    block = lambda: t.js("() => (document.querySelector('#exportSettings .lr-block') || {}).textContent || ''")
+    block = lambda: t.js("() => (document.querySelector('#exportSettings .app-pair').parentElement || {}).textContent || ''")
     check(t, "in the catalog of the session: the box does not name the catalog", "open the catalog" not in block(), block())
     home = t.lr.catalog
     t.lr.catalog = os.path.join(os.path.dirname(home), "Another.lrcat")
@@ -739,7 +739,7 @@ def scenario_export_trash(t, name, photos):
     check(t, "Sessions, while in Lightroom: Framing locked (note, ratio buttons and Align photos off, lock on the chip)",
           k["note"].startswith("Framing locked while this session is in Lightroom Classic") and not k["seg"] and k["align"] == [True] and k["chip"], k)
     t.js("() => { const b = [...document.querySelectorAll('#exportSettings .lock-note button')].find(x => x.textContent.trim() === 'Go to 2 Edit'); b && b.click(); }")
-    check(t, "... Go to 2 Edit opens the Edit step", t.wait(lambda: t.js("() => !!document.querySelector('#exportSettings .lr-block')"), 4))
+    check(t, "... Go to 2 Edit opens the Edit step", t.wait(lambda: t.js("() => !!document.querySelector('#exportSettings .app-pair').parentElement"), 4))
     t.lr.set_edit(ph[0], (30, 160, 200))
     t.lr.export(o, t.project, s)
     check(t, "after Export to Stillpoint (the session leaves Lightroom): Outputs → works again", t.wait(lambda: not t.js("() => document.getElementById('exportConfirm').disabled"), 12))
@@ -885,8 +885,8 @@ def scenario_lightroom_crop(t, name, photos):
     t.export_edit(s)
     time.sleep(0.8)
     check(t, "... Edit: the triangle on thumbnail 03", t.wait(lambda: t.js("() => !!document.querySelector('#exportSettings .export-strip > li:nth-child(3) .frame-app.refused')"), 5))
-    block = t.js("() => document.querySelector('#exportSettings .lr-block').textContent") or ""
-    check(t, "... and the line in the Lightroom Classic box", "1 not used" in block and "Photo 03: the edited file is" in block, block)
+    block = t.js("() => document.querySelector('#exportSettings .app-pair').parentElement.textContent") or ""
+    check(t, "... and the line in the Lightroom Classic box", "1 not used" in block and "Photo 03 not used: it is" in block, block)
     # O arquivo certo no lugar: passa a valer
     Image.new("RGB", (max(1, round(want[0] / 4)), max(1, round(want[1] / 4))), (60, 200, 60)).save(os.path.join(ed, f3), quality=85)
     check(t, "the file replaced by one with the right shape: photo 03 is edited, no mark",
@@ -1495,7 +1495,7 @@ def scenario_photoshop(t, name, photos):
     b = block()
     check(t, "2 Edit has a Photoshop box under Lightroom Classic, with the button of the selected photo", bool(b) and b["buttons"] == ["Edit photo 03 in Photoshop"] and b["state"] == "", b)
     check(t, "... compact: the explanation is in a ? next to the title, no caption under the buttons", bool(b) and b["tip"] and b["notes"] == 0, b)
-    check(t, "... the Lightroom Classic box too", t.js("() => { const b = document.querySelector('#exportSettings .lr-block:not(.ps-block)'); return !!b.querySelector('.lr-head .info-tip') && b.querySelectorAll('.export-note').length === 0; }"))
+    check(t, "... the Lightroom Classic box too", t.js("() => { const b = document.querySelector('#exportSettings .app-pair .lr-block:not(.ps-block)'); return !!b.querySelector('.lr-head .info-tip') && b.querySelectorAll('.export-note').length === 0; }"))
     pick(1)
     check(t, "the button follows the selected photo", block()["buttons"] == ["Edit photo 01 in Photoshop"], block())
     pick(3)
@@ -1537,7 +1537,8 @@ def scenario_photoshop(t, name, photos):
     check(t, "... ED on the thumbnail, with a still PS next to it (edited in Photoshop); the session counts 1 edited photo", marks()[2] == "PS+ED" and t.session(s)["edited"] == 1 and
           t.js("() => { const b = document.querySelector('#exportSettings .export-strip > li:nth-child(3) .frame-app.ps-done'); return !!b && !b.classList.contains('live') && !b.querySelector('.edit-dot'); }"), (marks(), t.session(s)["edited"]))
     check(t, "... the box: Photo 03 edited in Photoshop, Edit photo 03 again in Photoshop", bool(b) and b["state"] == "Photo 03 edited in Photoshop" and b["buttons"] == ["Edit photo 03 again in Photoshop"], b)
-    check(t, "... the Lightroom box counts it and keeps the framing line in sight", t.js("() => { const b = document.querySelector('#exportSettings .lr-block:not(.ps-block)'); return b.textContent.includes('1 of 4 photos edited') && [...b.querySelectorAll('.export-note')].some(n => n.textContent.includes('stays locked')); }"))
+    check(t, "... the Edited photos strip, above the two programs, counts it, has Revert to original… and the framing line", t.js("() => { const b = document.querySelector('#exportSettings .ed-strip'); return !!b && b.querySelector('.lr-title').textContent === 'Edited photos' && b.textContent.includes('1 of 4 photos edited') && [...b.querySelectorAll('button')].some(x => x.textContent.trim() === 'Revert to original…') && [...b.querySelectorAll('.export-note')].some(n => n.textContent.startsWith('Framing locked (')) && b.compareDocumentPosition(document.querySelector('#exportSettings .app-pair')) & Node.DOCUMENT_POSITION_FOLLOWING; }"))
+    check(t, "... Lightroom Classic and Photoshop side by side, with only their own buttons", t.js("() => { const p = document.querySelector('#exportSettings .app-pair'); const [a, b] = [...p.children].map(x => x.getBoundingClientRect()); const lr = p.children[0]; return p.children.length === 2 && Math.abs(a.top - b.top) < 2 && b.left > a.right && !lr.textContent.includes('photos edited') && ![...lr.querySelectorAll('button')].some(x => x.textContent.includes('Revert')); }"))
     pick(3)
     check(t, "... the large preview shows what Photoshop saved", t.wait(lambda: near(t.js(pix, "#exportSettings .edit-preview > img"), (40, 90, 200)), 10), t.js(pix, "#exportSettings .edit-preview > img"))
     # Outro ⌘S: a foto é atualizada
@@ -1648,8 +1649,8 @@ def scenario_photoshop(t, name, photos):
     t.wait(lambda: t.session(s2)["edited"] == 0, 15)
     check(t, "... saved with another shape (cut in Photoshop): refused, as any edited file", t.session(s2)["edited"] == 0 and bool(next((p for p in t.session(s2)["photos"] if p.get("refused")), None)), [p.get("refused") for p in t.session(s2)["photos"]])
     # A recusada não tem como ser consertada se o Photoshop já fechou: Revert to original… também vale para ela
-    t.wait(lambda: t.js("() => { const b = document.querySelector('#exportSettings .lr-block:not(.ps-block)'); return !!b && b.textContent.includes('1 not used') && [...b.querySelectorAll('button')].some(x => x.textContent.trim() === 'Revert to original…'); }"), 10)
-    check(t, "... the Lightroom box offers Revert to original… for the photo that was not used", t.lr_block_button("Revert to original…"))
+    t.wait(lambda: t.js("() => { const b = document.querySelector('#exportSettings .ed-strip'); return !!b && b.textContent.includes('1 not used') && [...b.querySelectorAll('button')].some(x => x.textContent.trim() === 'Revert to original…'); }"), 10)
+    check(t, "... the Edited photos strip offers Revert to original… for the photo that was not used", t.lr_block_button("Revert to original…"))
     asked = t.wait(lambda: t.dialog_title() == "Revert 1 photo to the original?", 5)
     t.dialog_click("Revert to original")
     t.wait(lambda: not os.path.exists(sq), 8)

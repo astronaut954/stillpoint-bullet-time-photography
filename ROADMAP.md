@@ -1064,7 +1064,8 @@ etapas".**
    bloco Lightroom Classic, mas não são só dele. Decisão dele: uma faixa neutra acima dos dois programas. Protótipo
    "Faixa Edited photos" mandado em 2026-11-12, aguardando avaliação: https://claude.ai/artifact/YCJeshpxTwmcSjBZiP1xUm
    (faixa com título, estado e Revert to original… à direita, avisos embaixo só quando existem; some sem editadas; os
-   blocos Lightroom Classic e Photoshop lado a lado, para caber em 1440 × 900 sem rolar).
+   blocos Lightroom Classic e Photoshop lado a lado, para caber em 1440 × 900 sem rolar). **Aprovado pelo dono em 2026-11-12** (nome Edited photos; textos dos avisos reduzidos; lado a lado, com o
+   Photoshop descendo quando a janela fica estreita) e implementado na branch no mesmo dia, sem teste do dono.
    **Ideia do dono (2026-11-12), em estudo, sem decisão:** levar todas as fotos da sessão para o Photoshop num arquivo
    só, para editar e ver a sequência lá dentro (ajustes, elementos acrescentados) antes de voltar ao Stillpoint.
    Caminhos conversados: (a) camadas, uma por foto, com a animação da Timeline do Photoshop, e um comando do Stillpoint

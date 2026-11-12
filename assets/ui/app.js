@@ -5998,18 +5998,14 @@
       actions.appendChild(button("Done editing", () => doneEditing(session), { title: "Take the session out of Lightroom Classic: its collection leaves the catalog" }));
       help = "Edit the photos in Lightroom Classic, then click Export to Stillpoint in the Stillpoint panel: the edited photos come back here by themselves.";
     } else if (hasEd) {
-      head.appendChild(el("span", "lr-state", session.edited + " of " + plural(total, "photo", "photos") + " edited" + (refused.length ? " · " + refused.length + " not used" : "")));
       actions.appendChild(button("Edit again in Lightroom Classic", send, { title: "Send the session to Lightroom Classic again, with its edits" }));
-      actions.appendChild(button("Revert to original…", () => deleteEdits(session, revertFiles()), { kind: "btn-danger", title: "Put the edited photos of this session back to the original: the edited files go to the trash" }));
       // (a caixa "Use edited photos" saiu: fica só o Original / Edited de cima, que é a mesma chave; decisão do dono, 2026-11-10)
-      if (session.edited < total && showingEdited) note = el("div", "export-note lr-warn", "Only some photos are edited: edited and original frames will be mixed in the export.");
-      help = "Edit again in Lightroom Classic sends the session to Lightroom Classic again, with its edits. Revert to original… puts the edited photos of this session back to the original: the edited files go to the trash.";
-      lockNote = el("div", "export-note", "The framing of this session (" + framingWords(st, session.name) + ") stays locked in step 1 while it has edited photos.");
+      if (session.edited < total && showingEdited) note = el("div", "export-note lr-warn", "Edited and original photos will be mixed in the export.");
+      help = "Sends the session to Lightroom Classic again, with its edits. Edit there, then click Export to Stillpoint in the Stillpoint panel.";
+      lockNote = el("div", "export-note", "Framing locked (" + framingWords(st, session.name) + ") while there are edited photos.");
     } else {
       // (sem "Not edited": a falta de etiqueta já diz, como nas miniaturas; decisão do dono, 2026-11-10)
-      if (refused.length) head.appendChild(el("span", "lr-state", refused.length + " not used"));
       actions.appendChild(button("Edit in Lightroom Classic", send, { title: "Send the session to Lightroom Classic" }));
-      if (refused.length) actions.appendChild(button("Revert to original…", () => deleteEdits(session, revertFiles()), { kind: "btn-danger", title: "Put " + (refused.length === 1 ? "the photo" : "the photos") + " back to the original: the edited " + (refused.length === 1 ? "file" : "files") + " that could not be used " + (refused.length === 1 ? "goes" : "go") + " to the trash" }));
       const framing = st.crop.ratio === "asshot" ? "As shot: nothing is cut" : ratioShown(session.name, st) + ", " + placeText(st.crop.x, st.crop.y);
       help = "Sends the " + plural(total, "photo", "photos") + " to Lightroom Classic, cut to this session's framing (" + framing + "). Edit them there, then click Export to Stillpoint in the Stillpoint panel.";
     }
@@ -6017,11 +6013,26 @@
     // travado continuam à vista
     if (help) head.querySelector(".lr-title").after(makeTip(help));
     box.append(head, actions);
-    if (note) box.appendChild(note);
-    if (lockNote) box.appendChild(lockNote);
-    refused.forEach((x) => box.appendChild(el("div", "export-note lr-warn", "Photo " + pad(x.order || 0) + ": the edited file is " + x.refused + ", but the session is " + (x.refusedWant || "another shape") +
-      ". It stays in the Edited folder and is not used. Fix the crop where it was edited (Lightroom Classic or Photoshop) and export or save it again, or revert the photo to the original.")));
-    rows.appendChild(box);
+    // Faixa "Edited photos" (protótipo aprovado pelo dono em 2026-11-12): o que é das editadas em geral fica acima dos
+    // dois programas, e não dentro do Lightroom: o estado, Revert to original… e os avisos. Some sem editada nem
+    // recusada. Com a sessão no Lightroom não há Revert to original… (como antes; o botão direito da miniatura tem).
+    if (session.edited > 0 || refused.length) {
+      const strip = el("div", "lr-block ed-strip"), sHead = el("div", "lr-head");
+      sHead.appendChild(el("span", "lr-title", "Edited photos"));
+      sHead.appendChild(el("span", "lr-state", [session.edited > 0 ? session.edited + " of " + plural(total, "photo", "photos") + " edited" : "", refused.length ? refused.length + " not used" : ""].filter(Boolean).join(" · ")));
+      if (!lrN) sHead.appendChild(button("Revert to original…", () => deleteEdits(session, revertFiles()), { kind: "btn-danger",
+        title: "Put the edited photos of this session back to the original: the edited files go to the trash" }));
+      strip.appendChild(sHead);
+      if (note) strip.appendChild(note);
+      if (lockNote) strip.appendChild(lockNote);
+      refused.forEach((x) => strip.appendChild(el("div", "export-note lr-warn", "Photo " + pad(x.order || 0) + " not used: it is " + x.refused + ", the session is " + (x.refusedWant || "another shape") +
+        ". Fix the crop and save again, or revert it.")));
+      rows.appendChild(strip);
+    }
+    // Os dois programas lado a lado (decisão do dono, 2026-11-12); com a janela estreita o Photoshop desce
+    const pair = el("div", "app-pair");
+    pair.appendChild(box);
+    rows.appendChild(pair);
 
     // Bloco Photoshop (protótipo "Photoshop no Export" aprovado pelo dono em 2026-11-12): uma foto por vez, a selecionada
     // na fileira. O Photoshop é o acabamento, depois do Lightroom; a foto volta ao salvar lá (⌘S).
@@ -6030,7 +6041,7 @@
       const psHead = el("div", "lr-head"), psActions = el("div", "lr-actions");
       psHead.appendChild(el("span", "lr-title", "Photoshop"));
       ps.append(psHead, psActions);
-      rows.appendChild(ps);
+      pair.appendChild(ps);
       let shown = "";
       psUpdate = () => {
         const item = items[exp.photo] || items[0];

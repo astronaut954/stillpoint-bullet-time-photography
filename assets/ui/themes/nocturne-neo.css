@@ -2194,7 +2194,11 @@ body:has(.sessions-panel.fullscreen) .log { z-index: 9; transition: height .15s 
 body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform: translateY(100%); }
 
 /* Bloco Photoshop do Export › 2 Edit (embaixo do Lightroom Classic) e o "?" dos dois blocos */
-.ps-block { margin-top: 12px; }
+.app-pair { display: flex; flex-wrap: wrap; gap: 14px; align-items: stretch; }
+.app-pair > .lr-block { flex: 1 1 300px; min-width: 0; }
+/* Faixa "Edited photos": o estado e, à direita, Revert to original…; os avisos embaixo */
+.ed-strip .lr-head { align-items: center; }
+.ed-strip .lr-head .btn-danger { margin-left: auto; }
 .lr-block .lr-head .info-tip { margin-left: -2px; }
 /* PS parado ao lado do ED: a editada veio do Photoshop (decisão do dono, 2026-11-12). Verde, como o ED. */
 .frame-app.ps-done { color: var(--noct-primary); border-color: var(--noct-primary); }
