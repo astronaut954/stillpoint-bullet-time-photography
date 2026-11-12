@@ -896,12 +896,26 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    app nativo ou navegador; sincronia de relógio aceitável entre os aparelhos; se a foto volta em
    JPEG/HEIC ou também em RAW (DNG) nos aparelhos que permitem; mistura com as Canon na mesma sessão.
    Depende de medir a precisão de disparo pela rede antes de desenhar a interface.
-8. **Etapa 23 — modo caixa de disparo (sempre a última).** O app usa a caixa (ESP32 + um canal
+8. **Etapa 23 — Alinhamento automático das fotos** (posta aqui pelo dono em 2026-11-11: é etapa do roadmap, não
+   pedido solto; a estudar). Referência do dono: o Xangle Camera Server
+   ("Easy camera alignment for bullet-time photography - no calibration bar required!",
+   https://www.youtube.com/watch?v=eYGbaLTg2-8). O que o vídeo e a descrição dizem: 8 Canon SL1; uma primeira foto é
+   mandada para a nuvem ("registration", ~25 s), que devolve arquivos de texto com a posição de cada câmera no espaço
+   3D; depois o "alignment" corrige as imagens de qualquer disparo seguinte usando essas posições (registra uma vez,
+   reaplica em todas as sessões enquanto o rig não muda). Como eles calculam por dentro não está dito no vídeo. O
+   caminho conhecido para isso (inferência, não confirmado para o Xangle): achar pontos em comum entre as fotos e
+   resolver a posição das câmeras (structure from motion; há bibliotecas abertas, como COLMAP e OpenCV), escolher um
+   ponto central no sujeito e calcular, para cada câmera, o deslocamento, o tamanho e o giro que põem esse ponto no
+   mesmo lugar. No Stillpoint o resultado caberia nos controles que o Align photos já tem (Move X, Move Y, Size,
+   Rotate). Decisões pendentes do dono antes de qualquer desenho: rodar no computador ou em servidor; o que fazer em
+   cena sem textura (fundo liso), onde esse cálculo falha; e se vale começar por uma versão mais simples (a pessoa
+   marca o mesmo ponto em cada foto).
+9. **Etapa 24 — modo caixa de disparo (sempre a última).** O app usa a caixa (ESP32 + um canal
    por câmera, já desenhada em `docs/hardware/caixa-de-disparo.pdf` e `hardware/trigger-box/`)
    para disparar: o plano do Timing/Sweep vai para a caixa (PLAN/GO), que dispara com precisão
    de milissegundos; o USB fica só para configurações e fotos. Depende do protótipo de 2 canais
    testado em hardware.
-9. **Etapa futura (muito depois, só com o projeto maduro) — distribuído por rede.** Vários
+10. **Etapa futura (muito depois, só com o projeto maduro) — distribuído por rede.** Vários
    computadores pequenos, cada um com 3–4 câmeras, ligados por Ethernet a um "chefe" que coordena
    e junta as fotos (modo "trabalhador" e modo "chefe" no Stillpoint). É o desenho dos rigs de
    20–100 câmeras.
@@ -913,7 +927,7 @@ Junto com essas etapas (sem etapa própria):
   0,9 s depois da anterior e aceita a 1,8 s. Entre câmeras diferentes, 0,3 s funcionou; 0,1 e
   0,15 s ainda não foram testados com 9 câmeras. **Resolvido em 2026-10-22 (ver as decisões logo abaixo; não há
   pendência aqui):** aviso na Timeline, **não insistir** no "busy", Sweep e One after another num modo só, download
-  adiado. Reconfirmado pelo dono em 2026-11-11, depois de ver o protótipo de insistir: fica como está. Com a caixa de disparo (hoje etapa 23) o
+  adiado. Reconfirmado pelo dono em 2026-11-11, depois de ver o protótipo de insistir: fica como está. Com a caixa de disparo (hoje etapa 24) o
   limite entre câmeras deixa de existir; o da mesma câmera, não.
   **Decisões de 2026-10-21 (noite), branch `sweep-limite`:** (C) "One after another" e "Sweep"
   viraram um modo só, **Sweep** — intervalo livre a partir de 0,05 s, atalhos 0,1 / 0,2 / 0,3 /
@@ -965,11 +979,11 @@ Junto com essas etapas (sem etapa própria):
 ## Futuro (não planejado ainda)
 
 **Pedidos em aberto, na ordem em que foram anotados (lista pedida pelo dono em 2026-11-11; o detalhe de cada um está
-mais abaixo ou na etapa indicada):**
+mais abaixo ou na etapa indicada). O alinhamento automático das fotos não é pedido solto: é a etapa 23, em "Próximas
+etapas".**
 
 1. **Filtro na janela Project** (pedido em 2026-11-10). Não começado.
-2. **Alinhamento automático das fotos** (pedido em 2026-11-11, a estudar; referência: Xangle Camera Server). Não começado.
-3. **Photoshop, a parte que falta da etapa 20** (pedaço 4 da etapa: abrir uma foto por vez no Photoshop, aviso "no
+2. **Photoshop, a parte que falta da etapa 20** (pedaço 4 da etapa: abrir uma foto por vez no Photoshop, aviso "no
    longer RAW", conflito de Desfazer). Não começado; o Lightroom Classic da mesma etapa está publicado desde a 2.18.0.
 
 - **Orientação do Aspect ratio: horizontal ou vertical (pedido em 2026-11-10; feito em 2026-11-11 na branch
@@ -980,19 +994,6 @@ mais abaixo ou na etapa indicada):**
   da proporção ("3:2/v|x|y" em session.json; sem "/h" ou "/v" acompanha as fotos). Vai para o Lightroom no recorte de
   cada foto. A tela Align photos tem os mesmos dois botões e nomeia o canvas na orientação que vale. Não mexido: os
   avisos de proporção da janela principal ("Crop on export to 3:2") continuam sem orientação.
-- **Alinhamento automático das fotos (pedido em 2026-11-11, a estudar).** Referência do dono: o Xangle Camera Server
-  ("Easy camera alignment for bullet-time photography - no calibration bar required!",
-  https://www.youtube.com/watch?v=eYGbaLTg2-8). O que o vídeo e a descrição dizem: 8 Canon SL1; uma primeira foto é
-  mandada para a nuvem ("registration", ~25 s), que devolve arquivos de texto com a posição de cada câmera no espaço
-  3D; depois o "alignment" corrige as imagens de qualquer disparo seguinte usando essas posições (registra uma vez,
-  reaplica em todas as sessões enquanto o rig não muda). Como eles calculam por dentro não está dito no vídeo. O
-  caminho conhecido para isso (inferência, não confirmado para o Xangle): achar pontos em comum entre as fotos e
-  resolver a posição das câmeras (structure from motion; há bibliotecas abertas, como COLMAP e OpenCV), escolher um
-  ponto central no sujeito e calcular, para cada câmera, o deslocamento, o tamanho e o giro que põem esse ponto no
-  mesmo lugar. No Stillpoint o resultado caberia nos controles que o Align photos já tem (Move X, Move Y, Size,
-  Rotate). Decisões pendentes do dono antes de qualquer desenho: rodar no computador ou em servidor; o que fazer em
-  cena sem textura (fundo liso), onde esse cálculo falha; e se vale começar por uma versão mais simples (a pessoa
-  marca o mesmo ponto em cada foto).
 - **Espelhar a foto no Align photos (pedido em 2026-11-11; feito no mesmo dia na branch `etapa-20-lightroom`,
   protótipo aprovado: linha Flip com dois ícones, Apply to all e a marca na miniatura; sem giro de 90°, que já se faz
   digitando 90 no Rotate; para o Lightroom a foto vai sem espelhar e o Stillpoint espelha na volta; o Lightroom
