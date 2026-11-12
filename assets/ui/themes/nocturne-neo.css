@@ -2205,3 +2205,13 @@ body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform:
 
 /* "?" ao lado do título de uma janela de aviso */
 #dialogTitle .info-tip { margin-left: 10px; }
+
+/* Etiquetas da miniatura no passo 2 Edit (protótipo aprovado pelo dono em 2026-11-12, opção A): uma linha, mais curtas,
+   sem a bolinha. O que está acontecendo (LR, PS mandada) é âmbar e pulsa inteira enquanto o programa está aberto; o
+   resultado (ED, PS parado) continua verde e parado. Cabem três. */
+.export-strip .frame-corner { gap: 2px; }
+.export-strip .frame-app { padding: 0 3px; }
+.export-strip .frame-app .edit-dot { display: none; }
+.export-strip .frame-app:has(.edit-dot) { color: var(--noct-pending); border-color: var(--noct-pending); opacity: .6; }
+.export-strip .frame-app.live:has(.edit-dot) { opacity: 1; animation: noct-pulse 1.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .export-strip .frame-app.live:has(.edit-dot) { animation: none; } }

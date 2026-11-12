@@ -1076,7 +1076,10 @@ etapas".**
    branch, sem teste do dono: aviso também ao enviar a sessão (opção C: janela na primeira vez de cada sessão, aviso
    âmbar nas seguintes); bolinha do estado In Lightroom Classic apagada como nas miniaturas; a miniatura não mostrar a
    imagem antiga por um instante depois do ⌘S (causa provável corrigida, não confirmada).
-   Em aberto, do mesmo dia: etiquetas demais saindo da miniatura (LR, PS, ED e a da proporção).
+   O caminho A inteiro foi aprovado pelo dono no Mac em 2026-11-12 (com a janela única do Revert, o aviso ao enviar a
+   sessão e o selo Ps da lixeira). Etiquetas saindo da miniatura: protótipo https://claude.ai/artifact/R5J6LWvpTzKJ7GNyGrww1c,
+   opção A aprovada em 2026-11-12 (uma linha, sem bolinha; pendente âmbar pulsando, resultado verde) e feita na branch
+   só na fileira do passo 2 Edit, sem teste do dono; as miniaturas da tela principal continuam com a bolinha (em aberto).
    **Ideia do dono (2026-11-12), em estudo, sem decisão:** levar todas as fotos da sessão para o Photoshop num arquivo
    só, para editar e ver a sequência lá dentro (ajustes, elementos acrescentados) antes de voltar ao Stillpoint.
    Caminhos conversados: (a) camadas, uma por foto, com a animação da Timeline do Photoshop, e um comando do Stillpoint
