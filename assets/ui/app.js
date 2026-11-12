@@ -6658,10 +6658,23 @@
       log(text, "warn");
     },
     rigAnswered(e) {
-      if (!e.applied) { log("Cameras kept as they are; the project keeps its settings."); return; }
+      const ask = rigAsks[e.id];
+      if (e.mode === "revert" || e.mode === "reapply") {  // (o ⌘Z e o ⇧⌘Z do Apply: o aviso de Undo / Redo já disse)
+        log((e.mode === "revert" ? "Cameras back to how they were before the project settings" : "Project settings applied again") + " (" + plural(e.cameras, "camera", "cameras") + ")" + (e.failed ? ". Not accepted: " + e.error : ""), e.failed ? "warn" : undefined);
+        return;
+      }
+      if (!e.applied) {
+        log("Cameras kept as they are; the project keeps its settings.");
+        // ⌘Z do Keep: o aviso volta para a pessoa escolher de novo (decisão do dono, 2026-11-11)
+        if (ask) recordAction({ label: "Keep the cameras as they are", undo: () => { window.rigAnswer("reask", String(e.id)); rigAsk(ask); return false; }, redo: () => false });
+        return;
+      }
       const text = "Project settings applied to " + plural(e.cameras, "camera", "cameras");
       if (e.failed) { toast(text + " · " + plural(e.failed, "setting", "settings") + " not accepted", 9000, { warn: true }); log(text + ". Not accepted: " + e.error, "warn"); }
       else { toast(text); log(text); }
+      // ⌘Z do Apply: as câmeras voltam ao que tinham (o Project não muda); ⇧⌘Z aplica de novo
+      if (e.cameras) recordAction({ label: "Apply the project settings (" + plural(e.cameras, "camera", "cameras") + ")", camera: true,
+        undo: () => window.rigAnswer("revert", String(e.id)), redo: () => window.rigAnswer("reapply", String(e.id)) });
     },
     cameraSettingResult(e) {
       const keys = e.key === "kelvin" || e.key === "wb" ? ["wb", "kelvin"] : [e.key];
@@ -9197,7 +9210,9 @@
     if (ready) rigCheckSoon(2000);
   }
   // O aviso (protótipo aprovado pelo dono, 2026-11-11): a tabela das diferenças, as duas linhas do rig e os dois botões
+  const rigAsks = {};  // as perguntas já feitas, pelo número (para o ⌘Z do Keep mostrar o aviso de novo)
   function rigAsk(e) {
+    rigAsks[e.id] = e;
     // Sempre o modelo com o nome (como no protótipo): a câmera que falta não está na lista para desempatar
     const label = (name, model) => model ? model + " (" + name + ")" : name;
     const box = el("div", "rig-diff");
@@ -9221,8 +9236,8 @@
     log("The cameras are not as project " + e.project + " left them: " + plural(e.differing, "camera differs", "cameras differ") + ".", "warn");
     dialog("The cameras are not as this project left them",
       e.project + " was saved with other settings on " + e.differing + " of the " + plural(e.connected, "camera", "cameras") + " connected now.",
-      [{ label: "Keep the cameras as they are", onClick: () => window.rigAnswer("keep") },
-       { label: "Apply the project settings", primary: true, onClick: () => window.rigAnswer("apply") }], box);
+      [{ label: "Keep the cameras as they are", onClick: () => window.rigAnswer("keep", String(e.id)) },
+       { label: "Apply the project settings", primary: true, onClick: () => window.rigAnswer("apply", String(e.id)) }], box);
   }
   function fmtBytes(b) {
     if (!(b > 0)) return "";

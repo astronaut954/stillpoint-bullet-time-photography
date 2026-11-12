@@ -1975,6 +1975,10 @@ de verdade).
       fechar e abrir o Stillpoint: o aviso aparece de novo, com a mesma linha.
 - [ ] **Apply the project settings**: aviso **Project settings applied to 1 camera** (canto de baixo); em **Camera settings** a
       câmera está com o valor do projeto.
+- [ ] ⌘Z depois de **Keep the cameras as they are**: o aviso volta, com as mesmas linhas, para escolher de novo
+      (decisão do dono, 2026-11-11).
+- [ ] ⌘Z depois de **Apply the project settings**: aviso **Undo** com **Apply the project settings (1 camera)**; a câmera
+      volta ao valor que tinha e o projeto não muda. ⇧⌘Z aplica de novo.
 - [ ] Trocar de projeto (seletor de projeto, barra de cima): o painel **Bullet time** e a ordem das câmeras passam a ser
       os do outro projeto; voltar ao primeiro: voltam os dele.
 - [ ] Fechar o projeto (seletor de projeto › **Close project**): **Countdown 0**, **Sessions 1**, **Download wait 10**,

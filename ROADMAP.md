@@ -1001,7 +1001,7 @@ Junto com essas etapas (sem etapa própria):
   fábrica e nada é guardado (o Timing deixou de ser lembrado pelo aplicativo); ordem sem buraco, câmeras novas no fim.
   Arquivo `stillpoint-rig.json` na pasta do projeto; lógica em `src/gui/rig_state.*`. Conferido só pelo teste
   automático (cenário 18 de `tests/host/run_tests.py` e `ExporterMathTest`), com câmeras de mentira que têm ISO,
-  Shutter, Aperture e White balance. **Pendente:** ⌘Z para o aviso (pedido do dono em 2026-11-11), Windows, câmeras reais
+  Shutter, Aperture e White balance. ⌘Z do aviso (decisão do dono, 2026-11-11): depois de Apply, as câmeras voltam ao que tinham e o projeto não muda (⇧⌘Z aplica de novo); depois de Keep, o aviso volta. **Pendente:** teste do dono do ⌘Z, Windows, câmeras reais
   (em especial: temperatura de cor, ajuste fino do balanço de branco e Picture Style, que as câmeras de mentira do
   teste não têm). Texto original do pedido:
   **O projeto guarda o estado do rig (pedido em 2026-11-11).** Cada projeto guardar e trazer de volta, ao ser aberto: as

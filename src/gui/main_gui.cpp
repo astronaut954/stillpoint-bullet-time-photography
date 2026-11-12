@@ -1279,6 +1279,8 @@ namespace
         bool rigOrderApplied = false;          // a ordem guardada já foi posta nas câmeras desde que o Project abriu
         bool rigHadCameras = false;            // o Project já tinha câmeras guardadas ao abrir (senão, nada a avisar)
         Rig::Check rigAsked;                   // as diferenças perguntadas, esperando a resposta
+        std::map<int, Rig::Check> rigHistory;  // as perguntas já feitas neste Project, pelo número (para o ⌘Z da resposta)
+        int rigAskId = 0;
         std::vector<std::string> rigConnectOrder;  // números de série na ordem em que as câmeras apareceram (sem Project)
         std::function<void()> rigAfterTask;
         auto rigSave = [&] { if (!rigFolder.empty()) Rig::Save(Rig::FileIn(rigFolder), rigState); };
@@ -1341,6 +1343,7 @@ namespace
                 rigHadCameras = !rigState.cameras.empty();
                 rigMemory.Clear();
                 rigAsked = Rig::Check();
+                rigHistory.clear();
                 rigOrderApplied = false;
             }
             // Sem Project: as câmeras voltam à ordem em que conectaram (decisão do dono); as configurações delas ficam
@@ -3786,6 +3789,7 @@ namespace
                 if (!check.diffs.empty())
                 {
                     rigAsked = check;
+                    rigHistory[++rigAskId] = check;
                     rigMemory.reported = signature;  // (o aviso já mostra as duas linhas do rig)
                     std::string rows = "[";
                     for (size_t i = 0; i < check.diffs.size(); ++i)
@@ -3794,7 +3798,7 @@ namespace
                         rows += (i ? "," : "") + Json("diff").Add("camera", d.name).Add("model", d.model).Add("order", d.order)
                             .Add("key", d.key).Add("setting", Rig::KeyName(d.key)).Add("now", d.now.label).Add("want", d.want.label).Str();
                     }
-                    listener.Emit(Json("rigAsk").Add("project", project.Name()).Add("differing", check.differing).Add("connected", check.connected)
+                    listener.Emit(Json("rigAsk").Add("id", rigAskId).Add("project", project.Name()).Add("differing", check.differing).Add("connected", check.connected)
                         .Raw("diffs", rows + "]").Raw("missing", camerasJson(check.missing)).Raw("fresh", camerasJson(check.fresh)));
                     return;
                 }
@@ -3809,23 +3813,38 @@ namespace
             });
             return "null";
         });
-        // rigAnswer("apply" | "keep"): a resposta ao aviso. apply: as câmeras recebem o que o Project guardou; keep: nada
-        // muda nas câmeras e o Project continua com o que tinha.
+        // rigAnswer(modo, número da pergunta): a resposta ao aviso e o ⌘Z dela (pedido do dono, 2026-11-11).
+        //  apply: as câmeras recebem o que o Project guardou; keep: nada muda nas câmeras e o Project continua com o que
+        //  tinha; revert (⌘Z do apply): as câmeras voltam ao que tinham, o Project não muda; reapply (⇧⌘Z): aplica de
+        //  novo; reask (⌘Z do keep): a pergunta volta a valer (a página mostra o aviso de novo).
         window.bind("rigAnswer", [&](const std::string& request) -> std::string
         {
             const auto args = ParseStringArgs(request);
-            const bool apply = !args.empty() && args[0] == "apply";
-            auto answer = [&, apply]
+            const std::string mode = !args.empty() ? args[0] : std::string("keep");
+            int id = 0;
+            if (args.size() > 1) try { id = std::stoi(args[1]); } catch (...) { id = 0; }
+            if (mode == "reask")
+            {
+                std::lock_guard<std::mutex> lock(rigMutex);
+                if (const auto it = rigHistory.find(id); it != rigHistory.end()) rigAsked = it->second;
+                return "null";
+            }
+            const bool write = mode == "apply" || mode == "revert" || mode == "reapply";
+            auto answer = [&, mode, id, write]
             {
                 Rig::Check asked;
                 {
                     std::lock_guard<std::mutex> lock(rigMutex);
-                    asked = rigAsked;
+                    const auto it = rigHistory.find(id);
+                    asked = it != rigHistory.end() ? it->second : rigAsked;
                     rigAsked = Rig::Check();
+                    // Desfazer o Apply é ficar como no Keep: a diferença fica na câmera e o Project não muda
+                    if (mode == "revert")
+                        for (const Rig::Diff& d : asked.diffs) rigMemory.kept[{ d.serial, d.key }] = d.now.value;
                 }
                 std::vector<std::string> errors;
                 std::set<std::string> touched;
-                if (apply)
+                if (write)
                     for (const std::string& key : Rig::Keys())  // na ordem certa (balanço de branco antes da temperatura...)
                         for (const Rig::Diff& d : asked.diffs)
                         {
@@ -3834,7 +3853,7 @@ namespace
                             {
                                 if (!cam.sessionOpen || cam.portName != d.serial) continue;
                                 std::string error;
-                                if (controller.WriteSetting(cam, key, d.want.value, error)) touched.insert(d.serial);
+                                if (controller.WriteSetting(cam, key, mode == "revert" ? d.now.value : d.want.value, error)) touched.insert(d.serial);
                                 else errors.push_back(cam.shortName + " · " + Rig::KeyName(key) + ": " + error);
                             }
                         }
@@ -3854,11 +3873,11 @@ namespace
                 }
                 std::string text;
                 for (const auto& e : errors) text += (text.empty() ? "" : " ") + e;
-                listener.Emit(Json("rigAnswered").Add("applied", apply).Add("cameras", static_cast<int>(touched.size()))
+                listener.Emit(Json("rigAnswered").Add("mode", mode).Add("id", id).Add("applied", mode == "apply").Add("cameras", static_cast<int>(touched.size()))
                     .Add("failed", static_cast<int>(errors.size())).Add("error", text));
                 listener.Emit(Json("cameraSettings").Raw("cameras", CameraSettingsJson(controller, all)));
             };
-            if (apply) run("rig", answer);
+            if (write) run("rig", answer);
             else cameras.Post(answer);
             return "null";
         });
