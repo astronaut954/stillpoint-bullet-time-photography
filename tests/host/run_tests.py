@@ -1559,8 +1559,9 @@ def scenario_photoshop(t, name, photos):
     t.page.click("#exportSettings .export-strip > li:nth-child(3)", button="right")
     time.sleep(0.3)
     t.js("() => [...document.querySelectorAll('.app-menu button')].find(b => b.textContent.trim() === 'Edit just this photo in Lightroom Classic').click()")
-    asked = t.wait(lambda: t.dialog_title() == "Photo 03 was edited in Photoshop", 6)
-    check(t, "... asking Lightroom for that photo explains and offers Revert to original…", bool(asked) and t.js("() => [...document.querySelectorAll('#dialogActions button')].map(b => b.textContent.trim())") == ["Cancel", "Revert to original…"], t.dialog_title())
+    asked = t.wait(lambda: t.dialog_title().startswith("Photo 03 was edited in Photoshop"), 6)
+    check(t, "... asking Lightroom for that photo explains and offers Revert to original, with a ? for the details", bool(asked) and t.js("() => [...document.querySelectorAll('#dialogActions button')].map(b => b.textContent.trim())") == ["Cancel", "Revert to original"]
+          and t.js("() => { const q = document.querySelector('#dialogTitle .info-tip'); return !!q && q.getAttribute('aria-label').includes('Stillpoint trash'); }"), t.dialog_title())
     t.dialog_click("Cancel")
     time.sleep(0.4)
     t.lr_block_button("Edit in Lightroom Classic")

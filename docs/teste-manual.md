@@ -2056,7 +2056,8 @@ a explicação fica no **?** ao lado do título; o aviso âmbar e a linha do Fra
 - [x] A bolinha ao lado de **In Lightroom Classic · n photos** fica apagada como a das miniaturas e só acende quando
       pulsa (pedido do dono, 2026-11-12).
 - [ ] Botão direito nessa foto, **Edit just this photo in Lightroom Classic**: janela **Photo 0n was edited in
-      Photoshop**, com **Cancel** e **Revert to original…**.
+      Photoshop**, com um **?** ao lado do título (a editada vai para a lixeira, ⌘Z traz de volta), **Cancel** e
+      **Revert to original**, que já reverte, sem segunda janela (decisão do dono, 2026-11-12).
 - [ ] Sessão **In Lightroom**: pedir o Photoshop numa foto mostra **Photo 0n is in Lightroom Classic**, com
       **Cancel** e **Open in Photoshop anyway**; ao salvar no Photoshop a foto sai do Lightroom (a contagem do bloco
       diminui, a miniatura troca **LR** por **PS** e **ED**, e a foto sai da coleção no Lightroom).

@@ -5800,11 +5800,16 @@
     const photoOf = (item) => session.photos.find((x) => x.file === item.file) || {};
     // Foto com acabamento do Photoshop: fica fora do Lightroom (decisão do dono, 2026-11-12, caminho A)
     const psKept = (item) => !!(photoOf(item).psEdited && editedFile(item));
-    const askRevertForLightroom = (item) => dialog("Photo " + pad(photoOf(item).order || 0) + " was edited in Photoshop",
-      "Lightroom Classic would work on the original, without the Photoshop work. To edit it there, revert it to the original first.", [
-        { label: "Cancel", link: true },
-        { label: "Revert to original…", danger: true, onClick: () => deleteEdits(session, [item.file]) },
-      ]);
+    // Uma janela só (decisão do dono, 2026-11-12): o botão já reverte; o que a confirmação de sempre dizia fica num "?"
+    const askRevertForLightroom = (item) => {
+      const num = pad(photoOf(item).order || 0);
+      dialog("Photo " + num + " was edited in Photoshop",
+        "Lightroom Classic would work on the original, without the Photoshop work. To edit it there, revert it to the original first.", [
+          { label: "Cancel", link: true },
+          { label: "Revert to original", danger: true, onClick: () => deleteEditsNow(session, [item.file], true) },
+        ]);
+      ui.dialogTitle.appendChild(makeTip("Photo " + num + " goes back to the original. The edited file goes to the Stillpoint trash: ⌘Z or the Trash brings it back."));
+    };
     const inPs = (item) => !!photoOf(item).psOpen;       // aberta no Photoshop, ainda não salva
     let psUpdate = null;                                  // o bloco Photoshop acompanha a foto selecionada
     const n = items.length;

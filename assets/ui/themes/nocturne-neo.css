@@ -2202,3 +2202,6 @@ body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform:
 .lr-block .lr-head .info-tip { margin-left: -2px; }
 /* PS parado ao lado do ED: a editada veio do Photoshop (decisão do dono, 2026-11-12). Verde, como o ED. */
 .frame-app.ps-done { color: var(--noct-primary); border-color: var(--noct-primary); }
+
+/* "?" ao lado do título de uma janela de aviso */
+#dialogTitle .info-tip { margin-left: 10px; }
