@@ -533,8 +533,18 @@ local function scenarioDeleteEdits()
 	-- rodadas, 2026-11-11, sem dizer por quê. Espera até 3 s e, se falhar, diz o que ficou diferente)
 	local back = false
 	for _ = 1, 10 do
-		if Bridge.same(settingsOf(1), base) then back = true; break end
+		if Bridge.sameEdit(settingsOf(1), base) then back = true; break end
 		LrTasks.sleep(0.3)
+	end
+	-- (a comparação é a do plugin, Bridge.sameEdit: o que o Lightroom acrescenta sozinho, a FilterList ou uma lista
+	-- vazia, não é edição. Com a comparação exata falhava de vez em quando sem diferença nenhuma a mostrar: rodada do
+	-- dono de 2026-11-11, Lightroom Classic 16.0. Se isso acontecer, a linha abaixo diz o que o Lightroom acrescentou)
+	if back and not Bridge.same(settingsOf(1), base) then
+		local now, extra = settingsOf(1), {}
+		for k, v in pairs(now) do if base[k] == nil then table.insert(extra, tostring(k)) end end
+		for k, v in pairs(base) do if now[k] == nil then table.insert(extra, tostring(k) .. ' (gone)') end end
+		table.sort(extra)
+		info('after the reset Lightroom added by itself: ' .. (#extra > 0 and table.concat(extra, ', ') or 'nothing listed'))
 	end
 	check('reset: photo 01 back to how it arrived', back, Actions.settingsDiff(base, settingsOf(1)))
 	local saved = LrPrefs.prefsForPlugin().savedEdits
