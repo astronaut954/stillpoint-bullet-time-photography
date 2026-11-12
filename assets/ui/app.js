@@ -2353,6 +2353,15 @@
   function isFullscreen() {
     return sessionsPanel.classList.contains("fullscreen");
   }
+  // Na tela cheia o Activity fica abaixo da borda e sobe quando o mouse chega embaixo (decisão do dono, 2026-11-11):
+  // entra com o mouse na faixa de baixo da janela e sai quando ele se afasta da barra (aberto, fica até ser fechado)
+  document.addEventListener("mousemove", (e) => {
+    if (!isFullscreen()) { ui.log.classList.remove("peek"); return; }
+    const up = ui.log.classList.contains("peek");
+    const from = window.innerHeight - (up ? ui.log.getBoundingClientRect().height + 10 : 8);
+    ui.log.classList.toggle("peek", e.clientY >= from);
+  });
+  document.documentElement.addEventListener("mouseleave", () => ui.log.classList.remove("peek"));
   // Barra das sessões na tela cheia: sempre à vista, só com ícones
   const sideAside = ui.sessionList.parentElement;
   // Botão de cima da barra: mostra os nomes (barra larga, fica aberta) ou volta aos ícones

@@ -2180,9 +2180,15 @@ html.kbd-focus .export-tab.on .export-tab-check input:focus + .save-check { outl
    passa para a frente (clicar abre a lista por cima da janela). Os avisos de pergunta, a janela de digitar um nome, a
    contagem e o progresso continuam cobrindo tudo; a tela cheia das fotos também (lá nada muda). */
 #exportOverlay, #camSettingsOverlay, #projectOverlay, #projectPickOverlay, #settingsOverlay, #aboutOverlay,
-#orderOverlay, #updateOverlay, #catGuideOverlay, #pitchOverlay { bottom: var(--log-h); }
+#orderOverlay, #updateOverlay, #catGuideOverlay, #pitchOverlay, #trashOverlay { bottom: var(--log-h); }
 body:has(#exportOverlay:not(.hidden), #camSettingsOverlay:not(.hidden), #projectOverlay:not(.hidden), #projectPickOverlay:not(.hidden),
   #settingsOverlay:not(.hidden), #aboutOverlay:not(.hidden), #orderOverlay:not(.hidden), #updateOverlay:not(.hidden),
-  #catGuideOverlay:not(.hidden), #pitchOverlay:not(.hidden)) .log { z-index: 15; }
+  #catGuideOverlay:not(.hidden), #pitchOverlay:not(.hidden), #trashOverlay:not(.hidden)) .log { z-index: 15; transform: none; }
 #promptOverlay, #countdownOverlay, #progressOverlay { z-index: 16; }
 #dialogOverlay { z-index: 17; }
+
+/* Tela cheia da sessão (decisão do dono, 2026-11-11): o Activity fica escondido abaixo da borda e sobe, de leve, quando
+   o mouse chega na parte de baixo da janela (classe peek, posta pela página); aberto, fica até ser fechado. Com uma
+   janela aberta por cima da tela cheia vale a regra das janelas, logo acima. */
+body:has(.sessions-panel.fullscreen) .log { z-index: 9; transition: height .15s ease, transform .22s var(--noct-ease); }
+body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform: translateY(100%); }
