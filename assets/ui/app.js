@@ -5981,7 +5981,24 @@
     const actions = el("div", "lr-actions");
     const kept = items.filter(psKept), going = items.length - kept.length;
     // (a foto aberta, se for das que vão; senão a primeira que vai)
-    const send = () => { if (adobeMissingBuild()) return; const cur = items[exp.photo]; const it = (cur && !psKept(cur) ? cur : items.find((x) => !psKept(x))) || {}; startLightroom(session, it.group || "", "session"); };
+    // Com fotos que ficam fora: uma janela na primeira vez de cada sessão (e quando as fotos protegidas mudam); nos
+    // envios seguintes, só o aviso âmbar depois de enviar (decisão do dono, 2026-11-12, opção C)
+    const keptWords = () => { const nums = kept.map((x) => pad(photoOf(x).order || 0)); return kept.length > 3 ? kept.length + " photos stay" : kept.length > 1 ? "Photos " + nums.join(", ") + " stay" : "Photo " + nums[0] + " stays"; };
+    const sendNow = (asked) => {
+      const cur = items[exp.photo]; const it = (cur && !psKept(cur) ? cur : items.find((x) => !psKept(x))) || {};
+      lrKeptNote = kept.length && !asked ? { session: name, text: plural(going, "photo", "photos") + " sent to Lightroom Classic · " + keptWords() + " out: edited in Photoshop" } : null;
+      startLightroom(session, it.group || "", "session");
+    };
+    const send = () => {
+      if (adobeMissingBuild()) return;
+      const key = kept.map((x) => x.group).join(",");
+      if (!kept.length || !going || psKeptWarned[name] === key) { sendNow(); return; }
+      dialog(keptWords() + " out of Lightroom Classic",
+        (kept.length > 1 ? "They were" : "It was") + " edited in Photoshop: Lightroom Classic would work on the original, without the Photoshop work. To edit " + (kept.length > 1 ? "one" : "it") + " there, revert it to the original first.", [
+          { label: "Cancel", link: true },
+          { label: "Send " + plural(going, "photo", "photos"), primary: true, onClick: () => { psKeptWarned[name] = key; savePsKeptWarned(); sendNow(true); } },
+        ]);
+    };
     const lrEdited = items.some((x) => editedFile(x) && !psKept(x));
     const total = session.photos.length;
     const lrN = Object.values(editingBySession[name] || {}).filter((x) => x === "lr").length;
@@ -9446,6 +9463,12 @@
        { label: "Crop to " + info.suggest + " (keeps " + info.keep[info.suggest] + "%)", primary: true, onClick: () => done(info.suggest) }],
       others);
   }
+  // Fotos com acabamento do Photoshop que ficam fora do Lightroom: o aviso depois do envio, e as sessões em que a
+  // janela já foi vista
+  let lrKeptNote = null;
+  let psKeptWarned = {};
+  try { psKeptWarned = JSON.parse(localStorage.getItem("stillpoint.psKeptWarned") || "{}") || {}; } catch (e) {}
+  function savePsKeptWarned() { try { localStorage.setItem("stillpoint.psKeptWarned", JSON.stringify(psKeptWarned)); } catch (e) {} }
   function startLightroom(s, group, scope, groups, cropAsked) {
     if (!cropAsked && !lrJob.id && !sessionCrop[s.name]) {
       Promise.resolve(measureSessionRatios(s)).then((info) => {
@@ -9565,6 +9588,7 @@
         if (st.state === "done") {
           finish(); hideToast();
           toast(sessionShort(s) + " is in Lightroom Classic: Stillpoint › " + (s.inProject && project.open ? project.name : "No project") + " › " + lrCollectionTitle(s));
+          if (lrKeptNote && lrKeptNote.session === s.name) { toast(lrKeptNote.text, 9000, { warn: true }); lrKeptNote = null; }
           return;
         }
         if (st.state === "error") {

@@ -1072,6 +1072,10 @@ etapas".**
    (https://claude.ai/artifact/1bFGsrsRDTk586Sd3bnjYF) e implementado na branch no mesmo dia, sem teste do dono: linha
    "Photo 0n stays out: edited in Photoshop." no bloco Lightroom Classic, janela "Photo 0n was edited in Photoshop" ao
    pedir o Lightroom nela, e a foto que está no Lightroom sai de lá (etiqueta e coleção) quando é salva no Photoshop.
+   O envio da sessão inteira com foto protegida foi aprovado pelo dono no Mac. Pedidos dele no mesmo dia, feitos na
+   branch, sem teste do dono: aviso também ao enviar a sessão (opção C: janela na primeira vez de cada sessão, aviso
+   âmbar nas seguintes); bolinha do estado In Lightroom Classic apagada como nas miniaturas; a miniatura não mostrar a
+   imagem antiga por um instante depois do ⌘S (causa provável corrigida, não confirmada).
    Em aberto, do mesmo dia: etiquetas demais saindo da miniatura (LR, PS, ED e a da proporção).
    **Ideia do dono (2026-11-12), em estudo, sem decisão:** levar todas as fotos da sessão para o Photoshop num arquivo
    só, para editar e ver a sequência lá dentro (ajustes, elementos acrescentados) antes de voltar ao Stillpoint.

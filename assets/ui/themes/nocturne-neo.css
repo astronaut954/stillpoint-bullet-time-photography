@@ -2134,8 +2134,8 @@ html.kbd-focus .export-tab.on .export-tab-check input:focus + .save-check { outl
 .lr-block .lr-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .lr-block .lr-title { font: 700 11px var(--noct-font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--noct-text); }
 .lr-block .lr-state { font: 12px var(--noct-font-mono); color: var(--noct-text-muted); display: inline-flex; gap: 7px; align-items: center; }
-.lr-block .lr-state .edit-dot { opacity: 1; }
-.lr-block .lr-state.live .edit-dot { box-shadow: 0 0 6px rgba(var(--noct-pending-rgb), .8); animation: noct-pulse 1.4s ease-in-out infinite; }
+/* (a bolinha só acende quando pulsa, como nas miniaturas: pedido do dono, 2026-11-12) */
+.lr-block .lr-state.live .edit-dot { opacity: 1; box-shadow: 0 0 6px rgba(var(--noct-pending-rgb), .8); animation: noct-pulse 1.4s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .lr-block .lr-state.live .edit-dot { animation: none; } }
 .lr-block .lr-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .lr-block .lr-actions .spacer { flex: 1; }

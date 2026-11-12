@@ -1564,6 +1564,9 @@ def scenario_photoshop(t, name, photos):
     t.dialog_click("Cancel")
     time.sleep(0.4)
     t.lr_block_button("Edit in Lightroom Classic")
+    asked = t.wait(lambda: t.dialog_title() == "Photo 03 stays out of Lightroom Classic", 6)
+    check(t, "... sending the session: a dialog says which photo stays out, the first time", bool(asked) and t.js("() => [...document.querySelectorAll('#dialogActions button')].map(b => b.textContent.trim())") == ["Cancel", "Send 3 photos"], t.dialog_title())
+    t.dialog_click("Send 3 photos")
     if t.wait(lambda: t.dialog_title() == "Crop before Lightroom Classic?", 2):
         t.dialog_click("Send as shot")
     t.wait(lambda: t.edit_tag(s), 15)
@@ -1591,6 +1594,16 @@ def scenario_photoshop(t, name, photos):
     t.dismiss()
     os.remove(copy1)
     t.wait(lambda: marks()[0] == "", 15)
+    # Segundo envio da mesma sessão, com a mesma foto protegida: sem janela, só o aviso âmbar
+    t.lr_block_button("Done editing")
+    time.sleep(1.5)
+    t.dismiss()
+    t.lr_block_button("Edit in Lightroom Classic")
+    if t.wait(lambda: t.dialog_title() == "Crop before Lightroom Classic?", 2):
+        t.dialog_click("Send as shot")
+    warned = t.wait(lambda: toast().startswith("3 photos sent to Lightroom Classic · Photo 03 stays out: edited in Photoshop") and toast(), 20)
+    check(t, "... the second time: no dialog, an amber toast after sending", bool(warned) and t.dialog_title() != "Photo 03 stays out of Lightroom Classic" and t.js("() => document.querySelector('#toast').classList.contains('kind-warn')"), (toast(), t.dialog_title()))
+    t.dismiss_other()
     # O Lightroom exporta por cima da foto 03: a editada deixa de ser a do Photoshop, o PS parado sai
     t.lr.set_edit(os.path.join(o, files[2]), (20, 200, 30))
     t.lr.export(o, t.project, s)

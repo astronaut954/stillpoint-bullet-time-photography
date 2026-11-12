@@ -2049,6 +2049,12 @@ a explicação fica no **?** ao lado do título; o aviso âmbar e a linha do Fra
       outras (**In Lightroom Classic · n photos**) e a miniatura dela fica com **PS** e **ED**, sem **LR**.
 - [ ] Ao salvar no Photoshop (⌘S), a miniatura e a foto grande trocam direto para a imagem salva, sem mostrar antes a
       imagem antiga (observação do dono, 2026-11-12; correção na branch, causa provável e não confirmada).
+- [ ] Enviar a sessão com foto protegida (decisão do dono, 2026-11-12, opção C): na primeira vez de cada sessão, janela
+      **Photo 0n stays out of Lightroom Classic**, com **Cancel** e **Send n photos**; nos envios seguintes, sem janela,
+      aviso âmbar **n photos sent to Lightroom Classic · Photo 0n stays out: edited in Photoshop**. A janela volta se
+      as fotos protegidas mudarem.
+- [ ] A bolinha ao lado de **In Lightroom Classic · n photos** fica apagada como a das miniaturas e só acende quando
+      pulsa (pedido do dono, 2026-11-12).
 - [ ] Botão direito nessa foto, **Edit just this photo in Lightroom Classic**: janela **Photo 0n was edited in
       Photoshop**, com **Cancel** e **Revert to original…**.
 - [ ] Sessão **In Lightroom**: pedir o Photoshop numa foto mostra **Photo 0n is in Lightroom Classic**, com
