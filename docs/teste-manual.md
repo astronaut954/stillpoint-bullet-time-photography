@@ -2063,6 +2063,8 @@ a explicação fica no **?** ao lado do título; o aviso âmbar e a linha do Fra
       **LR** e **PS** quando o Photoshop salvou por cima da editada do Lightroom). **Âmbar** = a foto está lá agora
       (**LR** no Lightroom, pulsando com ele aberto; **PS** mandada e ainda não salva). Enquanto a foto está no
       Lightroom, só o **LR** âmbar. Foto salva no Photoshop antes desta versão mostra só **PS**.
+- [ ] Miniaturas da tela principal (decisão do dono, 2026-11-12): **LR** e **PS** em âmbar, sem bolinha, pulsando com o
+      programa aberto, como no passo **2 Edit**.
 - [x] Botão direito nessa foto, **Edit just this photo in Lightroom Classic**: janela **Photo 0n was edited in
       Photoshop**, com um **?** ao lado do título (a editada vai para a lixeira, ⌘Z traz de volta), **Cancel** e
       **Revert to original**, que já reverte, sem segunda janela (decisão do dono, 2026-11-12).

@@ -2211,7 +2211,8 @@ body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform:
    resultado (ED, PS parado) continua verde e parado. Cabem três. */
 .export-strip .frame-corner { gap: 2px; }
 .export-strip .frame-app { padding: 0 3px; }
-.export-strip .frame-app .edit-dot { display: none; }
-.export-strip .frame-app:has(.edit-dot) { color: var(--noct-pending); border-color: var(--noct-pending); opacity: .6; }
-.export-strip .frame-app.live:has(.edit-dot) { opacity: 1; animation: noct-pulse 1.4s ease-in-out infinite; }
-@media (prefers-reduced-motion: reduce) { .export-strip .frame-app.live:has(.edit-dot) { animation: none; } }
+/* (a cor e a falta da bolinha valem para todas as miniaturas, também as da tela principal: decisão do dono, 2026-11-12) */
+.frame-app .edit-dot { display: none; }
+.frame-app:has(.edit-dot) { color: var(--noct-pending); border-color: var(--noct-pending); opacity: .6; }
+.frame-app.live:has(.edit-dot) { opacity: 1; animation: noct-pulse 1.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .frame-app.live:has(.edit-dot) { animation: none; } }

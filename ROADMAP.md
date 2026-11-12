@@ -1083,8 +1083,9 @@ etapas".**
    Observações do dono ao testar (2026-11-12): o ED é redundante e não diz que o Lightroom editou; não faz sentido
    indicar "aberto no Photoshop" (ponto encerrado: a etiqueta não volta a pulsar ao reabrir). Protótipo
    https://claude.ai/artifact/Go5goUNgj2ykDPWGZFUFs2, forma Y aprovada: etiqueta por programa, verde = editada lá (LR,
-   PS ou os dois; `psLr` em session.json), âmbar = está lá agora; no Lightroom, só o LR âmbar. Feito na branch, sem
-   teste do dono.
+   PS ou os dois; `psLr` em session.json), âmbar = está lá agora; no Lightroom, só o LR âmbar. Feito na branch e
+   aprovado pelo dono no Mac em 2026-11-12. Decisão do mesmo dia: as miniaturas da tela principal usam a mesma etiqueta
+   âmbar sem bolinha (feito na branch, sem teste do dono).
    **Ideia do dono (2026-11-12), em estudo, sem decisão:** levar todas as fotos da sessão para o Photoshop num arquivo
    só, para editar e ver a sequência lá dentro (ajustes, elementos acrescentados) antes de voltar ao Stillpoint.
    Caminhos conversados: (a) camadas, uma por foto, com a animação da Timeline do Photoshop, e um comando do Stillpoint

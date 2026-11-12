@@ -625,7 +625,7 @@
       b.innerHTML = "<i class=\"edit-dot\"></i>";
       b.appendChild(document.createTextNode(v));
       b.classList.toggle("live", !!(opts.appLive && opts.appLive(item)));
-      b.title = v === "PS" ? "Open in Photoshop" : "In Lightroom Classic";
+      b.title = v === "PS" ? "Sent to Photoshop: save there to bring the edited photo here" : "In Lightroom Classic";
       if (!old) frameCorner(li).appendChild(b);  // à direita da etiqueta da proporção
     }
     // A mesma bolinha na legenda da prévia grande, quando a foto mostrada está no outro programa
