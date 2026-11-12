@@ -1014,7 +1014,7 @@ Junto com essas etapas (sem etapa própria):
   (2026-11-11): a barra Activity aparece por cima das janelas (Export sessions, Camera settings, Project, Settings,
   About e as outras) e clicar nela abre a lista por cima da janela. Os avisos de pergunta, a janela de digitar um nome,
   a contagem, o progresso e a tela cheia continuam cobrindo tudo. Só CSS (`nocturne-neo.css`, fim do arquivo); as
-  janelas ficam acima da barra. Roteiro: seção 44. Aprovado pelo dono no Mac em 2026-11-11 (Export sessions, Camera settings, Project). Depois, a pedido dele: a janela Trash também, e na tela cheia da sessão a barra fica escondida e sobe quando o mouse chega na borda de baixo. **Decisão do dono (2026-11-11): sem Activity na janela Live view.** **Pendente:** teste do dono da Trash e da tela cheia, Windows.
+  janelas ficam acima da barra. Roteiro: seção 44. Aprovado pelo dono no Mac em 2026-11-11 (Export sessions, Camera settings, Project). Depois, a pedido dele: a janela Trash também, e na tela cheia da sessão a barra fica escondida e sobe quando o mouse chega na borda de baixo. **Decisão do dono (2026-11-11): sem Activity na janela Live view.** Trash e tela cheia aprovadas pelo dono no Mac em 2026-11-11. **Pendente:** janela pequena, Windows.
 - **Filtro na janela Project (pedido em 2026-11-10).** Um botão de filtro na Project window para filtrar as sessões
   por data, hora, minuto, número de fotos, etiqueta (o nome dado à sessão) e outros atributos que se mostrarem úteis
   (a pensar: editadas, no Lightroom, salvas, proporção, fotos faltando). Pensar junto a experiência das ações em
