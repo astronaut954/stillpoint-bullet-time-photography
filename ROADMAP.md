@@ -1040,7 +1040,7 @@ etapas".**
    Protótipo "Photoshop no Export" (em cima do passo 2 Edit real) mandado ao dono em 2026-11-11, aguardando avaliação:
    https://claude.ai/artifact/XrNxANQbNuiNfnMgheHbsc. Bloco Photoshop embaixo do Lightroom Classic (botão "Edit photo
    0n in Photoshop", da foto selecionada), o mesmo comando no botão direito da miniatura, marca PS enquanto aberta,
-   ED depois do ⌘S, janela da foto RAW, janela da foto que está no Lightroom. Em aberto: se o bloco serve; a marca PS
+   ED depois do ⌘S, janela da foto RAW, janela da foto que está no Lightroom. Pedido do dono (2026-11-11): tirar a legenda de baixo dos blocos Lightroom Classic e Photoshop e pôr num "?" ao lado do título (o aviso âmbar fica); protótipo refeito assim. Em aberto: se o bloco serve; a marca PS
    e o Cancel antes do primeiro ⌘S; cópia em TIFF de 16 ou 8 bits quando o original é JPEG. A conferir antes de
    implementar: se o leitor de TIFF do Stillpoint lê TIFF com camadas do Photoshop. Segundo protótipo, depois: foto
    editada no Photoshop indo para o Lightroom ("no longer RAW") e o conflito de Desfazer.
