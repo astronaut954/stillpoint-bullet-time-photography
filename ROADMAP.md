@@ -1058,7 +1058,7 @@ etapas".**
    salvamento e isso o confundiu: decisão do dono (2026-11-12): marca pulsando = pendente (PS enquanto a cópia foi mandada e não voltou; o
    texto do bloco diz "sent to Photoshop · save there (⌘S) to bring it back", sem "open"); marca parada = resultado
    (ED e, ao lado, PS parado enquanto a editada for do Photoshop; um Export to Stillpoint posterior do Lightroom tira
-   o PS). Feito na branch, sem teste do dono. Em aberto: a marca voltar a pulsar ao reabrir no Photoshop.
+   o PS). Feito na branch e aprovado pelo dono no Mac em 2026-11-12. Em aberto: a marca voltar a pulsar ao reabrir no Photoshop.
    **Ideia do dono (2026-11-12), em estudo, sem decisão:** levar todas as fotos da sessão para o Photoshop num arquivo
    só, para editar e ver a sequência lá dentro (ajustes, elementos acrescentados) antes de voltar ao Stillpoint.
    Caminhos conversados: (a) camadas, uma por foto, com a animação da Timeline do Photoshop, e um comando do Stillpoint
