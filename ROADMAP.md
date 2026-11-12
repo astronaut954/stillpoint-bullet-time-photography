@@ -993,7 +993,7 @@ Junto com essas etapas (sem etapa própria):
   photos (hoje só existem Move X, Move Y, Size e Rotate; espelhar só pelo Lightroom, e a foto volta espelhada como
   editada). Mexe no Align photos, nas prévias, no exportador e no recorte que vai para o Lightroom. Decisões pendentes
   do dono antes de desenhar: por foto ou da sessão inteira; se entra também o giro de 90°; como aparece na miniatura.
-- **[Feito na branch em 2026-11-11, sem teste do dono] O projeto guarda o estado do rig.** Decisões do dono
+- **[Feito na branch em 2026-11-11; aprovado pelo dono no Mac com câmeras simuladas em 2026-11-11] O projeto guarda o estado do rig.** Decisões do dono
   (2026-11-11): entra tudo (painel Bullet time, ordem das câmeras, configurações das câmeras); ao abrir um projeto o
   Stillpoint lê as câmeras e, havendo diferença, pergunta antes de aplicar (aviso "The cameras are not as this project
   left them", protótipo aprovado); câmera faltando ou nova só avisa (aviso âmbar), sem bloquear; com o projeto aberto
@@ -1001,7 +1001,7 @@ Junto com essas etapas (sem etapa própria):
   fábrica e nada é guardado (o Timing deixou de ser lembrado pelo aplicativo); ordem sem buraco, câmeras novas no fim.
   Arquivo `stillpoint-rig.json` na pasta do projeto; lógica em `src/gui/rig_state.*`. Conferido só pelo teste
   automático (cenário 18 de `tests/host/run_tests.py` e `ExporterMathTest`), com câmeras de mentira que têm ISO,
-  Shutter, Aperture e White balance. **Pendente:** teste do dono no Mac (seção 43 do roteiro), Windows, câmeras reais
+  Shutter, Aperture e White balance. **Pendente:** ⌘Z para o aviso (pedido do dono em 2026-11-11), Windows, câmeras reais
   (em especial: temperatura de cor, ajuste fino do balanço de branco e Picture Style, que as câmeras de mentira do
   teste não têm). Texto original do pedido:
   **O projeto guarda o estado do rig (pedido em 2026-11-11).** Cada projeto guardar e trazer de volta, ao ser aberto: as
