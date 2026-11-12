@@ -1032,6 +1032,8 @@ etapas".**
    (1) Como a foto volta do Photoshop: **cópia de trabalho e ⌘S** (o Stillpoint põe uma cópia TIFF em `Edited/` e abre
    essa cópia; salvar no Photoshop traz a editada; nada é instalado no Photoshop). Limite conhecido: o Stillpoint não
    revela RAW (só lê a prévia embutida), então original RAW sem editada do Lightroom não tem cópia de qualidade.
+   (2) Original RAW sem editada do Lightroom: o Edit in Photoshop **não abre e explica**, numa janela que tem o botão
+   **Edit in Lightroom Classic** (a foto passa pelo Lightroom, volta com Export to Stillpoint e aí o Photoshop abre).
 
 - **Orientação do Aspect ratio: horizontal ou vertical (pedido em 2026-11-10; feito em 2026-11-11 na branch
   etapa-20-lightroom).** No passo 1 do Export, dois botões com ícone ao lado das proporções (protótipo "Orientação do
