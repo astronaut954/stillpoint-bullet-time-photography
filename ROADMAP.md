@@ -1037,6 +1037,13 @@ etapas".**
    (3) A cópia de trabalho vai **já com o Framing da sessão aplicado** (recortada e alinhada; o Framing trava, como com
    o Lightroom; uma regra só para todas as editadas). As shot sem alinhamento vai inteira; foto com Flip vai sem
    espelhar e é espelhada de volta no Stillpoint, como no Lightroom.
+   Protótipo "Photoshop no Export" (em cima do passo 2 Edit real) mandado ao dono em 2026-11-11, aguardando avaliação:
+   https://claude.ai/artifact/XrNxANQbNuiNfnMgheHbsc. Bloco Photoshop embaixo do Lightroom Classic (botão "Edit photo
+   0n in Photoshop", da foto selecionada), o mesmo comando no botão direito da miniatura, marca PS enquanto aberta,
+   ED depois do ⌘S, janela da foto RAW, janela da foto que está no Lightroom. Em aberto: se o bloco serve; a marca PS
+   e o Cancel antes do primeiro ⌘S; cópia em TIFF de 16 ou 8 bits quando o original é JPEG. A conferir antes de
+   implementar: se o leitor de TIFF do Stillpoint lê TIFF com camadas do Photoshop. Segundo protótipo, depois: foto
+   editada no Photoshop indo para o Lightroom ("no longer RAW") e o conflito de Desfazer.
 
 - **Orientação do Aspect ratio: horizontal ou vertical (pedido em 2026-11-10; feito em 2026-11-11 na branch
   etapa-20-lightroom).** No passo 1 do Export, dois botões com ícone ao lado das proporções (protótipo "Orientação do
