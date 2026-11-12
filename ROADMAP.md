@@ -964,6 +964,14 @@ Junto com essas etapas (sem etapa própria):
 
 ## Futuro (não planejado ainda)
 
+**Pedidos em aberto, na ordem em que foram anotados (lista pedida pelo dono em 2026-11-11; o detalhe de cada um está
+mais abaixo ou na etapa indicada):**
+
+1. **Filtro na janela Project** (pedido em 2026-11-10). Não começado.
+2. **Alinhamento automático das fotos** (pedido em 2026-11-11, a estudar; referência: Xangle Camera Server). Não começado.
+3. **Photoshop, a parte que falta da etapa 20** (pedaço 4 da etapa: abrir uma foto por vez no Photoshop, aviso "no
+   longer RAW", conflito de Desfazer). Não começado; o Lightroom Classic da mesma etapa está publicado desde a 2.18.0.
+
 - **Orientação do Aspect ratio: horizontal ou vertical (pedido em 2026-11-10; feito em 2026-11-11 na branch
   etapa-20-lightroom).** No passo 1 do Export, dois botões com ícone ao lado das proporções (protótipo "Orientação do
   Aspect ratio" aprovado): Horizontal e Vertical. Começa conforme as fotos da sessão (como sempre foi: foto em pé fica em
@@ -993,7 +1001,7 @@ Junto com essas etapas (sem etapa própria):
   photos (hoje só existem Move X, Move Y, Size e Rotate; espelhar só pelo Lightroom, e a foto volta espelhada como
   editada). Mexe no Align photos, nas prévias, no exportador e no recorte que vai para o Lightroom. Decisões pendentes
   do dono antes de desenhar: por foto ou da sessão inteira; se entra também o giro de 90°; como aparece na miniatura.
-- **[Feito na branch em 2026-11-11; aprovado pelo dono no Mac com câmeras simuladas em 2026-11-11] O projeto guarda o estado do rig.** Decisões do dono
+- **[Publicado na 2.20.0; aprovado pelo dono no Mac com câmeras simuladas em 2026-11-11] O projeto guarda o estado do rig.** Decisões do dono
   (2026-11-11): entra tudo (painel Bullet time, ordem das câmeras, configurações das câmeras); ao abrir um projeto o
   Stillpoint lê as câmeras e, havendo diferença, pergunta antes de aplicar (aviso "The cameras are not as this project
   left them", protótipo aprovado); câmera faltando ou nova só avisa (aviso âmbar), sem bloquear; com o projeto aberto
@@ -1010,7 +1018,7 @@ Junto com essas etapas (sem etapa própria):
   do projeto. Decisões pendentes do dono antes de desenhar: a lista exata do que entra; o que fazer quando as câmeras
   ligadas não são as mesmas do projeto (outra quantidade, outros modelos); se abrir o projeto aplica as configurações
   nas câmeras sozinho ou pergunta antes; e o que vale fora de projeto.
-- **[Feito na branch em 2026-11-11, sem teste do dono] Activity à vista com as janelas abertas.** Decisão do dono
+- **[Publicado na 2.20.0; aprovado pelo dono no Mac em 2026-11-11] Activity à vista com as janelas abertas.** Decisão do dono
   (2026-11-11): a barra Activity aparece por cima das janelas (Export sessions, Camera settings, Project, Settings,
   About e as outras) e clicar nela abre a lista por cima da janela. Os avisos de pergunta, a janela de digitar um nome,
   a contagem, o progresso e a tela cheia continuam cobrindo tudo. Só CSS (`nocturne-neo.css`, fim do arquivo); as
