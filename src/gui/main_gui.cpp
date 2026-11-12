@@ -832,6 +832,17 @@ namespace
     {
         std::string list = "[";
         bool firstSession = true;
+        // A marca da pasta de editadas de cada sessão: a página esquece as prévias guardadas quando ela muda, antes de
+        // desenhar (sem isso a miniatura mostrava por um instante a imagem antiga depois de um ⌘S no Photoshop)
+        std::map<std::string, std::string> editedStamps;
+        {
+            std::stringstream parts(store.EditedStamp());
+            for (std::string item; std::getline(parts, item, ';');)
+            {
+                const size_t colon = item.find(':');
+                if (colon != std::string::npos) editedStamps[item.substr(0, colon)] = item.substr(colon + 1);
+            }
+        }
         for (const auto& session : store.ListSessions())
         {
             std::string photos = "[";
@@ -850,7 +861,7 @@ namespace
             Json item("session");
             item.Add("name", session.name).Add("saved", session.saved).Add("missing", session.missing)
                 .Add("inProject", session.inProject).Add("label", session.label).Add("edited", session.edited)
-                .Add("showEdited", session.showEdited).Add("timing", session.timing).Add("crop", session.crop).Add("align", session.align).Raw("photos", photos);
+                .Add("showEdited", session.showEdited).Add("editedStamp", editedStamps.count(session.name) ? editedStamps[session.name] : std::string()).Add("timing", session.timing).Add("crop", session.crop).Add("align", session.align).Raw("photos", photos);
             list += (firstSession ? "" : ",") + item.Str();
             firstSession = false;
         }

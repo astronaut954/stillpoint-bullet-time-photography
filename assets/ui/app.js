@@ -1487,6 +1487,9 @@
       renderExport();
     }, 0);
     const known = sessions.map((x) => x.name);
+    // A pasta de editadas da sessão mudou (⌘S no Photoshop, Export to Stillpoint): as prévias guardadas saem antes de
+    // qualquer desenho, para a miniatura não mostrar por um instante a imagem antiga
+    (list || []).forEach((x) => { const old = sessions.find((y) => y.name === x.name); if (old && (old.editedStamp || "") !== (x.editedStamp || "")) dropSessionPreviews(x.name); });
     sessions = list || [];
     updateButtons();
     // Proporções: sessões novas de um disparo são medidas já (e avisam se misturadas); o resto na fila
@@ -1638,10 +1641,13 @@
        { label: edited.length === 1 ? "Delete edit" : "Delete " + plural(edited.length, "edit", "edits"), danger: true, onClick: () => deleteEditsNow(s, edited.map((x) => x.file)) },
        { label: one ? "Delete photo" : "Delete " + plural(picked.length, "photo", "photos"), danger: true, onClick: onPhoto }]);
   }
-  function forgetSessionPreviews(name) {
+  function dropSessionPreviews(name) {
     Object.keys(photoCache).forEach((k) => { if (k.startsWith("sessions/" + name + "/") || k.startsWith("order/" + name + "/")) delete photoCache[k]; });
     // As recortadas (Export) também: a editada que chegou do Lightroom (ou saiu) troca a imagem de origem
     [...framedCache.keys()].forEach((k) => { if (k.startsWith(name + "|")) framedCache.delete(k); });
+  }
+  function forgetSessionPreviews(name) {
+    dropSessionPreviews(name);
     if (!$("exportOverlay").classList.contains("hidden")) setTimeout(() => { if (!$("exportOverlay").classList.contains("hidden")) renderExport(); }, 0);
     if (currentSession && currentSession.name === name) setTimeout(() => { const cur = sessions.find((x) => x.name === name); if (cur && currentSession && currentSession.name === name) showSession(cur, true); }, 300);
   }
