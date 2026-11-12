@@ -1060,7 +1060,11 @@ etapas".**
    (ED e, ao lado, PS parado enquanto a editada for do Photoshop; um Export to Stillpoint posterior do Lightroom tira
    o PS). Feito na branch e aprovado pelo dono no Mac em 2026-11-12. Em aberto: a marca voltar a pulsar ao reabrir no Photoshop. Pedido do dono (2026-11-12): Revert to original… também para a editada recusada (um corte salvo no Photoshop
    não se desfaz depois de fechar o documento): feito na branch, no bloco Lightroom Classic e no botão direito da
-   miniatura; sem teste do dono.
+   miniatura; sem teste do dono. Observação do dono (2026-11-12): o estado das editadas, o Revert to original… e os avisos aparecem dentro do
+   bloco Lightroom Classic, mas não são só dele. Decisão dele: uma faixa neutra acima dos dois programas. Protótipo
+   "Faixa Edited photos" mandado em 2026-11-12, aguardando avaliação: https://claude.ai/artifact/YCJeshpxTwmcSjBZiP1xUm
+   (faixa com título, estado e Revert to original… à direita, avisos embaixo só quando existem; some sem editadas; os
+   blocos Lightroom Classic e Photoshop lado a lado, para caber em 1440 × 900 sem rolar).
    **Ideia do dono (2026-11-12), em estudo, sem decisão:** levar todas as fotos da sessão para o Photoshop num arquivo
    só, para editar e ver a sequência lá dentro (ajustes, elementos acrescentados) antes de voltar ao Stillpoint.
    Caminhos conversados: (a) camadas, uma por foto, com a animação da Timeline do Photoshop, e um comando do Stillpoint
