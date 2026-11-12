@@ -56,8 +56,10 @@ class T:
         open(self.catalog, "w").close()
         lr_app = os.path.join(self.tmp, "Adobe Lightroom Classic.app")
         os.makedirs(lr_app)
+        self.ps_app = os.path.join(self.tmp, "Adobe Photoshop 2026.app")   # (o Photoshop de mentira: só precisa existir)
+        os.makedirs(self.ps_app)
         with open(os.path.join(self.data, "settings.txt"), "w") as f:
-            f.write("project=%s\nlightroomPath=%s\npref.splash=off\n" % (self.project, lr_app))
+            f.write("project=%s\nlightroomPath=%s\nphotoshopPath=%s\npref.splash=off\n" % (self.project, lr_app, self.ps_app))
         env = dict(os.environ, HOME=self.home, STILLPOINT_DATA=self.data, STILLPOINT_RESOURCES=ROOT,
                    STILLPOINT_FAKE_CAMERAS="4", STILLPOINT_TEST_PORT=str(PORT), STILLPOINT_TEST_LR_RUNNING="1",
                    STILLPOINT_TEST_CAMERAS=os.path.join(self.tmp, "cameras-changed.txt"))
@@ -1431,6 +1433,219 @@ def scenario_rig_state(t, name, photos):
     time.sleep(2)
 
 
+def scenario_photoshop(t, name, photos):
+    line("\n== 19. Edit in Photoshop: working copy, save, the PS mark, RAW and Lightroom dialogs")
+    import struct
+    from PIL import Image
+    def tiff_info(path):
+        """Largura, altura e bits por cor de um TIFF simples (o que o Stillpoint grava)."""
+        with open(path, "rb") as f:
+            d = f.read(4096)
+        if d[:4] != b"II*\x00":
+            return None
+        ifd = struct.unpack_from("<I", d, 4)[0]
+        n = struct.unpack_from("<H", d, ifd)[0]
+        out = {}
+        for i in range(n):
+            tag, typ, count, value = struct.unpack_from("<HHII", d, ifd + 2 + i * 12)
+            if tag in (256, 257):
+                out[tag] = value
+            if tag == 258:
+                out[258] = struct.unpack_from("<H", d, value)[0] if count > 2 else value & 0xFFFF
+            if tag == 34675:
+                out["icc"] = count
+        return out.get(256), out.get(257), out.get(258), out.get("icc", 0)
+    opened = lambda: [l for l in open(os.path.join(t.data, "test-opened.txt")).read().splitlines() if "Photoshop" in l] if os.path.exists(os.path.join(t.data, "test-opened.txt")) else []
+    toast = lambda: t.js("() => { const x = document.getElementById('toast'); return x.classList.contains('hidden') ? '' : x.querySelector('.toast-text').textContent; }")
+    block = lambda: t.js("() => { const b = document.querySelector('#exportSettings .ps-block'); return b ? { state: (b.querySelector('.lr-state') || {}).textContent || '', buttons: [...b.querySelectorAll('.lr-actions button')].map(x => x.textContent.trim()), tip: !!b.querySelector('.lr-head .info-tip'), notes: b.querySelectorAll('.export-note').length } : null; }")
+    marks = lambda: t.js("() => [...document.querySelectorAll('#exportSettings .export-strip > li')].map(li => [...li.querySelectorAll('.frame-app')].map(b => b.textContent.trim()).join('+'))")
+    def pick(k):
+        t.page.click("#exportSettings .export-strip > li:nth-child(%d)" % k)
+        time.sleep(0.5)
+    def ps_button(starts):
+        return t.js("(s) => { const b = [...document.querySelectorAll('#exportSettings .ps-block button')].find(x => x.textContent.trim().startsWith(s)); if (!b) return false; b.click(); return true; }", starts)
+    def save_as_photoshop(path, color, size=None):
+        """O que o ⌘S do Photoshop faz: troca o arquivo, no mesmo lugar (aqui um TIFF de 8 bits de uma cor só)."""
+        w, h, _, _ = tiff_info(path) if size is None else (size[0], size[1], 0, 0)
+        time.sleep(1.1)
+        Image.new("RGB", (w, h), color).save(path, format="TIFF")
+    pix = """(sel) => new Promise((done) => { const i = document.querySelector(sel); if (!i || !i.src) return done(null);
+      const im = new Image(); im.onload = () => { const c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight;
+      const x = c.getContext('2d'); x.drawImage(im, 0, 0); done([...x.getImageData(Math.floor(c.width / 2), Math.floor(c.height / 2), 1, 1).data].slice(0, 3)); }; im.onerror = () => done(null); im.src = i.src; })"""
+    near = lambda p, c: p is not None and all(abs(p[i] - c[i]) < 30 for i in range(3))
+
+    t.dismiss()
+    t.close_export()
+    s = t.shoot()
+    t.dismiss()
+    if not s:
+        check(t, "a new session for this scenario", False)
+        return
+    edited_dir = os.path.join(t.project, "Edited", s)
+    o = t.originals(s)
+    files = sorted(f for f in os.listdir(o) if not f.startswith(".") and f != "session.json")
+    copy3 = os.path.join(edited_dir, os.path.splitext(files[2])[0] + ".tif")
+    t.export_edit(s)
+    t.js("() => document.activeElement && document.activeElement.blur()")
+    t.page.keyboard.press(" ")   # (pausa a prévia: a foto selecionada fica parada)
+    time.sleep(0.3)
+    pick(3)
+
+    # Os dois blocos compactos (pedido do dono): a explicação num "?", sem legenda embaixo
+    b = block()
+    check(t, "2 Edit has a Photoshop box under Lightroom Classic, with the button of the selected photo", bool(b) and b["buttons"] == ["Edit photo 03 in Photoshop"] and b["state"] == "", b)
+    check(t, "... compact: the explanation is in a ? next to the title, no caption under the buttons", bool(b) and b["tip"] and b["notes"] == 0, b)
+    check(t, "... the Lightroom Classic box too", t.js("() => { const b = document.querySelector('#exportSettings .lr-block:not(.ps-block)'); return !!b.querySelector('.lr-head .info-tip') && b.querySelectorAll('.export-note').length === 0; }"))
+    pick(1)
+    check(t, "the button follows the selected photo", block()["buttons"] == ["Edit photo 01 in Photoshop"], block())
+    pick(3)
+    t.page.click("#exportSettings .export-strip > li:nth-child(3)", button="right")
+    time.sleep(0.3)
+    items = t.js("() => [...document.querySelectorAll('.app-menu button')].map(b => b.textContent.trim())")
+    t.page.keyboard.press("Escape")
+    check(t, "right-click on a photo: Edit just this photo in Photoshop", "Edit just this photo in Photoshop" in items, items)
+
+    # Abrir: a cópia de trabalho (TIFF de 16 bits, com o perfil), a marca PS, e a foto ainda não conta como editada
+    before = len(opened())
+    ps_button("Edit photo 03 in Photoshop")
+    t.wait(lambda: os.path.exists(copy3), 10)
+    info = tiff_info(copy3) if os.path.exists(copy3) else None
+    w0, h0 = Image.open(os.path.join(o, files[2])).size
+    check(t, "Edit photo 03 in Photoshop: a working copy in the Edited folder, with the photo's name", bool(info), os.listdir(edited_dir) if os.path.isdir(edited_dir) else None)
+    check(t, "... a 16-bit TIFF with a colour profile, the whole photo (As shot)", bool(info) and info[2] == 16 and info[3] > 100 and (info[0], info[1]) == (w0, h0), (info, (w0, h0)))
+    t.wait(lambda: len(opened()) > before, 5)
+    check(t, "... Photoshop is asked to open that file", len(opened()) > before and opened()[-1].endswith(os.path.basename(copy3)) and "Adobe Photoshop 2026.app" in opened()[-1], opened()[-1:] )
+    t.wait(lambda: "PS" in marks()[2], 8)
+    b = block()
+    check(t, "... PS on the thumbnail, no ED: it is not an edited photo yet", marks()[2] == "PS" and t.session(s)["edited"] == 0, (marks(), t.session(s)["edited"]))
+    check(t, "... the box says it waits for the save, with Open photo 03 again and Cancel", bool(b) and b["state"] == "Photo 03 open in Photoshop · waiting for the save" and b["buttons"] == ["Open photo 03 again", "Cancel"], b)
+
+    # Cancel: a marca sai e a cópia é apagada
+    ps_button("Cancel")
+    t.wait(lambda: not os.path.exists(copy3), 8)
+    t.wait(lambda: marks()[2] == "", 8)
+    check(t, "Cancel: the working copy is removed and the PS mark goes away", not os.path.exists(copy3) and marks()[2] == "" and block()["buttons"] == ["Edit photo 03 in Photoshop"], (marks(), block()))
+
+    # De novo, e agora o Photoshop salva
+    ps_button("Edit photo 03 in Photoshop")
+    t.wait(lambda: os.path.exists(copy3) and "PS" in marks()[2], 10)
+    save_as_photoshop(copy3, (40, 90, 200))
+    said = t.wait(lambda: toast().startswith("Photo 03 edited in Photoshop") and toast(), 15)
+    check(t, "saving in Photoshop: the toast says the photo was edited", bool(said), toast())
+    t.wait(lambda: marks()[2] == "ED", 8)
+    b = block()
+    check(t, "... ED on the thumbnail instead of PS; the session counts 1 edited photo", marks()[2] == "ED" and t.session(s)["edited"] == 1, (marks(), t.session(s)["edited"]))
+    check(t, "... the box: Photo 03 edited in Photoshop, Edit photo 03 again in Photoshop", bool(b) and b["state"] == "Photo 03 edited in Photoshop" and b["buttons"] == ["Edit photo 03 again in Photoshop"], b)
+    check(t, "... the Lightroom box counts it and keeps the framing line in sight", t.js("() => { const b = document.querySelector('#exportSettings .lr-block:not(.ps-block)'); return b.textContent.includes('1 of 4 photos edited') && [...b.querySelectorAll('.export-note')].some(n => n.textContent.includes('stays locked')); }"))
+    pick(3)
+    check(t, "... the large preview shows what Photoshop saved", t.wait(lambda: near(t.js(pix, "#exportSettings .edit-preview > img"), (40, 90, 200)), 10), t.js(pix, "#exportSettings .edit-preview > img"))
+    # Outro ⌘S: a foto é atualizada
+    save_as_photoshop(copy3, (200, 60, 40))
+    pick(3)
+    check(t, "saving again in Photoshop updates the photo here", t.wait(lambda: (pick(3), near(t.js(pix, "#exportSettings .edit-preview > img"), (200, 60, 40)))[1], 14), t.js(pix, "#exportSettings .edit-preview > img"))
+    before = len(opened())
+    ps_button("Edit photo 03 again in Photoshop")
+    t.wait(lambda: len(opened()) > before, 5)
+    check(t, "Edit photo 03 again in Photoshop opens the same file", len(opened()) > before and opened()[-1].endswith(os.path.basename(copy3)) and len([f for f in os.listdir(edited_dir) if f.endswith('.tif')]) == 1, opened()[-1:])
+
+    # Outra proporção salva pelo Photoshop (a foto foi cortada lá): recusada, como qualquer editada
+    # (só com proporção na sessão; aqui As shot não confere nada)
+
+    # A foto que está no Lightroom: a janela aprovada
+    t.lr_block_button("Edit again in Lightroom Classic")
+    if t.wait(lambda: t.dialog_title() == "Crop before Lightroom Classic?", 2):
+        t.dialog_click("Send as shot")
+    t.wait(lambda: t.edit_tag(s), 15)
+    t.dismiss_other()
+    pick(1)
+    ps_button("Edit photo 01 in Photoshop")
+    asked = t.wait(lambda: t.dialog_title() == "Photo 01 is open in Lightroom Classic", 6)
+    check(t, "a photo that is in Lightroom Classic: Stillpoint asks first", bool(asked) and t.js("() => [...document.querySelectorAll('#dialogActions button')].map(b => b.textContent.trim())") == ["Cancel", "Open in Photoshop anyway"], t.dialog_title())
+    t.dialog_click("Cancel")
+    time.sleep(0.5)
+    copy1 = os.path.join(edited_dir, os.path.splitext(files[0])[0] + ".tif")
+    check(t, "... Cancel opens nothing", not os.path.exists(copy1))
+    ps_button("Edit photo 01 in Photoshop")
+    t.wait(lambda: t.dialog_title() == "Photo 01 is open in Lightroom Classic", 6)
+    t.dialog_click("Open in Photoshop anyway")
+    check(t, "... Open in Photoshop anyway makes the working copy", t.wait(lambda: os.path.exists(copy1), 10))
+    ps_button("Cancel")
+    t.wait(lambda: not os.path.exists(copy1), 8)
+    t.lr_block_button("Done editing")
+    time.sleep(1.5)
+    t.dismiss()
+
+    # Original RAW sem editada: não abre, explica e oferece o Lightroom
+    raw = os.path.join(o, os.path.splitext(files[3])[0] + ".CR2")
+    os.rename(os.path.join(o, files[3]), raw)
+    t.close_export()
+    time.sleep(1.0)
+    t.export_edit(s)
+    t.js("() => document.activeElement && document.activeElement.blur()")
+    t.page.keyboard.press(" ")
+    time.sleep(0.3)
+    pick(4)
+    ps_button("Edit photo 04 in Photoshop")
+    asked = t.wait(lambda: t.dialog_title() == "Photo 04 is a RAW file", 6)
+    check(t, "a RAW original with no edited version: the dialog explains and offers Lightroom Classic", bool(asked) and t.js("() => [...document.querySelectorAll('#dialogActions button')].map(b => b.textContent.trim())") == ["Cancel", "Edit in Lightroom Classic"], t.dialog_title())
+    t.dialog_click("Cancel")
+    os.rename(raw, os.path.join(o, files[3]))
+    t.close_export()
+
+    # Sessão com proporção: a cópia vai recortada, e um arquivo salvo com outra forma é recusado
+    s2 = t.shoot()
+    t.dismiss()
+    if not s2:
+        check(t, "a second session for this scenario", False)
+        return
+    t.page.click("#saveBtn")
+    t.wait(lambda: t.export_open(), 5)
+    time.sleep(0.5)
+    t.js("() => { const b = document.querySelector('#exportSteps .export-step'); if (!b.classList.contains('on')) b.click(); }")
+    time.sleep(0.4)
+    t.page.click('#exportList li.export-item[data-name="%s"] .folder-date' % s2)
+    time.sleep(0.4)
+    t.js("() => [...document.querySelectorAll('#exportSettings .segmented button')].find(b => b.textContent === '1:1').click()")
+    time.sleep(0.6)
+    t.export_edit(s2)
+    t.js("() => document.activeElement && document.activeElement.blur()")
+    t.page.keyboard.press(" ")
+    time.sleep(0.3)
+    pick(1)
+    o2 = t.originals(s2)
+    files2 = sorted(f for f in os.listdir(o2) if not f.startswith(".") and f != "session.json")
+    sq = os.path.join(t.project, "Edited", s2, os.path.splitext(files2[0])[0] + ".tif")
+    ps_button("Edit photo 01 in Photoshop")
+    t.wait(lambda: os.path.exists(sq), 10)
+    info = tiff_info(sq) if os.path.exists(sq) else None
+    check(t, "a 1:1 session: the working copy is already cut to the framing (square)", bool(info) and info[0] == info[1] and info[2] == 16, info)
+    t.wait(lambda: marks()[0] == "PS", 8)
+    t.close_export()
+    t.page.click("#saveBtn")
+    t.wait(lambda: t.export_open(), 5)
+    time.sleep(0.6)
+    t.js("() => { const b = document.querySelector('#exportSteps .export-step'); if (!b.classList.contains('on')) b.click(); }")
+    time.sleep(0.5)
+    t.page.click('#exportList li.export-item[data-name="%s"] .folder-date' % s2)
+    time.sleep(0.5)
+    check(t, "... the framing is locked in step 1 while the photo is open in Photoshop", t.js("() => { const g = [...document.querySelectorAll('#exportSettings .segmented button')].filter(b => ['3:2','4:3','16:9','1:1','As shot'].includes(b.textContent)); return g.length > 0 && g.every(b => b.disabled); }"))
+    t.export_edit(s2)
+    t.js("() => document.activeElement && document.activeElement.blur()")
+    t.page.keyboard.press(" ")
+    time.sleep(0.3)
+    pick(1)
+    save_as_photoshop(sq, (30, 160, 90))
+    t.wait(lambda: marks()[0] == "ED", 15)
+    check(t, "... saved with the same shape: it is the edited photo", marks()[0] == "ED" and t.session(s2)["edited"] == 1, marks())
+    save_as_photoshop(sq, (30, 160, 90), size=(300, 200))
+    t.wait(lambda: t.session(s2)["edited"] == 0, 15)
+    check(t, "... saved with another shape (cut in Photoshop): refused, as any edited file", t.session(s2)["edited"] == 0 and bool(next((p for p in t.session(s2)["photos"] if p.get("refused")), None)), [p.get("refused") for p in t.session(s2)["photos"]])
+    os.remove(sq)
+    time.sleep(3)
+    t.dismiss()
+    t.close_export()
+
+
 def dismiss_delete(self):
     if self.js("() => !document.getElementById('dialogOverlay').classList.contains('hidden')"):
         self.js("() => { const b = [...document.querySelectorAll('#dialogActions button')].find(x => /^Delete/.test(x.textContent.trim())); b && b.click(); }")
@@ -1455,7 +1670,7 @@ def main():
                 only = os.environ.get("STILLPOINT_TEST_ONLY", "")  # para depurar: só os cenários com este nome
                 for sc in [x for x in (scenario_cleared, scenario_delete_edit_undo, scenario_photo_delete_restore,
                            scenario_remove_from_collection, scenario_delete_session, scenario_cancel, scenario_rapid_in_lightroom, scenario_crop_before_lightroom,
-                           scenario_export_edit, scenario_export_trash, scenario_lightroom_crop, scenario_undo_own_item, scenario_orientation, scenario_selection_kept, scenario_align_undo, scenario_flip, scenario_rig_state) if only in x.__name__]:
+                           scenario_export_edit, scenario_export_trash, scenario_lightroom_crop, scenario_undo_own_item, scenario_orientation, scenario_selection_kept, scenario_align_undo, scenario_flip, scenario_photoshop, scenario_rig_state) if only in x.__name__]:
                     try:
                         sc(t, name, photos)
                     except Exception:  # noqa: BLE001

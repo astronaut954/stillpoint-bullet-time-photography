@@ -18,6 +18,7 @@
 #include <memory>
 #include <mutex>
 #include <regex>
+#include <set>
 #include <sstream>
 #include <system_error>
 
@@ -893,6 +894,102 @@ std::string PhotoStore::RefusedLabel(const std::string& session, const fs::path&
     return entry.label;
 }
 
+namespace
+{
+    // "hora|tamanho" de um arquivo (a mesma conta do RefusedLabel)
+    std::string FileStamp(const fs::path& p)
+    {
+        std::error_code ec;
+        const auto t = fs::last_write_time(p, ec);
+        if (ec) return "-";
+        const auto size = fs::file_size(p, ec);
+        return std::to_string(static_cast<long long>(std::chrono::duration_cast<std::chrono::microseconds>(t.time_since_epoch()).count()))
+            + "|" + (ec ? std::string("-") : std::to_string(static_cast<unsigned long long>(size)));
+    }
+    // "arquivo|hora|tamanho;..." -> arquivo -> "hora|tamanho"
+    std::map<std::string, std::string> ParsePsPending(const std::string& text)
+    {
+        std::map<std::string, std::string> out;
+        std::stringstream parts(text);
+        for (std::string item; std::getline(parts, item, ';');)
+        {
+            const size_t bar = item.find('|');
+            if (bar != std::string::npos && bar > 0) out[item.substr(0, bar)] = item.substr(bar + 1);
+        }
+        return out;
+    }
+    // O que fica depois do nome: "hora|tamanho", com "|w" no fim quando o arquivo só é vigiado
+    bool PsWatch(const std::string& stamp) { return stamp.size() > 2 && stamp.compare(stamp.size() - 2, 2, "|w") == 0; }
+    std::string PsStamp(const std::string& stamp) { return PsWatch(stamp) ? stamp.substr(0, stamp.size() - 2) : stamp; }
+    std::set<std::string> ParsePsEdited(const std::string& text)
+    {
+        std::set<std::string> out;
+        std::stringstream parts(text);
+        for (std::string item; std::getline(parts, item, ';');)
+            if (!item.empty()) out.insert(item);
+        return out;
+    }
+    std::string PsPendingText(const std::map<std::string, std::string>& items)
+    {
+        std::string text;
+        for (const auto& [name, stamp] : items) text += (text.empty() ? "" : ";") + name + "|" + stamp;
+        return text;
+    }
+}
+
+bool PhotoStore::PsMark(const std::string& session, const fs::path& copy, bool watch) const
+{
+    const fs::path dir = SessionDir(session);
+    if (dir.empty()) return false;
+    JsonLite::Value info = ReadSessionInfo(dir);
+    if (!info.isObject()) info = JsonLite::Value::NewObject();
+    auto items = ParsePsPending(info.get("psPending").asString());
+    items[copy.filename().string()] = FileStamp(copy) + (watch ? "|w" : "");
+    info.set("psPending", PsPendingText(items));
+    return WriteSessionInfoFile(dir, info);
+}
+
+bool PhotoStore::PsClear(const std::string& session, const std::string& copyName) const
+{
+    const fs::path dir = SessionDir(session);
+    if (dir.empty()) return false;
+    JsonLite::Value info = ReadSessionInfo(dir);
+    if (!info.isObject()) return true;
+    auto items = ParsePsPending(info.get("psPending").asString());
+    if (!items.erase(copyName)) return true;
+    info.set("psPending", PsPendingText(items));
+    return WriteSessionInfoFile(dir, info);
+}
+
+std::map<std::string, PhotoStore::PsEntry> PhotoStore::PsPending(const std::string& session) const
+{
+    std::map<std::string, PsEntry> out;
+    const fs::path dir = SessionDir(session);
+    if (dir.empty() || projectEdited.empty()) return out;
+    for (const auto& [name, stamp] : ParsePsPending(ReadSessionInfo(dir).get("psPending").asString()))
+    {
+        PsEntry e;
+        e.watch = PsWatch(stamp);
+        e.unchanged = FileStamp(projectEdited / session / name) == PsStamp(stamp);
+        out[name] = e;
+    }
+    return out;
+}
+
+bool PhotoStore::SetPsEdited(const std::string& session, const std::string& base, bool on) const
+{
+    const fs::path dir = SessionDir(session);
+    if (dir.empty()) return false;
+    JsonLite::Value info = ReadSessionInfo(dir);
+    if (!info.isObject()) { if (!on) return true; info = JsonLite::Value::NewObject(); }
+    std::set<std::string> items = ParsePsEdited(info.get("psEdited").asString());
+    if (on ? !items.insert(base).second : !items.erase(base)) return true;
+    std::string text;
+    for (const auto& b : items) text += (text.empty() ? "" : ";") + b;
+    info.set("psEdited", text);
+    return WriteSessionInfoFile(dir, info);
+}
+
 fs::path PhotoStore::EditedFile(const std::string& session, const std::string& file) const
 {
     // A editada com outra proporção fica na pasta, mas não é usada (decisão do dono, 2026-11-10)
@@ -912,7 +1009,28 @@ std::string PhotoStore::EditedStamp() const
         if (!it->is_directory(ec)) continue;
         const auto t = fs::last_write_time(it->path(), ec);
         stamp += it->path().filename().string() + ":"
-            + (ec ? "-" : std::to_string(static_cast<long long>(std::chrono::duration_cast<std::chrono::microseconds>(t.time_since_epoch()).count()))) + ";";
+            + (ec ? "-" : std::to_string(static_cast<long long>(std::chrono::duration_cast<std::chrono::microseconds>(t.time_since_epoch()).count())));
+        // Os arquivos de dentro também: salvar por cima (⌘S no Photoshop) nem sempre mexe na hora da pasta
+        // (a hora mais nova entre os arquivos; começa "sem nenhum": no Linux a contagem de hoje é negativa)
+        long long newest = 0;
+        bool any = false;
+        unsigned long long total = 0;
+        std::error_code inner;
+        for (fs::directory_iterator f(it->path(), inner), fend; !inner && f != fend; f.increment(inner))
+        {
+            std::error_code fe;
+            if (!f->is_regular_file(fe)) continue;
+            const auto ft = f->last_write_time(fe);
+            if (!fe)
+            {
+                const long long when = static_cast<long long>(std::chrono::duration_cast<std::chrono::microseconds>(ft.time_since_epoch()).count());
+                newest = any ? std::max(newest, when) : when;
+                any = true;
+            }
+            const auto size = f->file_size(fe);
+            if (!fe) total += static_cast<unsigned long long>(size);
+        }
+        stamp += "/" + std::to_string(newest) + "/" + std::to_string(total) + ";";
     }
     return stamp;
 }
@@ -960,12 +1078,23 @@ fs::path PhotoStore::EditedFilePick(const std::string& session, const std::strin
     const std::string base = BaseName(file);
     fs::path best;
     fs::file_time_type bestTime{};
+    // (lida só se aparecer algum arquivo desta foto: a cópia de trabalho do Photoshop ainda não salva não conta)
+    std::map<std::string, std::string> pending;
+    bool pendingRead = false;
     for (const auto& entry : fs::directory_iterator(dir, ec))
     {
         if (!entry.is_regular_file())
             continue;
         const std::string name = entry.path().filename().string();
         if (name.rfind('.', 0) == 0 || BaseName(name) != base || !IsEditedExtension(name))
+            continue;
+        if (!pendingRead)
+        {
+            pendingRead = true;
+            const fs::path sessionDir = SessionDir(session);
+            if (!sessionDir.empty()) pending = ParsePsPending(ReadSessionInfo(sessionDir).get("psPending").asString());
+        }
+        if (const auto it = pending.find(name); it != pending.end() && !PsWatch(it->second) && it->second == FileStamp(entry.path()))
             continue;
         const auto time = entry.last_write_time(ec);
         if (best.empty() || time > bestTime)
@@ -1159,8 +1288,16 @@ void PhotoStore::ReadSessions(const fs::path& base, bool inProject, std::vector<
         session.name = dir.path().filename().string();
         session.inProject = inProject;
         std::string alignLr;
+        std::map<std::string, bool> psPending;  // cópias de trabalho do Photoshop: nome -> ainda como foi criada
+        std::set<std::string> psEdited;         // nomes-base das editadas salvas pelo Photoshop
         {
             const JsonLite::Value info = ReadSessionInfo(dir.path());
+            if (inProject && !projectEdited.empty())
+            {
+                for (const auto& [name, stamp] : ParsePsPending(info.get("psPending").asString()))
+                    if (!PsWatch(stamp)) psPending[name] = FileStamp(projectEdited / session.name / name) == stamp;
+                psEdited = ParsePsEdited(info.get("psEdited").asString());
+            }
             if (inProject)
             {
                 session.label = info.get("label").asString();
@@ -1214,8 +1351,12 @@ void PhotoStore::ReadSessions(const fs::path& base, bool inProject, std::vector<
                     {
                         ++session.edited;
                         photo.edited = true;
+                        photo.psEdited = psEdited.count(BaseName(photo.file)) > 0;
                     }
                 }
+                else
+                    for (const auto& [name, unchanged] : psPending)
+                        if (unchanged && BaseName(name) == BaseName(photo.file)) photo.psOpen = true;
             }
             session.photos.push_back(photo);
         }

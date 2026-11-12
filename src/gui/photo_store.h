@@ -5,6 +5,7 @@
 // da câmera, ex.: "02_T7_1_IMG_0001.JPG".
 
 #include <filesystem>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -18,6 +19,11 @@ struct StoredPhoto
     // Há um arquivo na pasta Edited com outra proporção (ex.: "3:2"): não é usado (decisão do dono, 2026-11-10);
     // refusedWant = a proporção da sessão (ex.: "1:1")
     std::string refused, refusedWant;
+    // Aberta no Photoshop e ainda não salva (Edit in Photoshop, 2026-11-12): a cópia de trabalho está na pasta Edited,
+    // mas só conta como editada depois do primeiro salvamento
+    bool psOpen = false;
+    // A editada foi salva pelo Photoshop (para o bloco Photoshop do Export dizer "edited in Photoshop")
+    bool psEdited = false;
 };
 
 // Item da lixeira (etapa 20): uma sessão inteira ou fotos de uma sessão, guardadas por 15 dias.
@@ -118,6 +124,19 @@ public:
     bool SetLrCanvas(const std::string& session, const std::string& canvas) const;
     // Muda quando entra ou sai arquivo de alguma pasta de Edited/ (para notar editadas salvas por fora do plugin)
     std::string EditedStamp() const;
+    // Edit in Photoshop (decisão do dono, 2026-11-11): a cópia de trabalho de uma foto fica em Edited/<sessão>/ com o
+    // nome final, e não conta como editada enquanto estiver como o Stillpoint a criou (mesma hora e tamanho). A lista
+    // dessas cópias fica em session.json ("psPending": "arquivo|hora|tamanho[|w];...").
+    // PsMark: anota o arquivo que acabou de ser aberto no Photoshop. watch = já era uma editada (abrir de novo): só é
+    // vigiada, para saber quando o Photoshop a salvar. PsClear: tira a anotação (foi salva, sumiu, ou a pessoa cancelou).
+    // PsPending: os arquivos anotados e como estão agora.
+    struct PsEntry { bool watch = false; bool unchanged = true; };
+    bool PsMark(const std::string& session, const std::filesystem::path& copy, bool watch = false) const;
+    bool PsClear(const std::string& session, const std::string& copyName) const;
+    std::map<std::string, PsEntry> PsPending(const std::string& session) const;
+    // Fotos (nome-base) cuja editada foi salva pelo Photoshop ("psEdited" em session.json). on = false: deixa de ser
+    // (a editada foi trocada pelo Lightroom, ou saiu).
+    bool SetPsEdited(const std::string& session, const std::string& base, bool on) const;
     bool WriteSessionInfo(const std::string& session, const std::string& jsonText) const;
     // Arquivo editado de uma foto (em Edited/<sessão>/, mesmo nome-base, o mais recente); vazio se não houver
     std::filesystem::path EditedFile(const std::string& session, const std::string& file) const;

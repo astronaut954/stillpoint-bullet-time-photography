@@ -569,6 +569,80 @@ namespace
         return WriteBytes(file, out.data(), out.size());
     }
 
+    // TIFF de 16 bits por cor (sem compressão), com o perfil sRGB embutido: a cópia de trabalho do Edit in Photoshop
+    // (decisão do dono, 2026-11-12: 16 bits, como as editadas do Lightroom). A foto do app tem 8 bits; cada valor é
+    // esticado para 16 (v × 257). Gravado em pedaços, para não dobrar a memória com uma foto grande.
+    bool WriteTiff16(const RgbFrame& image, const fs::path& file)
+    {
+        static const unsigned char kSrgbIcc[] = {
+            0,0,2,76,108,99,109,115,4,64,0,0,109,110,116,114,82,71,66,32,88,89,90,32,7,234,0,11,0,12,0,4,0,13,0,47,97,99,115,112,
+            65,80,80,76,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,246,214,0,1,0,0,0,0,211,45,108,99,109,115,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,11,100,101,115,99,0,0,1,8,0,0,0,54,
+            99,112,114,116,0,0,1,64,0,0,0,76,119,116,112,116,0,0,1,140,0,0,0,20,99,104,97,100,0,0,1,160,0,0,0,44,114,88,89,90,0,0,
+            1,204,0,0,0,20,98,88,89,90,0,0,1,224,0,0,0,20,103,88,89,90,0,0,1,244,0,0,0,20,114,84,82,67,0,0,2,8,0,0,0,32,103,84,82,
+            67,0,0,2,8,0,0,0,32,98,84,82,67,0,0,2,8,0,0,0,32,99,104,114,109,0,0,2,40,0,0,0,36,109,108,117,99,0,0,0,0,0,0,0,1,0,0,
+            0,12,101,110,85,83,0,0,0,26,0,0,0,28,0,115,0,82,0,71,0,66,0,32,0,98,0,117,0,105,0,108,0,116,0,45,0,105,0,110,0,0,109,
+            108,117,99,0,0,0,0,0,0,0,1,0,0,0,12,101,110,85,83,0,0,0,48,0,0,0,28,0,78,0,111,0,32,0,99,0,111,0,112,0,121,0,114,0,
+            105,0,103,0,104,0,116,0,44,0,32,0,117,0,115,0,101,0,32,0,102,0,114,0,101,0,101,0,108,0,121,88,89,90,32,0,0,0,0,0,0,
+            246,214,0,1,0,0,0,0,211,45,115,102,51,50,0,0,0,0,0,1,12,66,0,0,5,222,255,255,243,37,0,0,7,147,0,0,253,144,255,255,251,
+            161,255,255,253,162,0,0,3,220,0,0,192,110,88,89,90,32,0,0,0,0,0,0,111,160,0,0,56,245,0,0,3,144,88,89,90,32,0,0,0,0,0,
+            0,36,159,0,0,15,132,0,0,182,195,88,89,90,32,0,0,0,0,0,0,98,151,0,0,183,135,0,0,24,217,112,97,114,97,0,0,0,0,0,3,0,0,0,
+            2,102,102,0,0,242,167,0,0,13,89,0,0,19,208,0,0,10,91,99,104,114,109,0,0,0,0,0,3,0,0,0,0,163,215,0,0,84,123,0,0,76,205,
+            0,0,153,154,0,0,38,102,0,0,15,92,
+        };
+        const uint32_t iccSize = static_cast<uint32_t>(sizeof(kSrgbIcc));
+        std::vector<unsigned char> head;
+        auto u16 = [&](uint32_t v) { head.push_back(v & 0xFF); head.push_back((v >> 8) & 0xFF); };
+        auto u32 = [&](uint32_t v) { for (int k = 0; k < 4; ++k) head.push_back((v >> (8 * k)) & 0xFF); };
+        const uint64_t dataSize64 = static_cast<uint64_t>(image.width) * image.height * 6;
+        if (image.width <= 0 || image.height <= 0 || dataSize64 > 0xFFFF0000ull) return false;  // (TIFF simples: até 4 GB)
+        const uint32_t dataSize = static_cast<uint32_t>(dataSize64);
+        const int entries = 11;
+        const uint32_t ifd = 8, bpsOffset = ifd + 2 + entries * 12 + 4;
+        const uint32_t iccOffset = bpsOffset + 6;
+        const uint32_t dataOffset = iccOffset + iccSize + (iccSize & 1);
+        head.insert(head.end(), { 'I', 'I', 42, 0 });
+        u32(ifd);
+        u16(entries);
+        auto entry = [&](uint16_t tag, uint16_t type, uint32_t count, uint32_t value)
+        {
+            u16(tag); u16(type); u32(count);
+            if (type == 3 && count == 1) { u16(value); u16(0); }
+            else u32(value);
+        };
+        entry(256, 4, 1, static_cast<uint32_t>(image.width));
+        entry(257, 4, 1, static_cast<uint32_t>(image.height));
+        entry(258, 3, 3, bpsOffset);  // 16, 16, 16
+        entry(259, 3, 1, 1);          // sem compressão
+        entry(262, 3, 1, 2);          // RGB
+        entry(273, 4, 1, dataOffset);
+        entry(277, 3, 1, 3);
+        entry(278, 4, 1, static_cast<uint32_t>(image.height));
+        entry(279, 4, 1, dataSize);
+        entry(284, 3, 1, 1);
+        entry(34675, 7, iccSize, iccOffset);  // perfil ICC (sRGB)
+        u32(0);
+        u16(16); u16(16); u16(16);
+        head.insert(head.end(), kSrgbIcc, kSrgbIcc + iccSize);
+        if (iccSize & 1) head.push_back(0);
+        std::ofstream out(file, std::ios::binary | std::ios::trunc);
+        if (!out) return false;
+        out.write(reinterpret_cast<const char*>(head.data()), static_cast<std::streamsize>(head.size()));
+        const size_t rowBytes = static_cast<size_t>(image.width) * 3;
+        std::vector<unsigned char> row(rowBytes * 2);
+        for (int y = 0; y < image.height; ++y)
+        {
+            const unsigned char* src = image.pixels.data() + static_cast<size_t>(y) * rowBytes;
+            for (size_t i = 0; i < rowBytes; ++i) { row[i * 2] = src[i]; row[i * 2 + 1] = src[i]; }  // v × 257, o byte menor primeiro
+            out.write(reinterpret_cast<const char*>(row.data()), static_cast<std::streamsize>(row.size()));
+        }
+        out.flush();
+        const bool ok = static_cast<bool>(out);
+        out.close();
+        if (!ok) { std::error_code ec; fs::remove(file, ec); }
+        return ok;
+    }
+
     // Redimensiona cobrindo w×h inteiro (corta o que sobra, centrado) — para a impressão
     // lenticular, onde a imagem precisa ter exatamente o tamanho do papel
     // Cobre w x h com a foto (ampliada/reduzida e cortada); posX/posY (0..1) escolhem a parte que fica
@@ -1330,6 +1404,39 @@ namespace Export
                 DrawTextRow(line, W, t, tx, (y - ty) / digitScale, digitScale);
             }
         }, error);
+    }
+
+    bool WorkingCopy(const fs::path& photo, const fs::path& tiff, const Framing& framing, size_t photoIndex, std::string& error)
+    {
+        RgbFrame image;
+        if (!LoadPhotoRgb(photo, image))
+        {
+            error = "Could not read " + photo.filename().string();
+            return false;
+        }
+        ApplyAlign(image, framing, photoIndex);
+        ApplyFraming(image, framing);
+        // A foto espelhada (Flip) vai sem espelhar, como para o Lightroom: a editada é espelhada de volta na exportação
+        // e nas prévias. O ApplyAlign acabou de espelhar; aqui desfaz.
+        if (framing.Canvas() && photoIndex < framing.align.size() && !framing.align[photoIndex].noop && framing.align[photoIndex].Flipped())
+        {
+            const Align& a = framing.align[photoIndex];
+            const int W = image.width, H = image.height;
+            std::vector<unsigned char> back(image.pixels.size());
+            for (int y = 0; y < H; ++y)
+                for (int x = 0; x < W; ++x)
+                {
+                    const int sx = a.flipH ? W - 1 - x : x, sy = a.flipV ? H - 1 - y : y;
+                    std::memcpy(&back[(static_cast<size_t>(y) * W + x) * 3], &image.pixels[(static_cast<size_t>(sy) * W + sx) * 3], 3);
+                }
+            image.pixels = std::move(back);
+        }
+        if (!WriteTiff16(image, tiff))
+        {
+            error = "Could not save " + tiff.filename().string();
+            return false;
+        }
+        return true;
     }
 
     bool ConvertPhoto(const fs::path& photo, const fs::path& dest, const std::string& format, Quality quality,

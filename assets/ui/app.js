@@ -1721,6 +1721,16 @@
         log(text + " · " + (s ? sessionTitle(s) : sessionLabel(x.session).date) + ". The file stays in the Edited folder.", "warn");
         forgetSessionPreviews(x.session);
       });
+      // Editadas trocadas no mesmo arquivo (um ⌘S no Photoshop): as prévias da sessão são refeitas
+      ((r && r.editedTouched) || []).forEach((name) => forgetSessionPreviews(name));
+      // Edit in Photoshop: a foto foi salva lá e passou a editada aqui
+      ((r && r.psSaved) || []).forEach((x) => {
+        const s = sessions.find((y) => y.name === x.session);
+        const text = "Photo " + x.number + " edited in Photoshop";
+        toast(text + (s ? " · " + sessionTitle(s) : ""), TOAST_MS);
+        log(text + " · " + (s ? sessionTitle(s) : sessionLabel(x.session).date), "ok");
+        forgetSessionPreviews(x.session);
+      });
       ((r && r.gone) || []).forEach((name) => {
         const s = sessions.find((x) => x.name === name);
         toast("Closed in Lightroom Classic · " + (s ? sessionTitle(s) : sessionLabel(name).date) + " (its collection is gone from the catalog)", 7000);
@@ -4031,7 +4041,8 @@
   // com que foram). Destrava quando não sobra editada (Revert to original) e ela não está no Lightroom.
   function framingLocked(s) {
     const cur = sessions.find((x) => x.name === s.name) || s;
-    return inLightroom(cur.name) || (!!cur.inProject && cur.edited > 0);
+    // (aberta no Photoshop e ainda não salva também trava: a cópia de trabalho já foi com este enquadramento)
+    return inLightroom(cur.name) || (!!cur.inProject && cur.edited > 0) || (cur.photos || []).some((p) => p.psOpen);
   }
   const LOCK_SVG = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6.5" width="9" height="6"></rect><path d="M4.5 6.5V4.5a2.5 2.5 0 0 1 5 0v2"></path></svg>';
   function framingWords(st, name) { return st.crop.ratio === "asshot" ? "As shot" : (name ? ratioShown(name, st) : st.crop.ratio) + ", " + placeText(st.crop.x, st.crop.y); }
@@ -5775,6 +5786,9 @@
     const showingEdited = hasEd && session.showEdited !== false;
     const editedFile = (item) => { const p = session.photos.find((x) => x.file === item.file); return !!(p && p.edited); };
     const inLr = (item) => editingOf(name, item.group) === "lr";
+    const photoOf = (item) => session.photos.find((x) => x.file === item.file) || {};
+    const inPs = (item) => !!photoOf(item).psOpen;       // aberta no Photoshop, ainda não salva
+    let psUpdate = null;                                  // o bloco Photoshop acompanha a foto selecionada
     const n = items.length;
     if (!(exp.photo >= 0 && exp.photo < n)) exp.photo = 0;
     outer.classList.toggle("theater", !!exp.editTheater);
@@ -5819,6 +5833,7 @@
       caption.appendChild(el("span", "", item.title + (item.subtitle ? " · " + item.subtitle : "") + (hasEd && editedFile(item) ? (showingEdited ? " · edited" : " · original") : "")));
       caption.appendChild(el("span", "caption-file", item.file));
       [...strip.children].forEach((li, i) => li.classList.toggle("selected", i === k));
+      if (psUpdate) psUpdate();
     };
     // Tocar (como o play da janela principal)
     let playBtn = null, ctrlPlay = null;
@@ -5850,7 +5865,12 @@
         b.dataset.session = name; b.title = "In Lightroom Classic"; b.innerHTML = '<i class="edit-dot"></i>LR';
         corner.appendChild(b);
       }
-      if (editedFile(item)) { const b = el("span", "frame-app ed", "ED"); b.title = "Has an edited version (from Lightroom Classic)"; corner.appendChild(b); }
+      if (inPs(item)) {
+        const b = el("span", "frame-app live");
+        b.title = "Open in Photoshop: save there to bring the edited photo here"; b.innerHTML = '<i class="edit-dot"></i>PS';
+        corner.appendChild(b);
+      }
+      if (editedFile(item)) { const b = el("span", "frame-app ed", "ED"); b.title = photoOf(item).psEdited ? "Has an edited version (from Photoshop)" : "Has an edited version (from Lightroom Classic)"; corner.appendChild(b); }
       {
         // Editada com outra proporção: não é usada (a miniatura mostra a original, com o triângulo)
         const ph = session.photos.find((x) => x.file === item.file);
@@ -5870,6 +5890,7 @@
         go(k);
         popupMenuAt(e.clientX, e.clientY, [
           { label: "Edit just this photo in Lightroom Classic", onClick: () => { if (!adobeMissingBuild()) startLightroom(session, item.group, "photo"); } },
+          { label: "Edit just this photo in Photoshop", onClick: () => startPhotoshop(session, item) },
           ...(editedFile(item) ? ["-", { label: "Revert to original…", danger: true, onClick: () => deleteEdits(session, [item.file]) }] : []),
         ]);
       });
@@ -5940,7 +5961,7 @@
     const send = () => { if (adobeMissingBuild()) return; const it = items[exp.photo] || items[0] || {}; startLightroom(session, it.group || "", "session"); };
     const total = session.photos.length;
     const lrN = Object.values(editingBySession[name] || {}).filter((x) => x === "lr").length;
-    let note = null, lockNote = null;
+    let note = null, lockNote = null, help = "";
     // Editadas que chegaram com outra proporção (não usadas)
     const refused = session.photos.filter((x) => x.refused);
     if (lrN) {
@@ -5964,27 +5985,115 @@
         head.appendChild(link);
       }
       actions.appendChild(button("Done editing", () => doneEditing(session), { title: "Take the session out of Lightroom Classic: its collection leaves the catalog" }));
-      note = el("div", "export-note", "Edit the photos in Lightroom Classic, then click Export to Stillpoint in the Stillpoint panel: the edited photos come back here by themselves.");
+      help = "Edit the photos in Lightroom Classic, then click Export to Stillpoint in the Stillpoint panel: the edited photos come back here by themselves.";
     } else if (hasEd) {
       head.appendChild(el("span", "lr-state", session.edited + " of " + plural(total, "photo", "photos") + " edited" + (refused.length ? " · " + refused.length + " not used" : "")));
       actions.appendChild(button("Edit again in Lightroom Classic", send, { title: "Send the session to Lightroom Classic again, with its edits" }));
       actions.appendChild(button("Revert to original…", () => deleteEdits(session, []), { kind: "btn-danger", title: "Put the edited photos of this session back to the original: the edited files go to the trash" }));
       // (a caixa "Use edited photos" saiu: fica só o Original / Edited de cima, que é a mesma chave; decisão do dono, 2026-11-10)
       if (session.edited < total && showingEdited) note = el("div", "export-note lr-warn", "Only some photos are edited: edited and original frames will be mixed in the export.");
+      help = "Edit again in Lightroom Classic sends the session to Lightroom Classic again, with its edits. Revert to original… puts the edited photos of this session back to the original: the edited files go to the trash.";
       lockNote = el("div", "export-note", "The framing of this session (" + framingWords(st, session.name) + ") stays locked in step 1 while it has edited photos.");
     } else {
       // (sem "Not edited": a falta de etiqueta já diz, como nas miniaturas; decisão do dono, 2026-11-10)
       if (refused.length) head.appendChild(el("span", "lr-state", refused.length + " not used"));
       actions.appendChild(button("Edit in Lightroom Classic", send, { title: "Send the session to Lightroom Classic" }));
       const framing = st.crop.ratio === "asshot" ? "As shot: nothing is cut" : ratioShown(session.name, st) + ", " + placeText(st.crop.x, st.crop.y);
-      note = el("div", "export-note", "Sends the " + plural(total, "photo", "photos") + " to Lightroom Classic, cut to this session's framing (" + framing + "). Edit them there, then click Export to Stillpoint in the Stillpoint panel.");
+      help = "Sends the " + plural(total, "photo", "photos") + " to Lightroom Classic, cut to this session's framing (" + framing + "). Edit them there, then click Export to Stillpoint in the Stillpoint panel.";
     }
+    // A explicação fica num "?" ao lado do título (pedido do dono, 2026-11-11); o aviso âmbar e a linha do Framing
+    // travado continuam à vista
+    if (help) head.querySelector(".lr-title").after(makeTip(help));
     box.append(head, actions);
     if (note) box.appendChild(note);
     if (lockNote) box.appendChild(lockNote);
     refused.forEach((x) => box.appendChild(el("div", "export-note lr-warn", "Photo " + pad(x.order || 0) + ": the edited file is " + x.refused + ", but the session is " + (x.refusedWant || "another shape") +
       ". It stays in the Edited folder and is not used. Fix the crop in Lightroom Classic and export it again.")));
     rows.appendChild(box);
+
+    // Bloco Photoshop (protótipo "Photoshop no Export" aprovado pelo dono em 2026-11-12): uma foto por vez, a selecionada
+    // na fileira. O Photoshop é o acabamento, depois do Lightroom; a foto volta ao salvar lá (⌘S).
+    {
+      const ps = el("div", "lr-block ps-block");
+      const psHead = el("div", "lr-head"), psActions = el("div", "lr-actions");
+      psHead.appendChild(el("span", "lr-title", "Photoshop"));
+      ps.append(psHead, psActions);
+      rows.appendChild(ps);
+      let shown = "";
+      psUpdate = () => {
+        const item = items[exp.photo] || items[0];
+        if (!item) return;
+        const num = pad(item.order || exp.photo + 1), open = inPs(item), edited = editedFile(item), fromPs = edited && !!photoOf(item).psEdited;
+        const key = num + "|" + open + "|" + edited + "|" + fromPs;
+        if (key === shown) return;
+        shown = key;
+        [...psHead.querySelectorAll(".lr-state, .info-tip")].forEach((x) => x.remove());
+        psActions.innerHTML = "";
+        const run = () => { stopPreview(); editPlay.playing = false; setIcons(); startPhotoshop(session, item); };
+        let help;
+        if (open) {
+          const state = el("span", "lr-state live");
+          state.innerHTML = '<i class="edit-dot"></i>';
+          state.appendChild(document.createTextNode("Photo " + num + " open in Photoshop · waiting for the save"));
+          psHead.appendChild(state);
+          psActions.appendChild(button("Open photo " + num + " again", run, { title: "Open the working copy of photo " + num + " in Photoshop again" }));
+          psActions.appendChild(button("Cancel", () => cancelPhotoshop(session, item), { kind: "btn-link", title: "Forget the working copy of photo " + num + " (it was not saved yet)" }));
+          help = "Save in Photoshop (⌘S) to bring the edited photo here. Cancel forgets the working copy, if it was not saved yet. The framing of this session stays locked in step 1 meanwhile.";
+        } else if (edited) {
+          if (fromPs) psHead.appendChild(el("span", "lr-state", "Photo " + num + " edited in Photoshop"));
+          psActions.appendChild(button("Edit photo " + num + (fromPs ? " again" : "") + " in Photoshop", run, { title: "Open the edited file of photo " + num + " in Photoshop" }));
+          help = fromPs ? "Opens the same file again, with what you saved. Every save in Photoshop updates the photo here."
+            : "For the finishing touches, after Lightroom Classic: opens the edited photo " + num + " in Photoshop. Save it there (⌘S) and the photo is updated here.";
+        } else {
+          psActions.appendChild(button("Edit photo " + num + " in Photoshop", run, { title: "Open a working copy of photo " + num + " in Photoshop" }));
+          help = "For the finishing touches, after Lightroom Classic. Opens a working copy of the photo selected above in Photoshop, cut to this session's framing. Edit it there and save (⌘S): the edited photo comes to Stillpoint. Every save updates it here.";
+        }
+        psHead.querySelector(".lr-title").after(makeTip(help));
+      };
+      psUpdate();
+    }
+  }
+  // Edit in Photoshop (decisões do dono, 2026-11-11/12): a foto volta por cópia de trabalho e ⌘S
+  function startPhotoshop(session, item, force) {
+    if (typeof window.adobeEditInPhotoshop !== "function") { toast("This build cannot do that yet. Build the app again.", 8000); return; }
+    const num = pad(item.order || 0);
+    Promise.resolve(window.adobeEditInPhotoshop(session.name, item.group || "", force ? "force" : "")).then((r) => {
+      if (r && r.ok) {
+        const text = "Photo " + (r.number || num) + " opened in Photoshop" + (r.again ? "" : " · save there (⌘S) to bring the edit here");
+        toast(text, r.again ? TOAST_MS : 7000);
+        log("Edit in Photoshop: photo " + (r.number || num) + " · " + sessionShort(session) + " (" + r.opened + ")");
+        return;
+      }
+      const again = () => startPhotoshop(session, item, force);
+      if (r && r.problem === "missing") {
+        dialog("Photoshop is not installed", "Edit in Photoshop needs Adobe Photoshop on this computer. If it is installed in another place, choose it with Locate.", [
+          { label: "Cancel", link: true, left: true },
+          { label: "Get Photoshop", onClick: () => window.adobeGetApp("photoshop") },
+          { label: "Locate…", primary: true, onClick: () => locateAdobe("photoshop", again) },
+        ]);
+      } else if (r && r.problem === "raw") {
+        // Decisão do dono (2026-11-11): RAW sem editada não abre; explica e oferece o Lightroom
+        dialog("Photo " + (r.number || num) + " is a RAW file", "Photoshop needs a copy to work on, and Stillpoint cannot make one from a RAW file. Edit the photo in Lightroom Classic first: after Export to Stillpoint, Edit in Photoshop opens the edited photo.", [
+          { label: "Cancel", link: true },
+          { label: "Edit in Lightroom Classic", primary: true, onClick: () => { if (!adobeMissingBuild()) startLightroom(session, item.group, "photo"); } },
+        ]);
+      } else if (r && r.problem === "inlr") {
+        dialog("Photo " + (r.number || num) + " is open in Lightroom Classic", "If you also edit it in Photoshop, the edit exported last replaces the other one in the Edited folder.", [
+          { label: "Cancel", link: true },
+          { label: "Open in Photoshop anyway", primary: true, onClick: () => startPhotoshop(session, item, true) },
+        ]);
+      } else {
+        const text = (r && r.error) || "Could not open the photo in Photoshop.";
+        toast(text, 9000, { warn: true });
+        log("Edit in Photoshop: " + text, "warn");
+      }
+    });
+  }
+  function cancelPhotoshop(session, item) {
+    if (typeof window.adobePhotoshopCancel !== "function") return;
+    Promise.resolve(window.adobePhotoshopCancel(session.name, item.group || "")).then((r) => {
+      if (r && r.ok) { toast("Photo " + pad(item.order || 0) + " · Photoshop editing cancelled"); log("Edit in Photoshop cancelled: photo " + pad(item.order || 0) + " · " + sessionShort(session)); }
+    });
   }
   // Espaço no Export › Edit: play / pause (como na janela principal); num botão com o foco, o próprio botão responde
   document.addEventListener("keydown", (e) => {

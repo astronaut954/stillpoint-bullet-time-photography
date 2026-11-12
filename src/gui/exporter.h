@@ -136,6 +136,12 @@ namespace Export
                       const std::string& format, Quality quality, std::string& error,
                       const Framing& framing = Framing(), int targetWidth = 0, int targetHeight = 0, size_t photoIndex = 0);
 
+    // Edit in Photoshop (decisões do dono, 2026-11-11/12): a cópia de trabalho de uma foto, em TIFF de 16 bits com o
+    // perfil sRGB, já com o enquadramento da sessão (o mesmo quadro que a exportação tiraria dela: framing e
+    // photoIndex como no ConvertPhoto), sem o espelhamento (Flip), que o Stillpoint refaz na volta. tiff: o arquivo.
+    bool WorkingCopy(const std::filesystem::path& photo, const std::filesystem::path& tiff, const Framing& framing,
+                     size_t photoIndex, std::string& error);
+
     // Formatos que este computador consegue gerar (HEIC no Windows depende de extensões)
     bool FormatAvailable(const std::string& format, std::string& reason);
 

@@ -1041,7 +1041,16 @@ etapas".**
    https://claude.ai/artifact/XrNxANQbNuiNfnMgheHbsc. Bloco Photoshop embaixo do Lightroom Classic (botão "Edit photo
    0n in Photoshop", da foto selecionada), o mesmo comando no botão direito da miniatura, marca PS enquanto aberta,
    ED depois do ⌘S, janela da foto RAW, janela da foto que está no Lightroom. Pedido do dono (2026-11-11): tirar a legenda de baixo dos blocos Lightroom Classic e Photoshop e pôr num "?" ao lado do título (o aviso âmbar fica, e a linha "The framing of this session stays locked…" também continua à vista: decisão do dono); protótipo refeito assim. Blocos compactos aprovados em uso (ajustes pedidos e feitos). (4) Foto aberta e ainda não salva: **marca PS na miniatura e estado de espera no bloco, com Open photo 0n again e Cancel** (o Cancel tira a marca e apaga a cópia de trabalho). (5) Cópia de trabalho de original JPEG: **TIFF de 16 bits** (como as editadas do Lightroom; o Stillpoint hoje só grava TIFF de 8 bits: falta o gravador de 16). A conferir antes de
-   implementar: se o leitor de TIFF do Stillpoint lê TIFF com camadas do Photoshop. Segundo protótipo, depois: foto
+   implementar: se o leitor de TIFF do Stillpoint lê TIFF com camadas do Photoshop. **Protótipo aprovado pelo dono em 2026-11-12; primeira parte implementada na branch no mesmo dia, sem teste do
+   dono** (roteiro: `docs/teste-manual.md`, seção 45): blocos compactos com "?", Edit photo 0n in Photoshop (bloco e
+   botão direito), cópia de trabalho em TIFF de 16 bits com perfil sRGB e o Framing aplicado (`Export::WorkingCopy`),
+   marca PS e Cancel, a foto virando editada a cada ⌘S (o app vigia a pasta Edited; `psPending` / `psEdited` em
+   session.json), janelas da foto RAW, da foto no Lightroom e do Photoshop não instalado. Conferido só pelo teste
+   automático (cenário 19 de `tests/host/run_tests.py`), com um Photoshop de mentira: nenhum arquivo salvo por um
+   Photoshop de verdade foi lido ainda (camadas, perfil de cor). Contexto dado pelo dono (2026-11-12): o Photoshop é
+   o acabamento final, depois dos ajustes não destrutivos do Lightroom (remover objetos, acrescentar elementos,
+   corrigir defeitos); isso pesa no segundo protótipo: proteger o acabamento de um Export to Stillpoint posterior no
+   Lightroom, e voltar do Photoshop para o Lightroom vira exceção. Segundo protótipo, depois: foto
    editada no Photoshop indo para o Lightroom ("no longer RAW") e o conflito de Desfazer.
 
 - **Orientação do Aspect ratio: horizontal ou vertical (pedido em 2026-11-10; feito em 2026-11-11 na branch

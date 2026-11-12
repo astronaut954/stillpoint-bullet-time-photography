@@ -840,7 +840,7 @@ namespace
                 const auto& photo = session.photos[i];
                 Json item("photo");
                 item.Add("file", photo.file).Add("order", photo.order)
-                    .Add("camera", photo.camera).Add("previewable", photo.previewable).Add("edited", photo.edited);
+                    .Add("camera", photo.camera).Add("previewable", photo.previewable).Add("edited", photo.edited).Add("psOpen", photo.psOpen).Add("psEdited", photo.psEdited);
                 if (!photo.refused.empty())
                     item.Add("refused", photo.refused).Add("refusedWant", photo.refusedWant);
                 photos += (i ? "," : "") + item.Str();
@@ -2896,7 +2896,14 @@ namespace
                         }
                         std::set<std::string> arrived;
                         for (auto [it, end] = message.equal_range("file"); it != end; ++it)
-                            if (!it->second.empty()) arrived.insert(stem(it->second));
+                            if (!it->second.empty())
+                            {
+                                arrived.insert(stem(it->second));
+                                // (a editada que o Lightroom acabou de mandar troca a do Photoshop, se havia)
+                                const std::string leaf = it->second.substr(it->second.find_last_of("/\\") + 1);
+                                store.SetPsEdited(session, leaf.substr(0, leaf.rfind('.')), false);
+                                store.PsClear(session, leaf);
+                            }
                         const auto before = store.ListSessions();
                         const auto cur = std::find_if(before.begin(), before.end(), [&](const StoredSession& x) { return x.name == session; });
                         if (cur != before.end() && (!cropBy.empty() || !arrived.empty()))
@@ -3029,11 +3036,62 @@ namespace
             // as que chegaram com outra proporção não são usadas: avisa aqui (uma vez por arquivo) e manda o recado ao
             // Lightroom (decisão do dono, 2026-11-10)
             std::string refusedList = "[";
+            std::string psSavedList = "[";
+            std::string editedTouched = "[";
             if (project.IsOpen() && std::chrono::steady_clock::now() - editedChecked >= std::chrono::seconds(2))
             {
                 editedChecked = std::chrono::steady_clock::now();
                 const std::string stamp = store.EditedStamp();
                 const bool changed = stamp != editedStamp;
+                // Edit in Photoshop: a cópia de trabalho que mudou foi salva (a foto passa a editada); a que sumiu deixa
+                // de estar anotada
+                if (changed || !editedStampKnown)
+                    for (const auto& s : store.ListSessions())
+                    {
+                        if (!s.inProject) continue;
+                        for (const auto& [name, entry] : store.PsPending(s.name))
+                        {
+                            if (entry.unchanged) continue;
+                            std::error_code ec;
+                            const bool there = std::filesystem::exists(store.ProjectEdited() / s.name / name, ec);
+                            store.PsClear(s.name, name);
+                            if (!there) continue;
+                            store.SetPsEdited(s.name, name.substr(0, name.rfind('.')), true);
+                            std::string number;
+                            for (const auto& p : s.photos)
+                                if (p.file.substr(0, p.file.rfind('.')) == name.substr(0, name.rfind('.')))
+                                {
+                                    char text[16];
+                                    std::snprintf(text, sizeof(text), "%02d", p.order);
+                                    number = text;
+                                }
+                            Log("Edit in Photoshop: photo " + number + " of " + s.name + " saved (" + name + ")");
+                            psSavedList += std::string(psSavedList.size() > 1 ? "," : "") + Json().Add("session", s.name).Add("number", number).Str();
+                        }
+                    }
+                // As sessões cuja pasta de editadas mudou: a página esquece as prévias delas (um ⌘S no Photoshop troca a
+                // editada no mesmo arquivo)
+                if (changed && editedStampKnown)
+                {
+                    const auto bySession = [](const std::string& text)
+                    {
+                        std::map<std::string, std::string> out;
+                        std::stringstream parts(text);
+                        for (std::string item; std::getline(parts, item, ';');)
+                        {
+                            const size_t colon = item.find(':');
+                            if (colon != std::string::npos) out[item.substr(0, colon)] = item.substr(colon + 1);
+                        }
+                        return out;
+                    };
+                    const auto was = bySession(editedStamp), now = bySession(stamp);
+                    for (const auto& [session, value] : now)
+                    {
+                        const auto it = was.find(session);
+                        if (it == was.end() || it->second != value)
+                            editedTouched += std::string(editedTouched.size() > 1 ? "," : "") + JsonString(session);
+                    }
+                }
                 if (changed && editedStampKnown && exports.empty())
                     emitSessions();
                 if (changed || !editedStampKnown)
@@ -3115,7 +3173,7 @@ namespace
             if (!goTo.empty())
                 if (auto native = window.window(); native.ok())
                     NativeWindow::Show(native.value());
-            return Json("adobeLive").Add("running", alive.fresh).Raw("sessions", list + "]").Raw("elsewhere", elsewhere + "]").Raw("exported", exported + "]").Raw("refused", refusedList).Add("goto", goTo).Raw("back", backList + "]").Raw("gone", goneList + "]")
+            return Json("adobeLive").Add("running", alive.fresh).Raw("sessions", list + "]").Raw("elsewhere", elsewhere + "]").Raw("exported", exported + "]").Raw("refused", refusedList).Raw("psSaved", psSavedList + "]").Raw("editedTouched", editedTouched + "]").Add("goto", goTo).Raw("back", backList + "]").Raw("gone", goneList + "]")
                 .Raw("restoredBack", restoredBackList + "]").Raw("cancelled", cancelledList + "]").Str();
         });
         // adobeEditing(): as fotos que estão no Lightroom/Photoshop, por sessão
@@ -3493,6 +3551,183 @@ namespace
                 .Add("justInstalled", justInstalled).Add("switchCatalog", switchCatalog).Str();
         });
         // adobeStatus(id): a resposta do plugin a esse pedido. done marca as fotos como "In Lightroom".
+        // ---- Edit in Photoshop (decisões do dono, 2026-11-11/12) ----
+        // Uma foto por vez. A foto volta por cópia de trabalho e ⌘S: o Stillpoint põe um TIFF de 16 bits em
+        // Edited/<sessão>/ com o nome da foto, já com o enquadramento da sessão, e abre esse arquivo no Photoshop; salvar
+        // lá traz a editada (o app vigia a pasta Edited). Foto que já tem editada: abre a própria editada. Original RAW
+        // sem editada: não abre (o Stillpoint não revela RAW); a página explica e oferece o Lightroom.
+        // adobeEditInPhotoshop(sessão, grupo, "force" para abrir mesmo com a foto no Lightroom):
+        //   ok, opened (nome do arquivo aberto), again (já era editada), number; ou problem = missing | raw | inlr | error
+        window.bind("adobeEditInPhotoshop", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            auto fail = [](const std::string& problem, const std::string& error = std::string())
+            { return Json("adobePhotoshop").Add("ok", false).Add("problem", problem).Add("error", error).Str(); };
+            if (args.size() < 2) return fail("error", "Missing values.");
+            const auto ps = adobeFind(Adobe::Program::Photoshop);
+            if (!ps.found) return fail("missing");
+            const auto sessions = store.ListSessions();
+            const auto session = std::find_if(sessions.begin(), sessions.end(), [&](const StoredSession& x) { return x.name == args[0]; });
+            const auto dir = store.SessionDir(args[0]);
+            if (session == sessions.end() || dir.empty()) return fail("error", "The session is no longer there.");
+            if (!session->inProject || store.ProjectEdited().empty())
+                return fail("error", "This session is not in a project. Add it to the project first: the edited photo is kept in the project's Edited folder.");
+            // A foto do grupo: o JPEG quando existe (é dele que a exportação parte); o RAW só quando não há JPEG
+            std::string file, rawFile;
+            int number = 0;
+            for (const auto& photo : session->photos)
+            {
+                if (PhotoGroup(photo) != args[1]) continue;
+                number = photo.order;
+                if (IsRawPhoto(photo.file)) rawFile = photo.file;
+                else if (file.empty() || IsJpegPhoto(photo.file)) file = photo.file;
+            }
+            if (file.empty() && rawFile.empty()) return fail("error", "The photo is no longer there.");
+            char numberText[16];
+            std::snprintf(numberText, sizeof(numberText), "%02d", number);
+            // Já tem editada (do Lightroom, ou de uma vez anterior no Photoshop): abre a própria editada
+            std::filesystem::path edited = store.EditedFile(args[0], !rawFile.empty() ? rawFile : file);
+            if (edited.empty() && !file.empty() && !rawFile.empty()) edited = store.EditedFile(args[0], file);
+            const bool force = args.size() > 2 && args[2] == "force";
+            if (!force)
+            {
+                const auto editing = LoadEditing();
+                const auto it = editing.find(args[0]);
+                if (it != editing.end())
+                {
+                    const auto g = it->second.find(args[1]);
+                    if (g != it->second.end() && g->second == "lr")
+                        return Json("adobePhotoshop").Add("ok", false).Add("problem", "inlr").Add("number", numberText).Str();
+                }
+            }
+            if (!edited.empty())
+            {
+                if (!Platform::OpenWithApplication(ps.path, { edited })) return fail("error", "Could not open Photoshop.");
+                store.PsMark(args[0], edited, true);  // (vigiada: quando o Photoshop salvar, a foto passa a "edited in Photoshop")
+                Log("Edit in Photoshop: photo " + std::string(numberText) + " of " + args[0] + " (" + PathToUtf8(edited.filename()) + ", already edited)");
+                return Json("adobePhotoshop").Add("ok", true).Add("again", true).Add("number", numberText).Add("opened", PathToUtf8(edited.filename())).Str();
+            }
+            // Uma cópia de trabalho que já existe e ainda não foi salva: abre a mesma
+            {
+                const std::string base = (file.empty() ? rawFile : file).substr(0, (file.empty() ? rawFile : file).rfind('.'));
+                for (const auto& [name, entry] : store.PsPending(args[0]))
+                    if (!entry.watch && entry.unchanged && name.substr(0, name.rfind('.')) == base)
+                    {
+                        const auto copy = store.ProjectEdited() / args[0] / name;
+                        if (!Platform::OpenWithApplication(ps.path, { copy })) return fail("error", "Could not open Photoshop.");
+                        return Json("adobePhotoshop").Add("ok", true).Add("again", false).Add("number", numberText).Add("opened", name).Str();
+                    }
+            }
+            // Original RAW sem JPEG ao lado: o Stillpoint não tem como fazer a cópia (decisão do dono: explica e oferece
+            // o Lightroom)
+            if (file.empty() || IsRawPhoto(file))
+                return Json("adobePhotoshop").Add("ok", false).Add("problem", "raw").Add("number", numberText).Str();
+            if (!rawFile.empty())
+                return Json("adobePhotoshop").Add("ok", false).Add("problem", "raw").Add("number", numberText).Str();
+            // O enquadramento da sessão, como na exportação: proporção, posição e o alinhamento de cada foto
+            Export::Framing framing;
+            size_t k = 0;
+            std::string ratio = "asshot";
+            {
+                double posX = 0.5, posY = 0.5;
+                std::stringstream parts(session->crop);
+                std::string a, b, c;
+                std::getline(parts, a, '|'); std::getline(parts, b, '|'); std::getline(parts, c, '|');
+                if (!a.empty()) ratio = a;
+                try { if (!b.empty()) posX = std::stod(b); if (!c.empty()) posY = std::stod(c); } catch (...) {}
+                const double target = Export::RatioValue(ratio);
+                framing.ratio = target > 0 ? ratio : std::string();
+                framing.posX = posX; framing.posY = posY;
+                std::map<std::string, std::string> perGroup;  // uma foto por câmera (RAW + JPEG: o JPEG)
+                for (const auto& photo : session->photos)
+                {
+                    if (!photo.previewable) continue;
+                    const std::string group = std::to_string(1000 + photo.order) + photo.camera;
+                    if (!perGroup.count(group) || IsJpegPhoto(photo.file)) perGroup[group] = photo.file;
+                }
+                const auto aligns = Export::ParseAlign(session->align);
+                std::vector<std::pair<int, int>> sizes;
+                bool allSizes = !perGroup.empty();
+                size_t at = 0;
+                for (const auto& [group, f] : perGroup)
+                {
+                    auto it = aligns.find(f);
+                    framing.align.push_back(it == aligns.end() ? Export::Align() : it->second);
+                    int w = 0, h = 0;
+                    if (!Export::PhotoSize(dir / f, w, h)) { w = 0; h = 0; allSizes = false; }
+                    sizes.push_back({ w, h });
+                    if (f == file) k = at;
+                    ++at;
+                }
+                bool sameShape = allSizes && !sizes.empty() && sizes[0].second > 0;
+                for (const auto& sz : sizes)
+                    if (!sameShape || sz.second <= 0 ||
+                        std::abs(static_cast<double>(sz.first) / sz.second - static_cast<double>(sizes[0].first) / sizes[0].second) > 0.02)
+                        sameShape = false;
+                if (!framing.Active() && (!sameShape || !framing.Aligned()))
+                    framing.align.clear();
+                else if (!allSizes || !Export::ComputeCommonFrame(framing, sizes))
+                    framing.align.clear();
+                if (framing.Canvas())
+                {
+                    // O canvas com que a foto vai: a conferência da editada que voltar usa a forma dele (como no Lightroom)
+                    char canvas[96];
+                    std::snprintf(canvas, sizeof(canvas), "%.3f,%.3f|", framing.commonW, framing.commonH);
+                    store.SetLrCanvas(args[0], canvas + ratio);
+                }
+            }
+            std::error_code ec;
+            const auto folder = store.ProjectEdited() / args[0];
+            std::filesystem::create_directories(folder, ec);
+            const auto copy = folder / (file.substr(0, file.rfind('.')) + ".tif");
+            std::string error;
+            if (!Export::WorkingCopy(dir / file, copy, framing, k, error))
+            {
+                Log("Edit in Photoshop: " + error);
+                return fail("error", error);
+            }
+            store.PsMark(args[0], copy);
+            if (!Platform::OpenWithApplication(ps.path, { copy }))
+            {
+                store.PsClear(args[0], PathToUtf8(copy.filename()));
+                std::filesystem::remove(copy, ec);
+                return fail("error", "Could not open Photoshop.");
+            }
+            Log("Edit in Photoshop: photo " + std::string(numberText) + " of " + args[0] + " (working copy " + PathToUtf8(copy.filename()) + ")");
+            emitSessions();
+            return Json("adobePhotoshop").Add("ok", true).Add("again", false).Add("number", numberText).Add("opened", PathToUtf8(copy.filename())).Str();
+        });
+        // adobePhotoshopCancel(sessão, grupo): a foto aberta no Photoshop e ainda não salva deixa de estar marcada e a
+        // cópia de trabalho é apagada (só se continua como o Stillpoint a criou)
+        window.bind("adobePhotoshopCancel", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            if (args.size() < 2) return Json("adobePhotoshop").Add("ok", false).Str();
+            const auto sessions = store.ListSessions();
+            const auto session = std::find_if(sessions.begin(), sessions.end(), [&](const StoredSession& x) { return x.name == args[0]; });
+            if (session == sessions.end()) return Json("adobePhotoshop").Add("ok", false).Str();
+            int removed = 0;
+            for (const auto& photo : session->photos)
+            {
+                if (PhotoGroup(photo) != args[1]) continue;
+                const std::string base = photo.file.substr(0, photo.file.rfind('.'));
+                for (const auto& [name, entry] : store.PsPending(args[0]))
+                {
+                    if (entry.watch || name.substr(0, name.rfind('.')) != base) continue;
+                    if (entry.unchanged)
+                    {
+                        std::error_code ec;
+                        std::filesystem::remove(store.ProjectEdited() / args[0] / name, ec);
+                        ++removed;
+                    }
+                    store.PsClear(args[0], name);
+                }
+            }
+            if (removed) Log("Edit in Photoshop cancelled: the working copy of " + args[1] + " (" + args[0] + ") was removed");
+            emitSessions();
+            return Json("adobePhotoshop").Add("ok", true).Add("removed", removed).Str();
+        });
+
         window.bind("adobeStatus", [&](const std::string& request) -> std::string
         {
             const auto args = ParseStringArgs(request);

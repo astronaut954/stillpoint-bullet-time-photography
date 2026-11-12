@@ -2192,3 +2192,7 @@ body:has(#exportOverlay:not(.hidden), #camSettingsOverlay:not(.hidden), #project
    janela aberta por cima da tela cheia vale a regra das janelas, logo acima. */
 body:has(.sessions-panel.fullscreen) .log { z-index: 9; transition: height .15s ease, transform .22s var(--noct-ease); }
 body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform: translateY(100%); }
+
+/* Bloco Photoshop do Export › 2 Edit (embaixo do Lightroom Classic) e o "?" dos dois blocos */
+.ps-block { margin-top: 12px; }
+.lr-block .lr-head .info-tip { margin-left: -2px; }

@@ -2006,6 +2006,40 @@ de verdade).
       de leve; afastar o mouse faz descer. Clicar nela abre a lista, que fica aberta até ser fechada (pedido do dono, 2026-11-11).
 - [ ] Windows: os itens acima.
 
+## 45. Edit in Photoshop, primeira parte (etapa 20; protótipo "Photoshop no Export" aprovado em 2026-11-12)
+
+Decisões do dono (2026-11-11/12): a foto volta por cópia de trabalho e ⌘S; original RAW sem editada não abre e a
+janela oferece o Lightroom; a cópia vai já com o Framing da sessão; antes do primeiro ⌘S a miniatura tem a marca **PS**
+e o bloco tem **Cancel**; cópia em TIFF de 16 bits. O Photoshop é o acabamento, depois do Lightroom. Blocos compactos:
+a explicação fica no **?** ao lado do título; o aviso âmbar e a linha do Framing travado continuam à vista.
+
+- [ ] **Export sessions › 2 Edit**: embaixo do bloco **Lightroom Classic** há o bloco **Photoshop**, com o botão
+      **Edit photo 0n in Photoshop** (a foto selecionada na fileira; muda ao selecionar outra). Os dois blocos têm um
+      **?** ao lado do título, sem legenda embaixo dos botões.
+- [ ] Botão direito numa miniatura da fileira: **Edit just this photo in Photoshop**.
+- [ ] **Edit photo 03 in Photoshop** (original JPEG): o Photoshop abre um TIFF de 16 bits com o nome da foto, da pasta
+      **Edited** da sessão. No Stillpoint a miniatura ganha **PS** e o bloco diz **Photo 03 open in Photoshop · waiting
+      for the save**, com **Open photo 03 again** e **Cancel**. A foto ainda não conta como editada.
+- [ ] **Cancel**: a marca **PS** some e o arquivo sai da pasta **Edited**.
+- [ ] Abrir de novo, mudar algo no Photoshop e salvar (⌘S): em alguns segundos o aviso **Photo 03 edited in
+      Photoshop**, **ED** na miniatura, a prévia com a mudança, o bloco com **Photo 03 edited in Photoshop** e o botão
+      **Edit photo 03 again in Photoshop**; o bloco do Lightroom conta **1 of n photos edited**.
+- [ ] Salvar de novo no Photoshop, com outra mudança: a prévia e a miniatura atualizam sozinhas.
+- [ ] Salvar com **camadas** no Photoshop (o padrão do TIFF): o Stillpoint lê e mostra a imagem inteira.
+- [ ] Sessão com **1:1** (ou outra proporção) no passo 1: a cópia abre no Photoshop já recortada; o Framing fica travado
+      no passo 1 enquanto a foto está aberta ou editada.
+- [ ] Cortar a foto no Photoshop (outra proporção) e salvar: o Stillpoint recusa, como qualquer editada com outra
+      proporção (aviso âmbar e triângulo na miniatura).
+- [ ] Foto com **Flip** no Align photos: abre no Photoshop sem espelhar e aparece espelhada no Stillpoint depois de salva.
+- [ ] Foto que já tem editada do Lightroom: **Edit photo 0n in Photoshop** abre a própria editada (sem criar outra); ao
+      salvar, o bloco passa a **Photo 0n edited in Photoshop**.
+- [ ] Sessão **In Lightroom**: pedir o Photoshop numa foto mostra **Photo 0n is open in Lightroom Classic**, com
+      **Cancel** e **Open in Photoshop anyway**.
+- [ ] Original **RAW** sem editada: **Photo 0n is a RAW file**, com **Cancel** e **Edit in Lightroom Classic**.
+- [ ] Sem o Photoshop instalado (ou com outro caminho): **Photoshop is not installed**, com **Get Photoshop** e **Locate…**.
+- [ ] **Revert to original…** tira também a edição do Photoshop (vai para a lixeira; ⌘Z traz de volta).
+- [ ] Windows: os itens acima.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |
