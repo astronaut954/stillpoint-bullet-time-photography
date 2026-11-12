@@ -1050,7 +1050,15 @@ etapas".**
    Photoshop de verdade foi lido ainda (camadas, perfil de cor). Contexto dado pelo dono (2026-11-12): o Photoshop é
    o acabamento final, depois dos ajustes não destrutivos do Lightroom (remover objetos, acrescentar elementos,
    corrigir defeitos); isso pesa no segundo protótipo: proteger o acabamento de um Export to Stillpoint posterior no
-   Lightroom, e voltar do Photoshop para o Lightroom vira exceção. Segundo protótipo, depois: foto
+   Lightroom, e voltar do Photoshop para o Lightroom vira exceção. No Mac, com o Photoshop 2027, o dono aprovou em 2026-11-12 o salvamento e um TIFF com camadas (o resto da seção 45
+   segue pendente). Pendência anotada: o aviso do canto de baixo cobre o botão do bloco Photoshop enquanto aparece.
+   **Ideia do dono (2026-11-12), em estudo, sem decisão:** levar todas as fotos da sessão para o Photoshop num arquivo
+   só, para editar e ver a sequência lá dentro (ajustes, elementos acrescentados) antes de voltar ao Stillpoint.
+   Caminhos conversados: (a) camadas, uma por foto, com a animação da Timeline do Photoshop, e um comando do Stillpoint
+   dentro do Photoshop para devolver cada quadro; (b) folha com as fotos lado a lado num arquivo plano, que o
+   Stillpoint recorta de volta a cada ⌘S, sem instalar nada; (c) continuar foto a foto, com a prévia do Stillpoint
+   tocando ao lado. Falta conferir o que o Photoshop 27 permite a um comando vindo de fora antes de desenhar.
+   Segundo protótipo, depois: foto
    editada no Photoshop indo para o Lightroom ("no longer RAW") e o conflito de Desfazer.
 
 - **Orientação do Aspect ratio: horizontal ou vertical (pedido em 2026-11-10; feito em 2026-11-11 na branch
