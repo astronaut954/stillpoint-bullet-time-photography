@@ -14,6 +14,37 @@ Plano de desenvolvimento para levar o app de "Windows + terminal" para
 | Interface gráfica | Só depois do Mac funcionando (etapa 5). |
 | Outras marcas (Sony, Nikon) | Depois. O código é organizado para aceitar outras marcas, mas nada é implementado sem câmera para testar. |
 
+## O que falta fazer (lista completa; pedida pelo dono em 2026-11-11)
+
+Tudo o que ainda não existe no Stillpoint, num lugar só. O detalhe de cada item está mais abaixo, no lugar indicado.
+Manter esta lista em dia sempre que algo entrar, sair ou for publicado.
+
+**Features novas, na ordem (seção "Próximas etapas")**
+
+| Etapa | Feature | Situação |
+| --- | --- | --- |
+| 21 | Histórico de edição permanente, por projeto | não começada; decisões do dono pendentes |
+| 22 | Bullet time com celulares (Android e iPhone) | não começada; decisões do dono pendentes |
+| 23 | Outras marcas de câmera (Sony, Nikon; pesquisar a libgphoto2) | não começada; precisa de câmera para testar |
+| 24 | Alinhamento automático das fotos | não começada; a estudar; decisões do dono pendentes |
+| 25 | Modo caixa de disparo (sempre a última) | não começada; depende do protótipo de hardware |
+| depois | Rig distribuído por rede | só com o projeto maduro |
+
+**Features menores, sem número (seção "Futuro")**
+
+- Filtro na janela Project.
+- Photoshop: a parte que falta da etapa 20.
+- Ajustar as fotos em vez da câmera (corrigir cor e brilho nas fotos salvas; aviso do RAW sem correção).
+
+**Decidido, sem implementar**
+
+- Licença dupla no lugar da MIT (seção "Futuro"); falta o dono definir o corte de "empresa grande" e as versões já publicadas.
+
+**Testes que faltam (seção "Pendências conhecidas" e `docs/teste-manual.md`)**
+
+- Windows: nenhum teste de uso desde a 2.18.0.
+- Câmeras reais: tudo desde a 2.18.0; cartão cinza e Calibrate with chart, nunca testados com câmeras de verdade.
+
 ## Etapas
 
 Status: `feito` · `em andamento` · `próximo` · `depois`
@@ -896,7 +927,18 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    app nativo ou navegador; sincronia de relógio aceitável entre os aparelhos; se a foto volta em
    JPEG/HEIC ou também em RAW (DNG) nos aparelhos que permitem; mistura com as Canon na mesma sessão.
    Depende de medir a precisão de disparo pela rede antes de desenhar a interface.
-8. **Etapa 23 — Alinhamento automático das fotos** (posta aqui pelo dono em 2026-11-11: é etapa do roadmap, não
+8. **Etapa 23 — Outras marcas de câmera (Sony, Nikon).** Posta como etapa pelo dono em 2026-11-11 (antes estava em
+   "Futuro"). Viável marca a marca, com câmera para testar. Sony (site oficial, conferido em 2026-10-15): SDK
+   gratuito, Windows 11 x64 e macOS 14.1+, cerca de 35 modelos recentes (α1, α9 II/III, α7 IV/V, α7R IV/V, α7S III,
+   α7C/C II/CR, α6700, FX3/FX30/FX2, ZV-E1, ZV-E10 II...); modelos antigos comuns (a6000 a a6600, α7 III) ficam de
+   fora; exige o firmware mais recente. A lista exata de configurações por modelo está no manual do SDK (não lido).
+   Nikon (site oficial, conferido em 2026-10-15): um SDK por modelo (D300 a D850, Df, Z5, Z6/6 II, Z7/7 II, Z8, Z9;
+   Z6 III e Z50 II não aparecem). **O SDK de controle remoto só controla uma câmera por vez** — bloqueia o bullet
+   time com várias Nikon. No Mac com Apple Silicon, os módulos rodam pelo Rosetta 2 (o Stillpoint é só Apple
+   Silicon: precisaria de um programa auxiliar). Junto: **Pesquisar a libgphoto2** (biblioteca aberta, várias
+   marcas via PTP/USB) como alternativa a um SDK por marca. Pontos a verificar: suporte no Windows e precisão do
+   disparo sincronizado.
+9. **Etapa 24 — Alinhamento automático das fotos** (posta aqui pelo dono em 2026-11-11: é etapa do roadmap, não
    pedido solto; a estudar). Referência do dono: o Xangle Camera Server
    ("Easy camera alignment for bullet-time photography - no calibration bar required!",
    https://www.youtube.com/watch?v=eYGbaLTg2-8). O que o vídeo e a descrição dizem: 8 Canon SL1; uma primeira foto é
@@ -910,12 +952,12 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    Rotate). Decisões pendentes do dono antes de qualquer desenho: rodar no computador ou em servidor; o que fazer em
    cena sem textura (fundo liso), onde esse cálculo falha; e se vale começar por uma versão mais simples (a pessoa
    marca o mesmo ponto em cada foto).
-9. **Etapa 24 — modo caixa de disparo (sempre a última).** O app usa a caixa (ESP32 + um canal
+10. **Etapa 25 — modo caixa de disparo (sempre a última).** O app usa a caixa (ESP32 + um canal
    por câmera, já desenhada em `docs/hardware/caixa-de-disparo.pdf` e `hardware/trigger-box/`)
    para disparar: o plano do Timing/Sweep vai para a caixa (PLAN/GO), que dispara com precisão
    de milissegundos; o USB fica só para configurações e fotos. Depende do protótipo de 2 canais
    testado em hardware.
-10. **Etapa futura (muito depois, só com o projeto maduro) — distribuído por rede.** Vários
+11. **Etapa futura (muito depois, só com o projeto maduro) — distribuído por rede.** Vários
    computadores pequenos, cada um com 3–4 câmeras, ligados por Ethernet a um "chefe" que coordena
    e junta as fotos (modo "trabalhador" e modo "chefe" no Stillpoint). É o desenho dos rigs de
    20–100 câmeras.
@@ -927,7 +969,7 @@ Junto com essas etapas (sem etapa própria):
   0,9 s depois da anterior e aceita a 1,8 s. Entre câmeras diferentes, 0,3 s funcionou; 0,1 e
   0,15 s ainda não foram testados com 9 câmeras. **Resolvido em 2026-10-22 (ver as decisões logo abaixo; não há
   pendência aqui):** aviso na Timeline, **não insistir** no "busy", Sweep e One after another num modo só, download
-  adiado. Reconfirmado pelo dono em 2026-11-11, depois de ver o protótipo de insistir: fica como está. Com a caixa de disparo (hoje etapa 24) o
+  adiado. Reconfirmado pelo dono em 2026-11-11, depois de ver o protótipo de insistir: fica como está. Com a caixa de disparo (hoje etapa 25) o
   limite entre câmeras deixa de existir; o da mesma câmera, não.
   **Decisões de 2026-10-21 (noite), branch `sweep-limite`:** (C) "One after another" e "Sweep"
   viraram um modo só, **Sweep** — intervalo livre a partir de 0,05 s, atalhos 0,1 / 0,2 / 0,3 /
@@ -979,7 +1021,7 @@ Junto com essas etapas (sem etapa própria):
 ## Futuro (não planejado ainda)
 
 **Pedidos em aberto, na ordem em que foram anotados (lista pedida pelo dono em 2026-11-11; o detalhe de cada um está
-mais abaixo ou na etapa indicada). O alinhamento automático das fotos não é pedido solto: é a etapa 23, em "Próximas
+mais abaixo ou na etapa indicada). O alinhamento automático das fotos não é pedido solto: é a etapa 24, em "Próximas
 etapas".**
 
 1. **Filtro na janela Project** (pedido em 2026-11-10). Não começado.
@@ -1089,20 +1131,6 @@ etapas".**
   salvas, sem mexer nos originais. Útil para câmeras que não deixam mudar as configurações pelo
   computador e para outras marcas. Em RAW não tem efeito.
 
-- **Outras marcas (Sony, Nikon).** Viável marca a marca, com câmera para testar.
-  Sony (site oficial, conferido em 2026-10-15): SDK gratuito, Windows 11 x64 e macOS 14.1+,
-  cerca de 35 modelos recentes (α1, α9 II/III, α7 IV/V, α7R IV/V, α7S III, α7C/C II/CR,
-  α6700, FX3/FX30/FX2, ZV-E1, ZV-E10 II...); modelos antigos comuns (a6000 a a6600, α7 III)
-  ficam de fora; exige o firmware mais recente. A lista exata de configurações por modelo
-  está no manual do SDK (não lido).
-  Nikon (site oficial, conferido em 2026-10-15): um SDK por modelo (D300 a D850, Df, Z5,
-  Z6/6 II, Z7/7 II, Z8, Z9; Z6 III e Z50 II não aparecem). **O SDK de controle remoto só
-  controla uma câmera por vez** — bloqueia o bullet time com várias Nikon. No Mac com Apple
-  Silicon, os módulos rodam pelo Rosetta 2 (o Stillpoint é só Apple Silicon: precisaria de
-  um programa auxiliar).
-- **Pesquisar a libgphoto2** (biblioteca aberta, várias marcas via PTP/USB) como
-  alternativa a um SDK por marca. Pontos a verificar: suporte no Windows e
-  precisão do disparo sincronizado.
 - **Vários SDKs da Canon ao mesmo tempo:** descartado. Os SDKs antigos não rodam em
   64 bits / Apple Silicon e versões diferentes não convivem no mesmo programa.
 
