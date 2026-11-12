@@ -1992,6 +1992,17 @@ de verdade).
       mostra a diferença; **Apply the project settings** põe a câmera como o projeto guardou.
 - [ ] Windows: os itens acima.
 
+## 44. Activity à vista com as janelas abertas (decisão do dono, 2026-11-11)
+
+- [ ] Abrir **Export sessions** (barra de cima, à direita): a barra **Activity** continua acesa embaixo, com a última
+      linha legível; a janela fica inteira acima dela.
+- [ ] Com a janela aberta, clicar na barra **Activity**: a lista abre por cima da janela; clicar de novo fecha.
+- [ ] O mesmo com **Camera settings**, a janela **Project**, **Settings** e **About**.
+- [ ] Um aviso de pergunta (por exemplo **Leave Export sessions?**), a contagem do disparo e a tela cheia das fotos
+      continuam cobrindo tudo, como antes.
+- [ ] Janela do Stillpoint pequena: nenhum botão de baixo das janelas fica cortado ou escondido pela barra.
+- [ ] Windows: os itens acima.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |

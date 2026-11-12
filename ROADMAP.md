@@ -1010,6 +1010,11 @@ Junto com essas etapas (sem etapa própria):
   do projeto. Decisões pendentes do dono antes de desenhar: a lista exata do que entra; o que fazer quando as câmeras
   ligadas não são as mesmas do projeto (outra quantidade, outros modelos); se abrir o projeto aplica as configurações
   nas câmeras sozinho ou pergunta antes; e o que vale fora de projeto.
+- **[Feito na branch em 2026-11-11, sem teste do dono] Activity à vista com as janelas abertas.** Decisão do dono
+  (2026-11-11): a barra Activity aparece por cima das janelas (Export sessions, Camera settings, Project, Settings,
+  About e as outras) e clicar nela abre a lista por cima da janela. Os avisos de pergunta, a janela de digitar um nome,
+  a contagem, o progresso e a tela cheia continuam cobrindo tudo. Só CSS (`nocturne-neo.css`, fim do arquivo); as
+  janelas ficam acima da barra. Roteiro: seção 44. **Pendente:** teste do dono no Mac, Windows.
 - **Filtro na janela Project (pedido em 2026-11-10).** Um botão de filtro na Project window para filtrar as sessões
   por data, hora, minuto, número de fotos, etiqueta (o nome dado à sessão) e outros atributos que se mostrarem úteis
   (a pensar: editadas, no Lightroom, salvas, proporção, fotos faltando). Pensar junto a experiência das ações em

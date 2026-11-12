@@ -2175,3 +2175,14 @@ html.kbd-focus .export-tab.on .export-tab-check input:focus + .save-check { outl
 .rig-diff td.proj { color: var(--noct-primary); }
 .rig-diff p.rig-line { padding: 0; margin: 8px 0 0; font: 12px var(--noct-font-mono); color: var(--noct-text-muted); }
 .rig-diff .rig-line b { color: var(--noct-pending); font-weight: 500; }
+
+/* O Activity continua à vista com uma janela aberta (decisão do dono, 2026-11-11): as janelas ficam acima da barra e ela
+   passa para a frente (clicar abre a lista por cima da janela). Os avisos de pergunta, a janela de digitar um nome, a
+   contagem e o progresso continuam cobrindo tudo; a tela cheia das fotos também (lá nada muda). */
+#exportOverlay, #camSettingsOverlay, #projectOverlay, #projectPickOverlay, #settingsOverlay, #aboutOverlay,
+#orderOverlay, #updateOverlay, #catGuideOverlay, #pitchOverlay { bottom: var(--log-h); }
+body:has(#exportOverlay:not(.hidden), #camSettingsOverlay:not(.hidden), #projectOverlay:not(.hidden), #projectPickOverlay:not(.hidden),
+  #settingsOverlay:not(.hidden), #aboutOverlay:not(.hidden), #orderOverlay:not(.hidden), #updateOverlay:not(.hidden),
+  #catGuideOverlay:not(.hidden), #pitchOverlay:not(.hidden)) .log { z-index: 15; }
+#promptOverlay, #countdownOverlay, #progressOverlay { z-index: 16; }
+#dialogOverlay { z-index: 17; }
