@@ -2196,3 +2196,5 @@ body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform:
 /* Bloco Photoshop do Export › 2 Edit (embaixo do Lightroom Classic) e o "?" dos dois blocos */
 .ps-block { margin-top: 12px; }
 .lr-block .lr-head .info-tip { margin-left: -2px; }
+/* PS parado ao lado do ED: a editada veio do Photoshop (decisão do dono, 2026-11-12). Verde, como o ED. */
+.frame-app.ps-done { color: var(--noct-primary); border-color: var(--noct-primary); }

@@ -4045,7 +4045,7 @@
     return inLightroom(cur.name) || (!!cur.inProject && cur.edited > 0) || (cur.photos || []).some((p) => p.psOpen);
   }
   // (os dois programas: pedido do dono, 2026-11-12)
-  const FRAMING_LOCKED_WHY = "The framing is locked: this session has edits, is in Lightroom Classic, or has a photo open in Photoshop";
+  const FRAMING_LOCKED_WHY = "The framing is locked: this session has edits, is in Lightroom Classic, or has a photo sent to Photoshop";
   const LOCK_SVG = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6.5" width="9" height="6"></rect><path d="M4.5 6.5V4.5a2.5 2.5 0 0 1 5 0v2"></path></svg>';
   function framingWords(st, name) { return st.crop.ratio === "asshot" ? "As shot" : (name ? ratioShown(name, st) : st.crop.ratio) + ", " + placeText(st.crop.x, st.crop.y); }
   function cropShare(session, st) {
@@ -4197,7 +4197,7 @@
       text.appendChild(document.createTextNode(lrN
         ? " while this session is in Lightroom Classic (the " + plural(lrN, "photo", "photos") + " went with " + framingWords(st, session.name) + "). Finish there (Export to Stillpoint or Cancel editing), or click Done editing in step 2 · Edit."
         : psN && !cur.edited
-        ? " while " + plural(psN, "photo of this session is", "photos of this session are") + " open in Photoshop (" + (psN === 1 ? "it" : "they") + " went with " + framingWords(st, session.name) + "). Save there, or click Cancel in the Photoshop box of step 2 · Edit."
+        ? " while " + plural(psN, "photo of this session is", "photos of this session are") + " in Photoshop, not saved yet (" + (psN === 1 ? "it" : "they") + " went with " + framingWords(st, session.name) + "). Save there, or click Cancel in the Photoshop box of step 2 · Edit."
         : " " + plural(cur.edited, "photo of this session was", "photos of this session were") + " edited with this framing (" + framingWords(st, session.name) + "). To change it, revert " + (cur.edited === 1 ? "it to the original" : "them to the originals") + " in step 2 · Edit (Revert to original…): the framing unlocks when no photo is edited."));
       text.appendChild(document.createElement("br"));
       const go = button("Go to 2 Edit", () => goExportStep(2), { title: "Open step 2 · Edit on this session" });
@@ -5743,7 +5743,7 @@
         else {
           // As travadas ficam como estão (decisão do dono, 2026-11-10)
           const kept = chosenSessions().filter((o) => o.name !== session.name && framingLocked(o)).length;
-          if (kept) { const k = el("div", "keep-note"); k.innerHTML = LOCK_SVG; k.appendChild(document.createTextNode(plural(kept, "ticked session keeps its framing: it has", "ticked sessions keep their framing: they have") + " edits, " + (kept === 1 ? "is" : "are") + " in Lightroom Classic, or " + (kept === 1 ? "has" : "have") + " a photo open in Photoshop.")); body.appendChild(k); }
+          if (kept) { const k = el("div", "keep-note"); k.innerHTML = LOCK_SVG; k.appendChild(document.createTextNode(plural(kept, "ticked session keeps its framing: it has", "ticked sessions keep their framing: they have") + " edits, " + (kept === 1 ? "is" : "are") + " in Lightroom Classic, or " + (kept === 1 ? "has" : "have") + " a photo sent to Photoshop.")); body.appendChild(k); }
         }
       }
       if (!always && chosenSessions().length > 1) {
@@ -5872,9 +5872,12 @@
       }
       if (inPs(item)) {
         const b = el("span", "frame-app live");
-        b.title = "Open in Photoshop: save there to bring the edited photo here"; b.innerHTML = '<i class="edit-dot"></i>PS';
+        b.title = "Sent to Photoshop: save there to bring the edited photo here"; b.innerHTML = '<i class="edit-dot"></i>PS';
         corner.appendChild(b);
       }
+      // Marca parada = resultado (decisão do dono, 2026-11-12): ED, e PS ao lado enquanto a editada for do Photoshop.
+      // A que pulsa (acima) é só o pendente: mandada e ainda não salva.
+      if (editedFile(item) && photoOf(item).psEdited) { const b = el("span", "frame-app ps-done", "PS"); b.title = "Edited in Photoshop"; corner.appendChild(b); }
       if (editedFile(item)) { const b = el("span", "frame-app ed", "ED"); b.title = photoOf(item).psEdited ? "Has an edited version (from Photoshop)" : "Has an edited version (from Lightroom Classic)"; corner.appendChild(b); }
       {
         // Editada com outra proporção: não é usada (a miniatura mostra a original, com o triângulo)
@@ -6039,11 +6042,11 @@
         if (open) {
           const state = el("span", "lr-state live");
           state.innerHTML = '<i class="edit-dot"></i>';
-          state.appendChild(document.createTextNode("Photo " + num + " open in Photoshop · waiting for the save"));
+          state.appendChild(document.createTextNode("Photo " + num + " sent to Photoshop · save there (⌘S) to bring it back"));
           psHead.appendChild(state);
           psActions.appendChild(button("Open photo " + num + " again", run, { title: "Open the working copy of photo " + num + " in Photoshop again" }));
           psActions.appendChild(button("Cancel", () => cancelPhotoshop(session, item), { kind: "btn-link", title: "Forget the working copy of photo " + num + " (it was not saved yet)" }));
-          help = "Save in Photoshop (⌘S) to bring the edited photo here. Cancel forgets the working copy, if it was not saved yet. The framing of this session stays locked in step 1 meanwhile.";
+          help = "Stillpoint made a working copy of photo " + num + " and asked Photoshop to open it. Save it there (⌘S) and the edited photo comes here. Cancel forgets the working copy, if it was not saved yet. The framing of this session stays locked in step 1 meanwhile.";
         } else if (edited) {
           if (fromPs) psHead.appendChild(el("span", "lr-state", "Photo " + num + " edited in Photoshop"));
           psActions.appendChild(button("Edit photo " + num + (fromPs ? " again" : "") + " in Photoshop", run, { title: "Open the edited file of photo " + num + " in Photoshop" }));
@@ -6064,7 +6067,7 @@
     const num = pad(item.order || 0);
     Promise.resolve(window.adobeEditInPhotoshop(session.name, item.group || "", force ? "force" : "")).then((r) => {
       if (r && r.ok) {
-        const text = "Photo " + (r.number || num) + " opened in Photoshop" + (r.again ? "" : " · save there (⌘S) to bring the edit here");
+        const text = "Photo " + (r.number || num) + " sent to Photoshop" + (r.again ? "" : " · save there (⌘S) to bring the edit here");
         toast(text, r.again ? TOAST_MS : 7000);
         log("Edit in Photoshop: photo " + (r.number || num) + " · " + sessionShort(session) + " (" + r.opened + ")");
         return;

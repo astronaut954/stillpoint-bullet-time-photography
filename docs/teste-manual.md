@@ -2018,8 +2018,8 @@ a explicação fica no **?** ao lado do título; o aviso âmbar e a linha do Fra
       **?** ao lado do título, sem legenda embaixo dos botões.
 - [ ] Botão direito numa miniatura da fileira: **Edit just this photo in Photoshop**.
 - [ ] **Edit photo 03 in Photoshop** (original JPEG): o Photoshop abre um TIFF de 16 bits com o nome da foto, da pasta
-      **Edited** da sessão. No Stillpoint a miniatura ganha **PS** e o bloco diz **Photo 03 open in Photoshop · waiting
-      for the save**, com **Open photo 03 again** e **Cancel**. A foto ainda não conta como editada.
+      **Edited** da sessão. No Stillpoint a miniatura ganha **PS** pulsando e o bloco diz **Photo 03 sent to Photoshop ·
+      save there (⌘S) to bring it back**, com **Open photo 03 again** e **Cancel**. A foto ainda não conta como editada.
 - [ ] **Cancel**: a marca **PS** some e o arquivo sai da pasta **Edited**.
 - [ ] Abrir de novo, mudar algo no Photoshop e salvar (⌘S): em alguns segundos o aviso **Photo 03 edited in
       Photoshop**, **ED** na miniatura, a prévia com a mudança, o bloco com **Photo 03 edited in Photoshop** e o botão
@@ -2038,6 +2038,9 @@ a explicação fica no **?** ao lado do título; o aviso âmbar e a linha do Fra
 - [ ] Original **RAW** sem editada: **Photo 0n is a RAW file**, com **Cancel** e **Edit in Lightroom Classic**.
 - [ ] Sem o Photoshop instalado (ou com outro caminho): **Photoshop is not installed**, com **Get Photoshop** e **Locate…**.
 - [ ] **Revert to original…** tira também a edição do Photoshop (vai para a lixeira; ⌘Z traz de volta).
+- [ ] Marcas (decisão do dono, 2026-11-12): pulsando = pendente (**PS** enquanto a cópia foi mandada e não voltou);
+      parada = resultado (**ED** e, ao lado, **PS** parado enquanto a editada for do Photoshop). Um **Export to
+      Stillpoint** posterior do Lightroom para a mesma foto tira o **PS** e deixa só **ED**.
 - [ ] Textos que valem para os dois programas (pedido do dono, 2026-11-12): o subtítulo do passo **2 Edit** diz
       "Lightroom Classic or in Photoshop"; a nota do Framing travado no passo 1 diz "edited with this framing" (sem citar
       o Lightroom) e, com uma foto só aberta no Photoshop, "while 1 photo of this session is open in Photoshop… Save
