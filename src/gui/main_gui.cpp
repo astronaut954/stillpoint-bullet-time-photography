@@ -3066,6 +3066,32 @@ namespace
                                     number = text;
                                 }
                             Log("Edit in Photoshop: photo " + number + " of " + s.name + " saved (" + name + ")");
+                            // A foto que estava no Lightroom sai de lá: a versão do Photoshop é a que fica (caminho A)
+                            {
+                                auto map = LoadEditing();
+                                const auto in = map.find(s.name);
+                                if (in != map.end())
+                                {
+                                    std::vector<std::filesystem::path> paths;
+                                    const auto dir = store.SessionDir(s.name);
+                                    for (const auto& [group, file] : PhotosForEditing(s))
+                                    {
+                                        const bool same = std::any_of(s.photos.begin(), s.photos.end(), [&](const StoredPhoto& p)
+                                            { return PhotoGroup(p) == group && p.file.substr(0, p.file.rfind('.')) == name.substr(0, name.rfind('.')); });
+                                        if (!same || !in->second.count(group)) continue;
+                                        in->second.erase(group);
+                                        paths.push_back(dir / file);
+                                    }
+                                    if (!paths.empty())
+                                    {
+                                        if (in->second.empty()) map.erase(in);
+                                        SaveEditing(map);
+                                        if (Adobe::QueuePhotos("remove", s.name, paths))
+                                            Log("Edit in Photoshop: photo " + number + " of " + s.name + " leaves the Lightroom Classic collection");
+                                        emitEditing();
+                                    }
+                                }
+                            }
                             psSavedList += std::string(psSavedList.size() > 1 ? "," : "") + Json().Add("session", s.name).Add("number", number).Str();
                         }
                     }
@@ -3384,18 +3410,33 @@ namespace
             if (chosen.empty())
                 chosen.push_back(args[2]);
             std::vector<std::string> marked;
+            // A foto com acabamento do Photoshop fica fora (decisão do dono, 2026-11-12, caminho A): o Lightroom
+            // trabalharia na original e o Export to Stillpoint trocaria a editada do Photoshop. Para ir de novo, Revert
+            // to original… nela.
+            std::set<std::string> keptOut;
+            for (const auto& photo : session->photos)
+                if (photo.psEdited && photo.edited)
+                    keptOut.insert(PhotoGroup(photo));
+            std::string keptNumber;
             for (const auto& [group, file] : PhotosForEditing(*session))
             {
                 const auto path = dir / file;
                 const bool take = args[3] == "session" || std::find(chosen.begin(), chosen.end(), group) != chosen.end();
                 if (!take)
                     continue;
+                if (keptOut.count(group))
+                {
+                    if (keptNumber.empty()) keptNumber = group.substr(0, 2);
+                    continue;
+                }
                 r.photos.push_back(path);
                 r.select.push_back(path);
                 marked.push_back(group);
                 if (group == args[2])
                     r.focus = path;
             }
+            if (r.photos.empty() && !keptNumber.empty())
+                return Json("adobeEdit").Add("ok", false).Add("problem", "ps").Add("number", keptNumber).Str();
             if (r.photos.empty())
                 return Json("adobeEdit").Add("ok", false).Add("problem", "error").Add("error", "The session has no photos.").Str();
             if (r.focus.empty())

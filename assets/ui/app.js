@@ -5792,6 +5792,13 @@
     const editedFile = (item) => { const p = session.photos.find((x) => x.file === item.file); return !!(p && p.edited); };
     const inLr = (item) => editingOf(name, item.group) === "lr";
     const photoOf = (item) => session.photos.find((x) => x.file === item.file) || {};
+    // Foto com acabamento do Photoshop: fica fora do Lightroom (decisão do dono, 2026-11-12, caminho A)
+    const psKept = (item) => !!(photoOf(item).psEdited && editedFile(item));
+    const askRevertForLightroom = (item) => dialog("Photo " + pad(photoOf(item).order || 0) + " was edited in Photoshop",
+      "Lightroom Classic would work on the original, without the Photoshop work. To edit it there, revert it to the original first.", [
+        { label: "Cancel", link: true },
+        { label: "Revert to original…", danger: true, onClick: () => deleteEdits(session, [item.file]) },
+      ]);
     const inPs = (item) => !!photoOf(item).psOpen;       // aberta no Photoshop, ainda não salva
     let psUpdate = null;                                  // o bloco Photoshop acompanha a foto selecionada
     const n = items.length;
@@ -5897,7 +5904,7 @@
         e.preventDefault();
         go(k);
         popupMenuAt(e.clientX, e.clientY, [
-          { label: "Edit just this photo in Lightroom Classic", onClick: () => { if (!adobeMissingBuild()) startLightroom(session, item.group, "photo"); } },
+          { label: "Edit just this photo in Lightroom Classic", onClick: () => { if (psKept(item)) askRevertForLightroom(item); else if (!adobeMissingBuild()) startLightroom(session, item.group, "photo"); } },
           { label: "Edit just this photo in Photoshop", onClick: () => startPhotoshop(session, item) },
           ...(editedFile(item) || photoOf(item).refused ? ["-", { label: "Revert to original…", danger: true, onClick: () => deleteEdits(session, [item.file]) }] : []),
         ]);
@@ -5966,7 +5973,10 @@
     const head = el("div", "lr-head");
     head.appendChild(el("span", "lr-title", "Lightroom Classic"));
     const actions = el("div", "lr-actions");
-    const send = () => { if (adobeMissingBuild()) return; const it = items[exp.photo] || items[0] || {}; startLightroom(session, it.group || "", "session"); };
+    const kept = items.filter(psKept), going = items.length - kept.length;
+    // (a foto aberta, se for das que vão; senão a primeira que vai)
+    const send = () => { if (adobeMissingBuild()) return; const cur = items[exp.photo]; const it = (cur && !psKept(cur) ? cur : items.find((x) => !psKept(x))) || {}; startLightroom(session, it.group || "", "session"); };
+    const lrEdited = items.some((x) => editedFile(x) && !psKept(x));
     const total = session.photos.length;
     const lrN = Object.values(editingBySession[name] || {}).filter((x) => x === "lr").length;
     let note = null, lockNote = null, help = "";
@@ -5998,10 +6008,14 @@
       actions.appendChild(button("Done editing", () => doneEditing(session), { title: "Take the session out of Lightroom Classic: its collection leaves the catalog" }));
       help = "Edit the photos in Lightroom Classic, then click Export to Stillpoint in the Stillpoint panel: the edited photos come back here by themselves.";
     } else if (hasEd) {
-      actions.appendChild(button("Edit again in Lightroom Classic", send, { title: "Send the session to Lightroom Classic again, with its edits" }));
+      const again = button(lrEdited ? "Edit again in Lightroom Classic" : "Edit in Lightroom Classic", send, { title: lrEdited ? "Send the session to Lightroom Classic again, with its edits" : "Send the session to Lightroom Classic" });
+      if (!going) again.disabled = true;
+      actions.appendChild(again);
       // (a caixa "Use edited photos" saiu: fica só o Original / Edited de cima, que é a mesma chave; decisão do dono, 2026-11-10)
       if (session.edited < total && showingEdited) note = el("div", "export-note lr-warn", "Edited and original photos will be mixed in the export.");
-      help = "Sends the session to Lightroom Classic again, with its edits. Edit there, then click Export to Stillpoint in the Stillpoint panel.";
+      help = !kept.length ? "Sends the session to Lightroom Classic again, with its edits. Edit there, then click Export to Stillpoint in the Stillpoint panel."
+        : !going ? "Photos edited in Photoshop do not go to Lightroom Classic: it would work on the original, without the Photoshop work. To edit one there, right-click it and choose Revert to original…"
+        : "Sends " + plural(going, "photo", "photos") + " to Lightroom Classic" + (lrEdited ? ", with the edits" : "") + ". Photos edited in Photoshop stay out: to edit one there, right-click it and choose Revert to original…";
       lockNote = el("div", "export-note", "Framing locked (" + framingWords(st, session.name) + ") while there are edited photos.");
     } else {
       // (sem "Not edited": a falta de etiqueta já diz, como nas miniaturas; decisão do dono, 2026-11-10)
@@ -6013,6 +6027,10 @@
     // travado continuam à vista
     if (help) head.querySelector(".lr-title").after(makeTip(help));
     box.append(head, actions);
+    if (kept.length) {
+      const nums = kept.map((x) => pad(photoOf(x).order || 0));
+      box.appendChild(el("div", "export-note stay-note", (!going ? "All photos stay" : kept.length > 3 ? kept.length + " photos stay" : kept.length > 1 ? "Photos " + nums.join(", ") + " stay" : "Photo " + nums[0] + " stays") + " out: edited in Photoshop."));
+    }
     // Faixa "Edited photos" (protótipo aprovado pelo dono em 2026-11-12): o que é das editadas em geral fica acima dos
     // dois programas, e não dentro do Lightroom: o estado, Revert to original… e os avisos. Some sem editada nem
     // recusada. Com a sessão no Lightroom não há Revert to original… (como antes; o botão direito da miniatura tem).
@@ -6101,7 +6119,7 @@
           { label: "Edit in Lightroom Classic", primary: true, onClick: () => { if (!adobeMissingBuild()) startLightroom(session, item.group, "photo"); } },
         ]);
       } else if (r && r.problem === "inlr") {
-        dialog("Photo " + (r.number || num) + " is open in Lightroom Classic", "If you also edit it in Photoshop, the edit exported last replaces the other one in the Edited folder.", [
+        dialog("Photo " + (r.number || num) + " is in Lightroom Classic", "When you save it in Photoshop, it leaves Lightroom Classic: the Photoshop version is the one that stays.", [
           { label: "Cancel", link: true },
           { label: "Open in Photoshop anyway", primary: true, onClick: () => startPhotoshop(session, item, true) },
         ]);
@@ -9454,6 +9472,7 @@
   }
   function lightroomProblem(r, s, group, scope, groups) {
     const again = () => startLightroom(s, group, scope, groups, true);
+    if (r.problem === "ps") { toast("Photo " + (r.number || "") + " was edited in Photoshop: it stays out of Lightroom Classic. Revert it to the original to edit it there.", 9000, { warn: true }); return; }
     if (r.problem === "missing") {
       dialog("Lightroom Classic is not installed", "Edit in Lightroom Classic needs Adobe Lightroom Classic on this computer. If it is installed in another place, choose it with Locate.", [
         { label: "Cancel", link: true, left: true },

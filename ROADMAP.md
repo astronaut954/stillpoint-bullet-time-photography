@@ -1066,6 +1066,13 @@ etapas".**
    (faixa com título, estado e Revert to original… à direita, avisos embaixo só quando existem; some sem editadas; os
    blocos Lightroom Classic e Photoshop lado a lado, para caber em 1440 × 900 sem rolar). **Aprovado pelo dono em 2026-11-12** (nome Edited photos; textos dos avisos reduzidos; lado a lado, com o
    Photoshop descendo quando a janela fica estreita) e implementado na branch no mesmo dia; aprovado pelo dono no Mac em 2026-11-12, junto com o Revert to original… da recusada.
+   **Photoshop primeiro, Lightroom depois (observação do dono, 2026-11-12):** o Lightroom recebia a original e um
+   Export to Stillpoint trocava a editada do Photoshop. Decisão do dono (caminho A): a foto com acabamento do Photoshop
+   fica fora do Lightroom; para editar lá de novo, Revert to original… nela. Protótipo aprovado em 2026-11-12
+   (https://claude.ai/artifact/1bFGsrsRDTk586Sd3bnjYF) e implementado na branch no mesmo dia, sem teste do dono: linha
+   "Photo 0n stays out: edited in Photoshop." no bloco Lightroom Classic, janela "Photo 0n was edited in Photoshop" ao
+   pedir o Lightroom nela, e a foto que está no Lightroom sai de lá (etiqueta e coleção) quando é salva no Photoshop.
+   Em aberto, do mesmo dia: etiquetas demais saindo da miniatura (LR, PS, ED e a da proporção).
    **Ideia do dono (2026-11-12), em estudo, sem decisão:** levar todas as fotos da sessão para o Photoshop num arquivo
    só, para editar e ver a sequência lá dentro (ajustes, elementos acrescentados) antes de voltar ao Stillpoint.
    Caminhos conversados: (a) camadas, uma por foto, com a animação da Timeline do Photoshop, e um comando do Stillpoint

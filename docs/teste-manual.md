@@ -2043,8 +2043,16 @@ a explicação fica no **?** ao lado do título; o aviso âmbar e a linha do Fra
 - [x] Foto com **Flip** no Align photos: abre no Photoshop sem espelhar e aparece espelhada no Stillpoint depois de salva.
 - [x] Foto que já tem editada do Lightroom: **Edit photo 0n in Photoshop** abre a própria editada (sem criar outra); ao
       salvar, o bloco passa a **Photo 0n edited in Photoshop**.
-- [ ] Sessão **In Lightroom**: pedir o Photoshop numa foto mostra **Photo 0n is open in Lightroom Classic**, com
-      **Cancel** e **Open in Photoshop anyway**.
+- [ ] Foto com acabamento do Photoshop fica fora do Lightroom (decisão do dono, 2026-11-12, protótipo aprovado no
+      mesmo dia): no bloco **Lightroom Classic** aparece **Photo 0n stays out: edited in Photoshop.** e o botão é
+      **Edit in Lightroom Classic** (sem "again" quando nenhuma das que vão tem edição do Lightroom); ao enviar, vão só as
+      outras (**In Lightroom Classic · n photos**) e a miniatura dela fica com **PS** e **ED**, sem **LR**.
+- [ ] Botão direito nessa foto, **Edit just this photo in Lightroom Classic**: janela **Photo 0n was edited in
+      Photoshop**, com **Cancel** e **Revert to original…**.
+- [ ] Sessão **In Lightroom**: pedir o Photoshop numa foto mostra **Photo 0n is in Lightroom Classic**, com
+      **Cancel** e **Open in Photoshop anyway**; ao salvar no Photoshop a foto sai do Lightroom (a contagem do bloco
+      diminui, a miniatura troca **LR** por **PS** e **ED**, e a foto sai da coleção no Lightroom).
+- [ ] Todas as fotos com acabamento do Photoshop: botão do Lightroom apagado e **All photos stay out: edited in Photoshop.**
 - [ ] Original **RAW** sem editada: **Photo 0n is a RAW file**, com **Cancel** e **Edit in Lightroom Classic**.
 - [ ] Sem o Photoshop instalado (ou com outro caminho): **Photoshop is not installed**, com **Get Photoshop** e **Locate…**.
 - [ ] **Revert to original…** tira também a edição do Photoshop (vai para a lixeira; ⌘Z traz de volta).
