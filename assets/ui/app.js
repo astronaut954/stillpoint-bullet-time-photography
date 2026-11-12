@@ -10418,7 +10418,12 @@
           const label = sessionLabel(item.session);
           if (blockedBy || item.restored) li.classList.add("blocked");
           const kindIcon = el("span", "trash-kind");
-          if (item.editsOnly) { kindIcon.appendChild(el("span", "trash-app lr", "Lr")); kindIcon.title = "Edited photos from Lightroom Classic"; }
+          // De onde vieram as editadas do item: Lightroom Classic, Photoshop ou os dois (pedido do dono, 2026-11-12)
+          const psSet = new Set(item.psBases || []);
+          const editBasesOf = item.editsOnly ? (item.bases || []) : (item.editBases || []);
+          const psAll = editBasesOf.length > 0 && editBasesOf.every((b) => psSet.has(b)), psSome = editBasesOf.some((b) => psSet.has(b));
+          const appWords = psAll ? "Photoshop" : psSome ? "Lightroom Classic and Photoshop" : "Lightroom Classic";
+          if (item.editsOnly) { kindIcon.appendChild(el("span", "trash-app lr", psAll ? "Ps" : psSome ? "Ed" : "Lr")); kindIcon.title = "Edited photos from " + appWords; }
           else {
             kindIcon.innerHTML = icon(item.isProject ? "folder" : item.whole ? "session" : "photo", level ? 13 : 15);
             kindIcon.title = item.isProject ? "A whole project" : item.whole ? "A whole session" : "Photos from a session";
@@ -10448,7 +10453,7 @@
           const parts = [];
           if (item.isProject) parts.push("Project" + (item.sessions ? " · " + plural(item.sessions, "session", "sessions") : ""));
           else if (item.whole) parts.push("Session");
-          else if (item.editsOnly && !(insideSession || insidePhoto)) parts.push("Lightroom Classic");
+          else if (item.editsOnly && !(insideSession || insidePhoto)) parts.push(appWords);
           if (+item.bytes) parts.push(fmtBytes(+item.bytes));
           if (item.restored) parts.push("waiting for the " + (item.isProject ? "items from its trash" : "items below"));
           else if (offDisk) parts.push("the disk with this project is not connected");
@@ -10468,14 +10473,14 @@
             const strip = el("span", "dthumbs");
             const thumbs = [];
             const withEdit = new Set(item.editsOnly ? [] : item.editBases || []);
-            bases.forEach((b) => thumbs.push({ base: b, edited: !!item.editsOnly, badge: item.editsOnly || withEdit.has(b), striped: !!item.editsOnly, id: item.id }));
-            edits.forEach((n) => (n.item.bases || []).slice().sort().forEach((b) => thumbs.push({ base: b, edited: true, badge: true, striped: true, id: n.item.id })));
+            bases.forEach((b) => thumbs.push({ base: b, edited: !!item.editsOnly, badge: item.editsOnly || withEdit.has(b), striped: !!item.editsOnly, id: item.id, ps: psSet.has(b) }));
+            edits.forEach((n) => (n.item.bases || []).slice().sort().forEach((b) => thumbs.push({ base: b, edited: true, badge: true, striped: true, id: n.item.id, ps: (n.item.psBases || []).includes(b) })));
             const MAX = 4;
             thumbs.slice(0, MAX).forEach((t) => {
               const d = el("span", "dt" + (t.striped ? " edit" : ""));
-              d.title = (t.striped ? "Edit of " : "") + t.base + (t.badge && !t.striped ? " (with its Lightroom Classic edit)" : "");
+              d.title = (t.striped ? "Edit of " : "") + t.base + (t.badge && !t.striped ? " (with its " + (t.ps ? "Photoshop" : "Lightroom Classic") + " edit)" : "");
               if (num(t.base)) d.appendChild(el("i", "", num(t.base)));
-              if (t.badge) d.appendChild(el("u", "", "LR"));
+              if (t.badge) d.appendChild(el("u", "", t.ps ? "PS" : "LR"));
               strip.appendChild(d);
               if (typeof window.trashThumb === "function")
                 Promise.resolve(window.trashThumb(t.id, t.base, t.edited ? "edited" : "")).then((url) => {

@@ -80,6 +80,23 @@ namespace
         std::ofstream out(entry / kTrashInfo, std::ios::binary | std::ios::app);
         out << "kind=" << kind << "\n";
     }
+    // As editadas do item que vieram do Photoshop (nomes sem extensão): a lixeira mostra "Ps" nelas, e não "Lr"
+    void MarkTrashPs(const fs::path& entry, const std::set<std::string>& bases)
+    {
+        if (bases.empty()) return;
+        std::string text;
+        for (const auto& b : bases) text += (text.empty() ? "" : ";") + b;
+        std::ofstream out(entry / kTrashInfo, std::ios::binary | std::ios::app);
+        out << "ps=" << text << "\n";
+    }
+    std::vector<std::string> TrashPsBases(const std::string& text)
+    {
+        std::vector<std::string> out;
+        std::stringstream parts(text);
+        for (std::string item; std::getline(parts, item, ';');)
+            if (!item.empty()) out.push_back(item);
+        return out;
+    }
     int CountTrashEdits(const fs::path& entry)
     {
         int n = 0;
@@ -929,6 +946,11 @@ namespace
             if (!item.empty()) out.insert(item);
         return out;
     }
+    // As fotos da sessão cuja editada veio do Photoshop (nomes sem extensão)
+    std::set<std::string> PsEditedBases(const fs::path& sessionDir)
+    {
+        return ParsePsEdited(ReadSessionInfo(sessionDir).get("psEdited").asString());
+    }
     std::string PsPendingText(const std::map<std::string, std::string>& items)
     {
         std::string text;
@@ -1655,6 +1677,8 @@ bool PhotoStore::DeletePhotos(const std::string& session, const std::vector<std:
     const fs::path trash = NewTrashEntry(dir, session, false);
     fs::create_directories(trash, ec);
     WriteTrashInfo(trash, session, false, dir, NowSeconds());
+    const std::set<std::string> psEdited = PsEditedBases(dir);
+    std::set<std::string> psGone;
     for (const auto& path : toDelete)
     {
         // A editada da foto (Edited/<sessão>/) vai junto, na subpasta .edited do item
@@ -1663,6 +1687,7 @@ bool PhotoStore::DeletePhotos(const std::string& session, const std::vector<std:
             std::error_code eec;
             fs::create_directories(trash / kTrashEdited, eec);
             MoveFile(edit, trash / kTrashEdited / edit.filename(), eec);
+            if (psEdited.count(edit.stem().string())) psGone.insert(edit.stem().string());
         }
         MoveFile(path, trash / path.filename(), ec);
         if (ec)
@@ -1681,6 +1706,7 @@ bool PhotoStore::DeletePhotos(const std::string& session, const std::vector<std:
         fs::remove_all(dir, ec);
         WriteTrashInfo(trash, session, true, dir, NowSeconds());  // a sessão inteira saiu
     }
+    MarkTrashPs(trash, psGone);
     return true;
 }
 
@@ -1704,6 +1730,8 @@ int PhotoStore::TrashEdits(const std::string& session, const std::vector<std::st
     fs::create_directories(trash / kTrashEdited, ec);
     WriteTrashInfo(trash, session, false, dir, NowSeconds());
     MarkTrashKind(trash, "edits");
+    const std::set<std::string> psEdited = PsEditedBases(dir);
+    std::set<std::string> psGone;
     int moved = 0;
     for (const auto& e : edits)
     {
@@ -1711,7 +1739,9 @@ int PhotoStore::TrashEdits(const std::string& session, const std::vector<std::st
         MoveFile(e, trash / kTrashEdited / e.filename(), mec);
         if (mec) { errorMessage = "Could not delete " + e.filename().string() + ": " + mec.message(); break; }
         ++moved;
+        if (psEdited.count(e.stem().string())) psGone.insert(e.stem().string());
     }
+    if (moved) MarkTrashPs(trash, psGone);
     if (moved == 0)
         fs::remove_all(trash, ec);
     fs::remove_all(dir / kPreviewFolder, ec);  // as prévias das editadas
@@ -1903,6 +1933,7 @@ std::vector<TrashItem> PhotoStore::ListTrash() const
                     in.restored = n.info["restored"] == "1";
                     in.photos = in.restored ? 0 : CountTrashPhotos(n.path);
                     in.edits = in.restored ? 0 : CountTrashEdits(n.path);
+                    in.psBases = TrashPsBases(n.info["ps"]);
                     in.bases = TrashBases(n.path, in.editsOnly);
                     in.editBases = TrashBases(n.path, true);
                     in.bytes = in.restored ? 0 : FolderBytes(n.path);
@@ -1931,6 +1962,7 @@ std::vector<TrashItem> PhotoStore::ListTrash() const
         {
             t.photos = CountTrashPhotos(e.path);
             t.edits = CountTrashEdits(e.path);
+            t.psBases = TrashPsBases(e.info["ps"]);
             t.bytes = FolderBytes(e.path);
             t.bases = TrashBases(e.path, t.editsOnly);
             t.editBases = TrashBases(e.path, true);

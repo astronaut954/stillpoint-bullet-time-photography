@@ -5818,7 +5818,11 @@ namespace
                     .Raw("deletedAt", std::to_string(item.deletedAt)).Add("order", std::to_string(item.order))
                     .Add("inProject", item.inProject).Add("isProject", item.isProject).Add("reachable", item.reachable)
                     .Add("sessions", item.sessions).Add("parent", item.parent).Add("restored", item.restored)
-                    .Add("edits", item.edits).Add("editsOnly", item.editsOnly).Raw("bases", [&] {
+                    .Add("edits", item.edits).Add("editsOnly", item.editsOnly).Raw("psBases", [&] {
+                        std::string b = "[";
+                        for (size_t i = 0; i < item.psBases.size(); ++i) b += (i ? "," : "") + JsonString(item.psBases[i]);
+                        return b + "]";
+                    }()).Raw("bases", [&] {
                         std::string b = "[";
                         for (size_t i = 0; i < item.bases.size(); ++i) b += (i ? "," : "") + JsonString(item.bases[i]);
                         return b + "]";

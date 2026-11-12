@@ -1054,7 +1054,7 @@ etapas".**
    segue pendente). Pendência anotada: o aviso do canto de baixo cobre o botão do bloco Photoshop enquanto aparece. Pedidos do dono em 2026-11-12, depois de testar a sessão 1:1 (aprovada): (a) textos que só citavam o Lightroom
    passam a valer para os dois programas: feito na branch (subtítulo do passo 2 Edit, motivos do Framing travado, nota
    da trava no passo 1 com o caso "open in Photoshop", aviso Delete the edit or the photo?, linha da editada recusada);
-   a lixeira ainda diz "Lightroom Classic" nas editadas (selo "Lr"): em aberto; (b) a marca PS some depois do primeiro
+   a lixeira dizia "Lightroom Classic" nas editadas (selo "Lr"): feito na branch em 2026-11-12 (selo "Ps" nas que vieram do Photoshop, "Ed" no item com as duas origens), sem teste do dono; (b) a marca PS some depois do primeiro
    salvamento e isso o confundiu: decisão do dono (2026-11-12): marca pulsando = pendente (PS enquanto a cópia foi mandada e não voltou; o
    texto do bloco diz "sent to Photoshop · save there (⌘S) to bring it back", sem "open"); marca parada = resultado
    (ED e, ao lado, PS parado enquanto a editada for do Photoshop; um Export to Stillpoint posterior do Lightroom tira

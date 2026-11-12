@@ -53,6 +53,7 @@ struct TrashItem
     // Editadas (etapa 20): quantas foram junto (subpasta .edited); editsOnly = item do Delete edits (só editadas)
     int edits = 0;
     bool editsOnly = false;
+    std::vector<std::string> psBases;  // editadas do item que vieram do Photoshop (nomes sem extensão)
     // Nomes-base das fotos do item (das editadas, no item do Delete edits): a lixeira põe a editada embaixo da foto
     std::vector<std::string> bases;
     // Nomes-base que têm editada no item (a lixeira mostra o selo LR na miniatura)
