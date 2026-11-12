@@ -1631,9 +1631,9 @@
     const one = picked.length === 1;
     const nums = edited.map((x) => pad(x.order || 0)).join(", ");
     dialog(one ? "Delete the edit or the photo?" : "Delete the edits or the photos?",
-      (edited.length === 1 ? "Photo " + nums + " has" : "Photos " + nums + " have") + " an edited version from Lightroom Classic. " +
+      (edited.length === 1 ? "Photo " + nums + " has" : "Photos " + nums + " have") + " an edited version. " +
       (edited.length === 1 ? "Delete edit moves only the edited file" : "Delete edits moves only the edited files") + " to the Trash and puts " + (edited.length === 1 ? "the photo" : "them") +
-      " back to the original in Lightroom Classic. " + (one ? "Delete photo moves the photo, with its edit," : "Delete photos moves the " + plural(picked.length, "photo", "photos") + ", with their edits,") + " to the Trash.",
+      " back to the original, here and in Lightroom Classic. " + (one ? "Delete photo moves the photo, with its edit," : "Delete photos moves the " + plural(picked.length, "photo", "photos") + ", with their edits,") + " to the Trash.",
       [{ label: "Cancel" },
        { label: edited.length === 1 ? "Delete edit" : "Delete " + plural(edited.length, "edit", "edits"), danger: true, onClick: () => deleteEditsNow(s, edited.map((x) => x.file)) },
        { label: one ? "Delete photo" : "Delete " + plural(picked.length, "photo", "photos"), danger: true, onClick: onPhoto }]);
@@ -3270,7 +3270,7 @@
   const EXPORT_STEPS = [[1, "Sessions"], [2, "Edit"], [3, "Outputs"], [4, "Review"]];
   const EXPORT_SUBS = {
     1: "Tick the sessions to export and set the framing of each one: the aspect ratio, where the crop sits, and the photo alignment.",
-    2: "Edit the photos in Lightroom Classic, already cut to the framing from step 1. Sessions you do not edit go out as they are.",
+    2: "Edit the photos in Lightroom Classic or in Photoshop, already cut to the framing from step 1. Sessions you do not edit go out as they are.",
     3: "Tick what each session should become: photos, a sequence, a lenticular print, or several.",
     4: "Check what will be exported, name the folders and choose where they go.",
   };
@@ -3403,7 +3403,7 @@
         if (asShot && r && r.mixed && !aligned)
           chip.dataset.itip = ratioText(r) + " With As shot, the sequence jumps between shapes. Choose an aspect ratio (" +
             r.suggest + " keeps " + r.keep[r.suggest] + "%) or align the photos.";
-        if (framingLocked(s)) { chip.classList.add("chip-locked"); chip.insertAdjacentHTML("beforeend", LOCK_SVG); chip.title = "Framing locked: this session has edits or is in Lightroom Classic"; }
+        if (framingLocked(s)) { chip.classList.add("chip-locked"); chip.insertAdjacentHTML("beforeend", LOCK_SVG); chip.title = FRAMING_LOCKED_WHY.replace("The framing is locked", "Framing locked"); }
         li.querySelector(".export-summary").replaceWith(chip);
       } else if (exp.step === 2) {
         // Passo 2 (Edit): no lugar do resumo, a etiqueta In Lightroom (a Edited n / m já está acima)
@@ -4013,7 +4013,7 @@
     [["h", "Horizontal"], ["v", "Vertical"]].forEach(([value, name]) => {
       const b = el("button", !none && value === now ? "on" : "");
       b.innerHTML = ORIENT_SVG[value];
-      b.title = locked ? "The framing is locked: this session has edits or is in Lightroom Classic" : none ? name + " (makes no difference with As shot and 1:1)" : name;
+      b.title = locked ? FRAMING_LOCKED_WHY : none ? name + " (makes no difference with As shot and 1:1)" : name;
       b.setAttribute("aria-label", name);
       if (none || locked) b.disabled = true;
       b.addEventListener("click", () => onPick(value));
@@ -4044,6 +4044,8 @@
     // (aberta no Photoshop e ainda não salva também trava: a cópia de trabalho já foi com este enquadramento)
     return inLightroom(cur.name) || (!!cur.inProject && cur.edited > 0) || (cur.photos || []).some((p) => p.psOpen);
   }
+  // (os dois programas: pedido do dono, 2026-11-12)
+  const FRAMING_LOCKED_WHY = "The framing is locked: this session has edits, is in Lightroom Classic, or has a photo open in Photoshop";
   const LOCK_SVG = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6.5" width="9" height="6"></rect><path d="M4.5 6.5V4.5a2.5 2.5 0 0 1 5 0v2"></path></svg>';
   function framingWords(st, name) { return st.crop.ratio === "asshot" ? "As shot" : (name ? ratioShown(name, st) : st.crop.ratio) + ", " + placeText(st.crop.x, st.crop.y); }
   function cropShare(session, st) {
@@ -4175,7 +4177,7 @@
     const locked = framingLocked(session);
     const r = row("Aspect ratio");
     const seg = segmented(ratioOptions(session.name, st), st.crop.ratio, (v) => { st.crop.ratio = v; cropShare(session, st); rerender(); },
-      () => (locked ? "The framing is locked: this session has edits or is in Lightroom Classic" : ""));
+      () => (locked ? FRAMING_LOCKED_WHY : ""));
     if (locked) seg.classList.add("locked-ctl");
     // As proporções e, coladas nelas, os dois botões da orientação (protótipo aprovado em 2026-11-11)
     const group = el("span", "ratio-group");
@@ -4190,10 +4192,13 @@
       const note = el("div", "lock-note");
       note.innerHTML = LOCK_SVG;
       const text = el("div", "");
-      text.appendChild(el("b", "", lrN ? "Framing locked" : "Framing locked."));
+      const psN = (cur.photos || []).filter((p) => p.psOpen).length;  // abertas no Photoshop, ainda não salvas
+      text.appendChild(el("b", "", lrN || (psN && !cur.edited) ? "Framing locked" : "Framing locked."));
       text.appendChild(document.createTextNode(lrN
         ? " while this session is in Lightroom Classic (the " + plural(lrN, "photo", "photos") + " went with " + framingWords(st, session.name) + "). Finish there (Export to Stillpoint or Cancel editing), or click Done editing in step 2 · Edit."
-        : " " + plural(cur.edited, "photo of this session was", "photos of this session were") + " edited in Lightroom Classic with this framing (" + framingWords(st, session.name) + "). To change it, revert " + (cur.edited === 1 ? "it to the original" : "them to the originals") + " in step 2 · Edit (Revert to original…): the framing unlocks when no photo is edited."));
+        : psN && !cur.edited
+        ? " while " + plural(psN, "photo of this session is", "photos of this session are") + " open in Photoshop (" + (psN === 1 ? "it" : "they") + " went with " + framingWords(st, session.name) + "). Save there, or click Cancel in the Photoshop box of step 2 · Edit."
+        : " " + plural(cur.edited, "photo of this session was", "photos of this session were") + " edited with this framing (" + framingWords(st, session.name) + "). To change it, revert " + (cur.edited === 1 ? "it to the original" : "them to the originals") + " in step 2 · Edit (Revert to original…): the framing unlocks when no photo is edited."));
       text.appendChild(document.createElement("br"));
       const go = button("Go to 2 Edit", () => goExportStep(2), { title: "Open step 2 · Edit on this session" });
       go.classList.add("btn-small");
@@ -5168,7 +5173,7 @@
           const alignBtn = button("Align photos", () => { if (needsRatio(session, st)) askRatioForAlign(session, st, rerender); else { exp.aligning = true; rerender(); } },
             { icon: "alignPhotos", title: "Align photos: move, resize and rotate each photo over the others", kind: "btn-secondary" });
           alignBtn.classList.add("framing-align-btn");
-          if (locked) { alignBtn.disabled = true; alignBtn.classList.add("locked-ctl"); alignBtn.title = "The framing is locked: this session has edits or is in Lightroom Classic"; }
+          if (locked) { alignBtn.disabled = true; alignBtn.classList.add("locked-ctl"); alignBtn.title = FRAMING_LOCKED_WHY; }
           alignBtn.addEventListener("pointerdown", (e) => e.stopPropagation());
           stage.appendChild(alignBtn);
           if (sessionAligned(session, st)) stage.appendChild(el("span", "framing-aligned-tag", "Aligned"));
@@ -5738,7 +5743,7 @@
         else {
           // As travadas ficam como estão (decisão do dono, 2026-11-10)
           const kept = chosenSessions().filter((o) => o.name !== session.name && framingLocked(o)).length;
-          if (kept) { const k = el("div", "keep-note"); k.innerHTML = LOCK_SVG; k.appendChild(document.createTextNode(plural(kept, "ticked session keeps its framing: it has", "ticked sessions keep their framing: they have") + " edits or " + (kept === 1 ? "is" : "are") + " in Lightroom Classic.")); body.appendChild(k); }
+          if (kept) { const k = el("div", "keep-note"); k.innerHTML = LOCK_SVG; k.appendChild(document.createTextNode(plural(kept, "ticked session keeps its framing: it has", "ticked sessions keep their framing: they have") + " edits, " + (kept === 1 ? "is" : "are") + " in Lightroom Classic, or " + (kept === 1 ? "has" : "have") + " a photo open in Photoshop.")); body.appendChild(k); }
         }
       }
       if (!always && chosenSessions().length > 1) {
@@ -6008,7 +6013,7 @@
     if (note) box.appendChild(note);
     if (lockNote) box.appendChild(lockNote);
     refused.forEach((x) => box.appendChild(el("div", "export-note lr-warn", "Photo " + pad(x.order || 0) + ": the edited file is " + x.refused + ", but the session is " + (x.refusedWant || "another shape") +
-      ". It stays in the Edited folder and is not used. Fix the crop in Lightroom Classic and export it again.")));
+      ". It stays in the Edited folder and is not used. Fix the crop where it was edited (Lightroom Classic or Photoshop) and export or save it again.")));
     rows.appendChild(box);
 
     // Bloco Photoshop (protótipo "Photoshop no Export" aprovado pelo dono em 2026-11-12): uma foto por vez, a selecionada

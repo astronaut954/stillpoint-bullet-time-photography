@@ -1051,7 +1051,11 @@ etapas".**
    o acabamento final, depois dos ajustes não destrutivos do Lightroom (remover objetos, acrescentar elementos,
    corrigir defeitos); isso pesa no segundo protótipo: proteger o acabamento de um Export to Stillpoint posterior no
    Lightroom, e voltar do Photoshop para o Lightroom vira exceção. No Mac, com o Photoshop 2027, o dono aprovou em 2026-11-12 o salvamento e um TIFF com camadas (o resto da seção 45
-   segue pendente). Pendência anotada: o aviso do canto de baixo cobre o botão do bloco Photoshop enquanto aparece.
+   segue pendente). Pendência anotada: o aviso do canto de baixo cobre o botão do bloco Photoshop enquanto aparece. Pedidos do dono em 2026-11-12, depois de testar a sessão 1:1 (aprovada): (a) textos que só citavam o Lightroom
+   passam a valer para os dois programas: feito na branch (subtítulo do passo 2 Edit, motivos do Framing travado, nota
+   da trava no passo 1 com o caso "open in Photoshop", aviso Delete the edit or the photo?, linha da editada recusada);
+   a lixeira ainda diz "Lightroom Classic" nas editadas (selo "Lr"): em aberto; (b) a marca PS some depois do primeiro
+   salvamento e isso o confundiu: decisão pendente sobre o que a miniatura mostra depois de salvar.
    **Ideia do dono (2026-11-12), em estudo, sem decisão:** levar todas as fotos da sessão para o Photoshop num arquivo
    só, para editar e ver a sequência lá dentro (ajustes, elementos acrescentados) antes de voltar ao Stillpoint.
    Caminhos conversados: (a) camadas, uma por foto, com a animação da Timeline do Photoshop, e um comando do Stillpoint
