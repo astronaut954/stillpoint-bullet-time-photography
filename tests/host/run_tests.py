@@ -1458,7 +1458,7 @@ def scenario_photoshop(t, name, photos):
     opened = lambda: [l for l in open(os.path.join(t.data, "test-opened.txt")).read().splitlines() if "Photoshop" in l] if os.path.exists(os.path.join(t.data, "test-opened.txt")) else []
     toast = lambda: t.js("() => { const x = document.getElementById('toast'); return x.classList.contains('hidden') ? '' : x.querySelector('.toast-text').textContent; }")
     block = lambda: t.js("() => { const b = document.querySelector('#exportSettings .ps-block'); return b ? { state: (b.querySelector('.lr-state') || {}).textContent || '', buttons: [...b.querySelectorAll('.lr-actions button')].map(x => x.textContent.trim()), tip: !!b.querySelector('.lr-head .info-tip'), notes: b.querySelectorAll('.export-note').length } : null; }")
-    marks = lambda: t.js("() => [...document.querySelectorAll('#exportSettings .export-strip > li')].map(li => [...li.querySelectorAll('.frame-app')].map(b => b.textContent.trim()).join('+'))")
+    marks = lambda: t.js("() => [...document.querySelectorAll('#exportSettings .export-strip > li')].map(li => [...li.querySelectorAll('.frame-app')].map(b => b.querySelector('.edit-dot') ? b.textContent.trim().toLowerCase() : b.textContent.trim()).join('+'))")  # (âmbar em minúsculas, verde em maiúsculas)
     def pick(k):
         t.page.click("#exportSettings .export-strip > li:nth-child(%d)" % k)
         time.sleep(0.5)
@@ -1515,9 +1515,9 @@ def scenario_photoshop(t, name, photos):
     check(t, "... a 16-bit TIFF with a colour profile, the whole photo (As shot)", bool(info) and info[2] == 16 and info[3] > 100 and (info[0], info[1]) == (w0, h0), (info, (w0, h0)))
     t.wait(lambda: len(opened()) > before, 5)
     check(t, "... Photoshop is asked to open that file", len(opened()) > before and opened()[-1].endswith(os.path.basename(copy3)) and "Adobe Photoshop 2026.app" in opened()[-1], opened()[-1:] )
-    t.wait(lambda: "PS" in marks()[2], 8)
+    t.wait(lambda: "ps" in marks()[2], 8)
     b = block()
-    check(t, "... PS on the thumbnail, no ED: it is not an edited photo yet", marks()[2] == "PS" and t.session(s)["edited"] == 0, (marks(), t.session(s)["edited"]))
+    check(t, "... PS on the thumbnail, no ED: it is not an edited photo yet", marks()[2] == "ps" and t.session(s)["edited"] == 0, (marks(), t.session(s)["edited"]))
     check(t, "... the box says it waits for the save, with Open photo 03 again and Cancel", bool(b) and b["state"] == "Photo 03 sent to Photoshop · save there (⌘S) to bring it back" and b["buttons"] == ["Open photo 03 again", "Cancel"], b)
 
     # Cancel: a marca sai e a cópia é apagada
@@ -1528,13 +1528,13 @@ def scenario_photoshop(t, name, photos):
 
     # De novo, e agora o Photoshop salva
     ps_button("Edit photo 03 in Photoshop")
-    t.wait(lambda: os.path.exists(copy3) and "PS" in marks()[2], 10)
+    t.wait(lambda: os.path.exists(copy3) and "ps" in marks()[2], 10)
     save_as_photoshop(copy3, (40, 90, 200))
     said = t.wait(lambda: toast().startswith("Photo 03 edited in Photoshop") and toast(), 15)
     check(t, "saving in Photoshop: the toast says the photo was edited", bool(said), toast())
-    t.wait(lambda: marks()[2] == "PS+ED", 8)
+    t.wait(lambda: marks()[2] == "PS", 8)
     b = block()
-    check(t, "... ED on the thumbnail, with a still PS next to it (edited in Photoshop); the session counts 1 edited photo", marks()[2] == "PS+ED" and t.session(s)["edited"] == 1 and
+    check(t, "... ED on the thumbnail, with a still PS next to it (edited in Photoshop); the session counts 1 edited photo", marks()[2] == "PS" and t.session(s)["edited"] == 1 and
           t.js("() => { const b = document.querySelector('#exportSettings .export-strip > li:nth-child(3) .frame-app.ps-done'); return !!b && !b.classList.contains('live') && !b.querySelector('.edit-dot'); }"), (marks(), t.session(s)["edited"]))
     check(t, "... the box: Photo 03 edited in Photoshop, Edit photo 03 again in Photoshop", bool(b) and b["state"] == "Photo 03 edited in Photoshop" and b["buttons"] == ["Edit photo 03 again in Photoshop"], b)
     check(t, "... the Edited photos strip, above the two programs, counts it, has Revert to original… and the framing line", t.js("() => { const b = document.querySelector('#exportSettings .ed-strip'); return !!b && b.querySelector('.lr-title').textContent === 'Edited photos' && b.textContent.includes('1 of 4 photos edited') && [...b.querySelectorAll('button')].some(x => x.textContent.trim() === 'Revert to original…') && [...b.querySelectorAll('.export-note')].some(n => n.textContent.startsWith('Framing locked (')) && b.compareDocumentPosition(document.querySelector('#exportSettings .app-pair')) & Node.DOCUMENT_POSITION_FOLLOWING; }"))
@@ -1575,8 +1575,8 @@ def scenario_photoshop(t, name, photos):
     tr = t.js("async () => { const r = await window.trashList(); return (r.items || r.list || r).filter(x => x.editsOnly); }")
     check(t, "... Revert to original there reverts at once, and the trash knows the edit came from Photoshop", marks()[2] == "" and any(base3 in (x.get("psBases") or []) for x in tr), (marks(), [(x.get("bases"), x.get("psBases")) for x in tr]))
     t.undo()
-    t.wait(lambda: marks()[2] == "PS+ED", 10)
-    check(t, "... undo brings the Photoshop edit back", marks()[2] == "PS+ED", marks())
+    t.wait(lambda: marks()[2] == "PS", 10)
+    check(t, "... undo brings the Photoshop edit back", marks()[2] == "PS", marks())
     t.dismiss()
     t.lr_block_button("Edit in Lightroom Classic")
     asked = t.wait(lambda: t.dialog_title() == "Photo 03 stays out of Lightroom Classic", 6)
@@ -1586,9 +1586,9 @@ def scenario_photoshop(t, name, photos):
         t.dialog_click("Send as shot")
     t.wait(lambda: t.edit_tag(s), 15)
     t.dismiss_other()
-    t.wait(lambda: "LR" in marks()[0], 8)
-    check(t, "... the session goes without it: 3 photos in Lightroom Classic, photo 03 keeps PS and ED only", lrbox()["state"] == "In Lightroom Classic · 3 photos" and marks()[2] == "PS+ED" and "LR" in marks()[1] and lrbox()["note"] == "Photo 03 stays out: edited in Photoshop."
-          and len(t.lr.requests[-1]["photos"]) == 3 if hasattr(t.lr, "requests") and t.lr.requests else lrbox()["state"] == "In Lightroom Classic · 3 photos" and marks()[2] == "PS+ED", (lrbox(), marks()))
+    t.wait(lambda: "lr" in marks()[0], 8)
+    check(t, "... the session goes without it: 3 photos in Lightroom Classic, photo 03 keeps PS and ED only", lrbox()["state"] == "In Lightroom Classic · 3 photos" and marks()[2] == "PS" and "lr" in marks()[1] and lrbox()["note"] == "Photo 03 stays out: edited in Photoshop."
+          and len(t.lr.requests[-1]["photos"]) == 3 if hasattr(t.lr, "requests") and t.lr.requests else lrbox()["state"] == "In Lightroom Classic · 3 photos" and marks()[2] == "PS", (lrbox(), marks()))
     pick(1)
     ps_button("Edit photo 01 in Photoshop")
     asked = t.wait(lambda: t.dialog_title() == "Photo 01 is in Lightroom Classic", 6)
@@ -1604,8 +1604,8 @@ def scenario_photoshop(t, name, photos):
     # Salva no Photoshop: a foto sai do Lightroom
     time.sleep(1.2)
     save_as_photoshop(copy1, (90, 40, 160))
-    t.wait(lambda: marks()[0] == "PS+ED", 15)
-    check(t, "saving in Photoshop a photo that is in Lightroom: it leaves Lightroom (PS and ED, no LR; 2 photos there)", marks()[0] == "PS+ED" and lrbox()["state"] == "In Lightroom Classic · 2 photos" and lrbox()["note"] == "Photos 01, 03 stay out: edited in Photoshop.", (marks(), lrbox()))
+    t.wait(lambda: marks()[0] == "PS", 15)
+    check(t, "saving in Photoshop a photo that is in Lightroom: it leaves Lightroom (PS and ED, no LR; 2 photos there)", marks()[0] == "PS" and lrbox()["state"] == "In Lightroom Classic · 2 photos" and lrbox()["note"] == "Photos 01, 03 stay out: edited in Photoshop.", (marks(), lrbox()))
     t.dismiss()
     os.remove(copy1)
     t.wait(lambda: marks()[0] == "", 15)
@@ -1622,11 +1622,24 @@ def scenario_photoshop(t, name, photos):
     # O Lightroom exporta por cima da foto 03: a editada deixa de ser a do Photoshop, o PS parado sai
     t.lr.set_edit(os.path.join(o, files[2]), (20, 200, 30))
     t.lr.export(o, t.project, s)
-    t.wait(lambda: "ED" in marks()[2] and "PS" not in marks()[2], 15)
+    t.wait(lambda: marks()[2].upper() == "LR", 15)
     pick(3)
-    check(t, "a later Export to Stillpoint from Lightroom replaces the Photoshop edit: only ED stays", "ED" in marks()[2] and "PS" not in marks()[2] and block()["state"] == "", (marks(), block()))
+    check(t, "a later Export to Stillpoint from Lightroom replaces the Photoshop edit: only ED stays", marks()[2].upper() == "LR" and block()["state"] == "", (marks(), block()))
     t.lr_block_button("Done editing")
     time.sleep(1.5)
+    t.dismiss()
+    # Editada do Lightroom aberta e salva no Photoshop: a miniatura mostra os dois programas, em verde (sem ED)
+    check(t, "an edit from Lightroom shows a green LR on the thumbnail (no ED)", marks()[2] == "LR", marks())
+    lr_file = [f for f in os.listdir(edited_dir) if f.startswith(os.path.splitext(files[2])[0] + ".")]
+    pick(3)
+    ps_button("Edit photo 03 in Photoshop")
+    time.sleep(2.5)
+    if lr_file:
+        fp = os.path.join(edited_dir, lr_file[0])
+        im = Image.open(fp); size = im.size; fmt = im.format; im.close()
+        Image.new("RGB", size, (210, 40, 120)).save(fp, format=fmt)
+    t.wait(lambda: marks()[2] == "LR+PS", 15)
+    check(t, "... saved in Photoshop afterwards: green LR and green PS", marks()[2] == "LR+PS", (marks(), lr_file))
     t.dismiss()
 
     # Original RAW sem editada: não abre, explica e oferece o Lightroom
@@ -1673,7 +1686,7 @@ def scenario_photoshop(t, name, photos):
     t.wait(lambda: os.path.exists(sq), 10)
     info = tiff_info(sq) if os.path.exists(sq) else None
     check(t, "a 1:1 session: the working copy is already cut to the framing (square)", bool(info) and info[0] == info[1] and info[2] == 16, info)
-    t.wait(lambda: marks()[0] == "PS", 8)
+    t.wait(lambda: marks()[0] == "ps", 8)
     t.close_export()
     t.page.click("#saveBtn")
     t.wait(lambda: t.export_open(), 5)
@@ -1689,8 +1702,8 @@ def scenario_photoshop(t, name, photos):
     time.sleep(0.3)
     pick(1)
     save_as_photoshop(sq, (30, 160, 90))
-    t.wait(lambda: marks()[0] == "PS+ED", 15)
-    check(t, "... saved with the same shape: it is the edited photo", marks()[0] == "PS+ED" and t.session(s2)["edited"] == 1, marks())
+    t.wait(lambda: marks()[0] == "PS", 15)
+    check(t, "... saved with the same shape: it is the edited photo", marks()[0] == "PS" and t.session(s2)["edited"] == 1, marks())
     save_as_photoshop(sq, (30, 160, 90), size=(300, 200))
     t.wait(lambda: t.session(s2)["edited"] == 0, 15)
     check(t, "... saved with another shape (cut in Photoshop): refused, as any edited file", t.session(s2)["edited"] == 0 and bool(next((p for p in t.session(s2)["photos"] if p.get("refused")), None)), [p.get("refused") for p in t.session(s2)["photos"]])

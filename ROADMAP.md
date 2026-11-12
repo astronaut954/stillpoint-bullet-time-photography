@@ -1080,6 +1080,11 @@ etapas".**
    sessão e o selo Ps da lixeira). Etiquetas saindo da miniatura: protótipo https://claude.ai/artifact/R5J6LWvpTzKJ7GNyGrww1c,
    opção A aprovada em 2026-11-12 (uma linha, sem bolinha; pendente âmbar pulsando, resultado verde) e feita na branch
    só na fileira do passo 2 Edit, sem teste do dono; as miniaturas da tela principal continuam com a bolinha (em aberto).
+   Observações do dono ao testar (2026-11-12): o ED é redundante e não diz que o Lightroom editou; não faz sentido
+   indicar "aberto no Photoshop" (ponto encerrado: a etiqueta não volta a pulsar ao reabrir). Protótipo
+   https://claude.ai/artifact/Go5goUNgj2ykDPWGZFUFs2, forma Y aprovada: etiqueta por programa, verde = editada lá (LR,
+   PS ou os dois; `psLr` em session.json), âmbar = está lá agora; no Lightroom, só o LR âmbar. Feito na branch, sem
+   teste do dono.
    **Ideia do dono (2026-11-12), em estudo, sem decisão:** levar todas as fotos da sessão para o Photoshop num arquivo
    só, para editar e ver a sequência lá dentro (ajustes, elementos acrescentados) antes de voltar ao Stillpoint.
    Caminhos conversados: (a) camadas, uma por foto, com a animação da Timeline do Photoshop, e um comando do Stillpoint

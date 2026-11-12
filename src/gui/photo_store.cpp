@@ -998,17 +998,21 @@ std::map<std::string, PhotoStore::PsEntry> PhotoStore::PsPending(const std::stri
     return out;
 }
 
-bool PhotoStore::SetPsEdited(const std::string& session, const std::string& base, bool on) const
+bool PhotoStore::SetPsEdited(const std::string& session, const std::string& base, bool on, bool fromLightroom) const
 {
     const fs::path dir = SessionDir(session);
     if (dir.empty()) return false;
     JsonLite::Value info = ReadSessionInfo(dir);
     if (!info.isObject()) { if (!on) return true; info = JsonLite::Value::NewObject(); }
     std::set<std::string> items = ParsePsEdited(info.get("psEdited").asString());
-    if (on ? !items.insert(base).second : !items.erase(base)) return true;
-    std::string text;
-    for (const auto& b : items) text += (text.empty() ? "" : ";") + b;
-    info.set("psEdited", text);
+    // "psLr": as que já eram editadas do Lightroom quando o Photoshop salvou por cima (a miniatura mostra LR e PS)
+    std::set<std::string> lr = ParsePsEdited(info.get("psLr").asString());
+    const bool changed = on ? items.insert(base).second : items.erase(base) > 0;
+    const bool lrChanged = on ? (fromLightroom && lr.insert(base).second) : lr.erase(base) > 0;
+    if (!changed && !lrChanged) return true;
+    const auto join = [](const std::set<std::string>& set) { std::string text; for (const auto& b : set) text += (text.empty() ? "" : ";") + b; return text; };
+    info.set("psEdited", join(items));
+    info.set("psLr", join(lr));
     return WriteSessionInfoFile(dir, info);
 }
 
@@ -1312,6 +1316,7 @@ void PhotoStore::ReadSessions(const fs::path& base, bool inProject, std::vector<
         std::string alignLr;
         std::map<std::string, bool> psPending;  // cópias de trabalho do Photoshop: nome -> ainda como foi criada
         std::set<std::string> psEdited;         // nomes-base das editadas salvas pelo Photoshop
+        std::set<std::string> psLr;             // dessas, as que já eram editadas do Lightroom
         {
             const JsonLite::Value info = ReadSessionInfo(dir.path());
             if (inProject && !projectEdited.empty())
@@ -1319,6 +1324,7 @@ void PhotoStore::ReadSessions(const fs::path& base, bool inProject, std::vector<
                 for (const auto& [name, stamp] : ParsePsPending(info.get("psPending").asString()))
                     if (!PsWatch(stamp)) psPending[name] = FileStamp(projectEdited / session.name / name) == stamp;
                 psEdited = ParsePsEdited(info.get("psEdited").asString());
+                psLr = ParsePsEdited(info.get("psLr").asString());
             }
             if (inProject)
             {
@@ -1374,6 +1380,7 @@ void PhotoStore::ReadSessions(const fs::path& base, bool inProject, std::vector<
                         ++session.edited;
                         photo.edited = true;
                         photo.psEdited = psEdited.count(BaseName(photo.file)) > 0;
+                        photo.psLr = photo.psEdited && psLr.count(BaseName(photo.file)) > 0;
                     }
                 }
                 else

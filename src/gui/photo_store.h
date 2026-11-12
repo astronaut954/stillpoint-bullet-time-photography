@@ -24,6 +24,7 @@ struct StoredPhoto
     bool psOpen = false;
     // A editada foi salva pelo Photoshop (para o bloco Photoshop do Export dizer "edited in Photoshop")
     bool psEdited = false;
+    bool psLr = false;      // editada do Photoshop feita em cima de uma editada do Lightroom
 };
 
 // Item da lixeira (etapa 20): uma sessão inteira ou fotos de uma sessão, guardadas por 15 dias.
@@ -137,7 +138,8 @@ public:
     std::map<std::string, PsEntry> PsPending(const std::string& session) const;
     // Fotos (nome-base) cuja editada foi salva pelo Photoshop ("psEdited" em session.json). on = false: deixa de ser
     // (a editada foi trocada pelo Lightroom, ou saiu).
-    bool SetPsEdited(const std::string& session, const std::string& base, bool on) const;
+    // fromLightroom: o Photoshop salvou por cima de uma editada que veio do Lightroom ("psLr").
+    bool SetPsEdited(const std::string& session, const std::string& base, bool on, bool fromLightroom = false) const;
     bool WriteSessionInfo(const std::string& session, const std::string& jsonText) const;
     // Arquivo editado de uma foto (em Edited/<sessão>/, mesmo nome-base, o mais recente); vazio se não houver
     std::filesystem::path EditedFile(const std::string& session, const std::string& file) const;

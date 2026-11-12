@@ -851,7 +851,7 @@ namespace
                 const auto& photo = session.photos[i];
                 Json item("photo");
                 item.Add("file", photo.file).Add("order", photo.order)
-                    .Add("camera", photo.camera).Add("previewable", photo.previewable).Add("edited", photo.edited).Add("psOpen", photo.psOpen).Add("psEdited", photo.psEdited);
+                    .Add("camera", photo.camera).Add("previewable", photo.previewable).Add("edited", photo.edited).Add("psOpen", photo.psOpen).Add("psEdited", photo.psEdited).Add("psLr", photo.psLr);
                 if (!photo.refused.empty())
                     item.Add("refused", photo.refused).Add("refusedWant", photo.refusedWant);
                 photos += (i ? "," : "") + item.Str();
@@ -3067,7 +3067,13 @@ namespace
                             const bool there = std::filesystem::exists(store.ProjectEdited() / s.name / name, ec);
                             store.PsClear(s.name, name);
                             if (!there) continue;
-                            store.SetPsEdited(s.name, name.substr(0, name.rfind('.')), true);
+                            {
+                                // Arquivo que já era a editada (do Lightroom) quando foi aberto no Photoshop: passou pelos dois
+                                const std::string base = name.substr(0, name.rfind('.'));
+                                const bool fromLightroom = entry.watch && std::any_of(s.photos.begin(), s.photos.end(), [&](const StoredPhoto& p)
+                                    { return p.edited && !p.psEdited && p.file.substr(0, p.file.rfind('.')) == base; });
+                                store.SetPsEdited(s.name, base, true, fromLightroom);
+                            }
                             std::string number;
                             for (const auto& p : s.photos)
                                 if (p.file.substr(0, p.file.rfind('.')) == name.substr(0, name.rfind('.')))

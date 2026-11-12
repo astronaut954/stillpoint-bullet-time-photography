@@ -2058,9 +2058,11 @@ a explicação fica no **?** ao lado do título; o aviso âmbar e a linha do Fra
 - [x] Lixeira (**Trash**): a editada que veio do Photoshop aparece com **Ps** (e **Photoshop** no texto da linha; **PS**
       na miniatura), não com **Lr**; item com editadas dos dois programas aparece com **Ed**. Só vale para o que for
       apagado a partir desta versão (pedido do dono, 2026-11-12).
-- [ ] Etiquetas da miniatura no passo **2 Edit** (protótipo aprovado pelo dono em 2026-11-12, opção A): uma linha, sem a
-      bolinha; **LR** e **PS** mandada ficam âmbar e pulsam inteiras (com o programa fechado, âmbar apagado, sem
-      pulsar); **ED** e **PS** parado ficam verdes. Três etiquetas (**LR**, **PS**, **ED**) cabem na miniatura.
+- [ ] Etiquetas da miniatura no passo **2 Edit** (protótipos aprovados pelo dono em 2026-11-12: uma linha sem
+      bolinha, e etiquetas por programa, forma Y): o **ED** saiu. **Verde** = a foto foi editada lá (**LR**, **PS**, ou
+      **LR** e **PS** quando o Photoshop salvou por cima da editada do Lightroom). **Âmbar** = a foto está lá agora
+      (**LR** no Lightroom, pulsando com ele aberto; **PS** mandada e ainda não salva). Enquanto a foto está no
+      Lightroom, só o **LR** âmbar. Foto salva no Photoshop antes desta versão mostra só **PS**.
 - [x] Botão direito nessa foto, **Edit just this photo in Lightroom Classic**: janela **Photo 0n was edited in
       Photoshop**, com um **?** ao lado do título (a editada vai para a lixeira, ⌘Z traz de volta), **Cancel** e
       **Revert to original**, que já reverte, sem segunda janela (decisão do dono, 2026-11-12).

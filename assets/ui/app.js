@@ -5893,10 +5893,14 @@
         b.title = "Sent to Photoshop: save there to bring the edited photo here"; b.innerHTML = '<i class="edit-dot"></i>PS';
         corner.appendChild(b);
       }
-      // Marca parada = resultado (decisão do dono, 2026-11-12): ED, e PS ao lado enquanto a editada for do Photoshop.
-      // A que pulsa (acima) é só o pendente: mandada e ainda não salva.
-      if (editedFile(item) && photoOf(item).psEdited) { const b = el("span", "frame-app ps-done", "PS"); b.title = "Edited in Photoshop"; corner.appendChild(b); }
-      if (editedFile(item)) { const b = el("span", "frame-app ed", "ED"); b.title = photoOf(item).psEdited ? "Has an edited version (from Photoshop)" : "Has an edited version (from Lightroom Classic)"; corner.appendChild(b); }
+      // Etiquetas por programa (protótipo aprovado pelo dono em 2026-11-12, forma Y): o ED saiu. Verde = a foto foi
+      // editada lá (LR, PS, ou os dois quando o Photoshop salvou por cima da editada do Lightroom); âmbar (acima) = está
+      // lá agora. Enquanto a foto está no Lightroom, só o LR âmbar.
+      if (editedFile(item)) {
+        const ph = photoOf(item);
+        if ((!ph.psEdited || ph.psLr) && !inLr(item)) { const b = el("span", "frame-app ed", "LR"); b.title = "Edited in Lightroom Classic"; corner.appendChild(b); }
+        if (ph.psEdited) { const b = el("span", "frame-app ps-done", "PS"); b.title = "Edited in Photoshop"; corner.appendChild(b); }
+      }
       {
         // Editada com outra proporção: não é usada (a miniatura mostra a original, com o triângulo)
         const ph = session.photos.find((x) => x.file === item.file);
