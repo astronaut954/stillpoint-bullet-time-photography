@@ -1027,6 +1027,11 @@ etapas".**
 1. **Filtro na janela Project** (pedido em 2026-11-10). Não começado.
 2. **Photoshop, a parte que falta da etapa 20** (pedaço 4 da etapa: abrir uma foto por vez no Photoshop, aviso "no
    longer RAW", conflito de Desfazer). Não começado; o Lightroom Classic da mesma etapa está publicado desde a 2.18.0.
+   **Em andamento desde 2026-11-11 (decisões do dono, uma por vez):** o protótipo de 2026-11-05 é anterior à edição
+   dentro do Export, à trava do Framing e à conferência de proporção: refazer em cima da tela real antes de implementar.
+   (1) Como a foto volta do Photoshop: **cópia de trabalho e ⌘S** (o Stillpoint põe uma cópia TIFF em `Edited/` e abre
+   essa cópia; salvar no Photoshop traz a editada; nada é instalado no Photoshop). Limite conhecido: o Stillpoint não
+   revela RAW (só lê a prévia embutida), então original RAW sem editada do Lightroom não tem cópia de qualidade.
 
 - **Orientação do Aspect ratio: horizontal ou vertical (pedido em 2026-11-10; feito em 2026-11-11 na branch
   etapa-20-lightroom).** No passo 1 do Export, dois botões com ícone ao lado das proporções (protótipo "Orientação do
