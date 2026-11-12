@@ -1057,7 +1057,14 @@ etapas".**
    Caminhos conversados: (a) camadas, uma por foto, com a animação da Timeline do Photoshop, e um comando do Stillpoint
    dentro do Photoshop para devolver cada quadro; (b) folha com as fotos lado a lado num arquivo plano, que o
    Stillpoint recorta de volta a cada ⌘S, sem instalar nada; (c) continuar foto a foto, com a prévia do Stillpoint
-   tocando ao lado. Falta conferir o que o Photoshop 27 permite a um comando vindo de fora antes de desenhar.
+   tocando ao lado. Pesquisa de 2026-11-12 (documentação e fóruns da Adobe; nada testado na máquina do dono): o Photoshop aceita
+   comandos de fora por três vias: abrir um arquivo de script .jsx com ele (mostra um aviso de segurança; o
+   desligamento do aviso por arquivo de configuração é relatado como falho em versões recentes), AppleScript no Mac e
+   COM no Windows (vias oficiais, com relatos de falha no Photoshop 2025 sem resposta da Adobe), e um plugin UXP
+   instalado no Photoshop (a via moderna; sem interface oficial para a Timeline). A Adobe diz não ter planos de tirar
+   os scripts .jsx (página de 2021). Criar a animação por script: "makeFrameAnimation" é confirmado em fórum; "Make
+   Frames From Layers" por script não foi confirmado. Um relato de bug diz que abrir um script .psjs de fora não roda
+   no Photoshop 27.10 no Windows. Conclusão: viável em princípio, mas só um experimento no Photoshop do dono confirma.
    Segundo protótipo, depois: foto
    editada no Photoshop indo para o Lightroom ("no longer RAW") e o conflito de Desfazer.
 
