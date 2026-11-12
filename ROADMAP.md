@@ -1065,6 +1065,11 @@ etapas".**
    os scripts .jsx (página de 2021). Criar a animação por script: "makeFrameAnimation" é confirmado em fórum; "Make
    Frames From Layers" por script não foi confirmado. Um relato de bug diz que abrir um script .psjs de fora não roda
    no Photoshop 27.10 no Windows. Conclusão: viável em princípio, mas só um experimento no Photoshop do dono confirma.
+   **Decisão do dono (2026-11-12): arquivada como ideia anotada.** Ficaria menos amigável que o fluxo do Lightroom
+   (aviso de segurança ou instalação manual, comando para lembrar na volta, documento que quebra se as camadas forem
+   mexidas, arquivo de mais de 1 GB). O fluxo de uma foto por vez com ⌘S continua, com a prévia do Stillpoint tocando
+   ao lado. Melhorias possíveis desse fluxo, a avaliar depois: abrir várias fotos de uma vez no Photoshop (cada uma
+   no seu documento) e a prévia atualizar mais rápido depois do ⌘S.
    Segundo protótipo, depois: foto
    editada no Photoshop indo para o Lightroom ("no longer RAW") e o conflito de Desfazer.
 
