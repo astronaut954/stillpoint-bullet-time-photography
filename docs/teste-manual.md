@@ -2055,6 +2055,9 @@ a explicação fica no **?** ao lado do título; o aviso âmbar e a linha do Fra
       as fotos protegidas mudarem.
 - [x] A bolinha ao lado de **In Lightroom Classic · n photos** fica apagada como a das miniaturas e só acende quando
       pulsa (pedido do dono, 2026-11-12).
+- [ ] Lixeira (**Trash**), item com editadas dos dois programas (pedido do dono, 2026-11-13): a linha **Ed** (**Lightroom
+      Classic and Photoshop**) e, embaixo dela, uma linha por programa (**Lr** e **Ps**), cada uma com as miniaturas das
+      fotos dela. O **Restore** e o **···** ficam só na linha de cima.
 - [x] Lixeira (**Trash**): a editada que veio do Photoshop aparece com **Ps** (e **Photoshop** no texto da linha; **PS**
       na miniatura), não com **Lr**; item com editadas dos dois programas aparece com **Ed**. Só vale para o que for
       apagado a partir desta versão (pedido do dono, 2026-11-12).

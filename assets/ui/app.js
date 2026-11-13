@@ -10342,7 +10342,7 @@
     fullTrashOpenBtn.title = b.title; fullTrashOpenBtn.setAttribute("aria-label", b.title);
     if ($("trashOverlay") && !$("trashOverlay").classList.contains("hidden")) renderTrash();
   }
-  const trashRoving = makeRoving({ root: () => $("trashList"), rows: (r) => [...r.querySelectorAll("li.trash-row")], id: (row) => row.dataset.id });
+  const trashRoving = makeRoving({ root: () => $("trashList"), rows: (r) => [...r.querySelectorAll("li.trash-row:not(.part)")], id: (row) => row.dataset.id });
   function agoText(seconds) {
     const days = Math.floor(seconds / 86400);
     if (days >= 1) return days === 1 ? "yesterday" : days + " days ago";
@@ -10473,12 +10473,11 @@
           // Miniaturas: cada foto do item (selo LR quando a editada foi junto); a editada apagada sozinha antes
           // fica listrada, com o selo LR
           const edits = tree.filter((n) => n.under === item.id && compactEdit(n) && !n.item.restored);
-          if (!item.isProject && !item.restored) {
+          // Editadas dos dois programas no mesmo item: a linha "Ed" e, embaixo dela, uma linha por programa, com as
+          // miniaturas (pedido do dono, 2026-11-13)
+          const mixedApps = !!item.editsOnly && psSome && !psAll && !item.restored;
+          const thumbStrip = (thumbs) => {
             const strip = el("span", "dthumbs");
-            const thumbs = [];
-            const withEdit = new Set(item.editsOnly ? [] : item.editBases || []);
-            bases.forEach((b) => thumbs.push({ base: b, edited: !!item.editsOnly, badge: item.editsOnly || withEdit.has(b), striped: !!item.editsOnly, id: item.id, ps: psSet.has(b) }));
-            edits.forEach((n) => (n.item.bases || []).slice().sort().forEach((b) => thumbs.push({ base: b, edited: true, badge: true, striped: true, id: n.item.id, ps: (n.item.psBases || []).includes(b) })));
             const MAX = 4;
             thumbs.slice(0, MAX).forEach((t) => {
               const d = el("span", "dt" + (t.striped ? " edit" : ""));
@@ -10492,7 +10491,16 @@
                 }).catch(() => {});
             });
             if (thumbs.length > MAX) strip.appendChild(el("span", "dt more", "+" + (thumbs.length - MAX)));
-            if (thumbs.length) { strip.setAttribute("aria-label", plural(thumbs.length, "photo", "photos") + " in this item"); li.appendChild(strip); }
+            strip.setAttribute("aria-label", plural(thumbs.length, "photo", "photos") + " in this item");
+            return strip;
+          };
+          const editThumb = (b) => ({ base: b, edited: true, badge: true, striped: true, id: item.id, ps: psSet.has(b) });
+          if (!item.isProject && !item.restored && !mixedApps) {
+            const thumbs = [];
+            const withEdit = new Set(item.editsOnly ? [] : item.editBases || []);
+            bases.forEach((b) => thumbs.push({ base: b, edited: !!item.editsOnly, badge: item.editsOnly || withEdit.has(b), striped: !!item.editsOnly, id: item.id, ps: psSet.has(b) }));
+            edits.forEach((n) => (n.item.bases || []).slice().sort().forEach((b) => thumbs.push({ base: b, edited: true, badge: true, striped: true, id: n.item.id, ps: (n.item.psBases || []).includes(b) })));
+            if (thumbs.length) li.appendChild(thumbStrip(thumbs));
           }
           if (!item.restored) {
             const below = descendants(item.id).filter((n) => !n.item.restored);
@@ -10537,6 +10545,21 @@
             li.appendChild(more);
           }
           list.appendChild(li);
+          if (mixedApps) {
+            [false, true].forEach((ps) => {
+              const mine = bases.filter((x) => psSet.has(x) === ps);
+              if (!mine.length) return;
+              const sub = el("li", "trash-row drow part lvl" + Math.min(4, level + 1));
+              const seal = el("span", "trash-kind"); seal.appendChild(el("span", "trash-app lr", ps ? "Ps" : "Lr")); seal.title = "Edited photos from " + (ps ? "Photoshop" : "Lightroom Classic");
+              sub.appendChild(seal);
+              const m = el("div", "trash-main dmain");
+              m.appendChild(el("b", "", mine.length === 1 && num(mine[0]) ? "Edit of photo " + num(mine[0]) : plural(mine.length, "edit", "edits")));
+              m.appendChild(el("small", "", ps ? "Photoshop" : "Lightroom Classic"));
+              sub.appendChild(m);
+              sub.appendChild(thumbStrip(mine.map(editThumb)));
+              list.appendChild(sub);
+            });
+          }
         });
       });
       trashRoving.apply();
