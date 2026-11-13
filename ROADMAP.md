@@ -30,6 +30,24 @@ Manter esta lista em dia sempre que algo entrar, sair ou for publicado.
 | 25 | Modo caixa de disparo (sempre a última) | não começada; depende do protótipo de hardware |
 | depois | Rig distribuído por rede | só com o projeto maduro |
 
+**Pedidos novos, ainda sem lugar na ordem (o dono decide onde entram)**
+
+- **Cena 3D entre as câmeras (Gaussian splat), como complemento** (pedido do dono, 2026-11-13; "bem importante"): além
+  dos quadros de cada câmera, uma cena 3D de verdade, que pode ser vista de ângulos entre as câmeras. Não substitui
+  o bullet time por quadros. Referência: a aba Splat do Xangle Camera Server (painéis Presets, Playback, Global
+  offsets, Keyframes, Anchors, Crop, Layers, Constellation, Effects, Render e o botão Train splat). O dono quer
+  explorar esses controles para separar o que é interessante, o que é viável e o que é descartável. Depende do mesmo
+  cálculo da etapa 21 (a posição de cada câmera no espaço).
+- **Estudo do Xangle Camera Server como referência (benchmark)** (pedido do dono, 2026-11-13):
+  https://xangleapps.com/cameraserver e https://www.youtube.com/watch?v=HzYZqFZ5kDk (vídeo não assistido pelo
+  assistente: sem acesso). Conferido nas páginas deles em 2026-11-13: o alinhamento deles produz deslocar X/Y, girar
+  e zoom (os mesmos quatro valores do Align photos); calibração por uma foto com uma haste no centro, que vira uma
+  "receita" reutilizável; interpolação entre câmeras no bullet time pelo Topaz Video AI (programa pago à parte);
+  splats numa produção de 48 câmeras num arco de ~120°, treinados com RealityScan + Postshot e, desde novembro de
+  2026, com o Spirula (aberto); limites que eles relatam: fundo escuro gera sujeira, superfície reflexiva fica
+  translúcida, ângulos fora do arco se desfazem, e uma fileira só limita os pontos de vista. Outras features deles
+  para avaliar: marca d'água e vinheta automáticas, LUT, chromakey, estação de compartilhamento, zonas de câmeras.
+
 **Features menores, sem número (seção "Futuro")**
 
 - Filtro na janela Project.
