@@ -23,10 +23,10 @@ Manter esta lista em dia sempre que algo entrar, sair ou for publicado.
 
 | Etapa | Feature | Situação |
 | --- | --- | --- |
-| 21 | Bullet time com celulares (Android e iPhone) | em estudo desde 2026-11-13 (caminhos e limites); decisões do dono pendentes |
-| 22 | Histórico de edição permanente, por projeto | não começada; decisões do dono pendentes |
-| 23 | Outras marcas de câmera (Sony, Nikon; pesquisar a libgphoto2) | não começada; precisa de câmera para testar |
-| 24 | Alinhamento automático das fotos | não começada; a estudar; decisões do dono pendentes |
+| 21 | Alinhamento automático das fotos | iniciada em 2026-11-13 (estudo); decisões do dono pendentes |
+| 22 | Outras marcas de câmera (Sony, Nikon; pesquisar a libgphoto2) | não começada; precisa de câmera para testar |
+| 23 | Histórico de edição permanente, por projeto | não começada; decisões do dono pendentes |
+| 24 | Bullet time com celulares (Android e iPhone) | estudada em 2026-11-13 e adiada pelo dono (muito custosa); decisões pendentes |
 | 25 | Modo caixa de disparo (sempre a última) | não começada; depende do protótipo de hardware |
 | depois | Rig distribuído por rede | só com o projeto maduro |
 
@@ -910,41 +910,7 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    ajustado); sai quando a foto vai de novo ao Lightroom sem editada.
    Feito em 2026-11-06: bolinha âmbar pulsando nas miniaturas e na prévia grande das fotos que estão no Lightroom;
    a coleção do Lightroom refeita na ordem do Stillpoint quando uma foto volta; Delete edits e o ⌘Z dele em fila, na ordem.
-6. **Etapa 21 — Bullet time com celulares (Android e iPhone).** (O dono trocou a ordem com o histórico em 2026-11-13: os celulares vêm antes.) Pedido do dono (2026-11-01): usar
-   celulares como câmeras do rig, junto ou no lugar das Canon. Um app companheiro no celular (ou a
-   página Live servida na rede local, se a câmera do navegador bastar) recebe o plano de disparo do
-   Stillpoint pelo Wi-Fi, dispara no instante combinado e manda a foto de volta; o Stillpoint trata o
-   celular como mais uma câmera (ordem, Identify, sessão, exportação). Decisões pendentes do dono:
-   app nativo ou navegador; sincronia de relógio aceitável entre os aparelhos; se a foto volta em
-   JPEG/HEIC ou também em RAW (DNG) nos aparelhos que permitem; mistura com as Canon na mesma sessão.
-   Depende de medir a precisão de disparo pela rede antes de desenhar a interface.
-   **Objetivo dito pelo dono (2026-11-13):** bullet time acessível, com os celulares que a pessoa já tem, porque várias
-   câmeras profissionais custam caro. Ideia dele: o Stillpoint cria um servidor na rede local e os celulares entram
-   por um endereço (QR Code na tela, com o endereço embaixo), sem loja de aplicativos. Em estudo: limites, bônus e
-   ônus desse caminho e dos outros (app nativo, vídeo sincronizado, cabo), antes de qualquer decisão. Conferido em
-   2026-11-13: a câmera pelo navegador só funciona em página segura (HTTPS ou localhost), não em http://192.168...;
-   o programa de desenvolvedor da Apple custa US$ 99 por ano e sem ele não há App Store nem TestFlight.
-7. **Etapa 22 — Histórico de edição permanente.** Pedido do dono (2026-11-01): um histórico no estilo
-   do painel History do Lightroom Classic, **vinculado ao projeto** (o projeto faz o papel do catálogo
-   do Classic: o histórico mora na pasta dele, vai junto se a pasta for movida e só existe com um
-   projeto aberto; sessões fora de projeto ficam só com o Desfazer de hoje), organizado por sessão e
-   sobrevivendo ao fechar o app: cada ação (entrar/sair do projeto, ordem das fotos, apagar/restaurar, rótulo, exportação) vira
-   um passo com data; dá para voltar a qualquer passo, não só ao último (o Desfazer de hoje vive só
-   na memória da sessão aberta). Decisões pendentes do dono: onde aparece (janela Project, botão
-   direito da sessão, painel próprio), se voltar a um passo cria um passo novo (como no Lightroom) ou
-   apaga os seguintes, e o que fica fora (ex.: mudanças de câmera).
-8. **Etapa 23 — Outras marcas de câmera (Sony, Nikon).** Posta como etapa pelo dono em 2026-11-11 (antes estava em
-   "Futuro"). Viável marca a marca, com câmera para testar. Sony (site oficial, conferido em 2026-10-15): SDK
-   gratuito, Windows 11 x64 e macOS 14.1+, cerca de 35 modelos recentes (α1, α9 II/III, α7 IV/V, α7R IV/V, α7S III,
-   α7C/C II/CR, α6700, FX3/FX30/FX2, ZV-E1, ZV-E10 II...); modelos antigos comuns (a6000 a a6600, α7 III) ficam de
-   fora; exige o firmware mais recente. A lista exata de configurações por modelo está no manual do SDK (não lido).
-   Nikon (site oficial, conferido em 2026-10-15): um SDK por modelo (D300 a D850, Df, Z5, Z6/6 II, Z7/7 II, Z8, Z9;
-   Z6 III e Z50 II não aparecem). **O SDK de controle remoto só controla uma câmera por vez** — bloqueia o bullet
-   time com várias Nikon. No Mac com Apple Silicon, os módulos rodam pelo Rosetta 2 (o Stillpoint é só Apple
-   Silicon: precisaria de um programa auxiliar). Junto: **Pesquisar a libgphoto2** (biblioteca aberta, várias
-   marcas via PTP/USB) como alternativa a um SDK por marca. Pontos a verificar: suporte no Windows e precisão do
-   disparo sincronizado.
-9. **Etapa 24 — Alinhamento automático das fotos** (posta aqui pelo dono em 2026-11-11: é etapa do roadmap, não
+6. **Etapa 21 — Alinhamento automático das fotos** (ordem do dono em 2026-11-13: 21 alinhamento, 22 outras marcas, 23 histórico, 24 celulares, 25 caixa; iniciada nesse dia. Posta como etapa pelo dono em 2026-11-11: é etapa do roadmap, não
    pedido solto; a estudar). Referência do dono: o Xangle Camera Server
    ("Easy camera alignment for bullet-time photography - no calibration bar required!",
    https://www.youtube.com/watch?v=eYGbaLTg2-8). O que o vídeo e a descrição dizem: 8 Canon SL1; uma primeira foto é
@@ -958,6 +924,45 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    Rotate). Decisões pendentes do dono antes de qualquer desenho: rodar no computador ou em servidor; o que fazer em
    cena sem textura (fundo liso), onde esse cálculo falha; e se vale começar por uma versão mais simples (a pessoa
    marca o mesmo ponto em cada foto).
+7. **Etapa 22 — Outras marcas de câmera (Sony, Nikon).** Posta como etapa pelo dono em 2026-11-11 (antes estava em
+   "Futuro"). Viável marca a marca, com câmera para testar. Sony (site oficial, conferido em 2026-10-15): SDK
+   gratuito, Windows 11 x64 e macOS 14.1+, cerca de 35 modelos recentes (α1, α9 II/III, α7 IV/V, α7R IV/V, α7S III,
+   α7C/C II/CR, α6700, FX3/FX30/FX2, ZV-E1, ZV-E10 II...); modelos antigos comuns (a6000 a a6600, α7 III) ficam de
+   fora; exige o firmware mais recente. A lista exata de configurações por modelo está no manual do SDK (não lido).
+   Nikon (site oficial, conferido em 2026-10-15): um SDK por modelo (D300 a D850, Df, Z5, Z6/6 II, Z7/7 II, Z8, Z9;
+   Z6 III e Z50 II não aparecem). **O SDK de controle remoto só controla uma câmera por vez** — bloqueia o bullet
+   time com várias Nikon. No Mac com Apple Silicon, os módulos rodam pelo Rosetta 2 (o Stillpoint é só Apple
+   Silicon: precisaria de um programa auxiliar). Junto: **Pesquisar a libgphoto2** (biblioteca aberta, várias
+   marcas via PTP/USB) como alternativa a um SDK por marca. Pontos a verificar: suporte no Windows e precisão do
+   disparo sincronizado.
+8. **Etapa 23 — Histórico de edição permanente.** Pedido do dono (2026-11-01): um histórico no estilo
+   do painel History do Lightroom Classic, **vinculado ao projeto** (o projeto faz o papel do catálogo
+   do Classic: o histórico mora na pasta dele, vai junto se a pasta for movida e só existe com um
+   projeto aberto; sessões fora de projeto ficam só com o Desfazer de hoje), organizado por sessão e
+   sobrevivendo ao fechar o app: cada ação (entrar/sair do projeto, ordem das fotos, apagar/restaurar, rótulo, exportação) vira
+   um passo com data; dá para voltar a qualquer passo, não só ao último (o Desfazer de hoje vive só
+   na memória da sessão aberta). Decisões pendentes do dono: onde aparece (janela Project, botão
+   direito da sessão, painel próprio), se voltar a um passo cria um passo novo (como no Lightroom) ou
+   apaga os seguintes, e o que fica fora (ex.: mudanças de câmera).
+9. **Etapa 24 — Bullet time com celulares (Android e iPhone).** (Adiada pelo dono em 2026-11-13, depois do estudo: muito custosa; fica antes do modo caixa.) Pedido do dono (2026-11-01): usar
+   celulares como câmeras do rig, junto ou no lugar das Canon. Um app companheiro no celular (ou a
+   página Live servida na rede local, se a câmera do navegador bastar) recebe o plano de disparo do
+   Stillpoint pelo Wi-Fi, dispara no instante combinado e manda a foto de volta; o Stillpoint trata o
+   celular como mais uma câmera (ordem, Identify, sessão, exportação). Decisões pendentes do dono:
+   app nativo ou navegador; sincronia de relógio aceitável entre os aparelhos; se a foto volta em
+   JPEG/HEIC ou também em RAW (DNG) nos aparelhos que permitem; mistura com as Canon na mesma sessão.
+   Depende de medir a precisão de disparo pela rede antes de desenhar a interface.
+   **Objetivo dito pelo dono (2026-11-13):** bullet time acessível, com os celulares que a pessoa já tem, porque várias
+   câmeras profissionais custam caro. Ideia dele: o Stillpoint cria um servidor na rede local e os celulares entram
+   por um endereço (QR Code na tela, com o endereço embaixo), sem loja de aplicativos. Em estudo: limites, bônus e
+   ônus desse caminho e dos outros (app nativo, vídeo sincronizado, cabo), antes de qualquer decisão. Conferido em
+   2026-11-13: a câmera pelo navegador só funciona em página segura (HTTPS ou localhost), não em http://192.168...;
+   o programa de desenvolvedor da Apple custa US$ 99 por ano e sem ele não há App Store nem TestFlight.
+   **Estudo de 2026-11-13 (resumo):** caminhos: página no navegador (sem loja; exige HTTPS; menos qualidade e
+   controle), app nativo (qualidade e sincronia melhores; iPhone previsível, Android por lista de compatibilidade,
+   porque o fabricante expõe só parte da câmera aos apps), vídeo sincronizado por um sinal comum, Android por cabo
+   (descartado). Estimativa, não medida: 3 a 5 semanas de conversa para a página completa, 2 a 3 meses para os dois
+   apps. Recomendação registrada: medir primeiro com uma página de teste (resolução, controles, diferença de tempo).
 10. **Etapa 25 — modo caixa de disparo (sempre a última).** O app usa a caixa (ESP32 + um canal
    por câmera, já desenhada em `docs/hardware/caixa-de-disparo.pdf` e `hardware/trigger-box/`)
    para disparar: o plano do Timing/Sweep vai para a caixa (PLAN/GO), que dispara com precisão
@@ -1027,7 +1032,7 @@ Junto com essas etapas (sem etapa própria):
 ## Futuro (não planejado ainda)
 
 **Pedidos em aberto, na ordem em que foram anotados (lista pedida pelo dono em 2026-11-11; o detalhe de cada um está
-mais abaixo ou na etapa indicada). O alinhamento automático das fotos não é pedido solto: é a etapa 24, em "Próximas
+mais abaixo ou na etapa indicada). O alinhamento automático das fotos não é pedido solto: é a etapa 21, em "Próximas
 etapas".**
 
 1. **Filtro na janela Project** (pedido em 2026-11-10). Não começado.
