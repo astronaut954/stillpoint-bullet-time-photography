@@ -986,7 +986,14 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    alinhamento (continua só para cor; o trabalho no detector dela fica cancelado) e cartela dobrada ou cubo (reavaliar
    se aparecer a necessidade de posição das câmeras em estúdio liso). Nota: "caminho do Xangle" foi um nome ruim do
    assistente; o Xangle usa a haste para mirar as câmeras e não diz como calcula. O cálculo pela cena roda no
-   computador (medido), sem nuvem. Pendentes do dono: como são as marcas da haste e a tela.
+   computador (medido), sem nuvem.
+   **Marcas da haste (ideia do dono, 2026-11-13):** em vez de exigir uma marca, o app traz uma lista de objetos
+   recomendados e ilustra como usar cada um. Para a detecção servir a todos: a pessoa clica nas duas marcas numa
+   foto e o app procura nas outras; ela confere e corrige. Medido na cena virtual (quarta rodada do estudo): achou
+   todas as câmeras com fita e bolas de cor viva (estúdio, lugar com detalhe, ruído, 5 m, 360°); a faixa impressa
+   perdeu câmeras muito giradas, com confiança baixa (dá para recusar); fita de pouco contraste falhou em lugar com
+   detalhe sem dar sinal. Precisão ainda fraca: 4 a 8 px de erro médio em fotos de 2400 px (falta centralizar o
+   ponto na marca). Pendente do dono: a tela (protótipo).
 7. **Etapa 22 — Outras marcas de câmera (Sony, Nikon).** Posta como etapa pelo dono em 2026-11-11 (antes estava em
    "Futuro"). Viável marca a marca, com câmera para testar. Sony (site oficial, conferido em 2026-10-15): SDK
    gratuito, Windows 11 x64 e macOS 14.1+, cerca de 35 modelos recentes (α1, α9 II/III, α7 IV/V, α7R IV/V, α7S III,

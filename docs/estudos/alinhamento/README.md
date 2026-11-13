@@ -46,3 +46,20 @@ ou para pegar a parte de trás a definir depois. `solve_chart.py` usa o `Chart::
 - Com as marcas três vezes maiores na foto (o que o detector veria se procurasse na foto inteira de 6000 px em vez de
   reduzi-la para 2000 px, ou com a cartela impressa maior), achou todas as câmeras até 60° de lado, a 3 m e a 5 m,
   também com ruído e desfoque. A 80° de lado não acha: é o limite de um objeto plano.
+
+## Quarta rodada (2026-11-13): haste com duas marcas, clicar numa foto e achar nas outras
+
+Decisão do dono: haste com duas marcas mais marcação na tela; o app mostra uma lista de objetos recomendados em vez
+de exigir uma marca só. `pole_demo.py` gera a simulação visual da haste. `find_marks.py` procura, nas outras fotos,
+as duas marcas que a pessoa clicou numa foto (semelhança em cor, vários tamanhos e giros, par coerente, ajuste fino).
+`matrix5.py` / `matrix5.json`, fotos de 2400 px de largura, clique com alguns pixels de erro:
+
+- Achou todas as câmeras com fita laranja e com bolas laranja, em estúdio liso e em lugar com muito detalhe, com
+  ruído, desfoque e cor diferente entre câmeras, a 5 m e com 18 câmeras em volta inteira.
+- Faixa impressa de anéis: achou 7 de 8 e 8 de 8; com erros de montagem grandes (câmeras muito giradas), 6 de 8. As
+  erradas saíram com confiança baixa (0,44 contra 0,69 ou mais das certas): dá para recusar.
+- Fita cinza-clara, de pouco contraste: 7 de 8 em estúdio liso e só 2 de 8 em lugar com detalhe, e as erradas saíram
+  com confiança igual à das certas: não dá para recusar sozinho.
+- Precisão: erro médio de 4 a 8 px e máximo perto de 10 px (0,2% a 0,4% da largura da foto). Com as marcas a 0,6 m
+  uma da outra, 8 px equivalem a cerca de 0,8° de giro e 1,4% de tamanho. É pior que a cartela e que o cálculo pela
+  cena (abaixo de 1 px). Falta um passo que centralize o ponto na marca; não feito.
