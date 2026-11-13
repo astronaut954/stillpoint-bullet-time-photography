@@ -38,6 +38,11 @@ Manter esta lista em dia sempre que algo entrar, sair ou for publicado.
   offsets, Keyframes, Anchors, Crop, Layers, Constellation, Effects, Render e o botão Train splat). O dono quer
   explorar esses controles para separar o que é interessante, o que é viável e o que é descartável. Depende do mesmo
   cálculo da etapa 21 (a posição de cada câmera no espaço).
+- **Interpolação entre câmeras (quadros intermediários entre uma câmera e a seguinte)** (registrado a pedido do
+  dono, 2026-11-13): o Xangle usa o Topaz Video AI, pago à parte. Explorar, no lugar dele: (1) um modelo aberto
+  rodando no computador (por exemplo os de interpolação de quadros publicados no Hugging Face); (2) uma integração
+  por API em que o custo fica inteiro com o usuário (ele põe a própria chave). A estudar: qualidade com câmeras
+  afastadas, licença de cada modelo, tamanho, necessidade de placa de vídeo e tempo por sessão.
 - **Estudo do Xangle Camera Server como referência (benchmark)** (pedido do dono, 2026-11-13):
   https://xangleapps.com/cameraserver e https://www.youtube.com/watch?v=HzYZqFZ5kDk (vídeo não assistido pelo
   assistente: sem acesso). Conferido nas páginas deles em 2026-11-13: o alinhamento deles produz deslocar X/Y, girar
