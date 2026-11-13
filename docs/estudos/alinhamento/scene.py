@@ -25,7 +25,7 @@ def look_at(pos, target, up=np.array([0, 0, 1.0]), roll=0.0):
     return Rz @ R
 
 CHART_IMG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "chart-only.jpg")
-def quads(rng, plain_walls=False, plain_subject=False, chart=0.0):
+def quads(rng, plain_walls=False, plain_subject=False, chart=0.0, pole=False, subject=True):
     """Lista de (4 cantos 3D, textura). Tudo em ladrilhos pequenos para o recorte atrás da câmera ser simples."""
     out = []
     def plane(o, u, v, nu, nv, tex, front=0):
@@ -48,7 +48,14 @@ def quads(rng, plain_walls=False, plain_subject=False, chart=0.0):
         plane(A(x0, y0, z0), A(0, d, 0), A(0, 0, h), 2, 4, T())
         plane(A(x1, y0, z0), A(0, d, 0), A(0, 0, h), 2, 4, T())
         plane(A(x0, y0, z0 + h), A(w, 0, 0), A(0, d, 0), 2, 2, T())
-    box(0, 0, 0.5, 0.35, 1.7, flat=plain_subject)            # o "sujeito" no centro
+    if subject: box(0, 0, 0.5, 0.35, 1.7, flat=plain_subject)            # o "sujeito" no centro
+    if pole:
+        # Haste em pé no centro, com duas marcas (a 0,7 m e a 1,3 m do chão)
+        tex = np.full((1024, 64, 3), 235, np.uint8)
+        for z in (0.7, 1.3):
+            r = int(z / 1.8 * 1024); tex[r - 20:r + 20] = (0, 120, 255)
+        for (o, u) in ((A(-0.02, -0.02, 0), A(0.04, 0, 0)), (A(-0.02, 0.02, 0), A(0.04, 0, 0)), (A(-0.02, -0.02, 0), A(0, 0.04, 0)), (A(0.02, -0.02, 0), A(0, 0.04, 0))):
+            plane(o, u, A(0, 0, 1.8), 1, 6, tex, front=1)
     if chart:
         # A cartela do Stillpoint (A4 deitado; chart = 1.41 para A3), em pé na frente do sujeito, virada para o meio do arco
         w, h = 0.297 * chart, 0.210 * chart
@@ -78,12 +85,13 @@ def render(K, R, C, W, H, qs):
         roi = img[y0c:y1c, x0c:x1c]; roi[mask > 0] = patch[mask > 0]
     return img
 
-def make(out, n=9, arc=120.0, radius=3.0, seed=1, err=1.0, plain=False, W=1500, H=1000, plain_subject=False, k1=0.0, noise=6, blur=0.0, gain=0.0, focal_var=0.0, dark=1.0, chart=0.0):
+def make(out, n=9, arc=120.0, radius=3.0, seed=1, err=1.0, plain=False, W=1500, H=1000, plain_subject=False, k1=0.0, noise=6, blur=0.0, gain=0.0, focal_var=0.0, dark=1.0, chart=0.0, pole=False, subject=True, soft=False):
     """k1: distorção de lente (barril < 0); noise: ruído; blur: desfoque (px); gain: variação de exposição e cor entre
     câmeras; focal_var: variação da distância focal entre câmeras (lentes diferentes); dark: 1 = normal, 0.25 = pouca luz."""
     rng = np.random.default_rng(seed)
     os.makedirs(out, exist_ok=True)
-    qs = quads(rng, plain, plain_subject, chart)
+    qs = quads(rng, plain, plain_subject, chart, pole, subject)
+    rng = np.random.default_rng(seed + 1000)   # (os erros das câmeras não dependem do que há na cena)
     f0 = 0.5 * W / np.tan(np.radians(22.5))
     pivot = np.array([0, 0, 1.0]); cams = []
     for i in range(n):
