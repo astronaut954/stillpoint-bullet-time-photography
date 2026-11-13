@@ -23,7 +23,7 @@ Manter esta lista em dia sempre que algo entrar, sair ou for publicado.
 
 | Etapa | Feature | Situação |
 | --- | --- | --- |
-| 21 | Alinhamento automático das fotos | iniciada em 2026-11-13 (estudo); decisões do dono pendentes |
+| 21 | Alinhamento automático das fotos | em andamento desde 2026-11-13: haste com duas marcas + marcação na tela agora; pela cena depois |
 | 22 | Outras marcas de câmera (Sony, Nikon; pesquisar a libgphoto2) | não começada; precisa de câmera para testar |
 | 23 | Histórico de edição permanente, por projeto | não começada; decisões do dono pendentes |
 | 24 | Bullet time com celulares (Android e iPhone) | estudada em 2026-11-13 e adiada pelo dono (muito custosa); decisões pendentes |
@@ -978,6 +978,15 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    detector de hoje, feito para a cartela grande na foto, perde câmeras de lado e erra a 5 m ou com desfoque; com as
    marcas 3x maiores na foto (procurar na foto inteira, ou imprimir maior) achou todas até 60° de lado. A fazer:
    detector para cartela pequena e de lado, e recusar marcas erradas em vez de devolver valores absurdos.
+   **Decisão do dono (2026-11-13, depois do comparativo e da simulação da haste):** (1) agora: **haste com duas
+   marcas** (referência vertical no centro; o alto e o baixo dão mover, girar e tamanho; serve para arco, 360° e
+   parte de trás) **mais marcação na tela** (dois cliques por foto, em qualquer objeto reto; garantia e correção da
+   detecção automática); (2) depois: **pela cena, sem objeto** (alinhamento sem objeto e base da vista 3D, da cena 3D
+   e da interpolação; falta foto de verdade e decidir como a biblioteca entra); (3) fora: cartela plana para
+   alinhamento (continua só para cor; o trabalho no detector dela fica cancelado) e cartela dobrada ou cubo (reavaliar
+   se aparecer a necessidade de posição das câmeras em estúdio liso). Nota: "caminho do Xangle" foi um nome ruim do
+   assistente; o Xangle usa a haste para mirar as câmeras e não diz como calcula. O cálculo pela cena roda no
+   computador (medido), sem nuvem. Pendentes do dono: como são as marcas da haste e a tela.
 7. **Etapa 22 — Outras marcas de câmera (Sony, Nikon).** Posta como etapa pelo dono em 2026-11-11 (antes estava em
    "Futuro"). Viável marca a marca, com câmera para testar. Sony (site oficial, conferido em 2026-10-15): SDK
    gratuito, Windows 11 x64 e macOS 14.1+, cerca de 35 modelos recentes (α1, α9 II/III, α7 IV/V, α7R IV/V, α7S III,
