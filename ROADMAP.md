@@ -971,6 +971,13 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    estúdio. Biblioteca: COLMAP (BSD), pronto sem placa de vídeo para Mac Apple Silicon (21 MB compactado) e Windows
    x64 (24 MB); os instaladores do Stillpoint têm ~9 MB. A decidir: embutir, baixar no primeiro uso, ou escrever uma
    versão própria e menor; e a tela.
+   **Objeto de referência (decisão do dono, 2026-11-13):** começar pela cartela que já existe (Calibrate with chart:
+   4 marcas de posição conhecida, que o app já acha), **com alternativa para rig em 360° ou que pegue a parte de
+   trás** (haste com marcas, cartela dobrada ou cubo: a definir). Terceira rodada do estudo, com o `Chart::Find` do
+   app: quando acha as marcas, erro abaixo de 0,6 px e 0,3°, também em estúdio liso e com lentes diferentes. O
+   detector de hoje, feito para a cartela grande na foto, perde câmeras de lado e erra a 5 m ou com desfoque; com as
+   marcas 3x maiores na foto (procurar na foto inteira, ou imprimir maior) achou todas até 60° de lado. A fazer:
+   detector para cartela pequena e de lado, e recusar marcas erradas em vez de devolver valores absurdos.
 7. **Etapa 22 — Outras marcas de câmera (Sony, Nikon).** Posta como etapa pelo dono em 2026-11-11 (antes estava em
    "Futuro"). Viável marca a marca, com câmera para testar. Sony (site oficial, conferido em 2026-10-15): SDK
    gratuito, Windows 11 x64 e macOS 14.1+, cerca de 35 modelos recentes (α1, α9 II/III, α7 IV/V, α7R IV/V, α7S III,

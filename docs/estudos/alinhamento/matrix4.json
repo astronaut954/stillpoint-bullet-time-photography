@@ -1,0 +1,53 @@
+[
+ {
+  "ok": true,
+  "found": 9,
+  "n": 9,
+  "missed_at_deg": [],
+  "max_angle_found": 60,
+  "err_dx": 0.4,
+  "err_dy": 0.3,
+  "err_rot": 0.03,
+  "err_scale_pct": 0.1,
+  "case": "marcas 3x maiores, 120°"
+ },
+ {
+  "ok": true,
+  "found": 7,
+  "n": 9,
+  "missed_at_deg": [
+   80,
+   80
+  ],
+  "max_angle_found": 60,
+  "err_dx": 0.3,
+  "err_dy": 0.4,
+  "err_rot": 0.08,
+  "err_scale_pct": 0.11,
+  "case": "marcas 3x maiores, 160°"
+ },
+ {
+  "ok": true,
+  "found": 9,
+  "n": 9,
+  "missed_at_deg": [],
+  "max_angle_found": 60,
+  "err_dx": 0.3,
+  "err_dy": 0.3,
+  "err_rot": 0.07,
+  "err_scale_pct": 0.1,
+  "case": "marcas 3x maiores, 120°, ruído e desfoque, cor diferente"
+ },
+ {
+  "ok": true,
+  "found": 9,
+  "n": 9,
+  "missed_at_deg": [],
+  "max_angle_found": 60,
+  "err_dx": 0.3,
+  "err_dy": 0.3,
+  "err_rot": 0.13,
+  "err_scale_pct": 0.14,
+  "case": "marcas 3x maiores, a 5 m"
+ }
+]

@@ -59,3 +59,9 @@ add_executable(ExporterMathTest exporter_math_test.cpp ${R}/src/gui/rig_state.cp
 target_include_directories(ExporterMathTest BEFORE PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/edsdk_stub")
 target_include_directories(ExporterMathTest PRIVATE ${R}/src/gui ${R}/include ${R}/src/core "${stb_SOURCE_DIR}")
 target_link_libraries(ExporterMathTest PRIVATE stillpoint_export pthread)
+
+# Estudo do alinhamento por objeto de referência (etapa 21): o Chart::Find do app, numa linha de comando
+add_executable(ChartFindTool chart_find_tool.cpp ${R}/src/gui/chart.cpp)
+target_include_directories(ChartFindTool BEFORE PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/edsdk_stub")
+target_include_directories(ChartFindTool PRIVATE ${R}/src/gui ${R}/include ${R}/src/core "${stb_SOURCE_DIR}")
+target_link_libraries(ChartFindTool PRIVATE stillpoint_export pthread)

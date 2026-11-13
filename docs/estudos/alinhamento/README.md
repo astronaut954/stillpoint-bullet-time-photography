@@ -31,3 +31,18 @@ Falta repetir com fotos de verdade.
 
 Biblioteca: o COLMAP tem licença BSD. Existe pronto, sem placa de vídeo, para Mac com Apple Silicon (21 MB compactado)
 e Windows x64 (24 MB), medido pelos pacotes `pycolmap` 4.2.1. Os instaladores do Stillpoint têm cerca de 9 MB hoje.
+
+## Terceira rodada (2026-11-13): objeto de referência, a cartela do Stillpoint
+
+Decisão do dono: começar pela cartela que já existe (`assets/chart/stillpoint-chart.pdf`), com alternativa para 360°
+ou para pegar a parte de trás a definir depois. `solve_chart.py` usa o `Chart::Find` do próprio app (pela ferramenta
+`ChartFindTool`, do build de teste) para achar as 4 marcas e tira mover, giro e tamanho de cada câmera.
+`matrix3.py` / `matrix3.json` e `matrix4.py` / `matrix4.json`:
+
+- Quando as 4 marcas são achadas certo, o erro fica abaixo de 0,6 px, 0,3° e 0,3% no tamanho, inclusive em estúdio
+  liso, com a distância focal conhecida com 5% de erro e com lentes de zoom diferente (onde o caminho pela cena piorou).
+- O detector de hoje foi feito para a cartela ocupando a foto. Com a cartela A4 a 3 m (pequena na foto), ele perde
+  câmeras a 60° de lado e às vezes a 30° ou 45°; a 5 m, ou com ruído e desfoque, erra as marcas (valores absurdos).
+- Com as marcas três vezes maiores na foto (o que o detector veria se procurasse na foto inteira de 6000 px em vez de
+  reduzi-la para 2000 px, ou com a cartela impressa maior), achou todas as câmeras até 60° de lado, a 3 m e a 5 m,
+  também com ruído e desfoque. A 80° de lado não acha: é o limite de um objeto plano.

@@ -1,0 +1,172 @@
+[
+ {
+  "ok": true,
+  "found": 6,
+  "n": 9,
+  "missed_at_deg": [
+   60,
+   30,
+   60
+  ],
+  "max_angle_found": 45,
+  "err_dx": 0.5,
+  "err_dy": 0.5,
+  "err_rot": 0.17,
+  "err_scale_pct": 0.15,
+  "case": "A4 a 3 m, 9 câmeras em 120°, cenário com detalhe"
+ },
+ {
+  "ok": true,
+  "found": 7,
+  "n": 9,
+  "missed_at_deg": [
+   60,
+   60
+  ],
+  "max_angle_found": 45,
+  "err_dx": 0.4,
+  "err_dy": 0.5,
+  "err_rot": 0.09,
+  "err_scale_pct": 0.17,
+  "case": "A4 a 3 m, estúdio liso (fundo e sujeito)"
+ },
+ {
+  "ok": true,
+  "found": 5,
+  "n": 9,
+  "missed_at_deg": [
+   80,
+   60,
+   60,
+   80
+  ],
+  "max_angle_found": 40,
+  "err_dx": 0.6,
+  "err_dy": 0.6,
+  "err_rot": 0.13,
+  "err_scale_pct": 0.25,
+  "case": "A4 a 3 m, arco de 160°"
+ },
+ {
+  "ok": true,
+  "found": 7,
+  "n": 9,
+  "missed_at_deg": [
+   80,
+   80
+  ],
+  "max_angle_found": 60,
+  "err_dx": 0.3,
+  "err_dy": 0.5,
+  "err_rot": 0.09,
+  "err_scale_pct": 0.27,
+  "case": "A3 a 3 m, arco de 160°"
+ },
+ {
+  "ok": true,
+  "found": 9,
+  "n": 9,
+  "missed_at_deg": [],
+  "max_angle_found": 60,
+  "err_dx": 0.3,
+  "err_dy": 0.5,
+  "err_rot": 0.1,
+  "err_scale_pct": 0.18,
+  "case": "A4 a 2 m, 120°"
+ },
+ {
+  "ok": true,
+  "found": 5,
+  "n": 9,
+  "missed_at_deg": [
+   60,
+   45,
+   30,
+   45
+  ],
+  "max_angle_found": 60,
+  "err_dx": 127.5,
+  "err_dy": 91.3,
+  "err_rot": 94.37,
+  "err_scale_pct": 94.11,
+  "case": "A4 a 5 m, 120°"
+ },
+ {
+  "ok": true,
+  "found": 7,
+  "n": 9,
+  "missed_at_deg": [
+   60,
+   60
+  ],
+  "max_angle_found": 45,
+  "err_dx": 0.4,
+  "err_dy": 0.6,
+  "err_rot": 0.17,
+  "err_scale_pct": 0.28,
+  "case": "A3 a 5 m, 120°"
+ },
+ {
+  "ok": true,
+  "found": 5,
+  "n": 9,
+  "missed_at_deg": [
+   15,
+   15,
+   30,
+   45
+  ],
+  "max_angle_found": 60,
+  "err_dx": 1569.7,
+  "err_dy": 296.3,
+  "err_rot": 171.32,
+  "err_scale_pct": 91.04,
+  "case": "A4 a 3 m, 120°, ruído e desfoque leves, cor diferente"
+ },
+ {
+  "ok": true,
+  "found": 7,
+  "n": 9,
+  "missed_at_deg": [
+   60,
+   60
+  ],
+  "max_angle_found": 45,
+  "err_dx": 0.4,
+  "err_dy": 0.5,
+  "err_rot": 0.29,
+  "err_scale_pct": 0.2,
+  "case": "A4 a 3 m, 120°, distância focal conhecida com 5% de erro"
+ },
+ {
+  "ok": true,
+  "found": 7,
+  "n": 9,
+  "missed_at_deg": [
+   60,
+   60
+  ],
+  "max_angle_found": 45,
+  "err_dx": 0.4,
+  "err_dy": 0.6,
+  "err_rot": 0.22,
+  "err_scale_pct": 0.21,
+  "case": "A4 a 3 m, 120°, lentes com zoom diferente (±15%)"
+ },
+ {
+  "ok": true,
+  "found": 6,
+  "n": 9,
+  "missed_at_deg": [
+   60,
+   45,
+   60
+  ],
+  "max_angle_found": 45,
+  "err_dx": 0.5,
+  "err_dy": 0.5,
+  "err_rot": 0.28,
+  "err_scale_pct": 0.31,
+  "case": "A4 a 3 m, 120°, erros de montagem 3x maiores"
+ }
+]
