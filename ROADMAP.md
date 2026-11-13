@@ -43,6 +43,13 @@ Manter esta lista em dia sempre que algo entrar, sair ou for publicado.
   rodando no computador (por exemplo os de interpolação de quadros publicados no Hugging Face); (2) uma integração
   por API em que o custo fica inteiro com o usuário (ele põe a própria chave). A estudar: qualidade com câmeras
   afastadas, licença de cada modelo, tamanho, necessidade de placa de vídeo e tempo por sessão.
+- **Vista 3D simples do rig (em linhas)** (pedido do dono, 2026-11-13, a investigar): como no Xangle, um desenho 3D
+  em linhas, sem renderização completa, com a posição das câmeras, dos objetos e do cenário. Depende do cálculo da
+  etapa 21, que já devolve a posição de cada câmera e uma nuvem de pontos da cena.
+- **A investigar no Xangle (pergunta do dono, 2026-11-13):** por que a atualização de 8 de novembro de 2026 precisou
+  acrescentar suporte à Canon EOS R8 Mark II e à Sony Alpha 7R VI (ILCE-7RM6): se o SDK dessas câmeras é tão
+  diferente, ou se toda câmera nova pede atualização. Importa para a etapa 22 (outras marcas) e para a lista de
+  modelos compatíveis do Stillpoint.
 - **Estudo do Xangle Camera Server como referência (benchmark)** (pedido do dono, 2026-11-13):
   https://xangleapps.com/cameraserver e https://www.youtube.com/watch?v=HzYZqFZ5kDk (vídeo não assistido pelo
   assistente: sem acesso). Conferido nas páginas deles em 2026-11-13: o alinhamento deles produz deslocar X/Y, girar
