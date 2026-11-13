@@ -942,6 +942,16 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    Rotate). Decisões pendentes do dono antes de qualquer desenho: rodar no computador ou em servidor; o que fazer em
    cena sem textura (fundo liso), onde esse cálculo falha; e se vale começar por uma versão mais simples (a pessoa
    marca o mesmo ponto em cada foto).
+   **Decisões e contexto do dono (2026-11-13):** explorar primeiro o caminho do Xangle (pela cena), sem abrir mão da
+   calibração por objeto de referência (os dois juntos; ele vê reaproveitamento da janela Camera settings). O rig é
+   portátil e muda a cada montagem (cenário, altura), então a calibração é refeita sempre e tem de ser rápida. Ele
+   está sem espaço e sem tempo para montar o rig e só tem 3 câmeras: os testes começam por cena virtual; depois, fotos
+   de verdade com uma câmera só andando em arco em volta de um objeto parado.
+   **Primeiro experimento (2026-11-13, `docs/estudos/alinhamento/`), cena virtual + COLMAP (aberto, BSD):** achou
+   todas as câmeras e deu os quatro valores com erro abaixo de 1 px e 0,3° com 15° a 30° entre câmeras (3 a 18
+   câmeras, arcos de 60° a 180°, também com fundo liso e só o sujeito com detalhe), em 4 a 25 s só com processador.
+   Falhou com 3 câmeras a 60° uma da outra. Limite: a cena virtual é o melhor caso possível; falta foto de verdade.
+   A decidir depois: como a biblioteca entra no app (tamanho, compilação no Mac e no Windows) e a tela.
 7. **Etapa 22 — Outras marcas de câmera (Sony, Nikon).** Posta como etapa pelo dono em 2026-11-11 (antes estava em
    "Futuro"). Viável marca a marca, com câmera para testar. Sony (site oficial, conferido em 2026-10-15): SDK
    gratuito, Windows 11 x64 e macOS 14.1+, cerca de 35 modelos recentes (α1, α9 II/III, α7 IV/V, α7R IV/V, α7S III,
