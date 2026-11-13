@@ -24,7 +24,7 @@ def look_at(pos, target, up=np.array([0, 0, 1.0]), roll=0.0):
     Rz = np.array([[c, -s, 0], [s, c, 0], [0, 0, 1]])
     return Rz @ R
 
-def quads(rng, plain_walls=False):
+def quads(rng, plain_walls=False, plain_subject=False):
     """Lista de (4 cantos 3D, textura). Tudo em ladrilhos pequenos para o recorte atrás da câmera ser simples."""
     out = []
     def plane(o, u, v, nu, nv, tex):
@@ -39,14 +39,15 @@ def quads(rng, plain_walls=False):
     plane(A(-6, 6, 0), A(12, 0, 0), A(0, 0, 4), 24, 8, texture(rng, 2048, plain_walls))         # parede do fundo
     plane(A(-6, -6, 0), A(0, 12, 0), A(0, 0, 4), 24, 8, texture(rng, 2048, plain_walls))        # parede esquerda
     plane(A(6, -6, 0), A(0, 12, 0), A(0, 0, 4), 24, 8, texture(rng, 2048, plain_walls))         # parede direita
-    def box(cx, cy, w, d, h, z0=0.0):
+    def box(cx, cy, w, d, h, z0=0.0, flat=False):
         x0, x1, y0, y1 = cx - w / 2, cx + w / 2, cy - d / 2, cy + d / 2
-        plane(A(x0, y0, z0), A(w, 0, 0), A(0, 0, h), 2, 4, texture(rng, 512))
-        plane(A(x0, y1, z0), A(w, 0, 0), A(0, 0, h), 2, 4, texture(rng, 512))
-        plane(A(x0, y0, z0), A(0, d, 0), A(0, 0, h), 2, 4, texture(rng, 512))
-        plane(A(x1, y0, z0), A(0, d, 0), A(0, 0, h), 2, 4, texture(rng, 512))
-        plane(A(x0, y0, z0 + h), A(w, 0, 0), A(0, d, 0), 2, 2, texture(rng, 512))
-    box(0, 0, 0.5, 0.35, 1.7)            # o "sujeito" no centro
+        T = lambda: texture(rng, 512, flat)
+        plane(A(x0, y0, z0), A(w, 0, 0), A(0, 0, h), 2, 4, T())
+        plane(A(x0, y1, z0), A(w, 0, 0), A(0, 0, h), 2, 4, T())
+        plane(A(x0, y0, z0), A(0, d, 0), A(0, 0, h), 2, 4, T())
+        plane(A(x1, y0, z0), A(0, d, 0), A(0, 0, h), 2, 4, T())
+        plane(A(x0, y0, z0 + h), A(w, 0, 0), A(0, d, 0), 2, 2, T())
+    box(0, 0, 0.5, 0.35, 1.7, flat=plain_subject)            # o "sujeito" no centro
     if not plain_walls:
         box(-2.2, 2.5, 0.8, 0.8, 1.0); box(2.4, 3.0, 0.6, 0.6, 2.0); box(1.5, 1.2, 0.4, 0.4, 0.5); box(-1.4, 1.0, 0.5, 0.5, 0.8)
     return out
@@ -72,12 +73,13 @@ def render(K, R, C, W, H, qs):
         roi = img[y0c:y1c, x0c:x1c]; roi[mask > 0] = patch[mask > 0]
     return img
 
-def make(out, n=9, arc=120.0, radius=3.0, seed=1, err=1.0, plain=False, W=1500, H=1000):
+def make(out, n=9, arc=120.0, radius=3.0, seed=1, err=1.0, plain=False, W=1500, H=1000, plain_subject=False, k1=0.0, noise=6, blur=0.0, gain=0.0, focal_var=0.0, dark=1.0):
+    """k1: distorção de lente (barril < 0); noise: ruído; blur: desfoque (px); gain: variação de exposição e cor entre
+    câmeras; focal_var: variação da distância focal entre câmeras (lentes diferentes); dark: 1 = normal, 0.25 = pouca luz."""
     rng = np.random.default_rng(seed)
     os.makedirs(out, exist_ok=True)
-    qs = quads(rng, plain)
-    f = 0.5 * W / np.tan(np.radians(22.5))
-    K = np.array([[f, 0, W / 2], [0, f, H / 2], [0, 0, 1]])
+    qs = quads(rng, plain, plain_subject)
+    f0 = 0.5 * W / np.tan(np.radians(22.5))
     pivot = np.array([0, 0, 1.0]); cams = []
     for i in range(n):
         a = np.radians(-arc / 2 + arc * i / (n - 1)) if n > 1 else 0.0
@@ -85,12 +87,24 @@ def make(out, n=9, arc=120.0, radius=3.0, seed=1, err=1.0, plain=False, W=1500, 
         C = np.array([r * np.sin(a), -r * np.cos(a), 1.4 + rng.normal(0, 0.04) * err])
         aim = pivot + rng.normal(0, 0.12, 3) * err          # erro de mira (até ~3 graus)
         R = look_at(C, aim, roll=np.radians(rng.normal(0, 2.0)) * err)
+        f = f0 * (1 + rng.uniform(-focal_var, focal_var))
+        K = np.array([[f, 0, W / 2], [0, f, H / 2], [0, 0, 1]])
         img = render(K, R, C, W, H, qs)
-        img = cv2.add(img, rng.integers(0, 6, img.shape, dtype=np.uint8))
+        if k1:
+            # distorção radial: cada pixel da foto final busca a cor no ponto sem distorção
+            ys, xs = np.mgrid[0:H, 0:W].astype(np.float32)
+            xn, yn = (xs - W / 2) / f, (ys - H / 2) / f; r2 = xn * xn + yn * yn
+            pts = cv2.undistortPoints(np.stack([xs, ys], -1).reshape(-1, 1, 2), K, np.array([k1, 0, 0, 0.0])).reshape(H, W, 2)
+            img = cv2.remap(img, (pts[..., 0] * f + W / 2).astype(np.float32), (pts[..., 1] * f + H / 2).astype(np.float32), cv2.INTER_LINEAR)
+        if blur: img = cv2.GaussianBlur(img, (0, 0), blur)
+        x = img.astype(np.float32) * dark
+        if gain: x = x * (1 + rng.uniform(-gain, gain)) * (1 + rng.uniform(-gain / 2, gain / 2, 3))
+        x = x + rng.normal(0, noise, x.shape)
+        img = np.clip(x, 0, 255).astype(np.uint8)
         name = "%02d.jpg" % (i + 1)
-        cv2.imwrite(os.path.join(out, name), img, [cv2.IMWRITE_JPEG_QUALITY, 92])
-        cams.append({"name": name, "R": R.tolist(), "C": C.tolist()})
-    json.dump({"K": K.tolist(), "W": W, "H": H, "pivot": pivot.tolist(), "cams": cams}, open(os.path.join(out, "truth.json"), "w"))
+        cv2.imwrite(os.path.join(out, name), img, [cv2.IMWRITE_JPEG_QUALITY, 90])
+        cams.append({"name": name, "R": R.tolist(), "C": C.tolist(), "K": K.tolist()})
+    json.dump({"K": cams[0]["K"], "W": W, "H": H, "pivot": pivot.tolist(), "cams": cams, "mixed": focal_var > 0}, open(os.path.join(out, "truth.json"), "w"))
 
 if __name__ == "__main__":
     make(sys.argv[1], n=int(sys.argv[2]), arc=float(sys.argv[3]), plain=len(sys.argv) > 4 and sys.argv[4] == "plain")

@@ -956,7 +956,14 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    todas as câmeras e deu os quatro valores com erro abaixo de 1 px e 0,3° com 15° a 30° entre câmeras (3 a 18
    câmeras, arcos de 60° a 180°, também com fundo liso e só o sujeito com detalhe), em 4 a 25 s só com processador.
    Falhou com 3 câmeras a 60° uma da outra. Limite: a cena virtual é o melhor caso possível; falta foto de verdade.
-   A decidir depois: como a biblioteca entra no app (tamanho, compilação no Mac e no Windows) e a tela.
+   **Segunda rodada (2026-11-13), cena mais dura:** aguentou distorção de lente, ruído, pouca luz, desfoque, exposição e
+   cor diferentes e erros de montagem 3x maiores (erro abaixo de 1 px). Piorou com lentes de zoom diferente entre
+   câmeras (4 a 6 px; a distância focal gravada nas fotos de verdade deve ajudar, não testado) e com sujeito liso
+   (até 11 px). **Falhou em estúdio com fundo e sujeito lisos** e com câmeras a 40° ou mais uma da outra. Conclusão
+   provisória: o caminho pela cena é viável onde o lugar tem detalhe; o objeto de referência é necessário para
+   estúdio. Biblioteca: COLMAP (BSD), pronto sem placa de vídeo para Mac Apple Silicon (21 MB compactado) e Windows
+   x64 (24 MB); os instaladores do Stillpoint têm ~9 MB. A decidir: embutir, baixar no primeiro uso, ou escrever uma
+   versão própria e menor; e a tela.
 7. **Etapa 22 — Outras marcas de câmera (Sony, Nikon).** Posta como etapa pelo dono em 2026-11-11 (antes estava em
    "Futuro"). Viável marca a marca, com câmera para testar. Sony (site oficial, conferido em 2026-10-15): SDK
    gratuito, Windows 11 x64 e macOS 14.1+, cerca de 35 modelos recentes (α1, α9 II/III, α7 IV/V, α7R IV/V, α7S III,

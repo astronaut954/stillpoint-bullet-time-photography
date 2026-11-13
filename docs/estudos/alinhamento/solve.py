@@ -2,6 +2,11 @@
 import numpy as np, json, os, sys, shutil, time, pycolmap
 
 def recipe(cams, K, W, H):
+    """(K pode ser uma matriz só ou uma por câmera)"""
+    Ks = K if isinstance(K, list) else [K] * len(cams)
+    return _recipe(cams, Ks, W, H)
+
+def _recipe(cams, Ks, W, H):
     """cams: lista de (R mundo->câmera, C centro). Devolve o ponto central, o 'para cima' e, por câmera, dx, dy (px), giro (graus), tamanho."""
     # Ponto central: o mais perto de todos os eixos de mira (mínimos quadrados)
     A = np.zeros((3, 3)); b = np.zeros(3)
@@ -11,10 +16,10 @@ def recipe(cams, K, W, H):
     # Para cima: a normal do plano que melhor passa pelos centros das câmeras, no sentido do 'para cima' médio delas
     Cs = np.array([C for _, C in cams]); _, _, vt = np.linalg.svd(Cs - Cs.mean(0)); up = vt[2]
     if np.dot(up, -np.mean([R[1] for R, _ in cams], 0)) < 0: up = -up
-    out = []; dists = [np.linalg.norm(pivot - C) for _, C in cams]; dref = np.median(dists)
-    for (R, C), d in zip(cams, dists):
+    out = []; dists = [np.linalg.norm(pivot - C) / K[0, 0] for (_, C), K in zip(cams, Ks)]; dref = np.median(dists)
+    for (R, C), d, K in zip(cams, dists, Ks):
         pc = R @ (pivot - C); u = K @ pc; u = u[:2] / u[2]
-        q = R @ (pivot + up * 0.05 * d - C); v = K @ q; v = v[:2] / v[2]
+        q = R @ (pivot + up * 0.05 * np.linalg.norm(pivot - C) - C); v = K @ q; v = v[:2] / v[2]
         ang = np.degrees(np.arctan2(v[0] - u[0], -(v[1] - u[1])))   # giro do 'para cima' em relação à vertical da foto
         out.append({"dx": W / 2 - u[0], "dy": H / 2 - u[1], "rot": -ang, "scale": d / dref})
     return pivot, up, out
@@ -37,11 +42,12 @@ def run(folder):
         T = im.cam_from_world() if callable(im.cam_from_world) else im.cam_from_world
         R = np.array(T.rotation.matrix()); t = np.array(T.translation)
         est[im.name] = (R, -R.T @ t)
-    cam = list(rec.cameras.values())[0]
-    f = cam.params[0]; Ke = np.array([[f, 0, W / 2], [0, f, H / 2], [0, 0, 1]])
+    fs = {im.name: rec.cameras[im.camera_id].params[0] for im in rec.images.values()}
     names = [c["name"] for c in truth["cams"] if c["name"] in est]
-    tr = recipe([(np.array(c["R"]), np.array(c["C"])) for c in truth["cams"] if c["name"] in est], K, W, H)[2]
-    es = recipe([est[n] for n in names], Ke, W, H)[2]
+    f = float(np.median([fs[n] for n in names]))
+    Kof = lambda f: np.array([[f, 0, W / 2], [0, f, H / 2], [0, 0, 1]])
+    tr = recipe([(np.array(c["R"]), np.array(c["C"])) for c in truth["cams"] if c["name"] in est], [np.array(c.get("K", truth["K"])) for c in truth["cams"] if c["name"] in est], W, H)[2]
+    es = recipe([est[n] for n in names], [Kof(fs[n]) for n in names], W, H)[2]
     # A receita vale a menos de um giro e de um tamanho comuns (não mudam o alinhamento entre as fotos): tira a média
     d = lambda k: np.array([e[k] for e in es]) - np.array([t[k] for t in tr])
     rot = d("rot"); rot -= rot.mean()
