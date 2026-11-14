@@ -1041,6 +1041,11 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    - Protótipo do alinhamento dentro do Test shot (2026-11-14, aguardando o dono):
      https://claude.ai/artifact/F9c8TfFYXtYTnWSnDePKfx (Prepare; Mark and aim em três formas: V1 grade, V2 grade e
      lista, V3 uma câmera por vez; Save; Align photos com Back to automatic, Remove alignment e Show without alignment).
+   - Pedidos do dono sobre o protótipo (2026-11-14): forma V2 (grade e lista) com tela cheia por câmera como a V3;
+     botão para entrar no alinhamento assistido com imagem ao vivo nas câmeras que aceitam; o passo Save tem de
+     aparecer de fato; o bloco do Align photos muito grande: compacto ou escondido num menu. Versão 2 do protótipo
+     publicada no mesmo endereço (Live aim, tela cheia, passo Save com as fotos alinhadas e os valores, menu
+     "Alignment · automatic" no Align photos).
 7. **Etapa 22 — Outras marcas de câmera (Sony, Nikon).** Posta como etapa pelo dono em 2026-11-11 (antes estava em
    "Futuro"). Viável marca a marca, com câmera para testar. Sony (site oficial, conferido em 2026-10-15): SDK
    gratuito, Windows 11 x64 e macOS 14.1+, cerca de 35 modelos recentes (α1, α9 II/III, α7 IV/V, α7R IV/V, α7S III,
