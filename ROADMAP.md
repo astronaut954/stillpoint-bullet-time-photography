@@ -43,6 +43,16 @@ Manter esta lista em dia sempre que algo entrar, sair ou for publicado.
   rodando no computador (por exemplo os de interpolação de quadros publicados no Hugging Face); (2) uma integração
   por API em que o custo fica inteiro com o usuário (ele põe a própria chave). A estudar: qualidade com câmeras
   afastadas, licença de cada modelo, tamanho, necessidade de placa de vídeo e tempo por sessão.
+- **Agrupar câmeras por modelo e/ou marca na janela Camera settings** (pedido do dono, 2026-11-14): explorar junto com
+  o dono quais são os ganhos (por exemplo, mudar uma configuração para todas do mesmo modelo de uma vez, ver as
+  diferenças entre modelos, a calibração por modelo da cartela). Ainda sem desenho.
+- **Ease in e ease out na sequência, com grupos como keyframes** (pedido do dono, 2026-11-14): efeitos de aceleração e
+  desaceleração no vídeo, editados por uma curva (gráfico) ou por linhas simples. Como as fotos podem ser tiradas em
+  grupos, os grupos serviriam de keyframes. Ainda sem desenho.
+- **Análise dos vídeos do Xangle** (pedido do dono, 2026-11-14): o dono baixou vídeos que mostram as features do Xangle
+  em `/Users/ramoses/Downloads/Xangle` (no Mac dele). Depois: identificar as features do programa, quais o Stillpoint
+  já tem, quais não tem, e decidir o que faz sentido trazer. Para o assistente ver, os vídeos precisam ser anexados
+  à conversa ou a pasta liberada pelo computador ligado.
 - **Calibração de cor: neutralidade e uma versão mais moderna** (anotado a pedido do dono, 2026-11-14): (1) dúvida
   dele: o Match automatically deixa as cores neutras (por exemplo, para a foto não ficar verde)? Resposta registrada:
   só com o cartão cinza (Use gray card), em que o alvo é o cinza neutro; sem cartão, o alvo é a média das câmeras,
