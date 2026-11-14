@@ -43,6 +43,13 @@ Manter esta lista em dia sempre que algo entrar, sair ou for publicado.
   rodando no computador (por exemplo os de interpolação de quadros publicados no Hugging Face); (2) uma integração
   por API em que o custo fica inteiro com o usuário (ele põe a própria chave). A estudar: qualidade com câmeras
   afastadas, licença de cada modelo, tamanho, necessidade de placa de vídeo e tempo por sessão.
+- **Calibração de cor: neutralidade e uma versão mais moderna** (anotado a pedido do dono, 2026-11-14): (1) dúvida
+  dele: o Match automatically deixa as cores neutras (por exemplo, para a foto não ficar verde)? Resposta registrada:
+  só com o cartão cinza (Use gray card), em que o alvo é o cinza neutro; sem cartão, o alvo é a média das câmeras,
+  então se todas puxarem para o verde, o resultado continua verde (iguais entre si, não neutras). A cartela (Calibrate
+  with chart) mede a diferença entre modelos, não a neutralidade. (2) Pedido de estudo: deixar a calibração mais
+  inteligente, moderna e sensível. A definir com o dono o que isso significa (neutro sem cartão, pele, cenas mistas,
+  luz desigual, menos fotos de teste).
 - **Vista 3D simples do rig (em linhas)** (pedido do dono, 2026-11-13, a investigar): como no Xangle, um desenho 3D
   em linhas, sem renderização completa, com a posição das câmeras, dos objetos e do cenário. Depende do cálculo da
   etapa 21, que já devolve a posição de cada câmera e uma nuvem de pontos da cena.
@@ -999,7 +1006,8 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    a câmera de cima ou de baixo vê a haste encurtada e o sujeito sai maior nela (até 42 px e 4,7% com ±50 cm a 3 m;
    perceptível a partir de ~±25 cm). Com **três marcas de espaçamento igual**, a perspectiva dá a distância
    verdadeira: 8 a 9 px e 0,6% a 0,8% nos mesmos casos. A 5 m a terceira marca quase não ajuda (o erro já é menor).
-   Falta: fotos de verdade. Pendentes do dono: duas ou três marcas; a tela (protótipo).
+   **Decisão do dono (2026-11-14): sempre três marcas**, igualmente espaçadas. Falta: fotos de verdade. Pendente do
+   dono: a tela (protótipo).
 7. **Etapa 22 — Outras marcas de câmera (Sony, Nikon).** Posta como etapa pelo dono em 2026-11-11 (antes estava em
    "Futuro"). Viável marca a marca, com câmera para testar. Sony (site oficial, conferido em 2026-10-15): SDK
    gratuito, Windows 11 x64 e macOS 14.1+, cerca de 35 modelos recentes (α1, α9 II/III, α7 IV/V, α7R IV/V, α7S III,
