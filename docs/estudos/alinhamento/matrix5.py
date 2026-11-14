@@ -2,25 +2,32 @@ import numpy as np, cv2, json, scene, find_marks
 W, H = 2400, 1600
 def proj(c, P):
     K, R, C = np.array(c["K"]), np.array(c["R"]), np.array(c["C"]); p = K @ (R @ (np.array(P, float) - C)); return p[:2] / p[2]
+BALLS = set()
 def run(folder, chain):
-    T = json.load(open(folder + "/truth.json")); cams = T["cams"]; rng = np.random.default_rng(3)
+    T = json.load(open(folder + "/truth.json")); cams = T["cams"]; rng = np.random.default_rng(3); T["balls"] = folder in BALLS
     imgs = [cv2.imread("%s/%s" % (folder, c["name"])) for c in cams]
-    truth = [(proj(c, (0, 0, 1.3)), proj(c, (0, 0, 0.7))) for c in cams]
+    def surf(c, z):   # o ponto da superfície da haste (ou da bola) virado para a câmera, na altura da marca
+        if T.get("balls"): return proj(c, (0, 0, z))     # a bola aparece centrada no eixo da haste
+        C = np.array(c["C"]); h = C[:2] / np.linalg.norm(C[:2]); return proj(c, (0.02 * h[0], 0.02 * h[1], z))
+    truth = [(surf(c, 1.3), surf(c, 0.7)) for c in cams]
     ref = len(cams) // 2
-    click = (truth[ref][0] + rng.normal(0, 3, 2), truth[ref][1] + rng.normal(0, 3, 2))      # o clique da pessoa, com 3 px de erro
-    off = (click[0] - truth[ref][0], click[1] - truth[ref][1])   # o erro do clique vai junto para todas as fotos: não atrapalha o alinhamento
+    click = (truth[ref][0] + rng.normal(0, 5, 2), truth[ref][1] + rng.normal(0, 5, 2))      # o clique da pessoa, com 3 px de erro
+    d0 = np.linalg.norm(click[0] - click[1]); raw = click
+    wide = find_marks.is_wide(imgs[ref], click[0], d0, click[1])
+    click = (find_marks.snap(imgs[ref], click[0], d0, other=click[1], wide=wide), find_marks.snap(imgs[ref], click[1], d0, other=click[0], wide=wide))   # o clique vai para o centro da marca
+    snap_err = max(np.linalg.norm(click[0] - truth[ref][0]), np.linalg.norm(click[1] - truth[ref][1]))
     found = {ref: click}; order = list(range(ref + 1, len(cams))) + list(range(ref - 1, -1, -1)); errs = []; miss = 0; conf = []
     for i in order:
         src = (i - 1 if i > ref else i + 1) if chain else ref      # chain: usa a câmera vizinha já achada como referência
         if src not in found: miss += 1; continue
-        r = find_marks.find(imgs[src], found[src][0], found[src][1], imgs[i])
+        r = find_marks.find(imgs[src], found[src][0], found[src][1], imgs[i], wide=wide)
         if r is None: miss += 1; continue
-        e = max(np.linalg.norm(np.array(r[0]) - truth[i][0] - off[0]), np.linalg.norm(np.array(r[1]) - truth[i][1] - off[1]))
+        e = max(np.linalg.norm(np.array(r[0]) - truth[i][0]), np.linalg.norm(np.array(r[1]) - truth[i][1]))
         d = np.linalg.norm(truth[i][0] - truth[i][1])
         if e > 0.12 * d: miss += 1; conf.append(("x", round(r[2], 2))); continue     # achou outra coisa
         found[i] = (np.array(r[0]), np.array(r[1])); errs.append(e); conf.append(("ok", round(r[2], 2)))
     n = len(cams) - 1
-    return {"found": n - miss, "of": n, "max_err_px": round(float(max(errs)), 1) if errs else None, "mean_err_px": round(float(np.mean(errs)), 1) if errs else None,
+    return {"click_after_snap_px": round(float(snap_err), 1), "found": n - miss, "of": n, "max_err_px": round(float(max(errs)), 1) if errs else None, "mean_err_px": round(float(np.mean(errs)), 1) if errs else None,
             "conf_ok_min": min([c for k, c in conf if k == "ok"], default=None), "conf_wrong_max": max([c for k, c in conf if k == "x"], default=None)}
 B = dict(n=9, arc=120, W=W, H=H, subject=False, err=1.2)
 cases = [("fita laranja, estúdio liso", dict(**B, pole="tape", plain=True)), ("fita laranja, lugar com muito detalhe", dict(**B, pole="tape")),
@@ -34,6 +41,7 @@ cases = [("fita laranja, estúdio liso", dict(**B, pole="tape", plain=True)), ("
 res = []
 for k, (label, kw) in enumerate(cases):
     out = "f%d" % k; scene.make(out, seed=80 + k, **kw)
+    if kw.get("pole") == "balls": BALLS.add(out)
     r = {"case": label, "a_partir_da_foto_clicada": run(out, False), "de_vizinha_em_vizinha": run(out, True)}
     res.append(r); print(json.dumps(r, ensure_ascii=False), flush=True)
 json.dump(res, open("matrix5.json", "w"), ensure_ascii=False, indent=1)

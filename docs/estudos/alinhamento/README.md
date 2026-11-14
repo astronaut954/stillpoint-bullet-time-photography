@@ -63,3 +63,16 @@ as duas marcas que a pessoa clicou numa foto (semelhança em cor, vários tamanh
 - Precisão: erro médio de 4 a 8 px e máximo perto de 10 px (0,2% a 0,4% da largura da foto). Com as marcas a 0,6 m
   uma da outra, 8 px equivalem a cerca de 0,8° de giro e 1,4% de tamanho. É pior que a cartela e que o cálculo pela
   cena (abaixo de 1 px). Falta um passo que centralize o ponto na marca; não feito.
+
+## Quinta rodada (2026-11-13): levar o ponto ao centro da marca
+
+`find_marks.snap` leva o clique (e cada ponto achado) ao centro da marca: a cor que é comum sob o ponto e rara em
+volta. Com as duas marcas conhecidas, a marca da largura da haste (fita, faixa) usa só uma faixa estreita em volta do
+ponto, para uma mancha da mesma cor ao lado não puxar; a marca mais larga que a haste (bola) usa a marca inteira. O
+tipo é medido na foto clicada (`is_wide`). A referência certa passou a ser a superfície da haste virada para a câmera
+(a fita) e o centro da bola. `matrix5.json`, clique com 5 px de erro, fotos de 2400 px:
+
+- Fita laranja, faixa impressa e bolas: erro médio de 0,5 a 1,4 px e máximo de 0,9 a 2,7 px, em estúdio liso, lugar
+  com muito detalhe, ruído e desfoque, 5 m e 18 câmeras em volta inteira. Mesma faixa da cartela e do cálculo pela cena.
+- Faixa impressa com câmeras muito giradas: perde 2 de 8, com confiança baixa (dá para recusar e pedir o clique).
+- Fita de pouco contraste: continua ruim (3 a 5 de 8 e até 30 px). A lista de recomendações deve pedir cor viva.

@@ -62,8 +62,11 @@ def quads(rng, plain_walls=False, plain_subject=False, chart=0.0, pole=False, su
             elif kind == "gray": tex[r - 25:r + 25] = (190, 190, 190)
             elif kind == "rings":
                 for k, c in enumerate((20, 240, 20, 240, 20)): tex[r - 50 + 20 * k:r - 30 + 20 * k] = c
-        for (o, u) in ((A(-0.02, -0.02, 0), A(0.04, 0, 0)), (A(-0.02, 0.02, 0), A(0.04, 0, 0)), (A(-0.02, -0.02, 0), A(0, 0.04, 0)), (A(0.02, -0.02, 0), A(0, 0.04, 0))):
-            plane(o, u, A(0, 0, 1.8), 1, 6, tex, front=1)
+        # haste redonda (12 faces), 4 cm de diâmetro
+        for k in range(12):
+            a0, a1 = 2 * np.pi * k / 12, 2 * np.pi * (k + 1) / 12
+            p0, p1 = A(0.02 * np.cos(a0), 0.02 * np.sin(a0), 0), A(0.02 * np.cos(a1), 0.02 * np.sin(a1), 0)
+            plane(p0, p1 - p0, A(0, 0, 1.8), 1, 6, tex, front=1)
     if not plain_walls:
         box(-2.2, 2.5, 0.8, 0.8, 1.0); box(2.4, 3.0, 0.6, 0.6, 2.0); box(1.5, 1.2, 0.4, 0.4, 0.5); box(-1.4, 1.0, 0.5, 0.5, 0.8)
     return out

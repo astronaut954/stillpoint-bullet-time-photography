@@ -28,7 +28,58 @@ def candidates(img, tmpl, scales, angles, keep=12):
         if len(pick) >= keep: break
     return pick
 
-def find(ref_img, a, b, img, work=1200):
+def snap(img, p, d, rounds=3, other=None, wide=None):
+    """Leva o ponto para o centro da marca. A marca é o que tem cor própria ali: cores comuns perto do ponto e raras
+    em volta (a haste acima e abaixo, o fundo). d: distância entre as duas marcas, que dá a escala."""
+    """other: a outra marca. Com ela, só conta o que está numa faixa estreita em volta da linha entre as duas (a haste),
+    para uma mancha da mesma cor no fundo, encostada na haste, não puxar o ponto."""
+    p = np.array(p, float); H, W = img.shape[:2]
+    axis = None
+    if other is not None:
+        v = np.array(other, float) - p; n = np.linalg.norm(v)
+        if n > 1: axis = v / n
+    rin, rout = max(5.0, d * 0.05), max(12.0, d * 0.16)
+    for _ in range(rounds):
+        x0, x1, y0, y1 = int(p[0] - rout), int(p[0] + rout) + 1, int(p[1] - rout), int(p[1] + rout) + 1
+        if x0 < 0 or y0 < 0 or x1 > W or y1 > H: return p
+        lab = cv2.cvtColor(img[y0:y1, x0:x1], cv2.COLOR_BGR2LAB).astype(np.int32)
+        q = (lab[..., 0] // 16) * 256 + (lab[..., 1] // 12) * 16 + (lab[..., 2] // 12)       # cor em caixas
+        ys, xs = np.mgrid[y0:y1, x0:x1]; r = np.hypot(xs - p[0], ys - p[1])
+        inner, outer = r <= rin, r >= rin * 2.2
+        hi = np.bincount(q[inner], minlength=4096) / max(1, inner.sum()); ho = np.bincount(q[outer], minlength=4096) / max(1, outer.sum())
+        like = (hi[q] > 0.02) & (hi[q] > 3 * ho[q])
+        like &= r <= rin * 2.2
+        if like.sum() < 12: return p
+        n, lbl, st, cen = cv2.connectedComponentsWithStats(like.astype(np.uint8), 8)
+        # fica com os pedaços perto do ponto (os anéis de uma faixa impressa são vários pedaços)
+        keep = np.zeros_like(like)
+        for k in range(1, n):
+            if st[k, cv2.CC_STAT_AREA] < 6 or np.hypot(cen[k][0] + x0 - p[0], cen[k][1] + y0 - p[1]) > rin * 1.6: continue
+            # com a outra marca conhecida: o pedaço tem de estar centrado na linha da haste (uma mancha da mesma cor no
+            # fundo, ao lado, fica de fora; uma bola, mais larga que a haste, entra inteira)
+            if axis is not None and abs((cen[k][0] + x0 - p[0]) * axis[1] - (cen[k][1] + y0 - p[1]) * axis[0]) > max(6.0, d * 0.07): continue
+            keep |= lbl == k
+        if keep.sum() < 12: return p
+        if axis is None: newp = np.array([xs[keep].mean(), ys[keep].mean()])
+        else:
+            dx, dy = xs[keep] - p[0], ys[keep] - p[1]
+            along, side = dx * axis[0] + dy * axis[1], dx * axis[1] - dy * axis[0]
+            band = max(4.0, d * 0.035)
+            lo, hi = np.percentile(side, [10, 90])
+            if (wide if wide is not None else hi - lo > 2.4 * band):
+                # marca mais larga que a haste (uma bola): fica inteira
+                newp = np.array([xs[keep].mean(), ys[keep].mean()])
+            else:
+                # marca na haste (fita, faixa): só a faixa da largura da haste em volta do ponto; o que estiver ao
+                # lado, da mesma cor, fica de fora
+                near = np.abs(side) <= band
+                if near.sum() < 6: return p
+                newp = np.array([xs[keep][near].mean(), ys[keep][near].mean()])
+        if np.linalg.norm(newp - p) < 0.3: return newp
+        p = newp
+    return p
+
+def find(ref_img, a, b, img, work=1200, wide=None):
     """a, b: os cliques (alto, baixo) na foto de referência. Devolve (alto, baixo, confiança) na outra foto, ou None."""
     k = work / ref_img.shape[1]
     R = cv2.resize(ref_img, None, fx=k, fy=k, interpolation=cv2.INTER_AREA); I = cv2.resize(img, None, fx=k, fy=k, interpolation=cv2.INTER_AREA)
@@ -63,4 +114,24 @@ def find(ref_img, a, b, img, work=1200):
         if x0 < 0 or y0 < 0 or x0 + tw + 2 * m > img.shape[1] or y0 + th + 2 * m > img.shape[0]: return (x, y)
         r = cv2.matchTemplate(img[y0:y0 + th + 2 * m, x0:x0 + tw + 2 * m], t, cv2.TM_CCOEFF_NORMED); _, _, _, loc = cv2.minMaxLoc(np.nan_to_num(r))
         return (x0 + loc[0] + (tw - 1) / 2.0, y0 + loc[1] + (th - 1) / 2.0)
-    return refine(a, best[1]), refine(b, best[2]), float(best[0])
+    pa, pb = refine(a, best[1]), refine(b, best[2]); d1 = np.hypot(pa[0] - pb[0], pa[1] - pb[1])
+    return tuple(snap(img, pa, d1, other=pb, wide=wide)), tuple(snap(img, pb, d1, other=pa, wide=wide)), float(best[0])
+
+
+def is_wide(img, p, d, other):
+    """Na foto clicada: a marca é mais larga que a haste (uma bola)? Mede só o pedaço de cor que está sob o clique."""
+    p = np.array(p, float); v = np.array(other, float) - p; axis = v / np.linalg.norm(v)
+    rin, rout = max(5.0, d * 0.05), max(12.0, d * 0.16)
+    x0, x1, y0, y1 = int(p[0] - rout), int(p[0] + rout) + 1, int(p[1] - rout), int(p[1] + rout) + 1
+    lab = cv2.cvtColor(img[y0:y1, x0:x1], cv2.COLOR_BGR2LAB).astype(np.int32)
+    q = (lab[..., 0] // 16) * 256 + (lab[..., 1] // 12) * 16 + (lab[..., 2] // 12)
+    ys, xs = np.mgrid[y0:y1, x0:x1]; r = np.hypot(xs - p[0], ys - p[1])
+    inner, outer = r <= rin, r >= rin * 2.2
+    hi = np.bincount(q[inner], minlength=4096) / max(1, inner.sum()); ho = np.bincount(q[outer], minlength=4096) / max(1, outer.sum())
+    like = (hi[q] > 0.02) & (hi[q] > 3 * ho[q]) & (r <= rin * 2.2)
+    n, lbl, st, cen = cv2.connectedComponentsWithStats(like.astype(np.uint8), 8)
+    if n < 2: return False
+    k = 1 + int(np.argmin([np.hypot(cen[j][0] + x0 - p[0], cen[j][1] + y0 - p[1]) for j in range(1, n)]))
+    m = lbl == k; side = (xs[m] - p[0]) * axis[1] - (ys[m] - p[1]) * axis[0]
+    lo, hi_ = np.percentile(side, [10, 90])
+    return bool(hi_ - lo > 2.4 * max(4.0, d * 0.035))
