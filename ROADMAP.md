@@ -1016,8 +1016,10 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    a câmera de cima ou de baixo vê a haste encurtada e o sujeito sai maior nela (até 42 px e 4,7% com ±50 cm a 3 m;
    perceptível a partir de ~±25 cm). Com **três marcas de espaçamento igual**, a perspectiva dá a distância
    verdadeira: 8 a 9 px e 0,6% a 0,8% nos mesmos casos. A 5 m a terceira marca quase não ajuda (o erro já é menor).
-   **Decisão do dono (2026-11-14): sempre três marcas**, igualmente espaçadas. Falta: fotos de verdade. Pendente do
-   dono: a tela (protótipo).
+   **Decisão do dono (2026-11-14): sempre três marcas**, igualmente espaçadas. Falta: fotos de verdade. Protótipo da
+   tela (2026-11-14, aguardando o dono): https://claude.ai/artifact/CK3EyFTDBzsPwDykXrt7tU (botão Align cameras na
+   Camera settings; janela em três passos Prepare, Mark, Check, no formato do Match automatically). Depois: onde a
+   receita é usada, quando pedir para alinhar de novo, receita do projeto ou do rig.
 7. **Etapa 22 — Outras marcas de câmera (Sony, Nikon).** Posta como etapa pelo dono em 2026-11-11 (antes estava em
    "Futuro"). Viável marca a marca, com câmera para testar. Sony (site oficial, conferido em 2026-10-15): SDK
    gratuito, Windows 11 x64 e macOS 14.1+, cerca de 35 modelos recentes (α1, α9 II/III, α7 IV/V, α7R IV/V, α7S III,
