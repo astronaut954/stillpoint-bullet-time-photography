@@ -2087,6 +2087,20 @@ a explicação fica no **?** ao lado do título; o aviso âmbar e a linha do Fra
       there, or click Cancel in the Photoshop box"; o aviso **Delete the edit or the photo?** diz "has an edited version".
 - [ ] Windows: os itens acima.
 
+## 46. Câmeras simuladas com fotos de verdade (etapa 21, parte 2)
+
+Modo de teste para o alinhamento automático: com `STILLPOINT_FAKE_PHOTOS=<pasta>` junto de
+`STILLPOINT_FAKE_CAMERAS`, cada câmera simulada entrega uma foto de verdade dessa pasta em vez da foto numerada. As
+fotos vão em ordem de nome (a 1ª para a câmera 1, a 2ª para a 2...; sobrando câmeras, recomeça da 1ª). RAW e JPEG com o
+mesmo nome vão juntos. A foto segue a câmera: trocar a ordem das câmeras troca a ordem das fotos, como no rig.
+Serve qualquer pasta de uma sessão já fotografada (os nomes `01_...`, `02_...` já estão na ordem das câmeras).
+
+- [ ] Abrir com a pasta de uma sessão sua: **It's bullet time** (embaixo, à direita) faz uma sessão com as fotos dessa
+      pasta, cada câmera com a sua.
+- [ ] **Camera settings** (painel **Cameras**, no alto à direita) › **Test shot**: as fotos que aparecem são as da pasta.
+- [ ] Abrir sem `STILLPOINT_FAKE_PHOTOS`: voltam as fotos numeradas de sempre.
+- [ ] Windows: os itens acima.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |

@@ -1203,6 +1203,27 @@ namespace
         int fakeCount = 0;
         if (const char* fake = std::getenv("STILLPOINT_FAKE_CAMERAS"))
             try { fakeCount = std::clamp(std::stoi(fake), 1, 64); } catch (...) { fakeCount = 0; }
+        // STILLPOINT_FAKE_PHOTOS=<pasta> (junto com STILLPOINT_FAKE_CAMERAS; etapa 21, parte 2): em vez da foto de teste
+        // numerada, cada câmera simulada entrega uma foto de verdade dessa pasta, para testar o alinhamento sem câmeras.
+        // As fotos vão em ordem de nome: a 1ª para a câmera simulada 1, a 2ª para a 2 e assim por diante (sobrando
+        // câmeras, recomeça da 1ª). RAW e JPEG com o mesmo nome contam como uma foto só e vão juntos. A foto segue a
+        // câmera, não a posição: trocar a ordem das câmeras troca a ordem das fotos, como no rig.
+        std::vector<std::vector<std::filesystem::path>> fakePhotos;
+        if (const char* folder = std::getenv("STILLPOINT_FAKE_PHOTOS"); folder && *folder && fakeCount)
+        {
+            std::map<std::string, std::vector<std::filesystem::path>> byName;
+            std::error_code ec;
+            for (const auto& entry : std::filesystem::directory_iterator(std::filesystem::path(folder), ec))
+            {
+                const std::string name = entry.path().filename().string();
+                if (!entry.is_regular_file(ec) || name.empty() || name[0] == '.' || !(IsJpegPhoto(name) || IsRawPhoto(name)))
+                    continue;
+                byName[entry.path().stem().string()].push_back(entry.path());
+            }
+            for (auto& [stem, files] : byName)
+                fakePhotos.push_back(std::move(files));
+            Log("Fake photos: " + std::to_string(fakePhotos.size()) + " from " + std::string(folder) + " (STILLPOINT_FAKE_PHOTOS)");
+        }
         std::atomic<bool> fakeCancel{ false };
         std::atomic<bool> allowClose{ false };
         std::atomic<bool> shuttingDown{ false };
@@ -1792,9 +1813,11 @@ namespace
                     // A foto simulada sai na proporção que a câmera simulada informa (Ratio); a câmera 02
                     // entrega sempre 16:9, o que for que esteja marcado, para testar o aviso de proporção
                     double ratio = 1.5;
+                    int fakeIndex = 0;  // a câmera simulada (fake1, fake2...), que não muda quando a ordem muda
                     for (const auto& cam : controller.GetCameras())
                         if (cam.shortName == plan[i].shortName)
                         {
+                            try { fakeIndex = std::stoi(cam.portName.substr(4)); } catch (...) { fakeIndex = number; }
                             const CameraSettings s = controller.ReadSettings(cam);
                             for (const auto& st : s.settings)
                                 if (st.key == "aspect" && st.available)
@@ -1802,7 +1825,17 @@ namespace
                             if (cam.orderPrefix == 2)
                                 ratio = 16.0 / 9.0;
                         }
-                    WriteTestPhoto(dir / (std::string(prefix) + "_" + plan[i].shortName + "_IMG_" + std::to_string(1000 + i) + ".jpg"), number, static_cast<int>(i) + 1, ratio);
+                    const std::string base = std::string(prefix) + "_" + plan[i].shortName + "_IMG_" + std::to_string(1000 + i);
+                    if (!fakePhotos.empty())
+                    {
+                        // Foto de verdade da pasta (STILLPOINT_FAKE_PHOTOS), com a extensão dela (JPG, CR2, CR3)
+                        const auto& files = fakePhotos[static_cast<size_t>(std::max(1, fakeIndex) - 1) % fakePhotos.size()];
+                        std::error_code ec;
+                        for (const auto& f : files)
+                            std::filesystem::copy_file(f, dir / (base + f.extension().string()), std::filesystem::copy_options::overwrite_existing, ec);
+                    }
+                    else
+                        WriteTestPhoto(dir / (base + ".jpg"), number, static_cast<int>(i) + 1, ratio);
                     ++done;
                 }
                 if (!refusedLines.empty())

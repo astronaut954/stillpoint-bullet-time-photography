@@ -1744,6 +1744,42 @@ def scenario_align_marks(t, name, photos):
         if ln.startswith(("PASS", "FAIL")):
             check(t, "alignment: " + ln[6:].split("   [")[0], ln.startswith("PASS"), ln)
 
+    # Parte 2: as câmeras simuladas entregam fotos de verdade de uma pasta (STILLPOINT_FAKE_PHOTOS)
+    folder = os.path.join(t.tmp, "fake-photos")
+    os.makedirs(folder, exist_ok=True)
+    colors = [(200, 40, 40), (40, 160, 60), (40, 70, 210)]
+    for k, c in enumerate(colors):
+        Image.new("RGB", (600, 400), c).save(os.path.join(folder, "rig_%02d.JPG" % (k + 1)), quality=90)
+    open(os.path.join(folder, ".hidden.jpg"), "w").close()
+    open(os.path.join(folder, "notes.txt"), "w").close()
+    source = [open(os.path.join(folder, "rig_%02d.JPG" % (k + 1)), "rb").read() for k in range(3)]
+    t.dismiss()
+    t.env["STILLPOINT_FAKE_CAMERAS"] = "4"
+    t.env["STILLPOINT_FAKE_PHOTOS"] = folder
+    try:
+        t.restart_app()
+        t.dismiss()
+        s = t.shoot()
+        t.dismiss()
+        check(t, "fake photos: the shot made a session", bool(s))
+        if s:
+            o = t.originals(s)
+            got = {}
+            for f in sorted(os.listdir(o)):
+                if f.startswith(".") or f == "session.json":
+                    continue
+                with open(os.path.join(o, f), "rb") as fh:
+                    got[f] = fh.read()
+            check(t, "fake photos: one photo per camera, with the extension of the source (.JPG)", len(got) == 4 and all(f.endswith(".JPG") for f in got), sorted(got))
+            # A foto segue a câmera (fake1 = SL3_1, fake2 = T7_1, fake3 = SL3_2, fake4 = T7_2), qualquer que seja a ordem
+            by_cam = {cam: next((v for f, v in got.items() if "_" + cam + "_IMG_" in f), None) for cam in ("SL3_1", "T7_1", "SL3_2", "T7_2")}
+            check(t, "fake photos: camera 1 gets the 1st photo, 2 the 2nd, 3 the 3rd, and 4 starts over from the 1st",
+                  [by_cam[c] for c in ("SL3_1", "T7_1", "SL3_2", "T7_2")] == [source[0], source[1], source[2], source[0]], sorted(got))
+            check(t, "fake photos: hidden files and files that are not photos are skipped", b"" not in got.values())
+    finally:
+        del t.env["STILLPOINT_FAKE_PHOTOS"]
+        t.restart_app()
+
 
 def main():
     with sync_playwright() as pw:

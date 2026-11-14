@@ -1074,6 +1074,9 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      calcular a receita e as instruções de cada câmera), teste automático `tests/host/align_marks_test.cpp`
      (cenário 20 do `run_tests.py`). Sem tela nova; nada para o dono testar. Detalhes em
      `docs/estudos/alinhamento/README.md`, seção "No app".
+   - **Parte 2 feita (2026-11-14):** `STILLPOINT_FAKE_PHOTOS=<pasta>` junto de `STILLPOINT_FAKE_CAMERAS`: cada câmera
+     simulada entrega uma foto de verdade da pasta (em ordem de nome; RAW e JPEG de mesmo nome juntos; a foto segue a
+     câmera, não a posição). Vale para o disparo, o Test shot e o Match. Roteiro: `docs/teste-manual.md`, seção 46.
 7. **Etapa 22 — Outras marcas de câmera (Sony, Nikon).** Posta como etapa pelo dono em 2026-11-11 (antes estava em
    "Futuro"). Viável marca a marca, com câmera para testar. Sony (site oficial, conferido em 2026-10-15): SDK
    gratuito, Windows 11 x64 e macOS 14.1+, cerca de 35 modelos recentes (α1, α9 II/III, α7 IV/V, α7R IV/V, α7S III,
