@@ -1067,6 +1067,13 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      mudança (câmera entrou, saiu ou foi trocada; ordem mudou; zoom mudou). Aviso âmbar no Test shot com Align again;
      as câmeras que não mudaram continuam alinhadas, a que mudou fica sem alinhamento automático até refazer.
      Esbarrão no tripé não é detectado (conferência visual no Align photos).
+   - **Ordem de implementação** (decisão do dono, 2026-11-14, opção A; branch `etapa-21-alinhamento`): 1 a conta
+     dentro do app; 2 câmeras de mentira entregando fotos de uma pasta; 3 alinhamento no Test shot e receita
+     guardada; 4 Align photos opção B; 5 aviso de alinhar de novo; 6 Guided aim e Live aim; 7 From this scene.
+   - **Parte 1 feita (2026-11-14):** `src/gui/align_marks.h`/`.cpp` (achar as três marcas a partir dos cliques e
+     calcular a receita e as instruções de cada câmera), teste automático `tests/host/align_marks_test.cpp`
+     (cenário 20 do `run_tests.py`). Sem tela nova; nada para o dono testar. Detalhes em
+     `docs/estudos/alinhamento/README.md`, seção "No app".
 7. **Etapa 22 — Outras marcas de câmera (Sony, Nikon).** Posta como etapa pelo dono em 2026-11-11 (antes estava em
    "Futuro"). Viável marca a marca, com câmera para testar. Sony (site oficial, conferido em 2026-10-15): SDK
    gratuito, Windows 11 x64 e macOS 14.1+, cerca de 35 modelos recentes (α1, α9 II/III, α7 IV/V, α7R IV/V, α7S III,

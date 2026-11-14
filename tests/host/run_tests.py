@@ -1733,6 +1733,18 @@ def dismiss_delete(self):
 T.dismiss_delete = dismiss_delete
 
 
+def scenario_align_marks(t, name, photos):
+    line("\n== 20. Automatic alignment: the three marks and the recipe (calculation only, no window yet)")
+    prog = os.path.join(BUILD, "AlignMarksTest")
+    if not os.path.exists(prog):
+        check(t, "the alignment test was built (AlignMarksTest)", False, prog)
+        return
+    out = subprocess.run([prog], capture_output=True, text=True)
+    for ln in out.stdout.splitlines():
+        if ln.startswith(("PASS", "FAIL")):
+            check(t, "alignment: " + ln[6:].split("   [")[0], ln.startswith("PASS"), ln)
+
+
 def main():
     with sync_playwright() as pw:
         t = T(pw)
@@ -1748,7 +1760,7 @@ def main():
                 only = os.environ.get("STILLPOINT_TEST_ONLY", "")  # para depurar: só os cenários com este nome
                 for sc in [x for x in (scenario_cleared, scenario_delete_edit_undo, scenario_photo_delete_restore,
                            scenario_remove_from_collection, scenario_delete_session, scenario_cancel, scenario_rapid_in_lightroom, scenario_crop_before_lightroom,
-                           scenario_export_edit, scenario_export_trash, scenario_lightroom_crop, scenario_undo_own_item, scenario_orientation, scenario_selection_kept, scenario_align_undo, scenario_flip, scenario_photoshop, scenario_rig_state) if only in x.__name__]:
+                           scenario_export_edit, scenario_export_trash, scenario_lightroom_crop, scenario_undo_own_item, scenario_orientation, scenario_selection_kept, scenario_align_undo, scenario_flip, scenario_photoshop, scenario_rig_state, scenario_align_marks) if only in x.__name__]:
                     try:
                         sc(t, name, photos)
                     except Exception:  # noqa: BLE001

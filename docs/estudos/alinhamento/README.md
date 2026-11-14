@@ -96,3 +96,23 @@ mesmo tamanho em todas). Duas marcas: a câmera de cima ou de baixo vê a haste 
 Com três marcas de espaçamento igual, a perspectiva entre elas dá a distância verdadeira de cada câmera (a conta usa a
 distância focal, que nas fotos de verdade vem do arquivo). Limite: a 5 m a perspectiva é fraca e a terceira marca
 quase não ajuda; uma haste mais comprida deve ajudar (não testado).
+
+## No app (2026-11-14, etapa 21, parte 1)
+
+A conta foi levada para o C++ do app: `src/gui/align_marks.h` / `.cpp` (sem OpenCV). Diferenças em relação a
+`find_marks.py`:
+
+- **Procura pela cor da marca.** Em vez de procurar o recorte na foto inteira (lento sem o OpenCV), o app pega a cor
+  de cada marca na foto clicada e acha onde essa cor aparece na outra foto (numa versão de 800 px); só nesses lugares
+  compara o recorte (em 5 tamanhos e 5 giros). Se a cor da marca não se destaca (branca, cinza), volta à procura na
+  foto inteira numa versão pequena. Cerca de 0,15 s por foto.
+- **A haste não é marca.** Ao levar o ponto ao centro da marca, a cor da haste (medida um pouco acima e abaixo) fica de
+  fora; sem isso, numa marca da largura da haste, a haste segurava o ponto onde ele estava.
+- **Marca larga ou estreita** é decidida comparando com a largura da haste medida na foto (antes: uma fração fixa da
+  distância entre as marcas).
+- **A marca do meio** é a mancha da cor dela mais perto do lugar esperado, entre as outras duas.
+
+Teste automático: `tests/host/align_marks_test.cpp` (cenas de mentira com bolas e com faixas, câmeras em alturas,
+distâncias, miras e giros diferentes, luz diferente em cada câmera e uma mancha da cor de uma marca ao lado). Resultado
+em 2026-11-14: marcas achadas a 0,04 px (bolas) e 0,1 px (faixas) do centro, em média; pior caso 0,3 px. Cenas de
+mentira são mais limpas que fotos de verdade: a medida que vale é a das fotos do rig (parte 2 em diante).

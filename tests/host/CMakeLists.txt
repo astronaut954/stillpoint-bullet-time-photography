@@ -40,6 +40,7 @@ add_executable(StillpointHost
     ${R}/src/gui/auto_match.cpp
     ${R}/src/gui/match_debug.cpp
     ${R}/src/gui/chart.cpp
+    ${R}/src/gui/align_marks.cpp
     ${R}/src/gui/project.cpp
     ${R}/src/gui/adobe.cpp
     ${R}/src/gui/rig_state.cpp
@@ -59,6 +60,12 @@ add_executable(ExporterMathTest exporter_math_test.cpp ${R}/src/gui/rig_state.cp
 target_include_directories(ExporterMathTest BEFORE PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/edsdk_stub")
 target_include_directories(ExporterMathTest PRIVATE ${R}/src/gui ${R}/include ${R}/src/core "${stb_SOURCE_DIR}")
 target_link_libraries(ExporterMathTest PRIVATE stillpoint_export pthread)
+
+# Alinhamento com a haste de três marcas (etapa 21), em cenas de mentira; o run_tests.py roda e mostra o resultado
+add_executable(AlignMarksTest align_marks_test.cpp ${R}/src/gui/align_marks.cpp)
+target_include_directories(AlignMarksTest BEFORE PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/edsdk_stub")
+target_include_directories(AlignMarksTest PRIVATE ${R}/src/gui ${R}/include ${R}/src/core "${stb_SOURCE_DIR}")
+target_compile_options(AlignMarksTest PRIVATE -O2)
 
 # Estudo do alinhamento por objeto de referência (etapa 21): o Chart::Find do app, numa linha de comando
 add_executable(ChartFindTool chart_find_tool.cpp ${R}/src/gui/chart.cpp)
