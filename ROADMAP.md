@@ -1058,6 +1058,9 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      Live view com Window, Full screen, Always on top, Change display, e a escolha do monitor). Decisões do dono no
      mesmo dia: **Mark and aim na forma A** (lista à esquerda, câmera escolhida à direita), com a foto da câmera
      escolhida maior; **Live aim só dentro do Guided aim**. Versão 2 do protótipo publicada no mesmo endereço.
+   - **Desenho da etapa 21 aprovado pelo dono (2026-11-14)**: Test shot (Align cameras: Prepare; Mark and aim forma A;
+     Save), Guided aim em janela própria com Live aim, Align photos opção B. Faltam decisões antes de implementar:
+     onde a receita fica guardada, quando o app pede para alinhar de novo.
 7. **Etapa 22 — Outras marcas de câmera (Sony, Nikon).** Posta como etapa pelo dono em 2026-11-11 (antes estava em
    "Futuro"). Viável marca a marca, com câmera para testar. Sony (site oficial, conferido em 2026-10-15): SDK
    gratuito, Windows 11 x64 e macOS 14.1+, cerca de 35 modelos recentes (α1, α9 II/III, α7 IV/V, α7R IV/V, α7S III,
