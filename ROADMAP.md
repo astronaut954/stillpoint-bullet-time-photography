@@ -1051,6 +1051,12 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      Mark and aim não é a melhor experiência, principalmente com tela cheia e Live aim; **Live aim só numa câmera por
      vez**. Versão 3 (alternativas visuais): https://claude.ai/artifact/MkM9L7Cv3xEKqqdTSRaVEN (Mark and aim A lista e vista grande, B fileira e vista grande, C guiado; Align photos A
      três opções no painel, B na barra da foto, C escolha ao entrar).
+   - Decisões do dono sobre a versão 3 (2026-11-14): **Align photos, opção B** (seletor Alignment na barra em cima da
+     foto: Rig, From this scene, None; Back to automatic ao lado). Mark and aim "está tudo certo", mas o guiado é que
+     deve ser a tela cheia, com nome melhor, e ter um botão de tela cheia com escolha do monitor como o Live view.
+     Protótipo: https://claude.ai/artifact/RYM8LjWw5UiU55bNz1ga9B ("Guided aim": janela própria, barra de opções do
+     Live view com Window, Full screen, Always on top, Change display, e a escolha do monitor). Pendente do dono: forma
+     A ou B do Mark and aim.
 7. **Etapa 22 — Outras marcas de câmera (Sony, Nikon).** Posta como etapa pelo dono em 2026-11-11 (antes estava em
    "Futuro"). Viável marca a marca, com câmera para testar. Sony (site oficial, conferido em 2026-10-15): SDK
    gratuito, Windows 11 x64 e macOS 14.1+, cerca de 35 modelos recentes (α1, α9 II/III, α7 IV/V, α7R IV/V, α7S III,
