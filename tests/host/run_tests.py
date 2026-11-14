@@ -1776,6 +1776,22 @@ def scenario_align_marks(t, name, photos):
             check(t, "fake photos: camera 1 gets the 1st photo, 2 the 2nd, 3 the 3rd, and 4 starts over from the 1st",
                   [by_cam[c] for c in ("SL3_1", "T7_1", "SL3_2", "T7_2")] == [source[0], source[1], source[2], source[0]], sorted(got))
             check(t, "fake photos: hidden files and files that are not photos are skipped", b"" not in got.values())
+        # A cena de mentira com a haste (STILLPOINT_FAKE_PHOTOS=pole): cada câmera vê a haste de um lugar
+        t.env["STILLPOINT_FAKE_PHOTOS"] = "pole"
+        t.restart_app()
+        t.dismiss()
+        s = t.shoot()
+        t.dismiss()
+        if s:
+            o = t.originals(s)
+            imgs = [Image.open(os.path.join(o, f)).convert("RGB") for f in sorted(os.listdir(o)) if f.lower().endswith(".jpg")]
+            # a bola vermelha de cima: bem vermelha, em algum lugar de cada foto
+            reds = [sum(1 for (r, g, b) in im.resize((360, 240)).getdata() if r > 150 and g < 80 and b < 80) for im in imgs]
+            check(t, "pole scene: each camera delivers a photo of the pole with the marks (1800 px wide)",
+                  len(imgs) == 4 and all(im.width == 1800 for im in imgs) and all(r > 5 for r in reds), (len(imgs), reds))
+            check(t, "pole scene: each camera sees it from a different place", len({im.tobytes()[:200000] for im in imgs}) == len(imgs))
+        else:
+            check(t, "pole scene: the shot made a session", False)
     finally:
         del t.env["STILLPOINT_FAKE_PHOTOS"]
         t.restart_app()

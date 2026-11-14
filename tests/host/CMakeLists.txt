@@ -62,7 +62,7 @@ target_include_directories(ExporterMathTest PRIVATE ${R}/src/gui ${R}/include ${
 target_link_libraries(ExporterMathTest PRIVATE stillpoint_export pthread)
 
 # Alinhamento com a haste de três marcas (etapa 21), em cenas de mentira; o run_tests.py roda e mostra o resultado
-add_executable(AlignMarksTest align_marks_test.cpp ${R}/src/gui/align_marks.cpp)
+add_executable(AlignMarksTest align_marks_test.cpp ${R}/src/gui/align_marks.cpp ${R}/src/gui/fake_scene.cpp)
 target_include_directories(AlignMarksTest BEFORE PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/edsdk_stub")
 target_include_directories(AlignMarksTest PRIVATE ${R}/src/gui ${R}/include ${R}/src/core "${stb_SOURCE_DIR}")
 target_compile_options(AlignMarksTest PRIVATE -O2)

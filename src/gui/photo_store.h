@@ -93,6 +93,9 @@ bool LoadPhotoRgb(const std::filesystem::path& file, RgbFrame& out, std::string*
 // câmera em destaque e o número da foto na sessão, numa cor por câmera.
 // ratio: largura/altura da foto simulada (1.5 = 3:2, como as câmeras entregam por padrão)
 bool WriteTestPhoto(const std::filesystem::path& file, int cameraNumber, int shotNumber, double ratio = 1.5);
+// Foto de teste com a haste de três marcas (etapa 21; STILLPOINT_FAKE_PHOTOS=pole): a câmera simulada cameraNumber de
+// um rig de mentira com cameraCount câmeras, cada uma vendo a haste de um lugar (src/gui/fake_scene.h).
+bool WritePoleTestPhoto(const std::filesystem::path& file, int cameraNumber, int cameraCount, double ratio = 1.5);
 bool IsRawPhoto(const std::string& file);
 bool IsJpegPhoto(const std::string& file);
 

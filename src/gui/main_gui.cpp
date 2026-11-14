@@ -1209,7 +1209,13 @@ namespace
         // câmeras, recomeça da 1ª). RAW e JPEG com o mesmo nome contam como uma foto só e vão juntos. A foto segue a
         // câmera, não a posição: trocar a ordem das câmeras troca a ordem das fotos, como no rig.
         std::vector<std::vector<std::filesystem::path>> fakePhotos;
-        if (const char* folder = std::getenv("STILLPOINT_FAKE_PHOTOS"); folder && *folder && fakeCount)
+        // STILLPOINT_FAKE_PHOTOS=pole: em vez de uma pasta, uma cena de mentira com a haste de três marcas, vista de um
+        // lugar diferente por cada câmera simulada (para testar o alinhamento sem câmeras e sem fotos).
+        const char* fakePhotosEnv = std::getenv("STILLPOINT_FAKE_PHOTOS");
+        const bool fakePole = fakeCount && fakePhotosEnv && std::string(fakePhotosEnv) == "pole";
+        if (fakePole)
+            Log("Fake photos: the pole with three marks (STILLPOINT_FAKE_PHOTOS=pole)");
+        if (const char* folder = fakePhotosEnv; folder && *folder && fakeCount && !fakePole)
         {
             std::map<std::string, std::vector<std::filesystem::path>> byName;
             std::error_code ec;
@@ -1834,6 +1840,8 @@ namespace
                         for (const auto& f : files)
                             std::filesystem::copy_file(f, dir / (base + f.extension().string()), std::filesystem::copy_options::overwrite_existing, ec);
                     }
+                    else if (fakePole)
+                        WritePoleTestPhoto(dir / (base + ".jpg"), std::max(1, fakeIndex), fakeCount, ratio);
                     else
                         WriteTestPhoto(dir / (base + ".jpg"), number, static_cast<int>(i) + 1, ratio);
                     ++done;

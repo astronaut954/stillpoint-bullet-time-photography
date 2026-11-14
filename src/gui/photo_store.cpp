@@ -5,6 +5,7 @@
 #endif
 
 #include "photo_store.h"
+#include "fake_scene.h"
 #include "json_lite.h"
 
 #include <algorithm>
@@ -634,6 +635,19 @@ bool WriteTestPhoto(const fs::path& file, int cameraNumber, int shotNumber, doub
     DrawText(px, w, h, 30, 30, "#" + std::to_string(shotNumber), 8, 255, 255, 255);
     std::string jpeg;
     stbi_write_jpg_to_func(AppendToString, &jpeg, w, h, 3, px.data(), 88);
+    std::error_code ec;
+    fs::create_directories(file.parent_path(), ec);
+    std::ofstream out(file, std::ios::binary);
+    out << jpeg;
+    return static_cast<bool>(out);
+}
+
+bool WritePoleTestPhoto(const fs::path& file, int cameraNumber, int cameraCount, double ratio)
+{
+    const int w = 1800, h = std::max(200, static_cast<int>(std::lround(1800.0 / std::max(0.5, ratio))));
+    const RgbFrame f = FakeScene::Render(FakeScene::RigCamera(cameraNumber, cameraCount, w, h), true);
+    std::string jpeg;
+    stbi_write_jpg_to_func(AppendToString, &jpeg, w, h, 3, f.pixels.data(), 92);
     std::error_code ec;
     fs::create_directories(file.parent_path(), ec);
     std::ofstream out(file, std::ios::binary);

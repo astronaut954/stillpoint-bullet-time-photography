@@ -1077,6 +1077,11 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    - **Parte 2 feita (2026-11-14):** `STILLPOINT_FAKE_PHOTOS=<pasta>` junto de `STILLPOINT_FAKE_CAMERAS`: cada câmera
      simulada entrega uma foto de verdade da pasta (em ordem de nome; RAW e JPEG de mesmo nome juntos; a foto segue a
      câmera, não a posição). Vale para o disparo, o Test shot e o Match. Roteiro: `docs/teste-manual.md`, seção 46.
+     Com `STILLPOINT_FAKE_PHOTOS=pole` (decisão do dono, 2026-11-14, opção A), as câmeras simuladas fotografam uma
+     cena de mentira com a haste de três marcas (bolas vermelha, verde e azul), cada uma de um lugar do arco, em
+     alturas, distâncias, miras e giros diferentes (`src/gui/fake_scene.*`): assim o fluxo do alinhamento é testado
+     sem câmeras e sem fotos. **Regra do dono (2026-11-14):** todos os testes com objetos reais (câmeras, haste, fotos
+     do rig) ficam pendentes até ele avisar que tem o material.
 7. **Etapa 22 — Outras marcas de câmera (Sony, Nikon).** Posta como etapa pelo dono em 2026-11-11 (antes estava em
    "Futuro"). Viável marca a marca, com câmera para testar. Sony (site oficial, conferido em 2026-10-15): SDK
    gratuito, Windows 11 x64 e macOS 14.1+, cerca de 35 modelos recentes (α1, α9 II/III, α7 IV/V, α7R IV/V, α7S III,

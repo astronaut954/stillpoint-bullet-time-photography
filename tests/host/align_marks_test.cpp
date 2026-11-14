@@ -3,6 +3,7 @@
 // Cenas de mentira: uma haste em pé com três marcas de espaçamento igual, vista por câmeras num arco, em alturas,
 // distâncias, miras e inclinações diferentes, com luz diferente em cada uma e uma mancha da cor de uma marca ao lado. Como a cena é inventada, a resposta certa é conhecida.
 #include "align_marks.h"
+#include "fake_scene.h"
 
 #include <algorithm>
 #include <cmath>
@@ -12,7 +13,6 @@
 
 namespace
 {
-    constexpr double kPi = 3.14159265358979323846;
     int failed = 0;
     void Check(const std::string& name, bool ok, const std::string& details = "")
     {
@@ -21,125 +21,7 @@ namespace
     }
     std::string Num(double v) { char b[64]; std::snprintf(b, sizeof b, "%.3f", v); return b; }
 
-    struct V3 { double x, y, z; };
-    V3 Sub(V3 a, V3 b) { return { a.x - b.x, a.y - b.y, a.z - b.z }; }
-    double Dot(V3 a, V3 b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
-    V3 Cross(V3 a, V3 b) { return { a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x }; }
-    V3 Norm(V3 a) { const double n = std::sqrt(Dot(a, a)); return { a.x / n, a.y / n, a.z / n }; }
-
-    // Câmera de mentira. Mundo: z para cima (metros); a haste em pé na origem, marcas em z = 0.6, 1.0, 1.4.
-    struct Cam
-    {
-        V3 pos, right, down, fwd;
-        double f; int w, h;
-        bool Project(V3 P, double& u, double& v) const
-        {
-            const V3 d = Sub(P, pos);
-            const double z = Dot(d, fwd);
-            if (z <= 0.01) return false;
-            u = w / 2.0 + f * Dot(d, right) / z;
-            v = h / 2.0 + f * Dot(d, down) / z;
-            return true;
-        }
-    };
-    // azimute (graus), distância no chão, altura da câmera, erro de mira (graus), giro da câmera (graus)
-    Cam MakeCam(double az, double dist, double height, double panErr, double tiltErr, double roll, double f, int w = 1500, int h = 1000)
-    {
-        Cam c;
-        const double a = az * kPi / 180;
-        c.pos = { dist * std::cos(a), dist * std::sin(a), height };
-        V3 fwd = Norm(Sub({ 0, 0, 1.0 }, c.pos));
-        // erro de mira: virar e inclinar um pouco
-        const double p = panErr * kPi / 180, t = tiltErr * kPi / 180;
-        V3 side = Norm(Cross(fwd, { 0, 0, 1 }));
-        V3 up = Cross(side, fwd);
-        fwd = Norm({ fwd.x + side.x * std::tan(p) + up.x * std::tan(t), fwd.y + side.y * std::tan(p) + up.y * std::tan(t), fwd.z + side.z * std::tan(p) + up.z * std::tan(t) });
-        side = Norm(Cross(fwd, { 0, 0, 1 }));
-        up = Cross(side, fwd);
-        const double r = roll * kPi / 180;
-        c.right = { side.x * std::cos(r) + up.x * std::sin(r), side.y * std::cos(r) + up.y * std::sin(r), side.z * std::cos(r) + up.z * std::sin(r) };
-        const V3 upR = Cross(c.right, fwd);
-        c.down = { -upR.x, -upR.y, -upR.z };
-        c.fwd = fwd;
-        c.f = f; c.w = w; c.h = h;
-        return c;
-    }
-
-    const V3 kMarks[3] = { { 0, 0, 1.4 }, { 0, 0, 1.0 }, { 0, 0, 0.6 } };
-
-    // A foto: fundo com textura (parede e chão), a haste cinza e as três marcas (bolas coloridas ou faixas).
-    RgbFrame Render(const Cam& c, bool balls)
-    {
-        RgbFrame f; f.width = c.w; f.height = c.h; f.pixels.assign(size_t(c.w) * c.h * 3, 0);
-        double hu = 0, hv = 0;
-        c.Project({ 100 * c.fwd.x + c.pos.x, 100 * c.fwd.y + c.pos.y, c.pos.z }, hu, hv);  // altura do horizonte
-        for (int y = 0; y < c.h; ++y)
-            for (int x = 0; x < c.w; ++x)
-            {
-                unsigned char* p = &f.pixels[(size_t(y) * c.w + x) * 3];
-                const unsigned n = (unsigned(x) * 73856093u) ^ (unsigned(y) * 19349663u);
-                const int noise = int((n >> 7) % 9) - 4;
-                const bool floor = y > hv + 60;
-                const int base = floor ? 120 : 200;
-                p[0] = (unsigned char)std::clamp(base + noise + (floor ? 10 : 0), 0, 255);
-                p[1] = (unsigned char)std::clamp(base + noise - 4, 0, 255);
-                p[2] = (unsigned char)std::clamp(base + noise - (floor ? 20 : 10), 0, 255);
-            }
-        // Haste: de z = 0.2 a z = 1.6, raio 1 cm
-        const int steps = 400;
-        for (int s = 0; s <= steps; ++s)
-        {
-            const double z = 0.2 + 1.4 * s / steps;
-            double u, v, u2, v2;
-            if (!c.Project({ 0, 0, z }, u, v) || !c.Project({ 0.01 * c.right.x, 0.01 * c.right.y, z + 0.01 * c.right.z }, u2, v2)) continue;
-            const double r = std::max(1.5, std::hypot(u2 - u, v2 - v));
-            for (int y = int(v - r - 1); y <= int(v + r + 1); ++y)
-                for (int x = int(u - r - 1); x <= int(u + r + 1); ++x)
-                    if (x >= 0 && y >= 0 && x < c.w && y < c.h && std::hypot(x - u, y - v) <= r)
-                    {
-                        unsigned char* p = &f.pixels[(size_t(y) * c.w + x) * 3];
-                        p[0] = 70; p[1] = 70; p[2] = 75;
-                    }
-        }
-        // Marcas: bola de raio 4 cm (balls) ou faixa colorida na haste de 3 cm de altura
-        const unsigned char colors[3][3] = { { 220, 40, 40 }, { 40, 170, 60 }, { 40, 70, 220 } };
-        for (int k = 0; k < 3; ++k)
-        {
-            double u, v, u2, v2;
-            if (!c.Project(kMarks[k], u, v)) continue;
-            if (balls)
-            {
-                c.Project({ kMarks[k].x + 0.04 * c.right.x, kMarks[k].y + 0.04 * c.right.y, kMarks[k].z + 0.04 * c.right.z }, u2, v2);
-                const double r = std::hypot(u2 - u, v2 - v);
-                for (int y = int(v - r - 1); y <= int(v + r + 1); ++y)
-                    for (int x = int(u - r - 1); x <= int(u + r + 1); ++x)
-                        if (x >= 0 && y >= 0 && x < c.w && y < c.h && std::hypot(x - u, y - v) <= r)
-                        {
-                            unsigned char* p = &f.pixels[(size_t(y) * c.w + x) * 3];
-                            const double shade = 1.0 - 0.25 * std::hypot(x - u, y - v) / r;
-                            for (int ch = 0; ch < 3; ++ch) p[ch] = (unsigned char)(colors[k][ch] * shade);
-                        }
-            }
-            else
-            {
-                for (int s = -30; s <= 30; ++s)
-                {
-                    const double z = kMarks[k].z + 0.015 * s / 30;
-                    double a, b, a2, b2;
-                    if (!c.Project({ 0, 0, z }, a, b) || !c.Project({ 0.012 * c.right.x, 0.012 * c.right.y, z + 0.012 * c.right.z }, a2, b2)) continue;
-                    const double r = std::max(1.5, std::hypot(a2 - a, b2 - b));
-                    for (int y = int(b - r - 1); y <= int(b + r + 1); ++y)
-                        for (int x = int(a - r - 1); x <= int(a + r + 1); ++x)
-                            if (x >= 0 && y >= 0 && x < c.w && y < c.h && std::hypot(x - a, y - b) <= r)
-                            {
-                                unsigned char* p = &f.pixels[(size_t(y) * c.w + x) * 3];
-                                for (int ch = 0; ch < 3; ++ch) p[ch] = colors[k][ch];
-                            }
-                }
-            }
-        }
-        return f;
-    }
+    using namespace FakeScene;
 
     // A conta da distância verdadeira e da altura, com as marcas exatas (sem foto)
     void TestSolve()
@@ -271,10 +153,40 @@ namespace
         Check(kind + ": a photo without the pole is not found with high confidence", !r.ok || r.confidence < 0.5, Num(r.confidence));
         (void)empty;
     }
+
+    // O rig de mentira das câmeras simuladas (STILLPOINT_FAKE_PHOTOS=pole): 9 câmeras, todas acham as marcas
+    void TestRig()
+    {
+        const int n = 9, w = 1800, h = 1200;
+        std::vector<Cam> cams;
+        std::vector<RgbFrame> photos;
+        for (int i = 1; i <= n; ++i) { cams.push_back(RigCamera(i, n, w, h)); photos.push_back(Render(cams.back(), true)); }
+        int inside = 0;
+        for (const auto& c : cams)
+        {
+            bool ok = true;
+            for (int k = 0; k < 3; ++k) { double u, v; ok = ok && c.Project(kMarks[k], u, v) && u > 50 && v > 50 && u < w - 50 && v < h - 50; }
+            inside += ok;
+        }
+        Check("fake rig: the three marks are inside the photo of each of the 9 cameras", inside == n, std::to_string(inside));
+        AlignMarks::Pt marks[3];
+        for (int k = 0; k < 3; ++k) cams[0].Project(kMarks[k], marks[k].x, marks[k].y);
+        double worst = 0;
+        int found = 0;
+        for (int i = 1; i < n; ++i)
+        {
+            const auto r = AlignMarks::Find(photos[0], marks, photos[i], true);
+            if (!r.ok) continue;
+            ++found;
+            for (int k = 0; k < 3; ++k) { double u, v; cams[i].Project(kMarks[k], u, v); worst = std::max(worst, std::hypot(r.p[k].x - u, r.p[k].y - v)); }
+        }
+        Check("fake rig: the marks of camera 1 are found in the other 8 (within 3 px)", found == n - 1 && worst < 3, std::to_string(found) + " found, worst " + Num(worst));
+    }
 }
 
 int main()
 {
+    TestRig();
     TestSolve();
     TestFind(true);
     TestFind(false);

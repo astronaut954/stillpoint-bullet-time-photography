@@ -2098,7 +2098,12 @@ Serve qualquer pasta de uma sessão já fotografada (os nomes `01_...`, `02_...`
 - [ ] Abrir com a pasta de uma sessão sua: **It's bullet time** (embaixo, à direita) faz uma sessão com as fotos dessa
       pasta, cada câmera com a sua.
 - [ ] **Camera settings** (painel **Cameras**, no alto à direita) › **Test shot**: as fotos que aparecem são as da pasta.
+- [ ] Com `STILLPOINT_FAKE_PHOTOS=pole` (sem pasta): **It's bullet time** faz uma sessão em que cada câmera vê a
+      haste com as bolas vermelha, verde e azul de um lugar diferente (mais alta, mais baixa, mais perto, mais longe,
+      um pouco torta).
 - [ ] Abrir sem `STILLPOINT_FAKE_PHOTOS`: voltam as fotos numeradas de sempre.
+
+Testes com objetos reais (fotos do rig, haste, câmeras): pendentes até o dono avisar que tem o material (2026-11-14).
 - [ ] Windows: os itens acima.
 
 ## Resultado
