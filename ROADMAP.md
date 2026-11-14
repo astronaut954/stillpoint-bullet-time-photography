@@ -1054,7 +1054,7 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    - Decisões do dono sobre a versão 3 (2026-11-14): **Align photos, opção B** (seletor Alignment na barra em cima da
      foto: Rig, From this scene, None; Back to automatic ao lado). Mark and aim "está tudo certo", mas o guiado é que
      deve ser a tela cheia, com nome melhor, e ter um botão de tela cheia com escolha do monitor como o Live view.
-     Protótipo: https://claude.ai/artifact/RYM8LjWw5UiU55bNz1ga9B ("Guided aim": janela própria, barra de opções do
+     Protótipo: https://claude.ai/artifact/RxbBbJMeXj351jyao6KVxo ("Guided aim": janela própria, barra de opções do
      Live view com Window, Full screen, Always on top, Change display, e a escolha do monitor). Pendente do dono: forma
      A ou B do Mark and aim.
 7. **Etapa 22 — Outras marcas de câmera (Sony, Nikon).** Posta como etapa pelo dono em 2026-11-11 (antes estava em
