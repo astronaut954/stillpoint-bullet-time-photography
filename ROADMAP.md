@@ -1038,6 +1038,9 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      pessoa pode ver as fotos sem os ajustes automáticos. Dado do dono: a SL3 e a T7 aceitam imagem ao vivo (e, pelo
      palpite dele, a maioria das Canon recentes), mas o recorte da imagem ao vivo muda em relação à foto: a mira ao
      vivo precisaria levar isso em conta (ideia para depois).
+   - Protótipo do alinhamento dentro do Test shot (2026-11-14, aguardando o dono):
+     https://claude.ai/artifact/F9c8TfFYXtYTnWSnDePKfx (Prepare; Mark and aim em três formas: V1 grade, V2 grade e
+     lista, V3 uma câmera por vez; Save; Align photos com Back to automatic, Remove alignment e Show without alignment).
 7. **Etapa 22 — Outras marcas de câmera (Sony, Nikon).** Posta como etapa pelo dono em 2026-11-11 (antes estava em
    "Futuro"). Viável marca a marca, com câmera para testar. Sony (site oficial, conferido em 2026-10-15): SDK
    gratuito, Windows 11 x64 e macOS 14.1+, cerca de 35 modelos recentes (α1, α9 II/III, α7 IV/V, α7R IV/V, α7S III,
