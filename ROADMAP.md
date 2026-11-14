@@ -1020,6 +1020,18 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    tela (2026-11-14, aguardando o dono): https://claude.ai/artifact/CK3EyFTDBzsPwDykXrt7tU (botão Align cameras na
    Camera settings; janela em três passos Prepare, Mark, Check, no formato do Match automatically). Depois: onde a
    receita é usada, quando pedir para alinhar de novo, receita do projeto ou do rig.
+   **Decisões e observações do dono (2026-11-14), sobre o protótipo de alternativas
+   (https://claude.ai/artifact/EoVDprHQcHHC7ZNZrbvjrr):**
+   - Marcar em dois passos (jeito B: Prepare; Mark and check, com todas as fotos juntas).
+   - O lugar que faz mais sentido para ele: dentro da tela do **Test shot**, com as instruções, repensando como
+     essa tela funciona (a desenhar).
+   - O lugar 2 (Align photos) não é "Align with a stick": é o programa tentar alinhar uma sessão já fotografada,
+     como recurso extra para quem esqueceu de alinhar antes (cabe o cálculo pela cena, que já estava para depois).
+   - Alinhamento não destrutivo: ao abrir o Align photos, os ajustes do alinhamento automático já estão nas fotos e a
+     pessoa faz ajustes finos por cima; o app guarda o alinhamento original para desfazer os ajustes finos, e há
+     outro botão para tirar todo o alinhamento.
+   - Ele separou alinhamento físico (mexer na câmera: zoom, altura, inclinação) de alinhamento digital (os mesmos
+     ajustes feitos na foto) e pediu a opinião do assistente sobre o app ajudar nos dois.
 7. **Etapa 22 — Outras marcas de câmera (Sony, Nikon).** Posta como etapa pelo dono em 2026-11-11 (antes estava em
    "Futuro"). Viável marca a marca, com câmera para testar. Sony (site oficial, conferido em 2026-10-15): SDK
    gratuito, Windows 11 x64 e macOS 14.1+, cerca de 35 modelos recentes (α1, α9 II/III, α7 IV/V, α7R IV/V, α7S III,
