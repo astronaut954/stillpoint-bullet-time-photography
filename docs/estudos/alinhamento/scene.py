@@ -55,7 +55,8 @@ def quads(rng, plain_walls=False, plain_subject=False, chart=0.0, pole=False, su
         # são desenhadas no render), "blue" (fita azul)
         kind = pole if isinstance(pole, str) else "tape"
         tex = np.full((1800, 64, 3), 235, np.uint8)     # 1 px = 1 mm de altura
-        for z in (0.7, 1.3):
+        three = kind.endswith("3"); kind = kind.rstrip("3")
+        for z in ((0.7, 1.0, 1.3) if three else (0.7, 1.3)):
             r = int(z * 1000)
             if kind == "tape": tex[r - 25:r + 25] = (0, 120, 255)
             elif kind == "blue": tex[r - 25:r + 25] = (200, 90, 20)
@@ -98,7 +99,7 @@ def render(K, R, C, W, H, qs, balls=()):
         cv2.circle(img, (int(round(u[0] - rp * 0.3)), int(round(u[1] - rp * 0.3))), max(1, int(rp * 0.25)), tuple(min(255, c + 70) for c in col), -1, cv2.LINE_AA)
     return img
 
-def make(out, n=9, arc=120.0, radius=3.0, seed=1, err=1.0, plain=False, W=1500, H=1000, plain_subject=False, k1=0.0, noise=6, blur=0.0, gain=0.0, focal_var=0.0, dark=1.0, chart=0.0, pole=False, subject=True, soft=False):
+def make(out, n=9, arc=120.0, radius=3.0, seed=1, err=1.0, plain=False, W=1500, H=1000, plain_subject=False, k1=0.0, noise=6, blur=0.0, gain=0.0, focal_var=0.0, dark=1.0, chart=0.0, pole=False, subject=True, soft=False, hvar=0.0, rows=None):
     """k1: distorção de lente (barril < 0); noise: ruído; blur: desfoque (px); gain: variação de exposição e cor entre
     câmeras; focal_var: variação da distância focal entre câmeras (lentes diferentes); dark: 1 = normal, 0.25 = pouca luz."""
     rng = np.random.default_rng(seed)
@@ -110,7 +111,8 @@ def make(out, n=9, arc=120.0, radius=3.0, seed=1, err=1.0, plain=False, W=1500, 
     for i in range(n):
         a = np.radians(-arc / 2 + arc * i / (n - 1)) if n > 1 else 0.0
         r = radius + rng.normal(0, 0.05) * err
-        C = np.array([r * np.sin(a), -r * np.cos(a), 1.4 + rng.normal(0, 0.04) * err])
+        hz = (rows[i % len(rows)] if rows else 1.4 + rng.uniform(-hvar, hvar)) + rng.normal(0, 0.04) * err
+        C = np.array([r * np.sin(a), -r * np.cos(a), hz])
         aim = pivot + rng.normal(0, 0.12, 3) * err          # erro de mira (até ~3 graus)
         R = look_at(C, aim, roll=np.radians(rng.normal(0, 2.0)) * err)
         f = f0 * (1 + rng.uniform(-focal_var, focal_var))

@@ -994,8 +994,12 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
    perdeu câmeras muito giradas, com confiança baixa (dá para recusar); fita de pouco contraste falhou em lugar com
    detalhe sem dar sinal. Quinta rodada, com o ponto levado ao centro da marca: fita, faixa impressa e bolas de cor
    viva com erro médio de 0,5 a 1,4 px e máximo de 0,9 a 2,7 px em fotos de 2400 px, em todos os cenários testados
-   (mesma faixa da cartela e do cálculo pela cena). Fita de pouco contraste continua ruim. Falta: fotos de verdade;
-   câmeras em alturas diferentes. Pendente do dono: a tela (protótipo).
+   (mesma faixa da cartela e do cálculo pela cena). Fita de pouco contraste continua ruim.
+   **Alturas diferentes (dono, 2026-11-14: é o mais comum no rig dele, por limitações técnicas):** com duas marcas,
+   a câmera de cima ou de baixo vê a haste encurtada e o sujeito sai maior nela (até 42 px e 4,7% com ±50 cm a 3 m;
+   perceptível a partir de ~±25 cm). Com **três marcas de espaçamento igual**, a perspectiva dá a distância
+   verdadeira: 8 a 9 px e 0,6% a 0,8% nos mesmos casos. A 5 m a terceira marca quase não ajuda (o erro já é menor).
+   Falta: fotos de verdade. Pendentes do dono: duas ou três marcas; a tela (protótipo).
 7. **Etapa 22 — Outras marcas de câmera (Sony, Nikon).** Posta como etapa pelo dono em 2026-11-11 (antes estava em
    "Futuro"). Viável marca a marca, com câmera para testar. Sony (site oficial, conferido em 2026-10-15): SDK
    gratuito, Windows 11 x64 e macOS 14.1+, cerca de 35 modelos recentes (α1, α9 II/III, α7 IV/V, α7R IV/V, α7S III,

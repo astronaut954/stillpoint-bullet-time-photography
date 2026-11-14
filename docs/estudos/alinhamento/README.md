@@ -76,3 +76,23 @@ tipo é medido na foto clicada (`is_wide`). A referência certa passou a ser a s
   com muito detalhe, ruído e desfoque, 5 m e 18 câmeras em volta inteira. Mesma faixa da cartela e do cálculo pela cena.
 - Faixa impressa com câmeras muito giradas: perde 2 de 8, com confiança baixa (dá para recusar e pedir o clique).
 - Fita de pouco contraste: continua ruim (3 a 5 de 8 e até 30 px). A lista de recomendações deve pedir cor viva.
+
+## Sexta rodada (2026-11-14): câmeras em alturas diferentes
+
+O dono disse que, no rig dele, o mais comum é as câmeras ficarem em alturas diferentes por limitações técnicas.
+`heights.py` / `heights.json`: 9 câmeras a 3 m, fotos de 2400 px; o erro é onde a cabeça, o centro e os pés do sujeito
+caem depois de alinhar, comparado com o alinhamento ideal (ponto central no meio, vertical na vertical, sujeito do
+mesmo tamanho em todas). Duas marcas: a câmera de cima ou de baixo vê a haste encurtada e aumenta a foto além da conta.
+
+| Alturas | Duas marcas | Três marcas (0,7, 1,0 e 1,3 m) |
+| --- | --- | --- |
+| Iguais | 4 px; 0,3% | 3 px; 0,3% |
+| ±10 cm | 10 px; 1,0% | 2 px; 0,2% |
+| ±25 cm | 18 px; 1,8% | 5 px; 0,4% |
+| ±50 cm | 42 px; 4,7% | 8 px; 0,6% |
+| Duas fileiras, 1,0 e 1,8 m | 37 px; 4,0% | 9 px; 0,8% |
+| ±50 cm, a 5 m | 11 px; 1,1% | 12 px; 0,8% |
+
+Com três marcas de espaçamento igual, a perspectiva entre elas dá a distância verdadeira de cada câmera (a conta usa a
+distância focal, que nas fotos de verdade vem do arquivo). Limite: a 5 m a perspectiva é fraca e a terceira marca
+quase não ajuda; uma haste mais comprida deve ajudar (não testado).
