@@ -1055,8 +1055,9 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      foto: Rig, From this scene, None; Back to automatic ao lado). Mark and aim "está tudo certo", mas o guiado é que
      deve ser a tela cheia, com nome melhor, e ter um botão de tela cheia com escolha do monitor como o Live view.
      Protótipo: https://claude.ai/artifact/RxbBbJMeXj351jyao6KVxo ("Guided aim": janela própria, barra de opções do
-     Live view com Window, Full screen, Always on top, Change display, e a escolha do monitor). Pendente do dono: forma
-     A ou B do Mark and aim.
+     Live view com Window, Full screen, Always on top, Change display, e a escolha do monitor). Decisões do dono no
+     mesmo dia: **Mark and aim na forma A** (lista à esquerda, câmera escolhida à direita), com a foto da câmera
+     escolhida maior; **Live aim só dentro do Guided aim**. Versão 2 do protótipo publicada no mesmo endereço.
 7. **Etapa 22 — Outras marcas de câmera (Sony, Nikon).** Posta como etapa pelo dono em 2026-11-11 (antes estava em
    "Futuro"). Viável marca a marca, com câmera para testar. Sony (site oficial, conferido em 2026-10-15): SDK
    gratuito, Windows 11 x64 e macOS 14.1+, cerca de 35 modelos recentes (α1, α9 II/III, α7 IV/V, α7R IV/V, α7S III,
