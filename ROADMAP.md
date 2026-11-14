@@ -1032,6 +1032,12 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      outro botão para tirar todo o alinhamento.
    - Ele separou alinhamento físico (mexer na câmera: zoom, altura, inclinação) de alinhamento digital (os mesmos
      ajustes feitos na foto) e pediu a opinião do assistente sobre o app ajudar nos dois.
+   - **Decisões do dono (2026-11-14, depois):** o app ajuda também no alinhamento físico (ciclo de mirar e disparar de
+     novo pelo Test shot, com instruções por câmera: mira, giro, altura, distância ou zoom; só informa, não trava),
+     e depois faz o alinhamento digital. Não destrutivo confirmado: as fotos originais ficam sempre preservadas e a
+     pessoa pode ver as fotos sem os ajustes automáticos. Dado do dono: a SL3 e a T7 aceitam imagem ao vivo (e, pelo
+     palpite dele, a maioria das Canon recentes), mas o recorte da imagem ao vivo muda em relação à foto: a mira ao
+     vivo precisaria levar isso em conta (ideia para depois).
 7. **Etapa 22 — Outras marcas de câmera (Sony, Nikon).** Posta como etapa pelo dono em 2026-11-11 (antes estava em
    "Futuro"). Viável marca a marca, com câmera para testar. Sony (site oficial, conferido em 2026-10-15): SDK
    gratuito, Windows 11 x64 e macOS 14.1+, cerca de 35 modelos recentes (α1, α9 II/III, α7 IV/V, α7R IV/V, α7S III,
