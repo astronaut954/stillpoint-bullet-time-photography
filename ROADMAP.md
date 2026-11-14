@@ -1062,7 +1062,11 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      Save), Guided aim em janela própria com Live aim, Align photos opção B.
    - **Receita guardada com o projeto** (decisão do dono, 2026-11-14, opção A), junto do estado do rig
      (`stillpoint-rig.json`); cada sessão guarda a receita que valia quando foi fotografada (refazer o alinhamento
-     não muda as sessões antigas). Falta decidir: quando o app pede para alinhar de novo.
+     não muda as sessões antigas).
+   - **Quando pedir para alinhar de novo** (decisão do dono, 2026-11-14, opção A): só quando o app perceber uma
+     mudança (câmera entrou, saiu ou foi trocada; ordem mudou; zoom mudou). Aviso âmbar no Test shot com Align again;
+     as câmeras que não mudaram continuam alinhadas, a que mudou fica sem alinhamento automático até refazer.
+     Esbarrão no tripé não é detectado (conferência visual no Align photos).
 7. **Etapa 22 — Outras marcas de câmera (Sony, Nikon).** Posta como etapa pelo dono em 2026-11-11 (antes estava em
    "Futuro"). Viável marca a marca, com câmera para testar. Sony (site oficial, conferido em 2026-10-15): SDK
    gratuito, Windows 11 x64 e macOS 14.1+, cerca de 35 modelos recentes (α1, α9 II/III, α7 IV/V, α7R IV/V, α7S III,
