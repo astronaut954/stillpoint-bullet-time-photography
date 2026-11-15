@@ -2098,7 +2098,7 @@ Serve qualquer pasta de uma sessão já fotografada (os nomes `01_...`, `02_...`
 - [ ] Abrir com a pasta de uma sessão sua: **It's bullet time** (embaixo, à direita) faz uma sessão com as fotos dessa
       pasta, cada câmera com a sua.
 - [ ] **Camera settings** (painel **Cameras**, no alto à direita) › **Test shot**: as fotos que aparecem são as da pasta.
-- [ ] Com `STILLPOINT_FAKE_PHOTOS=pole` (sem pasta): **It's bullet time** faz uma sessão em que cada câmera vê a
+- [x] Com `STILLPOINT_FAKE_PHOTOS=pole` (sem pasta): **It's bullet time** faz uma sessão em que cada câmera vê a
       haste com as bolas vermelha, verde e azul de um lugar diferente (mais alta, mais baixa, mais perto, mais longe,
       um pouco torta).
 - [ ] Abrir sem `STILLPOINT_FAKE_PHOTOS`: voltam as fotos numeradas de sempre.
@@ -2172,3 +2172,4 @@ Testes com objetos reais (fotos do rig, haste, câmeras): pendentes até o dono 
 | 2026-10-15 | Mac (+ Windows compilado) | etapa-12-configuracoes (2.7.0) | Canon SL3 + Canon T7 | sim | Camera settings, All cameras, Test shot, Match automatically com calibração e Cancel aprovados pelo dono do projeto no Mac; G/M conferido na SL3 e na T7 |
 | 2026-10-21 | Mac (M5, macOS 26) | etapa-16-processo-por-camera (SdkMultiprocTest) | Canon SL3 + T7 + T5 | sim | Seção 20, A–F: 3 processos abriram a sua câmera (0,4–0,6 s); cada um vê as 3; abrir a câmera do outro dá 0xC0 (COMM_PORT_IS_IN_USE); disparo simultâneo por relógio com 26 ms de diferença entre a 1ª e a 3ª chamada, 3 fotos em ~2,5 s. Numa rodada a T7 travou dentro do comando de disparo (processo dela parado, os outros 2 normais); na repetição não travou. G (queda) não feito |
 | 2026-10-21 | Mac (M5, macOS 26) | etapa-16-processo-por-camera | Canon SL3 + T7 + T5 | parcial | Seção 21: conexão em paralelo (0,5 s cada), At once ×5, planos de 9 fotos, T5 desligada volta sozinha com o mesmo nome, Restart ok. Sweep 0,3 s com 3 câmeras: a mesma câmera de novo a 0,9 s é recusada ("busy") — limite da câmera, decisão pendente. Camera settings, Test shot, Match, fechar o app e processo encerrado à força: ok. Falta: Windows |
+| 2026-11-15 | Mac | etapa-21-alinhamento | — (9 câmeras simuladas) | sim | Seção 46: com `STILLPOINT_FAKE_PHOTOS=pole`, a foto mostrou a haste com as três bolas (aprovado pelo dono do projeto). Pasta com fotos reais e Windows: pendentes |
