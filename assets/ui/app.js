@@ -2710,7 +2710,6 @@
   // janela, com ← → e Esc. "Hide photos" recolhe a fileira.
   let csZoom = false, csCollapsed = false;
   const csHideBtn = button("Hide photos", () => csSetCollapsed(!csCollapsed), { kind: "btn-link" });
-  csGallery.setActions([csHideBtn]);
   csGallery.setStageTools([
     button("", () => csGallery.prev(), { icon: "left", title: "Previous camera" }),
     button("", () => csGallery.next(), { icon: "right", title: "Next camera" }),
@@ -2739,6 +2738,394 @@
   }
   $("csGallery").querySelector(".carousel").addEventListener("click", (e) => { if (e.target.closest(".frame")) csSetZoom(true); });
   $("csGallery").querySelector(".stage").addEventListener("click", (e) => { if (e.target === e.currentTarget) csSetZoom(false); });
+  // =================== Alinhamento das câmeras (etapa 21, parte 3; desenho aprovado pelo dono em 2026-11-14) ===================
+  // Test shot › Align cameras: 1 Prepare (objetos e instruções, Fire), 2 Mark and aim (forma A: lista de câmeras à
+  // esquerda, a câmera escolhida grande à direita, com setas e instruções), 3 Save (as fotos já alinhadas e os valores).
+  // A conta (achar as marcas, a receita, as instruções) é do programa: alignMark, alignFind, alignSolve, alignSave.
+  const al = { open: false, step: 0, firing: false, session: "", photos: [], data: {}, sel: "", clicks: null, ref: "",
+               solved: {}, saved: null, busy: false, msg: "" };
+  const alEsc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const alNum = (cam) => pad(cam.order);
+  const AL_SUB2 = "Fix what you can on each camera, then fire again. What you cannot fix (for example, the height) the app corrects in the photos when you save.";
+  const alTape = (x, y, w) => '<rect x="' + (x - w / 2) + '" y="' + y + '" width="' + w + '" height="9" fill="#ff7a00"/>';
+  const AL_OBJ = [
+    ["Stick or pole", "A broom handle, a curtain rod or a pipe. Three tapes.", '<line x1="60" y1="18" x2="60" y2="186" stroke="#ddd" stroke-width="7"/>' + alTape(60, 52, 15) + alTape(60, 98, 15) + alTape(60, 144, 15) + '<line x1="34" y1="186" x2="86" y2="186" stroke="#777" stroke-width="2"/>'],
+    ["Light stand", "The stand of a light, without the light. Three tapes on the pole.", '<line x1="60" y1="14" x2="60" y2="150" stroke="#ccc" stroke-width="5"/><line x1="60" y1="150" x2="28" y2="186" stroke="#ccc" stroke-width="4"/><line x1="60" y1="150" x2="92" y2="186" stroke="#ccc" stroke-width="4"/><line x1="60" y1="150" x2="60" y2="186" stroke="#ccc" stroke-width="4"/>' + alTape(60, 36, 12) + alTape(60, 78, 12) + alTape(60, 120, 12)],
+    ["Printed bands", "Print the bands from the app and wrap them around any pole.", '<line x1="60" y1="18" x2="60" y2="186" stroke="#ddd" stroke-width="10"/>' + [52, 98, 144].map((y) => [0, 1, 2, 3, 4].map((k) => '<rect x="53" y="' + (y + k * 3.4) + '" width="14" height="3.4" fill="' + (k % 2 ? "#eee" : "#111") + '"/>').join("")).join("") + '<line x1="34" y1="186" x2="86" y2="186" stroke="#777" stroke-width="2"/>'],
+    ["Three balls", "Three balls of the same color, stuck on a pole.", '<line x1="60" y1="18" x2="60" y2="186" stroke="#ddd" stroke-width="4"/><circle cx="60" cy="56" r="11" fill="#ff7a00"/><circle cx="60" cy="102" r="11" fill="#ff7a00"/><circle cx="60" cy="148" r="11" fill="#ff7a00"/><line x1="34" y1="186" x2="86" y2="186" stroke="#777" stroke-width="2"/>'],
+  ];
+  // "Nov 14, 13:22"
+  function alWhen(iso) {
+    const d = new Date(iso);
+    if (isNaN(d)) return "";
+    const m = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][d.getMonth()];
+    return m + " " + d.getDate() + ", " + String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+  }
+  // As ações do Test shot: "Align cameras", ou, com alinhamento guardado, "Cameras aligned · data" e "Align again"
+  const alNote = document.createElement("span");
+  alNote.className = "ts-note al-saved hidden";
+  const alEntryBtn = button("Align cameras", () => alOpen(), { kind: "btn-secondary btn-small" });
+  alEntryBtn.id = "csAlignBtn";
+  function alRenderEntry() {
+    const saved = al.saved && al.saved.savedAt;
+    alNote.textContent = saved ? "Cameras aligned · " + alWhen(al.saved.savedAt) : "";
+    alNote.classList.toggle("hidden", !saved);
+    alEntryBtn.textContent = saved ? "Align again" : "Align cameras";
+    alEntryBtn.className = "btn btn-small " + (saved ? "btn-link" : "btn-secondary");
+  }
+  csGallery.setActions([alNote, alEntryBtn, csHideBtn]);
+  function alLoadSaved() {
+    Promise.resolve(window.alignInfo && window.alignInfo()).then((info) => { al.saved = info || null; alRenderEntry(); }).catch(() => {});
+  }
+
+  function alShow(on) {
+    al.open = on;
+    const sheet = $("camSettingsOverlay").querySelector(".cs-sheet");
+    sheet.classList.toggle("aligning", on);
+    $("csAlign").classList.toggle("hidden", !on);
+  }
+  function alOpen() {
+    if (busy || csTest.capturing) return;
+    csSetZoom(false);
+    Object.assign(al, { step: 1, firing: false, session: "", photos: [], data: {}, sel: "", clicks: null, ref: "", solved: {}, busy: false, msg: "" });
+    alShow(true);
+    alRender();
+  }
+  function alClose() {
+    if (!al.open) return;
+    if (al.firing && csTest.capturing && !csTest.cancelling) csTakeTest();  // cancela as fotos em andamento
+    al.firing = false;
+    alShow(false);
+  }
+  function alHead(title, sub, step) {
+    $("csAlignTitle").textContent = title;
+    $("csAlignSub").textContent = sub;
+    ["1 Prepare", "2 Mark and aim", "3 Save"].forEach((t, k) => { const s = $("csAlignStep" + (k + 1)); s.textContent = t; s.classList.toggle("on", k + 1 === step); });
+  }
+  function alFoot(note, buttons) {
+    const f = $("csAlignFoot");
+    f.innerHTML = "";
+    const n = document.createElement("span");
+    n.className = "ts-note";
+    n.id = "csAlignNote";
+    n.textContent = note;
+    f.appendChild(n);
+    const sp = document.createElement("span");
+    sp.className = "spacer";
+    f.appendChild(sp);
+    buttons.forEach(([label, kind, fn, opts]) => {
+      const b = document.createElement("button");
+      b.className = "btn " + kind;
+      b.textContent = label;
+      if (opts && opts.disabled) b.disabled = true;
+      if (opts && opts.title) b.title = opts.title;
+      b.addEventListener("click", fn);
+      f.appendChild(b);
+    });
+  }
+  const alConnected = () => placedCameras().filter((c) => c.connected);
+  function alRender() {
+    if (!al.open) return;
+    const main = $("csAlignMain");
+    if (al.step === 1) {
+      alHead("Align cameras", "Line the cameras up each time you set up the rig. Stand a stick with three marks where the subject will be, then fire.", 1);
+      main.className = "ts-main";
+      if (al.firing) { main.innerHTML = '<div class="al-msg">' + alEsc(al.msg || "Taking a photo with each camera") + "</div>"; }
+      else {
+        main.innerHTML = '<div class="al-cols"><div><div class="al-title">Use any of these</div><div class="al-objs">' +
+          AL_OBJ.map(([t, s, g]) => '<div class="al-obj"><svg viewBox="0 0 120 200" aria-hidden="true">' + g + "</svg><b>" + t + "</b><span>" + s + "</span></div>").join("") +
+          '</div></div><div><div class="al-title">How</div><ol class="al-steps"><li>Put three marks on it, <b>at the same distance</b> from each other (about 30 cm), in a color that stands out.</li><li>Stand it <b>upright where the subject will be</b>.</li><li>Fire. Then click the three marks in one photo: the app finds them in the others and tells you what to change on each camera.</li></ol><div class="al-warn">Pale marks and uneven spaces make the alignment wrong.</div></div></div>';
+      }
+      const n = alConnected().length;
+      alFoot(plural(n, "camera", "cameras"), al.firing ? [["Cancel", "btn-secondary", alCancelFire]] :
+        [["Cancel", "btn-secondary", alClose], ["Fire", "btn-primary", alFire, { disabled: !n || busy }]]);
+      return;
+    }
+    if (al.step === 2) { alRenderAim(); return; }
+    if (al.step === 3) { alRenderSave(); return; }
+  }
+  // ----- Disparo (Fire, Fire again): as fotos do Test shot de sempre (não são guardadas) -----
+  function alFire() {
+    if (busy || csTest.capturing || !alConnected().length) return;
+    al.firing = true;
+    al.msg = "Taking a photo with each camera";
+    alRender();
+    csTakeTest();
+  }
+  function alCancelFire() {
+    if (csTest.capturing && !csTest.cancelling) csTakeTest();
+  }
+  // O Test shot terminou: com fotos (list) ou sem (list nulo)
+  function alGotPhotos(list) {
+    if (!al.open || !al.firing) return;
+    al.firing = false;
+    const session = (list || [])[0];
+    if (!session) {
+      al.msg = "";
+      if (al.step === 1) { alRender(); toast("The photos could not be taken. Try again when all cameras are ready."); }
+      else alRender();
+      return;
+    }
+    al.session = session.name;
+    al.photos = alConnected().map((cam) => {
+      const photos = session.photos.filter((p) => p.camera === cam.name);
+      const pick = photos.find((p) => /\.jpe?g$/i.test(p.file)) || photos.find((p) => p.previewable) || photos[0];
+      return { camera: cam.name, order: cam.order, model: cam.model, file: pick ? pick.file : "", previewable: pick ? pick.previewable : false };
+    });
+    // Fotos novas: as marcas antigas não valem mais; com uma referência, o app procura de novo em todas
+    al.data = {};
+    al.solved = {};
+    al.photos.forEach((p) => { al.data[p.camera] = { marks: null, found: false, tried: false, w: 0, h: 0, url: "", manual: false }; });
+    if (!al.sel || !al.photos.some((p) => p.camera === al.sel)) al.sel = al.photos.length ? al.photos[0].camera : "";
+    al.clicks = null;
+    al.step = 2;
+    al.photos.forEach((p) => {
+      if (!p.file || !p.previewable) return;
+      orderPhoto(al.session, p.file, 1600).then((url) => {
+        const d = al.data[p.camera];
+        if (!d || !url) return;
+        d.url = url;
+        const probe = new Image();
+        probe.onload = () => { if (!d.w) { d.ratio = probe.naturalWidth / probe.naturalHeight; } alRender(); };
+        probe.src = url;
+      });
+    });
+    if (al.ref) alFindAll([]);
+    else alRender();
+  }
+  // ----- As marcas -----
+  function alPhotoOf(camera) { return al.photos.find((p) => p.camera === camera); }
+  // A pessoa clicou as três marcas numa foto: o programa leva ao centro; se for a primeira, procura nas outras
+  function alMarked(camera, clicks) {
+    const p = alPhotoOf(camera);
+    if (!p || !p.file) return;
+    const first = !al.ref;
+    const isRef = first || al.ref === camera;
+    al.busy = true;
+    al.msg = "Finding the marks";
+    alRender();
+    Promise.resolve(window.alignMark(JSON.stringify({ session: al.session, file: p.file, clicks, reference: isRef }))).then((r) => {
+      al.busy = false;
+      const d = al.data[camera];
+      if (!r || !r.ok || !d) { al.msg = ""; alRender(); toast("The marks could not be read in this photo. Click them again."); return; }
+      d.marks = r.marks; d.w = r.width; d.h = r.height; d.found = true; d.tried = true; d.manual = true;
+      if (isRef) al.ref = camera;
+      if (first) alFindAll([camera]);
+      else { alSolve(); alRender(); }
+    });
+  }
+  // Procura as marcas da foto de referência nas outras (skip: as que não precisam)
+  function alFindAll(skip) {
+    const photos = al.photos.filter((p) => p.file && skip.indexOf(p.camera) < 0).map((p) => ({ camera: p.camera, file: p.file }));
+    if (!photos.length) { alSolve(); alRender(); return; }
+    al.busy = true;
+    al.msg = "Finding the marks in " + plural(photos.length, "photo", "photos");
+    alRender();
+    Promise.resolve(window.alignFind(JSON.stringify({ session: al.session, photos }))).then((list) => {
+      al.busy = false;
+      al.msg = "";
+      (list || []).forEach((r) => {
+        const d = al.data[r.camera];
+        if (!d) return;
+        d.tried = true;
+        d.w = r.width || d.w; d.h = r.height || d.h;
+        d.found = !!r.ok && !!r.marks;
+        d.marks = d.found ? r.marks : null;
+        d.manual = false;
+      });
+      alSolve();
+      alRender();
+    });
+  }
+  function alSolve() {
+    const cams = al.photos.filter((p) => { const d = al.data[p.camera]; return d && d.found && d.marks && d.w; })
+      .map((p) => ({ camera: p.camera, width: al.data[p.camera].w, height: al.data[p.camera].h, marks: al.data[p.camera].marks }));
+    al.solved = {};
+    if (!cams.length) return;
+    let out = null;
+    try { out = window.alignSolve(JSON.stringify({ cameras: cams })); } catch (e) { out = null; }
+    Promise.resolve(out).then((list) => { (list || []).forEach((r) => { al.solved[r.camera] = r; }); alRender(); });
+  }
+  // As instruções de uma câmera: [classe, texto]; fix = falta mexer, ok = bom, info = só informa
+  function alLines(camera) {
+    const d = al.data[camera], n = al.solved[camera];
+    if (!d || !d.tried) return [];
+    if (!d.found) return [["fix", "Marks not found: click the three marks in this photo, from top to bottom"]];
+    if (!n) return [];
+    const out = [];
+    const ph = Math.abs(n.pan) >= 1, pv = Math.abs(n.tilt) >= 1;
+    if (ph || pv) out.push(["fix", "Turn " + [ph ? Math.abs(n.pan).toFixed(0) + "° " + (n.pan < 0 ? "left" : "right") : "", pv ? Math.abs(n.tilt).toFixed(0) + "° " + (n.tilt > 0 ? "up" : "down") : ""].filter(Boolean).join(", ")]);
+    else out.push(["ok", "Aim: on the middle mark"]);
+    // roll: a haste tombada para a direita na foto = a câmera inclinada para a esquerda
+    out.push(Math.abs(n.roll) >= 1 ? ["fix", "Level it: " + Math.abs(n.roll).toFixed(1) + "° tilted to the " + (n.roll > 0 ? "left" : "right")] : ["ok", "Level"]);
+    out.push(Math.abs(n.sizePct) >= 2 ? ["fix", "Sees it " + Math.abs(n.sizePct).toFixed(0) + "% " + (n.sizePct > 0 ? "bigger: step back or zoom out" : "smaller: step closer or zoom in")] : ["ok", "Size: same as the others"]);
+    if (Math.abs(n.height) >= 0.33) out.push(["info", (n.height > 0 ? "Higher" : "Lower") + " than the others (the app corrects the photo)"]);
+    return out;
+  }
+  const alBad = (camera) => alLines(camera).some(([c]) => c === "fix");
+  // Uma foto com as marcas (dots) e, na grande, a mira no centro e as setas
+  function alPhotoEl(p, big) {
+    const d = al.data[p.camera] || {};
+    const el = document.createElement("div");
+    el.className = "al-photo";
+    if (d.url) el.style.backgroundImage = 'url("' + d.url + '")';
+    const ratio = d.w && d.h ? d.w / d.h : d.ratio || 1.5;
+    el.style.aspectRatio = String(ratio);
+    el.insertAdjacentHTML("beforeend", '<span class="al-num">' + alNum(p) + "</span>");
+    const pts = big && al.clicks && al.clicks.camera === p.camera ? al.clicks.points : d.found && d.marks ? d.marks : null;
+    if (pts && pts.length === 3 && !(big && al.clicks && al.clicks.camera === p.camera)) {
+      const a = pts[0], b = pts[2];
+      const line = document.createElement("span");
+      line.className = "al-seg";
+      const ax = a[0] * 100, ay = a[1] * 100, bx = b[0] * 100, by = b[1] * 100;
+      line.style.left = ax + "%"; line.style.top = ay + "%";
+      // a linha de cima a baixo (a haste pode estar torta): comprimento e ângulo em pixels da foto na tela
+      line.dataset.ax = a[0]; line.dataset.ay = a[1]; line.dataset.bx = b[0]; line.dataset.by = b[1];
+      el.appendChild(line);
+    }
+    (pts || []).forEach((m) => { el.insertAdjacentHTML("beforeend", '<span class="al-dot" style="left:' + (m[0] * 100) + "%;top:" + (m[1] * 100) + '%"></span>'); });
+    if (big) {
+      const n = al.solved[p.camera];
+      el.insertAdjacentHTML("beforeend", '<span class="al-aim"></span>');
+      if (n && d.found && !(al.clicks && al.clicks.camera === p.camera)) {
+        if (Math.abs(n.pan) >= 1) el.insertAdjacentHTML("beforeend", '<span class="al-arrow" style="left:' + (n.pan < 0 ? 38 : 56) + '%;top:44%">' + (n.pan < 0 ? "←" : "→") + "</span>");
+        if (Math.abs(n.tilt) >= 1) el.insertAdjacentHTML("beforeend", '<span class="al-arrow" style="left:47.5%;top:' + (n.tilt > 0 ? 26 : 58) + '%">' + (n.tilt > 0 ? "↑" : "↓") + "</span>");
+      }
+      el.classList.add("al-click");
+      el.addEventListener("click", (e) => alClickPhoto(p.camera, e, el));
+    }
+    return el;
+  }
+  // A linha da haste: posta depois que a foto tem tamanho na tela
+  function alPlaceLines(root) {
+    // A foto grande no tamanho que cabe (largura até 640 px e altura do que sobra), sem deformar
+    const view = root.querySelector(".ma-view2"), big = view && view.querySelector(":scope > .al-photo");
+    if (big) {
+      const under = view.querySelector(".ma-under");
+      const ratio = parseFloat(big.style.aspectRatio) || 1.5;
+      const h = view.clientHeight - (under ? under.offsetHeight : 0) - 10;
+      big.style.width = Math.max(120, Math.min(640, view.clientWidth, h * ratio)) + "px";
+    }
+    root.querySelectorAll(".al-seg").forEach((s) => {
+      const box = s.parentElement.getBoundingClientRect();
+      const ax = s.dataset.ax * box.width, ay = s.dataset.ay * box.height, bx = s.dataset.bx * box.width, by = s.dataset.by * box.height;
+      s.style.height = Math.hypot(bx - ax, by - ay) + "px";
+      s.style.transform = "rotate(" + (-Math.atan2(bx - ax, by - ay) * 180 / Math.PI) + "deg)";
+    });
+  }
+  function alClickPhoto(camera, e, el) {
+    if (al.busy) return;
+    const r = el.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+    if (x < 0 || y < 0 || x > 1 || y > 1) return;
+    if (!al.clicks || al.clicks.camera !== camera) al.clicks = { camera, points: [] };
+    al.clicks.points.push([x, y]);
+    if (al.clicks.points.length === 3) {
+      const pts = al.clicks.points.slice().sort((a, b) => a[1] - b[1]);  // de cima para baixo
+      al.clicks = null;
+      alMarked(camera, pts);
+      return;
+    }
+    alRender();
+  }
+  function alRenderAim() {
+    alHead("Align cameras · aim", AL_SUB2, 2);
+    const main = $("csAlignMain");
+    main.className = "ts-main";
+    main.innerHTML = "";
+    const w = document.createElement("div");
+    w.className = "ma";
+    const list = document.createElement("div");
+    list.className = "ma-list";
+    const order = al.photos.slice().sort((a, b) => {
+      const fa = alLines(a.camera).filter(([c]) => c === "fix").length, fb = alLines(b.camera).filter(([c]) => c === "fix").length;
+      return fb - fa || a.order - b.order;
+    });
+    const marked = al.photos.some((p) => (al.data[p.camera] || {}).tried);
+    (marked ? order : al.photos).forEach((p) => {
+      const lines = alLines(p.camera);
+      const first = lines.find(([c]) => c === "fix") || (lines.length ? ["ok", "Ready"] : ["", !p.file ? "No photo" : marked ? "" : "Click the three marks"]);
+      const it = document.createElement("div");
+      it.className = "ma-item" + (p.camera === al.sel ? " sel" : "");
+      it.dataset.camera = p.camera;
+      it.appendChild(alPhotoEl(p, false));
+      it.insertAdjacentHTML("beforeend", "<div><b>Camera " + alNum(p) + '</b><span class="t ' + first[0] + '">' + alEsc(first[1]) + "</span></div>");
+      it.addEventListener("click", () => { al.sel = p.camera; if (al.clicks && al.clicks.camera !== p.camera) al.clicks = null; alRender(); });
+      list.appendChild(it);
+    });
+    w.appendChild(list);
+    const view = document.createElement("div");
+    view.className = "ma-view2";
+    const sel = alPhotoOf(al.sel);
+    if (sel) {
+      view.appendChild(alPhotoEl(sel, true));
+      const under = document.createElement("div");
+      under.className = "ma-under";
+      const d = al.data[sel.camera] || {};
+      let html = "<div><h4>Camera " + alNum(sel) + " · " + alEsc(sel.camera) + "</h4>";
+      if (al.busy) html += '<p class="al-hint">' + alEsc(al.msg || "Working") + "</p>";
+      else if (al.clicks && al.clicks.camera === sel.camera) html += '<p class="al-hint">Click the ' + ["top", "middle", "bottom"][al.clicks.points.length] + " mark.</p>";
+      else if (!d.found) html += '<p class="al-hint">' + (d.tried ? "The app did not find the marks in this photo. " : "") + "Click the three marks in this photo, from top to bottom.</p>";
+      else html += '<ul class="in-list">' + alLines(sel.camera).map(([c, t]) => '<li class="' + c + '">' + alEsc(t) + "</li>").join("") + '</ul><p class="al-hint dim">Wrong marks? Click the three marks in this photo again.</p>';
+      html += "</div>";
+      under.innerHTML = html;
+      view.appendChild(under);
+    }
+    w.appendChild(view);
+    main.appendChild(w);
+    requestAnimationFrame(() => alPlaceLines(main));
+    const need = al.photos.filter((p) => alBad(p.camera)).length;
+    const allMarked = al.photos.length > 0 && al.photos.every((p) => (al.data[p.camera] || {}).found) && Object.keys(al.solved).length === al.photos.length;
+    alFoot(marked ? need + " of " + al.photos.length + " cameras need a change" : "",
+      [["← Back", "btn-secondary", () => { al.step = 1; alRender(); }],
+       ["Cancel", "btn-secondary", alClose],
+       ["Fire again", "btn-secondary", alFire, { disabled: al.busy || busy || csTest.capturing }],
+       ["Save alignment", "btn-primary", () => { al.step = 3; alRender(); }, { disabled: !allMarked || al.busy, title: allMarked ? "" : "Every photo needs its three marks first" }]]);
+    if (al.firing) { const n = $("csAlignNote"); if (n) n.textContent = "Taking a photo with each camera"; }
+  }
+  function alRenderSave() {
+    alHead("Align cameras · save", "This is what the app will do to the photos of every new session. Nothing changes on the cameras or in the photos you already have.", 3);
+    const main = $("csAlignMain");
+    main.className = "ts-main";
+    const sv = document.createElement("div");
+    sv.className = "sv";
+    al.photos.forEach((p) => {
+      const d = al.data[p.camera] || {}, n = al.solved[p.camera];
+      if (!n) return;
+      const c = document.createElement("div");
+      c.className = "sv-cell";
+      const box = document.createElement("div");
+      box.className = "sv-box";
+      box.style.aspectRatio = String(d.w && d.h ? d.w / d.h : 1.5);
+      const im = document.createElement("div");
+      if (d.url) im.style.backgroundImage = 'url("' + d.url + '")';
+      im.style.transform = "scale(" + n.scale + ") rotate(" + n.rot + "deg) translate(" + (n.dx * 100) + "%, " + (n.dy * 100) + "%)";
+      box.appendChild(im);
+      box.insertAdjacentHTML("beforeend", '<span class="cx"></span><span class="cy"></span>');
+      c.appendChild(box);
+      const sgn = (v, f) => (v > 0 ? "+" : "") + v.toFixed(f);
+      c.insertAdjacentHTML("beforeend", '<span class="in-state ok">Camera ' + alNum(p) + '</span><span class="sv-vals">Move ' + sgn(Math.round(n.dx * d.w), 0) + ", " + sgn(Math.round(n.dy * d.h), 0) +
+        " px<br>Rotate " + sgn(n.rot, 1) + "°<br>Size " + (n.scale * 100).toFixed(1) + "%</span>");
+      sv.appendChild(c);
+    });
+    main.innerHTML = "";
+    main.appendChild(sv);
+    main.insertAdjacentHTML("beforeend", '<p class="sv-sum">Values from the stick. You can fine-tune them later in <b>Export › Align photos</b>; the original alignment stays saved.</p>');
+    alFoot("The black edges are cut on export: what stays is the part every photo has",
+      [["← Back", "btn-secondary", () => { al.step = 2; alRender(); }], ["Cancel", "btn-secondary", alClose], ["Save alignment", "btn-primary", alSave]]);
+  }
+  function alSave() {
+    const cameras = al.photos.map((p) => {
+      const d = al.data[p.camera], n = al.solved[p.camera];
+      return { camera: p.camera, order: p.order, width: d.w, height: d.h, marks: d.marks, dx: n.dx, dy: n.dy, rot: n.rot, scale: n.scale };
+    });
+    Promise.resolve(window.alignSave(JSON.stringify({ cameras }))).then((info) => {
+      al.saved = info || null;
+      alRenderEntry();
+      alClose();
+      log("Cameras aligned (" + plural(cameras.length, "camera", "cameras") + "). The alignment is saved with the project.");
+    });
+  }
   orderGallery.setActions([
     button("Move earlier", () => orderGallery.moveSelected(-1), { icon: "left" }),
     button("Move later", () => orderGallery.moveSelected(1), { icon: "right" }),
@@ -6473,6 +6860,7 @@
           csGallery.setHead(wasCancelled ? "Test shot cancelled" : "No photos", "");
           csGallery.message(wasCancelled ? "Cancelled. Nothing was kept." : "The photos could not be taken. Try again when all cameras are ready.");
           if (wasCancelled) window.discardOrderPhotos();
+          alGotPhotos(null);
         } else if (orderCapture()) {
           // O pedido terminou sem fotos (ex.: uma câmera ainda conectando)
           order.capturing = false;
@@ -6721,7 +7109,7 @@
       csCardHide();
       if (csTest.capturing && csTest.cancelling) return;  // cancelado: as fotos não são mostradas
       csTest.sessions = e.sessions || [];
-      if (csTest.capturing) showCsTest(e.sessions);
+      if (csTest.capturing) { showCsTest(e.sessions); alGotPhotos(e.sessions); }
       else if (order.open) showOrderPhotos(e.sessions);
     },
 
@@ -9188,6 +9576,7 @@
     // como estavam; sem isso o programa ficava esperando a conferência numa janela fechada)
     else if (csTest.capturing && !csTest.cancelling) csTakeTest();
     $("camSettingsOverlay").classList.add("hidden");
+    alClose();
     csMatchClose();
     csStylePop = null;
     renderStylePop();
@@ -9226,6 +9615,7 @@
   if (window.ResizeObserver) new ResizeObserver(() => csSnapBody()).observe($("csBody"));
   $("camSettingsBtn").addEventListener("click", () => {
     renderCamSettings();
+    alLoadSaved();
     $("camSettingsOverlay").classList.remove("hidden");
     csStickAllRow();
     requestAnimationFrame(csSnapBody);

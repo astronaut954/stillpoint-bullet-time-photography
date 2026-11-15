@@ -1082,6 +1082,13 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      alturas, distâncias, miras e giros diferentes (`src/gui/fake_scene.*`): assim o fluxo do alinhamento é testado
      sem câmeras e sem fotos. **Regra do dono (2026-11-14):** todos os testes com objetos reais (câmeras, haste, fotos
      do rig) ficam pendentes até ele avisar que tem o material.
+   - **Parte 3 feita (2026-11-15):** Test shot › **Align cameras** (Prepare; Mark and aim forma A; Save), como no
+     protótipo aprovado. A conta é a da parte 1 (`alignMark`, `alignFind`, `alignSolve`, `alignSave` em `main_gui.cpp`;
+     a página em `app.js`, seção "Alinhamento das câmeras"). O alinhamento fica em `stillpoint-rig.json`
+     (`alignment`: data, e por câmera o número de série, as marcas e a receita em frações da foto); sem Project, só
+     até fechar o app (a regra do estado do rig). Cada sessão nova do Project guarda no `session.json` o alinhamento
+     que valia. Fora desta parte: **Guided aim** (parte 6) e o uso do alinhamento no Export (parte 4). Roteiro:
+     `docs/teste-manual.md`, seção 47.
 7. **Etapa 22 — Outras marcas de câmera (Sony, Nikon).** Posta como etapa pelo dono em 2026-11-11 (antes estava em
    "Futuro"). Viável marca a marca, com câmera para testar. Sony (site oficial, conferido em 2026-10-15): SDK
    gratuito, Windows 11 x64 e macOS 14.1+, cerca de 35 modelos recentes (α1, α9 II/III, α7 IV/V, α7R IV/V, α7S III,

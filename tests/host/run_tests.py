@@ -1733,6 +1733,110 @@ def dismiss_delete(self):
 T.dismiss_delete = dismiss_delete
 
 
+def _mark_centers(path):
+    """Os centros das bolas vermelha, verde e azul numa foto da cena da haste (frações da foto)."""
+    im = Image.open(path).convert("RGB")
+    w, h = im.size
+    small = im.resize((w // 4, h // 4))
+    sums = {k: [0, 0, 0] for k in ("r", "g", "b")}
+    for i, (r, g, b) in enumerate(small.getdata()):
+        x, y = i % small.width, i // small.width
+        k = "r" if r > 150 and g < 90 and b < 90 else "g" if g > 120 and r < 90 and b < 110 else "b" if b > 150 and r < 90 and g < 120 else None
+        if k:
+            sums[k][0] += x; sums[k][1] += y; sums[k][2] += 1
+    return [((sums[k][0] / sums[k][2] + 0.5) / small.width, (sums[k][1] / sums[k][2] + 0.5) / small.height) if sums[k][2] else None for k in ("r", "g", "b")]
+
+
+def scenario_align_cameras(t, name, photos):
+    line("\n== 21. Align cameras in the Test shot (the pole scene)")
+    t.dismiss()
+    t.env["STILLPOINT_FAKE_CAMERAS"] = "4"
+    t.env["STILLPOINT_FAKE_PHOTOS"] = "pole"
+    try:
+        t.restart_app()
+        t.dismiss()
+        errors_before = len(t.errors)
+        t.js("() => document.getElementById('camSettingsBtn').click()")
+        time.sleep(1.0)
+        t.js("() => document.getElementById('csTest').click()")
+        check(t, "align: the Test shot shows the photos", t.wait(lambda: t.js("() => document.getElementById('csTestBox').classList.contains('has-photos')"), 30))
+        check(t, "align: 'Align cameras' is next to 'Hide photos'",
+              t.js("() => [...document.querySelectorAll('#csGallery .gallery-actions button')].map(b => b.textContent.trim()).join('|')") == "Align cameras|Hide photos")
+        t.button("Align cameras")
+        check(t, "align: step 1 Prepare, with the four objects and Fire",
+              t.js("() => !document.getElementById('csAlign').classList.contains('hidden') && document.querySelector('#csAlignStep1').classList.contains('on') && document.querySelectorAll('#csAlignMain .al-obj').length === 4")
+              and t.js("() => getComputedStyle(document.getElementById('csBody')).display === 'none'"))
+        t.button("Fire")
+        check(t, "align: after Fire, step 2 Mark and aim with one row per camera",
+              t.wait(lambda: t.js("() => document.querySelector('#csAlignStep2').classList.contains('on') && document.querySelectorAll('#csAlignMain .ma-item').length === 4"), 30))
+        t.wait(lambda: t.js("() => { const p = document.querySelector('#csAlignMain .ma-view2 > .al-photo'); return !!p && p.style.backgroundImage.length > 10; }"), 15)
+        t.shot("align-step2-before")
+        # Os cliques na foto da câmera escolhida (a 01), a uns pixels do centro de cada bola
+        order_dir = os.path.join(t.data, "Order photos")
+        sess = sorted(d for d in os.listdir(order_dir) if not d.startswith("."))[-1]
+        sel = t.js("() => document.querySelector('#csAlignMain .ma-item.sel').dataset.camera")
+        f = [x for x in os.listdir(os.path.join(order_dir, sess)) if "_" + sel + "_IMG_" in x][0]
+        centers = _mark_centers(os.path.join(order_dir, sess, f))
+        box = t.page.locator("#csAlignMain .ma-view2 > .al-photo").bounding_box()
+        for (x, y) in centers:
+            t.page.mouse.click(box["x"] + x * box["width"] + 3, box["y"] + y * box["height"] - 2)
+            time.sleep(0.25)
+        ok = t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item .t.ok, #csAlignMain .ma-item .t.fix').length === 4 && !/Finding/.test(document.querySelector('#csAlignMain').textContent)"), 60)
+        check(t, "align: after three clicks, the app finds the marks in every photo and gives each camera its instructions", ok,
+              t.js("() => [...document.querySelectorAll('#csAlignMain .ma-item')].map(i => i.textContent).join(' | ')"))
+        t.shot("align-step2-after")
+        lines = t.js("() => [...document.querySelectorAll('#csAlignMain .ma-under .in-list li')].map(l => l.className + ':' + l.textContent)")
+        check(t, "align: the chosen camera shows what to change (aim, level, size)", any(l.startswith("fix:Turn") or l.startswith("ok:Aim") for l in lines)
+              and any("Level" in l for l in lines) and any("Size" in l or "Sees it" in l for l in lines), lines)
+        # Os cliques foram levados ao centro: o ponto do meio fica perto do centro da bola verde
+        mid = t.js("() => { const d = [...document.querySelectorAll('#csAlignMain .ma-view2 > .al-photo .al-dot')][1]; return d ? [parseFloat(d.style.left) / 100, parseFloat(d.style.top) / 100] : null; }")
+        err = abs(mid[0] - centers[1][0]) * 1800 + abs(mid[1] - centers[1][1]) * 1200 if mid else 999
+        check(t, "align: the clicks go to the center of the marks (within 4 px)", err < 4, err)
+        t.button("Save alignment")
+        check(t, "align: step 3 Save shows the four photos already aligned, with the values",
+              t.js("() => document.querySelector('#csAlignStep3').classList.contains('on') && document.querySelectorAll('#csAlignMain .sv-cell').length === 4 && /Move .* px/.test(document.querySelector('#csAlignMain .sv-vals').textContent)"))
+        t.shot("align-step3")
+        t.button("Save alignment")
+        time.sleep(0.6)
+        rig = json.load(open(os.path.join(t.project, "stillpoint-rig.json")))
+        al = rig.get("alignment") or {}
+        check(t, "align: the alignment is saved with the project (stillpoint-rig.json), one entry per camera, by serial number",
+              len(al.get("cameras", [])) == 4 and all(c.get("serial") and len(c.get("marks", [])) == 3 for c in al["cameras"]), al.get("cameras"))
+        check(t, "align: back in the Test shot, 'Cameras aligned · date' and 'Align again'",
+              t.js("() => !document.querySelector('.cs-sheet').classList.contains('aligning') && /^Cameras aligned · /.test(document.querySelector('#csGallery .al-saved').textContent) && document.getElementById('csAlignBtn').textContent === 'Align again'"))
+        # Align again › Fire › Fire again: as marcas são achadas sozinhas (pela foto de referência guardada)
+        t.button("Align again")
+        t.button("Fire")
+        t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item').length === 4"), 30)
+        check(t, "align: a new alignment starts without marks (click them again)", t.wait(lambda: t.js("() => /Click the three marks/.test(document.getElementById('csAlignMain').textContent)"), 10))
+        box = t.page.locator("#csAlignMain .ma-view2 > .al-photo").bounding_box()
+        for (x, y) in centers:
+            t.page.mouse.click(box["x"] + x * box["width"], box["y"] + y * box["height"])
+            time.sleep(0.25)
+        t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item .t.ok, #csAlignMain .ma-item .t.fix').length === 4"), 60)
+        t.button("Fire again")
+        ok = t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item .t.ok, #csAlignMain .ma-item .t.fix').length === 4 && !/Finding|Taking/.test(document.getElementById('csAlignFoot').textContent + document.getElementById('csAlignMain').textContent)"), 60)
+        check(t, "align: after Fire again, the marks are found in every new photo by themselves", ok)
+        t.button("Cancel")
+        check(t, "align: Cancel goes back to the Test shot without changing the saved alignment",
+              t.js("() => !document.querySelector('.cs-sheet').classList.contains('aligning')") and json.load(open(os.path.join(t.project, "stillpoint-rig.json")))["alignment"]["savedAt"] == al["savedAt"])
+        t.button("Done")
+        time.sleep(0.5)
+        # Uma sessão nova guarda o alinhamento que valia
+        s = t.shoot()
+        t.dismiss()
+        info = {}
+        if s:
+            p = os.path.join(t.originals(s), "session.json")
+            info = json.load(open(p)) if os.path.exists(p) else {}
+        check(t, "align: a new session keeps the alignment that was valid when it was shot (session.json)",
+              (info.get("alignment") or {}).get("savedAt") == al.get("savedAt"), list(info.keys()))
+        check(t, "align: no page errors", len(t.errors) == errors_before, t.errors[errors_before:][-3:])
+    finally:
+        del t.env["STILLPOINT_FAKE_PHOTOS"]
+        t.restart_app()
+
+
 def scenario_align_marks(t, name, photos):
     line("\n== 20. Automatic alignment: the three marks and the recipe (calculation only, no window yet)")
     prog = os.path.join(BUILD, "AlignMarksTest")
@@ -1812,7 +1916,7 @@ def main():
                 only = os.environ.get("STILLPOINT_TEST_ONLY", "")  # para depurar: só os cenários com este nome
                 for sc in [x for x in (scenario_cleared, scenario_delete_edit_undo, scenario_photo_delete_restore,
                            scenario_remove_from_collection, scenario_delete_session, scenario_cancel, scenario_rapid_in_lightroom, scenario_crop_before_lightroom,
-                           scenario_export_edit, scenario_export_trash, scenario_lightroom_crop, scenario_undo_own_item, scenario_orientation, scenario_selection_kept, scenario_align_undo, scenario_flip, scenario_photoshop, scenario_rig_state, scenario_align_marks) if only in x.__name__]:
+                           scenario_export_edit, scenario_export_trash, scenario_lightroom_crop, scenario_undo_own_item, scenario_orientation, scenario_selection_kept, scenario_align_undo, scenario_flip, scenario_photoshop, scenario_rig_state, scenario_align_marks, scenario_align_cameras) if only in x.__name__]:
                     try:
                         sc(t, name, photos)
                     except Exception:  # noqa: BLE001

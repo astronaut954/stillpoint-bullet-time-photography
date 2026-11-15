@@ -43,6 +43,8 @@
 #include "color_match.h"
 #include "platform/media.h"
 #include "adobe.h"
+#include "align_marks.h"
+#include "json_lite.h"
 
 #include "webview/webview.h"
 
@@ -1195,6 +1197,7 @@ namespace
         // Lixeira (etapa 20): o que foi apagado fica 15 dias; ao abrir, sai o que passou do prazo
         store.PurgeTrash(kTrashDays);
         PreviewThread previews;
+        PreviewThread aligner;  // etapa 21: achar as marcas da haste (segundos, numa thread só dela)
 
         bool sdkReady = false;
         std::atomic<bool> busy{ false };
@@ -1964,8 +1967,16 @@ namespace
                     cams += "]";
                     std::string shotAt = session.name;  // "2026-10-22_14-30-05" -> "2026-10-22T14:30:05"
                     if (shotAt.size() >= 19) { shotAt[10] = 'T'; shotAt[13] = ':'; shotAt[16] = ':'; }
-                    store.WriteSessionInfo(session.name, Json().Add("shotAt", shotAt).Add("timing", timingText)
-                        .Add("plan", planText).Raw("cameras", cams).Str());
+                    // O alinhamento que valia quando a sessão foi fotografada (etapa 21): refazer depois não muda esta
+                    std::string alignment;
+                    {
+                        std::lock_guard<std::mutex> lock(rigMutex);
+                        alignment = rigState.alignment;
+                    }
+                    Json info;
+                    info.Add("shotAt", shotAt).Add("timing", timingText).Add("plan", planText).Raw("cameras", cams);
+                    if (!alignment.empty()) info.Raw("alignment", alignment);
+                    store.WriteSessionInfo(session.name, info.Str());
                 }
             };
             run("shoot", [&, settings, writeSessionInfo]
@@ -5103,6 +5114,195 @@ namespace
         {
             previews.Post([&] { orderStore.DeleteAll(); });
             return "null";
+        });
+
+        // =================== Alinhamento das câmeras com a haste de três marcas (etapa 21, parte 3) ===================
+        // Test shot › Align cameras. A página manda os cliques e as fotos do Test shot (orderStore); o app leva os
+        // cliques ao centro das marcas, acha as marcas nas outras fotos e calcula a receita e as instruções.
+        // Coordenadas na página: frações da foto (0 a 1). A foto de referência (a clicada) fica guardada aqui, para
+        // achar as marcas de novo depois de um "Fire again" (as fotos do Test shot anterior são apagadas).
+        struct AlignRef { RgbFrame frame; AlignMarks::Pt marks[3]; bool wide = false; bool set = false; };
+        auto alignRef = std::make_shared<AlignRef>();
+        auto alignPhotoPath = [&](const std::string& session, const std::string& file) -> std::filesystem::path
+        {
+            if (file.empty() || file.find_first_of("/\\") != std::string::npos || file == "." || file == "..") return {};
+            const std::filesystem::path dir = orderStore.SessionDir(session);
+            return dir.empty() ? std::filesystem::path() : dir / std::filesystem::path(file);
+        };
+        auto alignNum = [](double v) { char b[48]; std::snprintf(b, sizeof b, "%.6g", std::isfinite(v) ? v : 0.0); return std::string(b); };
+        auto alignPts = [](const AlignMarks::Pt p[3], int w, int h)
+        {
+            std::string out = "[";
+            for (int k = 0; k < 3; ++k)
+            {
+                char b[96];
+                std::snprintf(b, sizeof b, "%s[%.6f,%.6f]", k ? "," : "", w > 0 ? p[k].x / w : 0.0, h > 0 ? p[k].y / h : 0.0);
+                out += b;
+            }
+            return out + "]";
+        };
+        // alignMark({session, file, clicks: [[x,y] x3], reference: true}): os três cliques numa foto, levados ao centro
+        // das marcas. Com reference, esta foto passa a ser a de referência para achar as marcas nas outras.
+        window.bind("alignMark", [&, alignRef](const std::string& id, const std::string& request, void*)
+        {
+            const auto args = ParseStringArgs(request);
+            const std::string text = args.empty() ? std::string() : args[0];
+            aligner.Post([&, alignRef, id, text]
+            {
+                bool ok = false;
+                const JsonLite::Value in = JsonLite::Parse(text, &ok);
+                RgbFrame frame;
+                const auto path = ok ? alignPhotoPath(in.get("session").asString(), in.get("file").asString()) : std::filesystem::path();
+                const auto& clicks = in.get("clicks").items();
+                if (path.empty() || clicks.size() != 3 || !LoadPhotoRgb(path, frame) || frame.width < 16)
+                {
+                    window.resolve(id, 0, "null");
+                    return;
+                }
+                AlignMarks::Pt c[3], m[3];
+                for (int k = 0; k < 3; ++k)
+                    c[k] = { clicks[k].items().size() > 1 ? clicks[k].items()[0].asNumber() * frame.width : 0,
+                             clicks[k].items().size() > 1 ? clicks[k].items()[1].asNumber() * frame.height : 0 };
+                const double d = std::hypot(c[0].x - c[2].x, c[0].y - c[2].y);
+                const bool wide = AlignMarks::IsWide(frame, c[0], d, c[2]);
+                for (int k = 0; k < 3; ++k) m[k] = AlignMarks::Snap(frame, c[k], d, c[k == 0 ? 2 : 0], wide);
+                if (in.get("reference").asBool(true))
+                {
+                    alignRef->frame = std::move(frame);
+                    for (int k = 0; k < 3; ++k) alignRef->marks[k] = m[k];
+                    alignRef->wide = wide;
+                    alignRef->set = true;
+                    window.resolve(id, 0, Json().Add("ok", true).Raw("marks", alignPts(m, alignRef->frame.width, alignRef->frame.height))
+                        .Add("width", alignRef->frame.width).Add("height", alignRef->frame.height).Str());
+                    return;
+                }
+                window.resolve(id, 0, Json().Add("ok", true).Raw("marks", alignPts(m, frame.width, frame.height))
+                    .Add("width", frame.width).Add("height", frame.height).Str());
+            });
+        }, nullptr);
+        // alignFind({session, photos: [{camera, file}]}): as marcas da foto de referência, achadas em cada foto
+        window.bind("alignFind", [&, alignRef, alignNum](const std::string& id, const std::string& request, void*)
+        {
+            const auto args = ParseStringArgs(request);
+            const std::string text = args.empty() ? std::string() : args[0];
+            aligner.Post([&, alignRef, alignNum, id, text]
+            {
+                bool ok = false;
+                const JsonLite::Value in = JsonLite::Parse(text, &ok);
+                if (!ok || !alignRef->set)
+                {
+                    window.resolve(id, 0, "null");
+                    return;
+                }
+                struct Job { std::string camera; std::filesystem::path path; AlignMarks::Found found; int w = 0, h = 0; };
+                std::vector<Job> jobs;
+                for (const auto& p : in.get("photos").items())
+                    jobs.push_back({ p.get("camera").asString(), alignPhotoPath(in.get("session").asString(), p.get("file").asString()) });
+                // Até 4 fotos ao mesmo tempo (cada foto de 24 MP ocupa ~70 MB na memória)
+                std::atomic<size_t> next{ 0 };
+                auto work = [&]
+                {
+                    for (size_t i = next++; i < jobs.size(); i = next++)
+                    {
+                        RgbFrame frame;
+                        if (jobs[i].path.empty() || !LoadPhotoRgb(jobs[i].path, frame)) continue;
+                        jobs[i].w = frame.width; jobs[i].h = frame.height;
+                        // (a foto de referência pode ter outro tamanho, RAW e JPEG: o Find leva isso em conta)
+                        jobs[i].found = AlignMarks::Find(alignRef->frame, alignRef->marks, frame, alignRef->wide);
+                    }
+                };
+                std::vector<std::thread> pool;
+                const size_t n = std::min<size_t>(jobs.size(), 4);
+                for (size_t t = 0; t < n; ++t) pool.emplace_back(work);
+                for (auto& t : pool) t.join();
+                std::string out = "[";
+                for (const auto& j : jobs)
+                {
+                    Json one;
+                    one.Add("camera", j.camera).Add("ok", j.found.ok && j.found.confidence >= 0.35).Raw("confidence", alignNum(j.found.confidence))
+                        .Add("width", j.w).Add("height", j.h);
+                    if (j.found.ok) one.Raw("marks", alignPts(j.found.p, j.w, j.h));
+                    out += std::string(out.size() > 1 ? "," : "") + one.Str();
+                }
+                window.resolve(id, 0, out + "]");
+            });
+        }, nullptr);
+        // alignSolve({cameras: [{camera, width, height, marks}]}): a receita e as instruções de cada câmera
+        window.bind("alignSolve", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            bool ok = false;
+            const JsonLite::Value in = JsonLite::Parse(args.empty() ? std::string() : args[0], &ok);
+            std::vector<AlignMarks::Camera> cams;
+            std::vector<std::string> names;
+            for (const auto& c : in.get("cameras").items())
+            {
+                AlignMarks::Camera cam;
+                cam.width = static_cast<int>(c.get("width").asNumber());
+                cam.height = static_cast<int>(c.get("height").asNumber());
+                const auto& marks = c.get("marks").items();
+                if (cam.width < 16 || cam.height < 16 || marks.size() != 3) continue;
+                for (int k = 0; k < 3; ++k)
+                    cam.p[k] = { marks[k].items().size() > 1 ? marks[k].items()[0].asNumber() * cam.width : 0,
+                                 marks[k].items().size() > 1 ? marks[k].items()[1].asNumber() * cam.height : 0 };
+                cams.push_back(cam);
+                names.push_back(c.get("camera").asString());
+            }
+            std::vector<AlignMarks::Recipe> recipes;
+            std::vector<AlignMarks::Aim> aims;
+            AlignMarks::Solve(cams, recipes, aims);
+            std::string out = "[";
+            for (size_t i = 0; i < cams.size(); ++i)
+            {
+                // receita em frações da foto (serve para o RAW e para o JPEG, que têm tamanhos diferentes)
+                out += std::string(out.size() > 1 ? "," : "") + Json().Add("camera", names[i])
+                    .Raw("dx", alignNum(recipes[i].dx / cams[i].width)).Raw("dy", alignNum(recipes[i].dy / cams[i].height))
+                    .Raw("rot", alignNum(recipes[i].rot)).Raw("scale", alignNum(recipes[i].scale))
+                    .Raw("pan", alignNum(aims[i].pan)).Raw("tilt", alignNum(aims[i].tilt)).Raw("roll", alignNum(aims[i].roll))
+                    .Raw("sizePct", alignNum(aims[i].sizePct)).Raw("height", alignNum(aims[i].height)).Str();
+            }
+            return out + "]";
+        });
+        // alignSave({cameras: [{camera, width, height, marks, dx, dy, rot, scale}]}): guarda o alinhamento com o
+        // Project (stillpoint-rig.json), pelo número de série de cada câmera. Sem Project, só até fechar o app.
+        window.bind("alignSave", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            bool ok = false;
+            JsonLite::Value in = JsonLite::Parse(args.empty() ? std::string() : args[0], &ok);
+            if (!ok) return "null";
+            std::time_t now = std::time(nullptr);
+            char when[32] = {};
+            std::strftime(when, sizeof(when), "%Y-%m-%dT%H:%M:%S", std::localtime(&now));
+            JsonLite::Value root = JsonLite::Value::NewObject();
+            root.set("savedAt", std::string(when));
+            JsonLite::Value list = JsonLite::Value::NewArray();
+            for (const auto& c : in.get("cameras").items())
+            {
+                JsonLite::Value one = c;
+                const std::string name = c.get("camera").asString();
+                for (const auto& cam : controller.GetCameras())
+                    if (cam.shortName == name)
+                    {
+                        one.set("serial", cam.portName);
+                        one.set("model", cam.modelName);
+                    }
+                list.push(one);
+            }
+            root.set("cameras", list);
+            const std::string text = JsonLite::Stringify(root, 0);
+            {
+                std::lock_guard<std::mutex> lock(rigMutex);
+                rigState.alignment = text;
+                rigSave();
+            }
+            return text;
+        });
+        // alignInfo(): o alinhamento guardado (null se não houver)
+        window.bind("alignInfo", [&](const std::string&) -> std::string
+        {
+            std::lock_guard<std::mutex> lock(rigMutex);
+            return rigState.alignment.empty() ? "null" : rigState.alignment;
         });
 
         // saveSessions(exitAfter): escolhe a pasta e move todas as sessões para lá

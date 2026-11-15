@@ -2106,6 +2106,27 @@ Serve qualquer pasta de uma sessão já fotografada (os nomes `01_...`, `02_...`
 Testes com objetos reais (fotos do rig, haste, câmeras): pendentes até o dono avisar que tem o material (2026-11-14).
 - [ ] Windows: os itens acima.
 
+## 47. Align cameras no Test shot (etapa 21, parte 3)
+
+Com as câmeras simuladas fotografando a haste (`STILLPOINT_FAKE_CAMERAS=4 STILLPOINT_FAKE_PHOTOS=pole`), dentro de um
+Project.
+
+- [ ] **Camera settings** (painel **Cameras**) › **Test shot**: ao lado de **Hide photos** aparece **Align cameras**.
+- [ ] **Align cameras**: passo **1 Prepare** no lugar das fotos e da tabela (quatro objetos, **How**, aviso em âmbar);
+      rodapé com o número de câmeras, **Cancel** e **Fire**.
+- [ ] **Fire**: passo **2 Mark and aim**, lista de câmeras à esquerda, a câmera 01 grande à direita, "Click the three
+      marks in this photo, from top to bottom."
+- [ ] Clicar nas três bolas da foto grande (de cima para baixo; não precisa ser no centro): os pontos vão para o
+      centro das bolas, a lista mostra o que mexer em cada câmera (âmbar) e a foto grande ganha a cruz no centro e as
+      setas.
+- [ ] Clicar em outra câmera da lista: ela aparece grande, com as marcas achadas e as instruções dela.
+- [ ] **Fire again**: fotos novas, marcas achadas sozinhas em todas.
+- [ ] **Save alignment**: passo **3 Save** com as quatro fotos alinhadas (as três bolas sobre a cruz) e os valores
+      Move, Rotate, Size; **Save alignment** de novo volta ao Test shot com "Cameras aligned · data" e **Align again**.
+- [ ] Fechar e abrir o app com o mesmo Project: **Camera settings** › **Test shot** mostra "Cameras aligned · data".
+- [ ] **Cancel** em qualquer passo volta ao Test shot sem mudar o alinhamento guardado.
+- [ ] Windows: os itens acima.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |

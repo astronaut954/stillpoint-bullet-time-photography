@@ -74,6 +74,7 @@ namespace Rig
         const JsonLite::Value root = JsonLite::Parse(text.str(), &ok);
         if (!ok || !root.isObject() || root.get("stillpoint").asString() != "rig") return state;
         if (root.has("panel")) state.panel = JsonLite::Stringify(root.get("panel"), 0);
+        if (root.get("alignment").isObject()) state.alignment = JsonLite::Stringify(root.get("alignment"), 0);
         for (const auto& item : root.get("order").items())
             if (!item.asString().empty() && !Has(state.order, item.asString())) state.order.push_back(item.asString());
         for (const auto& item : root.get("cameras").items())
@@ -107,6 +108,12 @@ namespace Rig
             bool ok = false;
             const JsonLite::Value panel = JsonLite::Parse(state.panel, &ok);
             if (ok) root.set("panel", panel);
+        }
+        if (!state.alignment.empty())
+        {
+            bool ok = false;
+            const JsonLite::Value alignment = JsonLite::Parse(state.alignment, &ok);
+            if (ok) root.set("alignment", alignment);
         }
         JsonLite::Value order = JsonLite::Value::NewArray();
         for (const auto& serial : state.order) order.push(JsonLite::Value(serial));
