@@ -2840,7 +2840,9 @@
       }
       const n = alConnected().length;
       alFoot(plural(n, "camera", "cameras"), al.firing ? [["Cancel", "btn-secondary", alCancelFire]] :
-        [["Cancel", "btn-secondary", alClose], ["Fire", "btn-primary", alFire, { disabled: !n || busy }]]);
+        // Com fotos do Test shot na tela, dá para usar essas e não fotografar de novo (decisão do dono, 2026-11-16, opção C)
+        [["Cancel", "btn-secondary", alClose]].concat(alTestPhotos() ? [["Use the Test shot photos", "btn-secondary", alUseTest, { title: "Uses the photos already taken in the Test shot, if the stick was in them." }]] : [],
+          [["Fire", "btn-primary", alFire, { disabled: !n || busy }]]));
       return;
     }
     if (al.step === 2) { alRenderAim(); return; }
@@ -2853,6 +2855,14 @@
     al.msg = "Taking a photo with each camera";
     alRender();
     csTakeTest();
+  }
+  // As fotos do Test shot que estão na tela (null se não houver)
+  function alTestPhotos() { return csTest.has && !csTest.capturing && csTest.sessions && csTest.sessions.length ? csTest.sessions : null; }
+  function alUseTest() {
+    const list = alTestPhotos();
+    if (!list) return;
+    al.firing = true;
+    alGotPhotos(list);
   }
   function alCancelFire() {
     if (csTest.capturing && !csTest.cancelling) csTakeTest();

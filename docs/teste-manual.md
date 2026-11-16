@@ -2115,6 +2115,8 @@ Project.
 - [ ] **Align cameras**: passo **1 Prepare** no lugar do cabeçalho "Camera settings", das fotos e da tabela (como o
       Match automatically; quatro objetos, **How**, aviso em âmbar);
       rodapé com o número de câmeras, **Cancel** e **Fire**.
+- [ ] No passo 1, **Use the Test shot photos** (rodapé, entre **Cancel** e **Fire**): vai para o passo 2 com as fotos
+      do Test shot, sem fotografar de novo. **← Back** volta ao passo 1.
 - [ ] **Fire**: passo **2 Mark and aim**, lista de câmeras à esquerda, a câmera 01 grande à direita, "Click the three
       marks in this photo, from top to bottom."
 - [ ] Clicar nas três bolas da foto grande (de cima para baixo; não precisa ser no centro): os pontos vão para o

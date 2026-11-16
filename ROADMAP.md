@@ -1089,6 +1089,10 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      até fechar o app (a regra do estado do rig). Cada sessão nova do Project guarda no `session.json` o alinhamento
      que valia. Fora desta parte: **Guided aim** (parte 6) e o uso do alinhamento no Export (parte 4). Roteiro:
      `docs/teste-manual.md`, seção 47.
+     Ajustes pedidos pelo dono em 2026-11-16: o cabeçalho "Camera settings" some durante o alinhamento; etiquetas de
+     situação na lista; botão **Review alignment** no passo 2; cursor de link, ordem das marcas à direita da foto,
+     cliques numerados e Ctrl/Cmd+Z; no passo 1, **Use the Test shot photos** para não fotografar duas vezes (opção
+     C; alternativas em https://claude.ai/artifact/7kebj8FrYForRwNwbVCcFZ).
 7. **Etapa 22 — Outras marcas de câmera (Sony, Nikon).** Posta como etapa pelo dono em 2026-11-11 (antes estava em
    "Futuro"). Viável marca a marca, com câmera para testar. Sony (site oficial, conferido em 2026-10-15): SDK
    gratuito, Windows 11 x64 e macOS 14.1+, cerca de 35 modelos recentes (α1, α9 II/III, α7 IV/V, α7R IV/V, α7S III,

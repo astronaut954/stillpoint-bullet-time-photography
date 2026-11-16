@@ -1766,6 +1766,14 @@ def scenario_align_cameras(t, name, photos):
         check(t, "align: step 1 Prepare, with the four objects and Fire",
               t.js("() => !document.getElementById('csAlign').classList.contains('hidden') && document.querySelector('#csAlignStep1').classList.contains('on') && document.querySelectorAll('#csAlignMain .al-obj').length === 4")
               and t.js("() => getComputedStyle(document.getElementById('csBody')).display === 'none' && getComputedStyle(document.querySelector('.cs-head')).display === 'none'"))
+        check(t, "align: Prepare offers 'Use the Test shot photos' next to Fire",
+              t.js("() => [...document.querySelectorAll('#csAlignFoot button')].map(b => b.textContent).join('|')") == "Cancel|Use the Test shot photos|Fire")
+        before = sorted(os.listdir(os.path.join(t.data, "Order photos")))
+        t.button("Use the Test shot photos")
+        check(t, "align: it goes to Mark and aim with the photos of the Test shot, without firing again",
+              t.wait(lambda: t.js("() => document.querySelector('#csAlignStep2').classList.contains('on') && document.querySelectorAll('#csAlignMain .ma-item').length === 4"), 10)
+              and sorted(os.listdir(os.path.join(t.data, "Order photos"))) == before)
+        t.button("← Back")
         t.button("Fire")
         check(t, "align: after Fire, step 2 Mark and aim with one row per camera",
               t.wait(lambda: t.js("() => document.querySelector('#csAlignStep2').classList.contains('on') && document.querySelectorAll('#csAlignMain .ma-item').length === 4"), 30))
