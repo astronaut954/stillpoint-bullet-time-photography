@@ -2273,7 +2273,9 @@ body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform:
 .cs-tag.ok { color: var(--noct-primary); border-color: var(--noct-border-strong); }
 .ma-item span.t { display: block; margin-top: 5px; font: 400 12px/1.3 var(--noct-font-sans); color: var(--noct-text-dim); }
 .ma-view2 { display: flex; flex-direction: column; gap: 10px; min-width: 0; min-height: 0; height: 100%; }
-.ma-view2 > .al-photo { width: 100%; max-width: 640px; flex: none; }
+.ma-row { display: flex; align-items: flex-start; gap: 18px; flex: none; }
+.ma-row > .al-photo { width: 100%; max-width: 640px; flex: none; }
+.ma-side { width: 190px; flex: none; }
 .ma-under { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; max-width: 640px; }
 .ma-under h4 { margin: 0 0 6px; font: 600 14px/1.2 var(--noct-font-sans); color: var(--noct-text); }
 .ma-under .in-list li { display: inline; margin-right: 14px; }
@@ -2288,7 +2290,7 @@ body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform:
 /* Ordem dos cliques nas marcas (de cima para baixo) e cliques numerados na foto */
 .al-dot.num { width: 20px; height: 20px; margin: -10px 0 0 -10px; background: var(--noct-primary); border: 1px solid #000; box-shadow: none; color: var(--noct-on-primary); font: 700 11px/18px var(--noct-font-mono); text-align: center; }
 .al-dot.num::after { display: none; }
-.al-order { display: flex; align-items: center; gap: 8px; margin: 2px 0 8px; }
+.al-order { display: flex; flex-direction: column; align-items: stretch; gap: 6px; margin: 0 0 10px; }
 .al-ord { display: inline-flex; align-items: center; gap: 7px; padding: 5px 10px 5px 6px; border: 1px solid var(--noct-border); color: var(--noct-text-dim); font: 700 10px var(--noct-font-mono); letter-spacing: .12em; text-transform: uppercase; }
 .al-ord i { display: inline-block; width: 18px; height: 18px; border: 1px solid currentColor; font: 700 11px/18px var(--noct-font-mono); text-align: center; font-style: normal; }
 .al-ord.on { border-color: var(--noct-primary); color: var(--noct-primary); }

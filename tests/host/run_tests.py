@@ -1769,7 +1769,7 @@ def scenario_align_cameras(t, name, photos):
         t.button("Fire")
         check(t, "align: after Fire, step 2 Mark and aim with one row per camera",
               t.wait(lambda: t.js("() => document.querySelector('#csAlignStep2').classList.contains('on') && document.querySelectorAll('#csAlignMain .ma-item').length === 4"), 30))
-        t.wait(lambda: t.js("() => { const p = document.querySelector('#csAlignMain .ma-view2 > .al-photo'); return !!p && p.style.backgroundImage.length > 10; }"), 15)
+        t.wait(lambda: t.js("() => { const p = document.querySelector('#csAlignMain .ma-row > .al-photo'); return !!p && p.style.backgroundImage.length > 10; }"), 15)
         time.sleep(0.5)
         t.shot("align-step2-before")
         # Os cliques na foto da câmera escolhida (a 01), a uns pixels do centro de cada bola
@@ -1778,11 +1778,13 @@ def scenario_align_cameras(t, name, photos):
         sel = t.js("() => document.querySelector('#csAlignMain .ma-item.sel').dataset.camera")
         f = [x for x in os.listdir(os.path.join(order_dir, sess)) if "_" + sel + "_IMG_" in x][0]
         centers = _mark_centers(os.path.join(order_dir, sess, f))
-        box = t.page.locator("#csAlignMain .ma-view2 > .al-photo").bounding_box()
+        box = t.page.locator("#csAlignMain .ma-row > .al-photo").bounding_box()
         click = lambda k: (t.page.mouse.click(box["x"] + centers[k][0] * box["width"] + 12, box["y"] + centers[k][1] * box["height"] - 9), time.sleep(0.25))
         order = lambda: t.js("() => [...document.querySelectorAll('#csAlignOrder .al-ord')].map(e => e.classList.contains('done') ? 'done' : e.classList.contains('on') ? 'on' : '-').join(' ')")
         check(t, "align: the order of the clicks is shown (Top mark is the one to click), with the link cursor over the photo",
-              order() == "on - -" and t.js("() => getComputedStyle(document.querySelector('#csAlignMain .ma-view2 > .al-photo')).cursor") == "pointer", order())
+              order() == "on - -" and t.js("() => getComputedStyle(document.querySelector('#csAlignMain .ma-row > .al-photo')).cursor") == "pointer", order())
+        check(t, "align: the marking instructions are to the right of the big photo",
+              t.js("() => document.getElementById('csAlignOrder').getBoundingClientRect().left >= document.querySelector('#csAlignMain .ma-row > .al-photo').getBoundingClientRect().right"))
         click(0)
         click(1)
         check(t, "align: after two clicks, Top and Middle are ticked, Bottom is next, and the clicks are numbered on the photo",
@@ -1807,7 +1809,7 @@ def scenario_align_cameras(t, name, photos):
         check(t, "align: the chosen camera shows what to change (aim, level, size)", any(l.startswith("fix:Turn") or l.startswith("ok:Aim") for l in lines)
               and any("Level" in l for l in lines) and any("Size" in l or "Sees it" in l for l in lines), lines)
         # Os cliques foram levados ao centro: o ponto do meio fica perto do centro da bola verde
-        mid = t.js("() => { const d = [...document.querySelectorAll('#csAlignMain .ma-view2 > .al-photo .al-dot')][1]; return d ? [parseFloat(d.style.left) / 100, parseFloat(d.style.top) / 100] : null; }")
+        mid = t.js("() => { const d = [...document.querySelectorAll('#csAlignMain .ma-row > .al-photo .al-dot')][1]; return d ? [parseFloat(d.style.left) / 100, parseFloat(d.style.top) / 100] : null; }")
         err = abs(mid[0] - centers[1][0]) * 1800 + abs(mid[1] - centers[1][1]) * 1200 if mid else 999
         check(t, "align: the clicks go to the center of the marks (within 4 px)", err < 4, err)
         t.button("Review alignment")
@@ -1827,9 +1829,9 @@ def scenario_align_cameras(t, name, photos):
         t.button("Fire")
         t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item').length === 4"), 30)
         check(t, "align: a new alignment starts without marks (click them again)", t.wait(lambda: t.js("() => /Click the three marks/.test(document.getElementById('csAlignMain').textContent)"), 10))
-        t.wait(lambda: t.js("() => { const p = document.querySelector('#csAlignMain .ma-view2 > .al-photo'); return !!p && p.style.backgroundImage.length > 10; }"), 15)
+        t.wait(lambda: t.js("() => { const p = document.querySelector('#csAlignMain .ma-row > .al-photo'); return !!p && p.style.backgroundImage.length > 10; }"), 15)
         time.sleep(0.5)
-        box = t.page.locator("#csAlignMain .ma-view2 > .al-photo").bounding_box()
+        box = t.page.locator("#csAlignMain .ma-row > .al-photo").bounding_box()
         for (x, y) in centers:
             t.page.mouse.click(box["x"] + x * box["width"], box["y"] + y * box["height"])
             time.sleep(0.25)

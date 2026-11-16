@@ -2120,8 +2120,8 @@ Project.
 - [ ] Clicar nas três bolas da foto grande (de cima para baixo; não precisa ser no centro): os pontos vão para o
       centro das bolas, a lista mostra o que mexer em cada câmera (âmbar) e a foto grande ganha a cruz no centro e as
       setas.
-- [ ] Marcar: o cursor sobre a foto grande é a mão (como num link); embaixo da foto, a ordem "1 Top mark → 2 Middle
-      mark → 3 Bottom mark" (a da vez acesa, as feitas com ✓) e os cliques numerados na foto; Cmd+Z (Mac) ou Ctrl+Z
+- [ ] Marcar: o cursor sobre a foto grande é a mão (como num link); à direita da foto, "Click the marks" com a ordem "1 Top mark", "2 Middle
+      mark", "3 Bottom mark" (a da vez acesa, as feitas com ✓) e os cliques numerados na foto; Cmd+Z (Mac) ou Ctrl+Z
       tira o último clique e, logo depois do terceiro, desfaz a marcação inteira.
 - [ ] Clicar em outra câmera da lista: ela aparece grande, com as marcas achadas e as instruções dela.
 - [ ] **Fire again**: fotos novas, marcas achadas sozinhas em todas.

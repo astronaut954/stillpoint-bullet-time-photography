@@ -3003,12 +3003,12 @@
   // A linha da haste: posta depois que a foto tem tamanho na tela
   function alPlaceLines(root) {
     // A foto grande no tamanho que cabe (largura até 640 px e altura do que sobra), sem deformar
-    const view = root.querySelector(".ma-view2"), big = view && view.querySelector(":scope > .al-photo");
+    const view = root.querySelector(".ma-view2"), big = view && view.querySelector(".ma-row > .al-photo");
     if (big) {
-      const under = view.querySelector(".ma-under");
+      const under = view.querySelector(".ma-under"), side = view.querySelector(".ma-side");
       const ratio = parseFloat(big.style.aspectRatio) || 1.5;
       const h = view.clientHeight - (under ? under.offsetHeight : 0) - 10;
-      big.style.width = Math.max(120, Math.min(640, view.clientWidth, h * ratio)) + "px";
+      big.style.width = Math.max(120, Math.min(640, view.clientWidth - (side ? side.offsetWidth + 18 : 0), h * ratio)) + "px";
     }
     root.querySelectorAll(".al-seg").forEach((s) => {
       const box = s.parentElement.getBoundingClientRect();
@@ -3101,23 +3101,31 @@
     view.className = "ma-view2";
     const sel = alPhotoOf(al.sel);
     if (sel) {
-      view.appendChild(alPhotoEl(sel, true));
+      // A foto grande e, à direita dela, as instruções de marcação (a ordem dos cliques); embaixo, o que mexer na câmera
+      const row = document.createElement("div");
+      row.className = "ma-row";
+      row.appendChild(alPhotoEl(sel, true));
+      const side = document.createElement("div");
+      side.className = "ma-side";
       const under = document.createElement("div");
       under.className = "ma-under";
       const d = al.data[sel.camera] || {};
-      let html = "<div><h4>Camera " + alNum(sel) + " · " + alEsc(sel.camera) + "</h4>";
+      let html = "<div><h4>Camera " + alNum(sel) + " · " + alEsc(sel.camera) + "</h4>", sideHtml = "";
       if (al.busy) html += '<p class="al-hint">' + alEsc(al.msg || "Working") + "</p>";
       else if ((al.clicks && al.clicks.camera === sel.camera) || !d.found) {
         // A ordem dos cliques, de cima para baixo: feito (✓), o da vez (aceso) e os que faltam
         const done = al.clicks && al.clicks.camera === sel.camera ? al.clicks.points.length : 0;
         if (!d.found && d.tried && !done) html += '<div class="al-warn">The app did not find the marks in this photo. Click the three marks, from top to bottom.</div>';
-        html += '<div class="al-order" id="csAlignOrder">' + ["Top", "Middle", "Bottom"].map((t, k) =>
-          '<span class="al-ord ' + (k < done ? "done" : k === done ? "on" : "") + '"><i>' + (k < done ? "✓" : k + 1) + "</i>" + t + " mark</span>").join('<span class="al-ord-sep">→</span>') + "</div>";
-        html += '<p class="al-hint dim">Click the ' + ["top", "middle", "bottom"][done] + " mark in the photo." + (done ? " " + (navigator.platform.indexOf("Mac") >= 0 ? "Cmd" : "Ctrl") + "+Z takes back the last click." : "") + "</p>";
+        sideHtml = '<div class="al-title">Click the marks</div><div class="al-order" id="csAlignOrder">' + ["Top", "Middle", "Bottom"].map((t, k) =>
+          '<span class="al-ord ' + (k < done ? "done" : k === done ? "on" : "") + '"><i>' + (k < done ? "✓" : k + 1) + "</i>" + t + " mark</span>").join("") + "</div>" +
+          '<p class="al-hint dim">Click the ' + ["top", "middle", "bottom"][done] + " mark in the photo." + (done ? " " + (navigator.platform.indexOf("Mac") >= 0 ? "Cmd" : "Ctrl") + "+Z takes back the last click." : "") + "</p>";
       }
-      else html += '<ul class="in-list">' + alLines(sel.camera).map(([c, t]) => '<li class="' + c + '">' + alEsc(t) + "</li>").join("") + '</ul><p class="al-hint dim">Wrong marks? Click the three marks in this photo again, or press ' + (navigator.platform.indexOf("Mac") >= 0 ? "Cmd" : "Ctrl") + "+Z right after marking.</p>";
+      else html += '<ul class="in-list">' + alLines(sel.camera).map(([c, t]) => '<li class="' + c + '">' + alEsc(t) + "</li>").join("") + "</ul>";
       html += "</div>";
       under.innerHTML = html;
+      side.innerHTML = sideHtml;
+      row.appendChild(side);
+      view.appendChild(row);
       view.appendChild(under);
     }
     w.appendChild(view);
