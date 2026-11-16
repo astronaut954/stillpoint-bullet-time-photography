@@ -2151,6 +2151,8 @@ e fazer uma sessão nova com **It's bullet time**.
 - [ ] Mexer em **Size** ou arrastar a foto: **Back to automatic** acende; clicar nele volta ao alinhamento do rig.
 - [ ] **Alignment** › **None**: as fotos voltam a como saíram (bolas desencontradas); **Rig · data** traz de volta.
 - [ ] Uma sessão feita antes de alinhar as câmeras: **Alignment** mostra só **None**, apagado.
+- [ ] **References**: a barra de **Current photo** muda só a foto atual; as de **Previous photo** e **Next photo**, só
+      a sua; a Previous photo aparece por cima da atual e a Next photo por baixo.
 - [ ] Windows: os itens acima.
 
 ## Resultado

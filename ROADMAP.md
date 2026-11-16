@@ -1106,6 +1106,10 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      (< 2 px); as de cima e de baixo ficam a até ~15 px entre câmeras em alturas diferentes (a haste aparece
      encurtada para quem olha de cima ou de baixo; mover, girar e mudar o tamanho não desfaz isso). Roteiro:
      `docs/teste-manual.md`, seção 48.
+     Align photos › References (pedido do dono, 2026-11-16; revê a decisão de 2026-11-03): cada barra de opacidade
+     mexe só na sua foto (a da Current photo não move mais as três) e as camadas seguem a ordem da lista (Previous
+     photo por cima, a atual no meio, Next photo embaixo). Em aberto: o layout do bloco References, o nome "Rig" no
+     seletor Alignment e o quanto o alinhamento automático corta das fotos.
 7. **Etapa 22 — Outras marcas de câmera (Sony, Nikon).** Posta como etapa pelo dono em 2026-11-11 (antes estava em
    "Futuro"). Viável marca a marca, com câmera para testar. Sony (site oficial, conferido em 2026-10-15): SDK
    gratuito, Windows 11 x64 e macOS 14.1+, cerca de 35 modelos recentes (α1, α9 II/III, α7 IV/V, α7R IV/V, α7S III,

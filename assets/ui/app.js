@@ -5291,12 +5291,13 @@
       const sw = el("span", "align-sw" + (isCur ? " align-sw-me" : "")); if (!isCur) sw.style.background = REF_COLORS[key];
       head.append(sw, document.createTextNode(label), el("span", "align-who", isCur ? pad(item.order || cur + 1) : !off ? pad(items[k].order || k + 1) : "none"));
       const sl = slider(isCur ? alignPrefs.opacity : opOf(key), (v) => {
+        // Cada barra mexe só na sua foto (pedido do dono, 2026-11-16; antes a da Current photo movia as três)
         if (isCur) {
-          alignPrefs.opacity = v; alignPrefs.op = {};  // as três juntas
-          Object.keys(refSliders).forEach((o) => { refSliders[o].input.value = String(Math.round(v * 100)); refSliders[o].val.textContent = Math.round(v * 100) + "%"; });
+          ["prev", "next"].forEach((o) => { if (alignPrefs.op[o] == null) alignPrefs.op[o] = alignPrefs.opacity; });
+          alignPrefs.opacity = v;
         } else alignPrefs.op[key] = v;
       });
-      sl.input.title = isCur ? "Opacity of every photo at once (the current photo and the references)" : "Opacity of this reference only";
+      sl.input.title = isCur ? "Opacity of the current photo only" : "Opacity of this reference only";
       sl.input.disabled = off;
       if (!isCur) refSliders[key] = sl;
       r.append(head, sl.row);
@@ -5539,12 +5540,16 @@
       sessionPhotoOriginal(session.name, it.file, 1600).then((url) => { if (url) im.src = url; });
       return l;
     };
-    // As referências embaixo, tingidas; a foto atual por cima. Cada camada com a sua opacidade (onion skin)
+    // Na ordem da lista References (pedido do dono, 2026-11-16): a Previous photo por cima, a atual no meio e a Next
+    // photo embaixo; as referências tingidas. Cada camada com a sua opacidade (onion skin)
     const order = [];
     ["prev", "next"].forEach((key) => { const k = refIndex[key]; if (alignPrefs[key] && k >= 0 && k < n && k !== cur && !order.some((o) => o.k === k)) order.push({ k, key }); });
     const refKeyOf = {};
-    order.forEach((o) => { layerOf[o.k] = makeLayer(items[o.k], o.key); refKeyOf[o.k] = o.key; layers.appendChild(layerOf[o.k]); });
-    layerOf[cur] = makeLayer(item, ""); layers.appendChild(layerOf[cur]);
+    order.forEach((o) => { layerOf[o.k] = makeLayer(items[o.k], o.key); refKeyOf[o.k] = o.key; });
+    layerOf[cur] = makeLayer(item, "");
+    order.filter((o) => o.key === "next").forEach((o) => layers.appendChild(layerOf[o.k]));
+    layers.appendChild(layerOf[cur]);
+    order.filter((o) => o.key === "prev").forEach((o) => layers.appendChild(layerOf[o.k]));
 
     // A área útil é o canvas (o recorte na proporção escolhida); a foto tem de cobri-lo sempre
     const usefulRect = () => commonFrame(items, sizes, st);  // o recorte é o canvas inteiro
