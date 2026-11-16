@@ -2111,32 +2111,32 @@ Testes com objetos reais (fotos do rig, haste, câmeras): pendentes até o dono 
 Com as câmeras simuladas fotografando a haste (`STILLPOINT_FAKE_CAMERAS=4 STILLPOINT_FAKE_PHOTOS=pole`), dentro de um
 Project.
 
-- [ ] **Camera settings** (painel **Cameras**) › **Test shot**: ao lado de **Hide photos** aparece **Align cameras**.
-- [ ] **Align cameras**: passo **1 Prepare** no lugar do cabeçalho "Camera settings", das fotos e da tabela (como o
+- [x] **Camera settings** (painel **Cameras**) › **Test shot**: ao lado de **Hide photos** aparece **Align cameras**.
+- [x] **Align cameras**: passo **1 Prepare** no lugar do cabeçalho "Camera settings", das fotos e da tabela (como o
       Match automatically; quatro objetos, **How**, aviso em âmbar);
       rodapé com o número de câmeras, **Cancel** e **Fire**.
-- [ ] No passo 1, **Use the Test shot photos** (rodapé, entre **Cancel** e **Fire**): vai para o passo 2 com as fotos
+- [x] No passo 1, **Use the Test shot photos** (rodapé, entre **Cancel** e **Fire**): vai para o passo 2 com as fotos
       do Test shot, sem fotografar de novo. **← Back** volta ao passo 1.
-- [ ] **Fire**: passo **2 Mark and aim**, lista de câmeras à esquerda, a câmera 01 grande à direita, "Click the three
+- [x] **Fire**: passo **2 Mark and aim**, lista de câmeras à esquerda, a câmera 01 grande à direita, "Click the three
       marks in this photo, from top to bottom."
-- [ ] Clicar nas três bolas da foto grande (de cima para baixo; não precisa ser no centro): os pontos vão para o
+- [x] Clicar nas três bolas da foto grande (de cima para baixo; não precisa ser no centro): os pontos vão para o
       centro das bolas, a lista mostra o que mexer em cada câmera (âmbar) e a foto grande ganha a cruz no centro e as
       setas.
-- [ ] Marcar: o cursor sobre a foto grande é a mão (como num link); à direita da foto, "Click the marks" com a ordem "1 Top mark", "2 Middle
+- [x] Marcar: o cursor sobre a foto grande é a mão (como num link); à direita da foto, "Click the marks" com a ordem "1 Top mark", "2 Middle
       mark", "3 Bottom mark" (a da vez acesa, as feitas com ✓) e os cliques numerados na foto; Cmd+Z (Mac) ou Ctrl+Z
       tira o último clique e, logo depois do terceiro, desfaz a marcação inteira.
 - [x] Zoom na foto grande: rolar aproxima em volta do mouse (100% a 800%; etiqueta "zoom N%" no canto da foto);
       com zoom, arrastar desloca (mão fechada sem piscar, mesmo fora da foto; com espaço seguro também); clique duplo
       volta à foto inteira sem marcar; botões **−**, **+** e **Fit** no canto de baixo à direita da foto; o clique
       com zoom marca o lugar certo.
-- [ ] Clicar em outra câmera da lista: ela aparece grande, com as marcas achadas e as instruções dela.
-- [ ] **Fire again**: fotos novas, marcas achadas sozinhas em todas.
-- [ ] Na lista, abaixo de "Camera NN": etiqueta âmbar ("2 changes", "Marks not found") ou verde ("Ready") e o
+- [x] Clicar em outra câmera da lista: ela aparece grande, com as marcas achadas e as instruções dela.
+- [x] **Fire again**: fotos novas, marcas achadas sozinhas em todas.
+- [x] Na lista, abaixo de "Camera NN": etiqueta âmbar ("2 changes", "Marks not found") ou verde ("Ready") e o
       primeiro ajuste.
-- [ ] **Review alignment**: passo **3 Save** com as quatro fotos alinhadas (as três bolas sobre a cruz) e os valores
+- [x] **Review alignment**: passo **3 Save** com as quatro fotos alinhadas (as três bolas sobre a cruz) e os valores
       Move, Rotate, Size; **Save alignment** volta ao Test shot com "Cameras aligned · data" e **Align again**.
-- [ ] Fechar e abrir o app com o mesmo Project: **Camera settings** › **Test shot** mostra "Cameras aligned · data".
-- [ ] **Cancel** em qualquer passo volta ao Test shot sem mudar o alinhamento guardado.
+- [x] Fechar e abrir o app com o mesmo Project: **Camera settings** › **Test shot** mostra "Cameras aligned · data".
+- [x] **Cancel** em qualquer passo volta ao Test shot sem mudar o alinhamento guardado.
 - [ ] Windows: os itens acima.
 
 ## Resultado
@@ -2207,3 +2207,4 @@ Project.
 | 2026-10-21 | Mac (M5, macOS 26) | etapa-16-processo-por-camera | Canon SL3 + T7 + T5 | parcial | Seção 21: conexão em paralelo (0,5 s cada), At once ×5, planos de 9 fotos, T5 desligada volta sozinha com o mesmo nome, Restart ok. Sweep 0,3 s com 3 câmeras: a mesma câmera de novo a 0,9 s é recusada ("busy") — limite da câmera, decisão pendente. Camera settings, Test shot, Match, fechar o app e processo encerrado à força: ok. Falta: Windows |
 | 2026-11-15 | Mac | etapa-21-alinhamento | — (9 câmeras simuladas) | sim | Seção 46: com `STILLPOINT_FAKE_PHOTOS=pole`, a foto mostrou a haste com as três bolas (aprovado pelo dono do projeto). Pasta com fotos reais e Windows: pendentes |
 | 2026-11-16 | Mac | etapa-21-alinhamento | — (4 câmeras simuladas, cena da haste) | sim | Seção 47, zoom da foto grande: rolar, arrastar sem piscar, clique duplo, botões − + Fit, marcar com zoom (aprovado pelo dono do projeto). Resto da seção 47 e Windows: pendentes |
+| 2026-11-16 | Mac | etapa-21-alinhamento | — (4 câmeras simuladas, cena da haste) | sim | Seção 47 inteira (Align cameras: Prepare, Use the Test shot photos, Mark and aim, zoom, Ctrl+Z, Review alignment, Save): aprovada pelo dono do projeto ("o ok vale pra tudo que revisamos até agora"). Windows e testes com objetos reais: pendentes |
