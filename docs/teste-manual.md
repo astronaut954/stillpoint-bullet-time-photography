@@ -2139,6 +2139,20 @@ Project.
 - [x] **Cancel** em qualquer passo volta ao Test shot sem mudar o alinhamento guardado.
 - [ ] Windows: os itens acima.
 
+## 48. Align photos com o alinhamento do rig (etapa 21, parte 4)
+
+Com `STILLPOINT_FAKE_CAMERAS=4 STILLPOINT_FAKE_PHOTOS=pole`, num Project, depois de salvar um alinhamento (seção 47)
+e fazer uma sessão nova com **It's bullet time**.
+
+- [ ] **Export sessions** › passo **1 Sessions** › a sessão nova › **16:9** (as câmeras simuladas misturam 3:2 e
+      16:9): a prévia do Framing já mostra as fotos alinhadas (as bolas no mesmo lugar ao trocar de foto com ← →).
+- [ ] **Align photos**: na barra em cima da foto, à direita, **Alignment** com "Rig · data" e **Back to automatic**
+      (apagado). As bolas da foto atual e da próxima ficam uma sobre a outra.
+- [ ] Mexer em **Size** ou arrastar a foto: **Back to automatic** acende; clicar nele volta ao alinhamento do rig.
+- [ ] **Alignment** › **None**: as fotos voltam a como saíram (bolas desencontradas); **Rig · data** traz de volta.
+- [ ] Uma sessão feita antes de alinhar as câmeras: **Alignment** mostra só **None**, apagado.
+- [ ] Windows: os itens acima.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |

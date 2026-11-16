@@ -1920,6 +1920,74 @@ def scenario_align_cameras(t, name, photos):
             info = json.load(open(p)) if os.path.exists(p) else {}
         check(t, "align: a new session keeps the alignment that was valid when it was shot (session.json)",
               (info.get("alignment") or {}).get("savedAt") == al.get("savedAt"), list(info.keys()))
+        # ---- Parte 4: o Export usa o alinhamento da sessão (Align photos, seletor Alignment) ----
+        import math
+        o = t.originals(s)
+        files = sorted(f for f in os.listdir(o) if f.lower().endswith(".jpg"))
+        marks = {f: _mark_centers(os.path.join(o, f)) for f in files}
+        sizes = {f: Image.open(os.path.join(o, f)).size for f in files}
+        def parse(text):
+            out = {}
+            for item in (text or "").split(";"):
+                if ":" in item:
+                    f, v = item.rsplit(":", 1)
+                    out[f] = [float(x) for x in v.split(",")]
+            return out
+        def spread(text, only=(0, 1, 2)):
+            # onde cada marca cai no canvas, em cada foto; devolve a maior distância entre câmeras (px)
+            al = parse(text)
+            worst = 0.0
+            for k in only:
+                pts = []
+                for f in files:
+                    w, h = sizes[f]
+                    dx, dy, sc, rot = (al.get(f) or [0, 0, 1, 0])[:4]
+                    x, y = marks[f][k][0] * w - w / 2, marks[f][k][1] * h - h / 2
+                    r = math.radians(rot)
+                    pts.append((dx + sc * (x * math.cos(r) - y * math.sin(r)), dy + sc * (x * math.sin(r) + y * math.cos(r))))
+                for a in pts:
+                    for b in pts:
+                        worst = max(worst, math.hypot(a[0] - b[0], a[1] - b[1]))
+            return worst
+        saved = lambda: (t.session(s) or {}).get("align") or ""
+        before_px = spread("")
+        t.page.click("#saveBtn")
+        t.wait(lambda: t.export_open(), 5)
+        time.sleep(0.6)
+        t.js("() => { const b = document.querySelector('#exportSteps .export-step'); if (!b.classList.contains('on')) b.click(); }")
+        time.sleep(0.4)
+        t.page.click('#exportList li.export-item[data-name="%s"] .folder-date' % s)
+        time.sleep(0.6)
+        t.js("() => [...document.querySelectorAll('#exportSettings .segmented:not(.orient-seg) button')].find(x => x.textContent.trim() === '16:9').click()")
+        ok = t.wait(lambda: len(parse(saved())) == 4, 15)
+        check(t, "export: a session shot with aligned cameras gets the alignment of the rig by itself (one entry per photo)", ok, saved())
+        after_px, mid_px = spread(saved()), spread(saved(), (1,))
+        # (a marca do meio fica no mesmo ponto; as de cima e de baixo, a poucos pixels: câmeras em alturas diferentes
+        # veem a haste um pouco encurtada, e isso mover, girar e mudar o tamanho não desfaz)
+        check(t, "export: with it, the middle mark lands on the same point in every photo (within 2 px) and the others within 20 px (before: far apart)",
+              mid_px < 2 and after_px < 20 and before_px > 100, (round(before_px, 1), round(mid_px, 1), round(after_px, 1)))
+        t.js("() => document.querySelector('#exportSettings .framing-align-btn').click()")
+        time.sleep(1.5)
+        sel = lambda: t.js("() => { const e = document.getElementById('alignModeSel'); return e ? [e.value, [...e.options].map(o => o.textContent).join('|')] : null; }")
+        back_off = lambda: t.js("() => { const b = document.getElementById('alignBackAuto'); return b ? b.disabled : null; }")
+        v = sel()
+        check(t, "Align photos: the Alignment selector shows 'Rig · date' and 'None', on Rig; 'Back to automatic' is off",
+              bool(v) and v[0] == "rig" and v[1].startswith("Rig · ") and v[1].endswith("|None") and back_off() is True, (v, back_off()))
+        auto_text = saved()
+        b = t.page.locator('#exportSettings .align-ctl', has_text="Size").locator("button").nth(1)
+        b.click(modifiers=["Shift"])
+        time.sleep(0.8)
+        check(t, "Align photos: an adjustment on top turns 'Back to automatic' on", saved() != auto_text and back_off() is False)
+        t.button("Back to automatic")
+        check(t, "Align photos: 'Back to automatic' returns to the alignment of the rig", t.wait(lambda: saved() == auto_text and back_off() is True, 8), saved())
+        t.js("() => { const e = document.getElementById('alignModeSel'); e.value = 'none'; e.dispatchEvent(new Event('change', { bubbles: true })); }")
+        check(t, "Align photos: 'None' removes the alignment (photos as they came out)", t.wait(lambda: saved() == "" and (t.session(s) or {}).get("alignMode") == "none", 8), saved())
+        time.sleep(1.5)
+        check(t, "Align photos: with 'None' it stays without alignment (not applied again by itself)", saved() == "" and sel()[0] == "none")
+        t.js("() => { const e = document.getElementById('alignModeSel'); e.value = 'rig'; e.dispatchEvent(new Event('change', { bubbles: true })); }")
+        check(t, "Align photos: back to 'Rig', the alignment returns", t.wait(lambda: saved() == auto_text, 8), saved())
+        t.shot("align-photos-rig")
+        t.close_export()
         check(t, "align: no page errors", len(t.errors) == errors_before, t.errors[errors_before:][-3:])
     finally:
         del t.env["STILLPOINT_FAKE_PHOTOS"]

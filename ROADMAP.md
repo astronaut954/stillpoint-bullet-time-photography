@@ -1096,6 +1096,16 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      Altura da câmera: sem centímetros, só "Higher/Lower than the others" (decisão do dono, 2026-11-16, opção C; o
      app não pede o espaço real entre as marcas). Zoom na foto grande do passo 2 (pedido do dono, 2026-11-16): roda
      aproxima em volta do mouse, espaço + arrastar desloca, como no Align photos do Export.
+   - **Parte 4 feita (2026-11-16):** o Export usa o alinhamento da sessão. `session.json` ganha `alignMode` ("rig" ou
+     "none"); a página (`app.js`, seção "Alinhamento automático no Export") transforma a receita de cada câmera nos
+     quatro valores do Align photos e grava no `align` de sempre (o exportador, as prévias e o Lightroom não mudaram).
+     Todas as fotos recebem o mesmo fator a mais de tamanho, o menor com que todas cobrem o canvas (assim nenhuma é
+     ampliada sozinha). Align photos, opção B: seletor **Alignment** (Rig · data / None) e **Back to automatic**;
+     **From this scene** entra na parte 7. Sessão com proporções misturadas em "As shot": o alinhamento só vale depois
+     de escolher uma proporção (regra que já existia). Limite medido na cena de mentira: a marca do meio coincide
+     (< 2 px); as de cima e de baixo ficam a até ~15 px entre câmeras em alturas diferentes (a haste aparece
+     encurtada para quem olha de cima ou de baixo; mover, girar e mudar o tamanho não desfaz isso). Roteiro:
+     `docs/teste-manual.md`, seção 48.
 7. **Etapa 22 — Outras marcas de câmera (Sony, Nikon).** Posta como etapa pelo dono em 2026-11-11 (antes estava em
    "Futuro"). Viável marca a marca, com câmera para testar. Sony (site oficial, conferido em 2026-10-15): SDK
    gratuito, Windows 11 x64 e macOS 14.1+, cerca de 35 modelos recentes (α1, α9 II/III, α7 IV/V, α7R IV/V, α7S III,

@@ -1222,6 +1222,18 @@ bool PhotoStore::SetAlign(const std::string& session, const std::string& align) 
     return WriteSessionInfoFile(dir, info);
 }
 
+bool PhotoStore::SetAlignMode(const std::string& session, const std::string& mode) const
+{
+    const fs::path dir = SessionDir(session);
+    if (dir.empty() || (mode != "rig" && mode != "none"))
+        return false;
+    JsonLite::Value info = ReadSessionInfo(dir);
+    if (!info.isObject())
+        info = JsonLite::Value::NewObject();
+    info.set("alignMode", mode);
+    return WriteSessionInfoFile(dir, info);
+}
+
 bool PhotoStore::WriteSessionInfo(const std::string& session, const std::string& jsonText) const
 {
     const fs::path dir = SessionDir(session);
@@ -1348,6 +1360,9 @@ void PhotoStore::ReadSessions(const fs::path& base, bool inProject, std::vector<
             session.crop = info.get("crop").asString();  // (também fora do Project)
             session.showEdited = !(info.isObject() && info.get("showEdited").asString() == "no");
             session.align = info.get("align").asString();
+            if (info.get("alignment").isObject())
+                session.rigAlign = JsonLite::Stringify(info.get("alignment"), 0);
+            session.alignMode = info.get("alignMode").asString();
             alignLr = inProject ? info.get("alignLr").asString() : std::string();
         }
 

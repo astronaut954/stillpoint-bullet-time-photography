@@ -71,6 +71,10 @@ struct StoredSession
     bool inProject = false;
     std::string label;   // rótulo opcional ("Pose 7"), em session.json
     std::string crop;    // recorte escolhido para o Export ("3:2|0.5|0.5": proporção|posição x|posição y), em session.json
+    // Alinhamento automático (etapa 21): rigAlign = o alinhamento das câmeras que valia quando a sessão foi
+    // fotografada (JSON de session.json "alignment"; vazio se não havia); alignMode = o que o Export usa nesta sessão:
+    // "rig", "none" ou "" (ainda não decidido: vale "rig" se houver rigAlign)
+    std::string rigAlign, alignMode;
     std::string align;   // alinhamento das fotos para o Export ("arquivo:dx,dy,scale,rot;..."), em session.json (pedaço 2 do Framing)
     int edited = 0;      // fotos com versão editada em <Project>/Edited/<sessão>/
     bool showEdited = true; // usar as editadas nas prévias e no Export (a etiqueta "Edited n / m" liga e desliga), em session.json
@@ -120,6 +124,7 @@ public:
     bool SetLabel(const std::string& session, const std::string& label) const;
     bool SetCrop(const std::string& session, const std::string& crop) const;  // Parte 4 da Proporção
     bool SetAlign(const std::string& session, const std::string& align) const;  // pedaço 2 do Framing
+    bool SetAlignMode(const std::string& session, const std::string& mode) const;  // etapa 21: "rig" ou "none"
     // Alinhamento que veio do Lightroom Classic (o recorte ajustado lá; decisão do dono, 2026-11-10), no mesmo texto
     // do "align", em session.json ("alignLr"). Vale só para as fotos que têm editada: ListSessions já devolve o
     // "align" com ele por cima; sem a editada (Revert to original, ⌘Z) volta a valer o que era antes de a foto ir.

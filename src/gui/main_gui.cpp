@@ -863,7 +863,8 @@ namespace
             Json item("session");
             item.Add("name", session.name).Add("saved", session.saved).Add("missing", session.missing)
                 .Add("inProject", session.inProject).Add("label", session.label).Add("edited", session.edited)
-                .Add("showEdited", session.showEdited).Add("editedStamp", editedStamps.count(session.name) ? editedStamps[session.name] : std::string()).Add("timing", session.timing).Add("crop", session.crop).Add("align", session.align).Raw("photos", photos);
+                .Add("showEdited", session.showEdited).Add("editedStamp", editedStamps.count(session.name) ? editedStamps[session.name] : std::string()).Add("timing", session.timing).Add("crop", session.crop).Add("align", session.align)
+                .Add("alignMode", session.alignMode).Raw("rigAlign", session.rigAlign.empty() ? "null" : session.rigAlign).Raw("photos", photos);
             list += (firstSession ? "" : ",") + item.Str();
             firstSession = false;
         }
@@ -4008,6 +4009,13 @@ namespace
             const auto args = ParseStringArgs(request);
             const bool ok = args.size() >= 2 && store.SetAlign(args[0], args[1]);
             return Json("align").Add("ok", ok).Str();
+        });
+        // setSessionAlignMode(sessão, "rig" | "none"): o alinhamento automático que o Export usa nesta sessão (etapa 21)
+        window.bind("setSessionAlignMode", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            const bool ok = args.size() >= 2 && store.SetAlignMode(args[0], args[1]);
+            return Json("alignMode").Add("ok", ok).Str();
         });
         // photoSize(sessão, arquivo): largura e altura da foto em pixels (a tela de alinhamento trabalha em
         // pixels do original). Decodifica na fila de prévias; o resultado fica guardado por arquivo.

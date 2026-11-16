@@ -3837,6 +3837,7 @@
       // estar com um texto antigo: sem isto o desfazer mudava a tela e não o session.json; teste do dono, 2026-11-11)
       const changed = (text, get) => { try { return !!(prev && get(prev) !== text); } catch (e) { return true; } };
       if (st.align) { const text = alignText(st); if (text !== (session.align || "") || changed(text, (p) => (p.align && p.align.loaded ? alignText(p) : text))) alignSave(session, st); }
+      if (st.align && st.align.mode) rigModeSave(session, st, st.align.mode);
       if (st.crop) { const text = cropText(st); if (text !== (session.crop || "") || changed(text, (p) => (p.crop && p.crop.loaded ? cropText(p) : text))) cropSave(session, st); }
     });
     exp.same = o.same; exp.sameFraming = o.sameFraming !== false; exp.selected = new Set(o.sel); rememberSelection(); exp.dest = o.dest;
@@ -4875,6 +4876,9 @@
     sent.push(text); if (sent.length > 40) sent.shift();
     session.align = text;
     if (typeof window.setSessionAlign === "function") window.setSessionAlign(session.name, text);
+    // (Align photos aberto: "Back to automatic" acende quando há ajuste da pessoa por cima do alinhamento do rig)
+    const back = $("alignBackAuto");
+    if (back && typeof rigTouched === "function") back.disabled = !rigTouched(st);
   }
   function alignOf(st, file) { return st.align.byFile[file] || ALIGN_ID(); }  // só lê: uma foto sem ajuste não ganha entrada
   // Alinhamento em uso: só com uma proporção escolhida (decisão do dono, 2026-11-04, opção B: "As shot" é sempre como
@@ -4973,6 +4977,107 @@
     return Object.assign({}, al, { scale: need ? Math.max(al.scale, need) : al.scale });
   }
 
+  // =================== Alinhamento automático no Export (etapa 21, parte 4; Align photos opção B) ===================
+  // A sessão guarda o alinhamento das câmeras que valia quando foi fotografada (session.rigAlign: por câmera, mover,
+  // girar e tamanho, em frações da foto). No Export isso vira o alinhamento de cada foto (os mesmos quatro valores do
+  // Align photos), e a pessoa ajusta por cima. Não destrutivo: "Back to automatic" volta ao do rig; "None" tira tudo.
+  // Todas as fotos recebem o mesmo fator a mais de tamanho, o menor com que todas cobrem o canvas: assim nenhuma é
+  // ampliada sozinha (o que desfaria o alinhamento) e as bordas vazias ficam de fora.
+  function rigOf(session) {
+    const cur = sessions.find((x) => x.name === session.name) || session;
+    return cur.rigAlign && Array.isArray(cur.rigAlign.cameras) && cur.rigAlign.cameras.length ? cur.rigAlign : null;
+  }
+  function alignModeOf(session, st) {
+    const cur = sessions.find((x) => x.name === session.name) || session;
+    const m = (st && st.align.mode) || cur.alignMode || "";
+    return rigOf(session) ? (m === "none" ? "none" : "rig") : "none";
+  }
+  const rigEntryText = (a) => (a ? [a.dx.toFixed(2), a.dy.toFixed(2), a.scale.toFixed(5), a.rot.toFixed(3)].join(",") : "");
+  // O alinhamento do rig para cada foto da sessão ({ arquivo: {dx, dy, scale, rot, base} }); null se não der
+  function rigCompute(session, st) {
+    const rig = rigOf(session);
+    const items = sessionItems(session).filter((i) => i.previewable);
+    if (!rig || !items.length) return Promise.resolve(null);
+    return Promise.all(items.map((it) => photoSizeOf(session.name, it.file))).then((list) => {
+      const sizes = {};
+      items.forEach((it, k) => { if (list[k]) sizes[it.file] = list[k]; });
+      const frame = commonFrame(items, sizes, st);
+      if (!frame) return null;
+      const raw = {};
+      items.forEach((it) => {
+        const sz = sizes[it.file], cam = it.files[0] && it.files[0].camera;
+        const r = rig.cameras.find((c) => c.camera === cam);
+        if (!sz || !r || !(r.scale > 0)) return;
+        // a receita: mover (px da foto), girar e mudar o tamanho em volta do centro → onde fica o centro da foto
+        const rad = r.rot * Math.PI / 180, cs = Math.cos(rad), sn = Math.sin(rad), mx = r.dx * sz.w, my = r.dy * sz.h;
+        raw[it.file] = { dx: r.scale * (mx * cs - my * sn), dy: r.scale * (mx * sn + my * cs), scale: r.scale, rot: r.rot, sz };
+      });
+      const files = Object.keys(raw);
+      if (!files.length) return null;
+      const covers = (k) => files.every((f) => { const a = raw[f]; return photoCovers(a.sz.w, a.sz.h, { dx: a.dx * k, dy: a.dy * k, scale: a.scale * k, rot: a.rot }, frame); });
+      let lo = 0.2, hi = 20;
+      if (!covers(hi)) return null;
+      for (let i = 0; i < 40; i++) { const mid = (lo + hi) / 2; if (covers(mid)) hi = mid; else lo = mid; }
+      const out = {};
+      files.forEach((f) => { const a = raw[f]; out[f] = { dx: a.dx * hi, dy: a.dy * hi, scale: a.scale * hi, rot: a.rot, base: a.scale * hi }; });
+      return out;
+    });
+  }
+  // Põe o alinhamento do rig nas fotos que estão no automático (sem ajuste da pessoa) e guarda; all: em todas
+  // (Back to automatic). Devolve Promise<true> se mudou algo.
+  function rigApply(session, st, all) {
+    alignLoad(session, st); cropLoad(session, st);
+    const key = st.crop.ratio + "/" + (st.crop.orient || "") + "/" + (rigOf(session) || {}).savedAt;
+    return rigCompute(session, st).then((auto) => {
+      if (!auto) return false;
+      const old = st.align.auto || {};
+      let changed = false;
+      Object.keys(auto).forEach((f) => {
+        const cur = st.align.byFile[f];
+        if (!all && cur && !alignIsIdentity(cur) && rigEntryText(cur) !== old[f] && rigEntryText(cur) !== rigEntryText(auto[f])) return;  // ajuste da pessoa: fica
+        const next = Object.assign({}, auto[f], { flip: alignFlip(cur) });
+        if (!cur || rigEntryText(cur) !== rigEntryText(next)) changed = true;
+        st.align.byFile[f] = next;
+      });
+      st.align.auto = {};
+      Object.keys(auto).forEach((f) => { st.align.auto[f] = rigEntryText(auto[f]); });
+      st.align.rigKey = key;
+      if (changed) alignSave(session, st);
+      return changed;
+    });
+  }
+  function rigModeSave(session, st, mode) {
+    st.align.mode = mode;
+    const cur = sessions.find((x) => x.name === session.name) || session;
+    if (cur.alignMode === mode) return;
+    cur.alignMode = mode; session.alignMode = mode;
+    if (typeof window.setSessionAlignMode === "function") window.setSessionAlignMode(session.name, mode);
+  }
+  // Alguma foto com ajuste da pessoa por cima do automático?
+  function rigTouched(st) {
+    const auto = st.align.auto;
+    return !!auto && Object.keys(auto).some((f) => rigEntryText(st.align.byFile[f]) !== auto[f]);
+  }
+  // Mantém as sessões do Export com o alinhamento do rig em dia: na primeira vez, e quando a proporção muda (o fator
+  // comum de tamanho depende do canvas). Chamado ao abrir o Export e a cada desenho da tela.
+  function rigRefreshAll(after) {
+    exportable().forEach((session) => {
+      const st = settingsFor(session.name);
+      if (!rigOf(session) || framingLocked(session)) return;
+      alignLoad(session, st); cropLoad(session, st);
+      if (alignModeOf(session, st) !== "rig" || needsRatio(session, st) || st.align.rigBusy) return;
+      const key = st.crop.ratio + "/" + (st.crop.orient || "") + "/" + rigOf(session).savedAt;
+      if (st.align.rigKey === key) return;
+      st.align.rigBusy = true;
+      rigApply(session, st, false).then((changed) => {
+        st.align.rigBusy = false;
+        st.align.rigKey = key;  // (mesmo sem dar para calcular: não tenta de novo a cada desenho)
+        rigModeSave(session, st, "rig");
+        if (changed) { expSnap = null; if (after) after(session); }
+      }).catch(() => { st.align.rigBusy = false; st.align.rigKey = key; });
+    });
+  }
+
   // A foto como sai na exportação: cortada ao canvas (com a proporção) e com o alinhamento da sessão. Montada num
   // canvas a partir da prévia; guardada por foto e Framing. Sem proporção nem alinhamento, a própria prévia.
   const framedCache = new Map();
@@ -5064,6 +5169,41 @@
     // Sem "Back to Framing" aqui: sair é pelo "Done aligning" do rodapé ou pelo Esc (decisão do dono, 2026-11-04)
     const where = el("span", "align-where", "Photo " + pad(item.order || cur + 1) + " of " + pad(n) + " · ← → other photos");
     top.appendChild(where);
+    // Alignment (opção B do protótipo): de onde vem o alinhamento desta sessão, e a volta ao automático
+    {
+      const rig = rigOf(session), mode = alignModeOf(session, st);
+      const boxA = el("span", "align-auto");
+      boxA.appendChild(el("span", "align-auto-label", "Alignment"));
+      const sel = document.createElement("select");
+      sel.className = "cs-sel"; sel.id = "alignModeSel";
+      if (rig) sel.appendChild(new Option("Rig · " + alWhen(rig.savedAt), "rig"));
+      sel.appendChild(new Option("None", "none"));
+      sel.value = mode;
+      sel.disabled = !rig;
+      sel.title = rig ? "Rig: the camera alignment that was saved when this session was shot. None: the photos as they came out." : "This session was shot without a camera alignment (Camera settings › Test shot › Align cameras).";
+      sel.addEventListener("change", () => {
+        expTrack();
+        if (sel.value === "none") {
+          rigModeSave(session, st, "none");
+          Object.keys(st.align.byFile).forEach((f) => { const flip = alignFlip(st.align.byFile[f]); if (flip) st.align.byFile[f] = Object.assign(ALIGN_ID(), { flip }); else delete st.align.byFile[f]; });
+          st.align.auto = null; st.align.rigKey = "";
+          alignSave(session, st); expTrack(); rerender();
+        } else {
+          rigModeSave(session, st, "rig");
+          st.align.rigKey = "";
+          rigApply(session, st, true).then(() => { expTrack(); rerender(); });
+        }
+      });
+      boxA.appendChild(sel);
+      appSelect(sel);
+      if (rig && mode === "rig") {
+        const back = button("Back to automatic", () => { expTrack(); rigApply(session, st, true).then(() => { expTrack(); rerender(); }); }, { kind: "btn-link", title: "Drops your adjustments and goes back to the alignment of the rig" });
+        back.id = "alignBackAuto";
+        back.disabled = !rigTouched(st);
+        boxA.appendChild(back);
+      }
+      top.appendChild(boxA);
+    }
     rows.classList.add("hidden");
     const wrap = el("div", "align-wrap");
     const left = el("div", "align-left");
@@ -5622,6 +5762,7 @@
 
   function renderExportSettings() {
     stopPreview();
+    rigRefreshAll((session) => { framedCache.clear(); if (session.name === exp.active && !$("exportOverlay").classList.contains("hidden")) renderExportSettings(); });
     // Uma janela, três saídas (decisão do dono, 2026-10-30, opção A): Photos, Sequence e
     // Lenticular são seções com interruptor; as marcadas abrem as configurações, as
     // desmarcadas ficam recolhidas. A prévia de cima é a da seção em foco (exp.mode).

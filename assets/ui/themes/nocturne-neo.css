@@ -2309,3 +2309,7 @@ body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform:
 .al-zbtns { position: absolute; right: 6px; bottom: 6px; z-index: 3; display: flex; gap: 4px; }
 .al-zbtns button { min-width: 26px; height: 26px; padding: 0 7px; border: 1px solid var(--noct-border-strong); background: rgba(0,0,0,.75); color: var(--noct-primary); font: 700 12px/1 var(--noct-font-mono); letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
 .al-zbtns button:hover { border-color: var(--noct-primary); }
+/* Align photos: seletor Alignment na barra em cima da foto (etapa 21, parte 4) */
+.align-auto { margin-left: auto; display: inline-flex; align-items: center; gap: 10px; }
+.align-auto-label { font: 700 10px var(--noct-font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--noct-text-dim); }
+.align-auto .cs-sel, .align-auto .app-select { min-width: 190px; }
