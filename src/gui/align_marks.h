@@ -26,6 +26,10 @@ namespace AlignMarks
     // (para uma mancha da mesma cor ao lado não puxar); wide: a marca é mais larga que a haste.
     Pt Snap(const RgbFrame& img, Pt p, double d, Pt other, bool wide);
 
+    // Os três cliques da pessoa (alto, meio, baixo) levados ao centro das marcas. Decide também se as marcas são mais
+    // largas que a haste (devolve em wide), medindo já no centro (medir no clique, fora do centro, errava).
+    void SnapClicks(const RgbFrame& img, const Pt clicks[3], Pt marks[3], bool& wide);
+
     struct Found
     {
         bool ok = false;

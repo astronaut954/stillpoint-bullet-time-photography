@@ -454,6 +454,17 @@ namespace AlignMarks
         }
     }
 
+    void SnapClicks(const RgbFrame& img, const Pt clicks[3], Pt marks[3], bool& wide)
+    {
+        const double d = std::hypot(clicks[0].x - clicks[2].x, clicks[0].y - clicks[2].y);
+        // 1) primeiro, o centro do pedaço inteiro da cor da marca; 2) ali, larga ou estreita; 3) o centro de novo
+        Pt pre[3];
+        for (int k = 0; k < 3; ++k) pre[k] = Snap(img, clicks[k], d, clicks[k == 0 ? 2 : 0], true);
+        const double d2 = std::hypot(pre[0].x - pre[2].x, pre[0].y - pre[2].y);
+        wide = IsWide(img, pre[0], d2, pre[2]) || IsWide(img, pre[2], d2, pre[0]);
+        for (int k = 0; k < 3; ++k) marks[k] = Snap(img, pre[k], d2, pre[k == 0 ? 2 : 0], wide);
+    }
+
     Found Find(const RgbFrame& refFull, const Pt marks[3], const RgbFrame& imgFull, bool wide)
     {
         Found out;

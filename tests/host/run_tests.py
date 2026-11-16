@@ -1765,11 +1765,12 @@ def scenario_align_cameras(t, name, photos):
         t.button("Align cameras")
         check(t, "align: step 1 Prepare, with the four objects and Fire",
               t.js("() => !document.getElementById('csAlign').classList.contains('hidden') && document.querySelector('#csAlignStep1').classList.contains('on') && document.querySelectorAll('#csAlignMain .al-obj').length === 4")
-              and t.js("() => getComputedStyle(document.getElementById('csBody')).display === 'none'"))
+              and t.js("() => getComputedStyle(document.getElementById('csBody')).display === 'none' && getComputedStyle(document.querySelector('.cs-head')).display === 'none'"))
         t.button("Fire")
         check(t, "align: after Fire, step 2 Mark and aim with one row per camera",
               t.wait(lambda: t.js("() => document.querySelector('#csAlignStep2').classList.contains('on') && document.querySelectorAll('#csAlignMain .ma-item').length === 4"), 30))
         t.wait(lambda: t.js("() => { const p = document.querySelector('#csAlignMain .ma-view2 > .al-photo'); return !!p && p.style.backgroundImage.length > 10; }"), 15)
+        time.sleep(0.5)
         t.shot("align-step2-before")
         # Os cliques na foto da câmera escolhida (a 01), a uns pixels do centro de cada bola
         order_dir = os.path.join(t.data, "Order photos")
@@ -1779,9 +1780,9 @@ def scenario_align_cameras(t, name, photos):
         centers = _mark_centers(os.path.join(order_dir, sess, f))
         box = t.page.locator("#csAlignMain .ma-view2 > .al-photo").bounding_box()
         for (x, y) in centers:
-            t.page.mouse.click(box["x"] + x * box["width"] + 3, box["y"] + y * box["height"] - 2)
+            t.page.mouse.click(box["x"] + x * box["width"] + 12, box["y"] + y * box["height"] - 9)
             time.sleep(0.25)
-        ok = t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item .t.ok, #csAlignMain .ma-item .t.fix').length === 4 && !/Finding/.test(document.querySelector('#csAlignMain').textContent)"), 60)
+        ok = t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item.ready, #csAlignMain .ma-item.needs').length === 4 && ![...document.querySelectorAll('#csAlignMain .cs-tag')].some(e => e.textContent === 'Marks not found') && !/Finding/.test(document.querySelector('#csAlignMain').textContent)"), 60)
         check(t, "align: after three clicks, the app finds the marks in every photo and gives each camera its instructions", ok,
               t.js("() => [...document.querySelectorAll('#csAlignMain .ma-item')].map(i => i.textContent).join(' | ')"))
         t.shot("align-step2-after")
@@ -1792,7 +1793,7 @@ def scenario_align_cameras(t, name, photos):
         mid = t.js("() => { const d = [...document.querySelectorAll('#csAlignMain .ma-view2 > .al-photo .al-dot')][1]; return d ? [parseFloat(d.style.left) / 100, parseFloat(d.style.top) / 100] : null; }")
         err = abs(mid[0] - centers[1][0]) * 1800 + abs(mid[1] - centers[1][1]) * 1200 if mid else 999
         check(t, "align: the clicks go to the center of the marks (within 4 px)", err < 4, err)
-        t.button("Save alignment")
+        t.button("Review alignment")
         check(t, "align: step 3 Save shows the four photos already aligned, with the values",
               t.js("() => document.querySelector('#csAlignStep3').classList.contains('on') && document.querySelectorAll('#csAlignMain .sv-cell').length === 4 && /Move .* px/.test(document.querySelector('#csAlignMain .sv-vals').textContent)"))
         t.shot("align-step3")
@@ -1809,13 +1810,15 @@ def scenario_align_cameras(t, name, photos):
         t.button("Fire")
         t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item').length === 4"), 30)
         check(t, "align: a new alignment starts without marks (click them again)", t.wait(lambda: t.js("() => /Click the three marks/.test(document.getElementById('csAlignMain').textContent)"), 10))
+        t.wait(lambda: t.js("() => { const p = document.querySelector('#csAlignMain .ma-view2 > .al-photo'); return !!p && p.style.backgroundImage.length > 10; }"), 15)
+        time.sleep(0.5)
         box = t.page.locator("#csAlignMain .ma-view2 > .al-photo").bounding_box()
         for (x, y) in centers:
             t.page.mouse.click(box["x"] + x * box["width"], box["y"] + y * box["height"])
             time.sleep(0.25)
-        t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item .t.ok, #csAlignMain .ma-item .t.fix').length === 4"), 60)
+        t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item.ready, #csAlignMain .ma-item.needs').length === 4 && ![...document.querySelectorAll('#csAlignMain .cs-tag')].some(e => e.textContent === 'Marks not found')"), 60)
         t.button("Fire again")
-        ok = t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item .t.ok, #csAlignMain .ma-item .t.fix').length === 4 && !/Finding|Taking/.test(document.getElementById('csAlignFoot').textContent + document.getElementById('csAlignMain').textContent)"), 60)
+        ok = t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item.ready, #csAlignMain .ma-item.needs').length === 4 && ![...document.querySelectorAll('#csAlignMain .cs-tag')].some(e => e.textContent === 'Marks not found') && !/Finding|Taking/.test(document.getElementById('csAlignFoot').textContent + document.getElementById('csAlignMain').textContent)"), 60)
         check(t, "align: after Fire again, the marks are found in every new photo by themselves", ok)
         t.button("Cancel")
         check(t, "align: Cancel goes back to the Test shot without changing the saved alignment",

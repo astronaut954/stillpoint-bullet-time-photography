@@ -5163,9 +5163,8 @@ namespace
                 for (int k = 0; k < 3; ++k)
                     c[k] = { clicks[k].items().size() > 1 ? clicks[k].items()[0].asNumber() * frame.width : 0,
                              clicks[k].items().size() > 1 ? clicks[k].items()[1].asNumber() * frame.height : 0 };
-                const double d = std::hypot(c[0].x - c[2].x, c[0].y - c[2].y);
-                const bool wide = AlignMarks::IsWide(frame, c[0], d, c[2]);
-                for (int k = 0; k < 3; ++k) m[k] = AlignMarks::Snap(frame, c[k], d, c[k == 0 ? 2 : 0], wide);
+                bool wide = false;
+                AlignMarks::SnapClicks(frame, c, m, wide);
                 if (in.get("reference").asBool(true))
                 {
                     alignRef->frame = std::move(frame);
@@ -5218,6 +5217,11 @@ namespace
                 std::string out = "[";
                 for (const auto& j : jobs)
                 {
+                    // No Activity, para entender um "Marks not found"
+                    if (!j.w)
+                        Log("Align cameras: the photo of " + j.camera + " could not be read (" + j.path.filename().string() + ")");
+                    else if (!j.found.ok || j.found.confidence < 0.35)
+                        Log("Align cameras: marks not found in the photo of " + j.camera + " (" + (j.found.ok ? "similarity " + std::to_string(static_cast<int>(j.found.confidence * 100)) + "%" : "no match") + ")");
                     Json one;
                     one.Add("camera", j.camera).Add("ok", j.found.ok && j.found.confidence >= 0.35).Raw("confidence", alignNum(j.found.confidence))
                         .Add("width", j.w).Add("height", j.h);

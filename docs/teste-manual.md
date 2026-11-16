@@ -2112,7 +2112,8 @@ Com as câmeras simuladas fotografando a haste (`STILLPOINT_FAKE_CAMERAS=4 STILL
 Project.
 
 - [ ] **Camera settings** (painel **Cameras**) › **Test shot**: ao lado de **Hide photos** aparece **Align cameras**.
-- [ ] **Align cameras**: passo **1 Prepare** no lugar das fotos e da tabela (quatro objetos, **How**, aviso em âmbar);
+- [ ] **Align cameras**: passo **1 Prepare** no lugar do cabeçalho "Camera settings", das fotos e da tabela (como o
+      Match automatically; quatro objetos, **How**, aviso em âmbar);
       rodapé com o número de câmeras, **Cancel** e **Fire**.
 - [ ] **Fire**: passo **2 Mark and aim**, lista de câmeras à esquerda, a câmera 01 grande à direita, "Click the three
       marks in this photo, from top to bottom."
@@ -2121,8 +2122,10 @@ Project.
       setas.
 - [ ] Clicar em outra câmera da lista: ela aparece grande, com as marcas achadas e as instruções dela.
 - [ ] **Fire again**: fotos novas, marcas achadas sozinhas em todas.
-- [ ] **Save alignment**: passo **3 Save** com as quatro fotos alinhadas (as três bolas sobre a cruz) e os valores
-      Move, Rotate, Size; **Save alignment** de novo volta ao Test shot com "Cameras aligned · data" e **Align again**.
+- [ ] Na lista, abaixo de "Camera NN": etiqueta âmbar ("2 changes", "Marks not found") ou verde ("Ready") e o
+      primeiro ajuste; o cursor sobre a foto grande é a seta normal.
+- [ ] **Review alignment**: passo **3 Save** com as quatro fotos alinhadas (as três bolas sobre a cruz) e os valores
+      Move, Rotate, Size; **Save alignment** volta ao Test shot com "Cameras aligned · data" e **Align again**.
 - [ ] Fechar e abrir o app com o mesmo Project: **Camera settings** › **Test shot** mostra "Cameras aligned · data".
 - [ ] **Cancel** em qualquer passo volta ao Test shot sem mudar o alinhamento guardado.
 - [ ] Windows: os itens acima.

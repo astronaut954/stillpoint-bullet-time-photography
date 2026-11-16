@@ -112,20 +112,17 @@ namespace
             for (auto& px : f.pixels) px = (unsigned char)std::min(255.0, px * light[i]);
             photos.push_back(std::move(f));
         }
-        // Cliques na primeira foto, 6 pixels fora do centro de cada marca
+        // Cliques na primeira foto, fora do centro de cada marca (até 15 px para os lados, como um clique apressado)
         AlignMarks::Pt truth[3], clicks[3];
-        for (int k = 0; k < 3; ++k) { cams[0].Project(kMarks[k], truth[k].x, truth[k].y); clicks[k] = { truth[k].x + 6, truth[k].y - 5 }; }
-        const double d = std::hypot(clicks[0].x - clicks[2].x, clicks[0].y - clicks[2].y);
-        const bool wide = AlignMarks::IsWide(photos[0], clicks[0], d, clicks[2]);
-        Check(kind + ": the mark width is recognized (" + (balls ? "wider than" : "as wide as") + " the pole)", wide == balls);
+        const double offs[3][2] = { { 6, -5 }, { -15, 8 }, { 12, 10 } };
+        for (int k = 0; k < 3; ++k) { cams[0].Project(kMarks[k], truth[k].x, truth[k].y); clicks[k] = { truth[k].x + offs[k][0], truth[k].y + offs[k][1] }; }
         AlignMarks::Pt marks[3];
+        bool wide = false;
+        AlignMarks::SnapClicks(photos[0], clicks, marks, wide);
+        Check(kind + ": the mark width is recognized (" + (balls ? "wider than" : "as wide as") + " the pole)", wide == balls);
         double snapErr = 0;
-        for (int k = 0; k < 3; ++k)
-        {
-            marks[k] = AlignMarks::Snap(photos[0], clicks[k], d, clicks[k == 0 ? 2 : 0], wide);
-            snapErr = std::max(snapErr, std::hypot(marks[k].x - truth[k].x, marks[k].y - truth[k].y));
-        }
-        Check(kind + ": a click a few pixels off goes to the center of the mark (within 2 px)", snapErr < 2.0, Num(snapErr));
+        for (int k = 0; k < 3; ++k) snapErr = std::max(snapErr, std::hypot(marks[k].x - truth[k].x, marks[k].y - truth[k].y));
+        Check(kind + ": a click up to 15 px off goes to the center of the mark (within 2 px)", snapErr < 2.0, Num(snapErr));
         double worst = 0, sum = 0, minConf = 1;
         int found = 0, n = 0;
         std::vector<AlignMarks::Camera> in;

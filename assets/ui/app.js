@@ -3043,13 +3043,21 @@
     });
     const marked = al.photos.some((p) => (al.data[p.camera] || {}).tried);
     (marked ? order : al.photos).forEach((p) => {
-      const lines = alLines(p.camera);
-      const first = lines.find(([c]) => c === "fix") || (lines.length ? ["ok", "Ready"] : ["", !p.file ? "No photo" : marked ? "" : "Click the three marks"]);
+      // Abaixo do nome: a situação numa etiqueta (âmbar = falta algo; verde = pronta) e o primeiro ajuste
+      const d = al.data[p.camera] || {};
+      const fixes = alLines(p.camera).filter(([c]) => c === "fix").map(([, t]) => t);
+      let tag = "", text = "";
+      if (!p.file) { tag = '<span class="cs-tag diff">No photo</span>'; }
+      else if (d.tried && !d.found) { tag = '<span class="cs-tag diff">Marks not found</span>'; text = "Click its three marks"; }
+      else if (d.found && al.solved[p.camera]) {
+        tag = fixes.length ? '<span class="cs-tag diff">' + plural(fixes.length, "change", "changes") + "</span>" : '<span class="cs-tag ok">Ready</span>';
+        text = fixes[0] || "";
+      } else if (!marked) text = "Click the three marks";
       const it = document.createElement("div");
-      it.className = "ma-item" + (p.camera === al.sel ? " sel" : "");
+      it.className = "ma-item" + (p.camera === al.sel ? " sel" : "") + (fixes.length || (d.tried && !d.found) ? " needs" : d.found ? " ready" : "");
       it.dataset.camera = p.camera;
       it.appendChild(alPhotoEl(p, false));
-      it.insertAdjacentHTML("beforeend", "<div><b>Camera " + alNum(p) + '</b><span class="t ' + first[0] + '">' + alEsc(first[1]) + "</span></div>");
+      it.insertAdjacentHTML("beforeend", "<div><b>Camera " + alNum(p) + "</b>" + tag + (text ? '<span class="t">' + alEsc(text) + "</span>" : "") + "</div>");
       it.addEventListener("click", () => { al.sel = p.camera; if (al.clicks && al.clicks.camera !== p.camera) al.clicks = null; alRender(); });
       list.appendChild(it);
     });
@@ -3065,7 +3073,8 @@
       let html = "<div><h4>Camera " + alNum(sel) + " · " + alEsc(sel.camera) + "</h4>";
       if (al.busy) html += '<p class="al-hint">' + alEsc(al.msg || "Working") + "</p>";
       else if (al.clicks && al.clicks.camera === sel.camera) html += '<p class="al-hint">Click the ' + ["top", "middle", "bottom"][al.clicks.points.length] + " mark.</p>";
-      else if (!d.found) html += '<p class="al-hint">' + (d.tried ? "The app did not find the marks in this photo. " : "") + "Click the three marks in this photo, from top to bottom.</p>";
+      else if (!d.found && d.tried) html += '<div class="al-warn">The app did not find the marks in this photo. Click the three marks, from top to bottom.</div>';
+      else if (!d.found) html += '<p class="al-hint">Click the three marks in this photo, from top to bottom.</p>';
       else html += '<ul class="in-list">' + alLines(sel.camera).map(([c, t]) => '<li class="' + c + '">' + alEsc(t) + "</li>").join("") + '</ul><p class="al-hint dim">Wrong marks? Click the three marks in this photo again.</p>';
       html += "</div>";
       under.innerHTML = html;
@@ -3080,7 +3089,7 @@
       [["← Back", "btn-secondary", () => { al.step = 1; alRender(); }],
        ["Cancel", "btn-secondary", alClose],
        ["Fire again", "btn-secondary", alFire, { disabled: al.busy || busy || csTest.capturing }],
-       ["Save alignment", "btn-primary", () => { al.step = 3; alRender(); }, { disabled: !allMarked || al.busy, title: allMarked ? "" : "Every photo needs its three marks first" }]]);
+       ["Review alignment", "btn-primary", () => { al.step = 3; alRender(); }, { disabled: !allMarked || al.busy, title: allMarked ? "" : "Every photo needs its three marks first" }]]);
     if (al.firing) { const n = $("csAlignNote"); if (n) n.textContent = "Taking a photo with each camera"; }
   }
   function alRenderSave() {
