@@ -1809,7 +1809,22 @@ def scenario_align_cameras(t, name, photos):
         zf = int(z[5:-1]) / 100
         check(t, "align: a click with zoom lands on the right place of the photo",
               abs(dot[0] - (centers[0][0] + 20 / zf / box["width"])) < 0.004 and abs(dot[1] - (centers[0][1] - 14 / zf / box["height"])) < 0.004, dot)
+        # Espaço + arrastar: a mão aberta sobre a foto; arrastando, a mão fechada vale até fora da foto
+        t.page.keyboard.down("Space")
+        t.page.mouse.move(cx0, cy0 + 60)
+        grab = t.js("() => getComputedStyle(document.querySelector('#csAlignMain .ma-row > .al-photo')).cursor")
+        tr0 = t.js("() => document.querySelector('#csAlignMain .al-zoom').style.transform")
+        t.page.mouse.down()
+        t.page.mouse.move(box["x"] - 80, box["y"] + box["height"] + 60, steps=4)
+        grabbing = t.js("() => getComputedStyle(document.getElementById('csAlignFoot')).cursor")
+        tr1 = t.js("() => document.querySelector('#csAlignMain .al-zoom').style.transform")
+        t.page.mouse.up()
+        t.page.keyboard.up("Space")
+        time.sleep(0.2)
+        check(t, "align: holding space shows the open hand over the photo; while dragging, the closed hand stays even outside the photo, and the photo moves",
+              grab == "grab" and grabbing == "grabbing" and tr0 != tr1 and t.js("() => getComputedStyle(document.getElementById('csAlignFoot')).cursor") != "grabbing", (grab, grabbing))
         t.page.keyboard.press("Control+z")
+        t.page.mouse.move(cx0, cy0 + 60)
         for _ in range(12):
             t.page.mouse.wheel(0, 100)
             time.sleep(0.05)

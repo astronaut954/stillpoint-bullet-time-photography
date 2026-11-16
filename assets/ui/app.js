@@ -3048,8 +3048,10 @@
         e.preventDefault();
         pan = { x: e.clientX, y: e.clientY, px: view.px, py: view.py };
         panned = true;
+        // Enquanto arrasta, a mão fechada vale na janela toda (o mouse pode sair da foto) e nada é selecionado
+        document.body.classList.add("al-panning");
         const move = (ev) => { view.px = pan.px + ev.clientX - pan.x; view.py = pan.py + ev.clientY - pan.y; apply(); };
-        const up = () => { pan = null; window.removeEventListener("mousemove", move); window.removeEventListener("mouseup", up); setTimeout(() => { panned = false; }, 0); };
+        const up = () => { pan = null; document.body.classList.remove("al-panning"); window.removeEventListener("mousemove", move); window.removeEventListener("mouseup", up); setTimeout(() => { panned = false; }, 0); };
         window.addEventListener("mousemove", move);
         window.addEventListener("mouseup", up);
       });
