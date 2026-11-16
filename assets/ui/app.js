@@ -3042,20 +3042,59 @@
         view.px = mx - fx * view.z; view.py = my - fy * view.z;
         apply();
       }, { passive: false });
-      let pan = null, panned = false;
+      // Arrastar desloca a foto: com zoom, direto; com espaço seguro, sempre. Um clique parado marca.
+      // Enquanto arrasta, uma folha transparente cobre a janela: o mouse fica sempre sobre ela (mão fechada, sem
+      // piscar quando passa por outras partes da tela) e nada é selecionado.
+      let panned = false;
       frame.addEventListener("mousedown", (e) => {
-        if (!al.space || e.button !== 0) return;
+        if (e.button !== 0 || e.target.closest(".al-zbtns")) return;
         e.preventDefault();
-        pan = { x: e.clientX, y: e.clientY, px: view.px, py: view.py };
-        panned = true;
-        // Enquanto arrasta, a mão fechada vale na janela toda (o mouse pode sair da foto) e nada é selecionado
-        document.body.classList.add("al-panning");
-        const move = (ev) => { view.px = pan.px + ev.clientX - pan.x; view.py = pan.py + ev.clientY - pan.y; apply(); };
-        const up = () => { pan = null; document.body.classList.remove("al-panning"); window.removeEventListener("mousemove", move); window.removeEventListener("mouseup", up); setTimeout(() => { panned = false; }, 0); };
+        const start = { x: e.clientX, y: e.clientY, px: view.px, py: view.py };
+        let shield = null;
+        const move = (ev) => {
+          if (!shield) {
+            if (!(al.space || view.z > 1.005) || Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 4) return;
+            shield = document.createElement("div");
+            shield.className = "al-shield";
+            document.body.appendChild(shield);
+            panned = true;
+          }
+          view.px = start.px + ev.clientX - start.x; view.py = start.py + ev.clientY - start.y;
+          apply();
+        };
+        const up = () => {
+          window.removeEventListener("mousemove", move); window.removeEventListener("mouseup", up);
+          if (shield) shield.remove();
+          setTimeout(() => { panned = false; }, 0);
+        };
         window.addEventListener("mousemove", move);
         window.addEventListener("mouseup", up);
       });
-      frame.addEventListener("click", (e) => { if (panned || al.space) return; alClickPhoto(p.camera, e, el); });
+      frame.addEventListener("click", (e) => { if (panned || al.space || e.target.closest(".al-zbtns")) return; alClickPhoto(p.camera, e, el); });
+      // Clique duplo: volta à foto inteira (e não marca nada)
+      frame.addEventListener("dblclick", (e) => {
+        if (e.target.closest(".al-zbtns")) return;
+        alDropLastClick();
+        view.z = 1; view.px = 0; view.py = 0;
+        apply();
+      });
+      // Botões de zoom no canto: − + e Fit (a foto inteira), em volta do centro
+      const zb = document.createElement("span");
+      zb.className = "al-zbtns";
+      const zoomBy = (k) => {
+        const W = frame.clientWidth, H = frame.clientHeight, fx = (W / 2 - view.px) / view.z, fy = (H / 2 - view.py) / view.z;
+        view.z = k ? Math.max(1, Math.min(8, view.z * k)) : 1;
+        view.px = W / 2 - fx * view.z; view.py = H / 2 - fy * view.z;
+        apply();
+      };
+      [["−", "Zoom out", 1 / 1.5], ["+", "Zoom in", 1.5], ["Fit", "Show the whole photo", 0]].forEach(([t, title, k]) => {
+        const b = document.createElement("button");
+        b.type = "button"; b.textContent = t; b.title = title; b.setAttribute("aria-label", title);
+        b.addEventListener("click", (e) => { e.stopPropagation(); zoomBy(k); });
+        b.addEventListener("dblclick", (e) => e.stopPropagation());
+        zb.appendChild(b);
+      });
+      frame.appendChild(zb);
       return frame;
     }
     return el;
@@ -3091,18 +3130,40 @@
     const r = el.getBoundingClientRect();
     const x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
     if (x < 0 || y < 0 || x > 1 || y > 1) return;
+    // O segundo clique de um clique duplo (mesmo lugar, logo em seguida) não é uma marca
+    const now = Date.now(), last = al.lastClick;
+    if (last && now - last.t < 400 && Math.hypot(e.clientX - last.x, e.clientY - last.y) < 6) return;
+    al.lastClick = { t: now, x: e.clientX, y: e.clientY };
     if (!al.clicks || al.clicks.camera !== camera) al.clicks = { camera, points: [] };
     al.clicks.points.push([x, y]);
     if (al.clicks.points.length === 3) {
+      // A terceira marca espera um instante antes de valer: pode ser o começo de um clique duplo (zoom)
+      alRender();
+      clearTimeout(al.commit);
+      al.commit = setTimeout(() => alCommitClicks(camera), 320);
+      return;
+    }
+    alRender();
+  }
+  // Clique duplo: o primeiro clique dele não vale como marca
+  function alDropLastClick() {
+    if (!al.lastClick || Date.now() - al.lastClick.t > 600 || !al.clicks || !al.clicks.points.length) return;
+    clearTimeout(al.commit);
+    al.clicks.points.pop();
+    if (!al.clicks.points.length) al.clicks = null;
+    al.lastClick = null;
+    alRender();
+  }
+  function alCommitClicks(camera) {
+    if (!al.open || al.step !== 2 || !al.clicks || al.clicks.camera !== camera || al.clicks.points.length !== 3) return;
+    {
       const raw = al.clicks.points.slice();
       const pts = raw.slice().sort((a, b) => a[1] - b[1]);  // de cima para baixo
       // Para o Ctrl+Z: como estava antes desta marcação, e os dois primeiros cliques
       al.undo = { camera, clicks: raw.slice(0, 2), ref: al.ref, data: JSON.parse(JSON.stringify(al.data)), session: al.session };
       al.clicks = null;
       alMarked(camera, pts);
-      return;
     }
-    alRender();
   }
   // Ctrl+Z (Cmd+Z no Mac) no passo 2: tira o último clique; logo depois do terceiro clique, desfaz a marcação
   // inteira (volta ao que estava, com os dois primeiros cliques de volta na foto)
@@ -3110,6 +3171,7 @@
   function alUndo() {
     if (al.busy || al.firing) return;
     if (al.clicks && al.clicks.points.length) {
+      clearTimeout(al.commit);
       al.clicks.points.pop();
       if (!al.clicks.points.length) al.clicks = null;
       alRender();
@@ -3187,7 +3249,7 @@
         if (!d.found && d.tried && !done) html += '<div class="al-warn">The app did not find the marks in this photo. Click the three marks, from top to bottom.</div>';
         sideHtml = '<div class="al-title">Click the marks</div><div class="al-order" id="csAlignOrder">' + ["Top", "Middle", "Bottom"].map((t, k) =>
           '<span class="al-ord ' + (k < done ? "done" : k === done ? "on" : "") + '"><i>' + (k < done ? "✓" : k + 1) + "</i>" + t + " mark</span>").join("") + "</div>" +
-          '<p class="al-hint dim">Click the ' + ["top", "middle", "bottom"][done] + " mark in the photo." + (done ? " " + (navigator.platform.indexOf("Mac") >= 0 ? "Cmd" : "Ctrl") + "+Z takes back the last click." : "") + '</p><p class="al-hint dim">Scroll to zoom · hold space and drag to pan.</p>';
+          '<p class="al-hint dim">' + (done < 3 ? "Click the " + ["top", "middle", "bottom"][done] + " mark in the photo." : "Finding the marks") + (done ? " " + (navigator.platform.indexOf("Mac") >= 0 ? "Cmd" : "Ctrl") + "+Z takes back the last click." : "") + '</p><p class="al-hint dim">Scroll to zoom · drag to move · double-click for the whole photo.</p>';
       }
       else html += '<ul class="in-list">' + alLines(sel.camera).map(([c, t]) => '<li class="' + c + '">' + alEsc(t) + "</li>").join("") + "</ul>";
       html += "</div>";

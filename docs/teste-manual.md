@@ -2126,7 +2126,9 @@ Project.
       mark", "3 Bottom mark" (a da vez acesa, as feitas com ✓) e os cliques numerados na foto; Cmd+Z (Mac) ou Ctrl+Z
       tira o último clique e, logo depois do terceiro, desfaz a marcação inteira.
 - [ ] Zoom na foto grande: rolar aproxima em volta do mouse (100% a 800%; etiqueta "zoom N%" no canto da foto);
-      segurar espaço e arrastar desloca; o clique com zoom marca o lugar certo; rolar de volta mostra a foto inteira.
+      com zoom, arrastar desloca (mão fechada sem piscar, mesmo fora da foto; com espaço seguro também); clique duplo
+      volta à foto inteira sem marcar; botões **−**, **+** e **Fit** no canto de baixo à direita da foto; o clique
+      com zoom marca o lugar certo.
 - [ ] Clicar em outra câmera da lista: ela aparece grande, com as marcas achadas e as instruções dela.
 - [ ] **Fire again**: fotos novas, marcas achadas sozinhas em todas.
 - [ ] Na lista, abaixo de "Camera NN": etiqueta âmbar ("2 changes", "Marks not found") ou verde ("Ready") e o

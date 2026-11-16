@@ -1816,13 +1816,35 @@ def scenario_align_cameras(t, name, photos):
         tr0 = t.js("() => document.querySelector('#csAlignMain .al-zoom').style.transform")
         t.page.mouse.down()
         t.page.mouse.move(box["x"] - 80, box["y"] + box["height"] + 60, steps=4)
-        grabbing = t.js("() => getComputedStyle(document.getElementById('csAlignFoot')).cursor")
+        grabbing = t.js("() => { const e = document.elementFromPoint(%d, %d); return e ? getComputedStyle(e).cursor : ''; }" % (box["x"] - 80, box["y"] + box["height"] + 60))
         tr1 = t.js("() => document.querySelector('#csAlignMain .al-zoom').style.transform")
         t.page.mouse.up()
         t.page.keyboard.up("Space")
         time.sleep(0.2)
         check(t, "align: holding space shows the open hand over the photo; while dragging, the closed hand stays even outside the photo, and the photo moves",
-              grab == "grab" and grabbing == "grabbing" and tr0 != tr1 and t.js("() => getComputedStyle(document.getElementById('csAlignFoot')).cursor") != "grabbing", (grab, grabbing))
+              grab == "grab" and grabbing == "grabbing" and tr0 != tr1 and not t.js("() => !!document.querySelector('.al-shield')"), (grab, grabbing))
+        # Com zoom, arrastar direto (sem espaço) desloca e não marca; clique duplo volta à foto inteira e não marca
+        marks0 = t.js("() => document.querySelectorAll('#csAlignMain .al-dot.num').length")
+        t.page.mouse.move(cx0, cy0 + 60)
+        t.page.mouse.down()
+        t.page.mouse.move(cx0 + 50, cy0 + 100, steps=4)
+        t.page.mouse.up()
+        time.sleep(0.2)
+        tr2 = t.js("() => document.querySelector('#csAlignMain .al-zoom').style.transform")
+        check(t, "align: with zoom, dragging moves the photo without the space key and does not mark",
+              tr2 != tr1 and t.js("() => document.querySelectorAll('#csAlignMain .al-dot.num').length") == marks0, (tr1, tr2))
+        t.page.mouse.dblclick(cx0, cy0 + 60)
+        time.sleep(0.5)
+        check(t, "align: a double-click shows the whole photo again and does not mark",
+              t.js("() => document.querySelector('#csAlignMain .al-ztag').classList.contains('hidden')") and t.js("() => document.querySelectorAll('#csAlignMain .al-dot.num').length") == marks0)
+        t.js("() => [...document.querySelectorAll('#csAlignMain .al-zbtns button')].find(b => b.textContent === '+').click()")
+        zplus = t.js("() => document.querySelector('#csAlignMain .al-ztag').textContent")
+        t.js("() => [...document.querySelectorAll('#csAlignMain .al-zbtns button')].find(b => b.textContent === 'Fit').click()")
+        check(t, "align: the + button zooms in (150%) and Fit shows the whole photo, without marking",
+              zplus == "zoom 150%" and t.js("() => document.querySelector('#csAlignMain .al-ztag').classList.contains('hidden')") and t.js("() => document.querySelectorAll('#csAlignMain .al-dot.num').length") == marks0, zplus)
+        for _ in range(6):
+            t.page.mouse.wheel(0, -100)
+            time.sleep(0.05)
         t.page.keyboard.press("Control+z")
         t.page.mouse.move(cx0, cy0 + 60)
         for _ in range(12):

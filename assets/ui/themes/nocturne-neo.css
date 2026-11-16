@@ -2305,4 +2305,7 @@ body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform:
 .al-ztag { position: absolute; right: 6px; top: 6px; z-index: 2; padding: 3px 6px; background: rgba(0,0,0,.7); color: var(--noct-primary); font: 700 10px var(--noct-font-mono); letter-spacing: .1em; text-transform: uppercase; pointer-events: none; }
 .al-ztag.hidden { display: none; }
 .space-pan .al-click { cursor: grab; }
-body.al-panning, body.al-panning * { cursor: grabbing !important; user-select: none !important; -webkit-user-select: none !important; }
+.al-shield { position: fixed; inset: 0; z-index: 99999; cursor: grabbing; user-select: none; -webkit-user-select: none; }
+.al-zbtns { position: absolute; right: 6px; bottom: 6px; z-index: 3; display: flex; gap: 4px; }
+.al-zbtns button { min-width: 26px; height: 26px; padding: 0 7px; border: 1px solid var(--noct-border-strong); background: rgba(0,0,0,.75); color: var(--noct-primary); font: 700 12px/1 var(--noct-font-mono); letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
+.al-zbtns button:hover { border-color: var(--noct-primary); }
