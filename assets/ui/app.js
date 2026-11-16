@@ -2891,6 +2891,7 @@
     if (!al.sel || !al.photos.some((p) => p.camera === al.sel)) al.sel = al.photos.length ? al.photos[0].camera : "";
     al.clicks = null;
     al.undo = null;
+    al.view = null;
     al.step = 2;
     al.photos.forEach((p) => {
       if (!p.file || !p.previewable) return;
@@ -3000,16 +3001,71 @@
     (pts || []).forEach((m, k) => { el.insertAdjacentHTML("beforeend", '<span class="al-dot' + (clicking ? " num" : "") + '" style="left:' + (m[0] * 100) + "%;top:" + (m[1] * 100) + '%">' + (clicking ? k + 1 : "") + "</span>"); });
     if (big) {
       const n = al.solved[p.camera];
+      if (d.urlBig) el.style.backgroundImage = 'url("' + d.urlBig + '")';
       el.insertAdjacentHTML("beforeend", '<span class="al-aim"></span>');
       if (n && d.found && !(al.clicks && al.clicks.camera === p.camera)) {
         if (Math.abs(n.pan) >= 1) el.insertAdjacentHTML("beforeend", '<span class="al-arrow" style="left:' + (n.pan < 0 ? 38 : 56) + '%;top:44%">' + (n.pan < 0 ? "←" : "→") + "</span>");
         if (Math.abs(n.tilt) >= 1) el.insertAdjacentHTML("beforeend", '<span class="al-arrow" style="left:47.5%;top:' + (n.tilt > 0 ? 26 : 58) + '%">' + (n.tilt > 0 ? "↑" : "↓") + "</span>");
       }
-      el.classList.add("al-click");
-      el.addEventListener("click", (e) => alClickPhoto(p.camera, e, el));
+      // A moldura (tamanho fixo) e, dentro, a foto com as marcas, que aproxima e desloca (zoom): a roda aproxima em
+      // volta do mouse (100% a 800%); espaço + arrastar desloca. O mesmo jeito do Align photos do Export.
+      const frame = document.createElement("div");
+      frame.className = "al-photo al-click al-frame";
+      frame.style.aspectRatio = el.style.aspectRatio;
+      el.className = "al-zoom";
+      el.style.aspectRatio = "";
+      frame.appendChild(el);
+      frame.appendChild(el.querySelector(".al-num"));
+      frame.insertAdjacentHTML("beforeend", '<span class="al-ztag hidden"></span>');
+      if (!al.view || al.view.camera !== p.camera) al.view = { camera: p.camera, z: 1, px: 0, py: 0 };
+      const view = al.view;
+      const apply = () => {
+        const W = frame.clientWidth, H = frame.clientHeight;
+        view.px = Math.min(0, Math.max(W * (1 - view.z), view.px)); view.py = Math.min(0, Math.max(H * (1 - view.z), view.py));
+        el.style.transform = "translate(" + view.px + "px," + view.py + "px) scale(" + view.z + ")";
+        el.style.setProperty("--iz", String(1 / view.z));
+        const tag = frame.querySelector(".al-ztag");
+        tag.textContent = "zoom " + Math.round(view.z * 100) + "%";
+        tag.classList.toggle("hidden", view.z < 1.005);
+        // Bem aproximada: troca pela foto maior (uma vez)
+        if (view.z > 1.6 && !d.urlBig && !d.bigAsked && p.file) {
+          d.bigAsked = true;
+          orderPhoto(al.session, p.file, 4000).then((url) => { if (url && al.data[p.camera] === d) { d.urlBig = url; el.style.backgroundImage = 'url("' + url + '")'; } });
+        }
+      };
+      frame._alApply = apply;
+      frame.addEventListener("wheel", (e) => {
+        e.preventDefault();
+        const r = frame.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
+        const fx = (mx - view.px) / view.z, fy = (my - view.py) / view.z;
+        view.z = Math.max(1, Math.min(8, view.z * Math.exp(-Math.max(-40, Math.min(40, e.deltaY)) * 0.004)));
+        view.px = mx - fx * view.z; view.py = my - fy * view.z;
+        apply();
+      }, { passive: false });
+      let pan = null, panned = false;
+      frame.addEventListener("mousedown", (e) => {
+        if (!al.space || e.button !== 0) return;
+        e.preventDefault();
+        pan = { x: e.clientX, y: e.clientY, px: view.px, py: view.py };
+        panned = true;
+        const move = (ev) => { view.px = pan.px + ev.clientX - pan.x; view.py = pan.py + ev.clientY - pan.y; apply(); };
+        const up = () => { pan = null; window.removeEventListener("mousemove", move); window.removeEventListener("mouseup", up); setTimeout(() => { panned = false; }, 0); };
+        window.addEventListener("mousemove", move);
+        window.addEventListener("mouseup", up);
+      });
+      frame.addEventListener("click", (e) => { if (panned || al.space) return; alClickPhoto(p.camera, e, el); });
+      return frame;
     }
     return el;
   }
+  // Espaço seguro no passo 2: o mouse vira a mão de arrastar e o clique não marca
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== " " || !alUndoActive() || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+    e.preventDefault();
+    if (!al.space) { al.space = true; $("csAlignMain").classList.add("space-pan"); }
+  }, true);
+  document.addEventListener("keyup", (e) => { if (e.key === " " && al.space) { al.space = false; $("csAlignMain").classList.remove("space-pan"); } }, true);
+  window.addEventListener("blur", () => { if (al.space) { al.space = false; $("csAlignMain").classList.remove("space-pan"); } });
   // A linha da haste: posta depois que a foto tem tamanho na tela
   function alPlaceLines(root) {
     // A foto grande no tamanho que cabe (largura até 640 px e altura do que sobra), sem deformar
@@ -3019,9 +3075,10 @@
       const ratio = parseFloat(big.style.aspectRatio) || 1.5;
       const h = view.clientHeight - (under ? under.offsetHeight : 0) - 10;
       big.style.width = Math.max(120, Math.min(640, view.clientWidth - (side ? side.offsetWidth + 18 : 0), h * ratio)) + "px";
+      if (big._alApply) big._alApply();
     }
     root.querySelectorAll(".al-seg").forEach((s) => {
-      const box = s.parentElement.getBoundingClientRect();
+      const box = { width: s.parentElement.offsetWidth, height: s.parentElement.offsetHeight };  // sem o zoom
       const ax = s.dataset.ax * box.width, ay = s.dataset.ay * box.height, bx = s.dataset.bx * box.width, by = s.dataset.by * box.height;
       s.style.height = Math.hypot(bx - ax, by - ay) + "px";
       s.style.transform = "rotate(" + (-Math.atan2(bx - ax, by - ay) * 180 / Math.PI) + "deg)";
@@ -3128,7 +3185,7 @@
         if (!d.found && d.tried && !done) html += '<div class="al-warn">The app did not find the marks in this photo. Click the three marks, from top to bottom.</div>';
         sideHtml = '<div class="al-title">Click the marks</div><div class="al-order" id="csAlignOrder">' + ["Top", "Middle", "Bottom"].map((t, k) =>
           '<span class="al-ord ' + (k < done ? "done" : k === done ? "on" : "") + '"><i>' + (k < done ? "✓" : k + 1) + "</i>" + t + " mark</span>").join("") + "</div>" +
-          '<p class="al-hint dim">Click the ' + ["top", "middle", "bottom"][done] + " mark in the photo." + (done ? " " + (navigator.platform.indexOf("Mac") >= 0 ? "Cmd" : "Ctrl") + "+Z takes back the last click." : "") + "</p>";
+          '<p class="al-hint dim">Click the ' + ["top", "middle", "bottom"][done] + " mark in the photo." + (done ? " " + (navigator.platform.indexOf("Mac") >= 0 ? "Cmd" : "Ctrl") + "+Z takes back the last click." : "") + '</p><p class="al-hint dim">Scroll to zoom · hold space and drag to pan.</p>';
       }
       else html += '<ul class="in-list">' + alLines(sel.camera).map(([c, t]) => '<li class="' + c + '">' + alEsc(t) + "</li>").join("") + "</ul>";
       html += "</div>";

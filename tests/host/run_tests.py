@@ -1777,7 +1777,7 @@ def scenario_align_cameras(t, name, photos):
         t.button("Fire")
         check(t, "align: after Fire, step 2 Mark and aim with one row per camera",
               t.wait(lambda: t.js("() => document.querySelector('#csAlignStep2').classList.contains('on') && document.querySelectorAll('#csAlignMain .ma-item').length === 4"), 30))
-        t.wait(lambda: t.js("() => { const p = document.querySelector('#csAlignMain .ma-row > .al-photo'); return !!p && p.style.backgroundImage.length > 10; }"), 15)
+        t.wait(lambda: t.js("() => { const p = document.querySelector('#csAlignMain .ma-row .al-zoom'); return !!p && p.style.backgroundImage.length > 10; }"), 15)
         time.sleep(0.5)
         t.shot("align-step2-before")
         # Os cliques na foto da câmera escolhida (a 01), a uns pixels do centro de cada bola
@@ -1793,6 +1793,28 @@ def scenario_align_cameras(t, name, photos):
               order() == "on - -" and t.js("() => getComputedStyle(document.querySelector('#csAlignMain .ma-row > .al-photo')).cursor") == "pointer", order())
         check(t, "align: the marking instructions are to the right of the big photo",
               t.js("() => document.getElementById('csAlignOrder').getBoundingClientRect().left >= document.querySelector('#csAlignMain .ma-row > .al-photo').getBoundingClientRect().right"))
+        # Zoom: a roda aproxima em volta do mouse; o clique continua caindo no lugar certo da foto
+        cx0, cy0 = box["x"] + centers[0][0] * box["width"], box["y"] + centers[0][1] * box["height"]
+        t.page.mouse.move(cx0, cy0)
+        for _ in range(6):
+            t.page.mouse.wheel(0, -100)
+            time.sleep(0.05)
+        time.sleep(0.4)
+        t.shot("align-zoom")
+        z = t.js("() => document.querySelector('#csAlignMain .al-ztag').textContent")
+        check(t, "align: scrolling over the big photo zooms in around the mouse (the tag shows the zoom)", z.startswith("zoom ") and int(z[5:-1]) > 150, z)
+        t.page.mouse.click(cx0 + 20, cy0 - 14)   # 20 px na tela, com zoom, é menos que isso na foto
+        time.sleep(0.3)
+        dot = t.js("() => { const d = document.querySelector('#csAlignMain .al-dot.num'); return [parseFloat(d.style.left) / 100, parseFloat(d.style.top) / 100]; }")
+        zf = int(z[5:-1]) / 100
+        check(t, "align: a click with zoom lands on the right place of the photo",
+              abs(dot[0] - (centers[0][0] + 20 / zf / box["width"])) < 0.004 and abs(dot[1] - (centers[0][1] - 14 / zf / box["height"])) < 0.004, dot)
+        t.page.keyboard.press("Control+z")
+        for _ in range(12):
+            t.page.mouse.wheel(0, 100)
+            time.sleep(0.05)
+        time.sleep(0.4)
+        check(t, "align: scrolling back returns to the whole photo", t.js("() => document.querySelector('#csAlignMain .al-ztag').classList.contains('hidden')"))
         click(0)
         click(1)
         check(t, "align: after two clicks, Top and Middle are ticked, Bottom is next, and the clicks are numbered on the photo",
@@ -1837,7 +1859,7 @@ def scenario_align_cameras(t, name, photos):
         t.button("Fire")
         t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item').length === 4"), 30)
         check(t, "align: a new alignment starts without marks (click them again)", t.wait(lambda: t.js("() => /Click the three marks/.test(document.getElementById('csAlignMain').textContent)"), 10))
-        t.wait(lambda: t.js("() => { const p = document.querySelector('#csAlignMain .ma-row > .al-photo'); return !!p && p.style.backgroundImage.length > 10; }"), 15)
+        t.wait(lambda: t.js("() => { const p = document.querySelector('#csAlignMain .ma-row .al-zoom'); return !!p && p.style.backgroundImage.length > 10; }"), 15)
         time.sleep(0.5)
         box = t.page.locator("#csAlignMain .ma-row > .al-photo").bounding_box()
         for (x, y) in centers:

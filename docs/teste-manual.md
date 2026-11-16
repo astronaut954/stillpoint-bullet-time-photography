@@ -2125,6 +2125,8 @@ Project.
 - [ ] Marcar: o cursor sobre a foto grande é a mão (como num link); à direita da foto, "Click the marks" com a ordem "1 Top mark", "2 Middle
       mark", "3 Bottom mark" (a da vez acesa, as feitas com ✓) e os cliques numerados na foto; Cmd+Z (Mac) ou Ctrl+Z
       tira o último clique e, logo depois do terceiro, desfaz a marcação inteira.
+- [ ] Zoom na foto grande: rolar aproxima em volta do mouse (100% a 800%; etiqueta "zoom N%" no canto da foto);
+      segurar espaço e arrastar desloca; o clique com zoom marca o lugar certo; rolar de volta mostra a foto inteira.
 - [ ] Clicar em outra câmera da lista: ela aparece grande, com as marcas achadas e as instruções dela.
 - [ ] **Fire again**: fotos novas, marcas achadas sozinhas em todas.
 - [ ] Na lista, abaixo de "Camera NN": etiqueta âmbar ("2 changes", "Marks not found") ou verde ("Ready") e o
