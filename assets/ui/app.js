@@ -447,6 +447,8 @@
     if (!$("promptOverlay").classList.contains("hidden")) return;
     // Janela Match automatically (passos 1 e 3): desfaz as escolhas feitas nela (caixas e valores)
     if (typeof csMatchHistoryActive === "function" && csMatchHistoryActive()) { if (e.key === "y" || e.shiftKey) csMatchRedo(); else csMatchUndo(); return; }
+    // Align cameras, passo 2: desfaz o último clique de marca (ou a marcação que acabou de ser feita)
+    if (typeof alUndoActive === "function" && alUndoActive()) { if (!(e.key === "y" || e.shiftKey)) alUndo(); return; }
     if (e.key === "y" || e.shiftKey) doRedo(); else doUndo();
   }, true);
 
@@ -2787,7 +2789,7 @@
   function alOpen() {
     if (busy || csTest.capturing) return;
     csSetZoom(false);
-    Object.assign(al, { step: 1, firing: false, session: "", photos: [], data: {}, sel: "", clicks: null, ref: "", solved: {}, busy: false, msg: "" });
+    Object.assign(al, { undo: null, step: 1, firing: false, session: "", photos: [], data: {}, sel: "", clicks: null, ref: "", solved: {}, busy: false, msg: "" });
     alShow(true);
     alRender();
   }
@@ -2878,6 +2880,7 @@
     al.photos.forEach((p) => { al.data[p.camera] = { marks: null, found: false, tried: false, w: 0, h: 0, url: "", manual: false }; });
     if (!al.sel || !al.photos.some((p) => p.camera === al.sel)) al.sel = al.photos.length ? al.photos[0].camera : "";
     al.clicks = null;
+    al.undo = null;
     al.step = 2;
     al.photos.forEach((p) => {
       if (!p.file || !p.previewable) return;
@@ -2983,7 +2986,8 @@
       line.dataset.ax = a[0]; line.dataset.ay = a[1]; line.dataset.bx = b[0]; line.dataset.by = b[1];
       el.appendChild(line);
     }
-    (pts || []).forEach((m) => { el.insertAdjacentHTML("beforeend", '<span class="al-dot" style="left:' + (m[0] * 100) + "%;top:" + (m[1] * 100) + '%"></span>'); });
+    const clicking = big && al.clicks && al.clicks.camera === p.camera;
+    (pts || []).forEach((m, k) => { el.insertAdjacentHTML("beforeend", '<span class="al-dot' + (clicking ? " num" : "") + '" style="left:' + (m[0] * 100) + "%;top:" + (m[1] * 100) + '%">' + (clicking ? k + 1 : "") + "</span>"); });
     if (big) {
       const n = al.solved[p.camera];
       el.insertAdjacentHTML("beforeend", '<span class="al-aim"></span>');
@@ -3021,11 +3025,42 @@
     if (!al.clicks || al.clicks.camera !== camera) al.clicks = { camera, points: [] };
     al.clicks.points.push([x, y]);
     if (al.clicks.points.length === 3) {
-      const pts = al.clicks.points.slice().sort((a, b) => a[1] - b[1]);  // de cima para baixo
+      const raw = al.clicks.points.slice();
+      const pts = raw.slice().sort((a, b) => a[1] - b[1]);  // de cima para baixo
+      // Para o Ctrl+Z: como estava antes desta marcação, e os dois primeiros cliques
+      al.undo = { camera, clicks: raw.slice(0, 2), ref: al.ref, data: JSON.parse(JSON.stringify(al.data)), session: al.session };
       al.clicks = null;
       alMarked(camera, pts);
       return;
     }
+    alRender();
+  }
+  // Ctrl+Z (Cmd+Z no Mac) no passo 2: tira o último clique; logo depois do terceiro clique, desfaz a marcação
+  // inteira (volta ao que estava, com os dois primeiros cliques de volta na foto)
+  function alUndoActive() { return al.open && al.step === 2; }
+  function alUndo() {
+    if (al.busy || al.firing) return;
+    if (al.clicks && al.clicks.points.length) {
+      al.clicks.points.pop();
+      if (!al.clicks.points.length) al.clicks = null;
+      alRender();
+      return;
+    }
+    const u = al.undo;
+    if (!u || u.session !== al.session) return;
+    al.undo = null;
+    al.data = u.data;
+    al.sel = u.camera;
+    al.clicks = { camera: u.camera, points: u.clicks };
+    const wasRef = al.ref === u.camera;
+    al.ref = u.ref;
+    // A foto de referência do programa volta às marcas de antes (se era esta e já tinha marcas)
+    const d = al.data[u.camera], p = alPhotoOf(u.camera);
+    if (wasRef && u.ref === u.camera && d && d.marks && p) {
+      al.busy = true;
+      Promise.resolve(window.alignMark(JSON.stringify({ session: al.session, file: p.file, clicks: d.marks, reference: true })))
+        .then(() => { al.busy = false; alSolve(); alRender(); });
+    } else alSolve();
     alRender();
   }
   function alRenderAim() {
@@ -3072,10 +3107,15 @@
       const d = al.data[sel.camera] || {};
       let html = "<div><h4>Camera " + alNum(sel) + " · " + alEsc(sel.camera) + "</h4>";
       if (al.busy) html += '<p class="al-hint">' + alEsc(al.msg || "Working") + "</p>";
-      else if (al.clicks && al.clicks.camera === sel.camera) html += '<p class="al-hint">Click the ' + ["top", "middle", "bottom"][al.clicks.points.length] + " mark.</p>";
-      else if (!d.found && d.tried) html += '<div class="al-warn">The app did not find the marks in this photo. Click the three marks, from top to bottom.</div>';
-      else if (!d.found) html += '<p class="al-hint">Click the three marks in this photo, from top to bottom.</p>';
-      else html += '<ul class="in-list">' + alLines(sel.camera).map(([c, t]) => '<li class="' + c + '">' + alEsc(t) + "</li>").join("") + '</ul><p class="al-hint dim">Wrong marks? Click the three marks in this photo again.</p>';
+      else if ((al.clicks && al.clicks.camera === sel.camera) || !d.found) {
+        // A ordem dos cliques, de cima para baixo: feito (✓), o da vez (aceso) e os que faltam
+        const done = al.clicks && al.clicks.camera === sel.camera ? al.clicks.points.length : 0;
+        if (!d.found && d.tried && !done) html += '<div class="al-warn">The app did not find the marks in this photo. Click the three marks, from top to bottom.</div>';
+        html += '<div class="al-order" id="csAlignOrder">' + ["Top", "Middle", "Bottom"].map((t, k) =>
+          '<span class="al-ord ' + (k < done ? "done" : k === done ? "on" : "") + '"><i>' + (k < done ? "✓" : k + 1) + "</i>" + t + " mark</span>").join('<span class="al-ord-sep">→</span>') + "</div>";
+        html += '<p class="al-hint dim">Click the ' + ["top", "middle", "bottom"][done] + " mark in the photo." + (done ? " " + (navigator.platform.indexOf("Mac") >= 0 ? "Cmd" : "Ctrl") + "+Z takes back the last click." : "") + "</p>";
+      }
+      else html += '<ul class="in-list">' + alLines(sel.camera).map(([c, t]) => '<li class="' + c + '">' + alEsc(t) + "</li>").join("") + '</ul><p class="al-hint dim">Wrong marks? Click the three marks in this photo again, or press ' + (navigator.platform.indexOf("Mac") >= 0 ? "Cmd" : "Ctrl") + "+Z right after marking.</p>";
       html += "</div>";
       under.innerHTML = html;
       view.appendChild(under);

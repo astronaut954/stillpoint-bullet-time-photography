@@ -2241,7 +2241,7 @@ body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform:
 .al-warn { margin-top: 14px; max-width: 640px; border-left: 2px solid var(--noct-pending, #f0a020); padding: 6px 10px; font: 400 12.5px/1.45 var(--noct-font-sans); color: var(--noct-pending, #f0a020); }
 .al-photo { position: relative; background-size: 100% 100%; background-color: #000; aspect-ratio: 3 / 2; border: 1px solid var(--noct-border); overflow: hidden; }
 .al-photo .al-num { position: absolute; left: 6px; top: 6px; font: 700 11px/1 var(--noct-font-mono); padding: 3px 5px; background: var(--noct-primary); color: var(--noct-on-primary); z-index: 2; }
-.al-click { cursor: default; }
+.al-click { cursor: pointer; }
 .al-dot { position: absolute; width: 18px; height: 18px; margin: -10px 0 0 -10px; border: 2px solid #fff; box-shadow: 0 0 0 1px #000; pointer-events: none; }
 .al-dot::after { content: ""; position: absolute; left: 7px; top: 7px; width: 4px; height: 4px; background: #fff; }
 .ma-item .al-dot { width: 6px; height: 6px; margin: -4px 0 0 -4px; border-width: 1px; }
@@ -2285,3 +2285,13 @@ body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform:
 .sv-box .cy { position: absolute; top: 50%; left: 0; right: 0; height: 1px; background: rgba(57,255,106,.7); }
 .sv-vals { font: 400 11.5px/1.5 var(--noct-font-mono); color: var(--noct-text-dim); }
 .sv-sum { margin: 14px 0 0; font: 400 13px/1.5 var(--noct-font-sans); color: var(--noct-text); }
+/* Ordem dos cliques nas marcas (de cima para baixo) e cliques numerados na foto */
+.al-dot.num { width: 20px; height: 20px; margin: -10px 0 0 -10px; background: var(--noct-primary); border: 1px solid #000; box-shadow: none; color: var(--noct-on-primary); font: 700 11px/18px var(--noct-font-mono); text-align: center; }
+.al-dot.num::after { display: none; }
+.al-order { display: flex; align-items: center; gap: 8px; margin: 2px 0 8px; }
+.al-ord { display: inline-flex; align-items: center; gap: 7px; padding: 5px 10px 5px 6px; border: 1px solid var(--noct-border); color: var(--noct-text-dim); font: 700 10px var(--noct-font-mono); letter-spacing: .12em; text-transform: uppercase; }
+.al-ord i { display: inline-block; width: 18px; height: 18px; border: 1px solid currentColor; font: 700 11px/18px var(--noct-font-mono); text-align: center; font-style: normal; }
+.al-ord.on { border-color: var(--noct-primary); color: var(--noct-primary); }
+.al-ord.on i { background: var(--noct-primary); color: var(--noct-on-primary); border-color: var(--noct-primary); }
+.al-ord.done { color: var(--noct-text); border-color: var(--noct-border-strong); }
+.al-ord-sep { color: var(--noct-text-dim); font: 400 13px var(--noct-font-sans); }

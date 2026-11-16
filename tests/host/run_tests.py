@@ -1779,9 +1779,26 @@ def scenario_align_cameras(t, name, photos):
         f = [x for x in os.listdir(os.path.join(order_dir, sess)) if "_" + sel + "_IMG_" in x][0]
         centers = _mark_centers(os.path.join(order_dir, sess, f))
         box = t.page.locator("#csAlignMain .ma-view2 > .al-photo").bounding_box()
-        for (x, y) in centers:
-            t.page.mouse.click(box["x"] + x * box["width"] + 12, box["y"] + y * box["height"] - 9)
-            time.sleep(0.25)
+        click = lambda k: (t.page.mouse.click(box["x"] + centers[k][0] * box["width"] + 12, box["y"] + centers[k][1] * box["height"] - 9), time.sleep(0.25))
+        order = lambda: t.js("() => [...document.querySelectorAll('#csAlignOrder .al-ord')].map(e => e.classList.contains('done') ? 'done' : e.classList.contains('on') ? 'on' : '-').join(' ')")
+        check(t, "align: the order of the clicks is shown (Top mark is the one to click), with the link cursor over the photo",
+              order() == "on - -" and t.js("() => getComputedStyle(document.querySelector('#csAlignMain .ma-view2 > .al-photo')).cursor") == "pointer", order())
+        click(0)
+        click(1)
+        check(t, "align: after two clicks, Top and Middle are ticked, Bottom is next, and the clicks are numbered on the photo",
+              order() == "done done on" and t.js("() => [...document.querySelectorAll('#csAlignMain .ma-view2 .al-dot.num')].map(e => e.textContent).join('')") == "12", order())
+        t.shot("align-clicking")
+        t.page.keyboard.press("Control+z")
+        time.sleep(0.3)
+        check(t, "align: Ctrl+Z takes back the last click", order() == "done on -", order())
+        click(1)
+        click(2)
+        t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item.ready, #csAlignMain .ma-item.needs').length === 4"), 60)
+        t.page.keyboard.press("Control+z")
+        time.sleep(0.5)
+        check(t, "align: Ctrl+Z right after the third click undoes the marking (two clicks back on the photo, no camera marked)",
+              order() == "done done on" and t.js("() => document.querySelectorAll('#csAlignMain .ma-item.ready, #csAlignMain .ma-item.needs').length") == 0, order())
+        click(2)
         ok = t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item.ready, #csAlignMain .ma-item.needs').length === 4 && ![...document.querySelectorAll('#csAlignMain .cs-tag')].some(e => e.textContent === 'Marks not found') && !/Finding/.test(document.querySelector('#csAlignMain').textContent)"), 60)
         check(t, "align: after three clicks, the app finds the marks in every photo and gives each camera its instructions", ok,
               t.js("() => [...document.querySelectorAll('#csAlignMain .ma-item')].map(i => i.textContent).join(' | ')"))
