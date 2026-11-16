@@ -2125,7 +2125,7 @@ Project.
 - [ ] Marcar: o cursor sobre a foto grande é a mão (como num link); à direita da foto, "Click the marks" com a ordem "1 Top mark", "2 Middle
       mark", "3 Bottom mark" (a da vez acesa, as feitas com ✓) e os cliques numerados na foto; Cmd+Z (Mac) ou Ctrl+Z
       tira o último clique e, logo depois do terceiro, desfaz a marcação inteira.
-- [ ] Zoom na foto grande: rolar aproxima em volta do mouse (100% a 800%; etiqueta "zoom N%" no canto da foto);
+- [x] Zoom na foto grande: rolar aproxima em volta do mouse (100% a 800%; etiqueta "zoom N%" no canto da foto);
       com zoom, arrastar desloca (mão fechada sem piscar, mesmo fora da foto; com espaço seguro também); clique duplo
       volta à foto inteira sem marcar; botões **−**, **+** e **Fit** no canto de baixo à direita da foto; o clique
       com zoom marca o lugar certo.
@@ -2206,3 +2206,4 @@ Project.
 | 2026-10-21 | Mac (M5, macOS 26) | etapa-16-processo-por-camera (SdkMultiprocTest) | Canon SL3 + T7 + T5 | sim | Seção 20, A–F: 3 processos abriram a sua câmera (0,4–0,6 s); cada um vê as 3; abrir a câmera do outro dá 0xC0 (COMM_PORT_IS_IN_USE); disparo simultâneo por relógio com 26 ms de diferença entre a 1ª e a 3ª chamada, 3 fotos em ~2,5 s. Numa rodada a T7 travou dentro do comando de disparo (processo dela parado, os outros 2 normais); na repetição não travou. G (queda) não feito |
 | 2026-10-21 | Mac (M5, macOS 26) | etapa-16-processo-por-camera | Canon SL3 + T7 + T5 | parcial | Seção 21: conexão em paralelo (0,5 s cada), At once ×5, planos de 9 fotos, T5 desligada volta sozinha com o mesmo nome, Restart ok. Sweep 0,3 s com 3 câmeras: a mesma câmera de novo a 0,9 s é recusada ("busy") — limite da câmera, decisão pendente. Camera settings, Test shot, Match, fechar o app e processo encerrado à força: ok. Falta: Windows |
 | 2026-11-15 | Mac | etapa-21-alinhamento | — (9 câmeras simuladas) | sim | Seção 46: com `STILLPOINT_FAKE_PHOTOS=pole`, a foto mostrou a haste com as três bolas (aprovado pelo dono do projeto). Pasta com fotos reais e Windows: pendentes |
+| 2026-11-16 | Mac | etapa-21-alinhamento | — (4 câmeras simuladas, cena da haste) | sim | Seção 47, zoom da foto grande: rolar, arrastar sem piscar, clique duplo, botões − + Fit, marcar com zoom (aprovado pelo dono do projeto). Resto da seção 47 e Windows: pendentes |
