@@ -2117,6 +2117,9 @@ Project.
       rodapé com o número de câmeras, **Cancel** e **Fire**.
 - [x] No passo 1, **Use the Test shot photos** (rodapé, entre **Cancel** e **Fire**): vai para o passo 2 com as fotos
       do Test shot, sem fotografar de novo. **← Back** volta ao passo 1.
+- [ ] No passo 1, cartão **Printed bands** › **Save bands (PDF)**: pede a pasta, grava "Stillpoint bands.pdf", mostra
+      no Finder/Explorer e o Activity diz "Bands saved to …". A folha A4 tem três faixas laranja de 4 x 18 cm e a
+      régua de 18 cm; impressa a 100%, a régua mede 18 cm.
 - [x] **Fire**: passo **2 Mark and aim**, lista de câmeras à esquerda, a câmera 01 grande à direita, "Click the three
       marks in this photo, from top to bottom."
 - [x] Clicar nas três bolas da foto grande (de cima para baixo; não precisa ser no centro): os pontos vão para o
