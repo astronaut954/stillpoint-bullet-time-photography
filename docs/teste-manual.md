@@ -2176,6 +2176,18 @@ STILLPOINT_FAKE_FOCAL=35` (o `STILLPOINT_FAKE_FOCAL` faz as fotos simuladas dize
 - [ ] **Align again** › alinhar e salvar: o aviso some e volta "Cameras aligned · data".
 - [ ] Windows: os itens acima.
 
+## 50. Camera settings com muitos avisos numa câmera (2026-11-17)
+
+Com `STILLPOINT_FAKE_CAMERAS=9 STILLPOINT_FAKE_TAGS=1` (etiquetas de mentira nas câmeras simuladas).
+
+- [ ] **Camera settings**: cada câmera mostra "MF", o primeiro aviso e, havendo mais, um contador âmbar ("+1" …
+      "+7"); nenhuma linha é cortada com "…".
+- [ ] Mouse em cima do contador: abre a lista "N warnings" com todas as etiquetas e a explicação de cada uma, colada
+      ao contador e dentro da janela; some ao tirar o mouse.
+- [ ] Clique no contador: a lista fica aberta; outro clique, ou **Done**, fecha.
+- [ ] Sem `STILLPOINT_FAKE_TAGS`: as câmeras aparecem como sempre.
+- [ ] Windows: os itens acima.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |

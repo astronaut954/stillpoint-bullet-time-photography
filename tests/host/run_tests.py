@@ -1733,6 +1733,40 @@ def dismiss_delete(self):
 T.dismiss_delete = dismiss_delete
 
 
+def scenario_camera_tags(t, name, photos):
+    line("\n== 22. Camera settings: many warning tags next to a camera name")
+    t.dismiss()
+    t.env["STILLPOINT_FAKE_CAMERAS"] = "6"
+    t.env["STILLPOINT_FAKE_TAGS"] = "1"
+    try:
+        t.restart_app()
+        t.dismiss()
+        t.js("() => document.getElementById('camSettingsBtn').click()")
+        time.sleep(1.5)
+        rows = t.js("() => [...document.querySelectorAll('#csBody td.name')].filter(td => /^0[1-6] /.test(td.textContent)).map(td => [td.querySelectorAll('.cs-focus-tag.warn').length, (td.querySelector('.cs-tag-more') || {}).textContent || ''])")
+        # 01: nenhum aviso; 02: always 16:9 + 1; 03: 2; 04: 3; 05: 4; 06: 5
+        check(t, "tags: each camera shows its first warning and a counter for the others (+1, +1, +2, +3, +4)",
+              rows == [[0, ""], [1, "+1"], [1, "+1"], [1, "+2"], [1, "+3"], [1, "+4"]], rows)
+        t.page.hover("#csBody tr:nth-of-type(6) td.name .cs-tag-more")
+        time.sleep(0.4)
+        pop = t.js("() => { const p = document.querySelector('.cs-tag-pop'); return p ? [p.querySelector('b').textContent, p.querySelectorAll('.cs-tag-pop-row').length, p.getBoundingClientRect().bottom <= window.innerHeight] : null; }")
+        check(t, "tags: the mouse over the counter opens the whole list, inside the window", bool(pop) and pop[1] >= 3 and pop[0] == "%d warnings" % pop[1] and pop[2], pop)
+        t.shot("camera-tags")
+        t.page.mouse.move(5, 5)
+        time.sleep(0.3)
+        check(t, "tags: the list closes when the mouse leaves", t.js("() => !document.querySelector('.cs-tag-pop')"))
+        t.js("() => document.querySelector('#csBody .cs-tag-more').click()")
+        time.sleep(0.2)
+        opened = t.js("() => !!document.querySelector('.cs-tag-pop')")
+        t.button("Done")
+        time.sleep(0.3)
+        check(t, "tags: a click opens the list too, and closing Camera settings closes it", opened and t.js("() => !document.querySelector('.cs-tag-pop')"))
+    finally:
+        del t.env["STILLPOINT_FAKE_TAGS"]
+        t.env["STILLPOINT_FAKE_CAMERAS"] = "4"
+        t.restart_app()
+
+
 def _mark_centers(path):
     """Os centros das bolas vermelha, verde e azul numa foto da cena da haste (frações da foto)."""
     im = Image.open(path).convert("RGB")
@@ -2130,7 +2164,7 @@ def main():
                 only = os.environ.get("STILLPOINT_TEST_ONLY", "")  # para depurar: só os cenários com este nome
                 for sc in [x for x in (scenario_cleared, scenario_delete_edit_undo, scenario_photo_delete_restore,
                            scenario_remove_from_collection, scenario_delete_session, scenario_cancel, scenario_rapid_in_lightroom, scenario_crop_before_lightroom,
-                           scenario_export_edit, scenario_export_trash, scenario_lightroom_crop, scenario_undo_own_item, scenario_orientation, scenario_selection_kept, scenario_align_undo, scenario_flip, scenario_photoshop, scenario_rig_state, scenario_align_marks, scenario_align_cameras) if only in x.__name__]:
+                           scenario_export_edit, scenario_export_trash, scenario_lightroom_crop, scenario_undo_own_item, scenario_orientation, scenario_selection_kept, scenario_align_undo, scenario_flip, scenario_photoshop, scenario_rig_state, scenario_align_marks, scenario_align_cameras, scenario_camera_tags) if only in x.__name__]:
                     try:
                         sc(t, name, photos)
                     except Exception:  # noqa: BLE001

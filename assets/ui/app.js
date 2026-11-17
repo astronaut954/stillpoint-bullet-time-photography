@@ -8844,7 +8844,44 @@
       if (t && !t.disabled) { t.focus(); return; }
     }
   }, true);
+  // As etiquetas de uma câmera no Camera settings: as normais (MF) e o primeiro aviso ficam à vista; os outros avisos
+  // vão para um contador âmbar que, com o mouse em cima, com um clique ou com o foco do teclado, abre a lista inteira.
+  let csTagPop = null;
+  function csTagPopClose() { if (csTagPop) { csTagPop.remove(); csTagPop = null; } }
+  function csNameTags(cell, tags) {
+    const make = (t) => { const q = el("span", "cs-focus-tag" + (t.warn ? " warn" : ""), t.text); if (t.title) q.title = t.title; return q; };
+    const warns = tags.filter((t) => t.warn);
+    tags.filter((t) => !t.warn).forEach((t) => cell.appendChild(make(t)));
+    if (warns.length) cell.appendChild(make(warns[0]));
+    if (warns.length < 2) return;
+    const more = document.createElement("button");
+    more.type = "button";
+    more.className = "cs-tag-more";
+    more.textContent = "+" + (warns.length - 1);
+    more.setAttribute("aria-label", plural(warns.length, "warning", "warnings") + ": " + warns.map((t) => t.text).join(", "));
+    let pinned = false;
+    const open = () => {
+      csTagPopClose();
+      const pop = el("div", "cs-tag-pop");
+      pop.appendChild(el("b", "", plural(warns.length, "warning", "warnings")));
+      warns.forEach((t) => { const row = el("div", "cs-tag-pop-row"); row.appendChild(make(t)); if (t.title) row.appendChild(el("span", "", t.title)); pop.appendChild(row); });
+      document.body.appendChild(pop);
+      const r = more.getBoundingClientRect(), h = pop.offsetHeight, w = pop.offsetWidth;
+      pop.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, r.right + 8)) + "px";
+      pop.style.top = Math.max(8, Math.min(window.innerHeight - h - 8, r.top - 8)) + "px";
+      pop.addEventListener("mouseleave", () => { if (!pinned) csTagPopClose(); });
+      csTagPop = pop;
+    };
+    more.addEventListener("mouseenter", () => { if (!pinned) open(); });
+    more.addEventListener("mouseleave", (e) => { if (!pinned && !(csTagPop && csTagPop.contains(e.relatedTarget))) csTagPopClose(); });
+    more.addEventListener("focus", () => { if (!csTagPop) open(); });
+    more.addEventListener("blur", () => { pinned = false; csTagPopClose(); });
+    more.addEventListener("click", (e) => { e.stopPropagation(); pinned = !pinned; if (pinned) open(); else csTagPopClose(); });
+    more.addEventListener("keydown", (e) => { if (e.key === "Escape" && csTagPop) { e.stopPropagation(); pinned = false; csTagPopClose(); } });
+    cell.appendChild(more);
+  }
   function renderCamSettings() {
+    csTagPopClose();
     const body = $("csBody");
     const scroll = body.scrollTop;
     // O foco (teclado) estava na tabela: volta para a mesma linha/coluna depois de redesenhar
@@ -8882,18 +8919,18 @@
     camSettings.forEach((c) => {
       const tr = document.createElement("tr");
       const name = el("td", "name", pad(c.order) + " " + c.camera);
-      // Foco (só leitura) como etiqueta ao lado do nome: MF verde; AF âmbar com o aviso
+      // Etiquetas ao lado do nome. Foco (só leitura): MF verde; AF âmbar com o aviso. Avisos em âmbar: aparece o
+      // primeiro e, havendo mais, um contador ("+3") que abre a lista inteira (decisão do dono, 2026-11-17, opção B).
+      const tags = [];
       const f = c.settings && c.settings.focus;
-      if (f && f.available) {
-        const tag = el("span", "cs-focus-tag" + (c.focusManual ? "" : " warn"), c.focusManual ? "MF" : f.label);
-        tag.title = c.focusManual ? "Manual focus" : "Autofocus is on. Turn the lens switch to MF so the camera fires without delay.";
-        name.appendChild(tag);
-      }
-      // Câmera simulada com comportamento de propósito (ex.: a 02 entrega sempre 16:9): etiqueta âmbar
-      if (c.quirk) { const q = el("span", "cs-focus-tag warn", "always 16:9"); q.title = c.quirk; name.appendChild(q); }
+      if (f && f.available) tags.push({ text: c.focusManual ? "MF" : f.label, warn: !c.focusManual,
+        title: c.focusManual ? "Manual focus" : "Autofocus is on. Turn the lens switch to MF so the camera fires without delay." });
+      // Câmera simulada com comportamento de propósito (ex.: a 02 entrega sempre 16:9)
+      if (c.quirk) tags.push({ text: "always 16:9", warn: true, title: c.quirk });
       // Etiquetas de mentira (STILLPOINT_FAKE_TAGS, só câmeras simuladas): para ver a tela com muitos avisos
       ["zoom changed", "moved", "low battery", "card almost full", "lens cap on", "overheating", "firmware old", "clock not set"].slice(0, c.testTags || 0)
-        .forEach((t) => { const q = el("span", "cs-focus-tag warn", t); q.title = "Test tag (STILLPOINT_FAKE_TAGS): not a real warning."; name.appendChild(q); });
+        .forEach((t) => tags.push({ text: t, warn: true, title: "Test tag (STILLPOINT_FAKE_TAGS): not a real warning." }));
+      csNameTags(name, tags);
       name.appendChild(el("small", "", c.model + (c.mode ? " · " + c.mode : "")));
       tr.appendChild(name);
       if (!c.adjustable) {
@@ -10005,6 +10042,7 @@
     // como estavam; sem isso o programa ficava esperando a conferência numa janela fechada)
     else if (csTest.capturing && !csTest.cancelling) csTakeTest();
     $("camSettingsOverlay").classList.add("hidden");
+    csTagPopClose();
     alClose();
     csMatchClose();
     csStylePop = null;
