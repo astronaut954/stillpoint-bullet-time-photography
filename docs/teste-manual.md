@@ -2166,13 +2166,13 @@ e fazer uma sessão nova com **It's bullet time**.
 Num Project com um alinhamento salvo com `STILLPOINT_FAKE_CAMERAS=4 STILLPOINT_FAKE_PHOTOS=pole
 STILLPOINT_FAKE_FOCAL=35` (o `STILLPOINT_FAKE_FOCAL` faz as fotos simuladas dizerem o zoom, como as de uma câmera).
 
-- [ ] Sem mudar nada: **Camera settings** › **Test shot** mostra "Cameras aligned · data", sem aviso.
-- [ ] Abrir com `STILLPOINT_FAKE_FOCAL=35,35,50,35` (a câmera 03 mudou o zoom) › **Test shot**: aviso âmbar com moldura
+- [x] Sem mudar nada: **Camera settings** › **Test shot** mostra "Cameras aligned · data", sem aviso.
+- [x] Abrir com `STILLPOINT_FAKE_FOCAL=35,35,50,35` (a câmera 03 mudou o zoom) › **Test shot**: aviso âmbar com moldura
       "Align again · SL3_2 zoom changed" e o botão **Align again** com moldura.
-- [ ] Com esse aviso, **It's bullet time** e **Export sessions** › a sessão nova › **Align photos**: as outras três
+- [x] Com esse aviso, **It's bullet time** e **Export sessions** › a sessão nova › **Align photos**: as outras três
       fotos vêm alinhadas e a da câmera 03 vem sem alinhamento.
 - [ ] Abrir com `STILLPOINT_FAKE_CAMERAS=5` › **Test shot**: "Align again · 1 new camera".
-- [ ] Abrir com `STILLPOINT_FAKE_CAMERAS=3` › **Test shot**: "Align again · T7_2 not connected".
+- [x] Abrir com `STILLPOINT_FAKE_CAMERAS=3` › **Test shot**: "Align again · T7_2 not connected".
 - [ ] **Align again** › alinhar e salvar: o aviso some e volta "Cameras aligned · data".
 - [ ] Windows: os itens acima.
 
@@ -2246,3 +2246,4 @@ STILLPOINT_FAKE_FOCAL=35` (o `STILLPOINT_FAKE_FOCAL` faz as fotos simuladas dize
 | 2026-11-16 | Mac | etapa-21-alinhamento | — (4 câmeras simuladas, cena da haste) | sim | Seção 47, zoom da foto grande: rolar, arrastar sem piscar, clique duplo, botões − + Fit, marcar com zoom (aprovado pelo dono do projeto). Resto da seção 47 e Windows: pendentes |
 | 2026-11-16 | Mac | etapa-21-alinhamento | — (4 câmeras simuladas, cena da haste) | sim | Seção 47 inteira (Align cameras: Prepare, Use the Test shot photos, Mark and aim, zoom, Ctrl+Z, Review alignment, Save): aprovada pelo dono do projeto ("o ok vale pra tudo que revisamos até agora"). Windows e testes com objetos reais: pendentes |
 | 2026-11-17 | Mac | etapa-21-alinhamento | — (4 câmeras simuladas, cena da haste) | sim | Seção 47 (passo Prepare com três objetos e Save bands (PDF)), aviso de corte (Save e Align photos), seção 48 inteira (Align photos com o alinhamento do rig) e References (opacidade de cada foto, ordem das camadas): aprovados pelo dono do projeto. Pendentes: aviso "Photoshop is not installed" (ele vai desinstalar o Photoshop para testar), Windows, e tudo o que depende de material real (pasta de fotos, haste, PDF impresso, RAW com câmeras) |
+| 2026-11-17 | Mac | etapa-21-alinhamento | — (câmeras simuladas, cena da haste) | sim | Seção 49: sem mudança (sem aviso), zoom mudado na câmera 03 (aviso âmbar e sessão nova sem o alinhamento dela) e uma câmera a menos: aprovados pelo dono do projeto. Não testados: uma câmera a mais e o aviso sumindo depois de alinhar de novo |
