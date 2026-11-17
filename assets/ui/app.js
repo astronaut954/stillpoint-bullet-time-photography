@@ -8891,6 +8891,9 @@
       }
       // Câmera simulada com comportamento de propósito (ex.: a 02 entrega sempre 16:9): etiqueta âmbar
       if (c.quirk) { const q = el("span", "cs-focus-tag warn", "always 16:9"); q.title = c.quirk; name.appendChild(q); }
+      // Etiquetas de mentira (STILLPOINT_FAKE_TAGS, só câmeras simuladas): para ver a tela com muitos avisos
+      ["zoom changed", "moved", "low battery", "card almost full", "lens cap on", "overheating", "firmware old", "clock not set"].slice(0, c.testTags || 0)
+        .forEach((t) => { const q = el("span", "cs-focus-tag warn", t); q.title = "Test tag (STILLPOINT_FAKE_TAGS): not a real warning."; name.appendChild(q); });
       name.appendChild(el("small", "", c.model + (c.mode ? " · " + c.mode : "")));
       tr.appendChild(name);
       if (!c.adjustable) {

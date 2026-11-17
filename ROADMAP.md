@@ -1135,6 +1135,9 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      connected, N new cameras). A sessão nova guarda só o alinhamento das câmeras que não mudaram. Para testar sem
      câmeras: `STILLPOINT_FAKE_FOCAL`. Roteiro: `docs/teste-manual.md`, seção 49. **Só com câmeras reais:** conferir
      que a distância focal das fotos muda mesmo ao girar o zoom e fica igual quando não se mexe.
+   - **Modo de teste das etiquetas (pedido do dono, 2026-11-17):** `STILLPOINT_FAKE_TAGS=1` põe etiquetas de mentira
+     ao lado do nome das câmeras simuladas no Camera settings (a 1ª sem nenhuma, a 2ª com uma, a 3ª com duas...),
+     para ver a tela com muitos avisos. Não muda nada com câmeras reais.
 7. **Etapa 22 — Outras marcas de câmera (Sony, Nikon).** Posta como etapa pelo dono em 2026-11-11 (antes estava em
    "Futuro"). Viável marca a marca, com câmera para testar. Sony (site oficial, conferido em 2026-10-15): SDK
    gratuito, Windows 11 x64 e macOS 14.1+, cerca de 35 modelos recentes (α1, α9 II/III, α7 IV/V, α7R IV/V, α7S III,

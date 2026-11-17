@@ -592,6 +592,13 @@ namespace
                     if (cam.fake && order == 2)
                         quirk = "Simulated camera: always shoots 16:9, whatever Ratio says (to test the aspect ratio warning).";
                 }
+            // STILLPOINT_FAKE_TAGS=1 (só câmeras simuladas): etiquetas de mentira ao lado do nome, cada vez mais por
+            // câmera (a 1ª sem nenhuma, a 2ª com uma, a 3ª com duas...), para ver como a tela fica com muitos avisos
+            int testTags = 0;
+            if (const char* t = std::getenv("STILLPOINT_FAKE_TAGS"); t && *t && std::string(t) != "0")
+                for (const auto& cam : controller.GetCameras())
+                    if (cam.shortName == s.camera && cam.fake)
+                        testTags = std::max(0, order - 1);
             std::string settings = "{";
             for (size_t k = 0; k < s.settings.size(); ++k)
             {
@@ -619,7 +626,7 @@ namespace
                                     .Add("colorTone", it->second.colorTone).Str();
             list += (i ? "," : "") + Json("camera").Add("camera", s.camera).Add("model", s.model)
                 .Add("abFlip", abFlip).Add("gmFlip", gmFlip)
-                .Add("order", order).Add("adjustable", s.adjustable).Add("reason", s.reason).Add("quirk", quirk)
+                .Add("order", order).Add("adjustable", s.adjustable).Add("reason", s.reason).Add("quirk", quirk).Add("testTags", testTags)
                 .Add("mode", s.mode).Add("manual", s.manualMode).Add("kelvin", s.kelvin)
                 .Add("kelvinAvailable", s.kelvinAvailable).Add("shiftAvailable", s.shiftAvailable)
                 .Add("shiftAB", s.shiftAB).Add("shiftGM", s.shiftGM).Add("focusManual", s.focusManual)
