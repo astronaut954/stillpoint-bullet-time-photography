@@ -1124,6 +1124,9 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      Passo Prepare em dois grupos (decisão do dono, 2026-11-17, opção A; alternativas em
      https://claude.ai/artifact/Cc3RNVoQTJ6TNQKHsqu4dz): "1 · Something upright" (Stick or pole, Light stand) e
      "2 · Three marks on it" (Tape, Printed bands com o botão do PDF, Balls).
+     Trocado no mesmo dia pelo layout B da mesma página: três objetos (Stick or pole, Light stand, Three balls) e,
+     embaixo, a linha "No tape or balls? …" com **Save bands (PDF)**. Alinhamento sem haste (barra sem marcas, pessoa):
+     fica para a parte 7, From this scene (decisão do dono, 2026-11-17).
 7. **Etapa 22 — Outras marcas de câmera (Sony, Nikon).** Posta como etapa pelo dono em 2026-11-11 (antes estava em
    "Futuro"). Viável marca a marca, com câmera para testar. Sony (site oficial, conferido em 2026-10-15): SDK
    gratuito, Windows 11 x64 e macOS 14.1+, cerca de 35 modelos recentes (α1, α9 II/III, α7 IV/V, α7R IV/V, α7S III,

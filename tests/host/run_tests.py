@@ -1765,8 +1765,8 @@ def scenario_align_cameras(t, name, photos):
         check(t, "align: 'Align cameras' is next to 'Hide photos'",
               t.js("() => [...document.querySelectorAll('#csGallery .gallery-actions button')].map(b => b.textContent.trim()).join('|')") == "Align cameras|Hide photos")
         t.button("Align cameras")
-        check(t, "align: step 1 Prepare, with the two groups (2 poles, 3 kinds of marks, the PDF button on Printed bands) and Fire",
-              t.js("() => !document.getElementById('csAlign').classList.contains('hidden') && document.querySelector('#csAlignStep1').classList.contains('on') && document.querySelectorAll('#csAlignMain .al-objs-2 .al-obj').length === 2 && document.querySelectorAll('#csAlignMain .al-objs-3 .al-obj').length === 3 && !!document.querySelector('#csAlignMain .al-objs-3 #csAlignBands')")
+        check(t, "align: step 1 Prepare, with the three objects, the line with the PDF button under them, and Fire",
+              t.js("() => !document.getElementById('csAlign').classList.contains('hidden') && document.querySelector('#csAlignStep1').classList.contains('on') && document.querySelectorAll('#csAlignMain .al-obj').length === 3 && !!document.querySelector('#csAlignMain .al-bands #csAlignBands')")
               and t.js("() => getComputedStyle(document.getElementById('csBody')).display === 'none' && getComputedStyle(document.querySelector('.cs-head')).display === 'none'"))
         t.shot("align-prepare")
         # Printed bands: o app grava a folha das faixas em PDF na pasta escolhida
@@ -1775,7 +1775,7 @@ def scenario_align_cameras(t, name, photos):
         pdf = os.path.join(save_dir, "Stillpoint bands.pdf")
         ok = bool(save_dir) and t.wait(lambda: os.path.exists(pdf), 5)
         head = open(pdf, "rb").read() if ok else b""
-        check(t, "align: 'Save bands (PDF)' on the Printed bands card saves 'Stillpoint bands.pdf' (a PDF with the three orange bands)",
+        check(t, "align: 'Save bands (PDF)' saves 'Stillpoint bands.pdf' (a PDF with the three orange bands)",
               ok and head.startswith(b"%PDF-1.4") and head.count(b"1 0.416 0 rg") == 3 and head.rstrip().endswith(b"%%EOF"), (save_dir, len(head)))
         check(t, "align: Prepare offers 'Use the Test shot photos' next to Fire",
               t.js("() => [...document.querySelectorAll('#csAlignFoot button')].map(b => b.textContent).join('|')") == "Cancel|Use the Test shot photos|Fire")

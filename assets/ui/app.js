@@ -2750,19 +2750,13 @@
   const alNum = (cam) => pad(cam.order);
   const AL_SUB2 = "Fix what you can on each camera, then fire again. What you cannot fix (for example, the height) the app corrects in the photos when you save.";
   const alTape = (x, y, w) => '<rect x="' + (x - w / 2) + '" y="' + y + '" width="' + w + '" height="9" fill="#ff7a00"/>';
-  // Passo Prepare em dois grupos (decisão do dono, 2026-11-17, opção A): a haste e as marcas. As faixas impressas
-  // (botão "Save bands (PDF)") servem em qualquer haste.
-  const alSeg = '<line x1="60" y1="30" x2="60" y2="170" stroke="#ddd" stroke-width="9"/>';
-  const AL_POLES = [
-    ["Stick or pole", "A broom handle, a curtain rod or a pipe.", '<line x1="60" y1="18" x2="60" y2="186" stroke="#ddd" stroke-width="7"/><line x1="34" y1="186" x2="86" y2="186" stroke="#777" stroke-width="2"/>'],
-    ["Light stand", "The stand of a light, without the light.", '<line x1="60" y1="14" x2="60" y2="150" stroke="#ccc" stroke-width="5"/><line x1="60" y1="150" x2="28" y2="186" stroke="#ccc" stroke-width="4"/><line x1="60" y1="150" x2="92" y2="186" stroke="#ccc" stroke-width="4"/><line x1="60" y1="150" x2="60" y2="186" stroke="#ccc" stroke-width="4"/>'],
+  // Passo Prepare (decisão do dono, 2026-11-17: layout B): três objetos e, embaixo, uma linha com o PDF das faixas,
+  // que servem em qualquer um deles.
+  const AL_OBJ = [
+    ["Stick or pole", "A broom handle, a curtain rod or a pipe. Three tapes.", '<line x1="60" y1="18" x2="60" y2="186" stroke="#ddd" stroke-width="7"/>' + alTape(60, 52, 15) + alTape(60, 98, 15) + alTape(60, 144, 15) + '<line x1="34" y1="186" x2="86" y2="186" stroke="#777" stroke-width="2"/>'],
+    ["Light stand", "The stand of a light, without the light. Three tapes on the pole.", '<line x1="60" y1="14" x2="60" y2="150" stroke="#ccc" stroke-width="5"/><line x1="60" y1="150" x2="28" y2="186" stroke="#ccc" stroke-width="4"/><line x1="60" y1="150" x2="92" y2="186" stroke="#ccc" stroke-width="4"/><line x1="60" y1="150" x2="60" y2="186" stroke="#ccc" stroke-width="4"/>' + alTape(60, 36, 12) + alTape(60, 78, 12) + alTape(60, 120, 12)],
+    ["Three balls", "Three balls of the same color, stuck on a pole.", '<line x1="60" y1="18" x2="60" y2="186" stroke="#ddd" stroke-width="4"/><circle cx="60" cy="56" r="11" fill="#ff7a00"/><circle cx="60" cy="102" r="11" fill="#ff7a00"/><circle cx="60" cy="148" r="11" fill="#ff7a00"/><line x1="34" y1="186" x2="86" y2="186" stroke="#777" stroke-width="2"/>'],
   ];
-  const AL_MARKS = [
-    ["Tape", "Three pieces of colored tape.", alSeg + alTape(60, 50, 20) + alTape(60, 92, 20) + alTape(60, 134, 20)],
-    ["Printed bands", "Print, cut and wrap them around.", alSeg + [46, 90, 134].map((y) => '<rect x="51" y="' + y + '" width="18" height="18" fill="#ff7a00" stroke="#000" stroke-dasharray="2 2" stroke-width=".6"/>').join(""), "bands"],
-    ["Balls", "Three balls of the same color.", '<line x1="60" y1="30" x2="60" y2="170" stroke="#ddd" stroke-width="4"/><circle cx="60" cy="56" r="11" fill="#ff7a00"/><circle cx="60" cy="100" r="11" fill="#ff7a00"/><circle cx="60" cy="144" r="11" fill="#ff7a00"/>'],
-  ];
-  const alCards = (list) => list.map(([t, s, g, extra]) => '<div class="al-obj"><svg viewBox="0 0 120 200" aria-hidden="true">' + g + "</svg><b>" + t + "</b><span>" + s + "</span>" + (extra === "bands" ? '<button type="button" class="btn btn-secondary btn-small" id="csAlignBands">Save bands (PDF)</button>' : "") + "</div>").join("");
   // "Nov 14, 13:22"
   function alWhen(iso) {
     const d = new Date(iso);
@@ -2841,8 +2835,9 @@
       main.className = "ts-main";
       if (al.firing) { main.innerHTML = '<div class="al-msg">' + alEsc(al.msg || "Taking a photo with each camera") + "</div>"; }
       else {
-        main.innerHTML = '<div class="al-cols"><div class="al-groups"><div><div class="al-title">1 · Something upright</div><div class="al-objs al-objs-2">' + alCards(AL_POLES) +
-          '</div></div><div><div class="al-title">2 · Three marks on it</div><div class="al-objs al-objs-3">' + alCards(AL_MARKS) + "</div></div>" +
+        main.innerHTML = '<div class="al-cols"><div><div class="al-title">Use any of these</div><div class="al-objs al-objs-3">' +
+          AL_OBJ.map(([t, s, g]) => '<div class="al-obj"><svg viewBox="0 0 120 200" aria-hidden="true">' + g + "</svg><b>" + t + "</b><span>" + s + "</span></div>").join("") +
+          '</div><div class="al-bands"><span>No tape or balls? Print three orange bands and a spacing ruler, and wrap them around any of these.</span><button type="button" class="btn btn-secondary btn-small" id="csAlignBands">Save bands (PDF)</button></div>' +
           '</div><div><div class="al-title">How</div><ol class="al-steps"><li>Put three marks on it, <b>at the same distance</b> from each other (about 30 cm), in a color that stands out.</li><li>Stand it <b>upright where the subject will be</b>.</li><li>Fire. Then click the three marks in one photo: the app finds them in the others and tells you what to change on each camera.</li></ol><div class="al-warn">Pale marks and uneven spaces make the alignment wrong.</div></div></div>';
       }
       const bands = $("csAlignBands");
