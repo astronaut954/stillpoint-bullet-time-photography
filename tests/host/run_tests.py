@@ -1765,9 +1765,10 @@ def scenario_align_cameras(t, name, photos):
         check(t, "align: 'Align cameras' is next to 'Hide photos'",
               t.js("() => [...document.querySelectorAll('#csGallery .gallery-actions button')].map(b => b.textContent.trim()).join('|')") == "Align cameras|Hide photos")
         t.button("Align cameras")
-        check(t, "align: step 1 Prepare, with the four objects and Fire",
-              t.js("() => !document.getElementById('csAlign').classList.contains('hidden') && document.querySelector('#csAlignStep1').classList.contains('on') && document.querySelectorAll('#csAlignMain .al-obj').length === 4")
+        check(t, "align: step 1 Prepare, with the two groups (2 poles, 3 kinds of marks, the PDF button on Printed bands) and Fire",
+              t.js("() => !document.getElementById('csAlign').classList.contains('hidden') && document.querySelector('#csAlignStep1').classList.contains('on') && document.querySelectorAll('#csAlignMain .al-objs-2 .al-obj').length === 2 && document.querySelectorAll('#csAlignMain .al-objs-3 .al-obj').length === 3 && !!document.querySelector('#csAlignMain .al-objs-3 #csAlignBands')")
               and t.js("() => getComputedStyle(document.getElementById('csBody')).display === 'none' && getComputedStyle(document.querySelector('.cs-head')).display === 'none'"))
+        t.shot("align-prepare")
         # Printed bands: o app grava a folha das faixas em PDF na pasta escolhida
         save_dir = t.env.get("STILLPOINT_TEST_SAVE_FOLDER") or ""
         t.js("() => document.getElementById('csAlignBands').click()")

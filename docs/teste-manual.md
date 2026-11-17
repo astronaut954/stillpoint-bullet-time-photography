@@ -2113,7 +2113,8 @@ Project.
 
 - [x] **Camera settings** (painel **Cameras**) › **Test shot**: ao lado de **Hide photos** aparece **Align cameras**.
 - [x] **Align cameras**: passo **1 Prepare** no lugar do cabeçalho "Camera settings", das fotos e da tabela (como o
-      Match automatically; quatro objetos, **How**, aviso em âmbar);
+      Match automatically; dois grupos, "1 · Something upright" com dois cartões e "2 · Three marks on it" com três,
+      **How**, aviso em âmbar);
       rodapé com o número de câmeras, **Cancel** e **Fire**.
 - [x] No passo 1, **Use the Test shot photos** (rodapé, entre **Cancel** e **Fire**): vai para o passo 2 com as fotos
       do Test shot, sem fotografar de novo. **← Back** volta ao passo 1.

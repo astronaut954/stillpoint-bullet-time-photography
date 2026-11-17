@@ -2228,7 +2228,7 @@ body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform:
 .ts-note { font: 400 12.5px/1.4 var(--noct-font-sans); color: var(--noct-text-dim); }
 .gallery-actions .al-saved { margin-right: 4px; padding: 5px 8px; }
 .al-msg { display: flex; align-items: center; justify-content: center; height: 100%; font: 400 14px/1.4 var(--noct-font-sans); color: var(--noct-text-muted); }
-.al-cols { display: grid; grid-template-columns: 1.35fr 1fr; gap: 26px; height: 100%; }
+.al-cols { display: grid; grid-template-columns: 1.6fr 1fr; gap: 26px; height: 100%; }
 .al-title { font: 600 11px/1 var(--noct-font-mono); letter-spacing: .18em; text-transform: uppercase; color: var(--noct-text-dim); margin: 0 0 12px; }
 .al-objs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
 .al-obj { border: 1px solid var(--noct-border); padding: 10px 8px; display: flex; flex-direction: column; align-items: center; gap: 8px; background: rgba(0,0,0,.25); }
@@ -2317,3 +2317,7 @@ body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform:
 .align-keeps.warn { color: var(--noct-pending, #f0a020); border: 1px solid currentColor; padding: 3px 7px; }
 .sv ~ .al-warn { max-width: none; }
 .al-obj .btn { margin-top: 4px; }
+.al-groups { display: grid; grid-template-columns: 2fr 3fr; gap: 18px; align-content: start; }
+.al-objs-2 { grid-template-columns: repeat(2, 1fr); }
+.al-objs-3 { grid-template-columns: repeat(3, 1fr); }
+.al-groups .al-obj svg { height: 150px; }
