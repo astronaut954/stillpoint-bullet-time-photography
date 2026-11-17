@@ -2769,12 +2769,38 @@
   alNote.className = "ts-note al-saved hidden";
   const alEntryBtn = button("Align cameras", () => alOpen(), { kind: "btn-secondary btn-small" });
   alEntryBtn.id = "csAlignBtn";
+  // Parte 5: o que mudou nas câmeras desde o alinhamento (o programa confere: câmera que saiu, mudou de posição,
+  // mudou o zoom, ou câmera nova). Com mudança, o aviso fica âmbar e pede para alinhar de novo.
+  function alChanges() {
+    const sv = al.saved;
+    if (!sv || !sv.savedAt) return [];
+    const words = { missing: "not connected", order: "moved", zoom: "zoom changed" };
+    const out = (sv.changes || []).map((c) => c.camera + " " + (words[c.reason] || "changed"));
+    const added = (sv.added || []).length;
+    if (added) out.push(plural(added, "new camera", "new cameras"));
+    return out;
+  }
   function alRenderEntry() {
     const saved = al.saved && al.saved.savedAt;
-    alNote.textContent = saved ? "Cameras aligned · " + alWhen(al.saved.savedAt) : "";
+    const changes = alChanges();
+    alNote.textContent = !saved ? "" : changes.length ? "Align again · " + changes.join(" · ") : "Cameras aligned · " + alWhen(al.saved.savedAt);
     alNote.classList.toggle("hidden", !saved);
+    alNote.classList.toggle("warn", changes.length > 0);
+    alNote.title = changes.length ? "The cameras changed since the alignment of " + alWhen(al.saved.savedAt) + ". Those that changed get no automatic alignment until you align again; the others stay aligned." : "";
     alEntryBtn.textContent = saved ? "Align again" : "Align cameras";
-    alEntryBtn.className = "btn btn-small " + (saved ? "btn-link" : "btn-secondary");
+    alEntryBtn.className = "btn btn-small " + (saved && !changes.length ? "btn-link" : "btn-secondary");
+  }
+  // Depois de um Test shot: o programa lê o zoom das fotos novas e diz se o alinhamento ainda vale
+  function alCheck(list) {
+    const session = (list || [])[0];
+    if (!session || typeof window.alignCheck !== "function") return;
+    const photos = [];
+    placedCameras().forEach((cam) => {
+      const mine = session.photos.filter((p) => p.camera === cam.name);
+      const pick = mine.find((p) => /\.jpe?g$/i.test(p.file)) || mine[0];
+      if (pick) photos.push({ camera: cam.name, file: pick.file });
+    });
+    Promise.resolve(window.alignCheck(JSON.stringify({ session: session.name, photos }))).then((info) => { al.saved = info || null; alRenderEntry(); }).catch(() => {});
   }
   csGallery.setActions([alNote, alEntryBtn, csHideBtn]);
   function alLoadSaved() {
@@ -7509,7 +7535,7 @@
       csCardHide();
       if (csTest.capturing && csTest.cancelling) return;  // cancelado: as fotos não são mostradas
       csTest.sessions = e.sessions || [];
-      if (csTest.capturing) { showCsTest(e.sessions); alGotPhotos(e.sessions); }
+      if (csTest.capturing) { showCsTest(e.sessions); alCheck(e.sessions); alGotPhotos(e.sessions); }
       else if (order.open) showOrderPhotos(e.sessions);
     },
 

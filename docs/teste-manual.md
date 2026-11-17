@@ -2161,6 +2161,21 @@ e fazer uma sessão nova com **It's bullet time**.
       a sua; a Previous photo aparece por cima da atual e a Next photo por baixo.
 - [ ] Windows: os itens acima.
 
+## 49. Aviso de alinhar de novo (etapa 21, parte 5)
+
+Num Project com um alinhamento salvo com `STILLPOINT_FAKE_CAMERAS=4 STILLPOINT_FAKE_PHOTOS=pole
+STILLPOINT_FAKE_FOCAL=35` (o `STILLPOINT_FAKE_FOCAL` faz as fotos simuladas dizerem o zoom, como as de uma câmera).
+
+- [ ] Sem mudar nada: **Camera settings** › **Test shot** mostra "Cameras aligned · data", sem aviso.
+- [ ] Abrir com `STILLPOINT_FAKE_FOCAL=35,35,50,35` (a câmera 03 mudou o zoom) › **Test shot**: aviso âmbar com moldura
+      "Align again · SL3_2 zoom changed" e o botão **Align again** com moldura.
+- [ ] Com esse aviso, **It's bullet time** e **Export sessions** › a sessão nova › **Align photos**: as outras três
+      fotos vêm alinhadas e a da câmera 03 vem sem alinhamento.
+- [ ] Abrir com `STILLPOINT_FAKE_CAMERAS=5` › **Test shot**: "Align again · 1 new camera".
+- [ ] Abrir com `STILLPOINT_FAKE_CAMERAS=3` › **Test shot**: "Align again · T7_2 not connected".
+- [ ] **Align again** › alinhar e salvar: o aviso some e volta "Cameras aligned · data".
+- [ ] Windows: os itens acima.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |

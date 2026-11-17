@@ -1127,6 +1127,14 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      Trocado no mesmo dia pelo layout B da mesma página: três objetos (Stick or pole, Light stand, Three balls) e,
      embaixo, a linha "No tape or balls? …" com **Save bands (PDF)**. Alinhamento sem haste (barra sem marcas, pessoa):
      fica para a parte 7, From this scene (decisão do dono, 2026-11-17).
+   - **Parte 5 feita (2026-11-17):** o aviso de alinhar de novo. O programa compara o alinhamento guardado com as
+     câmeras de agora (`alignCurrent` em `main_gui.cpp`): a mesma câmera (número de série), na mesma posição e com o
+     mesmo zoom. O zoom vem da distância focal gravada nas fotos (EXIF do JPEG, `ReadPhotoFocal`), lida a cada Test
+     shot e a cada sessão; só é comparado quando o alinhamento e a foto nova dizem a distância focal (sessão só em RAW
+     ou lente manual: sem conferência de zoom). No Test shot, aviso âmbar "Align again · …" (zoom changed, moved, not
+     connected, N new cameras). A sessão nova guarda só o alinhamento das câmeras que não mudaram. Para testar sem
+     câmeras: `STILLPOINT_FAKE_FOCAL`. Roteiro: `docs/teste-manual.md`, seção 49. **Só com câmeras reais:** conferir
+     que a distância focal das fotos muda mesmo ao girar o zoom e fica igual quando não se mexe.
 7. **Etapa 22 — Outras marcas de câmera (Sony, Nikon).** Posta como etapa pelo dono em 2026-11-11 (antes estava em
    "Futuro"). Viável marca a marca, com câmera para testar. Sony (site oficial, conferido em 2026-10-15): SDK
    gratuito, Windows 11 x64 e macOS 14.1+, cerca de 35 modelos recentes (α1, α9 II/III, α7 IV/V, α7R IV/V, α7S III,

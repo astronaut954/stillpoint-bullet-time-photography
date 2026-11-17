@@ -208,6 +208,55 @@ namespace
         return 1;
     }
 
+    // Distância focal (mm) do EXIF de um JPEG: IFD0 › Exif (0x8769) › FocalLength (0x920A, fração); 0 se não houver
+    double ReadExifFocal(const std::string& jpeg)
+    {
+        size_t pos = 2;
+        while (pos + 4 < jpeg.size() && static_cast<unsigned char>(jpeg[pos]) == 0xFF)
+        {
+            const unsigned char marker = static_cast<unsigned char>(jpeg[pos + 1]);
+            const size_t length = (static_cast<unsigned char>(jpeg[pos + 2]) << 8) | static_cast<unsigned char>(jpeg[pos + 3]);
+            if (marker == 0xE1 && jpeg.compare(pos + 4, 6, std::string("Exif\0\0", 6)) == 0)
+            {
+                const size_t tiff = pos + 10;
+                if (tiff + 8 > jpeg.size())
+                    return 0;
+                const bool little = jpeg[tiff] == 'I';
+                auto u16 = [&](size_t at) -> unsigned
+                {
+                    if (at + 2 > jpeg.size()) return 0;
+                    const unsigned a = static_cast<unsigned char>(jpeg[at]), b = static_cast<unsigned char>(jpeg[at + 1]);
+                    return little ? (a | (b << 8)) : ((a << 8) | b);
+                };
+                auto u32 = [&](size_t at) -> unsigned { return little ? (u16(at) | (u16(at + 2) << 16)) : ((u16(at) << 16) | u16(at + 2)); };
+                auto find = [&](size_t ifd, unsigned tag) -> size_t  // a entrada da etiqueta (0 = não achou)
+                {
+                    if (ifd + 2 > jpeg.size()) return 0;
+                    const unsigned entries = u16(ifd);
+                    for (unsigned i = 0; i < entries; ++i)
+                    {
+                        const size_t entry = ifd + 2 + i * 12;
+                        if (entry + 12 > jpeg.size()) break;
+                        if (u16(entry) == tag) return entry;
+                    }
+                    return 0;
+                };
+                const size_t exifPtr = find(tiff + u32(tiff + 4), 0x8769);
+                if (!exifPtr) return 0;
+                const size_t focal = find(tiff + u32(exifPtr + 8), 0x920A);
+                if (!focal) return 0;
+                const size_t value = tiff + u32(focal + 8);
+                if (value + 8 > jpeg.size()) return 0;
+                const unsigned num = u32(value), den = u32(value + 4);
+                return den ? static_cast<double>(num) / den : 0;
+            }
+            if (marker == 0xDA)
+                break;
+            pos += 2 + length;
+        }
+        return 0;
+    }
+
     std::string Extension(const std::string& file)
     {
         std::string ext = fs::path(file).extension().string();
@@ -642,12 +691,35 @@ bool WriteTestPhoto(const fs::path& file, int cameraNumber, int shotNumber, doub
     return static_cast<bool>(out);
 }
 
-bool WritePoleTestPhoto(const fs::path& file, int cameraNumber, int cameraCount, double ratio)
+double ReadPhotoFocal(const fs::path& file)
+{
+    if (!IsJpeg(file.filename().string()))
+        return 0;
+    std::ifstream in(file, std::ios::binary);
+    std::string head(256 * 1024, '\0');
+    in.read(head.data(), static_cast<std::streamsize>(head.size()));
+    head.resize(static_cast<size_t>(in.gcount()));
+    return ReadExifFocal(head);
+}
+
+bool WritePoleTestPhoto(const fs::path& file, int cameraNumber, int cameraCount, double ratio, double focalMm)
 {
     const int w = 1800, h = std::max(200, static_cast<int>(std::lround(1800.0 / std::max(0.5, ratio))));
     const RgbFrame f = FakeScene::Render(FakeScene::RigCamera(cameraNumber, cameraCount, w, h), true);
     std::string jpeg;
     stbi_write_jpg_to_func(AppendToString, &jpeg, w, h, 3, f.pixels.data(), 92);
+    if (focalMm > 0 && jpeg.size() > 2)
+    {
+        // Um EXIF mínimo só com a distância focal (como a câmera grava), logo depois do começo do JPEG
+        auto be16 = [](unsigned v) { return std::string{ static_cast<char>(v >> 8), static_cast<char>(v & 255) }; };
+        auto be32 = [&](unsigned v) { return be16(v >> 16) + be16(v & 0xFFFF); };
+        std::string tiff = std::string("MM") + be16(42) + be32(8);
+        tiff += be16(1) + be16(0x8769) + be16(4) + be32(1) + be32(26) + be32(0);   // IFD0: onde está o bloco Exif
+        tiff += be16(1) + be16(0x920A) + be16(5) + be32(1) + be32(44) + be32(0);   // Exif: FocalLength (fração)
+        tiff += be32(static_cast<unsigned>(std::lround(focalMm * 10))) + be32(10);
+        const std::string body = std::string("Exif\0\0", 6) + tiff;
+        jpeg.insert(2, std::string("\xFF\xE1", 2) + be16(static_cast<unsigned>(body.size() + 2)) + body);
+    }
     std::error_code ec;
     fs::create_directories(file.parent_path(), ec);
     std::ofstream out(file, std::ios::binary);

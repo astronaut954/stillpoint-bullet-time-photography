@@ -692,6 +692,7 @@ namespace
             Json item("camera");
             item.Add("order", cam->orderPrefix)
                 .Add("name", cam->shortName)
+                .Add("serial", cam->portName)
                 .Add("model", cam->modelName)
                 .Add("connected", connected)
                 .Add("state", connected ? "connected" : connecting ? "connecting" : "disconnected")
@@ -1220,6 +1221,16 @@ namespace
         const bool fakePole = fakeCount && fakePhotosEnv && std::string(fakePhotosEnv) == "pole";
         if (fakePole)
             Log("Fake photos: the pole with three marks (STILLPOINT_FAKE_PHOTOS=pole)");
+        // STILLPOINT_FAKE_FOCAL=35 ou 35,35,50,35: a distância focal (mm) que as fotos da haste dizem ter, uma para todas
+        // ou uma por câmera simulada (para testar o aviso de zoom mudado; etapa 21, parte 5)
+        std::vector<double> fakeFocal;
+        if (const char* text = std::getenv("STILLPOINT_FAKE_FOCAL"); text && *text)
+        {
+            std::stringstream in(text);
+            std::string part;
+            while (std::getline(in, part, ','))
+                try { fakeFocal.push_back(std::stod(part)); } catch (...) { fakeFocal.push_back(0); }
+        }
         if (const char* folder = fakePhotosEnv; folder && *folder && fakeCount && !fakePole)
         {
             std::map<std::string, std::vector<std::filesystem::path>> byName;
@@ -1327,6 +1338,80 @@ namespace
         std::vector<std::string> rigConnectOrder;  // números de série na ordem em que as câmeras apareceram (sem Project)
         std::function<void()> rigAfterTask;
         auto rigSave = [&] { if (!rigFolder.empty()) Rig::Save(Rig::FileIn(rigFolder), rigState); };
+        // ---- Etapa 21, parte 5: o alinhamento guardado ainda vale para as câmeras de agora? ----
+        // Compara cada câmera do alinhamento com as ligadas: a mesma câmera (número de série), na mesma posição e com o
+        // mesmo zoom (a distância focal que as fotos dizem; só quando as duas são conhecidas). Devolve o alinhamento
+        // com "changes" ([{camera, reason: "missing" | "order" | "zoom"}]) e "added" (câmeras novas). Com onlyValid,
+        // tira de "cameras" as que mudaram (é o que a sessão guarda: a que mudou fica sem alinhamento automático).
+        // Esbarrão no tripé não dá para perceber (decisão do dono, 2026-11-14).
+        std::mutex focalMutex;
+        std::map<std::string, double> lastFocal;  // número de série → distância focal da última foto vista
+        auto alignCurrent = [&](bool onlyValid) -> std::string
+        {
+            std::string text;
+            {
+                std::lock_guard<std::mutex> lock(rigMutex);
+                text = rigState.alignment;
+            }
+            bool ok = false;
+            JsonLite::Value root = JsonLite::Parse(text, &ok);
+            if (text.empty() || !ok || !root.isObject())
+                return "";
+            std::map<std::string, double> focal;
+            {
+                std::lock_guard<std::mutex> lock(focalMutex);
+                focal = lastFocal;
+            }
+            const auto cams = controller.GetCameras();
+            JsonLite::Value kept = JsonLite::Value::NewArray(), changes = JsonLite::Value::NewArray(), added = JsonLite::Value::NewArray();
+            std::set<std::string> known;
+            for (const auto& c : root.get("cameras").items())
+            {
+                const std::string serial = c.get("serial").asString();
+                known.insert(serial);
+                std::string reason = "missing";
+                for (const auto& cam : cams)
+                    if (cam.portName == serial && cam.sessionOpen && !cam.connectionLost)
+                    {
+                        const double was = c.get("focal").asNumber(), now = focal.count(serial) ? focal[serial] : 0;
+                        reason = cam.orderPrefix != static_cast<int>(c.get("order").asNumber()) ? "order"
+                               : (was > 0 && now > 0 && std::abs(was - now) > 0.5) ? "zoom" : "";
+                    }
+                if (reason.empty())
+                    kept.push(c);
+                else
+                {
+                    JsonLite::Value one = JsonLite::Value::NewObject();
+                    one.set("camera", c.get("camera").asString());
+                    one.set("reason", reason);
+                    changes.push(one);
+                    if (!onlyValid) kept.push(c);
+                }
+            }
+            for (const auto& cam : cams)
+                if (cam.sessionOpen && !cam.connectionLost && cam.orderPrefix > 0 && !known.count(cam.portName))
+                    added.push(JsonLite::Value(cam.shortName));
+            root.set("cameras", kept);
+            root.set("changes", changes);
+            root.set("added", added);
+            return JsonLite::Stringify(root, 0);
+        };
+        // Lê a distância focal das fotos (nome da câmera → arquivo) e guarda por número de série
+        auto noteFocal = [&](const std::vector<std::pair<std::string, std::filesystem::path>>& photos)
+        {
+            const auto cams = controller.GetCameras();
+            for (const auto& [name, file] : photos)
+            {
+                const double f = ReadPhotoFocal(file);
+                if (f <= 0) continue;
+                for (const auto& cam : cams)
+                    if (cam.shortName == name)
+                    {
+                        std::lock_guard<std::mutex> lock(focalMutex);
+                        lastFocal[cam.portName] = f;
+                    }
+            }
+        };
         // As câmeras ligadas, na ordem do app: (número de série, nome)
         auto rigConnected = [&]
         {
@@ -1846,7 +1931,8 @@ namespace
                             std::filesystem::copy_file(f, dir / (base + f.extension().string()), std::filesystem::copy_options::overwrite_existing, ec);
                     }
                     else if (fakePole)
-                        WritePoleTestPhoto(dir / (base + ".jpg"), std::max(1, fakeIndex), fakeCount, ratio);
+                        WritePoleTestPhoto(dir / (base + ".jpg"), std::max(1, fakeIndex), fakeCount, ratio,
+                            fakeFocal.empty() ? 0 : fakeFocal[std::min(fakeFocal.size() - 1, static_cast<size_t>(std::max(1, fakeIndex) - 1))]);
                     else
                         WriteTestPhoto(dir / (base + ".jpg"), number, static_cast<int>(i) + 1, ratio);
                     ++done;
@@ -1970,11 +2056,19 @@ namespace
                     std::string shotAt = session.name;  // "2026-10-22_14-30-05" -> "2026-10-22T14:30:05"
                     if (shotAt.size() >= 19) { shotAt[10] = 'T'; shotAt[13] = ':'; shotAt[16] = ':'; }
                     // O alinhamento que valia quando a sessão foi fotografada (etapa 21): refazer depois não muda esta
-                    std::string alignment;
+                    // Só as câmeras que não mudaram desde o alinhamento (parte 5): o zoom é conferido nas fotos desta sessão
                     {
-                        std::lock_guard<std::mutex> lock(rigMutex);
-                        alignment = rigState.alignment;
+                        std::vector<std::pair<std::string, std::filesystem::path>> shots;
+                        std::error_code ec;
+                        const std::filesystem::path dir = store.SessionDir(session.name);
+                        if (!dir.empty())
+                            for (const auto& entry : std::filesystem::directory_iterator(dir, ec))
+                                for (const auto& cam : controller.GetCameras())
+                                    if (entry.path().filename().string().find("_" + cam.shortName + "_IMG_") != std::string::npos)
+                                        shots.push_back({ cam.shortName, entry.path() });
+                        noteFocal(shots);
                     }
+                    const std::string alignment = alignCurrent(true);
                     Json info;
                     info.Add("shotAt", shotAt).Add("timing", timingText).Add("plan", planText).Raw("cameras", cams);
                     if (!alignment.empty()) info.Raw("alignment", alignment);
@@ -5299,6 +5393,9 @@ namespace
                     {
                         one.set("serial", cam.portName);
                         one.set("model", cam.modelName);
+                        one.set("order", static_cast<double>(cam.orderPrefix));
+                        std::lock_guard<std::mutex> lock(focalMutex);
+                        if (lastFocal.count(cam.portName)) one.set("focal", lastFocal[cam.portName]);  // o zoom de agora
                     }
                 list.push(one);
             }
@@ -5330,11 +5427,29 @@ namespace
             }
             return Json("alignBands").Add("ok", ok).Add("file", file.string()).Str();
         });
-        // alignInfo(): o alinhamento guardado (null se não houver)
+        // alignInfo(): o alinhamento guardado (null se não houver), com o que mudou desde então ("changes", "added")
         window.bind("alignInfo", [&](const std::string&) -> std::string
         {
-            std::lock_guard<std::mutex> lock(rigMutex);
-            return rigState.alignment.empty() ? "null" : rigState.alignment;
+            const std::string text = alignCurrent(false);
+            return text.empty() ? "null" : text;
+        });
+        // alignCheck({session, photos: [{camera, file}]}): depois de um Test shot, lê o zoom das fotos novas e devolve
+        // o mesmo que alignInfo (para o aviso de alinhar de novo)
+        window.bind("alignCheck", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            bool ok = false;
+            const JsonLite::Value in = JsonLite::Parse(args.empty() ? std::string() : args[0], &ok);
+            std::vector<std::pair<std::string, std::filesystem::path>> shots;
+            if (ok)
+                for (const auto& p : in.get("photos").items())
+                {
+                    const auto path = alignPhotoPath(in.get("session").asString(), p.get("file").asString());
+                    if (!path.empty()) shots.push_back({ p.get("camera").asString(), path });
+                }
+            noteFocal(shots);
+            const std::string text = alignCurrent(false);
+            return text.empty() ? "null" : text;
         });
 
         // saveSessions(exitAfter): escolhe a pasta e move todas as sessões para lá

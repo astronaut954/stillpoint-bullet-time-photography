@@ -1751,6 +1751,7 @@ def scenario_align_cameras(t, name, photos):
     line("\n== 21. Align cameras in the Test shot (the pole scene)")
     t.dismiss()
     t.env["STILLPOINT_FAKE_CAMERAS"] = "4"
+    t.env["STILLPOINT_FAKE_FOCAL"] = "35"
     t.env["STILLPOINT_FAKE_PHOTOS"] = "pole"
     t.env["STILLPOINT_TEST_SAVE_FOLDER"] = os.path.join(t.tmp, "bands-out")
     os.makedirs(t.env["STILLPOINT_TEST_SAVE_FOLDER"], exist_ok=True)
@@ -2005,10 +2006,48 @@ def scenario_align_cameras(t, name, photos):
         check(t, "Align photos: back to 'Rig', the alignment returns", t.wait(lambda: saved() == auto_text, 8), saved())
         t.shot("align-photos-rig")
         t.close_export()
+        # ---- Parte 5: aviso de alinhar de novo quando as câmeras mudam ----
+        def test_shot_note():
+            t.dismiss()
+            t.js("() => document.getElementById('camSettingsBtn').click()")
+            time.sleep(1.0)
+            t.js("() => document.getElementById('csTest').click()")
+            t.wait(lambda: t.js("() => document.getElementById('csTestBox').classList.contains('has-photos')"), 30)
+            time.sleep(0.8)
+            return t.js("() => { const n = document.querySelector('#csGallery .al-saved'); return [n.textContent, n.classList.contains('warn')]; }")
+        note = test_shot_note()
+        check(t, "realign: nothing changed, so the Test shot still says 'Cameras aligned · date' (no warning)", note[0].startswith("Cameras aligned · ") and not note[1], note)
+        t.button("Done")
+        t.env["STILLPOINT_FAKE_FOCAL"] = "35,35,50,35"   # a terceira câmera mudou o zoom
+        t.restart_app()
+        note = test_shot_note()
+        check(t, "realign: one camera changed its zoom: amber 'Align again · SL3_2 zoom changed'", note == ["Align again · SL3_2 zoom changed", True], note)
+        t.button("Done")
+        time.sleep(0.4)
+        s2 = t.shoot()
+        t.dismiss()
+        info2 = json.load(open(os.path.join(t.originals(s2), "session.json"))) if s2 else {}
+        cams2 = sorted(c.get("camera") for c in (info2.get("alignment") or {}).get("cameras", []))
+        check(t, "realign: the new session keeps the alignment of the cameras that did not change, and none for the one that changed",
+              cams2 == ["SL3_1", "T7_1", "T7_2"], cams2)
+        t.env["STILLPOINT_FAKE_FOCAL"] = "35"
+        t.env["STILLPOINT_FAKE_CAMERAS"] = "5"            # entrou uma câmera
+        t.restart_app()
+        note = test_shot_note()
+        check(t, "realign: a camera was added: amber 'Align again · 1 new camera'", note == ["Align again · 1 new camera", True], note)
+        t.button("Done")
+        t.env["STILLPOINT_FAKE_CAMERAS"] = "3"            # saiu uma câmera
+        t.restart_app()
+        note = test_shot_note()
+        check(t, "realign: a camera was removed: amber 'Align again · T7_2 not connected'", note == ["Align again · T7_2 not connected", True], note)
+        t.shot("realign-note")
+        t.button("Done")
         check(t, "align: no page errors", len(t.errors) == errors_before, t.errors[errors_before:][-3:])
     finally:
         del t.env["STILLPOINT_FAKE_PHOTOS"]
         del t.env["STILLPOINT_TEST_SAVE_FOLDER"]
+        del t.env["STILLPOINT_FAKE_FOCAL"]
+        t.env["STILLPOINT_FAKE_CAMERAS"] = "4"
         t.restart_app()
 
 
