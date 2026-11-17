@@ -44,6 +44,7 @@
 #include "platform/media.h"
 #include "adobe.h"
 #include "align_marks.h"
+#include "bands_pdf.h"
 #include "json_lite.h"
 
 #include "webview/webview.h"
@@ -5309,6 +5310,25 @@ namespace
                 rigSave();
             }
             return text;
+        });
+        // alignBands(): grava a folha das faixas ("Stillpoint bands.pdf") na pasta que a pessoa escolher e mostra no
+        // Finder/Explorer. { ok, file } ou { ok: false, cancelled } (protótipo aprovado em 2026-11-17)
+        window.bind("alignBands", [&](const std::string&) -> std::string
+        {
+            const std::string folder = NativeWindow::ChooseFolder("Choose where to save the alignment bands", defaultExportFolder().string());
+            if (folder.empty())
+                return Json("alignBands").Add("ok", false).Add("cancelled", true).Str();
+            std::error_code ec;
+            fs::path file = fs::path(folder) / "Stillpoint bands.pdf";
+            for (int n = 2; fs::exists(file, ec); ++n)
+                file = fs::path(folder) / ("Stillpoint bands (" + std::to_string(n) + ").pdf");
+            const bool ok = BandsPdf::Write(file);
+            if (ok)
+            {
+                Log("Bands saved to " + file.string());
+                Platform::RevealInFileManager(file);
+            }
+            return Json("alignBands").Add("ok", ok).Add("file", file.string()).Str();
         });
         // alignInfo(): o alinhamento guardado (null se não houver)
         window.bind("alignInfo", [&](const std::string&) -> std::string

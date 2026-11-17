@@ -272,6 +272,7 @@ if(STILLPOINT_BUILD_GUI)
         src/gui/match_debug.cpp
         src/gui/chart.cpp
         src/gui/align_marks.cpp
+        src/gui/bands_pdf.cpp
         src/gui/project.cpp
         src/gui/adobe.cpp
         src/gui/rig_state.cpp

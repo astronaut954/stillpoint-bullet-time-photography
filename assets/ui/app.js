@@ -2753,7 +2753,8 @@
   const AL_OBJ = [
     ["Stick or pole", "A broom handle, a curtain rod or a pipe. Three tapes.", '<line x1="60" y1="18" x2="60" y2="186" stroke="#ddd" stroke-width="7"/>' + alTape(60, 52, 15) + alTape(60, 98, 15) + alTape(60, 144, 15) + '<line x1="34" y1="186" x2="86" y2="186" stroke="#777" stroke-width="2"/>'],
     ["Light stand", "The stand of a light, without the light. Three tapes on the pole.", '<line x1="60" y1="14" x2="60" y2="150" stroke="#ccc" stroke-width="5"/><line x1="60" y1="150" x2="28" y2="186" stroke="#ccc" stroke-width="4"/><line x1="60" y1="150" x2="92" y2="186" stroke="#ccc" stroke-width="4"/><line x1="60" y1="150" x2="60" y2="186" stroke="#ccc" stroke-width="4"/>' + alTape(60, 36, 12) + alTape(60, 78, 12) + alTape(60, 120, 12)],
-    ["Printed bands", "Print the bands from the app and wrap them around any pole.", '<line x1="60" y1="18" x2="60" y2="186" stroke="#ddd" stroke-width="10"/>' + [52, 98, 144].map((y) => [0, 1, 2, 3, 4].map((k) => '<rect x="53" y="' + (y + k * 3.4) + '" width="14" height="3.4" fill="' + (k % 2 ? "#eee" : "#111") + '"/>').join("")).join("") + '<line x1="34" y1="186" x2="86" y2="186" stroke="#777" stroke-width="2"/>'],
+    // (com o botão "Save bands (PDF)": o app grava a folha das faixas; protótipo aprovado pelo dono em 2026-11-17)
+    ["Printed bands", "Three bands to print, cut and wrap around any pole.", '<line x1="60" y1="18" x2="60" y2="186" stroke="#ddd" stroke-width="10"/>' + [52, 98, 144].map((y) => '<rect x="52" y="' + y + '" width="16" height="15" fill="#ff7a00"/>').join("") + '<line x1="34" y1="186" x2="86" y2="186" stroke="#777" stroke-width="2"/>', "bands"],
     ["Three balls", "Three balls of the same color, stuck on a pole.", '<line x1="60" y1="18" x2="60" y2="186" stroke="#ddd" stroke-width="4"/><circle cx="60" cy="56" r="11" fill="#ff7a00"/><circle cx="60" cy="102" r="11" fill="#ff7a00"/><circle cx="60" cy="148" r="11" fill="#ff7a00"/><line x1="34" y1="186" x2="86" y2="186" stroke="#777" stroke-width="2"/>'],
   ];
   // "Nov 14, 13:22"
@@ -2835,9 +2836,17 @@
       if (al.firing) { main.innerHTML = '<div class="al-msg">' + alEsc(al.msg || "Taking a photo with each camera") + "</div>"; }
       else {
         main.innerHTML = '<div class="al-cols"><div><div class="al-title">Use any of these</div><div class="al-objs">' +
-          AL_OBJ.map(([t, s, g]) => '<div class="al-obj"><svg viewBox="0 0 120 200" aria-hidden="true">' + g + "</svg><b>" + t + "</b><span>" + s + "</span></div>").join("") +
+          AL_OBJ.map(([t, s, g, extra]) => '<div class="al-obj"><svg viewBox="0 0 120 200" aria-hidden="true">' + g + "</svg><b>" + t + "</b><span>" + s + "</span>" + (extra === "bands" ? '<button type="button" class="btn btn-secondary btn-small" id="csAlignBands">Save bands (PDF)</button>' : "") + "</div>").join("") +
           '</div></div><div><div class="al-title">How</div><ol class="al-steps"><li>Put three marks on it, <b>at the same distance</b> from each other (about 30 cm), in a color that stands out.</li><li>Stand it <b>upright where the subject will be</b>.</li><li>Fire. Then click the three marks in one photo: the app finds them in the others and tells you what to change on each camera.</li></ol><div class="al-warn">Pale marks and uneven spaces make the alignment wrong.</div></div></div>';
       }
+      const bands = $("csAlignBands");
+      if (bands) bands.addEventListener("click", () => {
+        bands.disabled = true;
+        Promise.resolve(window.alignBands && window.alignBands()).then((r) => {
+          bands.disabled = false;
+          if (r && !r.ok && !r.cancelled) toast("The bands could not be saved there. Choose another folder.");
+        }).catch(() => { bands.disabled = false; });
+      });
       const n = alConnected().length;
       alFoot(plural(n, "camera", "cameras"), al.firing ? [["Cancel", "btn-secondary", alCancelFire]] :
         // Com fotos do Test shot na tela, dá para usar essas e não fotografar de novo (decisão do dono, 2026-11-16, opção C)

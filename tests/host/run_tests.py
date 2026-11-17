@@ -1752,6 +1752,8 @@ def scenario_align_cameras(t, name, photos):
     t.dismiss()
     t.env["STILLPOINT_FAKE_CAMERAS"] = "4"
     t.env["STILLPOINT_FAKE_PHOTOS"] = "pole"
+    t.env["STILLPOINT_TEST_SAVE_FOLDER"] = os.path.join(t.tmp, "bands-out")
+    os.makedirs(t.env["STILLPOINT_TEST_SAVE_FOLDER"], exist_ok=True)
     try:
         t.restart_app()
         t.dismiss()
@@ -1766,6 +1768,14 @@ def scenario_align_cameras(t, name, photos):
         check(t, "align: step 1 Prepare, with the four objects and Fire",
               t.js("() => !document.getElementById('csAlign').classList.contains('hidden') && document.querySelector('#csAlignStep1').classList.contains('on') && document.querySelectorAll('#csAlignMain .al-obj').length === 4")
               and t.js("() => getComputedStyle(document.getElementById('csBody')).display === 'none' && getComputedStyle(document.querySelector('.cs-head')).display === 'none'"))
+        # Printed bands: o app grava a folha das faixas em PDF na pasta escolhida
+        save_dir = t.env.get("STILLPOINT_TEST_SAVE_FOLDER") or ""
+        t.js("() => document.getElementById('csAlignBands').click()")
+        pdf = os.path.join(save_dir, "Stillpoint bands.pdf")
+        ok = bool(save_dir) and t.wait(lambda: os.path.exists(pdf), 5)
+        head = open(pdf, "rb").read() if ok else b""
+        check(t, "align: 'Save bands (PDF)' on the Printed bands card saves 'Stillpoint bands.pdf' (a PDF with the three orange bands)",
+              ok and head.startswith(b"%PDF-1.4") and head.count(b"1 0.416 0 rg") == 3 and head.rstrip().endswith(b"%%EOF"), (save_dir, len(head)))
         check(t, "align: Prepare offers 'Use the Test shot photos' next to Fire",
               t.js("() => [...document.querySelectorAll('#csAlignFoot button')].map(b => b.textContent).join('|')") == "Cancel|Use the Test shot photos|Fire")
         before = sorted(os.listdir(os.path.join(t.data, "Order photos")))
@@ -1997,6 +2007,7 @@ def scenario_align_cameras(t, name, photos):
         check(t, "align: no page errors", len(t.errors) == errors_before, t.errors[errors_before:][-3:])
     finally:
         del t.env["STILLPOINT_FAKE_PHOTOS"]
+        del t.env["STILLPOINT_TEST_SAVE_FOLDER"]
         t.restart_app()
 
 

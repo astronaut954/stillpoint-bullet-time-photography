@@ -2316,3 +2316,4 @@ body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform:
 .align-keeps { font: 500 11px var(--noct-font-mono); letter-spacing: .06em; color: var(--noct-text-muted); margin-right: 8px; }
 .align-keeps.warn { color: var(--noct-pending, #f0a020); border: 1px solid currentColor; padding: 3px 7px; }
 .sv ~ .al-warn { max-width: none; }
+.al-obj .btn { margin-top: 4px; }

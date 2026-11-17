@@ -41,6 +41,7 @@ add_executable(StillpointHost
     ${R}/src/gui/match_debug.cpp
     ${R}/src/gui/chart.cpp
     ${R}/src/gui/align_marks.cpp
+    ${R}/src/gui/bands_pdf.cpp
     ${R}/src/gui/project.cpp
     ${R}/src/gui/adobe.cpp
     ${R}/src/gui/rig_state.cpp
