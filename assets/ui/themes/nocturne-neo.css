@@ -949,7 +949,9 @@ table.cs th { position: sticky; top: 0; z-index: 2; background: var(--noct-surfa
   font: 700 10px var(--noct-font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--noct-text-muted); white-space: nowrap; }
 table.cs td { height: 44px; box-sizing: border-box; padding: 0 3px; border-bottom: 1px solid var(--noct-border); color: var(--noct-text); vertical-align: middle; white-space: nowrap; }
 table.cs td.name { font: 600 15px var(--noct-font-sans); }
-table.cs td.name { height: 52px; max-width: 132px; overflow: hidden; text-overflow: ellipsis; }
+/* (sem largura máxima nem corte: o nome, o MF, o primeiro aviso e o contador cabem sempre; antes o corte com "…"
+   escondia o contador quando havia o MF junto) */
+table.cs td.name { height: 52px; padding-right: 14px; }
 /* Foco (só leitura) como etiqueta ao lado do nome: MF normal, AF âmbar */
 .cs-focus-tag { display: inline-block; margin-left: 8px; padding: 1px 5px; border: 1px solid var(--noct-border-strong); font: 700 9px var(--noct-font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--noct-text-muted); vertical-align: 2px; }
 .cs-focus-tag.warn { border-color: var(--noct-pending); color: var(--noct-pending); }
