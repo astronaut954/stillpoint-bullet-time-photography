@@ -2118,7 +2118,7 @@ Project.
       rodapé com o número de câmeras, **Cancel** e **Fire**.
 - [x] No passo 1, **Use the Test shot photos** (rodapé, entre **Cancel** e **Fire**): vai para o passo 2 com as fotos
       do Test shot, sem fotografar de novo. **← Back** volta ao passo 1.
-- [ ] No passo 1, **Save bands (PDF)** (linha embaixo dos três objetos): pede a pasta, grava "Stillpoint bands.pdf", mostra
+- [x] No passo 1, **Save bands (PDF)** (linha embaixo dos três objetos): pede a pasta, grava "Stillpoint bands.pdf", mostra
       no Finder/Explorer e o Activity diz "Bands saved to …". A folha A4 tem três faixas laranja de 4 x 18 cm e a
       régua de 18 cm; impressa a 100%, a régua mede 18 cm.
 - [x] **Fire**: passo **2 Mark and aim**, lista de câmeras à esquerda, a câmera 01 grande à direita, "Click the three
@@ -2148,16 +2148,16 @@ Project.
 Com `STILLPOINT_FAKE_CAMERAS=4 STILLPOINT_FAKE_PHOTOS=pole`, num Project, depois de salvar um alinhamento (seção 47)
 e fazer uma sessão nova com **It's bullet time**.
 
-- [ ] **Export sessions** › passo **1 Sessions** › a sessão nova › **16:9** (as câmeras simuladas misturam 3:2 e
+- [x] **Export sessions** › passo **1 Sessions** › a sessão nova › **16:9** (as câmeras simuladas misturam 3:2 e
       16:9): a prévia do Framing já mostra as fotos alinhadas (as bolas no mesmo lugar ao trocar de foto com ← →).
-- [ ] **Align photos**: na barra em cima da foto, à direita, **Alignment** com "Rig · data" e **Back to automatic**
+- [x] **Align photos**: na barra em cima da foto, à direita, **Alignment** com "Rig · data" e **Back to automatic**
       (apagado). As bolas da foto atual e da próxima ficam uma sobre a outra.
-- [ ] Mexer em **Size** ou arrastar a foto: **Back to automatic** acende; clicar nele volta ao alinhamento do rig.
-- [ ] **Alignment** › **None**: as fotos voltam a como saíram (bolas desencontradas); **Rig · data** traz de volta.
-- [ ] Uma sessão feita antes de alinhar as câmeras: **Alignment** mostra só **None**, apagado.
-- [ ] Ao lado de **Alignment**: "Keeps N% of the photos" (âmbar, com moldura, abaixo de 80%). No passo **3 Save** do
+- [x] Mexer em **Size** ou arrastar a foto: **Back to automatic** acende; clicar nele volta ao alinhamento do rig.
+- [x] **Alignment** › **None**: as fotos voltam a como saíram (bolas desencontradas); **Rig · data** traz de volta.
+- [x] Uma sessão feita antes de alinhar as câmeras: **Alignment** mostra só **None**, apagado.
+- [x] Ao lado de **Alignment**: "Keeps N% of the photos" (âmbar, com moldura, abaixo de 80%). No passo **3 Save** do
       Align cameras: "This alignment keeps N% of each photo" (aviso âmbar abaixo de 80%).
-- [ ] **References**: a barra de **Current photo** muda só a foto atual; as de **Previous photo** e **Next photo**, só
+- [x] **References**: a barra de **Current photo** muda só a foto atual; as de **Previous photo** e **Next photo**, só
       a sua; a Previous photo aparece por cima da atual e a Next photo por baixo.
 - [ ] Windows: os itens acima.
 
@@ -2230,3 +2230,4 @@ e fazer uma sessão nova com **It's bullet time**.
 | 2026-11-15 | Mac | etapa-21-alinhamento | — (9 câmeras simuladas) | sim | Seção 46: com `STILLPOINT_FAKE_PHOTOS=pole`, a foto mostrou a haste com as três bolas (aprovado pelo dono do projeto). Pasta com fotos reais e Windows: pendentes |
 | 2026-11-16 | Mac | etapa-21-alinhamento | — (4 câmeras simuladas, cena da haste) | sim | Seção 47, zoom da foto grande: rolar, arrastar sem piscar, clique duplo, botões − + Fit, marcar com zoom (aprovado pelo dono do projeto). Resto da seção 47 e Windows: pendentes |
 | 2026-11-16 | Mac | etapa-21-alinhamento | — (4 câmeras simuladas, cena da haste) | sim | Seção 47 inteira (Align cameras: Prepare, Use the Test shot photos, Mark and aim, zoom, Ctrl+Z, Review alignment, Save): aprovada pelo dono do projeto ("o ok vale pra tudo que revisamos até agora"). Windows e testes com objetos reais: pendentes |
+| 2026-11-17 | Mac | etapa-21-alinhamento | — (4 câmeras simuladas, cena da haste) | sim | Seção 47 (passo Prepare com três objetos e Save bands (PDF)), aviso de corte (Save e Align photos), seção 48 inteira (Align photos com o alinhamento do rig) e References (opacidade de cada foto, ordem das camadas): aprovados pelo dono do projeto. Pendentes: aviso "Photoshop is not installed" (ele vai desinstalar o Photoshop para testar), Windows, e tudo o que depende de material real (pasta de fotos, haste, PDF impresso, RAW com câmeras) |
