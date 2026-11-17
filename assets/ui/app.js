@@ -3298,6 +3298,14 @@
     });
     main.innerHTML = "";
     main.appendChild(sv);
+    // Quanto das fotos sobra com este alinhamento; abaixo de 80%, aviso em âmbar (decisão do dono, 2026-11-16, opção B)
+    const keep = rigKeeps(al.photos.filter((p) => al.solved[p.camera]).map((p) => { const d = al.data[p.camera], n = al.solved[p.camera]; return { w: d.w, h: d.h, dx: n.dx, dy: n.dy, rot: n.rot, scale: n.scale }; }));
+    if (keep != null) {
+      const pct = Math.round(keep * 100);
+      main.insertAdjacentHTML("beforeend", keep < KEEP_WARN
+        ? '<div class="al-warn" id="csAlignKeeps">This alignment keeps ' + pct + "% of each photo: the cameras are far from each other's framing. To keep more, go back, fix the cameras and fire again.</div>"
+        : '<p class="sv-sum" id="csAlignKeeps">This alignment keeps <b>' + pct + "%</b> of each photo.</p>");
+    }
     main.insertAdjacentHTML("beforeend", '<p class="sv-sum">Values from the stick. You can fine-tune them later in <b>Export › Align photos</b>; the original alignment stays saved.</p>');
     alFoot("The black edges are cut on export: what stays is the part every photo has",
       [["← Back", "btn-secondary", () => { al.step = 2; alRender(); }], ["Cancel", "btn-secondary", alClose], ["Save alignment", "btn-primary", alSave]]);
@@ -4879,6 +4887,7 @@
     // (Align photos aberto: "Back to automatic" acende quando há ajuste da pessoa por cima do alinhamento do rig)
     const back = $("alignBackAuto");
     if (back && typeof rigTouched === "function") back.disabled = !rigTouched(st);
+    if (typeof alignKeepsShow === "function") alignKeepsShow(session, st);
   }
   function alignOf(st, file) { return st.align.byFile[file] || ALIGN_ID(); }  // só lê: uma foto sem ajuste não ganha entrada
   // Alinhamento em uso: só com uma proporção escolhida (decisão do dono, 2026-11-04, opção B: "As shot" é sempre como
@@ -5046,6 +5055,50 @@
       return changed;
     });
   }
+  // Quanto das fotos sobra depois do canvas e do alinhamento (média, 0 a 1); null se não der para medir
+  function alignKeeps(session, st) {
+    const items = sessionItems(session).filter((i) => i.previewable);
+    return Promise.all(items.map((it) => photoSizeOf(session.name, it.file))).then((list) => {
+      const sizes = {};
+      items.forEach((it, k) => { if (list[k]) sizes[it.file] = list[k]; });
+      const frame = commonFrame(items, sizes, st);
+      if (!frame) return null;
+      let sum = 0, n = 0;
+      items.forEach((it) => {
+        const sz = sizes[it.file]; if (!sz) return;
+        const a = effectiveAlign(sz, alignOf(st, it.file), frame, st);
+        sum += Math.min(1, (frame.w * frame.h) / (a.scale * a.scale * sz.w * sz.h)); n += 1;
+      });
+      return n ? sum / n : null;
+    });
+  }
+  const KEEP_WARN = 0.8;  // abaixo disto, aviso em âmbar (decisão do dono, 2026-11-16, opção B)
+  function alignKeepsShow(session, st) {
+    const node = $("alignKeeps");
+    if (!node) return;
+    alignKeeps(session, st).then((v) => {
+      if (!node.isConnected) return;
+      const low = v != null && v < KEEP_WARN && alignModeOf(session, st) === "rig";
+      node.textContent = v == null ? "" : "Keeps " + Math.round(v * 100) + "% of the photos";
+      node.classList.toggle("warn", low);
+      node.title = low ? "The alignment cuts a lot of the photos. To keep more, fix the cameras in Camera settings › Test shot › Align cameras and shoot again." : "How much of each photo is left after the canvas and the alignment (average)";
+    });
+  }
+  // A mesma conta para a receita das câmeras, antes de haver sessão (passo Save do Align cameras): quanto sobra das
+  // fotos se elas forem exportadas na proporção em que saíram. cams: [{ w, h, dx, dy, rot, scale }] (dx, dy em frações)
+  function rigKeeps(cams) {
+    const items = cams.map((c, i) => ({ file: String(i) })), sizes = {};
+    cams.forEach((c, i) => { sizes[String(i)] = { w: c.w, h: c.h }; });
+    const frame = commonFrame(items, sizes, null);
+    if (!frame) return null;
+    const raw = cams.map((c) => { const rad = c.rot * Math.PI / 180, cs = Math.cos(rad), sn = Math.sin(rad), mx = c.dx * c.w, my = c.dy * c.h;
+      return { dx: c.scale * (mx * cs - my * sn), dy: c.scale * (mx * sn + my * cs), scale: c.scale, rot: c.rot, w: c.w, h: c.h }; });
+    const covers = (k) => raw.every((a) => photoCovers(a.w, a.h, { dx: a.dx * k, dy: a.dy * k, scale: a.scale * k, rot: a.rot }, frame));
+    let lo = 0.2, hi = 20;
+    if (!covers(hi)) return null;
+    for (let i = 0; i < 40; i++) { const mid = (lo + hi) / 2; if (covers(mid)) hi = mid; else lo = mid; }
+    return raw.reduce((sum, a) => sum + Math.min(1, (frame.w * frame.h) / (a.scale * hi * a.scale * hi * a.w * a.h)), 0) / raw.length;
+  }
   function rigModeSave(session, st, mode) {
     st.align.mode = mode;
     const cur = sessions.find((x) => x.name === session.name) || session;
@@ -5202,7 +5255,10 @@
         back.disabled = !rigTouched(st);
         boxA.appendChild(back);
       }
+      const keeps = el("span", "align-keeps"); keeps.id = "alignKeeps";
+      boxA.insertBefore(keeps, boxA.firstChild);
       top.appendChild(boxA);
+      alignKeepsShow(session, st);
     }
     rows.classList.add("hidden");
     const wrap = el("div", "align-wrap");

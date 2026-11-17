@@ -2313,3 +2313,6 @@ body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform:
 .align-auto { margin-left: auto; display: inline-flex; align-items: center; gap: 10px; }
 .align-auto-label { font: 700 10px var(--noct-font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--noct-text-dim); }
 .align-auto .cs-sel { min-width: 200px; max-width: none; height: 30px; line-height: 28px; padding: 0 24px 0 10px; background-position: right 9px center; }
+.align-keeps { font: 500 11px var(--noct-font-mono); letter-spacing: .06em; color: var(--noct-text-muted); margin-right: 8px; }
+.align-keeps.warn { color: var(--noct-pending, #f0a020); border: 1px solid currentColor; padding: 3px 7px; }
+.sv ~ .al-warn { max-width: none; }

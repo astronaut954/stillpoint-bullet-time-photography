@@ -1882,6 +1882,9 @@ def scenario_align_cameras(t, name, photos):
         t.button("Review alignment")
         check(t, "align: step 3 Save shows the four photos already aligned, with the values",
               t.js("() => document.querySelector('#csAlignStep3').classList.contains('on') && document.querySelectorAll('#csAlignMain .sv-cell').length === 4 && /Move .* px/.test(document.querySelector('#csAlignMain .sv-vals').textContent)"))
+        keeps = t.js("() => { const e = document.getElementById('csAlignKeeps'); return e ? [e.className, e.textContent] : null; }")
+        check(t, "align: step 3 says how much of each photo the alignment keeps (amber warning below 80%)",
+              bool(keeps) and "keeps" in keeps[1] and "%" in keeps[1] and (keeps[0] == "al-warn") == (int(keeps[1].split("keeps ")[1].split("%")[0]) < 80), keeps)
         t.shot("align-step3")
         t.button("Save alignment")
         time.sleep(0.6)
@@ -1973,6 +1976,9 @@ def scenario_align_cameras(t, name, photos):
         v = sel()
         check(t, "Align photos: the Alignment selector shows 'Rig · date' and 'None', on Rig; 'Back to automatic' is off",
               bool(v) and v[0] == "rig" and v[1].startswith("Rig · ") and v[1].endswith("|None") and back_off() is True, (v, back_off()))
+        kp = t.js("() => { const e = document.getElementById('alignKeeps'); return [e.textContent, e.classList.contains('warn')]; }")
+        check(t, "Align photos: 'Keeps N% of the photos' next to Alignment, amber below 80%",
+              kp[0].startswith("Keeps ") and kp[1] == (int(kp[0].split()[1].rstrip("%")) < 80), kp)
         auto_text = saved()
         b = t.page.locator('#exportSettings .align-ctl', has_text="Size").locator("button").nth(1)
         b.click(modifiers=["Shift"])
