@@ -1264,6 +1264,13 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      posição das 200 abas. Refeito: as medidas são tiradas uma vez (`mapMeasure`); mexer o mouse muda só a altura (por
      escala) e o brilho dos traços perto da lupa (uns 25), e mexer a faixa só faz contas com as medidas guardadas.
      Não confirmado: se era essa a causa. Se continuar, pedir gravação.
+     **Causa do tremor achada (2026-11-22):** o dono disse que só os traços altos tremiam ao se mover. Medindo a
+     altura de cada traço quadro a quadro, todos os traços altos alternavam entre dois valores (40 e 36,7 px) a cada
+     quadro: um erro na conta da animação de abrir a lupa (com ela toda aberta, fechava um pouco e abria de novo a
+     cada quadro). O erro existia desde a primeira versão com animação; as tentativas anteriores mexeram em outras
+     coisas. Corrigido; medido depois: cada traço sobe e desce uma vez só, e parado não varia. Junto: a altura deixou
+     de ser arredondada para pixels inteiros e o alvo da lupa ganhou folga de 2 px (o tremor da mão não mexe a lupa).
+     Falta o dono ver. A largura ampliada (protótipo A) saiu numa das tentativas; pode voltar se o dono quiser.
    - **Parte 6b, a fazer:** a imagem ao vivo das câmeras Canon de verdade (o processo de cada câmera em `src/worker`
      e o protocolo): ligar o visor ao vivo, mandar os quadros e desligar antes de cada disparo. Só o dono consegue
      testar (câmeras reais).

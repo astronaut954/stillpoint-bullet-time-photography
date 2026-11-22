@@ -14,7 +14,7 @@
     opts: { display: "window", screen: "", onTop: false },
     screens: [],
     hideTimer: 0,
-    lensMouse: 0, lensPos: -1, lensK: 0, lensWant: false, lensRaf: 0,   // a lupa do mapa: o ponteiro (px), o centro da lente (segue o ponteiro com um pequeno atraso) e o quanto está aberta
+    lensMouse: 0, lensGoal: 0, lensPos: -1, lensK: 0, lensWant: false, lensRaf: 0,   // a lupa do mapa: o ponteiro (px), o centro da lente (segue o ponteiro com um pequeno atraso) e o quanto está aberta
     drag: false, dragCam: "", dragSent: "", dragTimer: 0,  // clicar e arrastar no mapa
     hereCam: null,               // a câmera marcada como "a da tela" nas abas e no mapa (arrastando, a do ponteiro)
     photoKey: "", photoUrl: "",  // a foto parada à mostra (sessão/arquivo) e o endereço dela
@@ -286,9 +286,11 @@
     const here = i === G.hereI, win = i >= G.winLo && i <= G.winHi, base = here ? 18 : 12;
     const k = S.lensPos >= 0 ? S.lensK : 0;
     const far = k > 0 ? Math.min(1, Math.abs((i + 0.5) * G.w - S.lensPos) / G.R) : 1, near = far < 1 ? Math.pow(Math.cos(far * Math.PI / 2), 2.6) * k : 0;
-    const h = G.snap(Math.max(base, 12 + 28 * near)), normal = win ? 1 : 0.3;
+    // (a altura não é arredondada para pixels inteiros: arredondada, cada traço subia e descia em degraus de meio
+    // pixel enquanto a lupa andava, e o conjunto tremia; teste do dono, 2026-11-22)
+    const h = Math.max(base, 12 + 28 * near), normal = win ? 1 : 0.3;
     el.style.height = base + "px";
-    el.style.transform = h > base ? "scaleY(" + (h / base).toFixed(4) + ")" : "";
+    el.style.transform = h > base + 0.01 ? "scaleY(" + (h / base).toFixed(5) + ")" : "";
     el.style.opacity = here ? "1" : (normal + (1 - normal) * near).toFixed(3);
   }
   // A lupa andou: só os traços perto dela (e os que estavam perto no quadro anterior) são refeitos; e a etiqueta
@@ -316,8 +318,13 @@
     let last = performance.now();
     const step = (now) => {
       const dt = Math.min(50, now - last); last = now;
-      const want = S.lensWant ? 1 : 0, goal = S.lensMouse;
-      S.lensK = want > S.lensK ? Math.min(1, S.lensK + dt / 140) : Math.max(0, S.lensK - dt / 140);
+      // O alvo da lupa tem uma folga de 2 px em relação ao ponteiro: o tremor da mão (1 ou 2 px para lá e para cá) não
+      // mexe a lupa; andando de verdade, ela segue o ponteiro
+      if (S.lensMouse > S.lensGoal + 2) S.lensGoal = S.lensMouse - 2; else if (S.lensMouse < S.lensGoal - 2) S.lensGoal = S.lensMouse + 2;
+      const want = S.lensWant ? 1 : 0, goal = S.lensGoal;
+      // (só anda quando falta: com a lupa já toda aberta, a conta antiga fechava um pouco e abria de novo a cada
+      // quadro, e todos os traços altos subiam e desciam uns 3 px, sem parar. Era o tremor; achado em 2026-11-22.)
+      if (S.lensK < want) S.lensK = Math.min(1, S.lensK + dt / 140); else if (S.lensK > want) S.lensK = Math.max(0, S.lensK - dt / 140);
       if (S.lensWant && S.lensPos >= 0) { S.lensPos += (goal - S.lensPos) * (1 - Math.exp(-dt / (S.drag ? 40 : 80))); if (Math.abs(goal - S.lensPos) < 0.15) S.lensPos = goal; }
       paintLens();
       if (!S.lensWant && S.lensK <= 0) S.lensPos = -1;
@@ -327,7 +334,7 @@
   }
   function lensAt(clientX, want) {
     if (!G.n) return;
-    if (want) { S.lensMouse = Math.max(0, Math.min(G.W - 0.01, clientX - G.left)); if (S.lensPos < 0) S.lensPos = S.lensMouse; }
+    if (want) { S.lensMouse = Math.max(0, Math.min(G.W - 0.01, clientX - G.left)); if (S.lensPos < 0) S.lensPos = S.lensGoal = S.lensMouse; }
     S.lensWant = want;
     lensAnimate();
   }
