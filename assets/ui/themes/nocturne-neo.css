@@ -2323,7 +2323,7 @@ body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform:
 .al-bands span { flex: 1; font: 400 13px/1.45 var(--noct-font-sans); color: var(--noct-text); }
 .gallery-actions .al-saved.warn { color: var(--noct-pending, #f0a020); border: 1px solid currentColor; padding: 4px 8px; }
 /* Camera settings: contador de avisos ao lado do nome e a lista que ele abre */
-.cs-tag-more { display: inline-block; margin-left: 6px; padding: 1px 6px; border: 1px solid var(--noct-pending); background: var(--noct-pending); color: #000; font: 700 9px var(--noct-font-mono); letter-spacing: .08em; vertical-align: 2px; cursor: pointer; }
+.cs-tag-more { display: inline-block; margin-left: 8px; padding: 0 2px; border: 0; background: transparent; color: var(--noct-pending); line-height: 0; vertical-align: -1px; cursor: pointer; }
 .cs-tag-more:focus-visible { outline: 1px solid var(--noct-text); outline-offset: 2px; }
 .cs-tag-pop { position: fixed; z-index: 4000; max-width: 420px; background: #020c02; border: 1px solid var(--noct-pending); padding: 10px 12px; display: flex; flex-direction: column; gap: 7px; box-shadow: 0 6px 20px rgba(0,0,0,.6); }
 .cs-tag-pop b { font: 700 9px var(--noct-font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--noct-text-dim); }

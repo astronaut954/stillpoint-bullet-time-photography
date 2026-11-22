@@ -8844,20 +8844,22 @@
       if (t && !t.disabled) { t.focus(); return; }
     }
   }, true);
-  // As etiquetas de uma câmera no Camera settings: as normais (MF) e o primeiro aviso ficam à vista; os outros avisos
-  // vão para um contador âmbar que, com o mouse em cima, com um clique ou com o foco do teclado, abre a lista inteira.
+  // As etiquetas de uma câmera no Camera settings: as normais (MF) ficam à vista; os avisos vão todos para um alerta
+  // (triângulo âmbar) que, com o mouse em cima, com um clique ou com o foco do teclado, abre a lista inteira.
   let csTagPop = null;
   function csTagPopClose() { if (csTagPop) { csTagPop.remove(); csTagPop = null; } }
   function csNameTags(cell, tags) {
     const make = (t) => { const q = el("span", "cs-focus-tag" + (t.warn ? " warn" : ""), t.text); if (t.title) q.title = t.title; return q; };
     const warns = tags.filter((t) => t.warn);
     tags.filter((t) => !t.warn).forEach((t) => cell.appendChild(make(t)));
-    if (warns.length) cell.appendChild(make(warns[0]));
-    if (warns.length < 2) return;
+    if (!warns.length) return;
+    // Um alerta só (o triângulo âmbar), com um aviso ou com vários; a lista abre nele (decisão do dono, 2026-11-22,
+    // opção C; antes: o primeiro aviso à vista e um contador "+N")
     const more = document.createElement("button");
     more.type = "button";
     more.className = "cs-tag-more";
-    more.textContent = "+" + (warns.length - 1);
+    more.innerHTML = '<svg viewBox="0 0 16 14" width="16" height="14" aria-hidden="true"><path d="M8 1 L15 13 H1 Z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 5.5 V9 M8 10.6 V11.4" stroke="currentColor" stroke-width="1.6"/></svg>';
+    more.dataset.count = String(warns.length);
     more.setAttribute("aria-label", plural(warns.length, "warning", "warnings") + ": " + warns.map((t) => t.text).join(", "));
     let pinned = false;
     const open = () => {

@@ -1743,20 +1743,20 @@ def scenario_camera_tags(t, name, photos):
         t.dismiss()
         t.js("() => document.getElementById('camSettingsBtn').click()")
         time.sleep(1.5)
-        rows = t.js("() => [...document.querySelectorAll('#csBody td.name')].filter(td => /^0[1-6] /.test(td.textContent)).map(td => [td.querySelectorAll('.cs-focus-tag.warn').length, (td.querySelector('.cs-tag-more') || {}).textContent || ''])")
+        rows = t.js("() => [...document.querySelectorAll('#csBody td.name')].filter(td => /^0[1-6] /.test(td.textContent)).map(td => [td.querySelectorAll('.cs-focus-tag.warn').length, (td.querySelector('.cs-tag-more') || { dataset: {} }).dataset.count || '', !!td.querySelector('.cs-tag-more svg')])")
         # 01: nenhum aviso; 02: always 16:9 + 1; 03: 2; 04: 3; 05: 4; 06: 5
-        check(t, "tags: each camera shows its first warning and a counter for the others (+1, +1, +2, +3, +4)",
-              rows == [[0, ""], [1, "+1"], [1, "+1"], [1, "+2"], [1, "+3"], [1, "+4"]], rows)
+        check(t, "tags: no warning tags next to the name; a camera with warnings shows one alert (the triangle), with 1 or many",
+              rows == [[0, "", False], [0, "2", True], [0, "2", True], [0, "3", True], [0, "4", True], [0, "5", True]], rows)
         # Com o MF junto (como nas câmeras de verdade), nada é cortado: o contador fica inteiro dentro da célula
         t.js("() => document.querySelectorAll('#csBody td.name').forEach(td => { if (!/^0[1-6] /.test(td.textContent) || td.querySelector('.cs-focus-tag:not(.warn)')) return; const m = document.createElement('span'); m.className = 'cs-focus-tag'; m.textContent = 'MF'; td.insertBefore(m, td.querySelector('.cs-focus-tag, small')); })")
         time.sleep(0.3)
-        check(t, "tags: with the MF tag too, the counter is whole inside the name cell (nothing cut with '…')",
+        check(t, "tags: with the MF tag too, the alert is whole inside the name cell (nothing cut with '…')",
               t.js("() => [...document.querySelectorAll('#csBody td.name .cs-tag-more')].every(m => { const r = m.getBoundingClientRect(), c = m.closest('td').getBoundingClientRect(); return r.width > 8 && r.right <= c.right + 0.5 && getComputedStyle(m.closest('td')).overflow === 'visible'; })"))
         t.shot("camera-tags-mf")
         t.page.hover("#csBody tr:nth-of-type(6) td.name .cs-tag-more")
         time.sleep(0.4)
         pop = t.js("() => { const p = document.querySelector('.cs-tag-pop'); return p ? [p.querySelector('b').textContent, p.querySelectorAll('.cs-tag-pop-row').length, p.getBoundingClientRect().bottom <= window.innerHeight] : null; }")
-        check(t, "tags: the mouse over the counter opens the whole list, inside the window", bool(pop) and pop[1] >= 3 and pop[0] == "%d warnings" % pop[1] and pop[2], pop)
+        check(t, "tags: the mouse over the alert opens the whole list, inside the window", bool(pop) and pop[1] >= 3 and pop[0] == "%d warnings" % pop[1] and pop[2], pop)
         t.shot("camera-tags")
         t.page.mouse.move(5, 5)
         time.sleep(0.3)
