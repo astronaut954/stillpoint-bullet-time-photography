@@ -1187,6 +1187,10 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      dono**. Conferido com 24 e 64 câmeras simuladas. Correção junto: a câmera conta como mexida quando as marcas da
      imagem ao vivo saem de onde estão na foto (antes: de onde estavam no primeiro quadro, o que falhava quando o
      primeiro quadro já vinha diferente da foto).
+     Pedido do dono (2026-11-22): a janela precisa servir a 100 câmeras ou mais, com navegação na linha das abas.
+     Protótipo com três formas (A faixa que desliza com setas e "Next to change"; B páginas de 20; C mapa de todas as
+     câmeras em cima da faixa): https://claude.ai/artifact/1fiehsxVk1ETk4J3oNTVWi. Aguardando a escolha do dono. As
+     câmeras simuladas hoje vão até 64 (`STILLPOINT_FAKE_CAMERAS`); para testar com mais, subir esse limite.
    - **Parte 6b, a fazer:** a imagem ao vivo das câmeras Canon de verdade (o processo de cada câmera em `src/worker`
      e o protocolo): ligar o visor ao vivo, mandar os quadros e desligar antes de cada disparo. Só o dono consegue
      testar (câmeras reais).
