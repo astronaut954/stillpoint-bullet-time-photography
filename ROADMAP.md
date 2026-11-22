@@ -1180,6 +1180,13 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      "Camera n of N". A janela só passa sozinha de uma câmera que precisava de ajuste e ficou boa (não tira a pessoa
      de uma câmera boa que ela veio conferir). Com isso caem as escolhas provisórias (1) e (2) da parte 6a; continuam
      a confirmar a (3) (Review alignment pede Fire again) e a (4) (sem Live aim não troca sozinha).
+     Muitas câmeras (pedido do dono, 2026-11-22, para ver um caso extremo sem esperar): `STILLPOINT_FAKE_FIXED=odd`
+     (ou `all`) faz essas câmeras simuladas começarem já acertadas e `STILLPOINT_FAKE_LIVE_STEP=1` acerta cada câmera
+     no primeiro quadro. Quando o texto não cabe nas abas, fica só o número (a cor diz o estado; o texto aparece ao
+     parar o mouse) e, se nem assim couber, as abas quebram em mais linhas: **escolha do agente, a confirmar com o
+     dono**. Conferido com 24 e 64 câmeras simuladas. Correção junto: a câmera conta como mexida quando as marcas da
+     imagem ao vivo saem de onde estão na foto (antes: de onde estavam no primeiro quadro, o que falhava quando o
+     primeiro quadro já vinha diferente da foto).
    - **Parte 6b, a fazer:** a imagem ao vivo das câmeras Canon de verdade (o processo de cada câmera em `src/worker`
      e o protocolo): ligar o visor ao vivo, mandar os quadros e desligar antes de cada disparo. Só o dono consegue
      testar (câmeras reais).

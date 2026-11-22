@@ -3141,11 +3141,15 @@
     if (!event.ok || !event.marks) { const was = ga.lost; ga.lost = true; ga.okSince = 0; if (!was) gaAfterLive(); return; }
     const was = ga.lost;
     ga.lost = false;
-    // A câmera só conta como mexida quando as marcas saem de onde estavam no primeiro quadro (sem isso, as marcas
-    // da foto, que tem mais definição, continuam valendo)
-    const L = d.live || (d.live = { base: event.marks, moved: false });
+    // A câmera só conta como mexida quando as marcas da imagem ao vivo saem de onde estão na foto (sem isso, as marcas
+    // da foto, que tem mais definição, continuam valendo). A imagem ao vivo pode ter outra proporção (foto 16:9, visor
+    // 3:2): a largura é a mesma, então a altura é convertida antes de comparar.
+    const L = d.live || (d.live = { moved: false });
     L.marks = event.marks; L.w = event.width; L.h = event.height;
-    if (!L.moved && event.marks.some((m, k) => Math.hypot(m[0] - L.base[k][0], m[1] - L.base[k][1]) > 0.004)) L.moved = true;
+    if (!L.moved && d.tried) {  // (logo depois de um Fire again as marcas da foto ainda estão sendo procuradas: espera)
+      const k = d.w && d.h ? (L.h / L.w) / (d.h / d.w) : 1;
+      L.moved = !d.found || !d.marks || event.marks.some((m, i) => Math.hypot(m[0] - d.marks[i][0], 0.5 + (m[1] - 0.5) * k - d.marks[i][1]) > 0.006);
+    }
     if (L.moved) alSolve(true); else if (was) gaAfterLive(); else { gaPush(); gaAuto(); }
   }
   window.aimAction = function (text) {

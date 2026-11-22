@@ -121,7 +121,7 @@ mentira são mais limpas que fotos de verdade: a medida que vale é a das fotos 
 
 A mesma conta roda nos quadros da imagem ao vivo: o programa procura as marcas da foto de referência (a dos cliques)
 em cada quadro e a página refaz as instruções. A imagem ao vivo é menor que a foto; como a conta compara tamanhos em
-pixels, as marcas do quadro entram na conta na largura da foto. Uma câmera só conta como mexida quando as marcas saem
-de onde estavam no primeiro quadro (mais de 0,4% da imagem); até lá valem as marcas da foto, que tem mais definição.
+pixels, as marcas do quadro entram na conta na largura da foto. Uma câmera só conta como mexida quando as marcas do quadro saem
+de onde estão na foto (mais de 0,6% da imagem); até lá valem as marcas da foto, que tem mais definição.
 O alinhamento guardado sai sempre das fotos: depois de mexer com o Live aim é preciso um Fire again.
 Nesta parte só as câmeras simuladas têm imagem ao vivo (`FakeScene::RigCamera` com `fixed` de 0 a 1).

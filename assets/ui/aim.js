@@ -42,8 +42,14 @@
     $("gaInfo").textContent = (st.ready ? "All " + st.total + " cameras ready" : "Camera " + st.index + " of " + st.total) + (live ? " · live" : "");
     // As abas só são refeitas quando mudam (um clique não se perde no meio de um quadro ao vivo)
     const tabs = (st.tabs || []).map((t) => '<button type="button" data-camera="' + esc(t.camera) + '" class="' + t.state + (t.camera === st.camera ? " here" : "") + '">' +
-      pad(t.order) + (t.state === "done" ? " · READY" : t.state === "needs" ? " · CHANGE" : "") + "</button>").join("");
-    if (S.tabsHtml !== tabs) { S.tabsHtml = tabs; $("gaProg").innerHTML = tabs; }
+      pad(t.order) + (t.state === "done" ? "<i> · READY</i>" : t.state === "needs" ? "<i> · CHANGE</i>" : "") + "</button>").join("");
+    if (S.tabsHtml !== tabs) {
+      S.tabsHtml = tabs;
+      $("gaProg").innerHTML = tabs;
+      // (com as abas só no número, o estado aparece ao parar o mouse)
+      $("gaProg").querySelectorAll("button").forEach((b) => { b.title = "Camera " + b.textContent.replace(" · ", ": ").replace("READY", "ready").replace("CHANGE", "needs a change"); });
+      fitTabs();
+    }
     const lines = $("gaLines");
     lines.innerHTML = "";
     (st.lines || []).forEach(([cls, text]) => { const li = document.createElement("li"); li.className = cls; li.textContent = text; lines.appendChild(li); });
@@ -97,6 +103,14 @@
     if (a.tilt) html += '<span class="al-arrow" style="left:47.5%;top:' + (a.tilt > 0 ? 24 : 58) + '%">' + (a.tilt > 0 ? "↑" : "↓") + "</span>";
     host.innerHTML = html;
   }
+  // Muitas câmeras: quando o texto não cabe nas abas, fica só o número (a cor continua dizendo o estado) e, se
+  // ainda assim não couber, as abas quebram em mais de uma linha
+  function fitTabs() {
+    const prog = $("gaProg");
+    prog.classList.remove("compact");
+    const tight = Array.from(prog.children).some((b) => b.scrollWidth > b.clientWidth + 1);
+    prog.classList.toggle("compact", tight);
+  }
   // A imagem no maior tamanho que cabe na coluna, sem deformar
   function fit() {
     const box = $("gaPhotoBox"), ph = $("gaPhoto");
@@ -110,7 +124,7 @@
       s.style.transform = "rotate(" + (-Math.atan2(bx - ax, by - ay) * 180 / Math.PI) + "deg)";
     });
   }
-  window.addEventListener("resize", fit);
+  window.addEventListener("resize", () => { fitTabs(); fit(); });
 
   window.aimState = function (state) { S.state = state || null; render(); };
   window.onCoreEvent = function (event) {
@@ -137,7 +151,7 @@
     $("gaOnTopLabel").classList.toggle("hidden", S.opts.display === "full");
     $("gaChangeDisplay").classList.toggle("hidden", !(S.opts.display === "full" && S.screens.length > 1));
     root.classList.toggle("full", S.opts.display === "full");
-    requestAnimationFrame(fit);
+    requestAnimationFrame(() => { fitTabs(); fit(); });
   }
   function setOpts(change, silent) {
     const before = JSON.stringify([S.opts.display, S.opts.screen, S.opts.onTop]);

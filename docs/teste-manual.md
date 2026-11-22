@@ -2215,6 +2215,9 @@ sozinho em uns 10 segundos (como se alguém estivesse mexendo nela).
       tem **Identify displays** e, depois, **Change display**. Esc sai da tela cheia; Esc de novo fecha a janela.
 - [ ] Fechar a janela Guided aim e clicar **Guided aim** de novo: ela volta. **Cancel** no Align cameras fecha a janela
       junto.
+- [ ] Muitas câmeras, com `STILLPOINT_FAKE_CAMERAS=24 STILLPOINT_FAKE_PHOTOS=pole STILLPOINT_FAKE_FIXED=odd
+      STILLPOINT_FAKE_LIVE_STEP=1` (as ímpares já começam boas e cada câmera se acerta em um instante): as abas
+      mostram só o número, em verde ou âmbar; com `STILLPOINT_FAKE_CAMERAS=64` elas ocupam mais de uma linha.
 - [ ] Windows: os itens acima.
 - [ ] Câmeras de verdade (pendente até o dono avisar que tem o material): nesta parte elas não têm imagem ao vivo; a
       janela mostra **No live image** e a última foto, e as instruções mudam a cada **Fire again**. A conferir na

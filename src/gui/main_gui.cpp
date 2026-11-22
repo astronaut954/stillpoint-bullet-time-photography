@@ -1235,6 +1235,12 @@ namespace
         // vivo vai acertando a câmera sozinha; as fotos seguintes (Fire again) saem com o mesmo acerto.
         std::mutex fakeFixMutex;
         std::map<int, double> fakeFix;
+        // STILLPOINT_FAKE_FIXED=odd (ou all): essas câmeras simuladas já começam acertadas, para ver de uma vez o
+        // Guided aim com muitas câmeras, umas boas e outras por acertar, sem esperar
+        if (const char* fixed = std::getenv("STILLPOINT_FAKE_FIXED"); fixed && fakePole)
+            for (int n = 1; n <= fakeCount; ++n)
+                if (std::string(fixed) == "all" || (std::string(fixed) == "odd" && n % 2 == 1))
+                    fakeFix[n] = 1.0;
         // STILLPOINT_FAKE_FOCAL=35 ou 35,35,50,35: a distância focal (mm) que as fotos da haste dizem ter, uma para todas
         // ou uma por câmera simulada (para testar o aviso de zoom mudado; etapa 21, parte 5)
         std::vector<double> fakeFocal;
