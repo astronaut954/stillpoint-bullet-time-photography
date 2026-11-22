@@ -1217,6 +1217,13 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      Mais dois ajustes do dono (2026-11-22): a lente segue o ponteiro com um pequeno atraso (movimento suave; a
      etiqueta e o clique continuam valendo para a câmera embaixo do ponteiro) e a curva ficou mais acentuada (pico
      mais alto e mais largo, e o resto do mapa apagado enquanto a lupa está aberta).
+     Teste do dono (2026-11-22): a animação dos traços tremia. Causas prováveis (inferência): traços apertados a
+     menos de 1 px na borda da lente e o brilho mudando em degrau. Refeito: a lente não aperta nenhum traço a menos da
+     metade da largura, o brilho muda aos poucos, e cada traço é posto no lugar pelo `aim.js` (posição exata, sem a
+     soma de arredondamentos da linha flexível). Falta o dono ver se parou de tremer.
+     Pedido do dono: a marca do trecho à mostra no mapa não está boa. Protótipo com quatro formas (A moldura; B o
+     resto apagado; C barra embaixo; D funil até as abas), todas com um traço branco na câmera da tela:
+     https://claude.ai/artifact/Lh5LyHcYAyUrwd4F3cLR2L. Aguardando a escolha.
      **Decisões do dono (2026-11-22):** mostrar o andamento nas esperas longas (a fazer, com protótipo antes); não
      juntar as linhas do aviso do rig; confirmadas as três escolhas provisórias do Guided aim: Review alignment
      apagado até um Fire again depois de mexer com o Live aim, a janela não troca de câmera sozinha com o Live aim

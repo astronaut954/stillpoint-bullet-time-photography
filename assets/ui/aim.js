@@ -163,6 +163,7 @@
       const x = t.offsetLeft - prog.offsetLeft + t.offsetWidth / 2;
       if (marks[i]) marks[i].classList.toggle("win", x >= a && x <= b);
     });
+    lensLayout();  // (o brilho dos traços depende de estarem no trecho à mostra)
   }
   function slideTabs(dir) {
     const prog = $("gaProg");
@@ -181,7 +182,7 @@
       s.style.transform = "rotate(" + (-Math.atan2(bx - ax, by - ay) * 180 / Math.PI) + "deg)";
     });
   }
-  window.addEventListener("resize", () => { fitTabs(); fit(); });
+  window.addEventListener("resize", () => { fitTabs(); fit(); lensLayout(); });
 
   window.aimState = function (state) { S.state = state || null; render(); };
   window.onCoreEvent = function (event) {
@@ -211,29 +212,48 @@
     const mini = $("gaMini"), n = mini.children.length;
     return n ? Math.max(0, Math.min(n - 1, Math.floor(pos / mini.clientWidth * n))) : -1;
   }
+  // A forma da lente: quanto cada ponto se abre (até uns 3,6x no meio) ou se aperta (no máximo até a metade, na
+  // borda da lente), em função da distância ao centro (0 a 1). A soma dá 1: o que abre no meio é compensado em
+  // volta, e fora da lente nada sai do lugar. Sem apertar mais que a metade: traços finos demais tremiam na tela
+  // (teste do dono, 2026-11-22). LENS_G[j] = para onde vai o ponto j/LENS_N, com a lente toda aberta.
+  const LENS_N = 240, LENS_MIN = 0.5, LENS_SIGMA = 0.18, LENS_G = (() => {
+    const bump = (t) => Math.exp(-(t / LENS_SIGMA) * (t / LENS_SIGMA));
+    let area = 0;
+    for (let j = 0; j < LENS_N; ++j) area += bump((j + 0.5) / LENS_N) / LENS_N;
+    const peak = (1 - LENS_MIN) / area, g = [0];
+    for (let j = 0; j < LENS_N; ++j) g.push(g[j] + (LENS_MIN + peak * bump((j + 0.5) / LENS_N)) / LENS_N);
+    return g.map((v) => v / g[LENS_N]);
+  })();
+  const lensG = (t) => { const x = Math.min(1, Math.max(0, t)) * LENS_N, j = Math.min(LENS_N - 1, Math.floor(x)); return LENS_G[j] + (LENS_G[j + 1] - LENS_G[j]) * (x - j); };
+  // Os traços do mapa são postos no lugar aqui (posição, largura, altura e brilho de cada um), com ou sem a lupa
   function lensLayout() {
     const mini = $("gaMini"), tip = $("gaTip"), marks = mini.children, n = marks.length;
-    const k = S.lensK, on = k > 0 && S.lensPos >= 0 && n > 0;
-    mini.classList.toggle("lensing", on);
-    if (!on) {
-      for (let i = 0; i < n; ++i) { marks[i].style.flex = ""; marks[i].style.height = ""; marks[i].style.marginRight = ""; marks[i].classList.remove("lens"); }
-      tip.classList.add("hidden");
-      return;
-    }
-    const W = mini.clientWidth, w = W / n, m = S.lensPos, R = Math.max(80, 10 * w), D = 5 * k;
+    const W = mini.clientWidth;
+    if (!n || !W) { tip.classList.add("hidden"); return; }
+    const k = S.lensPos >= 0 ? S.lensK : 0, w = W / n, m = S.lensPos, R = Math.max(110, 14 * w);
     // (perto de uma ponta do mapa a lente encolhe desse lado: as pontas não saem do lugar)
-    const f = (x) => { const d = x - m, a = Math.abs(d), r = Math.min(R, d < 0 ? m : W - m); if (a >= r || r <= 0) return x; const t = a / r; return m + Math.sign(d) * r * ((D + 1) * t) / (D * t + 1); };
+    const f = (x) => {
+      if (k <= 0) return x;
+      const d = x - m, a = Math.abs(d), r = Math.min(R, d < 0 ? m : W - m);
+      if (a >= r || r <= 0) return x;
+      const t = a / r;
+      return m + Math.sign(d) * r * (t + k * (lensG(t) - t));
+    };
     let left = f(0);
     for (let i = 0; i < n; ++i) {
-      const right = f((i + 1) * w), size = right - left, gap = Math.min(1, size / 2);
-      const near = Math.max(0, 1 - Math.abs((left + right) / 2 - m) / R);
-      marks[i].style.flex = "0 0 " + (size - gap).toFixed(2) + "px";
-      marks[i].style.marginRight = gap.toFixed(2) + "px";
+      const right = f((i + 1) * w), size = right - left, gap = Math.min(1, size * 0.22);
+      const near = k > 0 ? Math.max(0, 1 - Math.abs((left + right) / 2 - m) / (R * 0.6)) : 0, lit = near * near * (3 - 2 * near);
+      const st = marks[i].style, cls = marks[i].classList;
+      st.left = left.toFixed(2) + "px";
+      st.width = (size - gap).toFixed(2) + "px";
       // (curva acentuada: o pico bem mais alto que os vizinhos; pedido do dono, 2026-11-22)
-      marks[i].style.height = (12 + 28 * k * Math.pow(near, 1.7)).toFixed(1) + "px";
-      marks[i].classList.toggle("lens", near > 0);
+      st.height = (12 + 28 * k * Math.pow(near, 1.7)).toFixed(2) + "px";
+      // Com a lupa aberta, o resto do mapa apaga um pouco e os traços da lente acendem (sem degrau: o brilho muda aos poucos)
+      const normal = cls.contains("needs") || cls.contains("win") ? 1 : 0.55, dim = cls.contains("needs") ? 0.6 : 0.28, base = normal + (dim - normal) * k;
+      st.opacity = (base + (1 - base) * lit).toFixed(3);
       left = right;
     }
+    if (k <= 0) { tip.classList.add("hidden"); return; }
     // A etiqueta diz a câmera embaixo do ponteiro (a lente chega um instante depois)
     const t = S.state && S.state.tabs ? S.state.tabs[miniIndex(S.lensMouse)] : null;
     tip.classList.toggle("hidden", !t || !S.lensWant);
@@ -307,7 +327,7 @@
     $("gaOnTopLabel").classList.toggle("hidden", S.opts.display === "full");
     $("gaChangeDisplay").classList.toggle("hidden", !(S.opts.display === "full" && S.screens.length > 1));
     root.classList.toggle("full", S.opts.display === "full");
-    requestAnimationFrame(() => { fitTabs(); fit(); });
+    requestAnimationFrame(() => { fitTabs(); fit(); lensLayout(); });
   }
   function setOpts(change, silent) {
     const before = JSON.stringify([S.opts.display, S.opts.screen, S.opts.onTop]);
