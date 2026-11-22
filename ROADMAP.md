@@ -1270,6 +1270,15 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      cada quadro). O erro existia desde a primeira versão com animação; as tentativas anteriores mexeram em outras
      coisas. Corrigido; medido depois: cada traço sobe e desce uma vez só, e parado não varia. Junto: a altura deixou
      de ser arredondada para pixels inteiros e o alvo da lupa ganhou folga de 2 px (o tremor da mão não mexe a lupa).
+     **Testes do dono no Mac (2026-11-22), ok:** arrastar no mapa; clicar nas bolas logo ao abrir o passo 2; a tela
+     de espera "Finding the marks"; o aviso do rig com muitas câmeras; a faixa de abas sem o mapa; Live aim off e
+     Fire again com Review alignment; tela cheia, Esc, reabrir e Cancel. Defeito achado por ele: com menos de 50
+     câmeras (faixa sem o mapa) as setas ‹ › ficavam apagadas, porque as medidas da faixa só eram tiradas com o mapa
+     à mostra. Corrigido.
+     Tela de espera (forma B) também nas fotos: no **Test shot** simples e no **Fire** / **Fire again** do Align
+     cameras, "Taking a photo with each camera" e depois "Receiving photos" com a barra, "n of N photos" e o tempo
+     que falta (avisos `waitingDownloads` e `downloadProgress`, que já existiam). O Match automatically continua com
+     as mensagens dele.
      **Ok do dono (2026-11-22): a lupa parou de tremer.** A largura ampliada (protótipo A) saiu numa das tentativas;
      pode voltar se o dono quiser (decisão em aberto).
    - **Parte 6b, a fazer:** a imagem ao vivo das câmeras Canon de verdade (o processo de cada câmera em `src/worker`

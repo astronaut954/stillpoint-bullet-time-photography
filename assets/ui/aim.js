@@ -249,15 +249,17 @@
     const mini = $("gaMini"), frame = $("gaFrame"), tip = $("gaTip"), prog = $("gaProg"), marks = mini.children;
     const dpr = window.devicePixelRatio || 1;
     G.snap = (v) => Math.round(v * dpr) / dpr;
+    // (as medidas da faixa valem também sem o mapa, com menos de 50 câmeras: sem elas as setas ‹ › ficavam apagadas;
+    // teste do dono, 2026-11-22)
+    G.cw = prog.clientWidth; G.sw = prog.scrollWidth;
     G.n = mini.classList.contains("hidden") ? 0 : marks.length;
     G.W = G.n ? mini.clientWidth : 0;
-    if (!G.n || !G.W || !prog.classList.contains("strip")) { G.n = 0; frame.classList.add("hidden"); tip.classList.add("hidden"); return; }
+    if (!G.n || !G.W || !prog.classList.contains("strip")) { G.n = 0; frame.classList.add("hidden"); tip.classList.add("hidden"); stripChanged(); return; }
     G.w = G.W / G.n;
     G.R = Math.max(66, 8.4 * G.w);
     frame.classList.remove("hidden");
     const host = frame.offsetParent.getBoundingClientRect(), box = mini.getBoundingClientRect();
     G.x0 = box.left - host.left; G.hostW = host.width; G.left = box.left;
-    G.cw = prog.clientWidth; G.sw = prog.scrollWidth;
     G.tabW = prog.children[0].offsetWidth; G.tab0 = prog.children[0].offsetLeft - prog.offsetLeft;
     G.tabStep = G.n > 1 ? prog.children[1].offsetLeft - prog.children[0].offsetLeft : G.tabW;
     // bordas em pixels inteiros da tela (os vãos entre os traços ficam sempre iguais)

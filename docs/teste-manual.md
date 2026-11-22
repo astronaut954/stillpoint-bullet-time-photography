@@ -2231,6 +2231,9 @@ sozinho em uns 10 segundos (como se alguém estivesse mexendo nela).
       chegando): os três cliques ficam marcados.
 - [ ] Depois do terceiro clique: a tela de espera cobre o passo com "Finding the marks", a barra, "n of N photos" e o
       tempo que falta; some quando termina.
+- [ ] **Test shot** (no Camera settings) e **Fire** / **Fire again** (no Align cameras): a tela de espera mostra
+      "Taking a photo with each camera" e depois "Receiving photos" com a barra e "n of N photos".
+- [ ] Com 40 câmeras (faixa de abas sem o mapa): as setas **‹** e **›** nas pontas da faixa funcionam.
 - [ ] Windows: os itens acima.
 - [ ] Câmeras de verdade (pendente até o dono avisar que tem o material): nesta parte elas não têm imagem ao vivo; a
       janela mostra **No live image** e a última foto, e as instruções mudam a cada **Fire again**. A conferir na

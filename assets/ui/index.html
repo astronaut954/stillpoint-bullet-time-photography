@@ -321,7 +321,10 @@
         <p>Settings of each camera, read from the camera. Change a value in <b>All cameras</b> to set it on every camera, or change one camera only. <b>Test shot</b> fires all cameras to show how the photos look. With <b>Match automatically</b> on, it also changes the cameras so they look alike.</p>
       </div>
       <!-- Teste rápido: uma foto de cada câmera, só para conferir (não é salva) -->
-      <div id="csTestBox" class="cs-test hidden"><div id="csGallery" class="gallery"></div></div>
+      <div id="csTestBox" class="cs-test hidden"><div id="csGallery" class="gallery"></div>
+        <!-- A tela de espera do Test shot (forma B): cobre a área enquanto as fotos são tiradas e chegam -->
+        <div id="csWait" class="al-wait cs-wait"><span class="big" id="csWaitTitle"></span><div class="al-wait-bar"><i id="csWaitBar"></i></div><span class="al-wait-line" id="csWaitLine"></span></div>
+      </div>
       <div id="csBody" class="cs-body"></div>
       <!-- Match automatically em três passos: escolher, foto de teste, revisar (nada muda antes do Apply) -->
       <div id="csMatch" class="cs-match hidden">

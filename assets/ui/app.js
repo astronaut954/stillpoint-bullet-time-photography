@@ -2865,8 +2865,7 @@
     if (al.step === 1) {
       alHead("Align cameras", "Line the cameras up each time you set up the rig. Stand a stick with three marks where the subject will be, then fire.", 1);
       main.className = "ts-main";
-      if (al.firing) { main.innerHTML = '<div class="al-msg">' + alEsc(al.msg || "Taking a photo with each camera") + "</div>"; }
-      else {
+      {
         main.innerHTML = '<div class="al-cols"><div><div class="al-title">Use any of these</div><div class="al-objs al-objs-3">' +
           AL_OBJ.map(([t, s, g]) => '<div class="al-obj"><svg viewBox="0 0 120 200" aria-hidden="true">' + g + "</svg><b>" + t + "</b><span>" + s + "</span></div>").join("") +
           '</div><div class="al-bands"><span>No tape or balls? Print three orange bands and a spacing ruler, and wrap them around any of these.</span><button type="button" class="btn btn-secondary btn-small" id="csAlignBands">Save bands (PDF)</button></div>' +
@@ -2880,6 +2879,7 @@
           if (r && !r.ok && !r.cancelled) toast("The bands could not be saved there. Choose another folder.");
         }).catch(() => { bands.disabled = false; });
       });
+      if (al.firing) alWait(main);
       const n = alConnected().length;
       alFoot(plural(n, "camera", "cameras"), al.firing ? [["Cancel", "btn-secondary", alCancelFire]] :
         // Com fotos do Test shot na tela, dá para usar essas e não fotografar de novo (decisão do dono, 2026-11-16, opção C)
@@ -3023,17 +3023,33 @@
     const o = document.createElement("div");
     o.className = "al-wait";
     o.id = "csAlignWait";
-    o.innerHTML = '<span class="big">Finding the marks</span><div class="al-wait-bar"><i id="csAlignWaitBar"></i></div><span class="al-wait-line" id="csAlignWaitLine"></span>';
+    o.innerHTML = '<span class="big" id="csAlignWaitTitle"></span><div class="al-wait-bar"><i id="csAlignWaitBar"></i></div><span class="al-wait-line" id="csAlignWaitLine"></span>';
     main.appendChild(o);
     alWaitShow();
   }
-  function alWaitShow() {
-    const bar = $("csAlignWaitBar"), line = $("csAlignWaitLine"), g = al.progress;
-    if (!bar || !line) return;
+  // A mesma tela de espera vale para as fotos (Fire, Fire again): "Taking a photo with each camera" e, quando as
+  // fotos começam a chegar, "Receiving photos" com a barra e a contagem (avisos waitingDownloads e downloadProgress)
+  function waitFill(title, bar, line, text, g) {
+    if (!title || !bar || !line) return;
+    title.textContent = text;
     if (!g || !g.total) { bar.style.width = "0"; line.textContent = ""; return; }
     bar.style.width = (g.done / g.total * 100) + "%";
     const left = g.done > 0 && g.done < g.total ? Math.round((Date.now() - g.since) / g.done * (g.total - g.done) / 1000) : 0;
     line.innerHTML = "<b>" + g.done + " of " + g.total + "</b> " + (g.total === 1 ? "photo" : "photos") + (left >= 2 ? " · about " + left + " seconds left" : "");
+  }
+  function alWaitShow() {
+    const finding = al.busy;
+    waitFill($("csAlignWaitTitle"), $("csAlignWaitBar"), $("csAlignWaitLine"),
+      finding ? "Finding the marks" : csTest.wait && csTest.wait.title || "Taking a photo with each camera", finding ? al.progress : csTest.wait);
+  }
+  // O andamento das fotos do Test shot (também o do Fire e do Fire again do Align cameras)
+  function csWaitSet(title, done, total) {
+    if (!csTest.capturing) return;
+    const w = csTest.wait || (csTest.wait = { title: "", done: 0, total: 0, since: 0 });
+    w.title = title;
+    if (total) { if (!w.since) w.since = Date.now(); w.done = done; w.total = total; }
+    waitFill($("csWaitTitle"), $("csWaitBar"), $("csWaitLine"), w.title, w);
+    if (al.open && al.firing && !al.busy) alWaitShow();
   }
   function alProgress(event) {
     if (!al.busy || !al.progress) return;
@@ -3511,7 +3527,7 @@
     }
     w.appendChild(view);
     main.appendChild(w);
-    if (al.busy) alWait(main);
+    if (al.busy || al.firing) alWait(main);
     requestAnimationFrame(() => alPlaceLines(main));
     const need = al.photos.filter((p) => alBad(p.camera)).length;
     const allMarked = al.photos.length > 0 && al.photos.every((p) => (al.data[p.camera] || {}).found) && Object.keys(al.solved).length === al.photos.length;
@@ -7605,13 +7621,13 @@
     },
     waitingDownloads() {
       activity.busyText = "Receiving photos";
-      if (orderCapture()) return captureGallery().message("Receiving photos");
+      if (orderCapture()) { csWaitSet("Receiving photos", 0, 0); return captureGallery().message("Receiving photos"); }
       ui.progress.textContent = "Receiving photos";
     },
     downloadProgress(e) {
       const text = "Receiving photos, " + e.done + " of " + e.total;
       activity.busyText = text;
-      if (orderCapture()) return captureGallery().message(text);
+      if (orderCapture()) { csWaitSet("Receiving photos", e.done, e.total); return captureGallery().message(text); }
       ui.progress.textContent = text;
     },
     downloadTimeout(e) {
@@ -9286,6 +9302,7 @@
       csTest.cancelling = true;
       window.cancelTest();
       csGallery.message("Cancelling");
+      csWaitSet("Cancelling", 0, 0);
       updateButtons();
       return;
     }
@@ -9329,6 +9346,10 @@
     csGallery.setItems([]);
     csGallery.setHead(match ? "Test shot · matching" : "Test shot", "");
     csGallery.message("Taking a photo with each camera");
+    // A tela de espera (forma B) no Test shot simples; o Match automatically tem as mensagens dele
+    csTest.wait = null;
+    $("csTestBox").classList.toggle("waiting", !match);
+    csWaitSet("Taking a photo with each camera", 0, 0);
     csTest.before = match ? csSnapshot() : null;  // para desfazer o Match automatically de uma vez
     if (match) window.autoMatch(intValue(ui.downloadWait, 1, 10), $("csCard").checked ? 1 : 0, csMatchFlags(), csMatchTargets());
     else window.takeOrderPhotos(intValue(ui.downloadWait, 1, 10));
