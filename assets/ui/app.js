@@ -2945,7 +2945,20 @@
         if (!d || !url) return;
         d.url = url;
         const probe = new Image();
-        probe.onload = () => { if (!d.w) { d.ratio = probe.naturalWidth / probe.naturalHeight; } alRenderSoon(); };
+        probe.onload = () => {
+          const before = d.ratio;
+          if (!d.w) d.ratio = probe.naturalWidth / probe.naturalHeight;
+          // No passo 2 só a linha desta câmera é atualizada: redesenhar a tela a cada foto que chega fazia um clique
+          // dado nesse meio tempo se perder (teste do dono, 2026-11-22: clicar logo ao abrir não marcava)
+          const item = al.open && al.step === 2 ? Array.from($("csAlignMain").querySelectorAll(".ma-item")).find((it) => it.dataset.camera === p.camera) : null;
+          const thumb = item && item.querySelector(".al-photo");
+          if (thumb) {
+            thumb.style.backgroundImage = 'url("' + url + '")';
+            thumb.style.aspectRatio = String(d.w && d.h ? d.w / d.h : d.ratio || 1.5);
+            // (a foto grande pede a dela sozinha; só muda se a proporção for outra)
+            if (p.camera === al.sel && before !== d.ratio && !(al.clicks && al.clicks.camera === p.camera)) alRenderSoon();
+          } else alRenderSoon();
+        };
         probe.src = url;
       });
     });
@@ -2961,6 +2974,7 @@
     const first = !al.ref;
     const isRef = first || al.ref === camera;
     al.busy = true;
+    al.progress = null;
     al.msg = "Finding the marks";
     alRender();
     Promise.resolve(window.alignMark(JSON.stringify({ session: al.session, file: p.file, clicks, reference: isRef }))).then((r) => {
@@ -2978,6 +2992,7 @@
     const photos = al.photos.filter((p) => p.file && skip.indexOf(p.camera) < 0).map((p) => ({ camera: p.camera, file: p.file }));
     if (!photos.length) { alSolve(); alRender(); return; }
     al.busy = true;
+    al.progress = { done: 0, total: photos.length, since: Date.now() };
     al.msg = "Finding the marks in " + plural(photos.length, "photo", "photos");
     alRender();
     Promise.resolve(window.alignFind(JSON.stringify({ session: al.session, photos }))).then((list) => {
@@ -3001,6 +3016,31 @@
   // quiet: veio um quadro ao vivo; só refaz al.aim e não redesenha a tela se nada mudou no texto.
   const alMoved = (camera) => { const d = al.data[camera]; return !!(d && d.live && d.live.moved); };
   const alAim = (camera) => (al.aim && al.aim[camera]) || al.solved[camera];
+  // A tela de espera (decisão do dono, 2026-11-22, forma B): cobre o passo enquanto o app procura as marcas, com a
+  // barra e a contagem (aviso alignProgress, uma vez por foto) e uma estimativa do tempo que falta
+  function alWait(main) {
+    main.style.position = "relative";
+    const o = document.createElement("div");
+    o.className = "al-wait";
+    o.id = "csAlignWait";
+    o.innerHTML = '<span class="big">Finding the marks</span><div class="al-wait-bar"><i id="csAlignWaitBar"></i></div><span class="al-wait-line" id="csAlignWaitLine"></span>';
+    main.appendChild(o);
+    alWaitShow();
+  }
+  function alWaitShow() {
+    const bar = $("csAlignWaitBar"), line = $("csAlignWaitLine"), g = al.progress;
+    if (!bar || !line) return;
+    if (!g || !g.total) { bar.style.width = "0"; line.textContent = ""; return; }
+    bar.style.width = (g.done / g.total * 100) + "%";
+    const left = g.done > 0 && g.done < g.total ? Math.round((Date.now() - g.since) / g.done * (g.total - g.done) / 1000) : 0;
+    line.innerHTML = "<b>" + g.done + " of " + g.total + "</b> " + (g.total === 1 ? "photo" : "photos") + (left >= 2 ? " · about " + left + " seconds left" : "");
+  }
+  function alProgress(event) {
+    if (!al.busy || !al.progress) return;
+    al.progress.done = Math.max(al.progress.done, event.done | 0);
+    al.progress.total = event.total | 0;
+    alWaitShow();
+  }
   function alSolve(quiet) {
     const has = (p) => { const d = al.data[p.camera]; return d && d.found && d.marks && d.w; };
     const photo = (p) => ({ camera: p.camera, width: al.data[p.camera].w, height: al.data[p.camera].h, marks: al.data[p.camera].marks });
@@ -3449,7 +3489,7 @@
       under.className = "ma-under";
       const d = al.data[sel.camera] || {};
       let html = "<div><h4>Camera " + alNum(sel) + " · " + alEsc(sel.camera) + "</h4>", sideHtml = "";
-      if (al.busy) html += '<p class="al-hint">' + alEsc(al.msg || "Working") + "</p>";
+      if (al.busy) html += "";  // (a tela de espera cobre o passo: alWait)
       else if ((al.clicks && al.clicks.camera === sel.camera) || !d.found) {
         // A ordem dos cliques, de cima para baixo: feito (✓), o da vez (aceso) e os que faltam
         const done = al.clicks && al.clicks.camera === sel.camera ? al.clicks.points.length : 0;
@@ -3471,6 +3511,7 @@
     }
     w.appendChild(view);
     main.appendChild(w);
+    if (al.busy) alWait(main);
     requestAnimationFrame(() => alPlaceLines(main));
     const need = al.photos.filter((p) => alBad(p.camera)).length;
     const allMarked = al.photos.length > 0 && al.photos.every((p) => (al.data[p.camera] || {}).found) && Object.keys(al.solved).length === al.photos.length;
@@ -7873,6 +7914,7 @@
 
   // Guided aim: os quadros da imagem ao vivo e a janela aberta/fechada
   handlers.aimFrame = (event) => gaFrame(event);
+  handlers.alignProgress = (event) => alProgress(event);
   handlers.aimWindow = (event) => gaWindow(!!event.open);
   window.onCoreEvent = function (event) {
     const handler = handlers[event.type];

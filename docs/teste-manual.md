@@ -2227,6 +2227,10 @@ sozinho em uns 10 segundos (como se alguém estivesse mexendo nela).
       ("Camera 142 · change" ou "· ready"), com o traço mais alto bem embaixo do ponteiro; ao sair, os traços
       encolhem com uma animação curta; um clique leva àquela câmera.
 - [ ] Clicar no mapa, segurar e arrastar: a janela vai passando pelas câmeras embaixo do ponteiro.
+- [ ] No passo **2 Mark and aim**, clicar nas três bolas logo que a foto grande aparece (com as outras fotos ainda
+      chegando): os três cliques ficam marcados.
+- [ ] Depois do terceiro clique: a tela de espera cobre o passo com "Finding the marks", a barra, "n of N photos" e o
+      tempo que falta; some quando termina.
 - [ ] Windows: os itens acima.
 - [ ] Câmeras de verdade (pendente até o dono avisar que tem o material): nesta parte elas não têm imagem ao vivo; a
       janela mostra **No live image** e a última foto, e as instruções mudam a cada **Fire again**. A conferir na

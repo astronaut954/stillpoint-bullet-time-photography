@@ -5323,15 +5323,20 @@ namespace
                     jobs.push_back({ p.get("camera").asString(), alignPhotoPath(in.get("session").asString(), p.get("file").asString()) });
                 // Até 4 fotos ao mesmo tempo (cada foto de 24 MP ocupa ~70 MB na memória)
                 std::atomic<size_t> next{ 0 };
+                std::atomic<size_t> finished{ 0 };
                 auto work = [&]
                 {
                     for (size_t i = next++; i < jobs.size(); i = next++)
                     {
                         RgbFrame frame;
-                        if (jobs[i].path.empty() || !LoadPhotoRgb(jobs[i].path, frame)) continue;
-                        jobs[i].w = frame.width; jobs[i].h = frame.height;
-                        // (a foto de referência pode ter outro tamanho, RAW e JPEG: o Find leva isso em conta)
-                        jobs[i].found = AlignMarks::Find(alignRef->frame, alignRef->marks, frame, alignRef->wide);
+                        if (!jobs[i].path.empty() && LoadPhotoRgb(jobs[i].path, frame))
+                        {
+                            jobs[i].w = frame.width; jobs[i].h = frame.height;
+                            // (a foto de referência pode ter outro tamanho, RAW e JPEG: o Find leva isso em conta)
+                            jobs[i].found = AlignMarks::Find(alignRef->frame, alignRef->marks, frame, alignRef->wide);
+                        }
+                        // O andamento, para a tela de espera da página ("Finding the marks", n of N)
+                        listener.Emit(Json("alignProgress").Add("done", static_cast<int>(++finished)).Add("total", static_cast<int>(jobs.size())));
                     }
                 };
                 std::vector<std::thread> pool;

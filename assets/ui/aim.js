@@ -212,11 +212,11 @@
     const mini = $("gaMini"), n = mini.children.length;
     return n ? Math.max(0, Math.min(n - 1, Math.floor(pos / mini.clientWidth * n))) : -1;
   }
-  // A forma da lente: quanto cada ponto se abre (até uns 3,6x no meio) ou se aperta (no máximo até a metade, na
+  // A forma da lente: quanto cada ponto se abre (até uns 2,9x no meio) ou se aperta (no máximo até 0,6, na
   // borda da lente), em função da distância ao centro (0 a 1). A soma dá 1: o que abre no meio é compensado em
   // volta, e fora da lente nada sai do lugar. Sem apertar mais que a metade: traços finos demais tremiam na tela
   // (teste do dono, 2026-11-22). LENS_G[j] = para onde vai o ponto j/LENS_N, com a lente toda aberta.
-  const LENS_N = 240, LENS_MIN = 0.5, LENS_SIGMA = 0.18, LENS_G = (() => {
+  const LENS_N = 240, LENS_MIN = 0.6, LENS_SIGMA = 0.2, LENS_G = (() => {
     const bump = (t) => Math.exp(-(t / LENS_SIGMA) * (t / LENS_SIGMA));
     let area = 0;
     for (let j = 0; j < LENS_N; ++j) area += bump((j + 0.5) / LENS_N) / LENS_N;
@@ -240,16 +240,20 @@
       const t = a / r;
       return m + Math.sign(d) * r * (t + k * (lensG(t) - t));
     };
-    let left = f(0);
+    // Tudo cai em pixels inteiros da tela (bordas e alturas): com bordas "quebradas", os vãos escuros entre os traços
+    // mudavam de brilho a cada quadro enquanto a lente andava, e a lupa parecia tremer (teste do dono, 2026-11-22)
+    const dpr = window.devicePixelRatio || 1, snap = (v) => Math.round(v * dpr) / dpr;
+    let left = snap(f(0));
     for (let i = 0; i < n; ++i) {
-      const right = f((i + 1) * w), size = right - left, gap = Math.min(1, size * 0.22);
-      const near = k > 0 ? Math.max(0, 1 - Math.abs((left + right) / 2 - m) / (R * 0.6)) : 0, lit = near * near * (3 - 2 * near);
+      const right = snap(f((i + 1) * w)), size = right - left, gap = size >= 3 ? 1 : size >= 1.5 ? 1 / dpr : 0;
+      // A altura segue uma curva lisa em volta do centro da lente, com o topo achatado: o traço do meio não fica
+      // subindo e descendo quando a lente passa de um traço para o outro. Ainda acentuada (pedido do dono, 2026-11-22).
+      const far = k > 0 ? Math.min(1, Math.abs((left + right) / 2 - m) / (R * 0.6)) : 1, near = Math.pow(Math.cos(far * Math.PI / 2), 2.6), lit = near;
       const st = marks[i].style, cls = marks[i].classList;
-      st.left = left.toFixed(2) + "px";
-      st.width = (size - gap).toFixed(2) + "px";
-      // (curva acentuada: o pico bem mais alto que os vizinhos; pedido do dono, 2026-11-22)
+      st.left = left + "px";
+      st.width = Math.max(0, size - gap) + "px";
       const here = cls.contains("here"), win = cls.contains("win");
-      st.height = ((here ? 18 : 12) + 28 * k * Math.pow(near, 1.7)).toFixed(2) + "px";
+      st.height = snap((here ? 18 : 12) + 28 * k * near) + "px";
       if (win) { if (winL < 0) winL = left; winR = right - gap; }
       // Com a lupa aberta, o resto do mapa apaga um pouco e os traços da lente acendem (sem degrau: o brilho muda aos poucos)
       // (fora do trecho à mostra o mapa fica apagado; a câmera da tela, sempre acesa)
@@ -276,13 +280,11 @@
     tip.style.left = Math.max(8, Math.min(host.width - tip.offsetWidth - 8, box.left + lensGoal() - host.left - tip.offsetWidth / 2)) + "px";
     tip.style.top = (box.bottom - host.top + 8) + "px";
   }
-  // O centro da lente fica no meio do traço que está embaixo do ponteiro (não no ponteiro): com o ponteiro parado ou
-  // andando dentro de um traço, nada se mexe; ao passar para o traço vizinho, a lente dá um passo suave. Seguindo o
-  // ponteiro pixel a pixel, os traços ampliados corriam embaixo dele e a lupa parecia tremer (gravação do dono,
-  // 2026-11-22).
+  // O centro da lente vai para o ponteiro, com um pequeno atraso (movimento contínuo; prender a lente ao traço dava
+  // um anda-e-para a cada traço)
   function lensGoal() {
     const mini = $("gaMini"), n = mini.children.length;
-    return n ? (miniIndex(S.lensMouse) + 0.5) * mini.clientWidth / n : S.lensMouse;
+    return S.lensMouse;
   }
   function lensAnimate() {
     if (S.lensRaf) return;
@@ -293,7 +295,7 @@
       S.lensK = want > S.lensK ? Math.min(1, S.lensK + dt / 140) : Math.max(0, S.lensK - dt / 140);
       // O centro da lente vai atrás do ponteiro com um pequeno atraso (movimento suave; pedido do dono, 2026-11-22)
       const goal = lensGoal();
-      if (S.lensWant && S.lensPos >= 0) { S.lensPos += (goal - S.lensPos) * (1 - Math.exp(-dt / 90)); if (Math.abs(goal - S.lensPos) < 0.15) S.lensPos = goal; }
+      if (S.lensWant && S.lensPos >= 0) { S.lensPos += (goal - S.lensPos) * (1 - Math.exp(-dt / 110)); if (Math.abs(goal - S.lensPos) < 0.15) S.lensPos = goal; }
       if (!S.lensWant && S.lensK <= 0) S.lensPos = -1;
       lensLayout();
       S.lensRaf = S.lensK !== want || (S.lensWant && S.lensPos !== goal) ? requestAnimationFrame(step) : 0;

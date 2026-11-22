@@ -1236,8 +1236,18 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      Andamento nas esperas longas (decisão do dono de mostrar; pedido de protótipo em 2026-11-22, depois de notar
      que, após os três cliques, os botões ficam apagados sem nada indicando trabalho): três formas (A andamento
      embaixo da foto e a lista se preenchendo; B tela de espera por cima; C andamento no rodapé e a lista se
-     preenchendo): https://claude.ai/artifact/74AVjy988SPv8aUfbEPuin. Aguardando a escolha. Para A e C o programa
-     precisa avisar foto a foto (hoje o `alignFind` responde tudo de uma vez).
+     preenchendo): https://claude.ai/artifact/74AVjy988SPv8aUfbEPuin. **Decisão do dono (2026-11-22): forma B.**
+     Feito na procura das marcas: a tela de espera cobre o passo com "Finding the marks", a barra, "n of N photos" e
+     o tempo estimado (`alignFind` manda o aviso `alignProgress` a cada foto). A fazer: a mesma tela nas outras
+     esperas longas (Test shot / Fire again), que hoje não informam o andamento foto a foto.
+     Visto pelo agente ao testar: com os três cliques fora das marcas, a procura cai no modo lento (a foto inteira)
+     e, com 119 fotos, passou de 60 s; não há como cancelar. Em aberto.
+     Teste do dono (2026-11-22): clicar na bola logo ao abrir o passo 2 não marcava. Causa: a tela era redesenhada a
+     cada foto que chegava e o clique dado nesse meio tempo se perdia. Agora só a linha da câmera é atualizada.
+     Lupa ainda tremendo (terceira tentativa): bordas e alturas dos traços em pixels inteiros da tela (os vãos
+     escuros não mudam mais de brilho), curva de altura com o topo achatado (o traço do meio varia 1 px ao passar de
+     um traço a outro, antes uns 6), a lente de volta a seguir o ponteiro de forma contínua (presa ao traço dava
+     anda-e-para), ampliação na largura menor (2,9x) e etiqueta de largura fixa. Falta o dono ver.
    - **Parte 6b, a fazer:** a imagem ao vivo das câmeras Canon de verdade (o processo de cada câmera em `src/worker`
      e o protocolo): ligar o visor ao vivo, mandar os quadros e desligar antes de cada disparo. Só o dono consegue
      testar (câmeras reais).
