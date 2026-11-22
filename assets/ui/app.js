@@ -2747,7 +2747,7 @@
   const al = { open: false, step: 0, firing: false, session: "", photos: [], data: {}, sel: "", clicks: null, ref: "",
                solved: {}, aim: null, saved: null, busy: false, msg: "" };
   // Guided aim (parte 6): a janela, a câmera da vez e o Live aim
-  const ga = { open: false, cam: "", want: true, liveOn: false, none: false, lost: false, skipped: {}, okSince: 0, sig: "" };
+  const ga = { open: false, cam: "", want: true, liveOn: false, none: false, lost: false, wasBad: false, okSince: 0, sig: "" };
   const alEsc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const alNum = (cam) => pad(cam.order);
   const AL_SUB2 = "Fix what you can on each camera, then fire again. What you cannot fix (for example, the height) the app corrects in the photos when you save.";
@@ -3041,15 +3041,17 @@
   // quadros (aviso aimFrame) com as marcas achadas, e as instruções mudam enquanto a pessoa mexe na câmera.
   // Passa sozinha para a próxima câmera que precisa de ajuste quando a da vez fica boa por um instante.
   function gaList() { return al.photos.slice().sort((a, b) => a.order - b.order); }
-  // A próxima câmera que ainda precisa de ajuste, depois da da vez (dando a volta); as puladas ficam de fora
+  // A próxima câmera que ainda precisa de ajuste, depois da da vez (dando a volta)
   function gaCandidate() {
     const list = gaList(), i = list.findIndex((p) => p.camera === ga.cam);
     for (let k = 1; k < list.length; ++k) {
       const p = list[(i + k + list.length) % list.length];
-      if (p.file && !ga.skipped[p.camera] && alBad(p.camera)) return p.camera;
+      if (p.file && alBad(p.camera)) return p.camera;
     }
     return "";
   }
+  // O estado de uma câmera na aba dela: done (boa), needs (precisa de ajuste) ou "" (ainda sem marcas)
+  const gaTab = (camera) => (alBad(camera) ? "needs" : alAim(camera) ? "done" : "");
   function gaState() {
     const p = ga.open && al.open && al.step === 2 ? alPhotoOf(ga.cam) : null;
     if (!p) return { camera: "" };
@@ -3063,9 +3065,9 @@
       marks: L ? L.marks : !ga.liveOn && d.found ? d.marks : null,
       arrows: n && known ? { pan: Math.abs(n.pan) >= 1 ? n.pan : 0, tilt: Math.abs(n.tilt) >= 1 ? n.tilt : 0 } : {},
       lines: alLines(p.camera),
-      segments: list.map((q) => (q.camera === p.camera ? "cur" : alAim(q.camera) && !alBad(q.camera) ? "done" : "")),
+      tabs: list.map((q) => ({ camera: q.camera, order: q.order, state: gaTab(q.camera) })),
+      ready: list.length > 0 && list.every((q) => gaTab(q.camera) === "done"),
       live: { want: ga.want, on: ga.liveOn, none: ga.none },
-      done: !gaCandidate(),
     };
   }
   function gaPush() { if (typeof window.aimPush === "function") window.aimPush(JSON.stringify(gaState())); }
@@ -3093,6 +3095,7 @@
   function gaGo(camera) {
     ga.cam = camera;
     ga.okSince = 0; ga.lost = false; ga.none = false;
+    ga.wasBad = alBad(camera);  // só passa sozinha de uma câmera que precisava de ajuste (não de uma que a pessoa veio conferir)
     al.sel = camera;
     if (al.clicks && al.clicks.camera !== camera) al.clicks = null;
     gaLiveSet();
@@ -3101,7 +3104,7 @@
   function gaOpen() {
     if (!al.open || al.step !== 2 || !al.ref || typeof window.aimOpen !== "function") return;
     const first = gaList().find((p) => p.file && alBad(p.camera));
-    Object.assign(ga, { open: true, skipped: {}, want: true, okSince: 0, lost: false, none: false, cam: alBad(al.sel) || !first ? al.sel : first.camera });
+    Object.assign(ga, { open: true, want: true, okSince: 0, lost: false, none: false, cam: alBad(al.sel) || !first ? al.sel : first.camera });
     window.aimOpen();
     gaGo(ga.cam);
   }
@@ -3110,19 +3113,20 @@
     ga.open = false; ga.liveOn = false;
     if (typeof window.aimHide === "function") window.aimHide();
   }
-  // Next camera: vai para a próxima que precisa de ajuste (esta volta depois, se ainda precisar).
-  // Skip this camera: o mesmo, e esta não volta mais nesta rodada.
-  function gaNext(skip) {
+  // Previous camera / Next camera (decisão do dono, 2026-11-22): passam por todas as câmeras, na ordem, dando a volta,
+  // a qualquer momento (também depois que todas ficaram boas, para conferir). Um clique na aba leva direto à câmera.
+  function gaStep(dir) {
     if (!ga.open) return;
-    if (skip) ga.skipped[ga.cam] = true;
-    const next = gaCandidate();
-    if (next) gaGo(next); else gaPush();
+    const list = gaList().filter((p) => p.file), i = list.findIndex((p) => p.camera === ga.cam);
+    if (list.length < 2) return;
+    gaGo(list[(Math.max(0, i) + dir + list.length) % list.length].camera);
   }
   // A câmera da vez ficou boa (ao vivo) por um instante: passa sozinha para a próxima
   function gaAuto() {
     if (!ga.open || !ga.liveOn) return;
     const good = !!alAim(ga.cam) && !ga.lost && !alBad(ga.cam);
-    if (!good) { ga.okSince = 0; return; }
+    if (!good) { ga.okSince = 0; ga.wasBad = true; return; }
+    if (!ga.wasBad) return;
     if (!ga.okSince) { ga.okSince = Date.now(); return; }
     if (Date.now() - ga.okSince < 1200) return;
     const next = gaCandidate();
@@ -3148,8 +3152,9 @@
     let a = null;
     try { a = JSON.parse(text); } catch (e) { a = null; }
     if (!a || !ga.open) return;
-    if (a.type === "next") gaNext(false);
-    else if (a.type === "skip") gaNext(true);
+    if (a.type === "next") gaStep(1);
+    else if (a.type === "prev") gaStep(-1);
+    else if (a.type === "go") { if (a.camera !== ga.cam && alPhotoOf(a.camera)) gaGo(a.camera); }
     else if (a.type === "live") { ga.want = !ga.want; ga.lost = false; ga.okSince = 0; gaLiveSet(); gaPush(); }
   };
   // A janela foi fechada (ou aberta) do lado de lá

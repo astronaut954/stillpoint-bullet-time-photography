@@ -2150,10 +2150,12 @@ def scenario_guided_aim(t, name, photos):
         check(t, "guided aim: Live aim is on by itself: the live image, the LIVE tag and 'Camera n of 4 · live'", ok,
               A("() => [document.getElementById('gaInfo').textContent, document.getElementById('gaLiveTag').className, (document.getElementById('gaImg').getAttribute('src') || '').length]"))
         aim.screenshot(path=os.path.join(BUILD, "fail-guided-aim-window.png"))
-        check(t, "guided aim: one progress segment per camera, the current one marked",
-              A("() => document.querySelectorAll('#gaProg span').length === 4 && document.querySelectorAll('#gaProg span.cur').length === 1"))
-        check(t, "guided aim: Live aim on, Skip this camera, Next camera and the note about one camera at a time",
-              A("() => [...document.querySelectorAll('.ga-side button')].map(b => b.textContent).join('|')") == "● Live aim on|Skip this camera|Next camera"
+        tabs = lambda: A("() => [...document.querySelectorAll('#gaProg button')].map(b => b.textContent + (b.classList.contains('here') ? '*' : ''))")
+        check(t, "guided aim: one tab per camera with its number and state; the one on screen is filled (amber: it needs a change)",
+              len(tabs()) == 4 and tabs()[names.index(first)] == num(first) + " · CHANGE*" and sum(x.endswith("*") for x in tabs()) == 1
+              and A("() => { const b = document.querySelector('#gaProg button.here'); return b.classList.contains('needs') && getComputedStyle(b).borderRadius === '0px'; }"), tabs())
+        check(t, "guided aim: Live aim on, Previous camera, Next camera and the note about one camera at a time",
+              A("() => [...document.querySelectorAll('.ga-side button')].map(b => b.textContent).join('|')") == "● Live aim on|← Previous camera|Next camera →"
               and "one camera at a time" in A("() => document.querySelector('.ga-note').textContent"))
         check(t, "guided aim: the options bar is the one of the Live window (Display, Always on top, Close)",
               A("() => [...document.querySelectorAll('#gaTools .segmented button')].map(b => b.textContent + (b.classList.contains('on') ? '*' : '')).join('|')") == "Window*|Full screen"
@@ -2163,8 +2165,7 @@ def scenario_guided_aim(t, name, photos):
         second = [n for n in names if n in needs and n != first][0]
         ok = t.wait(lambda: A("() => document.getElementById('gaName').textContent") == "Camera %s · %s" % (num(second), second), 40)
         check(t, "guided aim: when the camera is right, it goes to the next one that needs a change by itself", ok, A("() => [document.getElementById('gaName').textContent, [...document.querySelectorAll('#gaLines li')].map(l => l.className + ':' + l.textContent)]"))
-        check(t, "guided aim: the camera that became right is marked as done in the progress",
-              A("() => [...document.querySelectorAll('#gaProg span')].map(s => s.className)")[names.index(first)] == "done", A("() => [...document.querySelectorAll('#gaProg span')].map(s => s.className)"))
+        check(t, "guided aim: the tab of the camera that became right says READY", tabs()[names.index(first)] == num(first) + " · READY", tabs())
         check(t, "guided aim: in the main window that camera shows Ready",
               t.wait(lambda: t.js("(c) => { const i = [...document.querySelectorAll('#csAlignMain .ma-item')].find(x => x.dataset.camera === c); return !!i && i.classList.contains('ready'); }", first), 5))
         check(t, "guided aim: after moving a camera with Live aim, 'Review alignment' asks to fire again",
@@ -2176,28 +2177,36 @@ def scenario_guided_aim(t, name, photos):
         cur = A("() => document.getElementById('gaName').textContent")
         time.sleep(2.0)
         check(t, "guided aim: with Live aim off the camera does not change by itself", A("() => document.getElementById('gaName').textContent") == cur)
-        # Next camera: vai para a próxima que precisa; Skip this camera: essa não volta
-        rest = [n for n in names if n in needs and n not in (first, second)]
-        if rest:
-            third = rest[0]
-            aim.click("#gaNext")
-            ok = t.wait(lambda: A("() => document.getElementById('gaName').textContent") == "Camera %s · %s" % (num(third), third), 5)
-            check(t, "guided aim: 'Next camera' goes to the next camera that needs a change", ok, A("() => document.getElementById('gaName').textContent"))
-            aim.click("#gaSkip")
-            after_skip = A("() => document.getElementById('gaName').textContent")
-            t.wait(lambda: A("() => document.getElementById('gaName').textContent") != "Camera %s · %s" % (num(third), third), 5)
-            after_skip = A("() => document.getElementById('gaName').textContent")
-            check(t, "guided aim: 'Skip this camera' leaves it", after_skip != "Camera %s · %s" % (num(third), third), after_skip)
-            # Liga o Live aim de novo: as câmeras que faltam ficam boas; a pulada não volta
-            aim.click("#gaLive")
-            ok = t.wait(lambda: A("() => document.getElementById('gaNext').disabled && document.getElementById('gaSkip').disabled"), 60)
-            segs = A("() => [...document.querySelectorAll('#gaProg span')].map(s => s.className)")
-            check(t, "guided aim: at the end only the skipped camera is left (Next and Skip turn off)", ok and segs[names.index(third)] != "done"
-                  and all(c in ("done", "cur") for k, c in enumerate(segs) if k != names.index(third)), segs)
+        # Next camera / Previous camera passam por todas, na ordem, dando a volta; a aba leva direto
+        name_of = lambda cam: "Camera %s · %s" % (num(cam), cam)
+        cur_cam = [n for n in names if name_of(n) == cur][0]
+        nxt = names[(names.index(cur_cam) + 1) % 4]
+        aim.click("#gaNext")
+        ok = t.wait(lambda: A("() => document.getElementById('gaName').textContent") == name_of(nxt), 5)
+        check(t, "guided aim: 'Next camera →' goes to the next camera in order", ok, A("() => document.getElementById('gaName').textContent"))
+        aim.click("#gaPrev")
+        aim.click("#gaPrev")
+        prv = names[(names.index(cur_cam) - 1) % 4]
+        ok = t.wait(lambda: A("() => document.getElementById('gaName').textContent") == name_of(prv), 5)
+        check(t, "guided aim: '← Previous camera' goes back, also to a camera that is already right (and stays there)", ok and prv == first, A("() => document.getElementById('gaName').textContent"))
+        aim.click("#gaProg button:nth-child(%d)" % (names.index(names[3]) + 1))
+        ok = t.wait(lambda: A("() => document.getElementById('gaName').textContent") == name_of(names[3]), 5)
+        check(t, "guided aim: a click on a camera's tab goes straight to that camera", ok and tabs()[3].endswith("*"), tabs())
+        # Liga o Live aim de novo: as câmeras que faltam ficam boas, uma depois da outra
+        aim.click("#gaLive")
+        ok = t.wait(lambda: A("() => document.getElementById('gaInfo').textContent") == "All 4 cameras ready · live", 90)
+        check(t, "guided aim: when every camera is right: 'All 4 cameras ready', every tab READY, and the buttons stay on",
+              ok and all("READY" in x for x in tabs()) and A("() => !document.getElementById('gaNext').disabled && !document.getElementById('gaPrev').disabled"), (A("() => document.getElementById('gaInfo').textContent"), tabs()))
+        shown = A("() => document.getElementById('gaName').textContent")
+        aim.click("#gaNext")
+        after = t.wait(lambda: A("() => document.getElementById('gaName').textContent") != shown, 5) and A("() => document.getElementById('gaName').textContent")
+        time.sleep(2.5)
+        check(t, "guided aim: at the end 'Next camera →' still goes through the cameras, and a camera that is right is not left by itself",
+              bool(after) and A("() => document.getElementById('gaName').textContent") == after, after)
         aim.screenshot(path=os.path.join(BUILD, "fail-guided-aim-end.png"))
         # Fire again: as fotos novas saem com as câmeras já acertadas; sem mexer depois, dá para rever o alinhamento
         t.button("Fire again")
-        ok = t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item.ready').length >= 3 && !/Finding|Taking/.test(document.querySelector('#csAlign').textContent)"), 60)
+        ok = t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item.ready').length === 4 && !/Finding|Taking/.test(document.querySelector('#csAlign').textContent)"), 60)
         check(t, "guided aim: after 'Fire again' the cameras fixed with Live aim show Ready in the photos too", ok,
               t.js("() => [...document.querySelectorAll('#csAlignMain .ma-item')].map(i => i.dataset.camera + ':' + i.className)"))
         time.sleep(1.5)

@@ -2193,30 +2193,32 @@ Com `STILLPOINT_FAKE_CAMERAS=9 STILLPOINT_FAKE_TAGS=1` (avisos de mentira nas c�
 Com `STILLPOINT_FAKE_CAMERAS=4 STILLPOINT_FAKE_PHOTOS=pole`. Nas câmeras simuladas, o Live aim "acerta" a câmera
 sozinho em uns 10 segundos (como se alguém estivesse mexendo nela).
 
-- [ ] **Camera settings** › **Test shot** › **Align cameras** › **Fire**: no passo **2 Mark and aim**, embaixo da foto
-      grande, à direita, o botão **Guided aim**, apagado até as três marcas serem clicadas.
-- [ ] Clicar as três marcas e depois **Guided aim**: abre outra janela, "Stillpoint · Guided aim", com "Camera 01 ·
-      nome" em cima, "Camera 1 of 4 · live" à direita, a barra de progresso (um trecho por câmera, o da vez em âmbar),
-      a imagem com a etiqueta vermelha **● LIVE**, as marcas e as setas, e à direita as instruções em letra grande, o
-      botão **● Live aim on**, **Skip this camera** e **Next camera**.
-- [ ] Sem tocar em nada: as instruções vão ficando verdes e a janela passa sozinha para a próxima câmera; o trecho da
-      câmera que ficou boa fica verde. Na janela principal a mesma câmera fica escolhida na lista e a que ficou boa
-      mostra **Ready**.
+- [x] **Camera settings** › **Test shot** › **Align cameras** › **Use the Test shot photos**: no passo **2 Mark and
+      aim**, embaixo da foto grande, o botão **Guided aim** termina na borda direita da foto, na linha do nome da
+      câmera; apagado até as três marcas serem clicadas.
+- [x] Clicar as três marcas e depois **Guided aim**: abre a janela "Stillpoint · Guided aim" com a imagem ao vivo
+      (etiqueta **● LIVE**), as marcas, as setas e as instruções; sem tocar em nada, ela passa sozinha para a próxima
+      câmera que precisa de ajuste.
+- [x] **Close** (barra de baixo, aparece com o mouse) fecha a janela.
+- [ ] Em cima, uma aba por câmera: "01 · CHANGE" em âmbar (precisa de ajuste) ou "01 · READY" em verde (boa); a da
+      câmera que está na tela fica cheia. À direita do nome, "Camera 2 of 4 · live".
+- [ ] Clicar na aba de outra câmera leva direto a ela.
+- [ ] **← Previous camera** e **Next camera →** passam por todas as câmeras, na ordem, dando a volta.
+- [ ] Quando todas ficam boas: todas as abas "READY", "All 4 cameras ready · live" à direita do nome, e os dois botões
+      continuam acesos para conferir cada câmera; numa câmera boa a janela não sai sozinha.
 - [ ] **● Live aim on**: vira **Live aim off**, some a etiqueta **● LIVE** e aparece a última foto; a janela para de
       trocar de câmera sozinha. Clicar de novo liga.
-- [ ] **Next camera** e **Skip this camera** trocam de câmera; a câmera pulada não volta.
 - [ ] Na janela principal, depois que o Live aim mexeu numa câmera, **Review alignment** fica apagado (o mouse em cima
       diz para disparar de novo); **Fire again** tira fotos novas, as câmeras acertadas aparecem **Ready** e **Review
       alignment** acende.
-- [ ] Mexer o mouse na janela Guided aim: aparece a barra de baixo com **Display** (**Window**, **Full screen**),
-      **Always on top** e **Close**. **Full screen** deixa tudo maior; com dois monitores pergunta "Full screen on
-      which display?" e tem **Identify displays** e, depois, **Change display**. Esc sai da tela cheia; Esc de novo
-      fecha a janela.
+- [ ] Barra de baixo: **Full screen** deixa tudo maior; com dois monitores pergunta "Full screen on which display?" e
+      tem **Identify displays** e, depois, **Change display**. Esc sai da tela cheia; Esc de novo fecha a janela.
 - [ ] Fechar a janela Guided aim e clicar **Guided aim** de novo: ela volta. **Cancel** no Align cameras fecha a janela
       junto.
 - [ ] Windows: os itens acima.
 - [ ] Câmeras de verdade (pendente até o dono avisar que tem o material): nesta parte elas não têm imagem ao vivo; a
-      janela mostra **No live image** e a última foto, e as instruções mudam a cada **Fire again**.
+      janela mostra **No live image** e a última foto, e as instruções mudam a cada **Fire again**. A conferir na
+      parte 6b: se as Canon dão imagem ao vivo no modo de foto ou só no modo de vídeo (com corte).
 
 ## Resultado
 

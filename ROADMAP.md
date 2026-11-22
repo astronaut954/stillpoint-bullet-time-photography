@@ -1173,7 +1173,13 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      vivo das Canon (modo de foto ou só modo de vídeo) fica pendente para testar com as câmeras (decisão do dono).
      Protótipo da barra de progresso e do fim da rodada, três formas (A como está; B a cor diz o estado, moldura na
      câmera da tela, Previous camera / Next camera; C abas com o número de cada câmera):
-     https://claude.ai/artifact/QxY5PWtwBw19qaw49j3M7k. Aguardando a escolha do dono.
+     https://claude.ai/artifact/QxY5PWtwBw19qaw49j3M7k. **Decisão do dono (2026-11-22): forma C com os botões da B.**
+     Feito: uma aba por câmera com o número e o estado ("01 · READY", "02 · CHANGE"; verde, âmbar ou escura; a da tela
+     cheia), um clique na aba leva à câmera; **← Previous camera** e **Next camera →** passam por todas, na ordem,
+     dando a volta, sempre acesos; **Skip this camera** saiu; com todas boas, "All N cameras ready" no lugar de
+     "Camera n of N". A janela só passa sozinha de uma câmera que precisava de ajuste e ficou boa (não tira a pessoa
+     de uma câmera boa que ela veio conferir). Com isso caem as escolhas provisórias (1) e (2) da parte 6a; continuam
+     a confirmar a (3) (Review alignment pede Fire again) e a (4) (sem Live aim não troca sozinha).
    - **Parte 6b, a fazer:** a imagem ao vivo das câmeras Canon de verdade (o processo de cada câmera em `src/worker`
      e o protocolo): ligar o visor ao vivo, mandar os quadros e desligar antes de cada disparo. Só o dono consegue
      testar (câmeras reais).

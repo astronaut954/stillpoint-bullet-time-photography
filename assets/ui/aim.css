@@ -5,10 +5,16 @@
 .ga-top { display: flex; align-items: baseline; justify-content: space-between; gap: 20px; }
 .ga-top h2 { margin: 0; font: 700 26px/1.1 var(--noct-font-sans); color: var(--noct-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ga-top span { flex: none; font: 600 13px/1 var(--noct-font-mono, monospace); letter-spacing: .12em; text-transform: uppercase; color: var(--noct-text-dim, #9cc); }
-.walk-prog { display: flex; gap: 4px; margin: 0 0 12px; flex: none; }
-.walk-prog span { flex: 1; height: 8px; background: var(--noct-border, #1f5f2f); }
-.walk-prog span.done { background: var(--noct-primary, #39ff6a); }
-.walk-prog span.cur { background: var(--noct-pending, #f0a020); }
+/* Uma aba por câmera, com o número e o estado (decisão do dono, 2026-11-22: forma C): verde = boa (READY), âmbar =
+   precisa de ajuste (CHANGE), escura = ainda sem marcas; a da tela fica cheia. Um clique leva àquela câmera. */
+.walk-prog { display: flex; gap: 6px; margin: 0 0 12px; flex: none; }
+.walk-prog button { flex: 1; min-width: 0; height: 30px; padding: 0 4px; display: flex; align-items: center; justify-content: center; overflow: hidden; white-space: nowrap;
+  font: 700 12px/1 var(--noct-font-mono); letter-spacing: .1em; color: var(--noct-text-dim); background: transparent; border: 1px solid var(--noct-border); border-radius: 0; cursor: pointer; }
+.walk-prog button.done { border-color: var(--noct-primary); color: var(--noct-primary); }
+.walk-prog button.needs { border-color: var(--noct-pending); color: var(--noct-pending); }
+.walk-prog button.here { border-color: var(--noct-text); color: var(--noct-text); cursor: default; }
+.walk-prog button.here.done { background: var(--noct-primary); border-color: var(--noct-primary); color: var(--noct-on-primary); }
+.walk-prog button.here.needs { background: var(--noct-pending); border-color: var(--noct-pending); color: #000; }
 .ga-main { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 26px; flex: 1; min-height: 0; }
 .ga-photo-box { min-width: 0; min-height: 0; }
 .ga-main .al-photo { width: 100%; background-image: none; }

@@ -2,7 +2,7 @@
 // Uma câmera por vez: a foto (ou a imagem ao vivo, Live aim), as marcas, as setas e as instruções em letra grande.
 // Esta página só mostra: quem decide a câmera da vez, as instruções e o progresso é a página principal
 // (Test shot › Align cameras), que manda o estado por window.aimState(estado). O que a pessoa faz aqui volta por
-// aimAction({type: "next" | "skip" | "live"}).
+// aimAction({type: "next" | "prev" | "live"}) ou aimAction({type: "go", camera}) (clique na aba de uma câmera).
 // Display: janela (sempre à frente ou não) ou tela cheia num monitor escolhido, como a janela Live.
 (function () {
   "use strict";
@@ -17,7 +17,8 @@
     photoKey: "", photoUrl: "",  // a foto parada à mostra (sessão/arquivo) e o endereço dela
   };
   const pad = (n) => (n < 10 ? "0" : "") + n;
-  const send = (type) => { if (typeof window.aimAction === "function") window.aimAction(JSON.stringify({ type })); };
+  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const send = (type, camera) => { if (typeof window.aimAction === "function") window.aimAction(JSON.stringify(camera ? { type, camera } : { type })); };
 
   // ----- O que a página principal mandou -----
   function render() {
@@ -27,19 +28,22 @@
     if (!on) {
       $("gaName").textContent = "Guided aim";
       $("gaInfo").textContent = "";
-      $("gaProg").innerHTML = "";
+      $("gaProg").innerHTML = ""; S.tabsHtml = "";
       $("gaLines").innerHTML = '<li class="info">Open Test shot › Align cameras in the main window.</li>';
       $("gaImg").removeAttribute("src");
       $("gaMarks").innerHTML = "";
       $("gaNum").textContent = "";
       $("gaLiveTag").classList.add("hidden");
-      ["gaLive", "gaSkip", "gaNext"].forEach((id) => { $(id).disabled = true; });
+      ["gaLive", "gaPrev", "gaNext"].forEach((id) => { $(id).disabled = true; });
       return;
     }
     const live = !!(st.live && st.live.on);
     $("gaName").textContent = "Camera " + pad(st.order) + " · " + st.camera;
-    $("gaInfo").textContent = "Camera " + st.index + " of " + st.total + (live ? " · live" : "");
-    $("gaProg").innerHTML = (st.segments || []).map((c) => '<span class="' + c + '"></span>').join("");
+    $("gaInfo").textContent = (st.ready ? "All " + st.total + " cameras ready" : "Camera " + st.index + " of " + st.total) + (live ? " · live" : "");
+    // As abas só são refeitas quando mudam (um clique não se perde no meio de um quadro ao vivo)
+    const tabs = (st.tabs || []).map((t) => '<button type="button" data-camera="' + esc(t.camera) + '" class="' + t.state + (t.camera === st.camera ? " here" : "") + '">' +
+      pad(t.order) + (t.state === "done" ? " · READY" : t.state === "needs" ? " · CHANGE" : "") + "</button>").join("");
+    if (S.tabsHtml !== tabs) { S.tabsHtml = tabs; $("gaProg").innerHTML = tabs; }
     const lines = $("gaLines");
     lines.innerHTML = "";
     (st.lines || []).forEach(([cls, text]) => { const li = document.createElement("li"); li.className = cls; li.textContent = text; lines.appendChild(li); });
@@ -52,8 +56,8 @@
     b.className = "btn " + (want && can ? "btn-primary" : "btn-secondary");
     b.disabled = !can;
     b.title = can ? "" : "This camera has no live image. Change it and use Fire again in the main window.";
-    $("gaSkip").disabled = !!st.done;
-    $("gaNext").disabled = !!st.done;
+    $("gaPrev").disabled = st.total < 2;
+    $("gaNext").disabled = st.total < 2;
     // A imagem: o quadro ao vivo desta câmera ou a última foto
     const img = $("gaImg");
     if (live && S.frame && S.frame.camera === st.camera) { if (img.getAttribute("src") !== S.frame.url) img.src = S.frame.url; }
@@ -121,8 +125,9 @@
 
   // ----- Botões -----
   $("gaLive").addEventListener("click", () => send("live"));
-  $("gaSkip").addEventListener("click", () => send("skip"));
+  $("gaPrev").addEventListener("click", () => send("prev"));
   $("gaNext").addEventListener("click", () => send("next"));
+  $("gaProg").addEventListener("click", (e) => { const b = e.target.closest("button[data-camera]"); if (b && !b.classList.contains("here")) send("go", b.dataset.camera); });
 
   // ----- Display (igual à janela Live): janela ou tela cheia num monitor escolhido -----
   const displayBtns = Array.from(document.querySelectorAll("#gaTools [data-display]"));
