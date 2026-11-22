@@ -1233,6 +1233,11 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      juntar as linhas do aviso do rig; confirmadas as três escolhas provisórias do Guided aim: Review alignment
      apagado até um Fire again depois de mexer com o Live aim, a janela não troca de câmera sozinha com o Live aim
      desligado, e só sai sozinha de uma câmera que precisava de ajuste.
+     Andamento nas esperas longas (decisão do dono de mostrar; pedido de protótipo em 2026-11-22, depois de notar
+     que, após os três cliques, os botões ficam apagados sem nada indicando trabalho): três formas (A andamento
+     embaixo da foto e a lista se preenchendo; B tela de espera por cima; C andamento no rodapé e a lista se
+     preenchendo): https://claude.ai/artifact/74AVjy988SPv8aUfbEPuin. Aguardando a escolha. Para A e C o programa
+     precisa avisar foto a foto (hoje o `alignFind` responde tudo de uma vez).
    - **Parte 6b, a fazer:** a imagem ao vivo das câmeras Canon de verdade (o processo de cada câmera em `src/worker`
      e o protocolo): ligar o visor ao vivo, mandar os quadros e desligar antes de cada disparo. Só o dono consegue
      testar (câmeras reais).
