@@ -5500,14 +5500,11 @@ namespace
         auto aimHide = [&]
         {
             aimStopLive();
-            // (esconde mesmo que o app ache que já está escondida; a linha no Activity ajuda a conferir o Close/Esc)
+            // Esconde sempre, mesmo que o app ache que já está escondida: com a condição "só se estiver à mostra", o
+            // Close e o Esc não fechavam a janela no Mac (teste do dono, 2026-11-22)
             if (aimView)
-            {
-                auto native = aimView->window();
-                Log(std::string("Guided aim: window closed") + (native.ok() ? "" : " (no native window)"));
-                if (native.ok())
+                if (auto native = aimView->window(); native.ok())
                     NativeWindow::Hide(native.value());
-            }
             const bool was = aimShown;
             aimShown = false;
             if (was) listener.Emit(Json("aimWindow").Add("open", false));

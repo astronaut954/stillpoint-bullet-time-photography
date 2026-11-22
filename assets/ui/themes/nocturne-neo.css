@@ -2278,7 +2278,9 @@ body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform:
 .ma-row { display: flex; align-items: flex-start; gap: 18px; flex: none; }
 .ma-row > .al-photo { width: 100%; max-width: 640px; flex: none; }
 .ma-side { width: 190px; flex: none; }
-.ma-under { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; max-width: 640px; }
+.ma-under { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; max-width: 640px; box-sizing: border-box; }
+.ma-under > div { flex: 1; min-width: 0; }
+.ma-under > .btn { flex: none; }
 .ma-under h4 { margin: 0 0 6px; font: 600 14px/1.2 var(--noct-font-sans); color: var(--noct-text); }
 .ma-under .in-list li { display: inline; margin-right: 14px; }
 .sv { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; max-height: calc(100% - 50px); overflow-y: auto; }

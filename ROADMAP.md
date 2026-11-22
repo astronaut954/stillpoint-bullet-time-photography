@@ -1162,6 +1162,13 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      pedido de fechar chega ao programa. Perguntas do dono, a decidir com protótipo: a cor do trecho da câmera da vez
      quando ela já está boa (hoje âmbar = a câmera na tela) e poder passar pelas câmeras depois que todas ficaram
      boas (hoje Next camera e Skip this camera ficam apagados).
+     Segundo teste do dono no Mac (2026-11-22): **Close fecha a janela** (ok do dono). A causa era a condição "só
+     esconde se estiver à mostra"; agora esconde sempre (a linha de conferência no Activity saiu). Pedido do dono: o
+     botão **Guided aim** estava desalinhado (passava da borda da foto); a linha de baixo passou a ter a largura da
+     foto e o botão termina na borda direita dela, como no protótipo.
+     Para a parte 6b, dúvida do dono a conferir com as câmeras dele: se a imagem ao vivo só existe no modo de vídeo
+     (com corte maior). Pelo que o agente sabe, o SDK entrega a imagem ao vivo no modo de foto, sem tirar fotos e sem
+     o corte do vídeo; não verificado na SL3 nem na T7.
    - **Parte 6b, a fazer:** a imagem ao vivo das câmeras Canon de verdade (o processo de cada câmera em `src/worker`
      e o protocolo): ligar o visor ao vivo, mandar os quadros e desligar antes de cada disparo. Só o dono consegue
      testar (câmeras reais).

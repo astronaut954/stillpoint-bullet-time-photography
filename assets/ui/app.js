@@ -3297,8 +3297,13 @@
     if (big) {
       const under = view.querySelector(".ma-under"), side = view.querySelector(".ma-side");
       const ratio = parseFloat(big.style.aspectRatio) || 1.5;
-      const h = view.clientHeight - (under ? under.offsetHeight : 0) - 10;
-      big.style.width = Math.max(120, Math.min(640, view.clientWidth - (side ? side.offsetWidth + 18 : 0), h * ratio)) + "px";
+      // A linha de baixo (nome, instruções e Guided aim) tem a largura da foto: o botão termina na borda direita dela.
+      // Duas voltas: a largura muda a quebra das instruções, que muda a altura que sobra para a foto.
+      for (let pass = 0; pass < 2; ++pass) {
+        const h = view.clientHeight - (under ? under.offsetHeight : 0) - 10;
+        big.style.width = Math.max(120, Math.min(640, view.clientWidth - (side ? side.offsetWidth + 18 : 0), h * ratio)) + "px";
+        if (under) under.style.width = big.style.width;
+      }
       if (big._alApply) big._alApply();
     }
     root.querySelectorAll(".al-seg").forEach((s) => {

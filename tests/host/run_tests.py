@@ -2127,6 +2127,10 @@ def scenario_guided_aim(t, name, photos):
         needs = t.js("() => [...document.querySelectorAll('#csAlignMain .ma-item.needs')].map(i => i.dataset.camera)")
         check(t, "guided aim: the simulated cameras start needing changes", len(needs) >= 3, needs)
         check(t, "guided aim: with the marks, the button is on", t.js("() => !document.getElementById('csAlignGuided').disabled"))
+        check(t, "guided aim: the button ends at the right edge of the big photo, on the line of the camera name",
+              t.js("() => { const b = document.getElementById('csAlignGuided').getBoundingClientRect(), p = document.querySelector('#csAlignMain .ma-row > .al-photo').getBoundingClientRect(), h = document.querySelector('#csAlignMain .ma-under h4').getBoundingClientRect(); return Math.abs(b.right - p.right) <= 1 && b.top >= p.bottom && Math.abs(b.top - h.top) < 12; }"),
+              t.js("() => { const b = document.getElementById('csAlignGuided').getBoundingClientRect(), p = document.querySelector('#csAlignMain .ma-row > .al-photo').getBoundingClientRect(); return [b.right, p.right, b.top, p.bottom]; }"))
+        t.shot("guided-aim-button")
         t.js("() => document.getElementById('csAlignGuided').click()")
         import urllib.request
         titles = lambda: json.loads(urllib.request.urlopen("http://127.0.0.1:%d/windows" % PORT).read().decode())
