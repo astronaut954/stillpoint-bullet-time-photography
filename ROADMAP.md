@@ -1169,6 +1169,11 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      Para a parte 6b, dúvida do dono a conferir com as câmeras dele: se a imagem ao vivo só existe no modo de vídeo
      (com corte maior). Pelo que o agente sabe, o SDK entrega a imagem ao vivo no modo de foto, sem tirar fotos e sem
      o corte do vídeo; não verificado na SL3 nem na T7.
+     Terceiro teste do dono no Mac (2026-11-22): o botão **Guided aim** alinhado à borda da foto, ok. A imagem ao
+     vivo das Canon (modo de foto ou só modo de vídeo) fica pendente para testar com as câmeras (decisão do dono).
+     Protótipo da barra de progresso e do fim da rodada, três formas (A como está; B a cor diz o estado, moldura na
+     câmera da tela, Previous camera / Next camera; C abas com o número de cada câmera):
+     https://claude.ai/artifact/QxY5PWtwBw19qaw49j3M7k. Aguardando a escolha do dono.
    - **Parte 6b, a fazer:** a imagem ao vivo das câmeras Canon de verdade (o processo de cada câmera em `src/worker`
      e o protocolo): ligar o visor ao vivo, mandar os quadros e desligar antes de cada disparo. Só o dono consegue
      testar (câmeras reais).
