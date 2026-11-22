@@ -2180,12 +2180,12 @@ STILLPOINT_FAKE_FOCAL=35` (o `STILLPOINT_FAKE_FOCAL` faz as fotos simuladas dize
 
 Com `STILLPOINT_FAKE_CAMERAS=9 STILLPOINT_FAKE_TAGS=1` (avisos de mentira nas câmeras simuladas).
 
-- [ ] **Camera settings**: ao lado do nome ficam o "MF" e, nas câmeras com aviso (02 a 09), um triângulo âmbar;
+- [x] **Camera settings**: ao lado do nome ficam o "MF" e, nas câmeras com aviso (02 a 09), um triângulo âmbar;
       nenhuma etiqueta de aviso à vista e nenhuma linha cortada com "…".
-- [ ] Mouse em cima do triângulo: abre a lista "N warnings" com todas as etiquetas e a explicação de cada uma, colada
+- [x] Mouse em cima do triângulo: abre a lista "N warnings" com todas as etiquetas e a explicação de cada uma, colada
       ao triângulo e dentro da janela; some ao tirar o mouse.
-- [ ] Clique no triângulo: a lista fica aberta; outro clique, ou **Done**, fecha.
-- [ ] Sem `STILLPOINT_FAKE_TAGS`: só a câmera 02 tem o triângulo ("always 16:9"); as outras, só o "MF".
+- [x] Clique no triângulo: a lista fica aberta; outro clique, ou **Done**, fecha.
+- [x] Sem `STILLPOINT_FAKE_TAGS`: só a câmera 02 tem o triângulo ("always 16:9"); as outras, só o "MF".
 - [ ] Windows: os itens acima.
 
 ## Resultado
@@ -2259,3 +2259,4 @@ Com `STILLPOINT_FAKE_CAMERAS=9 STILLPOINT_FAKE_TAGS=1` (avisos de mentira nas c�
 | 2026-11-16 | Mac | etapa-21-alinhamento | — (4 câmeras simuladas, cena da haste) | sim | Seção 47 inteira (Align cameras: Prepare, Use the Test shot photos, Mark and aim, zoom, Ctrl+Z, Review alignment, Save): aprovada pelo dono do projeto ("o ok vale pra tudo que revisamos até agora"). Windows e testes com objetos reais: pendentes |
 | 2026-11-17 | Mac | etapa-21-alinhamento | — (4 câmeras simuladas, cena da haste) | sim | Seção 47 (passo Prepare com três objetos e Save bands (PDF)), aviso de corte (Save e Align photos), seção 48 inteira (Align photos com o alinhamento do rig) e References (opacidade de cada foto, ordem das camadas): aprovados pelo dono do projeto. Pendentes: aviso "Photoshop is not installed" (ele vai desinstalar o Photoshop para testar), Windows, e tudo o que depende de material real (pasta de fotos, haste, PDF impresso, RAW com câmeras) |
 | 2026-11-17 | Mac | etapa-21-alinhamento | — (câmeras simuladas, cena da haste) | sim | Seção 49: sem mudança (sem aviso), zoom mudado na câmera 03 (aviso âmbar e sessão nova sem o alinhamento dela) e uma câmera a menos: aprovados pelo dono do projeto. Não testados: uma câmera a mais e o aviso sumindo depois de alinhar de novo |
+| 2026-11-22 | Mac | etapa-21-alinhamento | — (9 câmeras simuladas, avisos de mentira) | sim | Seção 50 (Camera settings: triângulo de alerta no lugar das etiquetas de aviso, lista ao passar o mouse e ao clicar): aprovada pelo dono do projeto. Windows: pendente |
