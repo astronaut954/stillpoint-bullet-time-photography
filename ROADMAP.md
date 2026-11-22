@@ -1210,7 +1210,10 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      (4) Pedido do dono: o mapa responder ao mouse. Protótipo com três formas (A lupa; B espiar o trecho; C grupos de
      10 com contagem): https://claude.ai/artifact/AeTytu59H6yshNcrWXDbmj. **Decisão do dono (2026-11-22): forma A,
      a lupa.** Feito: os traços perto do mouse crescem e a etiqueta diz a câmera ("Camera 142 · change"); o clique
-     leva à câmera embaixo do ponteiro.
+     leva à câmera embaixo do ponteiro. Ajustes pedidos pelo dono no teste (2026-11-22): a lupa ficava deslocada do
+     mouse (os traços cresciam e empurravam os outros); passou a ser uma lente em volta do ponteiro, em que o ponto
+     embaixo dele não sai do lugar; ela abre e fecha com uma animação curta; clicar, segurar e arrastar no mapa vai
+     passando pelas câmeras (no máximo uma troca a cada 150 ms).
      **Decisões do dono (2026-11-22):** mostrar o andamento nas esperas longas (a fazer, com protótipo antes); não
      juntar as linhas do aviso do rig; confirmadas as três escolhas provisórias do Guided aim: Review alignment
      apagado até um Fire again depois de mexer com o Live aim, a janela não troca de câmera sozinha com o Live aim

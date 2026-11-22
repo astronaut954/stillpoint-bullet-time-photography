@@ -36,6 +36,7 @@
 .ga-mini span { flex: 1 1 0; min-width: 0; height: 12px; background: var(--noct-border); }
 /* A lupa (decisão do dono, 2026-11-22, forma A): os traços perto do mouse crescem e a etiqueta diz a câmera */
 .ga-mini span.lens.lens { opacity: 1; }
+.ga-mini.lensing { gap: 0; }
 .ga-tip { position: absolute; z-index: 7; padding: 6px 9px; background: var(--noct-surface, #0a0f0c); border: 1px solid var(--noct-border-strong); pointer-events: none;
   font: 700 11px/1.5 var(--noct-font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--noct-text); white-space: nowrap; }
 .ga-tip b { font-weight: 700; color: var(--noct-primary); }
