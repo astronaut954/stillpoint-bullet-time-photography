@@ -1248,6 +1248,16 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      escuros não mudam mais de brilho), curva de altura com o topo achatado (o traço do meio varia 1 px ao passar de
      um traço a outro, antes uns 6), a lente de volta a seguir o ponteiro de forma contínua (presa ao traço dava
      anda-e-para), ampliação na largura menor (2,9x) e etiqueta de largura fixa. Falta o dono ver.
+     Segunda gravação do dono (2026-11-22, arrastando no mapa): ainda sem fluidez. Visto quadro a quadro e medido
+     pelo agente: (1) com a largura ampliada, os traços corriam para trás embaixo da lente enquanto ela andava; (2) a
+     moldura do trecho dava passos para a frente e para trás, porque saía dos traços deslocados pela lente; (3) a
+     marca branca da câmera e a faixa de abas só andavam quando a página principal respondia (a cada 150 ms), aos
+     pulos; (4) o traço branco somava altura ao pico. Refeito: os traços não mudam mais de largura nem de lugar (só
+     crescem e acendem em volta do ponteiro); a moldura sai direto da posição da faixa de abas; arrastando, a marca
+     branca, a faixa e a moldura acompanham o ponteiro na hora, e o pedido de troca de câmera segue atrás; trocar de
+     câmera não refaz mais as abas nem o mapa. Medido num arrasto simulado: a moldura e a marca só andam para a
+     frente, em passos iguais. Falta o dono ver. A lupa deixou de alargar os traços (era o desenho do protótipo A):
+     se o dono quiser a largura de volta, o preço é o movimento dos traços embaixo da lente.
    - **Parte 6b, a fazer:** a imagem ao vivo das câmeras Canon de verdade (o processo de cada câmera em `src/worker`
      e o protocolo): ligar o visor ao vivo, mandar os quadros e desligar antes de cada disparo. Só o dono consegue
      testar (câmeras reais).
