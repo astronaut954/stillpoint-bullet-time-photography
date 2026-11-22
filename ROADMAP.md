@@ -1197,6 +1197,18 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      claro) e **Next to change** sem o número, como no protótipo. As abas em mais de uma linha saíram.
      `STILLPOINT_FAKE_CAMERAS` passou a aceitar até 200. Conferido pelo agente com 30 e 120 câmeras simuladas (setas,
      Next to change e clique no mapa); sem cenário no teste automático ainda.
+     Teste do dono com 200 câmeras simuladas (2026-11-22): (1) o aviso "The cameras are not as this project left
+     them" passava da janela com uma linha por câmera: a lista agora rola dentro da janela, com o título e os botões
+     à vista (agrupar as linhas, por exemplo "196 new cameras", fica como opção para o dono); (2) o limite das câmeras
+     simuladas subiu para 1000; (3) o app travava. Medido pelo agente no Linux de teste, com 200: **Use the Test shot
+     photos** deixava a janela parada por até 12 s e a procura das marcas por até 10 s. Causa: a lista do Mark and
+     aim usava a foto grande em todas as linhas e era redesenhada a cada foto que chegava. Corrigido: foto pequena na
+     lista (a grande só na câmera escolhida) e um redesenho para as fotos que chegam juntas; as duas paradas caíram
+     para 0,1 s. Esperas que continuam (a janela responde, mas demora): Test shot 41 s (nas simuladas é o tempo de
+     desenhar as fotos de mentira) e a procura das marcas 23 s. Outros pontos de travamento no Mac do dono ainda não
+     identificados. Em aberto, para o dono decidir: como mostrar o andamento nas esperas longas.
+     (4) Pedido do dono: o mapa responder ao mouse. Protótipo com três formas (A lupa; B espiar o trecho; C grupos de
+     10 com contagem): https://claude.ai/artifact/AeTytu59H6yshNcrWXDbmj. Aguardando a escolha.
    - **Parte 6b, a fazer:** a imagem ao vivo das câmeras Canon de verdade (o processo de cada câmera em `src/worker`
      e o protocolo): ligar o visor ao vivo, mandar os quadros e desligar antes de cada disparo. Só o dono consegue
      testar (câmeras reais).

@@ -1218,7 +1218,7 @@ namespace
         // sem câmeras. Disparos geram fotos de teste com o número da câmera.
         int fakeCount = 0;
         if (const char* fake = std::getenv("STILLPOINT_FAKE_CAMERAS"))
-            try { fakeCount = std::clamp(std::stoi(fake), 1, 200); } catch (...) { fakeCount = 0; }
+            try { fakeCount = std::clamp(std::stoi(fake), 1, 1000); } catch (...) { fakeCount = 0; }
         // STILLPOINT_FAKE_PHOTOS=<pasta> (junto com STILLPOINT_FAKE_CAMERAS; etapa 21, parte 2): em vez da foto de teste
         // numerada, cada câmera simulada entrega uma foto de verdade dessa pasta, para testar o alinhamento sem câmeras.
         // As fotos vão em ordem de nome: a 1ª para a câmera simulada 1, a 2ª para a 2 e assim por diante (sobrando

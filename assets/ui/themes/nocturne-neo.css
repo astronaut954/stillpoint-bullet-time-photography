@@ -2167,7 +2167,8 @@ html.kbd-focus .export-tab.on .export-tab-check input:focus + .save-check { outl
 
 /* O aviso do estado do rig (protótipo aprovado, 2026-11-11): a tabela das diferenças e as linhas do rig */
 .rig-dialog { max-width: 720px; width: 720px; }
-.rig-diff { margin: 14px 0 4px; }
+/* Muitas câmeras: a lista rola dentro da janela; o título e os botões continuam à vista */
+.rig-diff { margin: 14px 0 4px; max-height: calc(100vh - 320px); min-height: 80px; overflow-y: auto; }
 .rig-diff table { width: 100%; border-collapse: collapse; font: 12px var(--noct-font-mono); }
 .rig-diff th { text-align: left; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; font-size: 10px; color: var(--noct-text-muted); padding: 0 10px 6px 0; border-bottom: 1px solid var(--noct-border); }
 .rig-diff td { padding: 6px 10px 6px 0; color: var(--noct-text); vertical-align: top; }

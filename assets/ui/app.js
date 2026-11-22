@@ -2856,6 +2856,8 @@
     });
   }
   const alConnected = () => placedCameras().filter((c) => c.connected);
+  let alSoon = 0;
+  function alRenderSoon() { if (!alSoon) alSoon = setTimeout(() => { alSoon = 0; alRender(); }, 80); }
   function alRender() {
     if (!al.open) return;
     if (ga.open) { if (al.step === 2) gaSync(); else gaClose(); }
@@ -2935,12 +2937,15 @@
     al.step = 2;
     al.photos.forEach((p) => {
       if (!p.file || !p.previewable) return;
-      orderPhoto(al.session, p.file, 1600).then((url) => {
+      // Na lista vai uma foto pequena (com muitas câmeras, fotos grandes em todas as linhas travavam a janela); a
+      // grande só é pedida para a câmera escolhida (alPhotoEl). As fotos chegam uma a uma: a tela é redesenhada de
+      // uma vez para as que chegaram juntas (alRenderSoon).
+      orderPhoto(al.session, p.file, 480).then((url) => {
         const d = al.data[p.camera];
         if (!d || !url) return;
         d.url = url;
         const probe = new Image();
-        probe.onload = () => { if (!d.w) { d.ratio = probe.naturalWidth / probe.naturalHeight; } alRender(); };
+        probe.onload = () => { if (!d.w) { d.ratio = probe.naturalWidth / probe.naturalHeight; } alRenderSoon(); };
         probe.src = url;
       });
     });
@@ -3194,7 +3199,11 @@
     (pts || []).forEach((m, k) => { el.insertAdjacentHTML("beforeend", '<span class="al-dot' + (clicking ? " num" : "") + '" style="left:' + (m[0] * 100) + "%;top:" + (m[1] * 100) + '%">' + (clicking ? k + 1 : "") + "</span>"); });
     if (big) {
       const n = alAim(p.camera);
-      if (d.urlBig) el.style.backgroundImage = 'url("' + d.urlBig + '")';
+      if (d.urlBig || d.urlMid) el.style.backgroundImage = 'url("' + (d.urlBig || d.urlMid) + '")';
+      else if (!d.midAsked && p.file && p.previewable) {
+        d.midAsked = true;
+        orderPhoto(al.session, p.file, 1600).then((url) => { if (url && al.data[p.camera] === d) { d.urlMid = url; if (!d.urlBig && el.isConnected) el.style.backgroundImage = 'url("' + url + '")'; } });
+      }
       el.insertAdjacentHTML("beforeend", '<span class="al-aim"></span>');
       if (n && d.found && !(al.clicks && al.clicks.camera === p.camera)) {
         if (Math.abs(n.pan) >= 1) el.insertAdjacentHTML("beforeend", '<span class="al-arrow" style="left:' + (n.pan < 0 ? 38 : 56) + '%;top:44%">' + (n.pan < 0 ? "←" : "→") + "</span>");
