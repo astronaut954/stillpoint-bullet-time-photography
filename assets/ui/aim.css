@@ -31,8 +31,15 @@
   font: 700 12px/1 var(--noct-font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--noct-text); background: transparent; border: 1px solid var(--noct-border-strong); border-radius: 0; cursor: pointer; }
 .ga-nav-btn:disabled { opacity: .35; cursor: default; }
 .ga-nav-btn.ga-jump.needs { border-color: var(--noct-pending); color: var(--noct-pending); }
-.ga-mini { display: flex; gap: 1px; height: 12px; margin: 0 0 -8px; flex: none; }
-.ga-mini span { flex: 1; min-width: 0; background: var(--noct-border); cursor: pointer; }
+/* (34 px de altura, 22 deles para cima, sobre o espaço vazio: os traços crescem com a lupa sem empurrar a tela) */
+.ga-mini { display: flex; gap: 1px; align-items: flex-end; height: 34px; margin: -22px 0 -8px; flex: none; cursor: pointer; }
+.ga-mini span { flex: 1 1 0; min-width: 0; height: 12px; background: var(--noct-border); }
+/* A lupa (decisão do dono, 2026-11-22, forma A): os traços perto do mouse crescem e a etiqueta diz a câmera */
+.ga-mini span.lens.lens { opacity: 1; }
+.ga-tip { position: absolute; z-index: 7; padding: 6px 9px; background: var(--noct-surface, #0a0f0c); border: 1px solid var(--noct-border-strong); pointer-events: none;
+  font: 700 11px/1.5 var(--noct-font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--noct-text); white-space: nowrap; }
+.ga-tip b { font-weight: 700; color: var(--noct-primary); }
+.ga-tip b.needs { color: var(--noct-pending); }
 .ga-mini span.done { background: var(--noct-primary); opacity: .55; }
 .ga-mini span.needs { background: var(--noct-pending); }
 .ga-mini span.win { opacity: 1; box-shadow: 0 -3px 0 var(--noct-text); }

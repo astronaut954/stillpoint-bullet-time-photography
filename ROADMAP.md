@@ -1208,7 +1208,13 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      desenhar as fotos de mentira) e a procura das marcas 23 s. Outros pontos de travamento no Mac do dono ainda não
      identificados. Em aberto, para o dono decidir: como mostrar o andamento nas esperas longas.
      (4) Pedido do dono: o mapa responder ao mouse. Protótipo com três formas (A lupa; B espiar o trecho; C grupos de
-     10 com contagem): https://claude.ai/artifact/AeTytu59H6yshNcrWXDbmj. Aguardando a escolha.
+     10 com contagem): https://claude.ai/artifact/AeTytu59H6yshNcrWXDbmj. **Decisão do dono (2026-11-22): forma A,
+     a lupa.** Feito: os traços perto do mouse crescem e a etiqueta diz a câmera ("Camera 142 · change"); o clique
+     leva à câmera embaixo do ponteiro.
+     **Decisões do dono (2026-11-22):** mostrar o andamento nas esperas longas (a fazer, com protótipo antes); não
+     juntar as linhas do aviso do rig; confirmadas as três escolhas provisórias do Guided aim: Review alignment
+     apagado até um Fire again depois de mexer com o Live aim, a janela não troca de câmera sozinha com o Live aim
+     desligado, e só sai sozinha de uma câmera que precisava de ajuste.
    - **Parte 6b, a fazer:** a imagem ao vivo das câmeras Canon de verdade (o processo de cada câmera em `src/worker`
      e o protocolo): ligar o visor ao vivo, mandar os quadros e desligar antes de cada disparo. Só o dono consegue
      testar (câmeras reais).

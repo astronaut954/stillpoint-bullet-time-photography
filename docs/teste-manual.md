@@ -2223,6 +2223,8 @@ sozinho em uns 10 segundos (como se alguém estivesse mexendo nela).
       no meio da faixa.
 - [ ] Com `STILLPOINT_FAKE_CAMERAS=120`: em cima da faixa, o mapa com um traço por câmera (verde ou âmbar; o trecho
       mais claro é o que a faixa mostra); um clique num traço leva àquela câmera; **Next to change** sem o número.
+- [ ] Mouse em cima do mapa: os traços perto do ponteiro crescem (lupa) e uma etiqueta embaixo diz a câmera
+      ("Camera 142 · change" ou "· ready"); ao sair, o mapa volta ao normal; um clique leva àquela câmera.
 - [ ] Windows: os itens acima.
 - [ ] Câmeras de verdade (pendente até o dono avisar que tem o material): nesta parte elas não têm imagem ao vivo; a
       janela mostra **No live image** e a última foto, e as instruções mudam a cada **Fire again**. A conferir na
