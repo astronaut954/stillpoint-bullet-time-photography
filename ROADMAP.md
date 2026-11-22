@@ -1214,6 +1214,9 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      mouse (os traços cresciam e empurravam os outros); passou a ser uma lente em volta do ponteiro, em que o ponto
      embaixo dele não sai do lugar; ela abre e fecha com uma animação curta; clicar, segurar e arrastar no mapa vai
      passando pelas câmeras (no máximo uma troca a cada 150 ms).
+     Mais dois ajustes do dono (2026-11-22): a lente segue o ponteiro com um pequeno atraso (movimento suave; a
+     etiqueta e o clique continuam valendo para a câmera embaixo do ponteiro) e a curva ficou mais acentuada (pico
+     mais alto e mais largo, e o resto do mapa apagado enquanto a lupa está aberta).
      **Decisões do dono (2026-11-22):** mostrar o andamento nas esperas longas (a fazer, com protótipo antes); não
      juntar as linhas do aviso do rig; confirmadas as três escolhas provisórias do Guided aim: Review alignment
      apagado até um Fire again depois de mexer com o Live aim, a janela não troca de câmera sozinha com o Live aim

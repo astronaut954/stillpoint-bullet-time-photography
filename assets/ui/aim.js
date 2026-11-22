@@ -14,7 +14,7 @@
     opts: { display: "window", screen: "", onTop: false },
     screens: [],
     hideTimer: 0,
-    lensPos: -1, lensK: 0, lensWant: false, lensRaf: 0,   // a lupa do mapa: onde está o ponteiro (px) e o quanto está aberta
+    lensMouse: 0, lensPos: -1, lensK: 0, lensWant: false, lensRaf: 0,   // a lupa do mapa: o ponteiro (px), o centro da lente (segue o ponteiro com um pequeno atraso) e o quanto está aberta
     drag: false, dragCam: "", dragSent: "", dragTimer: 0,  // clicar e arrastar no mapa
     photoKey: "", photoUrl: "",  // a foto parada à mostra (sessão/arquivo) e o endereço dela
   };
@@ -220,7 +220,7 @@
       tip.classList.add("hidden");
       return;
     }
-    const W = mini.clientWidth, w = W / n, m = S.lensPos, R = Math.max(70, 9 * w), D = 3 * k;
+    const W = mini.clientWidth, w = W / n, m = S.lensPos, R = Math.max(80, 10 * w), D = 5 * k;
     // (perto de uma ponta do mapa a lente encolhe desse lado: as pontas não saem do lugar)
     const f = (x) => { const d = x - m, a = Math.abs(d), r = Math.min(R, d < 0 ? m : W - m); if (a >= r || r <= 0) return x; const t = a / r; return m + Math.sign(d) * r * ((D + 1) * t) / (D * t + 1); };
     let left = f(0);
@@ -229,16 +229,18 @@
       const near = Math.max(0, 1 - Math.abs((left + right) / 2 - m) / R);
       marks[i].style.flex = "0 0 " + (size - gap).toFixed(2) + "px";
       marks[i].style.marginRight = gap.toFixed(2) + "px";
-      marks[i].style.height = (12 + 22 * k * near).toFixed(1) + "px";
+      // (curva acentuada: o pico bem mais alto que os vizinhos; pedido do dono, 2026-11-22)
+      marks[i].style.height = (12 + 28 * k * Math.pow(near, 1.7)).toFixed(1) + "px";
       marks[i].classList.toggle("lens", near > 0);
       left = right;
     }
-    const t = S.state && S.state.tabs ? S.state.tabs[miniIndex(m)] : null;
+    // A etiqueta diz a câmera embaixo do ponteiro (a lente chega um instante depois)
+    const t = S.state && S.state.tabs ? S.state.tabs[miniIndex(S.lensMouse)] : null;
     tip.classList.toggle("hidden", !t || !S.lensWant);
     if (!t || !S.lensWant) return;
     tip.innerHTML = "Camera " + pad(t.order) + (t.state ? ' · <b class="' + t.state + '">' + (t.state === "needs" ? "change" : "ready") + "</b>" : "");
     const host = tip.offsetParent.getBoundingClientRect(), box = mini.getBoundingClientRect();
-    tip.style.left = Math.max(8, Math.min(host.width - tip.offsetWidth - 8, box.left + m - host.left - tip.offsetWidth / 2)) + "px";
+    tip.style.left = Math.max(8, Math.min(host.width - tip.offsetWidth - 8, box.left + S.lensMouse - host.left - tip.offsetWidth / 2)) + "px";
     tip.style.top = (box.bottom - host.top + 8) + "px";
   }
   function lensAnimate() {
@@ -248,21 +250,23 @@
       const dt = Math.min(50, now - last); last = now;
       const want = S.lensWant ? 1 : 0;
       S.lensK = want > S.lensK ? Math.min(1, S.lensK + dt / 140) : Math.max(0, S.lensK - dt / 140);
+      // O centro da lente vai atrás do ponteiro com um pequeno atraso (movimento suave; pedido do dono, 2026-11-22)
+      if (S.lensWant && S.lensPos >= 0) { S.lensPos += (S.lensMouse - S.lensPos) * (1 - Math.exp(-dt / 70)); if (Math.abs(S.lensMouse - S.lensPos) < 0.3) S.lensPos = S.lensMouse; }
       if (!S.lensWant && S.lensK <= 0) S.lensPos = -1;
       lensLayout();
-      S.lensRaf = S.lensK !== want ? requestAnimationFrame(step) : 0;
+      S.lensRaf = S.lensK !== want || (S.lensWant && S.lensPos !== S.lensMouse) ? requestAnimationFrame(step) : 0;
     };
     S.lensRaf = requestAnimationFrame(step);
   }
   function lensAt(clientX, want) {
     const r = $("gaMini").getBoundingClientRect();
-    if (want) S.lensPos = Math.max(0, Math.min(r.width - 0.01, clientX - r.left));
+    if (want) { S.lensMouse = Math.max(0, Math.min(r.width - 0.01, clientX - r.left)); if (S.lensPos < 0) S.lensPos = S.lensMouse; }
     S.lensWant = want;
-    if (S.lensK === (want ? 1 : 0)) lensLayout(); else lensAnimate();
+    lensAnimate();
   }
   // Vai para a câmera embaixo do ponteiro; arrastando, no máximo uma troca a cada 150 ms (e sempre a última)
   function miniGo() {
-    const t = S.state && S.state.tabs ? S.state.tabs[miniIndex(S.lensPos)] : null;
+    const t = S.state && S.state.tabs ? S.state.tabs[miniIndex(S.lensMouse)] : null;
     if (!t) return;
     S.dragCam = t.camera;
     if (S.dragTimer) return;
