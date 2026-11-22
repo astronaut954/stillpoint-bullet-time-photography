@@ -1156,6 +1156,12 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      vivo); (4) sem Live aim a janela não troca de câmera sozinha. Roteiro: `docs/teste-manual.md`, seção 51.
      Teste automático: cenário 23 do `run_tests.py` (o `webview.h` de teste passou a servir as janelas extras em
      `/w/<n>/`).
+     Primeiro teste do dono no Mac (2026-11-22): abrir e a troca sozinha de câmera, ok. **Close e Esc não fecharam
+     a janela Guided aim no Mac** (no teste automático fecham; causa ainda não achada). Enviado: o app esconde a janela
+     sem depender do que ele achava do estado dela e escreve "Guided aim: window closed" no Activity, para saber se o
+     pedido de fechar chega ao programa. Perguntas do dono, a decidir com protótipo: a cor do trecho da câmera da vez
+     quando ela já está boa (hoje âmbar = a câmera na tela) e poder passar pelas câmeras depois que todas ficaram
+     boas (hoje Next camera e Skip this camera ficam apagados).
    - **Parte 6b, a fazer:** a imagem ao vivo das câmeras Canon de verdade (o processo de cada câmera em `src/worker`
      e o protocolo): ligar o visor ao vivo, mandar os quadros e desligar antes de cada disparo. Só o dono consegue
      testar (câmeras reais).

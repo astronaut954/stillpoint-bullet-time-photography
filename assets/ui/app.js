@@ -3083,7 +3083,8 @@
     ga.liveOn = false;
     if (typeof window.aimLive !== "function") return;
     Promise.resolve(window.aimLive(cam)).then((r) => {
-      if (!ga.open || !cam || ga.cam !== cam) return;
+      if (!ga.open) { if (cam) window.aimLive(""); return; }
+      if (!cam || ga.cam !== cam) return;
       ga.liveOn = !!(r && r.ok);
       ga.none = !ga.liveOn;
       gaPush();
@@ -3155,6 +3156,8 @@
   function gaWindow(open) {
     if (open || !ga.open) return;
     ga.open = false; ga.liveOn = false;
+    // (uma troca de câmera no mesmo instante pode ter ligado a imagem ao vivo de novo: desliga)
+    if (typeof window.aimLive === "function") window.aimLive("");
     if (al.open) alRender();
   }
   // Uma foto com as marcas (dots) e, na grande, a mira no centro e as setas

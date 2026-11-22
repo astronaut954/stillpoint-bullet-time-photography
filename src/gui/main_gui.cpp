@@ -5500,9 +5500,14 @@ namespace
         auto aimHide = [&]
         {
             aimStopLive();
-            if (aimView && aimShown)
-                if (auto native = aimView->window(); native.ok())
+            // (esconde mesmo que o app ache que já está escondida; a linha no Activity ajuda a conferir o Close/Esc)
+            if (aimView)
+            {
+                auto native = aimView->window();
+                Log(std::string("Guided aim: window closed") + (native.ok() ? "" : " (no native window)"));
+                if (native.ok())
                     NativeWindow::Hide(native.value());
+            }
             const bool was = aimShown;
             aimShown = false;
             if (was) listener.Emit(Json("aimWindow").Add("open", false));
