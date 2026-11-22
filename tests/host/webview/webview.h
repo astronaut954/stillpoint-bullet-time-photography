@@ -48,9 +48,19 @@ namespace webview
     class webview
     {
     public:
-        webview(bool, void*) {}
-        // Janelas extras (Live) também são criadas; só a primeira serve a página
-        noresult set_title(const std::string&) { return {}; }
+        webview(bool, void*)
+        {
+            std::lock_guard<std::mutex> g(AllLock());
+            All().push_back(this);
+        }
+        // Janelas extras (Live, Guided aim) também são criadas. A primeira serve a página em "/"; as outras, em
+        // "/w/<n>/" (n = ordem de criação, 1 = a primeira extra); "/windows" lista os títulos.
+        noresult set_title(const std::string& t)
+        {
+            std::lock_guard<std::mutex> g(lock);
+            title = t;
+            return {};
+        }
         noresult set_size(int, int, int) { return {}; }
         noresult navigate(const std::string&) { return {}; }
         noresult init(const std::string&) { return {}; }
@@ -96,10 +106,16 @@ namespace webview
         }
         noresult dispatch(std::function<void()> fn)
         {
-            std::lock_guard<std::mutex> g(lock);
-            tasks.push_back(std::move(fn));
-            changed.notify_all();
+            webview* loop = serving ? serving : this;
+            std::lock_guard<std::mutex> g(loop->lock);
+            loop->tasks.push_back(std::move(fn));
+            loop->changed.notify_all();
             return {};
+        }
+        ~webview()
+        {
+            std::lock_guard<std::mutex> g(AllLock());
+            for (auto& w : All()) if (w == this) w = nullptr;
         }
         noresult terminate()
         {
@@ -142,8 +158,10 @@ namespace webview
         std::map<std::string, std::function<std::string(const std::string&)>> sync;
         std::map<std::string, Async> async;
         std::map<std::string, std::pair<int, std::string>> answers;
-        std::string page;
+        std::string page, title;
         std::atomic<bool> running{ false };
+        static std::vector<webview*>& All() { static std::vector<webview*> all; return all; }
+        static std::mutex& AllLock() { static std::mutex m; return m; }
         long long nextId = 0;
         static inline std::atomic<bool> servingStarted{ false };
         static inline webview* serving = nullptr;
@@ -152,22 +170,29 @@ namespace webview
         std::pair<int, std::string> Call(const std::string& name, const std::string& args)
         {
             std::string id;
+            std::function<void()> task;
             {
                 std::lock_guard<std::mutex> g(lock);
                 id = "t" + std::to_string(++nextId);
                 if (sync.count(name))
                 {
                     auto fn = sync[name];
-                    tasks.push_back([this, fn, args, id] { const std::string r = fn(args); resolve(id, 0, r); });
+                    task = [this, fn, args, id] { const std::string r = fn(args); resolve(id, 0, r); };
                 }
                 else if (async.count(name))
                 {
                     auto a = async[name];
-                    tasks.push_back([a, args, id] { a.fn(id, args, a.arg); });
+                    task = [a, args, id] { a.fn(id, args, a.arg); };
                 }
                 else
                     return { 1, "\"no binding " + name + "\"" };
-                changed.notify_all();
+            }
+            {
+                // As funções rodam sempre na volta principal, a da primeira janela
+                webview* loop = serving ? serving : this;
+                std::lock_guard<std::mutex> g(loop->lock);
+                loop->tasks.push_back(std::move(task));
+                loop->changed.notify_all();
             }
             std::unique_lock<std::mutex> g(lock);
             changed.wait_for(g, std::chrono::seconds(60), [&] { return answers.count(id) > 0; });
@@ -178,7 +203,7 @@ namespace webview
         }
 
         // A página com a ponte: cada função vira um fetch para /call/<nome>; os eventos chegam por /events
-        std::string Page()
+        std::string Page(const std::string& prefix = "")
         {
             std::string names = "[";
             {
@@ -189,9 +214,9 @@ namespace webview
             names += "]";
             const std::string bridge = "<script>(function(){var names=" + names + ";"
                 "names.forEach(function(n){window[n]=function(){var args=Array.prototype.slice.call(arguments);"
-                "return fetch('/call/'+n,{method:'POST',body:JSON.stringify(args)}).then(function(r){return r.text().then(function(t){"
+                "return fetch('" + prefix + "/call/'+n,{method:'POST',body:JSON.stringify(args)}).then(function(r){return r.text().then(function(t){"
                 "var v=t===''?undefined:JSON.parse(t);if(r.status!==200)throw v;return v;});});};});"
-                "function poll(){fetch('/events').then(function(r){return r.json();}).then(function(list){"
+                "function poll(){fetch('" + prefix + "/events').then(function(r){return r.json();}).then(function(list){"
                 "list.forEach(function(js){try{(0,eval)(js);}catch(e){console.error('event',e);}});setTimeout(poll,list.length?0:60);})"
                 ".catch(function(){setTimeout(poll,500);});}window.addEventListener('load',function(){setTimeout(poll,0);});"
                 "})();</script>";
@@ -278,7 +303,43 @@ namespace webview
             const std::string method = first.substr(0, sp1), path = first.substr(sp1 + 1, sp2 - sp1 - 1);
             const auto bodyStart = data.find("\r\n\r\n");
             const std::string body = bodyStart == std::string::npos ? "" : data.substr(bodyStart + 4);
-            if (path == "/" || path == "/index.html")
+            if (path.rfind("/w/", 0) == 0)
+            {
+                // Janela extra: /w/<n>/, /w/<n>/events, /w/<n>/call/<nome>
+                const auto slash = path.find('/', 3);
+                const size_t n = static_cast<size_t>(std::atoi(path.substr(3, slash == std::string::npos ? std::string::npos : slash - 3).c_str()));
+                const std::string rest = slash == std::string::npos ? "/" : path.substr(slash);
+                webview* w = nullptr;
+                {
+                    std::lock_guard<std::mutex> g(AllLock());
+                    if (n < All().size()) w = All()[n];
+                }
+                const std::string prefix = "/w/" + std::to_string(n);
+                if (!w) Send(fd, 404, "text/plain", "no window");
+                else if (rest == "/") Send(fd, 200, "text/html; charset=utf-8", w->Page(prefix));
+                else if (rest == "/events") Send(fd, 200, "application/json", w->Events());
+                else if (rest.rfind("/call/", 0) == 0)
+                {
+                    const auto r = w->Call(rest.substr(6), body.empty() ? "[]" : body);
+                    Send(fd, r.first == 0 ? 200 : 500, "application/json", r.second);
+                }
+                else Send(fd, 404, "text/plain", "not found");
+            }
+            else if (path == "/windows")
+            {
+                std::string out = "[";
+                std::lock_guard<std::mutex> g(AllLock());
+                for (webview* w : All())
+                {
+                    if (!w) { out += (out.size() > 1 ? ",null" : "null"); continue; }
+                    std::lock_guard<std::mutex> g2(w->lock);
+                    std::string t;
+                    for (char c : w->title) { if (c == '"' || c == '\\') t += '\\'; t += c; }
+                    out += (out.size() > 1 ? ",\"" : "\"") + t + "\"";
+                }
+                Send(fd, 200, "application/json", out + "]");
+            }
+            else if (path == "/" || path == "/index.html")
                 Send(fd, 200, "text/html; charset=utf-8", Page());
             else if (path == "/events")
                 Send(fd, 200, "application/json", Events());

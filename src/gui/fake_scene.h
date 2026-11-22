@@ -30,5 +30,7 @@ namespace FakeScene
     // A câmera n (1, 2, ...) de um rig de mentira com count câmeras: num arco em volta da haste, cada uma numa altura,
     // distância, mira e giro um pouco diferentes (como num rig montado à mão). Distância focal = 1,2 x a largura (a
     // mesma estimativa do alinhamento quando a foto não diz a lente).
-    Cam RigCamera(int n, int count, int w, int h);
+    // fixed (0 a 1): quanto a pessoa já acertou essa câmera (mira, giro e distância); 1 = só sobra a altura. Usado
+    // pelo Live aim das câmeras simuladas, em que a câmera "vai sendo acertada" sozinha.
+    Cam RigCamera(int n, int count, int w, int h, double fixed = 0);
 }

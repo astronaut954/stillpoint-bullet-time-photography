@@ -2745,7 +2745,9 @@
   // esquerda, a câmera escolhida grande à direita, com setas e instruções), 3 Save (as fotos já alinhadas e os valores).
   // A conta (achar as marcas, a receita, as instruções) é do programa: alignMark, alignFind, alignSolve, alignSave.
   const al = { open: false, step: 0, firing: false, session: "", photos: [], data: {}, sel: "", clicks: null, ref: "",
-               solved: {}, saved: null, busy: false, msg: "" };
+               solved: {}, aim: null, saved: null, busy: false, msg: "" };
+  // Guided aim (parte 6): a janela, a câmera da vez e o Live aim
+  const ga = { open: false, cam: "", want: true, liveOn: false, none: false, lost: false, skipped: {}, okSince: 0, sig: "" };
   const alEsc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const alNum = (cam) => pad(cam.order);
   const AL_SUB2 = "Fix what you can on each camera, then fire again. What you cannot fix (for example, the height) the app corrects in the photos when you save.";
@@ -2824,6 +2826,7 @@
     if (!al.open) return;
     if (al.firing && csTest.capturing && !csTest.cancelling) csTakeTest();  // cancela as fotos em andamento
     al.firing = false;
+    gaClose();
     alShow(false);
   }
   function alHead(title, sub, step) {
@@ -2855,6 +2858,7 @@
   const alConnected = () => placedCameras().filter((c) => c.connected);
   function alRender() {
     if (!al.open) return;
+    if (ga.open) { if (al.step === 2) gaSync(); else gaClose(); }
     const main = $("csAlignMain");
     if (al.step === 1) {
       alHead("Align cameras", "Line the cameras up each time you set up the rig. Stand a stick with three marks where the subject will be, then fire.", 1);
@@ -2987,20 +2991,37 @@
       alRender();
     });
   }
-  function alSolve() {
-    const cams = al.photos.filter((p) => { const d = al.data[p.camera]; return d && d.found && d.marks && d.w; })
-      .map((p) => ({ camera: p.camera, width: al.data[p.camera].w, height: al.data[p.camera].h, marks: al.data[p.camera].marks }));
-    al.solved = {};
-    if (!cams.length) return;
-    let out = null;
-    try { out = window.alignSolve(JSON.stringify({ cameras: cams })); } catch (e) { out = null; }
-    Promise.resolve(out).then((list) => { (list || []).forEach((r) => { al.solved[r.camera] = r; }); alRender(); });
+  // A conta: al.solved sai das marcas das fotos (é o que vai para o Save); al.aim, só com Live aim, sai das marcas
+  // da imagem ao vivo nas câmeras que a pessoa mexeu depois da foto (é o que as instruções mostram).
+  // quiet: veio um quadro ao vivo; só refaz al.aim e não redesenha a tela se nada mudou no texto.
+  const alMoved = (camera) => { const d = al.data[camera]; return !!(d && d.live && d.live.moved); };
+  const alAim = (camera) => (al.aim && al.aim[camera]) || al.solved[camera];
+  function alSolve(quiet) {
+    const has = (p) => { const d = al.data[p.camera]; return d && d.found && d.marks && d.w; };
+    const photo = (p) => ({ camera: p.camera, width: al.data[p.camera].w, height: al.data[p.camera].h, marks: al.data[p.camera].marks });
+    // (a imagem ao vivo é menor que a foto: a conta compara tamanhos em pixels, então vai na largura da foto)
+    const live = (p) => { const d = al.data[p.camera], L = d.live, W = d.w || L.w; return { camera: p.camera, width: W, height: Math.round(W * L.h / L.w), marks: L.marks }; };
+    const fromPhotos = al.photos.filter(has).map(photo);
+    const anyMoved = al.photos.some((p) => alMoved(p.camera));
+    const fromLive = anyMoved ? al.photos.filter((p) => has(p) || alMoved(p.camera)).map((p) => (alMoved(p.camera) ? live(p) : photo(p))) : [];
+    if (!quiet) { al.solved = {}; al.aim = null; }
+    const run = (al.solveRun = (al.solveRun || 0) + 1);
+    if (!fromPhotos.length && !fromLive.length) return;
+    const call = (cams) => { try { return Promise.resolve(window.alignSolve(JSON.stringify({ cameras: cams }))); } catch (e) { return Promise.resolve(null); } };
+    Promise.all([quiet ? null : call(fromPhotos), anyMoved ? call(fromLive) : null]).then(([a, b]) => {
+      if (run !== al.solveRun) return;
+      if (a) { al.solved = {}; a.forEach((r) => { al.solved[r.camera] = r; }); }
+      al.aim = null;
+      if (b) { al.aim = {}; b.forEach((r) => { al.aim[r.camera] = r; }); }
+      if (quiet) gaAfterLive(); else alRender();
+    });
   }
   // As instruções de uma câmera: [classe, texto]; fix = falta mexer, ok = bom, info = só informa
   function alLines(camera) {
-    const d = al.data[camera], n = al.solved[camera];
+    const d = al.data[camera], n = alAim(camera);
     if (!d || !d.tried) return [];
-    if (!d.found) return [["fix", "Marks not found: click the three marks in this photo, from top to bottom"]];
+    if (ga.open && ga.cam === camera && ga.lost) return [["fix", "Marks not found in the live image"]];
+    if (!d.found && !alMoved(camera)) return [["fix", "Marks not found: click the three marks in this photo, from top to bottom"]];
     if (!n) return [];
     const out = [];
     const ph = Math.abs(n.pan) >= 1, pv = Math.abs(n.tilt) >= 1;
@@ -3013,6 +3034,129 @@
     return out;
   }
   const alBad = (camera) => alLines(camera).some(([c]) => c === "fix");
+  // =================== Guided aim (etapa 21, parte 6; desenho aprovado pelo dono em 2026-11-14) ===================
+  // Uma janela própria (assets/ui/aim.html), como a Live: uma câmera por vez, com a imagem ao vivo (Live aim), as
+  // setas e as instruções em letra grande. O estado é desta página: ela manda o que a janela mostra (aimPush) e
+  // recebe o que a pessoa faz lá (window.aimAction). Live aim: uma câmera por vez, a da vez; o programa manda os
+  // quadros (aviso aimFrame) com as marcas achadas, e as instruções mudam enquanto a pessoa mexe na câmera.
+  // Passa sozinha para a próxima câmera que precisa de ajuste quando a da vez fica boa por um instante.
+  function gaList() { return al.photos.slice().sort((a, b) => a.order - b.order); }
+  // A próxima câmera que ainda precisa de ajuste, depois da da vez (dando a volta); as puladas ficam de fora
+  function gaCandidate() {
+    const list = gaList(), i = list.findIndex((p) => p.camera === ga.cam);
+    for (let k = 1; k < list.length; ++k) {
+      const p = list[(i + k + list.length) % list.length];
+      if (p.file && !ga.skipped[p.camera] && alBad(p.camera)) return p.camera;
+    }
+    return "";
+  }
+  function gaState() {
+    const p = ga.open && al.open && al.step === 2 ? alPhotoOf(ga.cam) : null;
+    if (!p) return { camera: "" };
+    const list = gaList(), d = al.data[p.camera] || {}, n = alAim(p.camera);
+    const L = ga.liveOn && d.live && !ga.lost ? d.live : null;
+    const known = (d.found || alMoved(p.camera)) && !ga.lost;
+    return {
+      camera: p.camera, order: p.order, index: list.findIndex((q) => q.camera === p.camera) + 1, total: list.length,
+      session: al.session, file: p.previewable ? p.file : "",
+      ratio: L ? L.w / L.h : d.w && d.h ? d.w / d.h : d.ratio || 1.5,
+      marks: L ? L.marks : !ga.liveOn && d.found ? d.marks : null,
+      arrows: n && known ? { pan: Math.abs(n.pan) >= 1 ? n.pan : 0, tilt: Math.abs(n.tilt) >= 1 ? n.tilt : 0 } : {},
+      lines: alLines(p.camera),
+      segments: list.map((q) => (q.camera === p.camera ? "cur" : alAim(q.camera) && !alBad(q.camera) ? "done" : "")),
+      live: { want: ga.want, on: ga.liveOn, none: ga.none },
+      done: !gaCandidate(),
+    };
+  }
+  function gaPush() { if (typeof window.aimPush === "function") window.aimPush(JSON.stringify(gaState())); }
+  // O texto que a tela principal mostra (para não redesenhar a cada quadro ao vivo se nada mudou)
+  function gaSig() { return JSON.stringify([ga.cam, al.sel, al.photos.map((p) => alLines(p.camera))]); }
+  function gaSync() { ga.sig = gaSig(); gaPush(); }
+  function gaAfterLive() {
+    if (!ga.open) return;
+    if (gaSig() !== ga.sig) alRender(); else gaPush();
+    gaAuto();
+  }
+  // Liga a imagem ao vivo da câmera da vez (ou desliga); o programa diz se essa câmera tem imagem ao vivo
+  function gaLiveSet() {
+    const cam = ga.open && ga.want ? ga.cam : "";
+    ga.liveOn = false;
+    if (typeof window.aimLive !== "function") return;
+    Promise.resolve(window.aimLive(cam)).then((r) => {
+      if (!ga.open || !cam || ga.cam !== cam) return;
+      ga.liveOn = !!(r && r.ok);
+      ga.none = !ga.liveOn;
+      gaPush();
+    }).catch(() => {});
+  }
+  function gaGo(camera) {
+    ga.cam = camera;
+    ga.okSince = 0; ga.lost = false; ga.none = false;
+    al.sel = camera;
+    if (al.clicks && al.clicks.camera !== camera) al.clicks = null;
+    gaLiveSet();
+    alRender();
+  }
+  function gaOpen() {
+    if (!al.open || al.step !== 2 || !al.ref || typeof window.aimOpen !== "function") return;
+    const first = gaList().find((p) => p.file && alBad(p.camera));
+    Object.assign(ga, { open: true, skipped: {}, want: true, okSince: 0, lost: false, none: false, cam: alBad(al.sel) || !first ? al.sel : first.camera });
+    window.aimOpen();
+    gaGo(ga.cam);
+  }
+  function gaClose() {
+    if (!ga.open) return;
+    ga.open = false; ga.liveOn = false;
+    if (typeof window.aimHide === "function") window.aimHide();
+  }
+  // Next camera: vai para a próxima que precisa de ajuste (esta volta depois, se ainda precisar).
+  // Skip this camera: o mesmo, e esta não volta mais nesta rodada.
+  function gaNext(skip) {
+    if (!ga.open) return;
+    if (skip) ga.skipped[ga.cam] = true;
+    const next = gaCandidate();
+    if (next) gaGo(next); else gaPush();
+  }
+  // A câmera da vez ficou boa (ao vivo) por um instante: passa sozinha para a próxima
+  function gaAuto() {
+    if (!ga.open || !ga.liveOn) return;
+    const good = !!alAim(ga.cam) && !ga.lost && !alBad(ga.cam);
+    if (!good) { ga.okSince = 0; return; }
+    if (!ga.okSince) { ga.okSince = Date.now(); return; }
+    if (Date.now() - ga.okSince < 1200) return;
+    const next = gaCandidate();
+    if (next) gaGo(next);
+  }
+  // Um quadro da imagem ao vivo (aviso aimFrame): as marcas achadas nele
+  function gaFrame(event) {
+    if (!ga.open || event.camera !== ga.cam || !ga.want) return;
+    const d = al.data[event.camera];
+    if (!d) return;
+    ga.liveOn = true; ga.none = false;
+    if (!event.ok || !event.marks) { const was = ga.lost; ga.lost = true; ga.okSince = 0; if (!was) gaAfterLive(); return; }
+    const was = ga.lost;
+    ga.lost = false;
+    // A câmera só conta como mexida quando as marcas saem de onde estavam no primeiro quadro (sem isso, as marcas
+    // da foto, que tem mais definição, continuam valendo)
+    const L = d.live || (d.live = { base: event.marks, moved: false });
+    L.marks = event.marks; L.w = event.width; L.h = event.height;
+    if (!L.moved && event.marks.some((m, k) => Math.hypot(m[0] - L.base[k][0], m[1] - L.base[k][1]) > 0.004)) L.moved = true;
+    if (L.moved) alSolve(true); else if (was) gaAfterLive(); else { gaPush(); gaAuto(); }
+  }
+  window.aimAction = function (text) {
+    let a = null;
+    try { a = JSON.parse(text); } catch (e) { a = null; }
+    if (!a || !ga.open) return;
+    if (a.type === "next") gaNext(false);
+    else if (a.type === "skip") gaNext(true);
+    else if (a.type === "live") { ga.want = !ga.want; ga.lost = false; ga.okSince = 0; gaLiveSet(); gaPush(); }
+  };
+  // A janela foi fechada (ou aberta) do lado de lá
+  function gaWindow(open) {
+    if (open || !ga.open) return;
+    ga.open = false; ga.liveOn = false;
+    if (al.open) alRender();
+  }
   // Uma foto com as marcas (dots) e, na grande, a mira no centro e as setas
   function alPhotoEl(p, big) {
     const d = al.data[p.camera] || {};
@@ -3036,7 +3180,7 @@
     const clicking = big && al.clicks && al.clicks.camera === p.camera;
     (pts || []).forEach((m, k) => { el.insertAdjacentHTML("beforeend", '<span class="al-dot' + (clicking ? " num" : "") + '" style="left:' + (m[0] * 100) + "%;top:" + (m[1] * 100) + '%">' + (clicking ? k + 1 : "") + "</span>"); });
     if (big) {
-      const n = al.solved[p.camera];
+      const n = alAim(p.camera);
       if (d.urlBig) el.style.backgroundImage = 'url("' + d.urlBig + '")';
       el.insertAdjacentHTML("beforeend", '<span class="al-aim"></span>');
       if (n && d.found && !(al.clicks && al.clicks.camera === p.camera)) {
@@ -3251,7 +3395,7 @@
       let tag = "", text = "";
       if (!p.file) { tag = '<span class="cs-tag diff">No photo</span>'; }
       else if (d.tried && !d.found) { tag = '<span class="cs-tag diff">Marks not found</span>'; text = "Click its three marks"; }
-      else if (d.found && al.solved[p.camera]) {
+      else if ((d.found || alMoved(p.camera)) && alAim(p.camera)) {
         tag = fixes.length ? '<span class="cs-tag diff">' + plural(fixes.length, "change", "changes") + "</span>" : '<span class="cs-tag ok">Ready</span>';
         text = fixes[0] || "";
       } else if (!marked) text = "Click the three marks";
@@ -3289,7 +3433,10 @@
       }
       else html += '<ul class="in-list">' + alLines(sel.camera).map(([c, t]) => '<li class="' + c + '">' + alEsc(t) + "</li>").join("") + "</ul>";
       html += "</div>";
+      // Guided aim: uma câmera por vez, numa janela própria (pode ir para outro monitor), com a imagem ao vivo
+      html += '<button type="button" class="btn btn-small btn-secondary" id="csAlignGuided"' + (al.ref && !al.busy ? "" : ' disabled title="Click the three marks in one photo first"') + ">Guided aim</button>";
       under.innerHTML = html;
+      under.querySelector("#csAlignGuided").addEventListener("click", gaOpen);
       side.innerHTML = sideHtml;
       row.appendChild(side);
       view.appendChild(row);
@@ -3300,11 +3447,13 @@
     requestAnimationFrame(() => alPlaceLines(main));
     const need = al.photos.filter((p) => alBad(p.camera)).length;
     const allMarked = al.photos.length > 0 && al.photos.every((p) => (al.data[p.camera] || {}).found) && Object.keys(al.solved).length === al.photos.length;
+    // Com Live aim, uma câmera mexida depois da foto: as fotos não valem mais para guardar o alinhamento
+    const moved = al.photos.some((p) => alMoved(p.camera));
     alFoot(marked ? need + " of " + al.photos.length + " cameras need a change" : "",
       [["← Back", "btn-secondary", () => { al.step = 1; alRender(); }],
        ["Cancel", "btn-secondary", alClose],
        ["Fire again", "btn-secondary", alFire, { disabled: al.busy || busy || csTest.capturing }],
-       ["Review alignment", "btn-primary", () => { al.step = 3; alRender(); }, { disabled: !allMarked || al.busy, title: allMarked ? "" : "Every photo needs its three marks first" }]]);
+       ["Review alignment", "btn-primary", () => { al.step = 3; alRender(); }, { disabled: !allMarked || al.busy || moved, title: !allMarked ? "Every photo needs its three marks first" : moved ? "The cameras moved since these photos. Fire again first." : "" }]]);
     if (al.firing) { const n = $("csAlignNote"); if (n) n.textContent = "Taking a photo with each camera"; }
   }
   function alRenderSave() {
@@ -7695,6 +7844,9 @@
     },
   };
 
+  // Guided aim: os quadros da imagem ao vivo e a janela aberta/fechada
+  handlers.aimFrame = (event) => gaFrame(event);
+  handlers.aimWindow = (event) => gaWindow(!!event.open);
   window.onCoreEvent = function (event) {
     const handler = handlers[event.type];
     if (handler) handler(event);

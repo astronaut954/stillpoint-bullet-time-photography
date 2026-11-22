@@ -99,7 +99,9 @@ bool LoadPhotoRgb(const std::filesystem::path& file, RgbFrame& out, std::string*
 bool WriteTestPhoto(const std::filesystem::path& file, int cameraNumber, int shotNumber, double ratio = 1.5);
 // Foto de teste com a haste de três marcas (etapa 21; STILLPOINT_FAKE_PHOTOS=pole): a câmera simulada cameraNumber de
 // um rig de mentira com cameraCount câmeras, cada uma vendo a haste de um lugar (src/gui/fake_scene.h).
-bool WritePoleTestPhoto(const std::filesystem::path& file, int cameraNumber, int cameraCount, double ratio = 1.5, double focalMm = 0);
+bool WritePoleTestPhoto(const std::filesystem::path& file, int cameraNumber, int cameraCount, double ratio = 1.5, double focalMm = 0, double fixed = 0);
+// Um quadro em JPEG (a imagem ao vivo do Live aim, mandada para a página)
+std::string EncodeJpeg(const RgbFrame& frame, int quality = 80);
 // Distância focal (mm) gravada pela câmera na foto (EXIF); 0 se a foto não diz. Lê só o começo do arquivo (JPEG).
 // Etapa 21, parte 5: serve para perceber que o zoom de uma câmera mudou depois do alinhamento.
 double ReadPhotoFocal(const std::filesystem::path& file);

@@ -1135,6 +1135,30 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      connected, N new cameras). A sessão nova guarda só o alinhamento das câmeras que não mudaram. Para testar sem
      câmeras: `STILLPOINT_FAKE_FOCAL`. Roteiro: `docs/teste-manual.md`, seção 49. **Só com câmeras reais:** conferir
      que a distância focal das fotos muda mesmo ao girar o zoom e fica igual quando não se mexe.
+   - **Parte 6a feita (2026-11-22), falta o ok do dono:** **Guided aim** numa janela própria, como no protótipo
+     aprovado (`assets/ui/aim.html`, `aim.js`, `aim.css`; no `main_gui.cpp`, o bloco "Guided aim"). O botão fica
+     embaixo da foto grande do passo Mark and aim. A janela mostra uma câmera por vez (nome, "Camera n of N", barra de
+     progresso, imagem com as marcas e as setas, instruções em letra grande), tem a barra de opções da janela Live
+     (**Display**: **Window** ou **Full screen**, **Always on top**, **Change display**, **Close**; escolha do monitor
+     e **Identify displays**) e guarda a escolha em `settings.txt` (`aim=`). O estado é da página principal: ela
+     manda o que a janela mostra (`aimPush`) e recebe o que a pessoa faz lá (`aimAction`).
+     **Live aim** (uma câmera por vez, a da vez): o programa manda quadros (aviso `aimFrame`) com as marcas achadas
+     pela mesma conta das fotos; as instruções mudam enquanto a câmera é mexida e a janela passa sozinha para a
+     próxima câmera que precisa de ajuste quando a da vez fica boa por 1,2 s. **Nesta parte só as câmeras simuladas
+     têm imagem ao vivo** (`STILLPOINT_FAKE_PHOTOS=pole`: a câmera simulada "vai sendo acertada" sozinha, e as fotos
+     seguintes saem com o mesmo acerto; `STILLPOINT_FAKE_LIVE_STEP` muda a velocidade). Câmera sem imagem ao vivo: o
+     botão mostra "No live image" e a janela usa a última foto (a pessoa mexe e usa **Fire again**).
+     Escolhas feitas na implementação, **a confirmar com o dono**: (1) **Next camera** vai para a próxima que precisa
+     de ajuste e a atual volta depois, se ainda precisar; **Skip this camera** faz o mesmo e a câmera não volta mais
+     nessa rodada; (2) quando não sobra câmera para ajustar, a janela fica na última, com **Next camera** e **Skip
+     this camera** apagados (sem tela de "terminou"); (3) depois de mexer numa câmera com o Live aim, **Review
+     alignment** fica apagado até um **Fire again** (o alinhamento é guardado a partir das fotos, não da imagem ao
+     vivo); (4) sem Live aim a janela não troca de câmera sozinha. Roteiro: `docs/teste-manual.md`, seção 51.
+     Teste automático: cenário 23 do `run_tests.py` (o `webview.h` de teste passou a servir as janelas extras em
+     `/w/<n>/`).
+   - **Parte 6b, a fazer:** a imagem ao vivo das câmeras Canon de verdade (o processo de cada câmera em `src/worker`
+     e o protocolo): ligar o visor ao vivo, mandar os quadros e desligar antes de cada disparo. Só o dono consegue
+     testar (câmeras reais).
    - **Modo de teste das etiquetas (pedido do dono, 2026-11-17):** `STILLPOINT_FAKE_TAGS=1` põe etiquetas de mentira
      ao lado do nome das câmeras simuladas no Camera settings (a 1ª sem nenhuma, a 2ª com uma, a 3ª com duas...),
      para ver a tela com muitos avisos. Não muda nada com câmeras reais.

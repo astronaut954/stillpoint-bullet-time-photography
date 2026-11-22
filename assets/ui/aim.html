@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Stillpoint · Guided aim</title>
+  <style>/*__THEME__*/</style>
+  <style>/*__LIVE_CSS__*/</style>
+  <style>/*__AIM_CSS__*/</style>
+  <style>html, body { margin: 0; height: 100%; overflow: hidden; background: #000; }</style>
+</head>
+<body>
+  <!-- Janela Guided aim (separada, como a Live): uma câmera por vez, com a imagem ao vivo (Live aim), as setas e as
+       instruções em letra grande (assets/ui/aim.js e aim.css). Quem decide o que aparece é a página principal
+       (Test shot › Align cameras). Esc sai da tela cheia / fecha; F tela cheia. -->
+  <div id="aim" class="live ga-win">
+    <div class="ga">
+      <div class="ga-top"><h2 id="gaName"></h2><span id="gaInfo"></span></div>
+      <div id="gaProg" class="walk-prog"></div>
+      <div class="ga-main">
+        <div id="gaPhotoBox" class="ga-photo-box">
+          <div id="gaPhoto" class="al-photo">
+            <img id="gaImg" alt="">
+            <span id="gaNum" class="al-num"></span>
+            <span id="gaLiveTag" class="live-tag hidden">● LIVE</span>
+            <div id="gaMarks"></div>
+          </div>
+        </div>
+        <div class="ga-side">
+          <ul id="gaLines" class="in-list"></ul>
+          <div class="ga-btns"><button id="gaLive" class="btn btn-primary" type="button">● Live aim on</button></div>
+          <div class="ga-btns ga-btns-2"><button id="gaSkip" class="btn btn-secondary" type="button">Skip this camera</button><button id="gaNext" class="btn btn-primary" type="button">Next camera</button></div>
+          <p class="ga-note">Live aim works on one camera at a time: this one. Cameras without a live image use Fire again.</p>
+        </div>
+      </div>
+    </div>
+    <div id="gaTools" class="live-tools">
+      <span class="live-tools-label">Display</span>
+      <div class="segmented"><button data-display="window">Window</button><button data-display="full">Full screen</button></div>
+      <label id="gaOnTopLabel" class="log-option live-tools-check"><input id="gaOnTop" type="checkbox"> Always on top</label>
+      <button id="gaChangeDisplay" class="btn btn-secondary btn-small hidden" title="Move the full screen to another display">Change display</button>
+      <button id="gaClose" class="btn btn-secondary btn-small">Close<span class="live-key">Esc</span></button>
+    </div>
+    <!-- Tela cheia: em qual monitor? (só com mais de um) -->
+    <div id="gaScreens" class="live-screens hidden">
+      <div class="live-screens-box">
+        <h3>Full screen on which display?</h3>
+        <div id="gaScreensList" class="live-screens-list"></div>
+        <div class="live-screens-actions">
+          <button id="gaScreensIdentify" class="btn btn-secondary btn-small" title="Shows each display's number on it for a few seconds">Identify displays</button>
+          <button id="gaScreensCancel" class="btn btn-secondary btn-small">Cancel<span class="live-key">Esc</span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>/*__AIM_SCRIPT__*/</script>
+</body>
+</html>

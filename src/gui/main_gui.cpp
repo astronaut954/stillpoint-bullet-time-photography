@@ -44,6 +44,7 @@
 #include "platform/media.h"
 #include "adobe.h"
 #include "align_marks.h"
+#include "fake_scene.h"
 #include "bands_pdf.h"
 #include "json_lite.h"
 
@@ -1069,6 +1070,8 @@ namespace
         replace("/*__LIVE_CSS__*/", read(dir / "live.css"));
         replace("/*__SCRIPT__*/", read(dir / "app.js"));
         replace("/*__LIVE_SCRIPT__*/", read(dir / "live.js"));
+        replace("/*__AIM_CSS__*/", read(dir / "aim.css"));
+        replace("/*__AIM_SCRIPT__*/", read(dir / "aim.js"));
         return html;
     }
 
@@ -1228,6 +1231,10 @@ namespace
         const bool fakePole = fakeCount && fakePhotosEnv && std::string(fakePhotosEnv) == "pole";
         if (fakePole)
             Log("Fake photos: the pole with three marks (STILLPOINT_FAKE_PHOTOS=pole)");
+        // Live aim nas câmeras simuladas (etapa 21, parte 6): quanto cada uma já foi "acertada" (0 a 1). A imagem ao
+        // vivo vai acertando a câmera sozinha; as fotos seguintes (Fire again) saem com o mesmo acerto.
+        std::mutex fakeFixMutex;
+        std::map<int, double> fakeFix;
         // STILLPOINT_FAKE_FOCAL=35 ou 35,35,50,35: a distância focal (mm) que as fotos da haste dizem ter, uma para todas
         // ou uma por câmera simulada (para testar o aviso de zoom mudado; etapa 21, parte 5)
         std::vector<double> fakeFocal;
@@ -1939,7 +1946,8 @@ namespace
                     }
                     else if (fakePole)
                         WritePoleTestPhoto(dir / (base + ".jpg"), std::max(1, fakeIndex), fakeCount, ratio,
-                            fakeFocal.empty() ? 0 : fakeFocal[std::min(fakeFocal.size() - 1, static_cast<size_t>(std::max(1, fakeIndex) - 1))]);
+                            fakeFocal.empty() ? 0 : fakeFocal[std::min(fakeFocal.size() - 1, static_cast<size_t>(std::max(1, fakeIndex) - 1))],
+                            [&] { std::lock_guard<std::mutex> lock(fakeFixMutex); const auto it = fakeFix.find(std::max(1, fakeIndex)); return it == fakeFix.end() ? 0.0 : it->second; }());
                     else
                         WriteTestPhoto(dir / (base + ".jpg"), number, static_cast<int>(i) + 1, ratio);
                     ++done;
@@ -5433,6 +5441,199 @@ namespace
                 Platform::RevealInFileManager(file);
             }
             return Json("alignBands").Add("ok", ok).Add("file", file.string()).Str();
+        });
+        // =================== Guided aim (etapa 21, parte 6; desenho aprovado pelo dono em 2026-11-14) ===================
+        // Uma janela própria, como a Live (assets/ui/aim.html): uma câmera por vez, com a imagem ao vivo (Live aim), as
+        // setas e as instruções em letra grande. Pode ficar num segundo monitor ou numa TV perto do rig.
+        // Quem manda é a página principal (o estado do alinhamento é dela): ela empurra o que a janela mostra
+        // (aimPush) e recebe o que a pessoa faz lá (aimAction -> window.aimAction). Criada uma vez; fechar só esconde.
+        // Live aim: uma câmera por vez. Nesta parte só as câmeras simuladas (STILLPOINT_FAKE_PHOTOS=pole) têm imagem
+        // ao vivo; a das câmeras Canon de verdade vem na parte seguinte.
+        std::unique_ptr<webview::webview> aimView;
+        bool aimShown = false;
+        auto aimLastState = std::make_shared<std::string>("null");
+        // A câmera ao vivo agora ("" = nenhuma) e a vez dela (muda a cada liga/desliga: a volta antiga para sozinha)
+        struct AimLive { std::mutex mutex; std::string camera; int fakeIndex = 0; long turn = 0; };
+        auto aimLive = std::make_shared<AimLive>();
+        double fakeLiveStep = 0.03;  // quanto a câmera simulada se acerta a cada quadro (STILLPOINT_FAKE_LIVE_STEP)
+        if (const char* step = std::getenv("STILLPOINT_FAKE_LIVE_STEP"); step && *step)
+            try { fakeLiveStep = std::clamp(std::stod(step), 0.0, 1.0); } catch (...) {}
+        auto aimStopLive = [aimLive]
+        {
+            std::lock_guard<std::mutex> lock(aimLive->mutex);
+            aimLive->camera.clear();
+            ++aimLive->turn;
+        };
+        // Um quadro da imagem ao vivo: procura as marcas (com a foto de referência dos cliques) e manda para as páginas
+        std::function<void(long)> aimFrameJob = [&, aimLive, alignRef, alignPts](long turn)
+        {
+            std::string camera;
+            int index = 0;
+            {
+                std::lock_guard<std::mutex> lock(aimLive->mutex);
+                if (aimLive->turn != turn || aimLive->camera.empty()) return;
+                camera = aimLive->camera;
+                index = aimLive->fakeIndex;
+            }
+            double fixed = 0;
+            {
+                std::lock_guard<std::mutex> lock(fakeFixMutex);
+                double& f = fakeFix[index];
+                f = std::min(1.0, f + fakeLiveStep);
+                fixed = f;
+            }
+            // Como o visor de uma câmera: sempre 3:2, menor que a foto
+            const RgbFrame frame = FakeScene::Render(FakeScene::RigCamera(index, fakeCount, 900, 600, fixed), true);
+            Json event("aimFrame");
+            event.Add("camera", camera).Add("width", frame.width).Add("height", frame.height);
+            AlignMarks::Found found;
+            if (alignRef->set)
+                found = AlignMarks::Find(alignRef->frame, alignRef->marks, frame, alignRef->wide);
+            const bool ok = found.ok && found.confidence >= 0.35;
+            event.Add("ok", ok);
+            if (ok) event.Raw("marks", alignPts(found.p, frame.width, frame.height));
+            event.Add("url", "data:image/jpeg;base64," + Base64Encode(EncodeJpeg(frame, 78)));
+            listener.Emit(event);
+            std::this_thread::sleep_for(std::chrono::milliseconds(180));
+            aligner.Post([&, turn] { aimFrameJob(turn); });
+        };
+        auto aimHide = [&]
+        {
+            aimStopLive();
+            if (aimView && aimShown)
+                if (auto native = aimView->window(); native.ok())
+                    NativeWindow::Hide(native.value());
+            const bool was = aimShown;
+            aimShown = false;
+            if (was) listener.Emit(Json("aimWindow").Add("open", false));
+        };
+        // aimOpen(): abre (ou traz de volta) a janela Guided aim
+        window.bind("aimOpen", [&](const std::string&) -> std::string
+        {
+            if (aimView)
+            {
+                if (auto native = aimView->window(); native.ok())
+                    NativeWindow::Show(native.value());
+                aimShown = true;
+                listener.Emit(Json("aimWindow").Add("open", true));
+                return "null";
+            }
+            aimView = std::make_unique<webview::webview>(false, nullptr);
+            webview::webview& v = *aimView;
+            webview::webview* self = &v;
+            v.set_title("Stillpoint · Guided aim");
+            v.set_size(1140, 790, WEBVIEW_HINT_NONE);
+            v.set_size(640, 420, WEBVIEW_HINT_MIN);
+            // aimReady(): opções da janela (settings.txt, aim=), monitores e o último estado mandado pela página principal
+            v.bind("aimReady", [&, aimLastState](const std::string&) -> std::string
+            {
+                const auto current = LoadSettings();
+                return Json("aimReady").Add("opts", current.count("aim") ? current.at("aim") : std::string())
+                    .Raw("screens", screensJson()).Raw("state", *aimLastState).Str();
+            });
+            // aimSaveWindow(JSON): display, monitor, sempre à frente
+            v.bind("aimSaveWindow", [&](const std::string& request) -> std::string
+            {
+                const auto args = ParseStringArgs(request);
+                if (args.empty() || args[0].find('\n') != std::string::npos)
+                    return "null";
+                auto current = LoadSettings();
+                current["aim"] = args[0];
+                SaveSettings(current);
+                return "null";
+            });
+            // aimDisplay("window"|"full", monitor, sempre à frente "1"/"0")
+            v.bind("aimDisplay", [self](const std::string& request) -> std::string
+            {
+                const auto args = ParseStringArgs(request);
+                if (args.size() < 3)
+                    return "null";
+                auto native = self->window();
+                if (!native.ok())
+                    return "null";
+                if (args[0] == "full")
+                    NativeWindow::SetFullScreen(native.value(), args[1]);
+                else
+                    NativeWindow::SetWindowed(native.value(), args[2] == "1");
+                return "null";
+            });
+            v.bind("aimClose", [&](const std::string&) -> std::string
+            {
+                aimHide();
+                return "null";
+            });
+            v.bind("aimIdentify", [](const std::string&) -> std::string
+            {
+                NativeWindow::IdentifyScreens(3);
+                return "null";
+            });
+            // aimAction(JSON): o que a pessoa fez na janela (next, skip, live); quem decide é a página principal
+            v.bind("aimAction", [&](const std::string& request) -> std::string
+            {
+                const auto args = ParseStringArgs(request);
+                if (args.empty())
+                    return "null";
+                const std::string script = "window.aimAction && window.aimAction(" + JsonString(args[0]) + ")";
+                window.dispatch([&, script] { window.eval(script); });
+                return "null";
+            });
+            bindCycle(v);
+            bindPhotos(v, "getOrderPhoto", orderStore);
+            // O botão de fechar só esconde a janela (ela volta com Guided aim)
+            if (auto native = v.window(); native.ok())
+            {
+                NativeWindow::InstallCloseGuard(native.value(), [&]
+                {
+                    aimHide();
+                    return false;
+                });
+            }
+            v.set_html(LoadPage("aim.html", theme));
+            listener.AddWindow(&v);
+            aimShown = true;
+            listener.Emit(Json("aimWindow").Add("open", true));
+            return "null";
+        });
+        // aimHide(): a página principal fecha a janela (saiu do Align cameras)
+        window.bind("aimHide", [&](const std::string&) -> std::string
+        {
+            aimHide();
+            return "null";
+        });
+        // aimPush(JSON): o que a janela mostra agora (câmera da vez, instruções, marcas, progresso)
+        window.bind("aimPush", [&, aimLastState](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            if (args.empty() || !aimView)
+                return "null";
+            *aimLastState = args[0];
+            const std::string script = "window.aimState && window.aimState(" + args[0] + ")";
+            webview::webview* v = aimView.get();
+            v->dispatch([v, script] { v->eval(script); });
+            return "null";
+        });
+        // aimLive(câmera): liga a imagem ao vivo dessa câmera ("" desliga). { ok } diz se a câmera tem imagem ao vivo
+        window.bind("aimLive", [&, aimLive](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            const std::string name = args.empty() ? std::string() : args[0];
+            int index = 0;
+            if (!name.empty() && fakePole)
+                for (const auto& cam : controller.GetCameras())
+                    if (cam.shortName == name)
+                        try { index = std::stoi(cam.portName.substr(4)); } catch (...) { index = 0; }
+            long turn = 0;
+            {
+                std::lock_guard<std::mutex> lock(aimLive->mutex);
+                if (index > 0 && aimLive->camera == name)
+                    return Json("aimLive").Add("ok", true).Str();  // já está ao vivo
+                aimLive->camera = index > 0 ? name : std::string();
+                aimLive->fakeIndex = index;
+                turn = ++aimLive->turn;
+            }
+            if (index > 0)
+                aligner.Post([&, turn] { aimFrameJob(turn); });
+            return Json("aimLive").Add("ok", index > 0).Str();
         });
         // alignInfo(): o alinhamento guardado (null se não houver), com o que mudou desde então ("changes", "added")
         window.bind("alignInfo", [&](const std::string&) -> std::string

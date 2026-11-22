@@ -702,10 +702,18 @@ double ReadPhotoFocal(const fs::path& file)
     return ReadExifFocal(head);
 }
 
-bool WritePoleTestPhoto(const fs::path& file, int cameraNumber, int cameraCount, double ratio, double focalMm)
+std::string EncodeJpeg(const RgbFrame& frame, int quality)
+{
+    std::string jpeg;
+    if (frame.width > 0 && frame.height > 0 && frame.pixels.size() >= static_cast<size_t>(frame.width) * frame.height * 3)
+        stbi_write_jpg_to_func(AppendToString, &jpeg, frame.width, frame.height, 3, frame.pixels.data(), quality);
+    return jpeg;
+}
+
+bool WritePoleTestPhoto(const fs::path& file, int cameraNumber, int cameraCount, double ratio, double focalMm, double fixed)
 {
     const int w = 1800, h = std::max(200, static_cast<int>(std::lround(1800.0 / std::max(0.5, ratio))));
-    const RgbFrame f = FakeScene::Render(FakeScene::RigCamera(cameraNumber, cameraCount, w, h), true);
+    const RgbFrame f = FakeScene::Render(FakeScene::RigCamera(cameraNumber, cameraCount, w, h, fixed), true);
     std::string jpeg;
     stbi_write_jpg_to_func(AppendToString, &jpeg, w, h, 3, f.pixels.data(), 92);
     if (focalMm > 0 && jpeg.size() > 2)

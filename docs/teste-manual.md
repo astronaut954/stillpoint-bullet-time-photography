@@ -2188,6 +2188,36 @@ Com `STILLPOINT_FAKE_CAMERAS=9 STILLPOINT_FAKE_TAGS=1` (avisos de mentira nas c�
 - [x] Sem `STILLPOINT_FAKE_TAGS`: só a câmera 02 tem o triângulo ("always 16:9"); as outras, só o "MF".
 - [ ] Windows: os itens acima.
 
+## 51. Guided aim e Live aim com câmeras simuladas (etapa 21, parte 6a)
+
+Com `STILLPOINT_FAKE_CAMERAS=4 STILLPOINT_FAKE_PHOTOS=pole`. Nas câmeras simuladas, o Live aim "acerta" a câmera
+sozinho em uns 10 segundos (como se alguém estivesse mexendo nela).
+
+- [ ] **Camera settings** › **Test shot** › **Align cameras** › **Fire**: no passo **2 Mark and aim**, embaixo da foto
+      grande, à direita, o botão **Guided aim**, apagado até as três marcas serem clicadas.
+- [ ] Clicar as três marcas e depois **Guided aim**: abre outra janela, "Stillpoint · Guided aim", com "Camera 01 ·
+      nome" em cima, "Camera 1 of 4 · live" à direita, a barra de progresso (um trecho por câmera, o da vez em âmbar),
+      a imagem com a etiqueta vermelha **● LIVE**, as marcas e as setas, e à direita as instruções em letra grande, o
+      botão **● Live aim on**, **Skip this camera** e **Next camera**.
+- [ ] Sem tocar em nada: as instruções vão ficando verdes e a janela passa sozinha para a próxima câmera; o trecho da
+      câmera que ficou boa fica verde. Na janela principal a mesma câmera fica escolhida na lista e a que ficou boa
+      mostra **Ready**.
+- [ ] **● Live aim on**: vira **Live aim off**, some a etiqueta **● LIVE** e aparece a última foto; a janela para de
+      trocar de câmera sozinha. Clicar de novo liga.
+- [ ] **Next camera** e **Skip this camera** trocam de câmera; a câmera pulada não volta.
+- [ ] Na janela principal, depois que o Live aim mexeu numa câmera, **Review alignment** fica apagado (o mouse em cima
+      diz para disparar de novo); **Fire again** tira fotos novas, as câmeras acertadas aparecem **Ready** e **Review
+      alignment** acende.
+- [ ] Mexer o mouse na janela Guided aim: aparece a barra de baixo com **Display** (**Window**, **Full screen**),
+      **Always on top** e **Close**. **Full screen** deixa tudo maior; com dois monitores pergunta "Full screen on
+      which display?" e tem **Identify displays** e, depois, **Change display**. Esc sai da tela cheia; Esc de novo
+      fecha a janela.
+- [ ] Fechar a janela Guided aim e clicar **Guided aim** de novo: ela volta. **Cancel** no Align cameras fecha a janela
+      junto.
+- [ ] Windows: os itens acima.
+- [ ] Câmeras de verdade (pendente até o dono avisar que tem o material): nesta parte elas não têm imagem ao vivo; a
+      janela mostra **No live image** e a última foto, e as instruções mudam a cada **Fire again**.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |

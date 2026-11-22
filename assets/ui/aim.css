@@ -1,0 +1,35 @@
+/* Janela Guided aim (assets/ui/aim.html e aim.js; etapa 21, parte 6). Usa as cores e fontes do tema (--noct-*), as
+   peças do alinhamento (.al-photo, .al-dot, .al-aim, .al-arrow, .in-list) e a barra de opções da Live (.live-tools). */
+.ga-win { background: #000; font-family: var(--noct-font-sans); }
+.ga { position: absolute; inset: 0; padding: 26px 30px 70px; box-sizing: border-box; display: flex; flex-direction: column; gap: 16px; }
+.ga-top { display: flex; align-items: baseline; justify-content: space-between; gap: 20px; }
+.ga-top h2 { margin: 0; font: 700 26px/1.1 var(--noct-font-sans); color: var(--noct-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ga-top span { flex: none; font: 600 13px/1 var(--noct-font-mono, monospace); letter-spacing: .12em; text-transform: uppercase; color: var(--noct-text-dim, #9cc); }
+.walk-prog { display: flex; gap: 4px; margin: 0 0 12px; flex: none; }
+.walk-prog span { flex: 1; height: 8px; background: var(--noct-border, #1f5f2f); }
+.walk-prog span.done { background: var(--noct-primary, #39ff6a); }
+.walk-prog span.cur { background: var(--noct-pending, #f0a020); }
+.ga-main { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 26px; flex: 1; min-height: 0; }
+.ga-photo-box { min-width: 0; min-height: 0; }
+.ga-main .al-photo { width: 100%; background-image: none; }
+.ga-main .al-photo img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.ga-main .al-photo img:not([src]) { display: none; }
+.ga-main .al-arrow { font-size: 64px; }
+.live-tag { position: absolute; right: 8px; top: 8px; font: 700 11px/1 var(--noct-font-mono, monospace); letter-spacing: .12em; padding: 4px 7px; background: #c0182b; color: #fff; z-index: 2; }
+.live-tag.hidden { display: none; }
+.ga-side { min-width: 0; }
+.ga-side .in-list { font-size: 19px; line-height: 1.7; }
+.ga-side .in-list li { padding-left: 1.1em; text-indent: -1.1em; }
+.ga-side .in-list li::before { content: "– "; }
+.ga-side .ga-btns { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+.ga-side .ga-btns-2 { margin-top: 10px; }
+.ga-note { margin: 12px 0 0; font: 400 13px/1.45 var(--noct-font-sans); color: var(--noct-text-dim); }
+/* Tela cheia: tudo maior, para ler de longe */
+.ga-win.full .ga { padding: 40px 50px 80px; }
+.ga-win.full .ga-top h2 { font-size: 34px; }
+.ga-win.full .ga-side .in-list { font-size: 24px; }
+/* Janela estreita: as instruções vão para baixo da imagem */
+@media (max-width: 820px) {
+  .ga-main { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; gap: 14px; }
+  .ga-side .ga-btns { margin-top: 12px; }
+}

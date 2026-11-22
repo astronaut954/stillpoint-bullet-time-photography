@@ -2091,6 +2091,150 @@ def scenario_align_cameras(t, name, photos):
         t.restart_app()
 
 
+def scenario_guided_aim(t, name, photos):
+    line("\n== 23. Guided aim: its own window, one camera at a time, with Live aim (simulated cameras)")
+    t.dismiss()
+    t.env["STILLPOINT_FAKE_CAMERAS"] = "4"
+    t.env["STILLPOINT_FAKE_PHOTOS"] = "pole"
+    t.env["STILLPOINT_FAKE_LIVE_STEP"] = "0.34"
+    aim = None
+    try:
+        t.restart_app()
+        t.dismiss()
+        errors_before = len(t.errors)
+        t.js("() => document.getElementById('camSettingsBtn').click()")
+        time.sleep(1.0)
+        t.js("() => document.getElementById('csTest').click()")
+        t.wait(lambda: t.js("() => document.getElementById('csTestBox').classList.contains('has-photos')"), 30)
+        t.js("() => document.getElementById('csAlignBtn').click()")  # "Align cameras" ou, com alinhamento guardado, "Align again"
+        time.sleep(0.3)
+        t.button("Use the Test shot photos")
+        t.wait(lambda: t.js("() => document.querySelector('#csAlignStep2').classList.contains('on') && document.querySelectorAll('#csAlignMain .ma-item').length === 4"), 20)
+        t.wait(lambda: t.js("() => { const p = document.querySelector('#csAlignMain .ma-row .al-zoom'); return !!p && p.style.backgroundImage.length > 10; }"), 15)
+        check(t, "guided aim: the button is under the big photo and waits for the three marks",
+              t.js("() => { const b = document.getElementById('csAlignGuided'); return !!b && b.textContent === 'Guided aim' && b.disabled && !!b.closest('.ma-under'); }"))
+        order_dir = os.path.join(t.data, "Order photos")
+        sess = sorted(d for d in os.listdir(order_dir) if not d.startswith("."))[-1]
+        sel = t.js("() => document.querySelector('#csAlignMain .ma-item.sel').dataset.camera")
+        f = [x for x in os.listdir(os.path.join(order_dir, sess)) if "_" + sel + "_IMG_" in x][0]
+        centers = _mark_centers(os.path.join(order_dir, sess, f))
+        box = t.page.locator("#csAlignMain .ma-row > .al-photo").bounding_box()
+        for k in range(3):
+            t.page.mouse.click(box["x"] + centers[k][0] * box["width"] + 5, box["y"] + centers[k][1] * box["height"] - 4)
+            time.sleep(0.25)
+        t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item.ready, #csAlignMain .ma-item.needs').length === 4 && !/Finding/.test(document.querySelector('#csAlignMain').textContent)"), 60)
+        names = t.js("() => [...document.querySelectorAll('#csAlignMain .ma-item')].map(i => [i.querySelector('.al-num').textContent, i.dataset.camera]).sort().map(x => x[1])")
+        needs = t.js("() => [...document.querySelectorAll('#csAlignMain .ma-item.needs')].map(i => i.dataset.camera)")
+        check(t, "guided aim: the simulated cameras start needing changes", len(needs) >= 3, needs)
+        check(t, "guided aim: with the marks, the button is on", t.js("() => !document.getElementById('csAlignGuided').disabled"))
+        t.js("() => document.getElementById('csAlignGuided').click()")
+        import urllib.request
+        titles = lambda: json.loads(urllib.request.urlopen("http://127.0.0.1:%d/windows" % PORT).read().decode())
+        check(t, "guided aim: it opens its own window, 'Stillpoint · Guided aim'", t.wait(lambda: "Stillpoint · Guided aim" in titles(), 5), titles())
+        index = titles().index("Stillpoint · Guided aim")
+        aim = t.browser.new_page(viewport={"width": 1140, "height": 760})
+        aim_errors = []
+        aim.on("pageerror", lambda e: aim_errors.append(str(e)))
+        aim.goto("http://127.0.0.1:%d/w/%d/" % (PORT, index))
+        aim.wait_for_selector("#gaName", timeout=10000)
+        A = lambda expr: aim.evaluate(expr)
+        first = [n for n in names if n in needs][0]
+        num = lambda cam: "%02d" % (names.index(cam) + 1)
+        ok = t.wait(lambda: A("() => document.getElementById('gaName').textContent") == "Camera %s · %s" % (num(first), first), 10)
+        check(t, "guided aim: it starts on the first camera that needs a change, by its number and name", ok, A("() => document.getElementById('gaName').textContent"))
+        ok = t.wait(lambda: A("() => /^Camera \\d of 4 · live$/.test(document.getElementById('gaInfo').textContent) && !document.getElementById('gaLiveTag').classList.contains('hidden') && (document.getElementById('gaImg').getAttribute('src') || '').startsWith('data:image/jpeg')"), 15)
+        check(t, "guided aim: Live aim is on by itself: the live image, the LIVE tag and 'Camera n of 4 · live'", ok,
+              A("() => [document.getElementById('gaInfo').textContent, document.getElementById('gaLiveTag').className, (document.getElementById('gaImg').getAttribute('src') || '').length]"))
+        aim.screenshot(path=os.path.join(BUILD, "fail-guided-aim-window.png"))
+        check(t, "guided aim: one progress segment per camera, the current one marked",
+              A("() => document.querySelectorAll('#gaProg span').length === 4 && document.querySelectorAll('#gaProg span.cur').length === 1"))
+        check(t, "guided aim: Live aim on, Skip this camera, Next camera and the note about one camera at a time",
+              A("() => [...document.querySelectorAll('.ga-side button')].map(b => b.textContent).join('|')") == "● Live aim on|Skip this camera|Next camera"
+              and "one camera at a time" in A("() => document.querySelector('.ga-note').textContent"))
+        check(t, "guided aim: the options bar is the one of the Live window (Display, Always on top, Close)",
+              A("() => [...document.querySelectorAll('#gaTools .segmented button')].map(b => b.textContent + (b.classList.contains('on') ? '*' : '')).join('|')") == "Window*|Full screen"
+              and A("() => document.getElementById('gaClose').textContent") == "CloseEsc" and A("() => !!document.getElementById('gaOnTop')"))
+        check(t, "guided aim: the main window follows (the same camera is chosen there)", t.js("() => document.querySelector('#csAlignMain .ma-item.sel').dataset.camera") == first)
+        # A câmera simulada vai sendo acertada sozinha: as instruções mudam e a janela passa para a próxima
+        second = [n for n in names if n in needs and n != first][0]
+        ok = t.wait(lambda: A("() => document.getElementById('gaName').textContent") == "Camera %s · %s" % (num(second), second), 40)
+        check(t, "guided aim: when the camera is right, it goes to the next one that needs a change by itself", ok, A("() => [document.getElementById('gaName').textContent, [...document.querySelectorAll('#gaLines li')].map(l => l.className + ':' + l.textContent)]"))
+        check(t, "guided aim: the camera that became right is marked as done in the progress",
+              A("() => [...document.querySelectorAll('#gaProg span')].map(s => s.className)")[names.index(first)] == "done", A("() => [...document.querySelectorAll('#gaProg span')].map(s => s.className)"))
+        check(t, "guided aim: in the main window that camera shows Ready",
+              t.wait(lambda: t.js("(c) => { const i = [...document.querySelectorAll('#csAlignMain .ma-item')].find(x => x.dataset.camera === c); return !!i && i.classList.contains('ready'); }", first), 5))
+        check(t, "guided aim: after moving a camera with Live aim, 'Review alignment' asks to fire again",
+              t.js("() => { const b = [...document.querySelectorAll('#csAlignFoot button')].find(x => x.textContent === 'Review alignment'); return b.disabled && /Fire again/.test(b.title); }"))
+        # Live aim off: a foto parada, sem a etiqueta LIVE
+        aim.click("#gaLive")
+        ok = t.wait(lambda: A("() => document.getElementById('gaLive').textContent === 'Live aim off' && document.getElementById('gaLiveTag').classList.contains('hidden') && /^Camera \\d of 4$/.test(document.getElementById('gaInfo').textContent)"), 5)
+        check(t, "guided aim: clicking 'Live aim on' turns it off (no LIVE tag, the last photo)", ok, A("() => [document.getElementById('gaLive').textContent, document.getElementById('gaInfo').textContent]"))
+        cur = A("() => document.getElementById('gaName').textContent")
+        time.sleep(2.0)
+        check(t, "guided aim: with Live aim off the camera does not change by itself", A("() => document.getElementById('gaName').textContent") == cur)
+        # Next camera: vai para a próxima que precisa; Skip this camera: essa não volta
+        rest = [n for n in names if n in needs and n not in (first, second)]
+        if rest:
+            third = rest[0]
+            aim.click("#gaNext")
+            ok = t.wait(lambda: A("() => document.getElementById('gaName').textContent") == "Camera %s · %s" % (num(third), third), 5)
+            check(t, "guided aim: 'Next camera' goes to the next camera that needs a change", ok, A("() => document.getElementById('gaName').textContent"))
+            aim.click("#gaSkip")
+            after_skip = A("() => document.getElementById('gaName').textContent")
+            t.wait(lambda: A("() => document.getElementById('gaName').textContent") != "Camera %s · %s" % (num(third), third), 5)
+            after_skip = A("() => document.getElementById('gaName').textContent")
+            check(t, "guided aim: 'Skip this camera' leaves it", after_skip != "Camera %s · %s" % (num(third), third), after_skip)
+            # Liga o Live aim de novo: as câmeras que faltam ficam boas; a pulada não volta
+            aim.click("#gaLive")
+            ok = t.wait(lambda: A("() => document.getElementById('gaNext').disabled && document.getElementById('gaSkip').disabled"), 60)
+            segs = A("() => [...document.querySelectorAll('#gaProg span')].map(s => s.className)")
+            check(t, "guided aim: at the end only the skipped camera is left (Next and Skip turn off)", ok and segs[names.index(third)] != "done"
+                  and all(c in ("done", "cur") for k, c in enumerate(segs) if k != names.index(third)), segs)
+        aim.screenshot(path=os.path.join(BUILD, "fail-guided-aim-end.png"))
+        # Fire again: as fotos novas saem com as câmeras já acertadas; sem mexer depois, dá para rever o alinhamento
+        t.button("Fire again")
+        ok = t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item.ready').length >= 3 && !/Finding|Taking/.test(document.querySelector('#csAlign').textContent)"), 60)
+        check(t, "guided aim: after 'Fire again' the cameras fixed with Live aim show Ready in the photos too", ok,
+              t.js("() => [...document.querySelectorAll('#csAlignMain .ma-item')].map(i => i.dataset.camera + ':' + i.className)"))
+        time.sleep(1.5)
+        check(t, "guided aim: with new photos and no camera moved since, 'Review alignment' is on again",
+              t.js("() => ![...document.querySelectorAll('#csAlignFoot button')].find(x => x.textContent === 'Review alignment').disabled"))
+        # Display: tela cheia (um monitor só: direto) e de volta
+        aim.mouse.move(300, 300)
+        aim.mouse.move(320, 320)
+        check(t, "guided aim: moving the mouse shows the options bar", t.wait(lambda: A("() => document.getElementById('aim').classList.contains('tools-visible')"), 3))
+        aim.click("#gaTools [data-display=full]")
+        check(t, "guided aim: 'Full screen' makes everything bigger and hides 'Always on top'",
+              t.wait(lambda: A("() => document.getElementById('aim').classList.contains('full') && document.getElementById('gaOnTopLabel').classList.contains('hidden')"), 3))
+        aim.screenshot(path=os.path.join(BUILD, "fail-guided-aim-full.png"))
+        saved = open(os.path.join(t.data, "settings.txt")).read()
+        check(t, "guided aim: the display choice is saved for next time", 'aim={"display":"full"' in saved, [l for l in saved.splitlines() if l.startswith("aim=")])
+        aim.keyboard.press("Escape")
+        check(t, "guided aim: Esc leaves the full screen first", t.wait(lambda: A("() => !document.getElementById('aim').classList.contains('full')"), 3))
+        aim.keyboard.press("Escape")
+        check(t, "guided aim: Esc again closes the window; the main window keeps working",
+              t.wait(lambda: t.js("() => !document.getElementById('csAlignGuided').disabled"), 3))
+        time.sleep(0.6)
+        aim.evaluate("() => { window.__frames = 0; const old = window.onCoreEvent; window.onCoreEvent = (e) => { if (e.type === 'aimFrame') window.__frames++; old(e); }; }")
+        time.sleep(1.5)
+        check(t, "guided aim: closing the window stops the live image", A("() => window.__frames") == 0, A("() => window.__frames"))
+        # Abre de novo e sai do Align cameras: a janela fecha junto
+        t.js("() => document.getElementById('csAlignGuided').click()")
+        check(t, "guided aim: the button opens the window again", t.wait(lambda: A("() => /^Camera \\d\\d · /.test(document.getElementById('gaName').textContent)"), 5))
+        t.button("Cancel")
+        time.sleep(0.8)
+        A("() => { window.__frames = 0; }")
+        time.sleep(1.2)
+        check(t, "guided aim: leaving Align cameras closes it (no live image running)", A("() => window.__frames") == 0 and t.js("() => document.getElementById('csAlign').classList.contains('hidden')"))
+        check(t, "guided aim: no page error in the two windows", len(t.errors) == errors_before and not aim_errors, (t.errors[errors_before:], aim_errors))
+    finally:
+        if aim:
+            aim.close()
+        for k in ("STILLPOINT_FAKE_PHOTOS", "STILLPOINT_FAKE_LIVE_STEP"):
+            t.env.pop(k, None)
+        t.restart_app()
+
+
 def scenario_align_marks(t, name, photos):
     line("\n== 20. Automatic alignment: the three marks and the recipe (calculation only, no window yet)")
     prog = os.path.join(BUILD, "AlignMarksTest")
@@ -2170,7 +2314,7 @@ def main():
                 only = os.environ.get("STILLPOINT_TEST_ONLY", "")  # para depurar: só os cenários com este nome
                 for sc in [x for x in (scenario_cleared, scenario_delete_edit_undo, scenario_photo_delete_restore,
                            scenario_remove_from_collection, scenario_delete_session, scenario_cancel, scenario_rapid_in_lightroom, scenario_crop_before_lightroom,
-                           scenario_export_edit, scenario_export_trash, scenario_lightroom_crop, scenario_undo_own_item, scenario_orientation, scenario_selection_kept, scenario_align_undo, scenario_flip, scenario_photoshop, scenario_rig_state, scenario_align_marks, scenario_align_cameras, scenario_camera_tags) if only in x.__name__]:
+                           scenario_export_edit, scenario_export_trash, scenario_lightroom_crop, scenario_undo_own_item, scenario_orientation, scenario_selection_kept, scenario_align_undo, scenario_flip, scenario_photoshop, scenario_rig_state, scenario_align_marks, scenario_align_cameras, scenario_camera_tags, scenario_guided_aim) if only in x.__name__]:
                     try:
                         sc(t, name, photos)
                     except Exception:  # noqa: BLE001

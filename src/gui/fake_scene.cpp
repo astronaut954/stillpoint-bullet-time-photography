@@ -1,6 +1,7 @@
 #include "fake_scene.h"
 
 #include <algorithm>
+#include <vector>
 #include <cmath>
 
 namespace FakeScene
@@ -121,7 +122,7 @@ namespace FakeScene
         return f;
     }
 
-    Cam RigCamera(int n, int count, int w, int h)
+    Cam RigCamera(int n, int count, int w, int h, double fixed)
     {
         count = std::max(1, count);
         n = std::clamp(n, 1, count);
@@ -132,8 +133,14 @@ namespace FakeScene
         static const double kHeight[] = { 0.0, 0.25, -0.2, 0.1, -0.3, 0.35, -0.1, 0.2, -0.25 };
         static const double kDist[] = { 0.0, 0.2, -0.15, 0.3, -0.1, 0.1, -0.25, 0.15, 0.05 };
         const double height = 1.0 + kHeight[i % 9];
-        const double dist = 2.2 + kDist[i % 9];
-        const double pan = ((i * 7) % 5 - 2) * 1.2, tilt = ((i * 3) % 5 - 2) * 0.9, roll = ((i * 4) % 5 - 2) * 0.8;
+        const double left = 1.0 - std::clamp(fixed, 0.0, 1.0);
+        // Acertada, a câmera vai para a distância do meio do rig (a mediana, a mesma que o alinhamento usa para comparar)
+        std::vector<double> all;
+        for (int k = 0; k < count; ++k) all.push_back(kDist[k % 9]);
+        std::sort(all.begin(), all.end());
+        const double mid = all[all.size() / 2];
+        const double dist = 2.2 + mid + (kDist[i % 9] - mid) * left;
+        const double pan = ((i * 7) % 5 - 2) * 1.2 * left, tilt = ((i * 3) % 5 - 2) * 0.9 * left, roll = ((i * 4) % 5 - 2) * 0.8 * left;
         return MakeCam(az, dist, height, pan, tilt, roll, 1.2 * w, w, h);
     }
 }
