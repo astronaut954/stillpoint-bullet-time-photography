@@ -34,7 +34,7 @@
 /* (40 px de altura, 28 deles para cima, sobre o espaço vazio: os traços crescem com a lupa sem empurrar a tela).
    A posição, a largura, a altura e o brilho de cada traço vêm do aim.js (lensLayout). */
 .ga-mini { position: relative; height: 40px; margin: -28px 0 -8px; flex: none; cursor: pointer; }
-.ga-mini span { position: absolute; bottom: 0; height: 12px; background: var(--noct-border); }
+.ga-mini span { position: absolute; bottom: 0; height: 12px; background: var(--noct-border); transform-origin: 50% 100%; }
 /* A lupa (decisão do dono, 2026-11-22, forma A): os traços perto do mouse crescem e a etiqueta diz a câmera */
 /* (largura mínima e texto no meio: a etiqueta não muda de tamanho entre "ready" e "change") */
 .ga-tip { min-width: 172px; box-sizing: border-box; text-align: center; position: absolute; z-index: 7; padding: 6px 9px; background: var(--noct-surface, #0a0f0c); border: 1px solid var(--noct-border-strong); pointer-events: none;

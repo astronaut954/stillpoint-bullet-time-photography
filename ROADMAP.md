@@ -1258,6 +1258,12 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      câmera não refaz mais as abas nem o mapa. Medido num arrasto simulado: a moldura e a marca só andam para a
      frente, em passos iguais. Falta o dono ver. A lupa deixou de alargar os traços (era o desenho do protótipo A):
      se o dono quiser a largura de volta, o preço é o movimento dos traços embaixo da lente.
+     O dono testou de novo (2026-11-22): ainda tremendo (sem gravação desta vez). Hipótese do agente, pelas duas
+     gravações (quadros repetidos a cada poucos quadros): a janela não dava conta de refazer tudo a cada quadro. A
+     cada movimento do mouse o `aim.js` media a tela e reposicionava os 200 traços, e a cada movimento da faixa lia a
+     posição das 200 abas. Refeito: as medidas são tiradas uma vez (`mapMeasure`); mexer o mouse muda só a altura (por
+     escala) e o brilho dos traços perto da lupa (uns 25), e mexer a faixa só faz contas com as medidas guardadas.
+     Não confirmado: se era essa a causa. Se continuar, pedir gravação.
    - **Parte 6b, a fazer:** a imagem ao vivo das câmeras Canon de verdade (o processo de cada câmera em `src/worker`
      e o protocolo): ligar o visor ao vivo, mandar os quadros e desligar antes de cada disparo. Só o dono consegue
      testar (câmeras reais).

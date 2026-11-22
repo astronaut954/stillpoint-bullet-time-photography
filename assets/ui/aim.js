@@ -19,6 +19,9 @@
     hereCam: null,               // a câmera marcada como "a da tela" nas abas e no mapa (arrastando, a do ponteiro)
     photoKey: "", photoUrl: "",  // a foto parada à mostra (sessão/arquivo) e o endereço dela
   };
+  // As medidas do mapa das câmeras, guardadas (mapMeasure): n traços, W largura, w largura de um traço, R raio da lupa...
+  const G = { n: 0, W: 0, w: 0, R: 66, x0: 0, hostW: 0, cw: 0, sw: 1, tabW: 0, tab0: 0, tabStep: 1, winLo: 0, winHi: -1, hereI: -1, lo: 0, hi: -1, tipI: -2, tipState: "", tipW: 0,
+              snap: (v) => v, left: 0 };
   const pad = (n) => (n < 10 ? "0" : "") + n;
   const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const send = (type, camera) => { if (typeof window.aimAction === "function") window.aimAction(JSON.stringify(camera ? { type, camera } : { type })); };
@@ -56,11 +59,9 @@
       S.hereCam = null;
       setHere(dragHere() || st.camera);
       fitTabs(true);
-      lensLayout();  // (os traços foram refeitos, talvez com o mouse em cima)
     } else {
-      const moved = setHere(dragHere() || st.camera);
+      setHere(dragHere() || st.camera);
       fitTabs(false);
-      if (moved) lensLayout();
     }
     const lines = $("gaLines");
     lines.innerHTML = "";
@@ -150,6 +151,7 @@
     jump.disabled = !left;
     jump.classList.toggle("needs", left > 0);
     if (mode !== S.tabsMode) { S.tabsMode = mode; S.tabsCam = ""; }
+    if (measure !== false) mapMeasure();
     // (arrastando no mapa, a faixa já acompanha o ponteiro: dragTo)
     if (mode === "strip" && st && !S.drag && S.tabsCam !== S.hereCam) { S.tabsCam = S.hereCam; centerTab(); }
     stripChanged();
@@ -169,6 +171,9 @@
       if (old) old.classList.remove("here");
       if (i >= 0 && box.children[i]) box.children[i].classList.add("here");
     });
+    const was = G.hereI;
+    G.hereI = i;
+    paintBar(was); paintBar(i);
     return true;
   }
   // A aba da câmera na tela vai para o meio da faixa
@@ -176,20 +181,21 @@
     const prog = $("gaProg"), here = prog.querySelector("button.here");
     if (here) prog.scrollLeft = here.offsetLeft - prog.offsetLeft - (prog.clientWidth - here.offsetWidth) / 2;
   }
-  // A faixa andou: as setas das pontas e, no mapa, o trecho que a faixa está mostrando
+  // A faixa andou: as setas das pontas e, no mapa, o trecho que a faixa está mostrando (os traços acesos e a moldura).
+  // Só contas com as medidas guardadas (G): isto roda a cada movimento da faixa, e medir a tela aqui engasgava.
   function stripChanged() {
     const prog = $("gaProg");
     if (!prog.classList.contains("strip")) return;
-    $("gaTabsPrev").disabled = prog.scrollLeft <= 1;
-    $("gaTabsNext").disabled = prog.scrollLeft >= prog.scrollWidth - prog.clientWidth - 1;
-    const marks = $("gaMini").children;
-    if ($("gaMini").classList.contains("hidden") || !marks.length) return;
-    const a = prog.scrollLeft, b = a + prog.clientWidth;
-    Array.from(prog.children).forEach((t, i) => {
-      const x = t.offsetLeft - prog.offsetLeft + t.offsetWidth / 2;
-      if (marks[i]) marks[i].classList.toggle("win", x >= a && x <= b);
-    });
-    lensLayout();  // (o brilho dos traços depende de estarem no trecho à mostra)
+    const a = prog.scrollLeft, atStart = a <= 1, atEnd = a >= G.sw - G.cw - 1;
+    if ($("gaTabsPrev").disabled !== atStart) $("gaTabsPrev").disabled = atStart;
+    if ($("gaTabsNext").disabled !== atEnd) $("gaTabsNext").disabled = atEnd;
+    if (!G.n) return;
+    // as abas com o meio dentro da faixa
+    const lo = Math.max(0, Math.ceil((a - G.tab0 - G.tabW / 2) / G.tabStep)), hi = Math.min(G.n - 1, Math.floor((a + G.cw - G.tab0 - G.tabW / 2) / G.tabStep));
+    const oldLo = G.winLo, oldHi = G.winHi;
+    G.winLo = lo; G.winHi = hi;
+    for (let i = Math.min(lo, oldLo); i <= Math.max(hi, oldHi); ++i) if ((i >= lo && i <= hi) !== (i >= oldLo && i <= oldHi)) paintBar(i);
+    $("gaFrame").style.transform = "translateX(" + G.snap(G.x0 + a / G.sw * G.W - 4) + "px)";
   }
   function slideTabs(dir) {
     const prog = $("gaProg");
@@ -208,7 +214,7 @@
       s.style.transform = "rotate(" + (-Math.atan2(bx - ax, by - ay) * 180 / Math.PI) + "deg)";
     });
   }
-  window.addEventListener("resize", () => { fitTabs(); fit(); lensLayout(); });
+  window.addEventListener("resize", () => { fitTabs(); fit(); });
 
   window.aimState = function (state) { S.state = state || null; render(); };
   window.onCoreEvent = function (event) {
@@ -234,87 +240,94 @@
   // A lupa é uma lente em volta do ponteiro: os traços a menos de R dele se abrem e crescem, e o ponto embaixo do
   // ponteiro não sai do lugar (por isso a câmera da etiqueta é sempre a do traço embaixo do ponteiro). Ela abre e
   // fecha com uma animação curta (S.lensK vai de 0 a 1 e volta).
-  function miniIndex(pos) {
-    const mini = $("gaMini"), n = mini.children.length;
-    return n ? Math.max(0, Math.min(n - 1, Math.floor(pos / mini.clientWidth * n))) : -1;
-  }
-  // Os traços do mapa são postos no lugar aqui (posição, largura, altura e brilho de cada um), com ou sem a lupa
-  function lensLayout() {
-    const mini = $("gaMini"), tip = $("gaTip"), marks = mini.children, n = marks.length;
-    const W = mini.clientWidth, frame = $("gaFrame");
-    if (!n || !W) { tip.classList.add("hidden"); frame.classList.add("hidden"); return; }
-    let hasWin = false;
-    const k = S.lensPos >= 0 ? S.lensK : 0, w = W / n, m = S.lensPos, R = Math.max(110, 14 * w);
-    // Os traços não saem do lugar nem mudam de largura: só crescem e acendem em volta do ponteiro. Com a largura
-    // ampliada, os traços corriam para trás embaixo da lente enquanto ela andava, e o movimento não ficava fluido
-    // (gravações do dono, 2026-11-22).
-    const f = (x) => x;
-    // Tudo cai em pixels inteiros da tela (bordas e alturas): com bordas "quebradas", os vãos escuros entre os traços
-    // mudavam de brilho a cada quadro enquanto a lente andava, e a lupa parecia tremer (teste do dono, 2026-11-22)
-    const dpr = window.devicePixelRatio || 1, snap = (v) => Math.round(v * dpr) / dpr;
-    let left = snap(f(0));
-    for (let i = 0; i < n; ++i) {
-      const right = snap(f((i + 1) * w)), size = right - left, gap = size >= 3 ? 1 : size >= 1.5 ? 1 / dpr : 0;
-      // A altura segue uma curva lisa em volta do centro da lente, com o topo achatado: o traço do meio não fica
-      // subindo e descendo quando a lente passa de um traço para o outro. Ainda acentuada (pedido do dono, 2026-11-22).
-      const far = k > 0 ? Math.min(1, Math.abs((left + right) / 2 - m) / (R * 0.6)) : 1, near = Math.pow(Math.cos(far * Math.PI / 2), 2.6), lit = near;
-      const st = marks[i].style, cls = marks[i].classList;
-      st.left = left + "px";
-      st.width = Math.max(0, size - gap) + "px";
-      const here = cls.contains("here"), win = cls.contains("win");
-      st.height = snap(Math.max(here ? 18 : 12, 12 + 28 * k * near)) + "px";
-      if (win) hasWin = true;
-      // Com a lupa aberta, o resto do mapa apaga um pouco e os traços da lente acendem (sem degrau: o brilho muda aos poucos)
-      // (fora do trecho à mostra o mapa fica apagado; a câmera da tela, sempre acesa)
-      const normal = win ? 1 : 0.3, dim = win ? 0.55 : 0.3, base = normal + (dim - normal) * k;
-      st.opacity = here ? "1" : (base + (1 - base) * lit).toFixed(3);
+  function miniIndex(pos) { return G.n ? Math.max(0, Math.min(G.n - 1, Math.floor(pos / G.W * G.n))) : -1; }
+  // As medidas do mapa, tiradas uma vez (quando as abas são refeitas ou a janela muda de tamanho), e os traços postos
+  // no lugar. Depois disso, mexer o mouse ou a faixa só muda a altura e o brilho de poucos traços, sem medir nada na
+  // tela: medir e reposicionar os 200 traços a cada quadro deixava o movimento aos trancos (gravações do dono,
+  // 2026-11-22).
+  function mapMeasure() {
+    const mini = $("gaMini"), frame = $("gaFrame"), tip = $("gaTip"), prog = $("gaProg"), marks = mini.children;
+    const dpr = window.devicePixelRatio || 1;
+    G.snap = (v) => Math.round(v * dpr) / dpr;
+    G.n = mini.classList.contains("hidden") ? 0 : marks.length;
+    G.W = G.n ? mini.clientWidth : 0;
+    if (!G.n || !G.W || !prog.classList.contains("strip")) { G.n = 0; frame.classList.add("hidden"); tip.classList.add("hidden"); return; }
+    G.w = G.W / G.n;
+    G.R = Math.max(66, 8.4 * G.w);
+    frame.classList.remove("hidden");
+    const host = frame.offsetParent.getBoundingClientRect(), box = mini.getBoundingClientRect();
+    G.x0 = box.left - host.left; G.hostW = host.width; G.left = box.left;
+    G.cw = prog.clientWidth; G.sw = prog.scrollWidth;
+    G.tabW = prog.children[0].offsetWidth; G.tab0 = prog.children[0].offsetLeft - prog.offsetLeft;
+    G.tabStep = G.n > 1 ? prog.children[1].offsetLeft - prog.children[0].offsetLeft : G.tabW;
+    // bordas em pixels inteiros da tela (os vãos entre os traços ficam sempre iguais)
+    let left = 0;
+    for (let i = 0; i < G.n; ++i) {
+      const right = G.snap((i + 1) * G.w), size = right - left, gap = size >= 3 ? 1 : size >= 1.5 ? 1 / dpr : 0;
+      marks[i].style.left = left + "px";
+      marks[i].style.width = Math.max(0, size - gap) + "px";
       left = right;
     }
-    // A moldura do trecho à mostra: sai direto de onde a faixa de abas está (anda junto com ela, sem degraus)
-    const prog = $("gaProg");
-    frame.classList.toggle("hidden", !hasWin || mini.classList.contains("hidden") || !prog.scrollWidth);
-    if (!frame.classList.contains("hidden")) {
-      const host = frame.offsetParent.getBoundingClientRect(), box = mini.getBoundingClientRect();
-      frame.style.left = snap(box.left - host.left + prog.scrollLeft / prog.scrollWidth * W - 4) + "px";
-      frame.style.width = snap(prog.clientWidth / prog.scrollWidth * W + 7) + "px";
-      frame.style.top = (box.bottom - host.top - 12 - 5) + "px";
-      frame.style.height = (12 + 9) + "px";
+    frame.style.left = "0"; frame.style.top = (box.bottom - host.top - 12 - 5) + "px";
+    frame.style.width = G.snap(G.cw / G.sw * G.W + 7) + "px"; frame.style.height = "21px";
+    tip.style.left = "0"; tip.style.top = (box.bottom - host.top + 8) + "px";
+    G.hereI = S.state && S.state.tabs ? S.state.tabs.findIndex((t) => t.camera === S.hereCam) : -1;
+    G.winLo = 0; G.winHi = -1; G.lo = 0; G.hi = -1; G.tipI = -2;
+    stripChanged();
+    for (let i = 0; i < G.n; ++i) paintBar(i);
+    paintLens();
+  }
+  // A altura e o brilho de um traço: a câmera da tela (branca, mais alta), o trecho à mostra (aceso; o resto,
+  // apagado) e a lupa (os traços em volta do ponteiro crescem e acendem, numa curva lisa de topo achatado). O traço não
+  // muda de lugar nem de largura; a altura cresce por escala (sem refazer o desenho da tela).
+  function paintBar(i) {
+    const el = i >= 0 && i < G.n ? $("gaMini").children[i] : null;
+    if (!el) return;
+    const here = i === G.hereI, win = i >= G.winLo && i <= G.winHi, base = here ? 18 : 12;
+    const k = S.lensPos >= 0 ? S.lensK : 0;
+    const far = k > 0 ? Math.min(1, Math.abs((i + 0.5) * G.w - S.lensPos) / G.R) : 1, near = far < 1 ? Math.pow(Math.cos(far * Math.PI / 2), 2.6) * k : 0;
+    const h = G.snap(Math.max(base, 12 + 28 * near)), normal = win ? 1 : 0.3;
+    el.style.height = base + "px";
+    el.style.transform = h > base ? "scaleY(" + (h / base).toFixed(4) + ")" : "";
+    el.style.opacity = here ? "1" : (normal + (1 - normal) * near).toFixed(3);
+  }
+  // A lupa andou: só os traços perto dela (e os que estavam perto no quadro anterior) são refeitos; e a etiqueta
+  function paintLens() {
+    if (!G.n) return;
+    const k = S.lensPos >= 0 ? S.lensK : 0;
+    const lo = k > 0 ? Math.max(0, Math.floor((S.lensPos - G.R) / G.w)) : 0, hi = k > 0 ? Math.min(G.n - 1, Math.ceil((S.lensPos + G.R) / G.w)) : -1;
+    for (let i = Math.min(lo, G.lo); i <= Math.max(hi, G.hi); ++i) paintBar(i);
+    G.lo = lo; G.hi = hi;
+    // A etiqueta diz a câmera embaixo do ponteiro (a lupa chega um instante depois)
+    const tip = $("gaTip"), i = S.lensWant && k > 0 ? miniIndex(S.lensMouse) : -1, t = i >= 0 && S.state && S.state.tabs ? S.state.tabs[i] : null;
+    if (!t) { if (G.tipI !== -1) { G.tipI = -1; tip.classList.add("hidden"); } return; }
+    if (G.tipI !== i || G.tipState !== t.state) {
+      G.tipI = i; G.tipState = t.state;
+      tip.innerHTML = "Camera " + pad(t.order) + (t.state ? ' · <b class="' + t.state + '">' + (t.state === "needs" ? "change" : "ready") + "</b>" : "");
+      tip.classList.remove("hidden");
+      G.tipW = tip.offsetWidth;
     }
-    if (k <= 0) { tip.classList.add("hidden"); return; }
-    // A etiqueta diz a câmera embaixo do ponteiro (a lente chega um instante depois)
-    const t = S.state && S.state.tabs ? S.state.tabs[miniIndex(S.lensMouse)] : null;
-    tip.classList.toggle("hidden", !t || !S.lensWant);
-    if (!t || !S.lensWant) return;
-    tip.innerHTML = "Camera " + pad(t.order) + (t.state ? ' · <b class="' + t.state + '">' + (t.state === "needs" ? "change" : "ready") + "</b>" : "");
-    const host = tip.offsetParent.getBoundingClientRect(), box = mini.getBoundingClientRect();
-    tip.style.left = Math.max(8, Math.min(host.width - tip.offsetWidth - 8, box.left + lensGoal() - host.left - tip.offsetWidth / 2)) + "px";
-    tip.style.top = (box.bottom - host.top + 8) + "px";
+    tip.style.transform = "translateX(" + G.snap(Math.max(8, Math.min(G.hostW - G.tipW - 8, G.x0 + S.lensMouse - G.tipW / 2))) + "px)";
   }
-  // O centro da lente vai para o ponteiro, com um pequeno atraso (movimento contínuo; prender a lente ao traço dava
-  // um anda-e-para a cada traço)
-  function lensGoal() {
-    const mini = $("gaMini"), n = mini.children.length;
-    return S.lensMouse;
-  }
+  // O centro da lupa vai para o ponteiro com um pequeno atraso (movimento suave; pedido do dono, 2026-11-22), e ela
+  // abre e fecha com uma animação curta (S.lensK vai de 0 a 1 e volta)
   function lensAnimate() {
     if (S.lensRaf) return;
     let last = performance.now();
     const step = (now) => {
       const dt = Math.min(50, now - last); last = now;
-      const want = S.lensWant ? 1 : 0;
+      const want = S.lensWant ? 1 : 0, goal = S.lensMouse;
       S.lensK = want > S.lensK ? Math.min(1, S.lensK + dt / 140) : Math.max(0, S.lensK - dt / 140);
-      // O centro da lente vai atrás do ponteiro com um pequeno atraso (movimento suave; pedido do dono, 2026-11-22)
-      const goal = lensGoal();
       if (S.lensWant && S.lensPos >= 0) { S.lensPos += (goal - S.lensPos) * (1 - Math.exp(-dt / (S.drag ? 40 : 80))); if (Math.abs(goal - S.lensPos) < 0.15) S.lensPos = goal; }
+      paintLens();
       if (!S.lensWant && S.lensK <= 0) S.lensPos = -1;
-      lensLayout();
       S.lensRaf = S.lensK !== want || (S.lensWant && S.lensPos !== goal) ? requestAnimationFrame(step) : 0;
     };
     S.lensRaf = requestAnimationFrame(step);
   }
   function lensAt(clientX, want) {
-    const r = $("gaMini").getBoundingClientRect();
-    if (want) { S.lensMouse = Math.max(0, Math.min(r.width - 0.01, clientX - r.left)); if (S.lensPos < 0) S.lensPos = lensGoal(); }
+    if (!G.n) return;
+    if (want) { S.lensMouse = Math.max(0, Math.min(G.W - 0.01, clientX - G.left)); if (S.lensPos < 0) S.lensPos = S.lensMouse; }
     S.lensWant = want;
     lensAnimate();
   }
@@ -352,7 +365,7 @@
     if (setHere(t.camera)) $("gaName").textContent = "Camera " + pad(t.order) + " · " + t.camera;
     // A faixa de abas acompanha o ponteiro de forma contínua (o ponto do mapa embaixo dele fica no meio da faixa)
     const prog = $("gaProg");
-    if (prog.classList.contains("strip")) { prog.scrollLeft = S.lensMouse / $("gaMini").clientWidth * prog.scrollWidth - prog.clientWidth / 2; stripChanged(); } else lensLayout();
+    if (G.n) { prog.scrollLeft = S.lensMouse / G.W * G.sw - G.cw / 2; stripChanged(); }
     miniGo();
   }
   document.addEventListener("mousemove", (e) => { if (S.drag) { lensAt(e.clientX, true); dragTo(); } });
@@ -375,7 +388,7 @@
     $("gaOnTopLabel").classList.toggle("hidden", S.opts.display === "full");
     $("gaChangeDisplay").classList.toggle("hidden", !(S.opts.display === "full" && S.screens.length > 1));
     root.classList.toggle("full", S.opts.display === "full");
-    requestAnimationFrame(() => { fitTabs(); fit(); lensLayout(); });
+    requestAnimationFrame(() => { fitTabs(); fit(); });
   }
   function setOpts(change, silent) {
     const before = JSON.stringify([S.opts.display, S.opts.screen, S.opts.onTop]);
