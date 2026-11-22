@@ -7,7 +7,7 @@
 .ga-top span { flex: none; font: 600 13px/1 var(--noct-font-mono, monospace); letter-spacing: .12em; text-transform: uppercase; color: var(--noct-text-dim, #9cc); }
 /* Uma aba por câmera, com o número e o estado (decisão do dono, 2026-11-22: forma C): verde = boa (READY), âmbar =
    precisa de ajuste (CHANGE), escura = ainda sem marcas; a da tela fica cheia. Um clique leva àquela câmera. */
-.walk-prog { display: flex; gap: 6px; margin: 0 0 12px; flex: none; }
+.walk-prog { display: flex; gap: 6px; }
 .walk-prog button { flex: 1; min-width: 0; height: 30px; padding: 0 4px; display: flex; align-items: center; justify-content: center; overflow: hidden; white-space: nowrap;
   font: 700 12px/1 var(--noct-font-mono); letter-spacing: .1em; color: var(--noct-text-dim); background: transparent; border: 1px solid var(--noct-border); border-radius: 0; cursor: pointer; }
 .walk-prog button.done { border-color: var(--noct-primary); color: var(--noct-primary); }
@@ -16,10 +16,26 @@
 .walk-prog button.here.done { background: var(--noct-primary); border-color: var(--noct-primary); color: var(--noct-on-primary); }
 .walk-prog button.here.needs { background: var(--noct-pending); border-color: var(--noct-pending); color: #000; }
 .walk-prog button i { font-style: normal; white-space: pre; }
-/* Muitas câmeras: só o número; se nem assim couber, mais de uma linha */
-.walk-prog.compact { display: grid; grid-template-columns: repeat(auto-fit, minmax(30px, 1fr)); gap: 4px; }
+/* Texto que não cabe: só o número (a cor diz o estado) */
+.walk-prog.compact { gap: 4px; }
 .walk-prog.compact button { padding: 0; letter-spacing: 0; }
 .walk-prog.compact button i { display: none; }
+/* Abas que não cabem numa linha (decisão do dono, 2026-11-22: forma A): uma faixa que desliza, com setas nas pontas
+   e Next to change; com 50 câmeras ou mais (forma C), o mapa de todas em cima */
+.ga-nav { display: flex; gap: 6px; align-items: stretch; margin: 0 0 12px; flex: none; }
+.ga-nav .walk-prog { margin: 0; flex: 1; min-width: 0; }
+.walk-prog.strip { overflow-x: auto; scrollbar-width: none; }
+.walk-prog.strip::-webkit-scrollbar { display: none; }
+.walk-prog.strip button { flex: 0 0 38px; }
+.ga-nav-btn { flex: none; height: 30px; min-width: 30px; padding: 0 10px; display: flex; align-items: center; justify-content: center; white-space: nowrap;
+  font: 700 12px/1 var(--noct-font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--noct-text); background: transparent; border: 1px solid var(--noct-border-strong); border-radius: 0; cursor: pointer; }
+.ga-nav-btn:disabled { opacity: .35; cursor: default; }
+.ga-nav-btn.ga-jump.needs { border-color: var(--noct-pending); color: var(--noct-pending); }
+.ga-mini { display: flex; gap: 1px; height: 12px; margin: 0 0 -8px; flex: none; }
+.ga-mini span { flex: 1; min-width: 0; background: var(--noct-border); cursor: pointer; }
+.ga-mini span.done { background: var(--noct-primary); opacity: .55; }
+.ga-mini span.needs { background: var(--noct-pending); }
+.ga-mini span.win { opacity: 1; box-shadow: 0 -3px 0 var(--noct-text); }
 .ga-main { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 26px; flex: 1; min-height: 0; }
 .ga-photo-box { min-width: 0; min-height: 0; }
 .ga-main .al-photo { width: 100%; background-image: none; }

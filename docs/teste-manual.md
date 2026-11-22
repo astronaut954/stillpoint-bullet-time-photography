@@ -2217,7 +2217,12 @@ sozinho em uns 10 segundos (como se alguém estivesse mexendo nela).
       junto.
 - [ ] Muitas câmeras, com `STILLPOINT_FAKE_CAMERAS=24 STILLPOINT_FAKE_PHOTOS=pole STILLPOINT_FAKE_FIXED=odd
       STILLPOINT_FAKE_LIVE_STEP=1` (as ímpares já começam boas e cada câmera se acerta em um instante): as abas
-      mostram só o número, em verde ou âmbar; com `STILLPOINT_FAKE_CAMERAS=64` elas ocupam mais de uma linha.
+      mostram só o número, em verde ou âmbar, numa linha.
+- [ ] Com `STILLPOINT_FAKE_CAMERAS=40`: as abas viram uma faixa que desliza, com **‹** e **›** nas pontas e, à direita,
+      **Next to change · N left**, que pula para a próxima câmera que precisa de ajuste. A aba da câmera na tela fica
+      no meio da faixa.
+- [ ] Com `STILLPOINT_FAKE_CAMERAS=120`: em cima da faixa, o mapa com um traço por câmera (verde ou âmbar; o trecho
+      mais claro é o que a faixa mostra); um clique num traço leva àquela câmera; **Next to change** sem o número.
 - [ ] Windows: os itens acima.
 - [ ] Câmeras de verdade (pendente até o dono avisar que tem o material): nesta parte elas não têm imagem ao vivo; a
       janela mostra **No live image** e a última foto, e as instruções mudam a cada **Fire again**. A conferir na

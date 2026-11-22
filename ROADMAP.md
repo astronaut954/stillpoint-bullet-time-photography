@@ -1189,8 +1189,14 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      primeiro quadro já vinha diferente da foto).
      Pedido do dono (2026-11-22): a janela precisa servir a 100 câmeras ou mais, com navegação na linha das abas.
      Protótipo com três formas (A faixa que desliza com setas e "Next to change"; B páginas de 20; C mapa de todas as
-     câmeras em cima da faixa): https://claude.ai/artifact/1fiehsxVk1ETk4J3oNTVWi. Aguardando a escolha do dono. As
-     câmeras simuladas hoje vão até 64 (`STILLPOINT_FAKE_CAMERAS`); para testar com mais, subir esse limite.
+     câmeras em cima da faixa): https://claude.ai/artifact/1fiehsxVk1ETk4J3oNTVWi. **Decisão do dono (2026-11-22):
+     forma A quando as abas não cabem numa linha e forma C a partir de 50 câmeras.** Feito (`aim.js`, `fitTabs`): as
+     abas cabem com o texto, como antes; não cabem, só o número; nem assim cabem, a faixa que desliza com **‹**, **›**
+     e **Next to change · N left** (pula para a próxima câmera que precisa de ajuste); com 50 câmeras ou mais, a faixa
+     e, em cima, o mapa de todas (um traço por câmera, clique leva à câmera, o trecho à mostra na faixa fica mais
+     claro) e **Next to change** sem o número, como no protótipo. As abas em mais de uma linha saíram.
+     `STILLPOINT_FAKE_CAMERAS` passou a aceitar até 200. Conferido pelo agente com 30 e 120 câmeras simuladas (setas,
+     Next to change e clique no mapa); sem cenário no teste automático ainda.
    - **Parte 6b, a fazer:** a imagem ao vivo das câmeras Canon de verdade (o processo de cada câmera em `src/worker`
      e o protocolo): ligar o visor ao vivo, mandar os quadros e desligar antes de cada disparo. Só o dono consegue
      testar (câmeras reais).

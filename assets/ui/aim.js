@@ -2,7 +2,7 @@
 // Uma câmera por vez: a foto (ou a imagem ao vivo, Live aim), as marcas, as setas e as instruções em letra grande.
 // Esta página só mostra: quem decide a câmera da vez, as instruções e o progresso é a página principal
 // (Test shot › Align cameras), que manda o estado por window.aimState(estado). O que a pessoa faz aqui volta por
-// aimAction({type: "next" | "prev" | "live"}) ou aimAction({type: "go", camera}) (clique na aba de uma câmera).
+// aimAction({type: "next" | "prev" | "nextchange" | "live"}) ou aimAction({type: "go", camera}) (clique na aba de uma câmera).
 // Display: janela (sempre à frente ou não) ou tela cheia num monitor escolhido, como a janela Live.
 (function () {
   "use strict";
@@ -28,7 +28,7 @@
     if (!on) {
       $("gaName").textContent = "Guided aim";
       $("gaInfo").textContent = "";
-      $("gaProg").innerHTML = ""; S.tabsHtml = "";
+      $("gaProg").innerHTML = ""; $("gaMini").innerHTML = ""; S.tabsHtml = ""; fitTabs();
       $("gaLines").innerHTML = '<li class="info">Open Test shot › Align cameras in the main window.</li>';
       $("gaImg").removeAttribute("src");
       $("gaMarks").innerHTML = "";
@@ -48,8 +48,9 @@
       $("gaProg").innerHTML = tabs;
       // (com as abas só no número, o estado aparece ao parar o mouse)
       $("gaProg").querySelectorAll("button").forEach((b) => { b.title = "Camera " + b.textContent.replace(" · ", ": ").replace("READY", "ready").replace("CHANGE", "needs a change"); });
-      fitTabs();
-    }
+      $("gaMini").innerHTML = (st.tabs || []).map((t) => '<span class="' + t.state + '" data-camera="' + esc(t.camera) + '" title="Camera ' + pad(t.order) + '"></span>').join("");
+      fitTabs(true);
+    } else fitTabs(false);
     const lines = $("gaLines");
     lines.innerHTML = "";
     (st.lines || []).forEach(([cls, text]) => { const li = document.createElement("li"); li.className = cls; li.textContent = text; lines.appendChild(li); });
@@ -103,13 +104,66 @@
     if (a.tilt) html += '<span class="al-arrow" style="left:47.5%;top:' + (a.tilt > 0 ? 24 : 58) + '%">' + (a.tilt > 0 ? "↑" : "↓") + "</span>";
     host.innerHTML = html;
   }
-  // Muitas câmeras: quando o texto não cabe nas abas, fica só o número (a cor continua dizendo o estado) e, se
-  // ainda assim não couber, as abas quebram em mais de uma linha
-  function fitTabs() {
+  // As abas, do jeito que couber (decisões do dono, 2026-11-22):
+  //   - cabem com o texto: "01 · READY";  - não cabem: só o número (a cor diz o estado);
+  //   - nem assim cabem numa linha: uma faixa que desliza, com setas nas pontas e Next to change (forma A);
+  //   - 50 câmeras ou mais: a faixa e, em cima, o mapa de todas as câmeras (forma C).
+  const MAP_FROM = 50;
+  // measure: as abas ou o tamanho da janela mudaram (mede de novo o que cabe); sem isso só acerta o resto
+  function fitTabs(measure) {
+    const prog = $("gaProg"), st = S.state, n = prog.children.length;
+    const extra = ["gaTabsPrev", "gaTabsNext", "gaNextChange"];
+    const map = n >= MAP_FROM;
+    let mode = S.tabsMode || "full";
+    if (measure !== false) {
+      const at = prog.scrollLeft;
+      prog.classList.remove("compact", "strip");
+      extra.forEach((id) => $(id).classList.add("hidden"));
+      $("gaMini").classList.toggle("hidden", !map);
+      mode = "full";
+      if (map || Array.from(prog.children).some((b) => b.scrollWidth > b.clientWidth + 1)) {
+        prog.classList.add("compact");
+        mode = "compact";
+        // (só o número precisa de uns 30 px por aba)
+        if (map || n * 34 > prog.clientWidth) {
+          mode = "strip";
+          extra.forEach((id) => $(id).classList.remove("hidden"));
+          prog.classList.add("strip");
+          prog.scrollLeft = at;
+        }
+      }
+    }
+    const left = st && st.tabs ? st.tabs.filter((t) => t.state === "needs" && t.camera !== st.camera).length : 0;
+    const jump = $("gaNextChange");
+    jump.textContent = "Next to change" + (!map && left ? " · " + left + " left" : "");
+    jump.disabled = !left;
+    jump.classList.toggle("needs", left > 0);
+    if (mode !== S.tabsMode) { S.tabsMode = mode; S.tabsCam = ""; }
+    if (mode === "strip" && st && S.tabsCam !== st.camera) { S.tabsCam = st.camera; centerTab(); }
+    stripChanged();
+  }
+  // A aba da câmera na tela vai para o meio da faixa
+  function centerTab() {
+    const prog = $("gaProg"), here = prog.querySelector("button.here");
+    if (here) prog.scrollLeft = here.offsetLeft - prog.offsetLeft - (prog.clientWidth - here.offsetWidth) / 2;
+  }
+  // A faixa andou: as setas das pontas e, no mapa, o trecho que a faixa está mostrando
+  function stripChanged() {
     const prog = $("gaProg");
-    prog.classList.remove("compact");
-    const tight = Array.from(prog.children).some((b) => b.scrollWidth > b.clientWidth + 1);
-    prog.classList.toggle("compact", tight);
+    if (!prog.classList.contains("strip")) return;
+    $("gaTabsPrev").disabled = prog.scrollLeft <= 1;
+    $("gaTabsNext").disabled = prog.scrollLeft >= prog.scrollWidth - prog.clientWidth - 1;
+    const marks = $("gaMini").children;
+    if ($("gaMini").classList.contains("hidden") || !marks.length) return;
+    const a = prog.scrollLeft, b = a + prog.clientWidth;
+    Array.from(prog.children).forEach((t, i) => {
+      const x = t.offsetLeft - prog.offsetLeft + t.offsetWidth / 2;
+      if (marks[i]) marks[i].classList.toggle("win", x >= a && x <= b);
+    });
+  }
+  function slideTabs(dir) {
+    const prog = $("gaProg");
+    prog.scrollBy({ left: dir * Math.max(80, prog.clientWidth - 84), behavior: "smooth" });
   }
   // A imagem no maior tamanho que cabe na coluna, sem deformar
   function fit() {
@@ -141,6 +195,11 @@
   $("gaLive").addEventListener("click", () => send("live"));
   $("gaPrev").addEventListener("click", () => send("prev"));
   $("gaNext").addEventListener("click", () => send("next"));
+  $("gaTabsPrev").addEventListener("click", () => slideTabs(-1));
+  $("gaTabsNext").addEventListener("click", () => slideTabs(1));
+  $("gaNextChange").addEventListener("click", () => send("nextchange"));
+  $("gaProg").addEventListener("scroll", stripChanged);
+  $("gaMini").addEventListener("click", (e) => { const m = e.target.closest("span[data-camera]"); if (m && S.state && m.dataset.camera !== S.state.camera) send("go", m.dataset.camera); });
   $("gaProg").addEventListener("click", (e) => { const b = e.target.closest("button[data-camera]"); if (b && !b.classList.contains("here")) send("go", b.dataset.camera); });
 
   // ----- Display (igual à janela Live): janela ou tela cheia num monitor escolhido -----

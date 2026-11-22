@@ -16,7 +16,15 @@
   <div id="aim" class="live ga-win">
     <div class="ga">
       <div class="ga-top"><h2 id="gaName"></h2><span id="gaInfo"></span></div>
-      <div id="gaProg" class="walk-prog"></div>
+      <!-- Com 50 câmeras ou mais: o mapa de todas (um traço por câmera) em cima da faixa das abas -->
+      <div id="gaMini" class="ga-mini hidden"></div>
+      <!-- As abas; quando não cabem numa linha, viram uma faixa que desliza, com setas e Next to change -->
+      <div id="gaNav" class="ga-nav">
+        <button id="gaTabsPrev" class="ga-nav-btn hidden" type="button" title="Earlier cameras" aria-label="Earlier cameras">‹</button>
+        <div id="gaProg" class="walk-prog"></div>
+        <button id="gaTabsNext" class="ga-nav-btn hidden" type="button" title="Later cameras" aria-label="Later cameras">›</button>
+        <button id="gaNextChange" class="ga-nav-btn ga-jump hidden" type="button" title="Go to the next camera that needs a change">Next to change</button>
+      </div>
       <div class="ga-main">
         <div id="gaPhotoBox" class="ga-photo-box">
           <div id="gaPhoto" class="al-photo">

@@ -3158,6 +3158,7 @@
     if (!a || !ga.open) return;
     if (a.type === "next") gaStep(1);
     else if (a.type === "prev") gaStep(-1);
+    else if (a.type === "nextchange") { const next = gaCandidate(); if (next) gaGo(next); }
     else if (a.type === "go") { if (a.camera !== ga.cam && alPhotoOf(a.camera)) gaGo(a.camera); }
     else if (a.type === "live") { ga.want = !ga.want; ga.lost = false; ga.okSince = 0; gaLiveSet(); gaPush(); }
   };
