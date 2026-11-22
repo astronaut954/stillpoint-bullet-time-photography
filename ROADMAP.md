@@ -1223,7 +1223,12 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      soma de arredondamentos da linha flexível). Falta o dono ver se parou de tremer.
      Pedido do dono: a marca do trecho à mostra no mapa não está boa. Protótipo com quatro formas (A moldura; B o
      resto apagado; C barra embaixo; D funil até as abas), todas com um traço branco na câmera da tela:
-     https://claude.ai/artifact/Lh5LyHcYAyUrwd4F3cLR2L. Aguardando a escolha.
+     https://claude.ai/artifact/Lh5LyHcYAyUrwd4F3cLR2L. **Decisão do dono (2026-11-22): A misturado com B.** Feito:
+     moldura em volta do trecho à mostra, o resto do mapa apagado e o traço branco, mais alto, na câmera da tela.
+     Gravação do dono (2026-11-22): a lupa ainda tremia. Causa vista na gravação: com a lente presa ao ponteiro, os
+     traços ampliados corriam embaixo dele a cada pixel de movimento. Agora o centro da lente fica no meio do traço
+     que está embaixo do ponteiro: parado ou dentro de um traço, nada se mexe; ao passar para o vizinho, um passo
+     suave. Conferido pelo agente: ponteiro andando de meio em meio pixel, os traços só mudam na troca de traço.
      **Decisões do dono (2026-11-22):** mostrar o andamento nas esperas longas (a fazer, com protótipo antes); não
      juntar as linhas do aviso do rig; confirmadas as três escolhas provisórias do Guided aim: Review alignment
      apagado até um Fire again depois de mexer com o Live aim, a janela não troca de câmera sozinha com o Live aim

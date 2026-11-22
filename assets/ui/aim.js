@@ -50,7 +50,7 @@
       $("gaProg").innerHTML = tabs;
       // (com as abas só no número, o estado aparece ao parar o mouse)
       $("gaProg").querySelectorAll("button").forEach((b) => { b.title = "Camera " + b.textContent.replace(" · ", ": ").replace("READY", "ready").replace("CHANGE", "needs a change"); });
-      $("gaMini").innerHTML = (st.tabs || []).map((t) => '<span class="' + t.state + '" data-camera="' + esc(t.camera) + '" title="Camera ' + pad(t.order) + '"></span>').join("");
+      $("gaMini").innerHTML = (st.tabs || []).map((t) => '<span class="' + t.state + (t.camera === st.camera ? " here" : "") + '" data-camera="' + esc(t.camera) + '" title="Camera ' + pad(t.order) + '"></span>').join("");
       fitTabs(true);
       lensLayout();  // (os traços foram refeitos, talvez com o mouse em cima)
     } else fitTabs(false);
@@ -228,8 +228,9 @@
   // Os traços do mapa são postos no lugar aqui (posição, largura, altura e brilho de cada um), com ou sem a lupa
   function lensLayout() {
     const mini = $("gaMini"), tip = $("gaTip"), marks = mini.children, n = marks.length;
-    const W = mini.clientWidth;
-    if (!n || !W) { tip.classList.add("hidden"); return; }
+    const W = mini.clientWidth, frame = $("gaFrame");
+    if (!n || !W) { tip.classList.add("hidden"); frame.classList.add("hidden"); return; }
+    let winL = -1, winR = -1;
     const k = S.lensPos >= 0 ? S.lensK : 0, w = W / n, m = S.lensPos, R = Math.max(110, 14 * w);
     // (perto de uma ponta do mapa a lente encolhe desse lado: as pontas não saem do lugar)
     const f = (x) => {
@@ -247,11 +248,23 @@
       st.left = left.toFixed(2) + "px";
       st.width = (size - gap).toFixed(2) + "px";
       // (curva acentuada: o pico bem mais alto que os vizinhos; pedido do dono, 2026-11-22)
-      st.height = (12 + 28 * k * Math.pow(near, 1.7)).toFixed(2) + "px";
+      const here = cls.contains("here"), win = cls.contains("win");
+      st.height = ((here ? 18 : 12) + 28 * k * Math.pow(near, 1.7)).toFixed(2) + "px";
+      if (win) { if (winL < 0) winL = left; winR = right - gap; }
       // Com a lupa aberta, o resto do mapa apaga um pouco e os traços da lente acendem (sem degrau: o brilho muda aos poucos)
-      const normal = cls.contains("needs") || cls.contains("win") ? 1 : 0.55, dim = cls.contains("needs") ? 0.6 : 0.28, base = normal + (dim - normal) * k;
-      st.opacity = (base + (1 - base) * lit).toFixed(3);
+      // (fora do trecho à mostra o mapa fica apagado; a câmera da tela, sempre acesa)
+      const normal = win ? 1 : 0.3, dim = win ? 0.55 : 0.3, base = normal + (dim - normal) * k;
+      st.opacity = here ? "1" : (base + (1 - base) * lit).toFixed(3);
       left = right;
+    }
+    // A moldura do trecho à mostra
+    frame.classList.toggle("hidden", winL < 0 || mini.classList.contains("hidden"));
+    if (!frame.classList.contains("hidden")) {
+      const host = frame.offsetParent.getBoundingClientRect(), box = mini.getBoundingClientRect();
+      frame.style.left = (box.left - host.left + winL - 4) + "px";
+      frame.style.width = (winR - winL + 8) + "px";
+      frame.style.top = (box.bottom - host.top - 12 - 5) + "px";
+      frame.style.height = (12 + 9) + "px";
     }
     if (k <= 0) { tip.classList.add("hidden"); return; }
     // A etiqueta diz a câmera embaixo do ponteiro (a lente chega um instante depois)
@@ -260,8 +273,16 @@
     if (!t || !S.lensWant) return;
     tip.innerHTML = "Camera " + pad(t.order) + (t.state ? ' · <b class="' + t.state + '">' + (t.state === "needs" ? "change" : "ready") + "</b>" : "");
     const host = tip.offsetParent.getBoundingClientRect(), box = mini.getBoundingClientRect();
-    tip.style.left = Math.max(8, Math.min(host.width - tip.offsetWidth - 8, box.left + S.lensMouse - host.left - tip.offsetWidth / 2)) + "px";
+    tip.style.left = Math.max(8, Math.min(host.width - tip.offsetWidth - 8, box.left + lensGoal() - host.left - tip.offsetWidth / 2)) + "px";
     tip.style.top = (box.bottom - host.top + 8) + "px";
+  }
+  // O centro da lente fica no meio do traço que está embaixo do ponteiro (não no ponteiro): com o ponteiro parado ou
+  // andando dentro de um traço, nada se mexe; ao passar para o traço vizinho, a lente dá um passo suave. Seguindo o
+  // ponteiro pixel a pixel, os traços ampliados corriam embaixo dele e a lupa parecia tremer (gravação do dono,
+  // 2026-11-22).
+  function lensGoal() {
+    const mini = $("gaMini"), n = mini.children.length;
+    return n ? (miniIndex(S.lensMouse) + 0.5) * mini.clientWidth / n : S.lensMouse;
   }
   function lensAnimate() {
     if (S.lensRaf) return;
@@ -271,16 +292,17 @@
       const want = S.lensWant ? 1 : 0;
       S.lensK = want > S.lensK ? Math.min(1, S.lensK + dt / 140) : Math.max(0, S.lensK - dt / 140);
       // O centro da lente vai atrás do ponteiro com um pequeno atraso (movimento suave; pedido do dono, 2026-11-22)
-      if (S.lensWant && S.lensPos >= 0) { S.lensPos += (S.lensMouse - S.lensPos) * (1 - Math.exp(-dt / 70)); if (Math.abs(S.lensMouse - S.lensPos) < 0.3) S.lensPos = S.lensMouse; }
+      const goal = lensGoal();
+      if (S.lensWant && S.lensPos >= 0) { S.lensPos += (goal - S.lensPos) * (1 - Math.exp(-dt / 90)); if (Math.abs(goal - S.lensPos) < 0.15) S.lensPos = goal; }
       if (!S.lensWant && S.lensK <= 0) S.lensPos = -1;
       lensLayout();
-      S.lensRaf = S.lensK !== want || (S.lensWant && S.lensPos !== S.lensMouse) ? requestAnimationFrame(step) : 0;
+      S.lensRaf = S.lensK !== want || (S.lensWant && S.lensPos !== goal) ? requestAnimationFrame(step) : 0;
     };
     S.lensRaf = requestAnimationFrame(step);
   }
   function lensAt(clientX, want) {
     const r = $("gaMini").getBoundingClientRect();
-    if (want) { S.lensMouse = Math.max(0, Math.min(r.width - 0.01, clientX - r.left)); if (S.lensPos < 0) S.lensPos = S.lensMouse; }
+    if (want) { S.lensMouse = Math.max(0, Math.min(r.width - 0.01, clientX - r.left)); if (S.lensPos < 0) S.lensPos = lensGoal(); }
     S.lensWant = want;
     lensAnimate();
   }
