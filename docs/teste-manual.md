@@ -2267,11 +2267,14 @@ Com `STILLPOINT_FAKE_CAMERAS=200`. No painel **Bullet time**, **Advanced** › *
 - [ ] Clicar num número aceso, segurar e arrastar: todos apagam.
 - [ ] Um clique sozinho continua marcando ou desmarcando só aquele número.
 - [ ] Com dois passos (**Add step**): os números arrastados num passo saem do outro.
-- [ ] Cada passo começa com duas fileiras de números, o botão **··· Show all 200** e o resumo ao lado (por exemplo
-      "3 cameras · 1–3"). O botão mostra todos os números com uma animação e vira **Show less**, que recolhe.
-      Com `STILLPOINT_FAKE_CAMERAS=24` não há botão: todos os números aparecem, como antes.
-- [ ] Com dois ou mais passos, segurar um passo pelo texto **Step 1** e arrastar: todos os passos encolhem para uma
-      linha com o resumo das câmeras, dá para soltar acima ou abaixo de outro, e ao soltar os números voltam. Com
+- [ ] Cada passo é uma linha com uma barra do rig inteiro (o trecho do passo aceso, o de outros passos mais claro),
+      os números 1, 50, 100, 150, 200 embaixo, quantas câmeras ao lado e o botão **▾ Grid**.
+- [ ] **▾ Grid** abre a grade dos números com uma animação e vira **▴ Hide grid**, que fecha. Marcar números na
+      grade (clique ou arraste) acende os mesmos trechos na barra.
+- [ ] Parar o mouse na barra diz quais câmeras são (por exemplo "12 cameras · 150, 160–170").
+- [ ] Com `STILLPOINT_FAKE_CAMERAS=24` não há barra: todos os números aparecem, como antes.
+- [ ] Com dois ou mais passos, segurar um passo pelo texto **Step 1** e arrastar: as grades abertas fecham com
+      animação e cada passo fica numa linha, dá para soltar acima ou abaixo de outro, e ao soltar as grades voltam. Com
       muitos passos, chegando perto da borda de cima ou de baixo a lista rola sozinha.
 - [ ] Windows: os itens acima.
 

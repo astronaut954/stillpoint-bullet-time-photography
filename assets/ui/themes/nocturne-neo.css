@@ -1126,12 +1126,25 @@ table.cs tr.has-note td { border-bottom-color: transparent; }
 .timing-step .step-sum { display: none; font: 11px var(--noct-font-mono); color: var(--noct-text-muted); text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .timing-step .step-main { min-width: 0; }
 .timing-custom.reordering .timing-step .step-body { overflow: hidden; transition: height .2s ease; }
-.timing-custom.reordering .timing-step .step-sum { display: block; }
-/* Muitas câmeras: os números recolhidos em duas fileiras, com o botão que mostra todos ou recolhe */
-.timing-step .step-cams.short { max-height: 48px; overflow: hidden; }
+.timing-custom.reordering .timing-step:not(.has-bar) .step-sum { display: block; }
+/* Muitas câmeras (forma D): barra do rig com o trecho do passo aceso, quantas câmeras e o botão da grade */
+.timing-step.has-bar.open { align-items: start; }
+.timing-step.has-bar.open > :not(.step-main) { margin-top: 4px; }
+.timing-step .step-head { display: flex; align-items: flex-start; gap: 12px; min-width: 0; }
+.timing-step.open .step-head { margin-bottom: 8px; }
+.timing-step .step-rig { flex: 1; min-width: 0; }
+.timing-step .step-bar { display: flex; height: 16px; box-sizing: border-box; border: 1px solid var(--noct-border-strong); }
+.timing-step .step-bar i { flex: 1; }
+.timing-step .step-bar i.on { background: var(--noct-primary); }
+.timing-step .step-bar i.used { background: rgba(var(--noct-primary-rgb), .14); }
+.timing-step .step-bar-nums { position: relative; height: 14px; margin-top: 3px; }
+.timing-step .step-bar-nums span { position: absolute; transform: translateX(-50%); font: 700 9px var(--noct-font-mono); color: var(--noct-text-dim); }
+.timing-step .step-bar-nums span.first { transform: none; }
+.timing-step .step-bar-nums span.last { transform: translateX(-100%); }
+.timing-step .step-count { font: 700 11px var(--noct-font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--noct-text-muted); white-space: nowrap; line-height: 16px; }
+.timing-step .step-grid-btn { margin-top: -5px; white-space: nowrap; }
+.timing-step .step-cams.shut { display: none; }
 .timing-step .step-cams.anim { overflow: hidden; }
-.timing-step .step-more { display: flex; align-items: center; gap: 12px; margin-top: 6px; min-width: 0; }
-.timing-step .step-more-sum { font: 11px var(--noct-font-mono); color: var(--noct-text-muted); text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .timing-step.can-drag { cursor: grab; user-select: none; -webkit-user-select: none; }
 .timing-step.dragging { position: relative; z-index: 2; cursor: grabbing; border-color: var(--noct-pending); box-shadow: 0 0 24px rgba(var(--noct-pending-rgb), .3); opacity: .55; }
 .timing-custom { position: relative; }  /* a linha de destino (.camera-drop) se posiciona por aqui */

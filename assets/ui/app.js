@@ -12629,33 +12629,48 @@
       // Resumo do passo ("44 cameras · 1–44"): aparece no lugar dos números enquanto se arrasta um passo e, com
       // muitas câmeras, ao lado do botão que mostra ou recolhe os números
       const mine = (st.cams || []).filter((o) => o >= 1 && o <= N);
-      const sumText = !mine.length ? "No cameras" : mine.length + (mine.length === 1 ? " camera · " : " cameras · ") + timingLabel(mine);
+      const sumText = !mine.length ? "No cameras" : mine.length + (mine.length === 1 ? " camera · " : " cameras · ") + stepRanges(mine);
       const main = el("div", "step-main");
       main.appendChild(el("span", "step-sum", sumText));
       const body = el("div", "step-body");
       body.appendChild(chips);
-      // Muitas câmeras (pedido do dono, 2026-11-23): os números começam recolhidos em duas fileiras, com um botão
-      // "···" que mostra todos ou recolhe de novo; a troca é animada
+      // Muitas câmeras (forma D, decisão do dono em 2026-11-23): o passo é uma barra que representa o rig inteiro,
+      // com o trecho deste passo aceso e o que já está em outro passo mais claro; ao lado, quantas câmeras, e o
+      // botão "Grid" que abre a grade dos números (com animação) ou fecha
       if (N > STEP_SHORT_FROM) {
         const open = stepOpen.has(st);
-        chips.classList.toggle("short", !open);
-        const more = el("div", "step-more");
-        const info = el("span", "step-more-sum", sumText);
-        const toggle = button(open ? "Show less" : "··· Show all " + N, () => {
-          const h0 = chips.offsetHeight;
+        row.classList.add("has-bar");
+        row.classList.toggle("open", open);
+        chips.classList.toggle("shut", !open);
+        const head = el("div", "step-head");
+        const col = el("div", "step-rig");
+        const bar = el("div", "step-bar");
+        bar.title = sumText;
+        const own = new Set(mine);
+        for (let o = 1; o <= N; ++o) bar.appendChild(el("i", own.has(o) ? "on" : used.has(o) ? "used" : ""));
+        col.appendChild(bar);
+        const marks = el("div", "step-bar-nums");
+        let gap = 1; [1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500].some((v) => { gap = v; return N / v <= 4.5; });
+        const nums = [1]; for (let o = gap; o < N - gap / 2; o += gap) nums.push(o); nums.push(N);
+        nums.forEach((o, k) => { const m = el("span", k === 0 ? "first" : k === nums.length - 1 ? "last" : "", String(o)); m.style.left = (100 * (o - 0.5)) / N + "%"; marks.appendChild(m); });
+        col.appendChild(marks);
+        head.appendChild(col);
+        head.appendChild(el("span", "step-count", mine.length + (mine.length === 1 ? " camera" : " cameras")));
+        const label = (on) => (on ? "▴ Hide grid" : "▾ Grid");
+        const toggle = button(label(open), () => {
           const now = !stepOpen.has(st);
           if (now) stepOpen.add(st); else stepOpen.delete(st);
-          chips.classList.toggle("short", !now);
-          const h1 = chips.offsetHeight;
-          toggle.textContent = now ? "Show less" : "··· Show all " + N;
+          toggle.textContent = label(now);
+          row.classList.toggle("open", now);
+          chips.classList.remove("shut");
+          const h = chips.offsetHeight;
           chips.classList.add("anim");
-          const a = chips.animate([{ maxHeight: h0 + "px" }, { maxHeight: h1 + "px" }], { duration: 200, easing: "ease" });
-          a.onfinish = a.oncancel = () => chips.classList.remove("anim");
+          const a = chips.animate([{ maxHeight: (now ? 0 : h) + "px" }, { maxHeight: (now ? h : 0) + "px" }], { duration: 200, easing: "ease" });
+          a.onfinish = a.oncancel = () => { chips.classList.remove("anim"); chips.classList.toggle("shut", !stepOpen.has(st)); };
         });
-        toggle.classList.add("step-more-btn");
-        more.appendChild(toggle);
-        more.appendChild(info);
-        body.appendChild(more);
+        toggle.classList.add("step-grid-btn");
+        head.appendChild(toggle);
+        main.appendChild(head);
       }
       main.appendChild(body);
       row.appendChild(main);
@@ -12673,6 +12688,12 @@
   // Custom com muitas câmeras: a partir daqui os números de cada passo começam recolhidos; stepOpen guarda os
   // passos que o usuário abriu (só nesta sessão do app)
   const STEP_SHORT_FROM = 44;
+  // "1–44, 150, 160–170"
+  function stepRanges(list) {
+    const out = [];
+    list.slice().sort((x, y) => x - y).forEach((n) => { const l = out[out.length - 1]; if (l && l[1] === n - 1) l[1] = n; else out.push([n, n]); });
+    return out.map((r) => (r[0] === r[1] ? String(r[0]) : r[0] + "–" + r[1])).join(", ");
+  }
   const stepOpen = new WeakSet();
 
   // ----- Custom: marcar várias câmeras de um passo arrastando por cima dos números -----

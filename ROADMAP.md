@@ -1355,8 +1355,12 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      e os passos abertos valerem só até fechar o app.
      O dono não gostou desse layout do passo (2026-11-23). Protótipos de quatro layouts (A só o resumo, B campo
      para digitar, C etiquetas por faixa, D barra do rig) em https://claude.ai/artifact/KGyGwghckyJ4u1dD6bNVrx,
-     aguardando a escolha. Visto ao montar: o resumo de câmeras não seguidas sai "12 cameras · 12 cams" (o texto
-     de `timingLabel`); a corrigir junto com o layout escolhido.
+     **decisão do dono (2026-11-23): forma D**, feita. Com mais de 44 câmeras, cada passo é uma barra que representa
+     o rig inteiro (o trecho do passo aceso, o que já está em outro passo mais claro), com números de referência
+     embaixo, quantas câmeras ao lado e o botão "▾ Grid" / "▴ Hide grid", que abre ou fecha a grade dos números com
+     animação; a grade começa fechada. O "··· Show all" saiu. Ao arrastar um passo, as grades abertas fecham com
+     animação e a barra continua à vista. Corrigido junto: o resumo de câmeras não seguidas dizia "12 cams" e
+     agora diz quais ("150, 160–170"; aparece ao parar o mouse na barra). A barra só mostra; não é clicável.
    - **Parte 6b, a fazer:** a imagem ao vivo das câmeras Canon de verdade (o processo de cada câmera em `src/worker`
      e o protocolo): ligar o visor ao vivo, mandar os quadros e desligar antes de cada disparo. Só o dono consegue
      testar (câmeras reais).
