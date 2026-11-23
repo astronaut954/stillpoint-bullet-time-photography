@@ -3264,10 +3264,16 @@
     // da foto, que tem mais definição, continuam valendo). A imagem ao vivo pode ter outra proporção (foto 16:9, visor
     // 3:2): a largura é a mesma, então a altura é convertida antes de comparar.
     const L = d.live || (d.live = { moved: false });
-    L.marks = event.marks; L.w = event.width; L.h = event.height;
+    // A imagem ao vivo tem ruído, e as marcas achadas tremem um ou dois pixels de um quadro para o outro mesmo com
+    // a câmera parada: enquanto o ponto não sai do lugar (até 1,2% da largura) vale a média com os quadros de antes;
+    // quando a câmera se mexe de verdade, o ponto novo vale na hora (teste do dono com câmeras reais, 2026-11-23)
+    let marks = event.marks;
+    if (L.marks && L.w === event.width && L.h === event.height && marks.every((m, i) => Math.hypot(m[0] - L.marks[i][0], (m[1] - L.marks[i][1]) * event.height / event.width) < 0.012))
+      marks = marks.map((m, i) => [L.marks[i][0] * 0.65 + m[0] * 0.35, L.marks[i][1] * 0.65 + m[1] * 0.35]);
+    L.marks = marks; L.w = event.width; L.h = event.height;
     if (!L.moved && d.tried) {  // (logo depois de um Fire again as marcas da foto ainda estão sendo procuradas: espera)
       const k = d.w && d.h ? (L.h / L.w) / (d.h / d.w) : 1;
-      L.moved = !d.found || !d.marks || event.marks.some((m, i) => Math.hypot(m[0] - d.marks[i][0], 0.5 + (m[1] - 0.5) * k - d.marks[i][1]) > 0.006);
+      L.moved = !d.found || !d.marks || marks.some((m, i) => Math.hypot(m[0] - d.marks[i][0], 0.5 + (m[1] - 0.5) * k - d.marks[i][1]) > 0.006);
     }
     if (L.moved) alSolve(true); else if (was) gaAfterLive(); else { gaPush(); gaAuto(); }
   }

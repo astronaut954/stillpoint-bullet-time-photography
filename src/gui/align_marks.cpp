@@ -454,6 +454,24 @@ namespace AlignMarks
         }
     }
 
+    namespace
+    {
+        // O ponto está sobre uma cor "colorida" (não branco, cinza nem preto)? Média num disco de 3% da haste.
+        bool Colorful(const RgbFrame& img, Pt p, double d)
+        {
+            const double r = std::max(2.0, d * 0.03);
+            double s[3] = { 0, 0, 0 }, n = 0;
+            for (int y = std::max(0, int(p.y - r)); y <= std::min(img.height - 1, int(p.y + r)); ++y)
+                for (int x = std::max(0, int(p.x - r)); x <= std::min(img.width - 1, int(p.x + r)); ++x)
+                {
+                    if ((x - p.x) * (x - p.x) + (y - p.y) * (y - p.y) > r * r) continue;
+                    const auto c = ToLab(&img.pixels[(size_t(y) * img.width + x) * 3]);
+                    s[0] += c[0]; s[1] += c[1]; s[2] += c[2]; n += 1;
+                }
+            return n >= 4 && std::hypot(s[1] / n, s[2] / n) > 24;
+        }
+    }
+
     void SnapClicks(const RgbFrame& img, const Pt clicks[3], Pt marks[3], bool& wide)
     {
         const double d = std::hypot(clicks[0].x - clicks[2].x, clicks[0].y - clicks[2].y);
@@ -463,6 +481,15 @@ namespace AlignMarks
         const double d2 = std::hypot(pre[0].x - pre[2].x, pre[0].y - pre[2].y);
         wide = IsWide(img, pre[0], d2, pre[2]) || IsWide(img, pre[2], d2, pre[0]);
         for (int k = 0; k < 3; ++k) marks[k] = Snap(img, pre[k], d2, pre[k == 0 ? 2 : 0], wide);
+        // Marca sem cor própria (branca, cinza, preta) quando as outras duas têm: fica onde a pessoa clicou. Levar
+        // "ao centro" uma marca que não se distingue do fundo pela cor tirava o ponto do lugar (visto com as imagens
+        // do teste real de 2026-11-23: uma marca branca diante de uma parede cinza), e a procura nas outras fotos
+        // parte desse ponto.
+        bool own[3];
+        int owned = 0;
+        for (int k = 0; k < 3; ++k) owned += (own[k] = Colorful(img, clicks[k], d)) ? 1 : 0;
+        if (owned == 2)
+            for (int k = 0; k < 3; ++k) if (!own[k]) marks[k] = clicks[k];
     }
 
     bool Distinct(const RgbFrame& ref, const Pt marks[3])
@@ -470,13 +497,268 @@ namespace AlignMarks
         const double d = std::hypot(marks[0].x - marks[2].x, marks[0].y - marks[2].y);
         if (ref.width < 16 || d < 8) return false;
         std::array<double, 3> a{}, b{};
-        return MarkColor(ref, marks[0], d, marks[2], a) && MarkColor(ref, marks[2], d, marks[0], b);
+        if (MarkColor(ref, marks[0], d, marks[2], a) && MarkColor(ref, marks[2], d, marks[0], b)) return true;
+        // Duas das três com cor própria já bastam para a procura pelas cores em fila
+        int owned = 0;
+        for (int k = 0; k < 3; ++k) owned += Colorful(ref, marks[k], d) ? 1 : 0;
+        return owned >= 2;
+    }
+
+    namespace
+    {
+        // ---- Procura pelas cores em fila (2026-11-23, depois do primeiro teste com câmeras e cena de verdade) ----
+        // A procura por semelhança de um recorte em volta de cada marca foi ajustada com a haste simulada e errava
+        // em cena real: o fundo atrás da haste é outro em cada câmera, e havia outras coisas das mesmas cores
+        // (um cartaz vermelho atrás de uma marca vermelha). O que não muda de uma câmera para outra é a FILA de
+        // cores ao longo da haste: marca, haste, marca, haste, marca. Então: acha as manchas da cor de duas marcas
+        // que têm cor própria, e para cada par possível compara a fila de cores entre elas (e um pouco além) com a
+        // da foto de referência. Ganha o par cuja fila é a mais parecida.
+        struct LabImg
+        {
+            int w = 0, h = 0;
+            std::vector<float> v;  // L, a, b
+            const float* at(int x, int y) const { return &v[(size_t(y) * w + x) * 3]; }
+        };
+        LabImg ToLabImg(const Img& im)
+        {
+            LabImg o; o.w = im.w; o.h = im.h; o.v.resize(size_t(im.w) * im.h * 3);
+            for (int y = 0; y < im.h; ++y)
+                for (int x = 0; x < im.w; ++x)
+                {
+                    unsigned char px[3];
+                    for (int c = 0; c < 3; ++c) px[c] = (unsigned char)std::clamp(int(im.at(x, y, c) + 0.5f), 0, 255);
+                    const auto l = ToLab(px);
+                    float* d = &o.v[(size_t(y) * im.w + x) * 3];
+                    d[0] = float(l[0]); d[1] = float(l[1]); d[2] = float(l[2]);
+                }
+            return o;
+        }
+        // Cor média num disco; false se o disco cai quase todo fora da foto
+        bool DiscLab(const LabImg& im, double cx, double cy, double r, std::array<double, 3>& out)
+        {
+            r = std::max(1.0, r);
+            double s[3] = { 0, 0, 0 }, n = 0, total = 0;
+            for (int y = int(std::floor(cy - r)); y <= int(std::ceil(cy + r)); ++y)
+                for (int x = int(std::floor(cx - r)); x <= int(std::ceil(cx + r)); ++x)
+                {
+                    if ((x - cx) * (x - cx) + (y - cy) * (y - cy) > r * r + 0.5) continue;
+                    total += 1;
+                    if (x < 0 || y < 0 || x >= im.w || y >= im.h) continue;
+                    const float* p = im.at(x, y);
+                    s[0] += p[0]; s[1] += p[1]; s[2] += p[2]; n += 1;
+                }
+            if (n < 1 || n < total * 0.6) return false;
+            out = { s[0] / n, s[1] / n, s[2] / n };
+            return true;
+        }
+        // Manchas da cor dada (a claridade pesa pouco: a luz muda de uma câmera para outra)
+        std::vector<Blob> ColorBlobs(const LabImg& im, const std::array<double, 3>& col, double tol)
+        {
+            Window win; win.w = im.w; win.h = im.h; win.like.assign(size_t(im.w) * im.h, 0);
+            for (int y = 0; y < im.h; ++y)
+                for (int x = 0; x < im.w; ++x)
+                {
+                    const float* p = im.at(x, y);
+                    const double dl = (p[0] - col[0]) * 0.35, da = p[1] - col[1], db = p[2] - col[2];
+                    win.like[size_t(y) * im.w + x] = dl * dl + da * da + db * db < tol * tol ? 1 : 0;
+                }
+            std::vector<Blob> blobs = Blobs(win);
+            std::sort(blobs.begin(), blobs.end(), [](const Blob& a, const Blob& b) { return a.idx.size() > b.idx.size(); });
+            return blobs;
+        }
+        constexpr int kProfile = 48;
+        struct Profile { std::array<std::array<double, 3>, kProfile> c; std::array<bool, kProfile> ok; };
+        // A fila de cores ao longo da reta que passa por p0 (t = 0) e p1 (t = 1), de tLo a tHi
+        Profile LineProfile(const LabImg& im, Pt p0, Pt p1, double tLo, double tHi, double radius)
+        {
+            Profile pr{};
+            for (int k = 0; k < kProfile; ++k)
+            {
+                const double t = tLo + (tHi - tLo) * k / (kProfile - 1);
+                pr.ok[k] = DiscLab(im, p0.x + (p1.x - p0.x) * t, p0.y + (p1.y - p0.y) * t, radius, pr.c[k]);
+            }
+            return pr;
+        }
+        // Quão parecidas são duas filas (0 a 1). A diferença geral de claridade (exposição) é descontada antes; cada
+        // ponto pode casar com o vizinho (a perspectiva estica ou encolhe um pouco a fila).
+        double ProfileSimilarity(const Profile& a, const Profile& b)
+        {
+            double dl = 0, n = 0;
+            for (int k = 0; k < kProfile; ++k) if (a.ok[k] && b.ok[k]) { dl += b.c[k][0] - a.c[k][0]; n += 1; }
+            if (n < kProfile * 0.7) return 0;
+            dl /= n;
+            double sum = 0;
+            for (int k = 0; k < kProfile; ++k)
+            {
+                if (!a.ok[k]) continue;
+                double best = 60;
+                for (int j = std::max(0, k - 1); j <= std::min(kProfile - 1, k + 1); ++j)
+                {
+                    if (!b.ok[j]) continue;
+                    const double l = (b.c[j][0] - dl - a.c[k][0]) * 0.3, x = b.c[j][1] - a.c[k][1], y = b.c[j][2] - a.c[k][2];
+                    best = std::min(best, std::sqrt(l * l + x * x + y * y));
+                }
+                sum += std::min(best, 60.0);
+            }
+            return std::clamp(1.0 - (sum / kProfile) / 40.0, 0.0, 1.0);
+        }
+
+        bool FindByColorLine(const RgbFrame& refFull, const Pt marks[3], const RgbFrame& imgFull, Found& out)
+        {
+            const int work = 640;
+            const int rw = std::min(work, refFull.width), iw = std::min(work, imgFull.width);
+            const Img R = Shrink(refFull, rw), I = Shrink(imgFull, iw);
+            const LabImg LR = ToLabImg(R), LI = ToLabImg(I);
+            const double kr = double(rw) / refFull.width, ki = double(iw) / imgFull.width;
+            Pt rm[3];
+            for (int k = 0; k < 3; ++k) rm[k] = { marks[k].x * kr, marks[k].y * kr };
+            const double dR = std::hypot(rm[0].x - rm[2].x, rm[0].y - rm[2].y);
+            if (dR < 12) return false;
+            // A cor de cada marca e quais têm cor própria (colorida o bastante)
+            std::array<double, 3> col[3];
+            bool own[3] = { false, false, false };
+            for (int k = 0; k < 3; ++k)
+                own[k] = DiscLab(LR, rm[k].x, rm[k].y, std::max(1.5, dR * 0.03), col[k]) && std::hypot(col[k][1], col[k][2]) > 24;
+            // As duas marcas com cor própria mais afastadas
+            int i = -1, j = -1;
+            if (own[0] && own[2]) { i = 0; j = 2; }
+            else if (own[0] && own[1]) { i = 0; j = 1; }
+            else if (own[1] && own[2]) { i = 1; j = 2; }
+            else return false;
+            const double tol = 24.0;
+            const double lenR = std::hypot(rm[j].x - rm[i].x, rm[j].y - rm[i].y);
+            if (lenR < 8) return false;
+            // Na referência: o centro da mancha de cada marca e onde o ponto marcado fica em relação a ele (a mesma
+            // medida vale depois nas outras fotos, para o ponto cair no mesmo lugar da marca em todas)
+            auto nearBlob = [&](const std::vector<Blob>& blobs, Pt p, double reach, Pt& c) {
+                double best = reach;
+                bool any = false;
+                for (const auto& b : blobs)
+                {
+                    if (b.idx.size() < 4) break;
+                    const double d = std::hypot(b.cx - p.x, b.cy - p.y);
+                    if (d < best) { best = d; c = { b.cx, b.cy }; any = true; }
+                }
+                return any;
+            };
+            Pt off[3] = {};
+            std::vector<Blob> refBlobs[3];
+            for (int k = 0; k < 3; ++k)
+            {
+                if (!own[k]) continue;
+                refBlobs[k] = ColorBlobs(LR, col[k], tol);
+                Pt c;
+                if (nearBlob(refBlobs[k], rm[k], dR * 0.2, c)) off[k] = { rm[k].x - c.x, rm[k].y - c.y };
+            }
+            // A fila de cores da referência: das três marcas, com uma folga nas pontas
+            auto tOf = [&](Pt p) { return ((p.x - rm[i].x) * (rm[j].x - rm[i].x) + (p.y - rm[i].y) * (rm[j].y - rm[i].y)) / (lenR * lenR); };
+            const double t3[3] = { tOf(rm[0]), tOf(rm[1]), tOf(rm[2]) };
+            const double tLo = std::min({ t3[0], t3[1], t3[2] }) - 0.10, tHi = std::max({ t3[0], t3[1], t3[2] }) + 0.10;
+            const double rad = 0.03;
+            const Profile refProfile = LineProfile(LR, rm[i], rm[j], tLo, tHi, rad * lenR);
+            // Nas outras fotos: as manchas das duas cores
+            const double maxArea = 0.06 * LI.w * LI.h;
+            auto spots = [&](int k) {
+                std::vector<Pt> pts;
+                for (const auto& b : ColorBlobs(LI, col[k], tol))
+                {
+                    if (b.idx.size() < 5) break;
+                    if (double(b.idx.size()) > maxArea) continue;
+                    pts.push_back({ b.cx, b.cy });
+                    if (pts.size() >= 28) break;
+                }
+                return pts;
+            };
+            const std::vector<Pt> ci = spots(i), cj = spots(j);
+            const double refAng = std::atan2(rm[j].x - rm[i].x, rm[j].y - rm[i].y);
+            double best = 0;
+            Pt bi{}, bj{};
+            for (const Pt& A0 : ci)
+                for (const Pt& B0 : cj)
+                {
+                    const double len0 = std::hypot(B0.x - A0.x, B0.y - A0.y);
+                    const double ratio = (len0 / LI.w) / (lenR / LR.w);
+                    if (ratio < 0.3 || ratio > 3.2) continue;
+                    double da = std::atan2(B0.x - A0.x, B0.y - A0.y) - refAng;
+                    while (da > kPi) da -= 2 * kPi;
+                    while (da < -kPi) da += 2 * kPi;
+                    if (std::abs(da) * 180 / kPi > 30) continue;
+                    // o ponto marcado, a partir do centro da mancha (mesmo deslocamento da referência, no tamanho daqui)
+                    const double sc = len0 / lenR;
+                    const Pt A{ A0.x + off[i].x * sc, A0.y + off[i].y * sc }, B{ B0.x + off[j].x * sc, B0.y + off[j].y * sc };
+                    const double len = std::hypot(B.x - A.x, B.y - A.y);
+                    if (len < 6) continue;
+                    const double sim = ProfileSimilarity(refProfile, LineProfile(LI, A, B, tLo, tHi, rad * len));
+                    if (sim > best) { best = sim; bi = A; bj = B; }
+                }
+            if (best < 0.3) return false;
+            // A terceira marca: no mesmo lugar da fila; se tem cor própria, a mancha dessa cor mais perto dali
+            const int k3 = 3 - i - j;
+            const double len = std::hypot(bj.x - bi.x, bj.y - bi.y);
+            Pt third{ bi.x + (bj.x - bi.x) * t3[k3], bi.y + (bj.y - bi.y) * t3[k3] };
+            if (own[k3])
+            {
+                const double sc = len / lenR;
+                Pt c;
+                if (nearBlob(ColorBlobs(LI, col[k3], tol), { third.x - off[k3].x * sc, third.y - off[k3].y * sc }, len * 0.22, c))
+                    third = { c.x + off[k3].x * sc, c.y + off[k3].y * sc };
+            }
+            else
+            {
+                // Sem cor própria (marca branca ou cinza): a ponta da fila entre a marca vizinha e ela (haste e marca)
+                // é procurada em volta do lugar previsto, comparando com o mesmo trecho da referência. Corrige o
+                // desvio de lado, que vem de as outras duas marcas não serem iguais vistas de cada câmera.
+                const int n = std::abs(t3[k3] - t3[i]) < std::abs(t3[k3] - t3[j]) ? i : j;
+                const Pt anchorR = rm[n], anchorI = n == i ? bi : bj;
+                const double lenR3 = std::hypot(rm[k3].x - anchorR.x, rm[k3].y - anchorR.y), len3 = std::hypot(third.x - anchorI.x, third.y - anchorI.y);
+                if (lenR3 > 6 && len3 > 6)
+                {
+                    const Profile ref3 = LineProfile(LR, anchorR, rm[k3], 0.10, 1.12, rad * lenR3);
+                    double bestSim = ProfileSimilarity(ref3, LineProfile(LI, anchorI, third, 0.10, 1.12, rad * len3)) + 0.02;
+                    Pt bestPt = third;
+                    const double step = std::max(0.75, len3 * 0.02);
+                    for (int gy = -9; gy <= 9; ++gy)
+                        for (int gx = -9; gx <= 9; ++gx)
+                        {
+                            if (!gx && !gy) continue;
+                            const Pt q{ third.x + gx * step, third.y + gy * step };
+                            const double l = std::hypot(q.x - anchorI.x, q.y - anchorI.y);
+                            // (um pouco pior a cada passo de distância: entre dois lugares iguais, fica o mais perto do previsto)
+                            const double sim = ProfileSimilarity(ref3, LineProfile(LI, anchorI, q, 0.10, 1.12, rad * l)) - 0.002 * std::hypot(gx, gy);
+                            if (sim > bestSim) { bestSim = sim; bestPt = q; }
+                        }
+                    third = bestPt;
+                }
+            }
+            Pt res[3];
+            res[i] = bi; res[j] = bj; res[k3] = third;
+            out.ok = true;
+            for (int k = 0; k < 3; ++k) out.p[k] = { res[k].x / ki, res[k].y / ki };
+            out.confidence = best;
+            return true;
+        }
     }
 
     Found Find(const RgbFrame& refFull, const Pt marks[3], const RgbFrame& imgFull, bool wide)
     {
         Found out;
         if (refFull.width < 16 || imgFull.width < 16) return out;
+        // Primeiro pelas cores em fila (vale quando pelo menos duas marcas têm cor própria); senão, a procura antiga
+        if (FindByColorLine(refFull, marks, imgFull, out))
+        {
+            // Acabamento: cada marca levada ao centro na foto inteira, como na referência (é o que dá a precisão de
+            // um ou dois pixels com a haste de faixas). Com marcas largas só vale se o ponto quase não sai do lugar: num
+            // pano ou numa bola grande o "centro" muda com o ruído, e aí fica o ponto das cores em fila, que é estável.
+            const double dI = std::hypot(out.p[0].x - out.p[2].x, out.p[0].y - out.p[2].y);
+            for (int k = 0; k < 3; ++k)
+            {
+                const Pt other = out.p[k == 0 ? 2 : 0];
+                const Pt snapped = Snap(imgFull, out.p[k], dI, other, wide);
+                if (!wide || std::hypot(snapped.x - out.p[k].x, snapped.y - out.p[k].y) <= 0.03 * dI) out.p[k] = snapped;
+            }
+            return out;
+        }
+        out = Found();
         const Pt a = marks[0], m = marks[1], b = marks[2];
         const double dFull = std::hypot(a.x - b.x, a.y - b.y);
         if (dFull < 8) return out;

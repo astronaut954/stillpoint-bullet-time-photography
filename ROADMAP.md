@@ -1417,6 +1417,23 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      fotos simuladas da haste, erra em cena de verdade. **Em aberto; próximo passo: estudar com as fotos e os
      quadros reais** (`STILLPOINT_KEEP_LIVE=1` guarda quadros em "<pasta de dados>/Live debug", com o que a procura
      achou no nome; o Activity agora diz onde as marcas foram clicadas).
+     **Procura nova, "cores em fila" (2026-11-23), feita com 82 quadros ao vivo reais que o dono mandou** (T5, SL3
+     e T7; um suporte com três panos: vermelho, amarelo e branco, diante de um cartaz vermelho, tijolos cinza e um
+     rádio). `AlignMarks::FindByColorLine`: acha as manchas da cor de duas marcas que têm cor própria e, para cada
+     par possível, compara a fila de cores ao longo da reta entre elas (marca, haste, marca, e um pouco além) com a
+     da foto de referência; ganha o par de fila mais parecida. A terceira marca vem do mesmo lugar da fila (se não
+     tem cor própria, procurada em volta pelo trecho haste + marca). Vale quando pelo menos duas das três marcas
+     são coloridas; senão continua a procura antiga. Medido nos 82 quadros (referência: um quadro da T5): antes,
+     confiança 0,19 a 0,46 e marcas no cartaz, no rádio e na borda da imagem; agora, confiança 0,80 a 0,95, as
+     três marcas sobre o suporte nas três câmeras, variando 1 a 4 px de um quadro para outro, em ~50 ms por quadro
+     (antes ~300 ms). A marca branca fica 20 px de lado na T7 (parede clara atrás). Junto: marca sem cor própria
+     fica onde a pessoa clicou (levá-la "ao centro" tirava o ponto do lugar); o aviso "These do not look like the
+     three marks" não aparece mais quando duas das três são coloridas; na imagem ao vivo, as marcas são a média
+     com os quadros anteriores enquanto o ponto não sai do lugar (`gaFrame`). Os testes da haste simulada
+     continuam passando (26). As imagens do dono não estão no repositório (são da casa dele). **Não testado ainda
+     com as câmeras, nem com fotos inteiras reais (só quadros ao vivo).** Limites conhecidos: o suporte dele não
+     tem as marcas a distâncias iguais, e a conta de distância e altura (`Solve`) supõe distâncias iguais; marca
+     branca ou cinza é a mais fraca das três.
      (b) Os botões da janela Guided aim subiam e desciam quando o número de instruções mudava: o espaço das
      instruções passou a ser fixo (seis linhas).
      (c) "Camera 03 / Camera 04 · Not connected" apareciam sem nunca terem sido ligadas: vinham do alinhamento
