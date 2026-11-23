@@ -1353,6 +1353,10 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      passo ao lado; a troca é animada, e ao arrastar um passo todos recolhem com animação em vez de sumir de uma
      vez. Escolhas do agente a confirmar: o limite de 44, as duas fileiras, o botão por passo (não um para todos)
      e os passos abertos valerem só até fechar o app.
+     O dono não gostou desse layout do passo (2026-11-23). Protótipos de quatro layouts (A só o resumo, B campo
+     para digitar, C etiquetas por faixa, D barra do rig) em https://claude.ai/artifact/KGyGwghckyJ4u1dD6bNVrx,
+     aguardando a escolha. Visto ao montar: o resumo de câmeras não seguidas sai "12 cameras · 12 cams" (o texto
+     de `timingLabel`); a corrigir junto com o layout escolhido.
    - **Parte 6b, a fazer:** a imagem ao vivo das câmeras Canon de verdade (o processo de cada câmera em `src/worker`
      e o protocolo): ligar o visor ao vivo, mandar os quadros e desligar antes de cada disparo. Só o dono consegue
      testar (câmeras reais).
