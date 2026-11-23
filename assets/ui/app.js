@@ -8001,7 +8001,11 @@
     rigBusy() { rigCheckSoon(2500); },
     rigAsk(e) { rigAsk(e); },
     rigNotice(e) {
-      const parts = (e.missing || []).map((c) => c.name + " not connected").concat((e.fresh || []).map((c) => c.name + " is new"));
+      // Até três câmeras, uma a uma; mais que isso, a contagem e as três primeiras (com um rig grande desligado a
+      // lista inteira cobria a tela: teste do dono com câmeras reais, 2026-11-23)
+      const some = (list, one, many) => (!list.length ? [] : list.length <= 3 ? list.map((c) => c.name + one)
+        : [list.length + many + " (" + list.slice(0, 3).map((c) => c.name).join(", ") + " and " + (list.length - 3) + " more)"]);
+      const parts = some(e.missing || [], " not connected", " cameras not connected").concat(some(e.fresh || [], " is new", " new cameras"));
       const text = "The rig is not the one of this project · " + parts.join(" · ");
       toast(text, 9000, { warn: true });
       log(text, "warn");

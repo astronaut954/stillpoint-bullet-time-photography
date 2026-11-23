@@ -2259,6 +2259,11 @@ def scenario_live_many(t, name, photos):
             t.restart_app()
             time.sleep(3)
             t.dismiss()
+            if want == "plain":
+                # O projeto ficou com 200 câmeras e agora há 8: o aviso resume em vez de listar as 192
+                said = lambda: t.js("() => [...document.querySelectorAll('li')].map((l) => l.textContent).filter((x) => /rig is not the one/.test(x)).pop() || ''")
+                t.wait(lambda: bool(said()), 12)
+                check(t, "rig notice with many cameras missing: the count and the first three, not the whole list", "192 cameras not connected (" in said() and " and 189 more)" in said() and len(said()) < 200, said()[:300])
             t.js("() => document.getElementById('liveBtn').click()")
             titles = lambda: json.loads(urllib.request.urlopen("http://127.0.0.1:%d/windows" % PORT).read().decode())
             t.wait(lambda: any(x and "Live" in x for x in titles()), 5)

@@ -1396,6 +1396,17 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      **A descobrir no primeiro teste real:** se liga no modo de foto (dúvida do dono: só no de vídeo, com corte);
      o tamanho e a proporção do quadro; se as marcas são achadas no quadro (ele é bem menor que a foto); se a
      diferença entre quadro e foto faz a câmera contar como "mexida" sem ter sido (limite de 0,006 em `gaFrame`).
+     **Primeiro teste real do dono (Mac, 2026-11-23, SL3 + T5 + T7): o Live aim funcionou** ("da forma como você
+     pediu"). Do Activity dele: a imagem ao vivo ligou nas três câmeras, com o primeiro quadro em 0,8 s (SL3), 1,3 s
+     (T5) e 1,4 s (T7); quadros de 960 x 640 (SL3) e 1056 x 704 (T5 e T7), 3:2 como a foto. A dúvida "só no modo
+     de vídeo?" fica respondida pelo fato de ter ligado no fluxo normal do Test shot (o dono não disse em que modo
+     as câmeras estavam; a confirmar). No mesmo log: "marks not found in the photo of T5_1 (no match)" na procura
+     das marcas nas fotos; não se sabe ainda se as marcas foram achadas na imagem ao vivo nem se alguma câmera
+     contou como "mexida" sem ter sido. Falta o Windows.
+     Aviso "The rig is not the one of this project" (pedido do dono no mesmo teste: com o projeto de 200 câmeras
+     simuladas e 3 reais ligadas, a lista de 200 nomes cobria a tela): até três câmeras continuam uma a uma; mais
+     que isso vira a contagem e as três primeiras ("200 cameras not connected (SL3_1, T7_1, SL3_2 and 197 more)"),
+     no aviso e no Activity. Visto no log e não mexido: a linha desse aviso sai duas vezes seguidas no Activity.
      Não feito: desligar a imagem ao vivo sozinha depois de um tempo (ela esquenta o sensor e gasta bateria);
      hoje ela desliga ao fechar a janela, ao trocar de câmera, ao desligar o Live aim e antes de disparar.
    - **Modo de teste das etiquetas (pedido do dono, 2026-11-17):** `STILLPOINT_FAKE_TAGS=1` põe etiquetas de mentira
