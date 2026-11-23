@@ -1144,6 +1144,19 @@ body.timing-open .app { --controls-h: clamp(320px, 64vh, 720px); }
 .tl.stagger:not(.small) .dot { top: 5px; }
 .tl.stagger:not(.small) .dot.low { top: 36px; }
 .tl.stagger:not(.small) .tick { top: 59px; }
+/* Muitos disparos: faixa do primeiro ao último, um traço fino por disparo, números em cima onde cabem */
+.tl.band { height: 52px; }
+.tl.band .axis { display: none; }
+.tl.band .tick { top: 38px; }
+.tl .tl-band { position: absolute; top: 18px; height: 14px; box-sizing: border-box; background: rgba(var(--noct-primary-rgb), .22); border: 1px solid var(--noct-primary); }
+.tl .tl-shot { position: absolute; top: 18px; width: 1px; height: 14px; background: var(--noct-primary); opacity: .75; }
+.tl .tl-shot.lead { top: 12px; height: 20px; opacity: 1; }
+.tl .tl-num { position: absolute; top: 0; transform: translateX(-50%); font: 700 10px var(--noct-font-mono); color: var(--noct-primary); white-space: nowrap; }
+.tl.small.band { height: 26px; }
+.tl.small .tl-band { top: 13px; height: 9px; }
+.tl.small .tl-shot { top: 13px; height: 9px; }
+.tl.small .tl-shot.lead { top: 10px; height: 12px; }
+.tl.small .tl-num { font-size: 8px; }
 
 /* ---- Project (etapa 17): faixa no painel Sessions, etiquetas, janela Project ---- */
 .project-actions { display: flex; gap: 6px; margin-top: 2px; }

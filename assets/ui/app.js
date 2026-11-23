@@ -12453,7 +12453,7 @@
   }
   function renderTimeline(root, plan, small) {
     root.innerHTML = "";
-    root.classList.remove("stagger");
+    root.classList.remove("stagger", "band");
     const axis = el("div", "axis"); root.appendChild(axis);
     if (!plan.shots.length) return;
     const tmax = Math.max(1, plan.shots[plan.shots.length - 1].t);
@@ -12473,6 +12473,28 @@
       d.title = (g.orders.length === 1 ? "Camera " + g.orders[0] : "Cameras " + g.orders.join(", ")) + " at " + fmtS(g.t);
       root.appendChild(d);
     });
+    // Muitos disparos (forma A, decisão do dono em 2026-11-23): quando as etiquetas se sobrepõem mesmo em duas
+    // alturas, viram uma faixa do primeiro ao último disparo, com um traço fino por disparo e os números das
+    // câmeras em cima, só onde cabem
+    const made = [...root.querySelectorAll(".dot")];
+    const band = stagger && made.some((d, i) => i >= 2 && X(list[i].t) - X(list[i - 2].t) < (d.offsetWidth + made[i - 2].offsetWidth) / 2 + 2);
+    root.classList.toggle("band", band);
+    if (band) {
+      root.classList.remove("stagger");
+      made.forEach((d) => d.remove());
+      const x0 = X(list[0].t), x1 = X(list[list.length - 1].t), room = small ? 36 : 46;
+      const b = el("span", "tl-band"); b.style.left = x0 + "px"; b.style.width = x1 - x0 + "px"; root.appendChild(b);
+      const lab = [list[0]];
+      list.forEach((g) => { if (X(g.t) - X(lab[lab.length - 1].t) >= room && x1 - X(g.t) >= room) lab.push(g); });
+      if (list.length > 1) lab.push(list[list.length - 1]);
+      const marked = new Set(lab);
+      list.forEach((g) => {
+        const sh = el("span", "tl-shot" + (marked.has(g) ? " lead" : "")); sh.style.left = X(g.t) + "px";
+        sh.title = (g.orders.length === 1 ? "Camera " + g.orders[0] : "Cameras " + g.orders.join(", ")) + " at " + fmtS(g.t);
+        root.appendChild(sh);
+      });
+      lab.forEach((g) => { const nm = el("span", "tl-num", timingLabel(g.orders)); nm.style.left = X(g.t) + "px"; root.appendChild(nm); });
+    }
     if (!small) [0, 0.5, 1].forEach((f) => {
       if (plan.shots[plan.shots.length - 1].t === 0 && f > 0) return;
       const tick = el("span", "tick" + (f === 0 ? " first" : ""), fmtS(f * tmax)); tick.style.left = X(f * tmax) + "px"; root.appendChild(tick);

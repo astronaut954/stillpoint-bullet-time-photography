@@ -104,7 +104,10 @@
 .live-bar .ticks i.done span { color: var(--noct-primary); }
 .live-bar .ticks i:first-child span { transform: none; left: 0; }
 .live-bar .ticks i:last-child span { transform: none; left: auto; right: 0; }
-.live-bar.crowded .ticks i span { display: none; }
+/* Muitas rodadas: só os traços "main" (primeira câmera e de 10 em 10) e o da próxima rodada, em âmbar */
+.live-bar.crowded .ticks i:not(.main):not(.next) { display: none; }
+.live-bar.crowded .ticks i.next:not(.main) span { display: none; }
+.live-bar.crowded .ticks i.next { width: 3px; z-index: 1; }
 .live-bar { bottom: 78px; }
 .live.audience .live-bar { left: 20%; right: 20%; }
 
@@ -115,6 +118,14 @@
 .live-stage { position: absolute; left: 50%; top: calc(var(--live-top) + 11vh + 7vh + 64px); bottom: calc(var(--live-bottom) - 10px); transform: translateX(-50%); width: min(90vw, calc((100vh - var(--live-top) - var(--live-bottom) - 18vh - 54px) * 1.5)); border: 2px solid var(--noct-primary); background: #000; }
 .live-stage img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .live.audience .live-film { display: none; }
+/* Muitas fotos: só as vizinhas da foto atual, com o número embaixo, e nas pontas a primeira e a última */
+.live-film.win { gap: 8px; align-items: flex-start; }
+.live-film.win div { flex: 0 0 84px; height: 56px; aspect-ratio: auto; position: relative; }
+.live-film.win div::after { content: attr(data-n); position: absolute; left: 50%; top: 64px; transform: translateX(-50%); font: 700 11px var(--noct-font-mono); letter-spacing: .08em; color: var(--noct-text-dim); }
+.live-film.win div.cur::after { color: var(--noct-primary); }
+.live-film.win .edge { align-self: flex-start; margin: 22px 8px 0; font: 700 11px var(--noct-font-mono); letter-spacing: .08em; color: var(--noct-text-dim); white-space: pre; }
+.live.film-win .live-stage { top: calc(var(--live-top) + 12vh + 90px); width: min(90vw, calc((100vh - var(--live-top) - var(--live-bottom) - 12vh - 80px) * 1.5)); }
+.live.audience.film-win .live-stage { top: calc(var(--live-top) + 4vh); width: min(94vw, calc((100vh - var(--live-top) - 90px - 4vh) * 1.5)); }
 .live.audience .live-stage { top: calc(var(--live-top) + 4vh); bottom: 90px; width: min(94vw, calc((100vh - var(--live-top) - 90px - 4vh) * 1.5)); }
 
 /* Teclas e as opções (aparecem quando o mouse se mexe e somem sozinhas) */

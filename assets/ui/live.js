@@ -465,7 +465,23 @@ window.Live = (function () {
         i.appendChild(label);
         el.ticks.appendChild(i);
       });
-      el.bar.classList.toggle("crowded", el.bar.clientWidth / p.groups.length < 30);
+      // Muitas rodadas (forma A, decisão do dono em 2026-11-23): os traços e os números aparecem só na primeira
+      // câmera e de 10 em 10 (ou de 20, 50... se nem assim cabem); com rodadas de várias câmeras, onde cabem
+      const bw = el.bar.clientWidth || 1, crowded = bw / p.groups.length < 30;
+      el.bar.classList.toggle("crowded", crowded);
+      if (crowded) {
+        const ticks = Array.from(el.ticks.children), X = (k) => (bw * p.groups[k].t) / total;
+        const single = p.groups.every((g) => g.idx.length === 1);
+        let step = 10;
+        if (single) [10, 20, 50, 100, 200, 500].some((v) => { step = v; return (bw / p.groups.length) * v >= 34; });
+        let lastX = -1e9;
+        ticks.forEach((i, k) => {
+          const num = p.shots[p.groups[k].idx[0] - 1].number;
+          const main = k === 0 || (single ? num % step === 0 && X(k) - lastX >= 30 : X(k) - lastX >= 64 && bw - X(k) >= 64) || (!single && k === ticks.length - 1);
+          if (main) lastX = X(k);
+          i.classList.toggle("main", main);
+        });
+      }
     }
     const ni = nextGroupIndex();
     Array.from(el.ticks.children).forEach((i, k) => {
@@ -618,19 +634,39 @@ window.Live = (function () {
     const urls = S.play.urls;
     el.film.classList.toggle("hidden", !urls.length);
     el.stage.classList.toggle("hidden", !urls.length);
-    if (!urls.length) return;
-    const key = urls.join("|");
+    if (!urls.length) { el.root.classList.remove("film-win"); return; }
+    // Muitas fotos (forma B, decisão do dono em 2026-11-23): as miniaturas não cabem num tamanho que se veja, então
+    // aparecem só as vizinhas da foto atual (até quatro de cada lado), com o número embaixo; a fileira anda junto
+    const n = urls.length, room = (el.root.clientWidth || 1000) - 56;
+    const win = n * 46 > room;
+    const show = win ? Math.max(3, Math.min(9, n, (Math.floor((room - 150) / 92) - 1) | 1)) : n;
+    const key = (win ? "w" + show + "|" : "") + urls.join("|");
+    el.film.classList.toggle("win", win);
+    el.root.classList.toggle("film-win", win);
     if (el.film.dataset.key !== key) {
       el.film.dataset.key = key;
       el.film.innerHTML = "";
-      urls.forEach((u, i) => {
+      if (win) {
+        const first = document.createElement("span"); first.className = "edge"; first.textContent = "1  ‹"; el.film.appendChild(first);
+        for (let k = 0; k < show; ++k) el.film.appendChild(document.createElement("div"));
+        const last = document.createElement("span"); last.className = "edge"; last.textContent = "›  " + n; el.film.appendChild(last);
+      } else urls.forEach((u, i) => {
         const d = document.createElement("div");
         d.style.backgroundImage = "url(" + u + ")";
         d.title = String(i + 1);
         el.film.appendChild(d);
       });
     }
-    Array.from(el.film.children).forEach((d, i) => d.classList.toggle("cur", i === S.play.i));
+    const slots = Array.from(el.film.querySelectorAll("div"));
+    if (win) {
+      const start = Math.max(0, Math.min(n - show, S.play.i - ((show - 1) >> 1)));
+      slots.forEach((d, k) => {
+        const i = start + k;
+        if (d.dataset.n !== String(i + 1)) { d.dataset.n = String(i + 1); d.style.backgroundImage = "url(" + urls[i] + ")"; d.title = String(i + 1); }
+        d.classList.toggle("cur", i === S.play.i);
+        d.style.opacity = String(Math.max(0.3, 1 - Math.abs(i - S.play.i) * 0.13));
+      });
+    } else slots.forEach((d, i) => d.classList.toggle("cur", i === S.play.i));
     const url = urls[S.play.i];
     if (el.stageImg.getAttribute("src") !== url) el.stageImg.src = url;
   }

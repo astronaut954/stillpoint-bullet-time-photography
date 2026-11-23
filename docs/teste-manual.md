@@ -2269,6 +2269,20 @@ Com `STILLPOINT_FAKE_CAMERAS=200`. No painel **Bullet time**, **Advanced** › *
 - [ ] Com dois passos (**Add step**): os números arrastados num passo saem do outro.
 - [ ] Windows: os itens acima.
 
+## 54. Muitas câmeras: sequência na Live, barra do disparo e Timeline (2026-11-23)
+
+Com `STILLPOINT_FAKE_CAMERAS=200`.
+
+- [ ] Painel **Bullet time** › **Advanced** › **Sweep**: a **Timeline** é uma faixa com um traço fino por disparo e
+      os números das câmeras em cima, sem um em cima do outro. Com **Groups** (99 grupos), o mesmo.
+- [ ] **Hide**: a linha pequena embaixo de **Timing** mostra a mesma faixa.
+- [ ] **Live view**, depois **It's bullet time** em **Sweep**: na janela Live, a barra de baixo tem traços e números
+      só de 10 em 10 (1, 10, 20 ... 200) e um traço âmbar na próxima câmera.
+- [ ] Quando as fotos chegam: em cima da foto aparecem só as miniaturas vizinhas da foto atual, com o número
+      embaixo, "1 ‹" à esquerda e "› 200" à direita; a fileira anda junto com a sequência.
+- [ ] Com `STILLPOINT_FAKE_CAMERAS=8`: as três telas iguais a antes.
+- [ ] Windows: os itens acima.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |

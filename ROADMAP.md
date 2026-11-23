@@ -1331,9 +1331,18 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      (1) Timing › Custom: clicar, segurar e arrastar por cima dos números marca (ou desmarca) todas as câmeras do
      caminho, conforme o primeiro número ficou. Feito em `assets/ui/app.js` (`chipPaint*`); um clique sozinho e o
      teclado continuam valendo. Teste automático: cenário 25.
-     (2) Três telas que não aguentam muitas câmeras, com protótipos A/B/C aguardando a escolha
-     (https://claude.ai/artifact/RyoUatEdQ53ATz6Rd253W8): a fileira de miniaturas da janela Live tocando a
-     sequência; a barra de baixo da janela Live durante o disparo; a Timeline do Bullet time na janela principal.
+     (2) Três telas que não aguentavam muitas câmeras, com protótipos A/B/C em
+     https://claude.ai/artifact/RyoUatEdQ53ATz6Rd253W8. **Decisões do dono (2026-11-23)**, feitas:
+     janela Live tocando a sequência, **forma B**: quando as miniaturas não cabem a pelo menos 40 px cada, aparecem
+     só as vizinhas da foto atual (até quatro de cada lado, 84 px), com o número embaixo e "1 ‹" / "› n" nas pontas
+     (`live.js` `renderPlayback`, classes `win` e `film-win`);
+     barra de baixo da janela Live durante o disparo, **forma A**: com as rodadas a menos de 30 px, traços e números
+     só na primeira câmera e de 10 em 10 (de 20, 50... se nem assim cabem), mais o traço âmbar da próxima
+     (`renderBar`, classe `main`);
+     Timeline do Bullet time, **forma A**: quando as etiquetas se sobrepõem mesmo em duas alturas, viram uma faixa
+     do primeiro ao último disparo com um traço fino por disparo e os números em cima onde cabem, também na linha
+     pequena com o Advanced fechado (`app.js` `renderTimeline`, classe `band`).
+     Com poucas câmeras as três telas não mudam. Testes automáticos: cenário 24.
    - **Parte 6b, a fazer:** a imagem ao vivo das câmeras Canon de verdade (o processo de cada câmera em `src/worker`
      e o protocolo): ligar o visor ao vivo, mandar os quadros e desligar antes de cada disparo. Só o dono consegue
      testar (câmeras reais).
