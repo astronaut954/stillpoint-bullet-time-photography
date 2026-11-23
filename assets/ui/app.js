@@ -2928,6 +2928,7 @@
     });
     // Fotos novas: as marcas antigas não valem mais; com uma referência, o app procura de novo em todas
     al.data = {};
+    al.check = "";
     al.solved = {};
     al.photos.forEach((p) => { al.data[p.camera] = { marks: null, found: false, tried: false, w: 0, h: 0, url: "", manual: false }; });
     if (!al.sel || !al.photos.some((p) => p.camera === al.sel)) al.sel = al.photos.length ? al.photos[0].camera : "";
@@ -2971,6 +2972,7 @@
   function alMarked(camera, clicks) {
     const p = alPhotoOf(camera);
     if (!p || !p.file) return;
+    if (al.check) { al.check = ""; al.ref = ""; }  // clicou de novo em vez de usar os botões do aviso
     const first = !al.ref;
     const isRef = first || al.ref === camera;
     al.busy = true;
@@ -2983,7 +2985,11 @@
       if (!r || !r.ok || !d) { al.msg = ""; alRender(); toast("The marks could not be read in this photo. Click them again."); return; }
       d.marks = r.marks; d.w = r.width; d.h = r.height; d.found = true; d.tried = true; d.manual = true;
       if (isRef) al.ref = camera;
-      if (first) alFindAll([camera]);
+      // Conferir antes de procurar (decisão do dono, 2026-11-23): se os pontos clicados não têm cor própria, a
+      // procura nas outras fotos seria lenta e poderia falhar; a pessoa clica de novo ou manda procurar assim mesmo
+      al.check = first && r.distinct === false && al.photos.some((q) => q.file && q.camera !== camera) ? camera : "";
+      if (al.check) { al.msg = ""; alRender(); }
+      else if (first) alFindAll([camera]);
       else { alSolve(); alRender(); }
     });
   }
@@ -2995,7 +3001,12 @@
     al.progress = { done: 0, total: photos.length, since: Date.now() };
     al.msg = "Finding the marks in " + plural(photos.length, "photo", "photos");
     alRender();
+    const run = (al.findRun = (al.findRun || 0) + 1);
+    clearInterval(al.slowTimer);
+    al.slowTimer = setInterval(() => { if (al.busy && al.findRun === run) alWaitShow(); else clearInterval(al.slowTimer); }, 1000);
     Promise.resolve(window.alignFind(JSON.stringify({ session: al.session, photos }))).then((list) => {
+      clearInterval(al.slowTimer);
+      if (al.findRun !== run || al.stopped) { al.stopped = false; return; }  // procura cancelada: alFindStop já arrumou a tela
       al.busy = false;
       al.msg = "";
       (list || []).forEach((r) => {
@@ -3023,9 +3034,36 @@
     const o = document.createElement("div");
     o.className = "al-wait";
     o.id = "csAlignWait";
-    o.innerHTML = '<span class="big" id="csAlignWaitTitle"></span><div class="al-wait-bar"><i id="csAlignWaitBar"></i></div><span class="al-wait-line" id="csAlignWaitLine"></span>';
+    o.innerHTML = '<span class="big" id="csAlignWaitTitle"></span><div class="al-wait-bar"><i id="csAlignWaitBar"></i></div><span class="al-wait-line" id="csAlignWaitLine"></span>' +
+      '<span class="slow hidden" id="csAlignSlow">This is taking longer than usual. The three clicks may be off the marks.</span>' +
+      '<div class="wbtns hidden" id="csAlignSlowBtns"><button type="button" class="btn btn-primary btn-small" id="csAlignSlowAgain">Click the marks again</button><button type="button" class="btn btn-secondary btn-small" id="csAlignSlowKeep">Keep waiting</button></div>';
     main.appendChild(o);
+    $("csAlignSlowAgain").addEventListener("click", alFindStop);
+    $("csAlignSlowKeep").addEventListener("click", () => { if (al.progress) al.progress.keep = true; alWaitShow(); });
     alWaitShow();
+  }
+  // Aviso de demora (decisão do dono, 2026-11-23): a procura passou do tempo normal quando, depois de 6 s, anda a
+  // menos de 2 fotos por segundo (o normal são várias por segundo; com os cliques fora das marcas, menos de uma)
+  function alSlow() {
+    const g = al.progress;
+    if (!al.busy || !g || !g.total || g.keep) return false;
+    const s = (Date.now() - g.since) / 1000;
+    return s >= 6 && g.done < g.total && g.done / s < 2;
+  }
+  // Click the marks again: para a procura e desfaz as marcas clicadas
+  function alFindStop() {
+    if (typeof window.alignStop === "function") window.alignStop();
+    clearInterval(al.slowTimer);
+    al.stopped = true;
+    al.busy = false; al.msg = ""; al.progress = null;
+    alMarksAgain();
+  }
+  // Volta ao começo do passo 2: nenhuma marca, pronto para os três cliques
+  function alMarksAgain() {
+    al.check = ""; al.ref = ""; al.clicks = null;
+    al.photos.forEach((p) => { const d = al.data[p.camera]; if (d) { d.found = false; d.marks = null; d.tried = false; d.manual = false; d.live = null; } });
+    al.solved = {}; al.aim = null;
+    alRender();
   }
   // A mesma tela de espera vale para as fotos (Fire, Fire again): "Taking a photo with each camera" e, quando as
   // fotos começam a chegar, "Receiving photos" com a barra e a contagem (avisos waitingDownloads e downloadProgress)
@@ -3039,6 +3077,8 @@
   }
   function alWaitShow() {
     const finding = al.busy;
+    const slow = finding && alSlow();
+    if ($("csAlignSlow")) { $("csAlignSlow").classList.toggle("hidden", !slow); $("csAlignSlowBtns").classList.toggle("hidden", !slow); }
     waitFill($("csAlignWaitTitle"), $("csAlignWaitBar"), $("csAlignWaitLine"),
       finding ? "Finding the marks" : csTest.wait && csTest.wait.title || "Taking a photo with each camera", finding ? al.progress : csTest.wait);
   }
@@ -3506,6 +3546,12 @@
       const d = al.data[sel.camera] || {};
       let html = "<div><h4>Camera " + alNum(sel) + " · " + alEsc(sel.camera) + "</h4>", sideHtml = "";
       if (al.busy) html += "";  // (a tela de espera cobre o passo: alWait)
+      else if (al.check === sel.camera) {
+        const others = al.photos.filter((q) => q.file && q.camera !== sel.camera).length;
+        html += '<div class="al-check"><b>These do not look like the three marks</b><p>The three points you clicked have no clear color or shape of their own, so the search in the other ' +
+          plural(others, "photo", "photos") + " would be slow and may fail. Click the middle of each mark, from top to bottom.</p>" +
+          '<div><button type="button" class="btn btn-primary btn-small" id="csAlignCheckAgain">Click again</button><button type="button" class="btn btn-secondary btn-small" id="csAlignCheckGo">Search anyway</button></div></div>';
+      }
       else if ((al.clicks && al.clicks.camera === sel.camera) || !d.found) {
         // A ordem dos cliques, de cima para baixo: feito (✓), o da vez (aceso) e os que faltam
         const done = al.clicks && al.clicks.camera === sel.camera ? al.clicks.points.length : 0;
@@ -3517,9 +3563,14 @@
       else html += '<ul class="in-list">' + alLines(sel.camera).map(([c, t]) => '<li class="' + c + '">' + alEsc(t) + "</li>").join("") + "</ul>";
       html += "</div>";
       // Guided aim: uma câmera por vez, numa janela própria (pode ir para outro monitor), com a imagem ao vivo
-      html += '<button type="button" class="btn btn-small btn-secondary" id="csAlignGuided"' + (al.ref && !al.busy ? "" : ' disabled title="Click the three marks in one photo first"') + ">Guided aim</button>";
+      html += '<button type="button" class="btn btn-small btn-secondary" id="csAlignGuided"' + (al.ref && !al.busy && !al.check ? "" : ' disabled title="Click the three marks in one photo first"') + ">Guided aim</button>";
       under.innerHTML = html;
       under.querySelector("#csAlignGuided").addEventListener("click", gaOpen);
+      const again = under.querySelector("#csAlignCheckAgain");
+      if (again) {
+        again.addEventListener("click", alMarksAgain);
+        under.querySelector("#csAlignCheckGo").addEventListener("click", () => { const cam = al.check; al.check = ""; alFindAll([cam]); });
+      }
       side.innerHTML = sideHtml;
       row.appendChild(side);
       view.appendChild(row);

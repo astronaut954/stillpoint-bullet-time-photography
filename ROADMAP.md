@@ -1295,7 +1295,16 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      largura da lupa, para experimentar com o mouse (A só altura, como está; B o dobro; C quase quatro vezes):
      https://claude.ai/artifact/Q58PvpBQb6cGLZr472Pz4h; procura das marcas demorada (A cancelar; B conferir os
      cliques antes; C aviso quando passa do tempo): https://claude.ai/artifact/UrVgmhWvSS5zbjkxAoV7AR.
-     Sugestão do agente: lupa A; procura B com A. Aguardando o dono.
+     **Decisões do dono (2026-11-23): lupa B; procura demorada B e C.** Feito:
+     Lupa: os traços do meio com o dobro da largura (em volta apertam até uns 0,7; fora da lente nada sai do lugar).
+     Conferir antes (B): o `alignMark` devolve "distinct" (as marcas de cima e de baixo têm cor própria na foto,
+     `AlignMarks::Distinct`); se não têm, o passo 2 mostra embaixo da foto "These do not look like the three marks",
+     com **Click again** e **Search anyway**, e a procura não começa.
+     Aviso de demora (C): na tela de espera, depois de 6 s andando a menos de 2 fotos por segundo, aparece "This is
+     taking longer than usual…" com **Click the marks again** (para a procura, novo `alignStop`, e desfaz as marcas)
+     e **Keep waiting**. Conferido pelo agente com 40 câmeras simuladas: cliques na parede dão o aviso B; Search
+     anyway chega ao aviso C; Click the marks again volta aos três cliques; cliques nas bolas não dão aviso nenhum.
+     A conferir com material de verdade: marcas brancas ou cinza caem no aviso B mesmo estando certas.
    - **Parte 6b, a fazer:** a imagem ao vivo das câmeras Canon de verdade (o processo de cada câmera em `src/worker`
      e o protocolo): ligar o visor ao vivo, mandar os quadros e desligar antes de cada disparo. Só o dono consegue
      testar (câmeras reais).

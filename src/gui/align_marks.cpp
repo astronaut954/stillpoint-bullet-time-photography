@@ -465,6 +465,14 @@ namespace AlignMarks
         for (int k = 0; k < 3; ++k) marks[k] = Snap(img, pre[k], d2, pre[k == 0 ? 2 : 0], wide);
     }
 
+    bool Distinct(const RgbFrame& ref, const Pt marks[3])
+    {
+        const double d = std::hypot(marks[0].x - marks[2].x, marks[0].y - marks[2].y);
+        if (ref.width < 16 || d < 8) return false;
+        std::array<double, 3> a{}, b{};
+        return MarkColor(ref, marks[0], d, marks[2], a) && MarkColor(ref, marks[2], d, marks[0], b);
+    }
+
     Found Find(const RgbFrame& refFull, const Pt marks[3], const RgbFrame& imgFull, bool wide)
     {
         Found out;

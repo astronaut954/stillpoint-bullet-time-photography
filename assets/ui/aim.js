@@ -21,7 +21,7 @@
   };
   // As medidas do mapa das câmeras, guardadas (mapMeasure): n traços, W largura, w largura de um traço, R raio da lupa...
   const G = { n: 0, W: 0, w: 0, R: 66, x0: 0, hostW: 0, cw: 0, sw: 1, tabW: 0, tab0: 0, tabStep: 1, winLo: 0, winHi: -1, hereI: -1, lo: 0, hi: -1, tipI: -2, tipState: "", tipW: 0,
-              snap: (v) => v, left: 0 };
+              snap: (v) => v, left: 0, RW: 110, bl: [], bw: [] };
   const pad = (n) => (n < 10 ? "0" : "") + n;
   const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const send = (type, camera) => { if (typeof window.aimAction === "function") window.aimAction(JSON.stringify(camera ? { type, camera } : { type })); };
@@ -256,7 +256,9 @@
     G.W = G.n ? mini.clientWidth : 0;
     if (!G.n || !G.W || !prog.classList.contains("strip")) { G.n = 0; frame.classList.add("hidden"); tip.classList.add("hidden"); stripChanged(); return; }
     G.w = G.W / G.n;
-    G.R = Math.max(66, 8.4 * G.w);
+    G.R = Math.max(66, 8.4 * G.w);    // até onde os traços crescem e acendem
+    G.RW = Math.max(110, 14 * G.w);   // até onde a lente mexe na largura dos traços
+    G.bl = []; G.bw = [];
     frame.classList.remove("hidden");
     const host = frame.offsetParent.getBoundingClientRect(), box = mini.getBoundingClientRect();
     G.x0 = box.left - host.left; G.hostW = host.width; G.left = box.left;
@@ -266,8 +268,10 @@
     let left = 0;
     for (let i = 0; i < G.n; ++i) {
       const right = G.snap((i + 1) * G.w), size = right - left, gap = size >= 3 ? 1 : size >= 1.5 ? 1 / dpr : 0;
-      marks[i].style.left = left + "px";
-      marks[i].style.width = Math.max(0, size - gap) + "px";
+      G.bl[i] = left + "px"; G.bw[i] = Math.max(0, size - gap) + "px";
+      marks[i].style.left = G.bl[i];
+      marks[i].style.width = G.bw[i];
+      marks[i]._moved = false;
       left = right;
     }
     frame.style.left = "0"; frame.style.top = (box.bottom - host.top - 12 - 5) + "px";
@@ -279,15 +283,36 @@
     for (let i = 0; i < G.n; ++i) paintBar(i);
     paintLens();
   }
+  // A forma da lente: para onde vai cada ponto (0 a 1, do centro à borda da lente). No meio abre 2x; em volta aperta
+  // (no máximo até uns 0,7); a soma dá 1, então fora da lente nada sai do lugar.
+  const LENS = (() => {
+    const K = 240, sigma = 0.2, peak = 2, bump = (t) => Math.exp(-(t / sigma) * (t / sigma));
+    let area = 0;
+    for (let j = 0; j < K; ++j) area += bump((j + 0.5) / K) / K;
+    const min = Math.max(0.4, (1 - peak * area) / (1 - area)), top = (1 - min) / area, g = [0];
+    for (let j = 0; j < K; ++j) g.push(g[j] + (min + top * bump((j + 0.5) / K)) / K);
+    return (t) => { const x = Math.min(1, Math.max(0, t)) * K, j = Math.min(K - 1, Math.floor(x)); return (g[j] + (g[j + 1] - g[j]) * (x - j)) / g[K]; };
+  })();
   // A altura e o brilho de um traço: a câmera da tela (branca, mais alta), o trecho à mostra (aceso; o resto,
-  // apagado) e a lupa (os traços em volta do ponteiro crescem e acendem, numa curva lisa de topo achatado). O traço não
-  // muda de lugar nem de largura; a altura cresce por escala (sem refazer o desenho da tela).
+  // apagado) e a lupa (os traços em volta do ponteiro crescem e acendem, numa curva lisa de topo achatado). A altura
+  // cresce por escala (sem refazer o desenho da tela).
   function paintBar(i) {
     const el = i >= 0 && i < G.n ? $("gaMini").children[i] : null;
     if (!el) return;
     const here = i === G.hereI, win = i >= G.winLo && i <= G.winHi, base = here ? 18 : 12;
-    const k = S.lensPos >= 0 ? S.lensK : 0;
-    const far = k > 0 ? Math.min(1, Math.abs((i + 0.5) * G.w - S.lensPos) / G.R) : 1, near = far < 1 ? Math.pow(Math.cos(far * Math.PI / 2), 2.6) * k : 0;
+    const k = S.lensPos >= 0 ? S.lensK : 0, m = S.lensPos;
+    // A largura (decisão do dono, 2026-11-23, forma B): os traços do meio da lupa ficam com o dobro da largura; em
+    // volta apertam um pouco, e fora da lente nada sai do lugar
+    let center = (i + 0.5) * G.w;
+    if (k > 0 && Math.abs(center - m) < G.RW + G.w) {
+      const f = (x) => { const d = x - m, a = Math.abs(d), r = Math.min(G.RW, d < 0 ? m : G.W - m); if (a >= r || r <= 0) return x; const t = a / r; return m + Math.sign(d) * r * (t + k * (LENS(t) - t)); };
+      const left = f(i * G.w), right = f((i + 1) * G.w), size = right - left;
+      el.style.left = left.toFixed(2) + "px";
+      el.style.width = Math.max(0, size - Math.min(1, size * 0.22)).toFixed(2) + "px";
+      el._moved = true;
+      center = (left + right) / 2;
+    } else if (el._moved) { el.style.left = G.bl[i]; el.style.width = G.bw[i]; el._moved = false; }
+    const far = k > 0 ? Math.min(1, Math.abs(center - m) / G.R) : 1, near = far < 1 ? Math.pow(Math.cos(far * Math.PI / 2), 2.6) * k : 0;
     // (a altura não é arredondada para pixels inteiros: arredondada, cada traço subia e descia em degraus de meio
     // pixel enquanto a lupa andava, e o conjunto tremia; teste do dono, 2026-11-22)
     const h = Math.max(base, 12 + 28 * near), normal = win ? 1 : 0.3;
@@ -299,7 +324,7 @@
   function paintLens() {
     if (!G.n) return;
     const k = S.lensPos >= 0 ? S.lensK : 0;
-    const lo = k > 0 ? Math.max(0, Math.floor((S.lensPos - G.R) / G.w)) : 0, hi = k > 0 ? Math.min(G.n - 1, Math.ceil((S.lensPos + G.R) / G.w)) : -1;
+    const lo = k > 0 ? Math.max(0, Math.floor((S.lensPos - G.RW) / G.w) - 1) : 0, hi = k > 0 ? Math.min(G.n - 1, Math.ceil((S.lensPos + G.RW) / G.w) + 1) : -1;
     for (let i = Math.min(lo, G.lo); i <= Math.max(hi, G.hi); ++i) paintBar(i);
     G.lo = lo; G.hi = hi;
     // A etiqueta diz a câmera embaixo do ponteiro (a lupa chega um instante depois)

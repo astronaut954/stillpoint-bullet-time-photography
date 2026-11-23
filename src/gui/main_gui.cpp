@@ -5267,6 +5267,13 @@ namespace
         };
         // alignMark({session, file, clicks: [[x,y] x3], reference: true}): os três cliques numa foto, levados ao centro
         // das marcas. Com reference, esta foto passa a ser a de referência para achar as marcas nas outras.
+        // alignStop(): a pessoa desistiu da procura das marcas (estava demorando): as fotos que faltam são puladas
+        auto alignStop = std::make_shared<std::atomic<bool>>(false);
+        window.bind("alignStop", [alignStop](const std::string&) -> std::string
+        {
+            alignStop->store(true);
+            return "null";
+        });
         window.bind("alignMark", [&, alignRef](const std::string& id, const std::string& request, void*)
         {
             const auto args = ParseStringArgs(request);
@@ -5295,8 +5302,10 @@ namespace
                     for (int k = 0; k < 3; ++k) alignRef->marks[k] = m[k];
                     alignRef->wide = wide;
                     alignRef->set = true;
+                    // "distinct": as marcas têm cor própria (a página confere antes de procurar nas outras fotos)
                     window.resolve(id, 0, Json().Add("ok", true).Raw("marks", alignPts(m, alignRef->frame.width, alignRef->frame.height))
-                        .Add("width", alignRef->frame.width).Add("height", alignRef->frame.height).Str());
+                        .Add("width", alignRef->frame.width).Add("height", alignRef->frame.height)
+                        .Add("distinct", AlignMarks::Distinct(alignRef->frame, alignRef->marks)).Str());
                     return;
                 }
                 window.resolve(id, 0, Json().Add("ok", true).Raw("marks", alignPts(m, frame.width, frame.height))
@@ -5324,12 +5333,14 @@ namespace
                 // Até 4 fotos ao mesmo tempo (cada foto de 24 MP ocupa ~70 MB na memória)
                 std::atomic<size_t> next{ 0 };
                 std::atomic<size_t> finished{ 0 };
+                alignStop->store(false);
                 auto work = [&]
                 {
                     for (size_t i = next++; i < jobs.size(); i = next++)
                     {
                         RgbFrame frame;
-                        if (!jobs[i].path.empty() && LoadPhotoRgb(jobs[i].path, frame))
+                        // (procura cancelada pela pessoa: as fotos que faltam não são abertas)
+                        if (!alignStop->load() && !jobs[i].path.empty() && LoadPhotoRgb(jobs[i].path, frame))
                         {
                             jobs[i].w = frame.width; jobs[i].h = frame.height;
                             // (a foto de referência pode ter outro tamanho, RAW e JPEG: o Find leva isso em conta)
@@ -5347,7 +5358,9 @@ namespace
                 for (const auto& j : jobs)
                 {
                     // No Activity, para entender um "Marks not found"
-                    if (!j.w)
+                    if (alignStop->load())
+                        ;
+                    else if (!j.w)
                         Log("Align cameras: the photo of " + j.camera + " could not be read (" + j.path.filename().string() + ")");
                     else if (!j.found.ok || j.found.confidence < 0.35)
                         Log("Align cameras: marks not found in the photo of " + j.camera + " (" + (j.found.ok ? "similarity " + std::to_string(static_cast<int>(j.found.confidence * 100)) + "%" : "no match") + ")");

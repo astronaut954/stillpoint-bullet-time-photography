@@ -39,6 +39,9 @@ namespace AlignMarks
 
     // Procura em img as três marcas que estão em ref nos pontos marks (já levados ao centro).
     Found Find(const RgbFrame& ref, const Pt marks[3], const RgbFrame& img, bool wide);
+    // As marcas de cima e de baixo têm cor própria na foto de referência? Sem isso a procura nas outras fotos cai no
+    // modo lento (a foto inteira) e pode falhar: é o caso de cliques fora das marcas (e de marcas brancas ou cinza).
+    bool Distinct(const RgbFrame& ref, const Pt marks[3]);
 
     // Uma câmera para a conta: as três marcas na foto, o tamanho da foto e a distância focal em pixels
     // (da distância focal em mm e do tamanho do sensor; sem isso, uma estimativa).

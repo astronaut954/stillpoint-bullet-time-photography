@@ -2234,6 +2234,13 @@ sozinho em uns 10 segundos (como se alguém estivesse mexendo nela).
 - [ ] **Test shot** (no Camera settings) e **Fire** / **Fire again** (no Align cameras): a tela de espera mostra
       "Taking a photo with each camera" e depois "Receiving photos" com a barra e "n of N photos".
 - [ ] Com 40 câmeras (faixa de abas sem o mapa): as setas **‹** e **›** nas pontas da faixa funcionam.
+- [ ] Mapa (50 câmeras ou mais): com o mouse em cima, os traços do meio da lupa ficam com o dobro da largura.
+- [ ] No passo **2 Mark and aim**, clicar três pontos na parede (fora das bolas): embaixo da foto aparece "These do
+      not look like the three marks", com **Click again** e **Search anyway**; **Guided aim** fica apagado.
+- [ ] **Search anyway**: a tela de espera aparece e, depois de uns 6 segundos, mostra "This is taking longer than
+      usual. The three clicks may be off the marks." com **Click the marks again** e **Keep waiting**.
+- [ ] **Keep waiting** tira o aviso e a procura continua; **Click the marks again** para a procura e volta aos três
+      cliques. Clicando nas bolas, nenhum aviso aparece.
 - [ ] Windows: os itens acima.
 - [ ] Câmeras de verdade (pendente até o dono avisar que tem o material): nesta parte elas não têm imagem ao vivo; a
       janela mostra **No live image** e a última foto, e as instruções mudam a cada **Fire again**. A conferir na

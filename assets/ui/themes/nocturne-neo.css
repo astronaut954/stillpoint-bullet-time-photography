@@ -2263,6 +2263,14 @@ body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform:
 .al-wait-bar i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: var(--noct-primary); transition: width .15s linear; }
 .al-wait-line { min-height: 12px; font: 600 12px/1 var(--noct-font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--noct-text); white-space: nowrap; }
 .al-wait-line b { color: var(--noct-primary); font-weight: 700; }
+.al-wait .wbtns { display: flex; gap: 10px; margin-top: 6px; }
+.al-wait .slow { max-width: 520px; text-align: center; font: 400 14px/1.5 var(--noct-font-sans); color: var(--noct-pending); }
+.al-wait .hidden { display: none; }
+/* Conferir os cliques antes de procurar: o aviso embaixo da foto grande */
+.al-check { border: 1px solid var(--noct-pending); padding: 12px 14px; margin-top: 4px; }
+.al-check b { display: block; font: 700 12px/1.4 var(--noct-font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--noct-pending); margin-bottom: 4px; }
+.al-check p { margin: 0 0 10px; font: 400 14px/1.45 var(--noct-font-sans); color: var(--noct-text); }
+.al-check div { display: flex; gap: 10px; }
 .cs-test { position: relative; }
 .cs-wait { display: none; }
 .cs-sheet.capturing .cs-test.waiting { min-height: 150px; }
