@@ -12588,10 +12588,19 @@
         const chip = el("button", "cam-chip" + (on ? " on" : "") + (!on && used.has(o) && used.get(o) !== i ? " used" : ""), String(o));
         chip.type = "button";
         chip.title = on ? "Click to take camera " + o + " out of this step" : used.has(o) ? "Camera " + o + " is in step " + (used.get(o) + 1) + "; click to move it here" : "Click to add camera " + o + " to this step";
-        chip.addEventListener("click", () => {
-          if (on) st.cams = st.cams.filter((x) => x !== o);
-          else { timing.steps.forEach((other) => { other.cams = (other.cams || []).filter((x) => x !== o); }); st.cams = (st.cams || []).concat(o); }
+        chip.dataset.o = String(o);
+        // Teclado (Enter/espaço): um de cada vez. Com o mouse quem cuida é o arraste logo abaixo
+        chip.addEventListener("click", (e) => {
+          if (e.detail !== 0) return;
+          chipSet(st, o, !on);
           timingSave(); renderTiming();
+        });
+        // Clicar e segurar: arrastando por cima dos números, todos ficam como o primeiro ficou (entram ou saem do
+        // passo). Pedido do dono, 2026-11-23, para rigs com muitas câmeras
+        chip.addEventListener("pointerdown", (e) => {
+          if (e.button !== 0) return;
+          e.preventDefault();
+          chipPaintStart(e, st, chips, !on);
         });
         chips.appendChild(chip);
       }
@@ -12605,6 +12614,52 @@
       root.appendChild(row);
     });
     root.appendChild(button("Add step", () => { timing.steps.push({ after: 1, cams: [] }); timingSave(); renderTiming(); }, { kind: "btn-link" }));
+  }
+
+  // ----- Custom: marcar várias câmeras de um passo arrastando por cima dos números -----
+  let chipPaint = null;
+  function chipSet(st, o, add) {
+    if (add) { timing.steps.forEach((other) => { other.cams = (other.cams || []).filter((x) => x !== o); }); st.cams = (st.cams || []).concat(o); }
+    else st.cams = (st.cams || []).filter((x) => x !== o);
+  }
+  function chipPaintAt(x, y) {
+    const p = chipPaint;
+    const hit = document.elementFromPoint(x, y);
+    const chip = hit && hit.closest ? hit.closest(".cam-chip") : null;
+    if (!chip || chip.parentElement !== p.chips) return;
+    const o = Number(chip.dataset.o);
+    if (p.done.has(o)) return;
+    p.done.add(o);
+    chipSet(p.st, o, p.add);
+    // Só a aparência, sem redesenhar: o redesenho troca os botões e cortaria o arraste
+    chip.classList.toggle("on", p.add);
+    if (p.add) {
+      chip.classList.remove("used");
+      p.chips.closest("#timingCustom").querySelectorAll('.step-cams .cam-chip[data-o="' + o + '"]').forEach((c) => { if (c !== chip) { c.classList.remove("on"); c.classList.add("used"); } });
+    }
+  }
+  function chipPaintMove(e) {
+    const p = chipPaint;
+    if (!p) return;
+    // Mouse rápido pula números: preenche o caminho desde o último ponto
+    const dx = e.clientX - p.x, dy = e.clientY - p.y, n = Math.max(1, Math.ceil(Math.hypot(dx, dy) / 8));
+    for (let k = 1; k <= n; ++k) chipPaintAt(p.x + (dx * k) / n, p.y + (dy * k) / n);
+    p.x = e.clientX; p.y = e.clientY;
+  }
+  function chipPaintEnd() {
+    if (!chipPaint) return;
+    chipPaint = null;
+    window.removeEventListener("pointermove", chipPaintMove, true);
+    window.removeEventListener("pointerup", chipPaintEnd, true);
+    window.removeEventListener("pointercancel", chipPaintEnd, true);
+    timingSave(); renderTiming();
+  }
+  function chipPaintStart(e, st, chips, add) {
+    chipPaint = { st, chips, add, done: new Set(), x: e.clientX, y: e.clientY };
+    chipPaintAt(e.clientX, e.clientY);
+    window.addEventListener("pointermove", chipPaintMove, true);
+    window.addEventListener("pointerup", chipPaintEnd, true);
+    window.addEventListener("pointercancel", chipPaintEnd, true);
   }
 
   // ----- Arrastar passos do Custom para reordenar -----

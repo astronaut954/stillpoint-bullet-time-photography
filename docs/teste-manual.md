@@ -2259,6 +2259,16 @@ mouse mostra a barra de opções embaixo, com **Arc**, **Circle** e **Line**.
 - [ ] Com `STILLPOINT_FAKE_CAMERAS=24`: bolinhas com número, no desenho largo. Com 8: igual a antes.
 - [ ] Windows: os itens acima.
 
+## 53. Timing › Custom: arrastar por cima dos números (2026-11-23)
+
+Com `STILLPOINT_FAKE_CAMERAS=200`. No painel **Bullet time**, **Advanced** › **Custom**.
+
+- [ ] Em **Step 1**, clicar num número apagado, segurar e arrastar por cima de outros: todos acendem.
+- [ ] Clicar num número aceso, segurar e arrastar: todos apagam.
+- [ ] Um clique sozinho continua marcando ou desmarcando só aquele número.
+- [ ] Com dois passos (**Add step**): os números arrastados num passo saem do outro.
+- [ ] Windows: os itens acima.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |

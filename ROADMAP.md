@@ -1327,6 +1327,13 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      teste: no meio do caminho (por exemplo 24 câmeras) as bolinhas continuam com número, só que no desenho largo;
      nos pontos, a próxima câmera a disparar fica com a borda âmbar contínua (o tracejado não se vê num ponto); no
      Circle, o número da última câmera não aparece quando cairia em cima do "1".
+     **Outros pontos do teste com 200 câmeras (dono, 2026-11-23):**
+     (1) Timing › Custom: clicar, segurar e arrastar por cima dos números marca (ou desmarca) todas as câmeras do
+     caminho, conforme o primeiro número ficou. Feito em `assets/ui/app.js` (`chipPaint*`); um clique sozinho e o
+     teclado continuam valendo. Teste automático: cenário 25.
+     (2) Três telas que não aguentam muitas câmeras, com protótipos A/B/C aguardando a escolha
+     (https://claude.ai/artifact/RyoUatEdQ53ATz6Rd253W8): a fileira de miniaturas da janela Live tocando a
+     sequência; a barra de baixo da janela Live durante o disparo; a Timeline do Bullet time na janela principal.
    - **Parte 6b, a fazer:** a imagem ao vivo das câmeras Canon de verdade (o processo de cada câmera em `src/worker`
      e o protocolo): ligar o visor ao vivo, mandar os quadros e desligar antes de cada disparo. Só o dono consegue
      testar (câmeras reais).

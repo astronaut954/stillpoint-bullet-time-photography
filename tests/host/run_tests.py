@@ -2294,6 +2294,57 @@ def scenario_live_many(t, name, photos):
         t.restart_app()
 
 
+def scenario_custom_drag(t, name, photos):
+    line("\n== 25. Timing › Custom: click, hold and drag over the camera numbers")
+    t.dismiss()
+    try:
+        t.env["STILLPOINT_FAKE_CAMERAS"] = "12"
+        t.restart_app()
+        time.sleep(3)
+        t.dismiss()
+        errors_before = len(t.errors)
+        t.js("() => { if (document.getElementById('timingAdv').classList.contains('hidden')) document.getElementById('timingToggle').click(); }")
+        time.sleep(0.6)
+        t.js("() => [...document.querySelectorAll('#timingModes button')].find((b) => b.textContent.trim().toLowerCase() === 'custom').click()")
+        time.sleep(0.6)
+        on = lambda step: t.js("(s) => [...document.querySelectorAll('#timingCustom .timing-step')[s].querySelectorAll('.cam-chip.on')].map((c) => Number(c.textContent))", step)
+        pos = lambda step, o: t.js("([s, o]) => { const c = document.querySelectorAll('#timingCustom .timing-step')[s].querySelector('.cam-chip[data-o=\"' + o + '\"]'); c.scrollIntoView({ block: 'center' }); const b = c.getBoundingClientRect(); return [b.x + b.width / 2, b.y + b.height / 2]; }", [step, o])
+        def drag(step, a, b):
+            pos(step, a)
+            (x0, y0), (x1, y1) = t.js("([s, a, b]) => [a, b].map((o) => { const r = document.querySelectorAll('#timingCustom .timing-step')[s].querySelector('.cam-chip[data-o=\"' + o + '\"]').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })", [step, a, b])
+            t.js("() => document.querySelectorAll('.toast').forEach((e) => e.remove())")  # o aviso do rig diferente (12 câmeras) cobre os números
+            t.page.mouse.move(x0, y0)
+            t.page.mouse.down()
+            t.page.mouse.move(x1, y1, steps=3)
+            t.page.mouse.up()
+            time.sleep(0.5)
+        t.js("() => { while (document.querySelectorAll('#timingCustom .timing-step').length < 2) [...document.querySelectorAll('#timingCustom button')].find((b) => b.textContent.trim() === 'Add step').click(); }")
+        time.sleep(0.5)
+        before = on(0)
+        free = [o for o in range(1, 13) if o not in before]
+        a, b = free[0], free[-1]
+        drag(0, a, b)
+        got = on(0)
+        check(t, "custom drag: dragging from an unmarked camera marks every camera on the way", all(o in got for o in range(a, b + 1)), (before, got))
+        check(t, "custom drag: the cameras leave the other step", not [o for o in on(1) if a <= o <= b], on(1))
+        drag(0, 3, 8)
+        got = on(0)
+        check(t, "custom drag: dragging from a marked camera takes them out", not [o for o in got if 3 <= o <= 8] and 2 in got and 9 in got, got)
+        x, y = pos(0, 5)
+        t.js("() => document.querySelectorAll('.toast').forEach((e) => e.remove())")
+        t.page.mouse.click(x, y)
+        time.sleep(0.4)
+        check(t, "custom drag: a plain click still marks one camera", [o for o in on(0) if 3 <= o <= 8] == [5], on(0))
+        t.js("() => { const c = document.querySelectorAll('#timingCustom .timing-step')[0].querySelector('.cam-chip[data-o=\"6\"]'); c.focus(); c.click(); }")
+        time.sleep(0.4)
+        check(t, "custom drag: the keyboard (Enter on a number) still works", 6 in on(0), on(0))
+        check(t, "custom drag: no page error", len(t.errors) == errors_before, t.errors[errors_before:])
+    finally:
+        t.js("() => { try { localStorage.removeItem('timing'); } catch (e) {} }")
+        t.env["STILLPOINT_FAKE_CAMERAS"] = "4"
+        t.restart_app()
+
+
 def scenario_align_marks(t, name, photos):
     line("\n== 20. Automatic alignment: the three marks and the recipe (calculation only, no window yet)")
     prog = os.path.join(BUILD, "AlignMarksTest")
@@ -2373,7 +2424,7 @@ def main():
                 only = os.environ.get("STILLPOINT_TEST_ONLY", "")  # para depurar: só os cenários com este nome
                 for sc in [x for x in (scenario_cleared, scenario_delete_edit_undo, scenario_photo_delete_restore,
                            scenario_remove_from_collection, scenario_delete_session, scenario_cancel, scenario_rapid_in_lightroom, scenario_crop_before_lightroom,
-                           scenario_export_edit, scenario_export_trash, scenario_lightroom_crop, scenario_undo_own_item, scenario_orientation, scenario_selection_kept, scenario_align_undo, scenario_flip, scenario_photoshop, scenario_rig_state, scenario_align_marks, scenario_align_cameras, scenario_camera_tags, scenario_guided_aim, scenario_live_many) if only in x.__name__]:
+                           scenario_export_edit, scenario_export_trash, scenario_lightroom_crop, scenario_undo_own_item, scenario_orientation, scenario_selection_kept, scenario_align_undo, scenario_flip, scenario_photoshop, scenario_rig_state, scenario_align_marks, scenario_align_cameras, scenario_camera_tags, scenario_guided_aim, scenario_live_many, scenario_custom_drag) if only in x.__name__]:
                     try:
                         sc(t, name, photos)
                     except Exception:  # noqa: BLE001
