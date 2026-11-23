@@ -1317,8 +1317,16 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      "acha" as marcas com nota alta em qualquer lugar parecido (o aviso de conferência é o que segura esse caso).
      Janela Live com 200 câmeras (pedido do dono, 2026-11-23): os pontos se sobrepõem. Protótipo com quatro formas
      (A pontos pequenos; B várias fileiras; C grupos de 10; D traços), todas com o arco usando a largura da janela:
-     https://claude.ai/artifact/4sKverwaWBpEuz5hkf1Dtf. Aguardando a escolha. Fora do escopo da etapa 21 (é da janela
-     Live); entra aqui porque veio do teste com muitas câmeras.
+     https://claude.ai/artifact/4sKverwaWBpEuz5hkf1Dtf. Fora do escopo da etapa 21 (é da janela Live); entra aqui
+     porque veio do teste com muitas câmeras.
+     **Decisão do dono (2026-11-23): forma A.** Feito em `assets/ui/live.js` (`layoutRig`, `rigPoints`) e
+     `live.css`: enquanto as bolinhas de 30 px cabem sem encostar, nada muda; quando não cabem, o desenho (Arc,
+     Circle ou Line) passa a usar a largura da janela, com as câmeras a distâncias iguais; se ainda assim não cabem
+     com número, viram pontos encolhidos até caberem, com os números por fora (a primeira e as de 10 em 10), e só
+     a câmera que dispara cresce (28 px) e mostra o número. Escolhas do agente dentro da forma A, a confirmar no
+     teste: no meio do caminho (por exemplo 24 câmeras) as bolinhas continuam com número, só que no desenho largo;
+     nos pontos, a próxima câmera a disparar fica com a borda âmbar contínua (o tracejado não se vê num ponto); no
+     Circle, o número da última câmera não aparece quando cairia em cima do "1".
    - **Parte 6b, a fazer:** a imagem ao vivo das câmeras Canon de verdade (o processo de cada câmera em `src/worker`
      e o protocolo): ligar o visor ao vivo, mandar os quadros e desligar antes de cada disparo. Só o dono consegue
      testar (câmeras reais).

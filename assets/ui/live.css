@@ -67,6 +67,17 @@
 .live-cam.next { border-color: var(--noct-pending); color: var(--noct-pending); border-style: dashed; opacity: 1; }
 .live-cam.bad { border-color: var(--noct-danger); color: var(--noct-danger); background: #1a0606; opacity: 1; }
 .live-cam.cur { background: #fff; color: #000; border-color: #fff; box-shadow: 0 0 28px #fff, 0 0 60px rgba(255, 255, 255, .5); transition: none; opacity: 1; }
+/* Muitas câmeras (forma A, 2026-11-23): o desenho usa a largura da janela ("many") e, quando nem assim cabem com
+   número, cada câmera vira um ponto ("tiny") com os números por fora de 10 em 10; só a que dispara cresce */
+.live-rig.many::after { top: 70%; font-size: 22px; }
+.live-rig.many.circle::after { top: 52%; }
+.live-rig.tiny .live-cam { border-width: 1px; }
+.live-rig.tiny .live-cam span { display: none; }
+.live-rig.tiny .live-cam.on { box-shadow: none; }
+.live-rig.tiny .live-cam.next { border-style: solid; }
+.live-rig.tiny .live-cam.cur { width: 28px; height: 28px; margin: -14px 0 0 -14px; font-size: 11px; z-index: 3; box-shadow: 0 0 22px #fff; }
+.live-rig.tiny .live-cam.cur span { display: inline; }
+.live-ten { position: absolute; transform: translate(-50%, -50%); font: 700 11px/1 var(--noct-font-mono); letter-spacing: .08em; color: var(--noct-text-dim); pointer-events: none; }
 
 /* "Next: camera 8 in 0.6 s" (intervalos curtos) e a legenda */
 .live-next { position: absolute; left: 28px; bottom: 112px; font-size: 12px; text-transform: uppercase; letter-spacing: .12em; color: var(--noct-pending); }

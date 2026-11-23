@@ -2246,6 +2246,19 @@ sozinho em uns 10 segundos (como se alguém estivesse mexendo nela).
       janela mostra **No live image** e a última foto, e as instruções mudam a cada **Fire again**. A conferir na
       parte 6b: se as Canon dão imagem ao vivo no modo de foto ou só no modo de vídeo (com corte).
 
+## 52. Janela Live com muitas câmeras (forma A, 2026-11-23)
+
+Com `STILLPOINT_FAKE_CAMERAS=200`. Botão **Live view** (barra de cima da janela principal); na janela Live, mexer o
+mouse mostra a barra de opções embaixo, com **Arc**, **Circle** e **Line**.
+
+- [ ] **Arc**: um ponto por câmera, sem um em cima do outro, num arco que usa a largura da janela; números por fora
+      (1, 10, 20 ... 200); o "◉" no centro.
+- [ ] **Circle** e **Line**: a mesma ideia (pontos e números por fora; na linha, os números embaixo).
+- [ ] **Space** (Bullet Time): os pontos acendem na ordem e só a câmera que dispara cresce e mostra o número.
+- [ ] Mudar o tamanho da janela e **Full screen**: os pontos se ajustam.
+- [ ] Com `STILLPOINT_FAKE_CAMERAS=24`: bolinhas com número, no desenho largo. Com 8: igual a antes.
+- [ ] Windows: os itens acima.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |

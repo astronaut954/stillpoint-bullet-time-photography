@@ -289,7 +289,7 @@ window.Live = (function () {
 
   // ---------------------------------------------------------------- câmeras (rig)
   function rigNodes() {
-    return Array.from(el.rig.children);
+    return Array.from(el.rig.querySelectorAll(".live-cam"));
   }
   function buildRig() {
     el.rig.innerHTML = "";
@@ -304,36 +304,99 @@ window.Live = (function () {
     });
     layoutRig();
   }
-  // Posições em % do palco: arco (200° em volta do assunto, embaixo), círculo ou linha
+  // Posições das n câmeras (em % do palco) e o centro do desenho. "wide" é o desenho para muitas câmeras (forma A
+  // escolhida pelo dono em 2026-11-23): usa a largura toda da janela e espalha as câmeras a distâncias iguais
+  function rigPoints(layout, wide, n, w, h) {
+    const out = [];
+    if (layout === "line") {
+      const m = wide ? 2 : 8;
+      for (let i = 0; i < n; ++i) out.push({ x: n === 1 ? 50 : m + ((100 - 2 * m) * i) / (n - 1), y: 50, cx: 50, cy: -1e6 });
+      return out;
+    }
+    const circle = layout === "circle";
+    // arco: do canto inferior esquerdo, por cima, ao canto inferior direito
+    const start = circle ? -Math.PI / 2 : Math.PI * 1.06, end = circle ? Math.PI * 1.5 : -Math.PI * 0.06;
+    const cx = 50, cy = circle ? (wide ? 52 : 56) : (wide ? 70 : 62);
+    const rx = circle ? (wide ? 44 : 38 * (h / w)) : (wide ? 40 : 42 * Math.min(1, (h / w) * 1.6));
+    const ry = circle ? (wide ? 40 : 38) : (wide ? 62 : 48);
+    const at = (a) => ({ x: cx + rx * Math.cos(a), y: circle ? cy + ry * Math.sin(a) : cy - ry * Math.sin(a), cx, cy });
+    const steps = circle ? n : n - 1;
+    if (!wide || n < 2) {
+      for (let i = 0; i < n; ++i) out.push(at(n === 1 && !circle ? Math.PI / 2 : start + ((end - start) * i) / steps));
+      return out;
+    }
+    // Distâncias iguais ao longo da curva (em px): senão, numa janela larga, as câmeras se amontoam nas pontas
+    const K = 720, len = [0];
+    let prev = at(start);
+    for (let k = 1; k <= K; ++k) {
+      const p = at(start + ((end - start) * k) / K);
+      len.push(len[k - 1] + Math.hypot(((p.x - prev.x) * w) / 100, ((p.y - prev.y) * h) / 100));
+      prev = p;
+    }
+    let k = 0;
+    for (let i = 0; i < n; ++i) {
+      const want = (len[K] * i) / steps;
+      while (k < K - 1 && len[k + 1] < want) ++k;
+      const f = len[k + 1] > len[k] ? (want - len[k]) / (len[k + 1] - len[k]) : 0;
+      out.push(at(start + ((end - start) * (k + Math.min(1, f))) / K));
+    }
+    return out;
+  }
+  // Menor distância (px) entre câmeras vizinhas
+  function rigGap(pts, w, h) {
+    let gap = Infinity;
+    for (let i = 1; i < pts.length; ++i)
+      gap = Math.min(gap, Math.hypot(((pts[i].x - pts[i - 1].x) * w) / 100, ((pts[i].y - pts[i - 1].y) * h) / 100));
+    return gap;
+  }
+  // Posições em % do palco: arco (200° em volta do assunto, embaixo), círculo ou linha.
+  // Quando as bolinhas de 30 px (o menor tamanho com número legível) se encostariam, o desenho passa a usar a largura
+  // toda da janela ("many"); se ainda assim não cabem com número, viram pontos ("tiny"): um por câmera, encolhido até
+  // caberem todos, com os números por fora de 10 em 10, e só a câmera que dispara cresce e mostra o número
   function layoutRig() {
     const nodes = rigNodes();
     const n = nodes.length;
     if (!n) return;
     const w = el.rig.clientWidth || 1, h = el.rig.clientHeight || 1;
-    const size = Math.max(30, Math.min(64, Math.min(w / (n * 1.25), h / 6)));
-    el.rig.style.setProperty("--cam-size", size + "px");
     const layout = S.opts.layout;
+    let size = Math.max(30, Math.min(64, Math.min(w / (n * 1.25), h / 6)));
+    let pts = rigPoints(layout, false, n, w, h);
+    const many = n > 1 && rigGap(pts, w, h) < size * 1.1;
+    let tiny = false;
+    if (many) {
+      pts = rigPoints(layout, true, n, w, h);
+      const gap = rigGap(pts, w, h);
+      tiny = gap < 30 * 1.1;
+      size = tiny ? Math.max(4, Math.min(26, gap * 0.82)) : Math.min(size, gap / 1.1);
+    }
+    el.rig.style.setProperty("--cam-size", size + "px");
+    el.rig.querySelectorAll(".live-ten").forEach((e) => e.remove());
+    const placed = [];
     nodes.forEach((node, i) => {
-      let x, y;
-      if (layout === "line") {
-        x = n === 1 ? 50 : 8 + (84 * i) / (n - 1);
-        y = 50;
-      } else if (layout === "circle") {
-        const a = -Math.PI / 2 + (2 * Math.PI * i) / n;
-        x = 50 + 38 * Math.cos(a) * (h / w);
-        y = 56 + 38 * Math.sin(a);
-      } else {
-        // arco: do canto inferior esquerdo, por cima, ao canto inferior direito
-        const start = Math.PI * 1.06, end = -Math.PI * 0.06;
-        const a = n === 1 ? Math.PI / 2 : start + ((end - start) * i) / (n - 1);
-        x = 50 + 42 * Math.cos(a) * Math.min(1, (h / w) * 1.6);
-        y = 62 - 48 * Math.sin(a);
-      }
-      node.style.left = x + "%";
-      node.style.top = y + "%";
+      const p = pts[i];
+      node.style.left = p.x + "%";
+      node.style.top = p.y + "%";
+      const num = Number(node.firstChild.textContent) || i + 1;
+      if (!tiny || !(i === 0 || num % 10 === 0)) return;
+      // Número por fora do desenho (na linha, embaixo), a uma distância que não encosta na câmera que cresce
+      let dx = ((p.x - p.cx) * w) / 100, dy = ((p.y - p.cy) * h) / 100;
+      if (layout === "line") { dx = 0; dy = 1; }
+      const len = Math.hypot(dx, dy) || 1, off = 30;
+      const lx = (p.x * w) / 100 + (dx / len) * off, ly = (p.y * h) / 100 + (dy / len) * off;
+      // No círculo a última câmera fica ao lado da primeira: o número que cairia em cima de outro não aparece
+      if (placed.some((q) => Math.abs(q[0] - lx) < 34 && Math.abs(q[1] - ly) < 16)) return;
+      placed.push([lx, ly]);
+      const t = document.createElement("span");
+      t.className = "live-ten";
+      t.textContent = num;
+      t.style.left = (lx * 100) / w + "%";
+      t.style.top = (ly * 100) / h + "%";
+      el.rig.appendChild(t);
     });
     el.rig.classList.toggle("line", layout === "line");
     el.rig.classList.toggle("circle", layout === "circle");
+    el.rig.classList.toggle("many", many);
+    el.rig.classList.toggle("tiny", tiny);
   }
 
   // ---------------------------------------------------------------- estado do disparo

@@ -2248,6 +2248,52 @@ def scenario_guided_aim(t, name, photos):
         t.restart_app()
 
 
+def scenario_live_many(t, name, photos):
+    line("\n== 24. Live window with many cameras: dots that fit, numbers outside every 10")
+    import urllib.request
+    t.dismiss()
+    live = None
+    try:
+        for count, want in (("200", "tiny"), ("8", "plain")):
+            t.env["STILLPOINT_FAKE_CAMERAS"] = count
+            t.restart_app()
+            time.sleep(3)
+            t.dismiss()
+            t.js("() => document.getElementById('liveBtn').click()")
+            titles = lambda: json.loads(urllib.request.urlopen("http://127.0.0.1:%d/windows" % PORT).read().decode())
+            t.wait(lambda: any(x and "Live" in x for x in titles()), 5)
+            idx = [i for i, x in enumerate(titles()) if x and "Live" in x][0]
+            live = t.browser.new_page(viewport={"width": 1200, "height": 700})
+            errs = []
+            live.on("pageerror", lambda e: errs.append(str(e)))
+            live.goto("http://127.0.0.1:%d/w/%d/" % (PORT, idx))
+            t.wait(lambda: live.evaluate("() => document.querySelectorAll('.live-cam').length") == int(count), 6)
+            for lay in ("arc", "circle", "line"):
+                live.evaluate("(l) => document.querySelector('[data-layout=\"' + l + '\"]').click()", lay)
+                time.sleep(0.3)
+                d = live.evaluate("""() => { const r = document.querySelector('.live-rig'), ns = [...r.querySelectorAll('.live-cam')], b = ns.map((n) => n.getBoundingClientRect());
+                    let gap = 1e9; for (let i = 1; i < b.length; ++i) gap = Math.min(gap, Math.hypot(b[i].x - b[i - 1].x, b[i].y - b[i - 1].y));
+                    const box = r.getBoundingClientRect();
+                    return { cls: r.className, size: b[0].width, gap, tens: [...r.querySelectorAll('.live-ten')].map((e) => e.textContent), num: getComputedStyle(ns[0].firstChild).display,
+                      inside: b.every((q) => q.left >= box.left - 1 && q.right <= box.right + 1) }; }""")
+                if want == "tiny":
+                    check(t, "live, %s cameras, %s: one dot per camera, none over another, inside the window" % (count, lay), "tiny" in d["cls"] and d["size"] >= 4 and d["gap"] >= d["size"] and d["inside"] and d["num"] == "none", d)
+                    check(t, "live, %s cameras, %s: numbers outside, the first and every 10" % (count, lay), d["tens"][:3] == ["1", "10", "20"] and len(d["tens"]) >= 20, d["tens"])
+                else:
+                    check(t, "live, %s cameras, %s: as before (numbered circles, no outside numbers)" % (count, lay), "many" not in d["cls"] and d["size"] >= 30 and not d["tens"] and d["num"] != "none", d)
+            if want == "tiny":
+                d = live.evaluate("""() => { const n = document.querySelectorAll('.live-cam')[120]; n.classList.add('cur'); const b = n.getBoundingClientRect(); const r = [b.width, getComputedStyle(n.firstChild).display, n.firstChild.textContent]; n.classList.remove('cur'); return r; }""")
+                check(t, "live, 200 cameras: only the firing camera grows and shows its number", d[0] >= 27 and d[1] != "none" and d[2] == "121", d)
+            check(t, "live, %s cameras: no page error" % count, not errs, errs)
+            live.close()
+            live = None
+    finally:
+        if live:
+            live.close()
+        t.env["STILLPOINT_FAKE_CAMERAS"] = "4"
+        t.restart_app()
+
+
 def scenario_align_marks(t, name, photos):
     line("\n== 20. Automatic alignment: the three marks and the recipe (calculation only, no window yet)")
     prog = os.path.join(BUILD, "AlignMarksTest")
@@ -2327,7 +2373,7 @@ def main():
                 only = os.environ.get("STILLPOINT_TEST_ONLY", "")  # para depurar: só os cenários com este nome
                 for sc in [x for x in (scenario_cleared, scenario_delete_edit_undo, scenario_photo_delete_restore,
                            scenario_remove_from_collection, scenario_delete_session, scenario_cancel, scenario_rapid_in_lightroom, scenario_crop_before_lightroom,
-                           scenario_export_edit, scenario_export_trash, scenario_lightroom_crop, scenario_undo_own_item, scenario_orientation, scenario_selection_kept, scenario_align_undo, scenario_flip, scenario_photoshop, scenario_rig_state, scenario_align_marks, scenario_align_cameras, scenario_camera_tags, scenario_guided_aim) if only in x.__name__]:
+                           scenario_export_edit, scenario_export_trash, scenario_lightroom_crop, scenario_undo_own_item, scenario_orientation, scenario_selection_kept, scenario_align_undo, scenario_flip, scenario_photoshop, scenario_rig_state, scenario_align_marks, scenario_align_cameras, scenario_camera_tags, scenario_guided_aim, scenario_live_many) if only in x.__name__]:
                     try:
                         sc(t, name, photos)
                     except Exception:  # noqa: BLE001
