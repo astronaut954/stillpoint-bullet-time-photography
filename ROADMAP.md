@@ -1309,6 +1309,16 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      procura lenta anda a mais de 2 fotos por segundo (ou termina antes dos 6 s), e a regra dependia da velocidade do
      computador. Regra nova: depois de Search anyway (procura lenta sabida) o aviso aparece aos 3 s, em qualquer
      computador; na procura normal continua a regra dos 6 s a menos de 2 fotos por segundo.
+     **Ok do dono (2026-11-23):** o aviso de demora aparece e Click the marks again volta aos três cliques.
+     Pergunta do dono: com 200 fotos reais e as marcas clicadas errado, demora muito? Medido pelo agente (uma foto
+     de mentira de 24 MP, neste computador, sem contar abrir o JPEG): 0,7 s por foto com os cliques certos e 1,3 s
+     com os cliques na parede; em 4 fotos de cada vez, 200 fotos dariam cerca de 35 s e 65 s, mais o tempo de abrir
+     cada arquivo. Com fotos reais não foi medido. Visto na medição: com os cliques numa parede lisa a procura
+     "acha" as marcas com nota alta em qualquer lugar parecido (o aviso de conferência é o que segura esse caso).
+     Janela Live com 200 câmeras (pedido do dono, 2026-11-23): os pontos se sobrepõem. Protótipo com quatro formas
+     (A pontos pequenos; B várias fileiras; C grupos de 10; D traços), todas com o arco usando a largura da janela:
+     https://claude.ai/artifact/4sKverwaWBpEuz5hkf1Dtf. Aguardando a escolha. Fora do escopo da etapa 21 (é da janela
+     Live); entra aqui porque veio do teste com muitas câmeras.
    - **Parte 6b, a fazer:** a imagem ao vivo das câmeras Canon de verdade (o processo de cada câmera em `src/worker`
      e o protocolo): ligar o visor ao vivo, mandar os quadros e desligar antes de cada disparo. Só o dono consegue
      testar (câmeras reais).
