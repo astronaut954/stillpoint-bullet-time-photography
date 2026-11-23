@@ -2444,14 +2444,17 @@ def scenario_align_gone(t, name, photos):
         sel = t.js("() => document.querySelector('#csAlignMain .ma-item.sel').dataset.camera")
         f = [x for x in os.listdir(os.path.join(order_dir, sess)) if "_" + sel + "_IMG_" in x][0]
         centers = _mark_centers(os.path.join(order_dir, sess, f))
+        # (depois de um cenário com 200 câmeras o aviso "The rig is not the one of this project" lista todas e cobre a foto)
+        t.js("() => document.querySelectorAll('.toast').forEach((e) => e.remove())")
         box = t.page.locator("#csAlignMain .ma-row > .al-photo").bounding_box()
         for k in range(3):
             t.page.mouse.click(box["x"] + centers[k][0] * box["width"], box["y"] + centers[k][1] * box["height"])
             time.sleep(0.25)
-        t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item.ready, #csAlignMain .ma-item.needs').length === 4 && !/Finding/.test(document.querySelector('#csAlignMain').textContent)"), 60)
+        ok = t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item.ready, #csAlignMain .ma-item.needs').length === 4 && !/Finding/.test(document.querySelector('#csAlignMain').textContent)"), 60)
+        check(t, "align gone: the marks clicked in one photo are found in the four", ok)
         check(t, "align, all connected: no camera is shown as not connected", t.js("() => document.querySelectorAll('#csAlignMain .ma-item.gone').length") == 0)
         names = t.js("() => [...document.querySelectorAll('#csAlignMain .ma-item')].map(i => [i.querySelector('.al-num').textContent, i.dataset.camera]).sort().map(x => x[1])")
-        # (não a câmera da foto onde as marcas foram clicadas: sem ela o app pede os cliques de novo, e isso é outro caso)
+        # (não a câmera da foto onde as marcas foram clicadas: esse caso não está coberto aqui)
         gone = [n for n in names if n != sel][-1]
         num = "%02d" % (names.index(gone) + 1)
         place = names.index(gone)
@@ -2568,7 +2571,7 @@ def main():
                 only = os.environ.get("STILLPOINT_TEST_ONLY", "")  # para depurar: só os cenários com este nome
                 for sc in [x for x in (scenario_cleared, scenario_delete_edit_undo, scenario_photo_delete_restore,
                            scenario_remove_from_collection, scenario_delete_session, scenario_cancel, scenario_rapid_in_lightroom, scenario_crop_before_lightroom,
-                           scenario_export_edit, scenario_export_trash, scenario_lightroom_crop, scenario_undo_own_item, scenario_orientation, scenario_selection_kept, scenario_align_undo, scenario_flip, scenario_photoshop, scenario_rig_state, scenario_align_marks, scenario_align_cameras, scenario_camera_tags, scenario_guided_aim, scenario_live_many, scenario_custom_drag, scenario_align_gone) if only in x.__name__]:
+                           scenario_export_edit, scenario_export_trash, scenario_lightroom_crop, scenario_undo_own_item, scenario_orientation, scenario_selection_kept, scenario_align_undo, scenario_flip, scenario_photoshop, scenario_rig_state, scenario_align_marks, scenario_align_cameras, scenario_camera_tags, scenario_guided_aim, scenario_live_many, scenario_custom_drag, scenario_align_gone) if any(o in x.__name__ for o in only.split(","))]:  # vários, separados por vírgula
                     try:
                         sc(t, name, photos)
                     except Exception:  # noqa: BLE001
