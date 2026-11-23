@@ -1366,6 +1366,11 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      vizinhas, barra do disparo de 10 em 10, Timeline em faixa), teste 21 (arrastar passo e folga da régua
      pequena), arraste por cima dos números no Custom, e os restos do teste 17 (aviso "These do not look like the
      three marks" e lupa com o dobro da largura). Falta tudo isso no Windows.
+     **Câmera do rig não conectada no Align cameras (decisão do dono, 2026-11-23): avisar, sem bloquear.**
+     Protótipo aguardando o ok: https://claude.ai/artifact/6X6iFqbvU3bE9LSMc8Uimp (no passo 2 a câmera continua na
+     lista com "Not connected"; no passo 3 ela aparece na grade como "No alignment", com aviso âmbar e o botão
+     "Save without it"). Verificado no código: `alignSave` grava só as câmeras com foto e substitui o alinhamento
+     inteiro, então o alinhamento anterior da câmera que falta é apagado.
    - **Parte 6b, a fazer:** a imagem ao vivo das câmeras Canon de verdade (o processo de cada câmera em `src/worker`
      e o protocolo): ligar o visor ao vivo, mandar os quadros e desligar antes de cada disparo. Só o dono consegue
      testar (câmeras reais).
