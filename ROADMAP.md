@@ -1376,7 +1376,9 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      volta e tira foto sai da lista. O rodapé do passo 2 soma "· 1 not connected", o item não pode ser escolhido,
      e a Activity registra em âmbar qual ficou sem alinhamento. `alignCurrent` passou a devolver a posição
      ("order") da câmera em "changes". Não coberto: câmera desligada com a tela do passo 2 aberta, antes do
-     "Fire again", continua na lista como estava (ela ainda tem foto e marcas daquela rodada). Teste automático:
+     "Fire again", continua na lista como estava (ela ainda tem foto e marcas daquela rodada). Se a câmera que
+     caiu é a da foto onde as marcas foram clicadas, depois do "Fire again" o app pede os três cliques de novo
+     noutra foto (visto no teste automático; comportamento que já existia). Teste automático:
      cenário 26. Teste do dono pendente.
    - **Parte 6b, feita no código em 2026-11-23, sem nenhum teste com câmera** (só o dono consegue testar; o
      processo da câmera, `src/worker`, nem compila no ambiente do agente: só a sintaxe foi conferida com um
