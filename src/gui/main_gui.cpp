@@ -5607,6 +5607,24 @@ namespace
             listener.Emit(Json("aimWindow").Add("open", true));
             return "null";
         });
+        // fakeUnplug(nome, "1" desliga / "0" liga): só com câmeras simuladas, para os testes. Imita uma câmera
+        // desligada ou sem cabo: ela continua na lista, como desconectada, e as configurações são relidas.
+        if (fakeCount)
+            window.bind("fakeUnplug", [&](const std::string& request) -> std::string
+            {
+                const auto args = ParseStringArgs(request);
+                if (args.size() < 2)
+                    return "null";
+                cameras.Post([&, args]
+                {
+                    for (auto& cam : controller.GetCameras())
+                        if (cam.shortName == args[0])
+                            cam.sessionOpen = args[1] != "1";
+                    listener.Emit(CamerasSnapshot(controller));
+                    EmitCameraSettings(controller, listener, singleShotWarned);
+                });
+                return "null";
+            });
         // aimHide(): a página principal fecha a janela (saiu do Align cameras)
         window.bind("aimHide", [&](const std::string&) -> std::string
         {

@@ -1281,6 +1281,21 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      as mensagens dele.
      **Ok do dono (2026-11-22): a lupa parou de tremer.** A largura ampliada (protótipo A) saiu numa das tentativas;
      pode voltar se o dono quiser (decisão em aberto).
+     **Ok do dono (2026-11-23):** a tela de espera no Test shot e no Fire, e as setas ‹ › da faixa.
+     **Câmera desconectada no meio do uso** (pergunta do dono, 2026-11-23). Conferido pelo agente com câmeras
+     simuladas (novo `fakeUnplug`, só para teste; com câmeras de verdade não foi conferido):
+     Camera settings: a linha da câmera some da tabela, o Activity avisa "… turned off or disconnected. Turn it on to
+     reconnect.", o Test shot dispara as que sobraram; ao religar, a linha volta.
+     Align cameras (passo 2): a tela não muda nem avisa; a câmera continua na lista com a foto antiga. No Fire again
+     ela some da lista, aparece o aviso "The rig is not the one of this project · X not connected", e dá para rever e
+     guardar o alinhamento só com as que sobraram, sem nenhum aviso de que falta uma. Em aberto para o dono.
+     Match automatically (passo 1): a tela não muda; o mesmo aviso do rig; "Take the test shot" continua aceso.
+     Não conferido: desconectar durante as fotos ou durante o Match em andamento; o Guided aim aberto.
+     Protótipos pedidos pelo dono (2026-11-23) para as duas decisões em aberto:
+     largura da lupa, para experimentar com o mouse (A só altura, como está; B o dobro; C quase quatro vezes):
+     https://claude.ai/artifact/Q58PvpBQb6cGLZr472Pz4h; procura das marcas demorada (A cancelar; B conferir os
+     cliques antes; C aviso quando passa do tempo): https://claude.ai/artifact/UrVgmhWvSS5zbjkxAoV7AR.
+     Sugestão do agente: lupa A; procura B com A. Aguardando o dono.
    - **Parte 6b, a fazer:** a imagem ao vivo das câmeras Canon de verdade (o processo de cada câmera em `src/worker`
      e o protocolo): ligar o visor ao vivo, mandar os quadros e desligar antes de cada disparo. Só o dono consegue
      testar (câmeras reais).
