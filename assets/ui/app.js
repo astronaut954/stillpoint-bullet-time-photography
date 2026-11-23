@@ -2984,7 +2984,7 @@
       const d = al.data[camera];
       if (!r || !r.ok || !d) { al.msg = ""; alRender(); toast("The marks could not be read in this photo. Click them again."); return; }
       d.marks = r.marks; d.w = r.width; d.h = r.height; d.found = true; d.tried = true; d.manual = true;
-      if (isRef) al.ref = camera;
+      if (isRef) { al.ref = camera; al.refPlain = r.distinct === false; }
       // Conferir antes de procurar (decisão do dono, 2026-11-23): se os pontos clicados não têm cor própria, a
       // procura nas outras fotos seria lenta e poderia falhar; a pessoa clica de novo ou manda procurar assim mesmo
       al.check = first && r.distinct === false && al.photos.some((q) => q.file && q.camera !== camera) ? camera : "";
@@ -3042,13 +3042,16 @@
     $("csAlignSlowKeep").addEventListener("click", () => { if (al.progress) al.progress.keep = true; alWaitShow(); });
     alWaitShow();
   }
-  // Aviso de demora (decisão do dono, 2026-11-23): a procura passou do tempo normal quando, depois de 6 s, anda a
-  // menos de 2 fotos por segundo (o normal são várias por segundo; com os cliques fora das marcas, menos de uma)
+  // Aviso de demora (decisão do dono, 2026-11-23). Aparece em dois casos:
+  //   - a procura é a lenta (os pontos clicados não têm cor própria e a pessoa escolheu Search anyway) e já passou
+  //     de 3 s. Não depende da velocidade do computador: num Mac rápido a conta por fotos por segundo não disparava
+  //     (teste do dono, 2026-11-23);
+  //   - a procura é a normal, mas depois de 6 s anda a menos de 2 fotos por segundo.
   function alSlow() {
     const g = al.progress;
-    if (!al.busy || !g || !g.total || g.keep) return false;
+    if (!al.busy || !g || !g.total || g.keep || g.done >= g.total) return false;
     const s = (Date.now() - g.since) / 1000;
-    return s >= 6 && g.done < g.total && g.done / s < 2;
+    return al.refPlain ? s >= 3 : s >= 6 && g.done / s < 2;
   }
   // Click the marks again: para a procura e desfaz as marcas clicadas
   function alFindStop() {

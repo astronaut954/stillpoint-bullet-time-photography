@@ -1305,6 +1305,10 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      e **Keep waiting**. Conferido pelo agente com 40 câmeras simuladas: cliques na parede dão o aviso B; Search
      anyway chega ao aviso C; Click the marks again volta aos três cliques; cliques nas bolas não dão aviso nenhum.
      A conferir com material de verdade: marcas brancas ou cinza caem no aviso B mesmo estando certas.
+     Teste do dono (2026-11-23): não conseguiu fazer o aviso de demora aparecer. Causa provável: no Mac dele a
+     procura lenta anda a mais de 2 fotos por segundo (ou termina antes dos 6 s), e a regra dependia da velocidade do
+     computador. Regra nova: depois de Search anyway (procura lenta sabida) o aviso aparece aos 3 s, em qualquer
+     computador; na procura normal continua a regra dos 6 s a menos de 2 fotos por segundo.
    - **Parte 6b, a fazer:** a imagem ao vivo das câmeras Canon de verdade (o processo de cada câmera em `src/worker`
      e o protocolo): ligar o visor ao vivo, mandar os quadros e desligar antes de cada disparo. Só o dono consegue
      testar (câmeras reais).
