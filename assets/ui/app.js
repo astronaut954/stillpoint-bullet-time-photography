@@ -2819,6 +2819,9 @@
     if (busy || csTest.capturing) return;
     csSetZoom(false);
     Object.assign(al, { undo: null, step: 1, firing: false, session: "", photos: [], data: {}, sel: "", clicks: null, ref: "", solved: {}, busy: false, msg: "" });
+    // Câmeras do rig que não estão conectadas (decisão do dono, 2026-11-23: avisar, sem bloquear). Começa pelas do
+    // alinhamento guardado que não estão ligadas; depois entram as que tiraram foto nesta janela e sumiram (alGone)
+    al.gone = ((al.saved && al.saved.changes) || []).filter((c) => c.reason === "missing").map((c) => ({ camera: c.camera, order: c.order || 0, url: "", ratio: 0 }));
     alShow(true);
     alRender();
   }
@@ -2921,11 +2924,15 @@
       return;
     }
     al.session = session.name;
+    const before = al.photos.map((p) => { const d = al.data[p.camera] || {}; return { camera: p.camera, order: p.order, url: d.url || "", ratio: d.w && d.h ? d.w / d.h : d.ratio || 0 }; });
     al.photos = alConnected().map((cam) => {
       const photos = session.photos.filter((p) => p.camera === cam.name);
       const pick = photos.find((p) => /\.jpe?g$/i.test(p.file)) || photos.find((p) => p.previewable) || photos[0];
       return { camera: cam.name, order: cam.order, model: cam.model, file: pick ? pick.file : "", previewable: pick ? pick.previewable : false };
     });
+    // As que tiraram foto antes e agora não estão conectadas ficam à vista, com a última foto; a que voltou sai
+    al.gone = (al.gone || []).filter((g) => !before.some((b) => b.camera === g.camera)).concat(before)
+      .filter((g) => !al.photos.some((p) => p.camera === g.camera)).sort((a, b) => a.order - b.order);
     // Fotos novas: as marcas antigas não valem mais; com uma referência, o app procura de novo em todas
     al.data = {};
     al.check = "";
@@ -3531,7 +3538,25 @@
       it.appendChild(alPhotoEl(p, false));
       it.insertAdjacentHTML("beforeend", "<div><b>Camera " + alNum(p) + "</b>" + tag + (text ? '<span class="t">' + alEsc(text) + "</span>" : "") + "</div>");
       it.addEventListener("click", () => { al.sel = p.camera; if (al.clicks && al.clicks.camera !== p.camera) al.clicks = null; alRender(); });
+      it.dataset.order = String(p.order);
       list.appendChild(it);
+    });
+    // A câmera que não está conectada continua na lista, apagada, no lugar do número dela
+    (al.gone || []).forEach((g) => {
+      const it = document.createElement("div");
+      it.className = "ma-item gone needs";
+      it.dataset.camera = g.camera;
+      it.title = g.camera + " is not connected";
+      const ph = document.createElement("div");
+      ph.className = "al-photo";
+      if (g.url) ph.style.backgroundImage = 'url("' + g.url + '")';
+      ph.style.aspectRatio = String(g.ratio || 1.5);
+      ph.insertAdjacentHTML("beforeend", '<span class="al-num">' + alNum(g) + "</span>");
+      it.appendChild(ph);
+      it.insertAdjacentHTML("beforeend", "<div><b>Camera " + alNum(g) + '</b><span class="cs-tag diff">Not connected</span><span class="t">' +
+        (g.url ? "No new photo: this is the last one it took" : "No photo") + "</span></div>");
+      const next = Array.from(list.children).find((x) => !x.classList.contains("gone") && Number(x.dataset.order) > g.order);
+      list.insertBefore(it, next || null);
     });
     w.appendChild(list);
     const view = document.createElement("div");
@@ -3587,7 +3612,8 @@
     const allMarked = al.photos.length > 0 && al.photos.every((p) => (al.data[p.camera] || {}).found) && Object.keys(al.solved).length === al.photos.length;
     // Com Live aim, uma câmera mexida depois da foto: as fotos não valem mais para guardar o alinhamento
     const moved = al.photos.some((p) => alMoved(p.camera));
-    alFoot(marked ? need + " of " + al.photos.length + " cameras need a change" : "",
+    const goneN = (al.gone || []).length;
+    alFoot((marked ? need + " of " + al.photos.length + " cameras need a change" : "") + (goneN ? (marked ? " · " : "") + goneN + " not connected" : ""),
       [["← Back", "btn-secondary", () => { al.step = 1; alRender(); }],
        ["Cancel", "btn-secondary", alClose],
        ["Fire again", "btn-secondary", alFire, { disabled: al.busy || busy || csTest.capturing }],
@@ -3617,10 +3643,26 @@
       const sgn = (v, f) => (v > 0 ? "+" : "") + v.toFixed(f);
       c.insertAdjacentHTML("beforeend", '<span class="in-state ok">Camera ' + alNum(p) + '</span><span class="sv-vals">Move ' + sgn(Math.round(n.dx * d.w), 0) + ", " + sgn(Math.round(n.dy * d.h), 0) +
         " px<br>Rotate " + sgn(n.rot, 1) + "°<br>Size " + (n.scale * 100).toFixed(1) + "%</span>");
+      c.dataset.order = String(p.order);
       sv.appendChild(c);
+    });
+    // A câmera não conectada aparece na grade, sem alinhamento, e um aviso diz o que acontece ao salvar
+    const gone = al.gone || [];
+    gone.forEach((g) => {
+      const c = document.createElement("div");
+      c.className = "sv-cell gone";
+      c.innerHTML = '<div class="sv-box"><span>Not connected</span></div><span class="in-state fix">Camera ' + alNum(g) + '</span><span class="sv-vals">No alignment</span>';
+      const next = Array.from(sv.children).find((x) => !x.classList.contains("gone") && Number(x.dataset.order) > g.order);
+      sv.insertBefore(c, next || null);
     });
     main.innerHTML = "";
     main.appendChild(sv);
+    if (gone.length) {
+      const one = gone.length === 1;
+      main.insertAdjacentHTML("beforeend", '<div class="al-warn" id="csAlignGone"><b>' + (one ? "1 camera of the rig is not connected: " : gone.length + " cameras of the rig are not connected: ") +
+        gone.map((g) => "Camera " + alNum(g)).join(", ") + ".</b> If you save now " + (one ? "it gets" : "they get") + " no alignment, and the one " + (one ? "it" : "they") + " had is erased: " + (one ? "its" : "their") +
+        " photos go into the next sessions without correction until you align again. To include " + (one ? "it" : "them") + ", plug " + (one ? "it" : "them") + " back, go back and fire again.</div>");
+    }
     // Quanto das fotos sobra com este alinhamento; abaixo de 80%, aviso em âmbar (decisão do dono, 2026-11-16, opção B)
     const keep = rigKeeps(al.photos.filter((p) => al.solved[p.camera]).map((p) => { const d = al.data[p.camera], n = al.solved[p.camera]; return { w: d.w, h: d.h, dx: n.dx, dy: n.dy, rot: n.rot, scale: n.scale }; }));
     if (keep != null) {
@@ -3631,7 +3673,7 @@
     }
     main.insertAdjacentHTML("beforeend", '<p class="sv-sum">Values from the stick. You can fine-tune them later in <b>Export › Align photos</b>; the original alignment stays saved.</p>');
     alFoot("The black edges are cut on export: what stays is the part every photo has",
-      [["← Back", "btn-secondary", () => { al.step = 2; alRender(); }], ["Cancel", "btn-secondary", alClose], ["Save alignment", "btn-primary", alSave]]);
+      [["← Back", "btn-secondary", () => { al.step = 2; alRender(); }], ["Cancel", "btn-secondary", alClose], [!gone.length ? "Save alignment" : gone.length === 1 ? "Save without it" : "Save without them", "btn-primary", alSave]]);
   }
   function alSave() {
     const cameras = al.photos.map((p) => {
@@ -3642,7 +3684,8 @@
       al.saved = info || null;
       alRenderEntry();
       alClose();
-      log("Cameras aligned (" + plural(cameras.length, "camera", "cameras") + "). The alignment is saved with the project.");
+      const out = (al.gone || []).map((g) => "Camera " + alNum(g));
+      log("Cameras aligned (" + plural(cameras.length, "camera", "cameras") + "). The alignment is saved with the project." + (out.length ? " Not connected, left without alignment: " + out.join(", ") + "." : ""), out.length ? "warn" : undefined);
     });
   }
   orderGallery.setActions([

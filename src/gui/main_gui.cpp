@@ -1403,6 +1403,7 @@ namespace
                 {
                     JsonLite::Value one = JsonLite::Value::NewObject();
                     one.set("camera", c.get("camera").asString());
+                    one.set("order", c.get("order").asNumber());  // a posição que ela tinha (o aviso de câmera não conectada do Align cameras)
                     one.set("reason", reason);
                     changes.push(one);
                     if (!onlyValid) kept.push(c);

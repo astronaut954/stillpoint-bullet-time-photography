@@ -2419,6 +2419,73 @@ def scenario_custom_drag(t, name, photos):
         t.restart_app()
 
 
+def scenario_align_gone(t, name, photos):
+    line("\n== 26. Align cameras: a camera of the rig that is not connected is shown and warned about, not hidden")
+    t.dismiss()
+    t.env["STILLPOINT_FAKE_CAMERAS"] = "4"
+    t.env["STILLPOINT_FAKE_PHOTOS"] = "pole"
+    t.env["STILLPOINT_FAKE_FIXED"] = "all"
+    gone = ""
+    try:
+        t.restart_app()
+        t.dismiss()
+        errors_before = len(t.errors)
+        t.js("() => document.getElementById('camSettingsBtn').click()")
+        time.sleep(1.0)
+        t.js("() => document.getElementById('csTest').click()")
+        t.wait(lambda: t.js("() => document.getElementById('csTestBox').classList.contains('has-photos')"), 30)
+        t.js("() => document.getElementById('csAlignBtn').click()")
+        time.sleep(0.3)
+        t.button("Use the Test shot photos")
+        t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item').length === 4"), 20)
+        t.wait(lambda: t.js("() => { const p = document.querySelector('#csAlignMain .ma-row .al-zoom'); return !!p && p.style.backgroundImage.length > 10; }"), 15)
+        order_dir = os.path.join(t.data, "Order photos")
+        sess = sorted(d for d in os.listdir(order_dir) if not d.startswith("."))[-1]
+        sel = t.js("() => document.querySelector('#csAlignMain .ma-item.sel').dataset.camera")
+        f = [x for x in os.listdir(os.path.join(order_dir, sess)) if "_" + sel + "_IMG_" in x][0]
+        centers = _mark_centers(os.path.join(order_dir, sess, f))
+        box = t.page.locator("#csAlignMain .ma-row > .al-photo").bounding_box()
+        for k in range(3):
+            t.page.mouse.click(box["x"] + centers[k][0] * box["width"], box["y"] + centers[k][1] * box["height"])
+            time.sleep(0.25)
+        t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item.ready, #csAlignMain .ma-item.needs').length === 4 && !/Finding/.test(document.querySelector('#csAlignMain').textContent)"), 60)
+        check(t, "align, all connected: no camera is shown as not connected", t.js("() => document.querySelectorAll('#csAlignMain .ma-item.gone').length") == 0)
+        names = t.js("() => [...document.querySelectorAll('#csAlignMain .ma-item')].map(i => [i.querySelector('.al-num').textContent, i.dataset.camera]).sort().map(x => x[1])")
+        gone = names[2]
+        t.js("(n) => window.fakeUnplug(n, '1')", gone)
+        time.sleep(1.5)
+        t.js("() => document.querySelectorAll('.toast').forEach((e) => e.remove())")
+        t.button("Fire again")
+        t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item.gone').length === 1 && document.querySelectorAll('#csAlignMain .ma-item.ready, #csAlignMain .ma-item:not(.gone).needs').length === 3 && !/Finding/.test(document.querySelector('#csAlignMain').textContent)"), 60)
+        d = t.js("() => { const its = [...document.querySelectorAll('#csAlignMain .ma-item')], g = its.find((i) => i.classList.contains('gone')); return g ? { pos: its.indexOf(g), n: its.length, cam: g.dataset.camera, text: g.textContent, photo: g.querySelector('.al-photo').style.backgroundImage.length > 10, foot: document.querySelector('#csAlign').textContent } : null; }")
+        check(t, "align, one unplugged, after 'Fire again': it stays in the list, in its place, marked 'Not connected' with its last photo", bool(d) and d["n"] == 4 and d["pos"] == 2 and d["cam"] == gone and "Not connected" in d["text"] and "last one it took" in d["text"] and d["photo"], d)
+        check(t, "align, one unplugged: the line under the list counts it ('1 not connected')", bool(d) and "of 3 cameras need a change · 1 not connected" in d["foot"], d and d["foot"][-200:])
+        t.js("() => document.querySelector('#csAlignMain .ma-item.gone').click()")
+        time.sleep(0.3)
+        check(t, "align, one unplugged: clicking it does not choose it", t.js("() => document.querySelector('#csAlignMain .ma-item.sel').dataset.camera") != gone)
+        t.button("Review alignment")
+        t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .sv-cell').length") == 4, 5)
+        d = t.js("() => { const cs = [...document.querySelectorAll('#csAlignMain .sv-cell')], g = cs.find((c) => c.classList.contains('gone')), w = document.getElementById('csAlignGone'); return { pos: cs.indexOf(g), cell: g ? g.textContent : '', warn: w ? w.textContent : '', btns: [...document.querySelectorAll('#csAlign .btn-primary')].map((b) => b.textContent.trim()) }; }")
+        check(t, "align, save: the unplugged camera is in the grid, in its place, as 'Not connected · No alignment'", d["pos"] == 2 and "Not connected" in d["cell"] and "Camera 03" in d["cell"] and "No alignment" in d["cell"], d)
+        check(t, "align, save: the warning names the camera and says what saving does", "1 camera of the rig is not connected: Camera 03." in d["warn"] and "the one it had is erased" in d["warn"] and "fire again" in d["warn"], d["warn"])
+        check(t, "align, save: the button says 'Save without it' (the warning does not block)", "Save without it" in d["btns"] and "Save alignment" not in d["btns"], d["btns"])
+        t.button("Save without it")
+        t.wait(lambda: t.js("() => document.getElementById('csAlign').classList.contains('hidden')"), 10)
+        time.sleep(0.5)
+        logged = t.js("() => [...document.querySelectorAll('li')].map((l) => l.textContent).filter((x) => /Cameras aligned \\(/.test(x)).pop() || ''")
+        check(t, "align, saved without it: the Activity says 3 cameras and which one was left without alignment", "(3 cameras)" in logged and "Not connected, left without alignment: Camera 03." in logged, logged)
+        t.js("(n) => window.fakeUnplug(n, '0')", gone)
+        gone = ""
+        time.sleep(1.5)
+        check(t, "align gone: no page error", len(t.errors) == errors_before, t.errors[errors_before:])
+    finally:
+        if gone:
+            t.js("(n) => window.fakeUnplug(n, '0')", gone)
+        t.js("() => { const c = [...document.querySelectorAll('#csAlign button')].find((b) => b.textContent.trim() === 'Cancel'); if (c && !document.getElementById('csAlign').classList.contains('hidden')) c.click(); }")
+        t.env.pop("STILLPOINT_FAKE_FIXED", None)
+        t.restart_app()
+
+
 def scenario_align_marks(t, name, photos):
     line("\n== 20. Automatic alignment: the three marks and the recipe (calculation only, no window yet)")
     prog = os.path.join(BUILD, "AlignMarksTest")
@@ -2498,7 +2565,7 @@ def main():
                 only = os.environ.get("STILLPOINT_TEST_ONLY", "")  # para depurar: só os cenários com este nome
                 for sc in [x for x in (scenario_cleared, scenario_delete_edit_undo, scenario_photo_delete_restore,
                            scenario_remove_from_collection, scenario_delete_session, scenario_cancel, scenario_rapid_in_lightroom, scenario_crop_before_lightroom,
-                           scenario_export_edit, scenario_export_trash, scenario_lightroom_crop, scenario_undo_own_item, scenario_orientation, scenario_selection_kept, scenario_align_undo, scenario_flip, scenario_photoshop, scenario_rig_state, scenario_align_marks, scenario_align_cameras, scenario_camera_tags, scenario_guided_aim, scenario_live_many, scenario_custom_drag) if only in x.__name__]:
+                           scenario_export_edit, scenario_export_trash, scenario_lightroom_crop, scenario_undo_own_item, scenario_orientation, scenario_selection_kept, scenario_align_undo, scenario_flip, scenario_photoshop, scenario_rig_state, scenario_align_marks, scenario_align_cameras, scenario_camera_tags, scenario_guided_aim, scenario_live_many, scenario_custom_drag, scenario_align_gone) if only in x.__name__]:
                     try:
                         sc(t, name, photos)
                     except Exception:  # noqa: BLE001

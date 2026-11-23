@@ -1367,10 +1367,17 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      pequena), arraste por cima dos números no Custom, e os restos do teste 17 (aviso "These do not look like the
      three marks" e lupa com o dobro da largura). Falta tudo isso no Windows.
      **Câmera do rig não conectada no Align cameras (decisão do dono, 2026-11-23): avisar, sem bloquear.**
-     Protótipo aguardando o ok: https://claude.ai/artifact/6X6iFqbvU3bE9LSMc8Uimp (no passo 2 a câmera continua na
+     Protótipo aprovado ("Prossiga") e implementado: https://claude.ai/artifact/6X6iFqbvU3bE9LSMc8Uimp (no passo 2 a câmera continua na
      lista com "Not connected"; no passo 3 ela aparece na grade como "No alignment", com aviso âmbar e o botão
      "Save without it"). Verificado no código: `alignSave` grava só as câmeras com foto e substitui o alinhamento
      inteiro, então o alinhamento anterior da câmera que falta é apagado.
+     Como ficou (`app.js`, `al.gone`): contam como "não conectadas" as câmeras do alinhamento guardado que não
+     estão ligadas ao abrir o Align cameras e as que tiraram foto nesta janela e sumiram no "Fire again"; a que
+     volta e tira foto sai da lista. O rodapé do passo 2 soma "· 1 not connected", o item não pode ser escolhido,
+     e a Activity registra em âmbar qual ficou sem alinhamento. `alignCurrent` passou a devolver a posição
+     ("order") da câmera em "changes". Não coberto: câmera desligada com a tela do passo 2 aberta, antes do
+     "Fire again", continua na lista como estava (ela ainda tem foto e marcas daquela rodada). Teste automático:
+     cenário 26. Teste do dono pendente.
    - **Parte 6b, a fazer:** a imagem ao vivo das câmeras Canon de verdade (o processo de cada câmera em `src/worker`
      e o protocolo): ligar o visor ao vivo, mandar os quadros e desligar antes de cada disparo. Só o dono consegue
      testar (câmeras reais).

@@ -2292,6 +2292,19 @@ Com `STILLPOINT_FAKE_CAMERAS=200`.
 - [ ] Com `STILLPOINT_FAKE_CAMERAS=8`: as três telas iguais a antes.
 - [ ] Windows: os itens acima.
 
+## 55. Align cameras: câmera do rig não conectada (2026-11-23)
+
+Só dá para fazer com câmeras de verdade (as simuladas não se desligam pela tela). Com o rig ligado: **Camera
+settings** › **Test shot** › **Align cameras**, marcar as três marcas numa foto.
+
+- [ ] Desligar o cabo de uma câmera e clicar em **Fire again**: ela continua na lista do passo 2, apagada, com a
+      etiqueta **Not connected** e a última foto; embaixo, "... · 1 not connected". Clicar nela não a escolhe.
+- [ ] **Review alignment**: na grade ela aparece como **Not connected** / "No alignment"; o aviso âmbar diz qual é
+      e o que acontece; o botão é **Save without it**.
+- [ ] **Save without it**: salva; a Activity diz qual câmera ficou sem alinhamento.
+- [ ] Ligar a câmera de volta, **Align again** e **Fire**: ela volta ao normal e o botão é **Save alignment**.
+- [ ] Windows: os itens acima.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |

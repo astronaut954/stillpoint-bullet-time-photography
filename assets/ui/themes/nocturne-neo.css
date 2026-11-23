@@ -2323,6 +2323,12 @@ body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform:
 .ma-list { overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
 .ma-item { display: grid; grid-template-columns: 96px 1fr; gap: 12px; padding: 8px; border: 1px solid var(--noct-border); align-items: center; cursor: pointer; flex: none; }
 .ma-item:hover { border-color: var(--noct-border-strong); }
+/* Câmera do rig que não está conectada: fica na lista e na grade do Save, apagada, sem ser escolhida */
+.ma-item.gone { cursor: default; }
+.ma-item.gone:hover { border-color: var(--noct-border); }
+.ma-item.gone .al-photo { opacity: .3; }
+.sv-cell.gone .sv-box { border: 1px dashed var(--noct-pending, #f0a020); }
+.sv-cell.gone .sv-box span { position: absolute; inset: 0; display: grid; place-items: center; font: 700 11px var(--noct-font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--noct-pending, #f0a020); }
 .ma-item.sel { border-color: var(--noct-primary); background: rgba(57,255,106,.06); }
 .ma-item .al-photo { width: 96px; }
 .ma-item .al-photo .al-num { font-size: 10px; padding: 2px 4px; left: 4px; top: 4px; }
@@ -2376,6 +2382,7 @@ body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform:
 .align-keeps { font: 500 11px var(--noct-font-mono); letter-spacing: .06em; color: var(--noct-text-muted); margin-right: 8px; }
 .align-keeps.warn { color: var(--noct-pending, #f0a020); border: 1px solid currentColor; padding: 3px 7px; }
 .sv ~ .al-warn { max-width: none; }
+.sv:has(~ #csAlignGone) { max-height: calc(100% - 118px); }  /* com o aviso de câmera não conectada, a grade cede a altura dele */
 .al-objs-3 { grid-template-columns: repeat(3, 1fr); }
 .al-bands { display: flex; align-items: center; gap: 14px; margin-top: 12px; border: 1px solid var(--noct-border); padding: 10px 12px; }
 .al-bands span { flex: 1; font: 400 13px/1.45 var(--noct-font-sans); color: var(--noct-text); }
