@@ -2267,6 +2267,9 @@ Com `STILLPOINT_FAKE_CAMERAS=200`. No painel **Bullet time**, **Advanced** › *
 - [ ] Clicar num número aceso, segurar e arrastar: todos apagam.
 - [ ] Um clique sozinho continua marcando ou desmarcando só aquele número.
 - [ ] Com dois passos (**Add step**): os números arrastados num passo saem do outro.
+- [ ] Com dois ou mais passos, segurar um passo pelo texto **Step 1** e arrastar: todos os passos encolhem para uma
+      linha com o resumo das câmeras, dá para soltar acima ou abaixo de outro, e ao soltar os números voltam. Com
+      muitos passos, chegando perto da borda de cima ou de baixo a lista rola sozinha.
 - [ ] Windows: os itens acima.
 
 ## 54. Muitas câmeras: sequência na Live, barra do disparo e Timeline (2026-11-23)

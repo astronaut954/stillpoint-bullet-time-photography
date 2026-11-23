@@ -1343,6 +1343,11 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      do primeiro ao último disparo com um traço fino por disparo e os números em cima onde cabem, também na linha
      pequena com o Advanced fechado (`app.js` `renderTimeline`, classe `band`).
      Com poucas câmeras as três telas não mudam. Testes automáticos: cenário 24.
+     (3) Timing › Custom, arrastar um passo com muitas câmeras (gravação do dono, 2026-11-23): cada passo ficava
+     mais alto que o painel e não dava para chegar no outro. Feito (escolha do agente, a confirmar no teste):
+     enquanto um passo é arrastado, todos encolhem para uma linha com o resumo ("44 cameras · 1–44"), e a lista
+     rola sozinha perto das bordas; ao soltar, os números voltam (`stepPointerMove`, `stepAutoScroll`, classe
+     `reordering`). Linha pequena da Timeline em faixa: mais folga em cima e embaixo (pedido do dono).
    - **Parte 6b, a fazer:** a imagem ao vivo das câmeras Canon de verdade (o processo de cada câmera em `src/worker`
      e o protocolo): ligar o visor ao vivo, mandar os quadros e desligar antes de cada disparo. Só o dono consegue
      testar (câmeras reais).

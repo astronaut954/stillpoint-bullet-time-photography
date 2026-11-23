@@ -1122,6 +1122,10 @@ table.cs tr.has-note td { border-bottom-color: transparent; }
 /* Custom: passos (câmeras + tempo depois do passo anterior) */
 .timing-custom { margin-bottom: 0; display: flex; flex-direction: column; gap: 8px; }
 .timing-step { display: grid; grid-template-columns: 56px auto minmax(0, 1fr) 26px; align-items: center; gap: 10px; padding: 6px 10px; border: 1px solid var(--noct-border); background: var(--noct-surface-inner); }
+/* Arrastando um passo: todos encolhem para uma linha com o resumo das câmeras */
+.timing-step .step-sum { display: none; font: 11px var(--noct-font-mono); color: var(--noct-text-muted); text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.timing-custom.reordering .timing-step .step-cams { display: none; }
+.timing-custom.reordering .timing-step .step-sum { display: block; }
 .timing-step.can-drag { cursor: grab; user-select: none; -webkit-user-select: none; }
 .timing-step.dragging { position: relative; z-index: 2; cursor: grabbing; border-color: var(--noct-pending); box-shadow: 0 0 24px rgba(var(--noct-pending-rgb), .3); opacity: .55; }
 .timing-custom { position: relative; }  /* a linha de destino (.camera-drop) se posiciona por aqui */
@@ -1152,7 +1156,7 @@ body.timing-open .app { --controls-h: clamp(320px, 64vh, 720px); }
 .tl .tl-shot { position: absolute; top: 18px; width: 1px; height: 14px; background: var(--noct-primary); opacity: .75; }
 .tl .tl-shot.lead { top: 12px; height: 20px; opacity: 1; }
 .tl .tl-num { position: absolute; top: 0; transform: translateX(-50%); font: 700 10px var(--noct-font-mono); color: var(--noct-primary); white-space: nowrap; }
-.tl.small.band { height: 26px; }
+.tl.small.band { height: 26px; margin-top: 6px; margin-bottom: 7px; }
 .tl.small .tl-band { top: 13px; height: 9px; }
 .tl.small .tl-shot { top: 13px; height: 9px; }
 .tl.small .tl-shot.lead { top: 10px; height: 12px; }

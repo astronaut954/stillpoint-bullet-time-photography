@@ -12627,6 +12627,9 @@
         chips.appendChild(chip);
       }
       row.appendChild(chips);
+      // Resumo do passo, que aparece no lugar dos números enquanto se arrasta um passo (ver stepPointerMove)
+      const count = (st.cams || []).filter((o) => o >= 1 && o <= N).length;
+      row.appendChild(el("span", "step-sum", !count ? "No cameras" : count + (count === 1 ? " camera · " : " cameras · ") + timingLabel(st.cams.filter((o) => o >= 1 && o <= N))));
       const remove = button("", () => { timing.steps.splice(i, 1); timingSave(); renderTiming(); }, { icon: "close", title: "Remove this step", kind: "btn-link step-x" });
       remove.disabled = timing.steps.length <= 1;
       row.appendChild(remove);
@@ -12703,35 +12706,75 @@
       return b.top + b.height / 2 < y;
     }).length;
   }
-  function stepPointerMove(e) {
+  function stepScroller(node) {
+    for (let n = node.parentElement; n; n = n.parentElement) {
+      const oy = getComputedStyle(n).overflowY;
+      if ((oy === "auto" || oy === "scroll") && n.scrollHeight > n.clientHeight + 1) return n;
+    }
+    return document.scrollingElement;
+  }
+  // Põe o passo arrastado debaixo do mouse e o marcador no lugar onde ele cairia
+  function stepDragPlace() {
     const d = stepDrag;
-    if (!d) return;
-    const dy = e.clientY - d.y;
-    if (!d.moved && Math.abs(dy) < 6) return;
-    d.moved = true;
-    d.row.classList.add("dragging");
-    d.row.style.transform = "translateY(" + dy + "px)";
-    const others = stepRows(d.root).filter((r) => r !== d.row);
-    const target = stepInsertion(e.clientY);
+    if (!d || !d.moved) return;
+    const r = d.row.getBoundingClientRect();
+    d.ty = d.lastY - (r.top - d.ty + r.height / 2);
+    d.row.style.transform = "translateY(" + d.ty + "px)";
+    const others = stepRows(d.root).filter((x) => x !== d.row);
+    const target = stepInsertion(d.lastY);
     let marker = d.root.querySelector(".camera-drop");
     if (!marker) { marker = document.createElement("div"); marker.className = "camera-drop"; d.root.appendChild(marker); }
     const top = !others.length ? 0 : target < others.length ? others[target].offsetTop - 5
       : others[others.length - 1].offsetTop + others[others.length - 1].offsetHeight + 3;
     marker.style.top = top + "px";
   }
+  // Perto da borda de cima ou de baixo da área que rola, a lista rola sozinha enquanto se arrasta
+  function stepAutoScroll() {
+    const d = stepDrag;
+    if (!d || !d.moved) return;
+    const sc = d.scroller, b = sc === document.scrollingElement ? { top: 0, bottom: window.innerHeight } : sc.getBoundingClientRect();
+    const edge = 48, up = b.top + edge - d.lastY, down = d.lastY - (b.bottom - edge);
+    const v = up > 0 ? -Math.min(18, 4 + up / 3) : down > 0 ? Math.min(18, 4 + down / 3) : 0;
+    if (v) { const before = sc.scrollTop; sc.scrollTop += v; if (sc.scrollTop !== before) stepDragPlace(); }
+    d.raf = requestAnimationFrame(stepAutoScroll);
+  }
+  function stepPointerMove(e) {
+    const d = stepDrag;
+    if (!d) return;
+    d.lastY = e.clientY;
+    if (!d.moved) {
+      if (Math.abs(e.clientY - d.y) < 6) return;
+      d.moved = true;
+      d.ty = 0;
+      d.row.classList.add("dragging");
+      // Com muitas câmeras cada passo fica mais alto que o painel e não dá para chegar no outro passo (pedido do
+      // dono, 2026-11-23): durante o arraste os passos encolhem para uma linha com o resumo das câmeras
+      d.root.classList.add("reordering");
+      d.scroller = stepScroller(d.root);
+      // o passo arrastado continua à vista: a lista rola até ele ficar debaixo do mouse, onde der
+      const r = d.row.getBoundingClientRect();
+      d.scroller.scrollTop += r.top + r.height / 2 - e.clientY;
+      d.raf = requestAnimationFrame(stepAutoScroll);
+    }
+    stepDragPlace();
+  }
   function stepEndDrag(target) {
     const d = stepDrag;
     stepDrag = null;
     if (!d) return;
+    cancelAnimationFrame(d.raf);
     d.row.onpointermove = d.row.onpointerup = d.row.onpointercancel = null;
     d.row.classList.remove("dragging");
     d.row.style.transform = "";
+    d.root.classList.remove("reordering");
     const marker = d.root.querySelector(".camera-drop");
     if (marker) marker.remove();
-    if (target === null || target === d.index) return;
+    const show = (index) => { const r = stepRows(d.root)[index]; if (r && d.moved) r.scrollIntoView({ block: "nearest" }); };
+    if (target === null || target === d.index) { show(d.index); return; }
     const [step] = timing.steps.splice(d.index, 1);
     timing.steps.splice(target, 0, step);
-    timingSave(); renderTiming();
+    timingSave(); renderTiming(true);
+    show(target);
   }
   $("timingToggle").addEventListener("click", () => {
     timingOpen = !timingOpen;
