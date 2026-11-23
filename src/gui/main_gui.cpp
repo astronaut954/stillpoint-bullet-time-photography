@@ -5303,6 +5303,14 @@ namespace
                     for (int k = 0; k < 3; ++k) alignRef->marks[k] = m[k];
                     alignRef->wide = wide;
                     alignRef->set = true;
+                    // No Activity, para estudar depois uma procura que errou: a foto e os três pontos, em pixels
+                    {
+                        std::string where;
+                        for (int k = 0; k < 3; ++k)
+                            where += (k ? ", " : "") + std::to_string(static_cast<int>(m[k].x)) + " x " + std::to_string(static_cast<int>(m[k].y));
+                        Log("Align cameras: marks clicked in " + path.filename().string() + " (" + std::to_string(alignRef->frame.width) + " x " +
+                            std::to_string(alignRef->frame.height) + ") at " + where + (wide ? ", wide marks" : ", thin marks"));
+                    }
                     // "distinct": as marcas têm cor própria (a página confere antes de procurar nas outras fotos)
                     window.resolve(id, 0, Json().Add("ok", true).Raw("marks", alignPts(m, alignRef->frame.width, alignRef->frame.height))
                         .Add("width", alignRef->frame.width).Add("height", alignRef->frame.height)
@@ -5543,7 +5551,8 @@ namespace
         };
         // O mesmo para uma câmera Canon de verdade: o processo dela grava cada quadro num arquivo; aqui o arquivo novo
         // é lido, as marcas são procuradas e o quadro vai para as páginas. Sem quadro nenhum em 12 s, avisa e desliga.
-        struct AimRealState { fs::file_time_type seen{}; bool any = false; std::chrono::steady_clock::time_point since; };
+        struct AimRealState { fs::file_time_type seen{}; bool any = false; std::chrono::steady_clock::time_point since; int count = 0; int kept = 0; };
+        const bool keepLive = std::getenv("STILLPOINT_KEEP_LIVE") != nullptr;
         std::function<void(long, std::string, fs::path, std::shared_ptr<AimRealState>)> aimRealJob =
             [&, aimLive, alignRef, alignPts, aimRealOff](long turn, std::string camera, fs::path file, std::shared_ptr<AimRealState> st)
         {
@@ -5561,6 +5570,10 @@ namespace
                 {
                     if (!st->any)
                         Log("Live image of " + camera + ": " + std::to_string(frame.width) + " x " + std::to_string(frame.height));
+                    // STILLPOINT_KEEP_LIVE=1: guarda um quadro a cada 5 (até 80 por vez que liga) em
+                    // "<pasta de dados>/Live debug", com o nome dizendo o que a procura achou. Só para estudar erros
+                    // da procura com as imagens de verdade; sem a variável nada é guardado.
+                    ++st->count;
                     st->seen = stamp;
                     st->any = true;
                     Json event("aimFrame");
@@ -5573,6 +5586,20 @@ namespace
                     if (ok) event.Raw("marks", alignPts(found.p, frame.width, frame.height));
                     event.Add("url", "data:image/jpeg;base64," + Base64Encode(bytes));
                     listener.Emit(event);
+                    if (keepLive && st->count % 5 == 1 && st->kept < 80)
+                    {
+                        const fs::path dir = Platform::AppDataFolder() / "Live debug";
+                        fs::create_directories(dir, ec);
+                        char name[160];
+                        if (found.ok)
+                            std::snprintf(name, sizeof(name), "%s_%03d_conf%02d_%d-%d_%d-%d_%d-%d.jpg", camera.c_str(), st->count, static_cast<int>(found.confidence * 100),
+                                static_cast<int>(found.p[0].x), static_cast<int>(found.p[0].y), static_cast<int>(found.p[1].x), static_cast<int>(found.p[1].y), static_cast<int>(found.p[2].x), static_cast<int>(found.p[2].y));
+                        else
+                            std::snprintf(name, sizeof(name), "%s_%03d_notfound.jpg", camera.c_str(), st->count);
+                        std::ofstream out(dir / name, std::ios::binary | std::ios::trunc);
+                        out.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
+                        ++st->kept;
+                    }
                 }
             }
             if (!st->any && std::chrono::steady_clock::now() - st->since > std::chrono::seconds(12))

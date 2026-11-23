@@ -1371,8 +1371,8 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      lista com "Not connected"; no passo 3 ela aparece na grade como "No alignment", com aviso âmbar e o botão
      "Save without it"). Verificado no código: `alignSave` grava só as câmeras com foto e substitui o alinhamento
      inteiro, então o alinhamento anterior da câmera que falta é apagado.
-     Como ficou (`app.js`, `al.gone`): contam como "não conectadas" as câmeras do alinhamento guardado que não
-     estão ligadas ao abrir o Align cameras e as que tiraram foto nesta janela e sumiram no "Fire again"; a que
+     Como ficou (`app.js`, `al.gone`): contam como "não conectadas" as câmeras que tiraram foto nesta janela e
+     sumiram no "Fire again" (as do alinhamento guardado saíram disso em 2026-11-23, ver o segundo teste real); a que
      volta e tira foto sai da lista. O rodapé do passo 2 soma "· 1 not connected", o item não pode ser escolhido,
      e a Activity registra em âmbar qual ficou sem alinhamento. `alignCurrent` passou a devolver a posição
      ("order") da câmera em "changes". Não coberto: câmera desligada com a tela do passo 2 aberta, antes do
@@ -1407,6 +1407,25 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      simuladas e 3 reais ligadas, a lista de 200 nomes cobria a tela): até três câmeras continuam uma a uma; mais
      que isso vira a contagem e as três primeiras ("200 cameras not connected (SL3_1, T7_1, SL3_2 and 197 more)"),
      no aviso e no Activity. Visto no log e não mexido: a linha desse aviso sai duas vezes seguidas no Activity.
+     **Segundo teste real do dono (Mac, 2026-11-23, gravações e capturas), com um brinquedo de três cores no lugar
+     da haste e as câmeras em ângulos bem diferentes:**
+     (a) **o Live aim, como está, não serve** (palavras do dono: erra muito a posição mesmo com tudo parado). Visto
+     na gravação: na T5 as marcas caem perto do brinquedo mas tremem (os números das instruções mudam a cada
+     quadro); na SL3 as marcas foram postas no rádio e no cartaz ao fundo, longe do brinquedo, com confiança
+     suficiente para passar. Na captura do passo 2 a procura nas FOTOS também pôs as marcas da Camera 02 no rádio
+     e no cartaz, e numa câmera deu "Marks not found". Ou seja: a procura (`AlignMarks::Find`), ajustada só com as
+     fotos simuladas da haste, erra em cena de verdade. **Em aberto; próximo passo: estudar com as fotos e os
+     quadros reais** (`STILLPOINT_KEEP_LIVE=1` guarda quadros em "<pasta de dados>/Live debug", com o que a procura
+     achou no nome; o Activity agora diz onde as marcas foram clicadas).
+     (b) Os botões da janela Guided aim subiam e desciam quando o número de instruções mudava: o espaço das
+     instruções passou a ser fixo (seis linhas).
+     (c) "Camera 03 / Camera 04 · Not connected" apareciam sem nunca terem sido ligadas: vinham do alinhamento
+     guardado (de outro rig). Agora só conta como não conectada a câmera que tirou foto nesta janela e sumiu.
+     (d) Depois do "Fire again" a foto grande ficava preta até clicar numa miniatura: a foto chegava para uma
+     moldura que já tinha sido redesenhada; agora vai para a que está na tela.
+     Teste automático: o cenário do Guided aim falha de vez em quando na rodada completa, cada vez numa
+     verificação diferente, e passa sozinho (visto antes e depois da parte 6b); é corrida de tempo do próprio
+     teste, ainda não corrigida.
      Não feito: desligar a imagem ao vivo sozinha depois de um tempo (ela esquenta o sensor e gasta bateria);
      hoje ela desliga ao fechar a janela, ao trocar de câmera, ao desligar o Live aim e antes de disparar.
    - **Modo de teste das etiquetas (pedido do dono, 2026-11-17):** `STILLPOINT_FAKE_TAGS=1` põe etiquetas de mentira

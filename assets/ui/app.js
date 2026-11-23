@@ -2819,9 +2819,10 @@
     if (busy || csTest.capturing) return;
     csSetZoom(false);
     Object.assign(al, { undo: null, step: 1, firing: false, session: "", photos: [], data: {}, sel: "", clicks: null, ref: "", solved: {}, busy: false, msg: "" });
-    // Câmeras do rig que não estão conectadas (decisão do dono, 2026-11-23: avisar, sem bloquear). Começa pelas do
-    // alinhamento guardado que não estão ligadas; depois entram as que tiraram foto nesta janela e sumiram (alGone)
-    al.gone = ((al.saved && al.saved.changes) || []).filter((c) => c.reason === "missing").map((c) => ({ camera: c.camera, order: c.order || 0, url: "", ratio: 0 }));
+    // Câmeras do rig que não estão conectadas (decisão do dono, 2026-11-23: avisar, sem bloquear): as que tiraram
+    // foto nesta janela e sumiram num "Fire again". As do alinhamento guardado que não estão ligadas NÃO entram: no
+    // teste do dono apareciam câmeras de um alinhamento antigo, de outro rig, que ele nem tinha ligado
+    al.gone = [];
     alShow(true);
     alRender();
   }
@@ -3322,7 +3323,16 @@
       if (d.urlBig || d.urlMid) el.style.backgroundImage = 'url("' + (d.urlBig || d.urlMid) + '")';
       else if (!d.midAsked && p.file && p.previewable) {
         d.midAsked = true;
-        orderPhoto(al.session, p.file, 1600).then((url) => { if (url && al.data[p.camera] === d) { d.urlMid = url; if (!d.urlBig && el.isConnected) el.style.backgroundImage = 'url("' + url + '")'; } });
+        orderPhoto(al.session, p.file, 1600).then((url) => {
+          if (!url || al.data[p.camera] !== d) return;
+          d.urlMid = url;
+          if (d.urlBig) return;
+          // A tela pode ter sido redesenhada enquanto a foto vinha (acontece depois do Fire again, quando o app
+          // procura as marcas): a foto vai para a moldura que está na tela agora, não para a antiga (teste do dono
+          // com câmeras reais, 2026-11-23: a foto grande ficava preta até clicar numa miniatura)
+          const now = el.isConnected ? el : al.open && al.step === 2 && al.sel === p.camera ? $("csAlignMain").querySelector(".ma-row .al-zoom") : null;
+          if (now) now.style.backgroundImage = 'url("' + url + '")';
+        });
       }
       el.insertAdjacentHTML("beforeend", '<span class="al-aim"></span>');
       if (n && d.found && !(al.clicks && al.clicks.camera === p.camera)) {

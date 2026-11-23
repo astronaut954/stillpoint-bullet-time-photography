@@ -57,6 +57,9 @@
 .live-tag.hidden { display: none; }
 .ga-side { min-width: 0; }
 .ga-side .in-list { font-size: 19px; line-height: 1.7; }
+/* As instruções mudam de quantidade a cada quadro ao vivo: o espaço delas é fixo (seis linhas), para os botões de
+   baixo não subirem e descerem (teste do dono com câmeras reais, 2026-11-23) */
+.ga-side .in-list { min-height: 10.2em; }
 .ga-side .in-list li { padding-left: 1.1em; text-indent: -1.1em; }
 .ga-side .in-list li::before { content: "– "; }
 .ga-side .ga-btns { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
