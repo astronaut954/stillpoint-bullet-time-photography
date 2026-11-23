@@ -1362,6 +1362,10 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      animação e a barra continua à vista. Corrigido junto: o resumo de câmeras não seguidas dizia "12 cams" e
      agora diz quais ("150, 160–170"; aparece ao parar o mouse na barra). A barra só mostra; não é clicável.
      Teste 23 (forma D no Mac, câmeras simuladas): ok do dono em 2026-11-23. Falta o Windows.
+     **Ok do dono em 2026-11-23 (Mac, câmeras simuladas):** teste 19 (janela Live em pontos), teste 20 (miniaturas
+     vizinhas, barra do disparo de 10 em 10, Timeline em faixa), teste 21 (arrastar passo e folga da régua
+     pequena), arraste por cima dos números no Custom, e os restos do teste 17 (aviso "These do not look like the
+     three marks" e lupa com o dobro da largura). Falta tudo isso no Windows.
    - **Parte 6b, a fazer:** a imagem ao vivo das câmeras Canon de verdade (o processo de cada câmera em `src/worker`
      e o protocolo): ligar o visor ao vivo, mandar os quadros e desligar antes de cada disparo. Só o dono consegue
      testar (câmeras reais).
