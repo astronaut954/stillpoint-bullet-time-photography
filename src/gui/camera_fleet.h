@@ -62,6 +62,11 @@ public:
     CameraSettings ReadSettings(const CameraContext& camera);
     bool WriteSetting(const CameraContext& camera, const std::string& key, long long value, std::string& error);
 
+    // --- Imagem ao vivo (etapa 21, parte 6b) ---
+    // Liga a imagem ao vivo dessa câmera: o processo dela passa a gravar cada quadro (JPEG) em `file`.
+    // file vazio desliga. false = não ligou; `error` diz por quê (com o código do SDK). Câmeras simuladas: false.
+    bool SetLive(const CameraContext& camera, const std::string& file, std::string& error);
+
     // --- Pastas e ordem (como no CanonController) ---
     void SetOutputFolder(const std::string& folderPath) { baseOutputDir = folderPath; }
     std::string GetOutputFolder() const { return baseOutputDir.string(); }

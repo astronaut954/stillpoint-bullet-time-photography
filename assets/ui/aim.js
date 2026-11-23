@@ -71,7 +71,7 @@
     // Live aim: ligado (cheio), desligado (vazado) ou sem imagem ao vivo nesta câmera (apagado)
     const b = $("gaLive");
     const want = !!(st.live && st.live.want), can = !(st.live && st.live.none);
-    b.textContent = !can ? "No live image" : want ? "● Live aim on" : "Live aim off";
+    b.textContent = !can ? "No live image" : want && st.live.starting ? "Starting live image…" : want ? "● Live aim on" : "Live aim off";
     b.className = "btn " + (want && can ? "btn-primary" : "btn-secondary");
     b.disabled = !can;
     b.title = can ? "" : "This camera has no live image. Change it and use Fire again in the main window.";

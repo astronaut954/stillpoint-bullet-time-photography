@@ -5480,14 +5480,33 @@ namespace
         // A câmera ao vivo agora ("" = nenhuma) e a vez dela (muda a cada liga/desliga: a volta antiga para sozinha)
         struct AimLive { std::mutex mutex; std::string camera; int fakeIndex = 0; long turn = 0; };
         auto aimLive = std::make_shared<AimLive>();
+        // Parte 6b, câmeras Canon de verdade: a câmera que está com a imagem ao vivo ligada no processo dela (só a
+        // thread das câmeras mexe aqui) e o arquivo onde esse processo grava cada quadro
+        auto aimReal = std::make_shared<std::string>();
+        const fs::path aimLiveDir = fs::temp_directory_path() / "stillpoint-live";
+        // Desliga a imagem ao vivo da câmera de verdade (chamar na thread das câmeras)
+        auto aimRealOff = [&, aimReal]
+        {
+            if (aimReal->empty()) return;
+            for (const auto& cam : controller.GetCameras())
+                if (cam.shortName == *aimReal)
+                {
+                    std::string error;
+                    controller.SetLive(cam, std::string(), error);
+                }
+            aimReal->clear();
+        };
         double fakeLiveStep = 0.03;  // quanto a câmera simulada se acerta a cada quadro (STILLPOINT_FAKE_LIVE_STEP)
         if (const char* step = std::getenv("STILLPOINT_FAKE_LIVE_STEP"); step && *step)
             try { fakeLiveStep = std::clamp(std::stod(step), 0.0, 1.0); } catch (...) {}
-        auto aimStopLive = [aimLive]
+        auto aimStopLive = [&, aimLive, aimRealOff]
         {
-            std::lock_guard<std::mutex> lock(aimLive->mutex);
-            aimLive->camera.clear();
-            ++aimLive->turn;
+            {
+                std::lock_guard<std::mutex> lock(aimLive->mutex);
+                aimLive->camera.clear();
+                ++aimLive->turn;
+            }
+            cameras.Post([aimRealOff] { aimRealOff(); });
         };
         // Um quadro da imagem ao vivo: procura as marcas (com a foto de referência dos cliques) e manda para as páginas
         std::function<void(long)> aimFrameJob = [&, aimLive, alignRef, alignPts](long turn)
@@ -5521,6 +5540,54 @@ namespace
             listener.Emit(event);
             std::this_thread::sleep_for(std::chrono::milliseconds(180));
             aligner.Post([&, turn] { aimFrameJob(turn); });
+        };
+        // O mesmo para uma câmera Canon de verdade: o processo dela grava cada quadro num arquivo; aqui o arquivo novo
+        // é lido, as marcas são procuradas e o quadro vai para as páginas. Sem quadro nenhum em 12 s, avisa e desliga.
+        struct AimRealState { fs::file_time_type seen{}; bool any = false; std::chrono::steady_clock::time_point since; };
+        std::function<void(long, std::string, fs::path, std::shared_ptr<AimRealState>)> aimRealJob =
+            [&, aimLive, alignRef, alignPts, aimRealOff](long turn, std::string camera, fs::path file, std::shared_ptr<AimRealState> st)
+        {
+            {
+                std::lock_guard<std::mutex> lock(aimLive->mutex);
+                if (aimLive->turn != turn || aimLive->camera != camera) return;
+            }
+            std::error_code ec;
+            const auto stamp = fs::last_write_time(file, ec);
+            if (!ec && (!st->any || stamp != st->seen))
+            {
+                RgbFrame frame;
+                std::string bytes;
+                if (LoadPhotoRgb(file, frame, &bytes) && frame.width > 0 && !bytes.empty())
+                {
+                    if (!st->any)
+                        Log("Live image of " + camera + ": " + std::to_string(frame.width) + " x " + std::to_string(frame.height));
+                    st->seen = stamp;
+                    st->any = true;
+                    Json event("aimFrame");
+                    event.Add("camera", camera).Add("width", frame.width).Add("height", frame.height);
+                    AlignMarks::Found found;
+                    if (alignRef->set)
+                        found = AlignMarks::Find(alignRef->frame, alignRef->marks, frame, alignRef->wide);
+                    const bool ok = found.ok && found.confidence >= 0.35;
+                    event.Add("ok", ok);
+                    if (ok) event.Raw("marks", alignPts(found.p, frame.width, frame.height));
+                    event.Add("url", "data:image/jpeg;base64," + Base64Encode(bytes));
+                    listener.Emit(event);
+                }
+            }
+            if (!st->any && std::chrono::steady_clock::now() - st->since > std::chrono::seconds(12))
+            {
+                Log("Live image of " + camera + ": the camera sent no image in 12 s");
+                listener.Emit(Json("aimLiveResult").Add("camera", camera).Add("ok", false).Add("error", "The camera sent no live image"));
+                {
+                    std::lock_guard<std::mutex> lock(aimLive->mutex);
+                    if (aimLive->turn == turn) { aimLive->camera.clear(); ++aimLive->turn; }
+                }
+                cameras.Post([aimRealOff] { aimRealOff(); });
+                return;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(60));
+            aligner.Post([&, turn, camera, file, st] { aimRealJob(turn, camera, file, st); });
         };
         auto aimHide = [&]
         {
@@ -5678,7 +5745,50 @@ namespace
             }
             if (index > 0)
                 aligner.Post([&, turn] { aimFrameJob(turn); });
-            return Json("aimLive").Add("ok", index > 0).Str();
+            if (index > 0 || name.empty() || fakeCount)
+            {
+                if (name.empty()) cameras.Post([aimRealOff] { aimRealOff(); });
+                return Json("aimLive").Add("ok", index > 0).Str();
+            }
+            // Câmera Canon de verdade: liga no processo dela (leva um ou dois segundos: o espelho sobe). A resposta
+            // vem depois, no aviso aimLiveResult; os quadros, no aimFrame
+            {
+                std::lock_guard<std::mutex> lock(aimLive->mutex);
+                aimLive->camera = name;
+            }
+            cameras.Post([&, name, turn, aimLive, aimReal, aimRealOff, aimLiveDir]
+            {
+                {
+                    std::lock_guard<std::mutex> lock(aimLive->mutex);
+                    if (aimLive->turn != turn) return;  // a pessoa já mudou de câmera ou desligou
+                }
+                if (*aimReal != name) aimRealOff();
+                std::string error = "camera is not connected";
+                bool ok = false;
+                fs::path file;
+                for (const auto& cam : controller.GetCameras())
+                    if (cam.shortName == name && cam.sessionOpen && !cam.connectionLost)
+                    {
+                        std::error_code ec;
+                        fs::create_directories(aimLiveDir, ec);
+                        file = aimLiveDir / (name + ".jpg");
+                        fs::remove(file, ec);
+                        ok = controller.SetLive(cam, file.string(), error);
+                    }
+                if (ok) *aimReal = name;
+                else Log("Live image of " + name + " did not start: " + error);
+                listener.Emit(Json("aimLiveResult").Add("camera", name).Add("ok", ok).Add("error", ok ? std::string() : error));
+                if (!ok)
+                {
+                    std::lock_guard<std::mutex> lock(aimLive->mutex);
+                    if (aimLive->turn == turn) { aimLive->camera.clear(); ++aimLive->turn; }
+                    return;
+                }
+                auto st = std::make_shared<AimRealState>();
+                st->since = std::chrono::steady_clock::now();
+                aligner.Post([&, turn, name, file, st] { aimRealJob(turn, name, file, st); });
+            });
+            return Json("aimLive").Add("ok", true).Add("starting", true).Str();
         });
         // alignInfo(): o alinhamento guardado (null se não houver), com o que mudou desde então ("changes", "added")
         window.bind("alignInfo", [&](const std::string&) -> std::string

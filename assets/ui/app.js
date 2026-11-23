@@ -2972,6 +2972,9 @@
     });
     if (al.ref) alFindAll([]);
     else alRender();
+    // Câmeras de verdade: o disparo desliga a imagem ao vivo (o processo da câmera faz isso antes de cada foto);
+    // com as fotos novas em mãos, o Live aim volta sozinho
+    if (ga.open && ga.want && ga.real) gaLiveSet();
   }
   // ----- As marcas -----
   function alPhotoOf(camera) { return al.photos.find((p) => p.camera === camera); }
@@ -3178,7 +3181,7 @@
       lines: alLines(p.camera),
       tabs: list.map((q) => ({ camera: q.camera, order: q.order, state: gaTab(q.camera) })),
       ready: list.length > 0 && list.every((q) => gaTab(q.camera) === "done"),
-      live: { want: ga.want, on: ga.liveOn, none: ga.none },
+      live: { want: ga.want, on: ga.liveOn, none: ga.none, starting: !!ga.starting },
     };
   }
   function gaPush() { if (typeof window.aimPush === "function") window.aimPush(JSON.stringify(gaState())); }
@@ -3193,13 +3196,17 @@
   // Liga a imagem ao vivo da câmera da vez (ou desliga); o programa diz se essa câmera tem imagem ao vivo
   function gaLiveSet() {
     const cam = ga.open && ga.want ? ga.cam : "";
-    ga.liveOn = false;
+    ga.liveOn = false; ga.starting = false;
     if (typeof window.aimLive !== "function") return;
     Promise.resolve(window.aimLive(cam)).then((r) => {
       if (!ga.open) { if (cam) window.aimLive(""); return; }
       if (!cam || ga.cam !== cam) return;
-      ga.liveOn = !!(r && r.ok);
-      ga.none = !ga.liveOn;
+      // Câmera de verdade: a resposta diz só que o pedido foi feito ("starting"); se ligou mesmo vem depois, no
+      // aviso aimLiveResult, e a imagem conta como ligada no primeiro quadro (gaFrame)
+      ga.starting = !!(r && r.ok && r.starting);
+      if (ga.starting) ga.real = true;
+      ga.liveOn = !!(r && r.ok) && !ga.starting;
+      ga.none = !(r && r.ok);
       gaPush();
     }).catch(() => {});
   }
@@ -3248,7 +3255,7 @@
     if (!ga.open || event.camera !== ga.cam || !ga.want) return;
     const d = al.data[event.camera];
     if (!d) return;
-    ga.liveOn = true; ga.none = false;
+    ga.liveOn = true; ga.none = false; ga.starting = false;
     if (!event.ok || !event.marks) { const was = ga.lost; ga.lost = true; ga.okSince = 0; if (!was) gaAfterLive(); return; }
     const was = ga.lost;
     ga.lost = false;
@@ -3262,6 +3269,13 @@
       L.moved = !d.found || !d.marks || event.marks.some((m, i) => Math.hypot(m[0] - d.marks[i][0], 0.5 + (m[1] - 0.5) * k - d.marks[i][1]) > 0.006);
     }
     if (L.moved) alSolve(true); else if (was) gaAfterLive(); else { gaPush(); gaAuto(); }
+  }
+  // A imagem ao vivo de uma câmera de verdade não ligou (ou parou de vir): o botão da janela diz que não há
+  function gaLiveResult(event) {
+    if (!ga.open || event.camera !== ga.cam || event.ok) return;
+    ga.starting = false; ga.liveOn = false; ga.none = true;
+    log("Live aim: camera " + event.camera + " has no live image" + (event.error ? " · " + event.error : ""), "warn");
+    gaPush();
   }
   window.aimAction = function (text) {
     let a = null;
@@ -8027,6 +8041,7 @@
 
   // Guided aim: os quadros da imagem ao vivo e a janela aberta/fechada
   handlers.aimFrame = (event) => gaFrame(event);
+  handlers.aimLiveResult = (event) => gaLiveResult(event);
   handlers.alignProgress = (event) => alProgress(event);
   handlers.aimWindow = (event) => gaWindow(!!event.open);
   window.onCoreEvent = function (event) {

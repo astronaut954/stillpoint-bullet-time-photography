@@ -18,6 +18,11 @@
 //        "fired\t<nº>\t<ok|err>\t<código>\t<instante ms>" e depois "photo\t<nº>\t<caminho>"
 //        (ou "photofail\t<nº>\t<código>"); no fim, "shootdone"
 //   cancel                                itens do plano que ainda não dispararam não disparam
+//   live\ton\t<arquivo>                    liga a imagem ao vivo (etapa 21, parte 6b): o visor da câmera passa a vir
+//                                         também para o computador, e cada quadro (JPEG) é gravado nesse arquivo
+//                                         (escrito ao lado e trocado de uma vez, para o app nunca ler pela metade)
+//                                         -> "liveresult\tok" ou "liveresult\terr\t<código>\t<o que falhou>"
+//   live\toff                             desliga -> "liveresult\tok". Um "shoot" desliga sozinho antes de disparar
 //   quit                                  fecha a sessão e sai -> "bye"
 //
 // Avisos (trabalhador -> app)
@@ -28,7 +33,8 @@
 //   none                                  nenhuma câmera livre no tempo pedido; o processo sai
 //   lost\t<motivo>                        a câmera caiu (o processo sai em seguida)
 //   log\t<texto>                          mensagem para o log do app
-//   pong, settings, setresult, identified, fired, photo, photofail, shootdone, bye
+//   livefail\t<código>                    a imagem ao vivo parou de vir (depois de ligada); o processo a desliga
+//   pong, settings, setresult, liveresult, identified, fired, photo, photofail, shootdone, bye
 //
 // Parâmetros do trabalhador: StillpointWorker --wait <s> [--avoid <índices>] [--log <pasta>]
 //   --wait: quantos segundos procurar uma câmera livre antes de responder "none"

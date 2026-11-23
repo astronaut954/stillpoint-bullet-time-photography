@@ -1378,9 +1378,25 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      ("order") da câmera em "changes". Não coberto: câmera desligada com a tela do passo 2 aberta, antes do
      "Fire again", continua na lista como estava (ela ainda tem foto e marcas daquela rodada). Teste automático:
      cenário 26. Teste do dono pendente.
-   - **Parte 6b, a fazer:** a imagem ao vivo das câmeras Canon de verdade (o processo de cada câmera em `src/worker`
-     e o protocolo): ligar o visor ao vivo, mandar os quadros e desligar antes de cada disparo. Só o dono consegue
-     testar (câmeras reais).
+   - **Parte 6b, feita no código em 2026-11-23, sem nenhum teste com câmera** (só o dono consegue testar; o
+     processo da câmera, `src/worker`, nem compila no ambiente do agente: só a sintaxe foi conferida com um
+     cabeçalho de mentira). Como ficou:
+     protocolo (`include/worker_protocol.h`): ordens `live on <arquivo>` e `live off`, resposta `liveresult`, aviso
+     `livefail`. O processo da câmera liga o visor para o computador (`kEdsPropID_Evf_OutputDevice`, e antes o
+     `Evf_Mode` se o Live View estiver desligado no menu), pede um quadro a cada ~150 ms (`EdsDownloadEvfImage`) e
+     grava o JPEG num arquivo (escrito ao lado e trocado de uma vez); desliga sozinho antes de qualquer `shoot`
+     (espera 0,4 s para o espelho descer), ao sair, e se os quadros param de vir (20 falhas seguidas).
+     Coordenador (`CameraFleet::SetLive`) e app (`main_gui.cpp`, `aimRealJob`): o `aimLive` de uma câmera de
+     verdade responde `{ ok, starting }` e o resultado vem no aviso `aimLiveResult`; o app lê o arquivo quando ele
+     muda, procura as marcas e manda o mesmo `aimFrame` das simuladas. Sem quadro em 12 s, avisa e desliga. Na
+     janela, o botão diz "Starting live image…" enquanto liga (texto novo, escolha do agente). Depois do "Fire
+     again", o Live aim volta sozinho. O Activity registra o tamanho do primeiro quadro e qualquer erro, com o
+     código do SDK.
+     **A descobrir no primeiro teste real:** se liga no modo de foto (dúvida do dono: só no de vídeo, com corte);
+     o tamanho e a proporção do quadro; se as marcas são achadas no quadro (ele é bem menor que a foto); se a
+     diferença entre quadro e foto faz a câmera contar como "mexida" sem ter sido (limite de 0,006 em `gaFrame`).
+     Não feito: desligar a imagem ao vivo sozinha depois de um tempo (ela esquenta o sensor e gasta bateria);
+     hoje ela desliga ao fechar a janela, ao trocar de câmera, ao desligar o Live aim e antes de disparar.
    - **Modo de teste das etiquetas (pedido do dono, 2026-11-17):** `STILLPOINT_FAKE_TAGS=1` põe etiquetas de mentira
      ao lado do nome das câmeras simuladas no Camera settings (a 1ª sem nenhuma, a 2ª com uma, a 3ª com duas...),
      para ver a tela com muitos avisos. Não muda nada com câmeras reais.

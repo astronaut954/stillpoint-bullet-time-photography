@@ -2305,6 +2305,22 @@ settings** › **Test shot** › **Align cameras**, marcar as três marcas numa 
 - [ ] Ligar a câmera de volta, **Align again** e **Fire**: ela volta ao normal e o botão é **Save alignment**.
 - [ ] Windows: os itens acima.
 
+## 56. Live aim com câmeras Canon de verdade (parte 6b, 2026-11-23)
+
+Só com câmeras reais e a haste com as três marcas. **Camera settings** › **Test shot** › **Align cameras**, marcar
+as três marcas numa foto, **Guided aim**.
+
+- [ ] Na janela **Stillpoint · Guided aim**, o botão da direita passa por "Starting live image…" e vira
+      **● Live aim on**; a etiqueta **LIVE** aparece na imagem e a câmera sobe o espelho.
+- [ ] Mexer a câmera: a imagem acompanha e as instruções mudam.
+- [ ] **Next camera →**: a câmera anterior desce o espelho e a nova liga.
+- [ ] Clicar em **● Live aim on** desliga (vira **Live aim off**) e a câmera desce o espelho. **Close** também.
+- [ ] Na janela principal, **Fire again** com o Live aim ligado: as fotos saem normalmente e o Live aim volta.
+- [ ] Se não ligar: o botão diz **No live image** e o **Activity** da janela principal traz o motivo com um código.
+      Anotar o texto exato e em que modo a câmera estava (foto ou vídeo).
+- [ ] No **Activity**: a linha "Live image of ...: largura x altura". Anotar os números.
+- [ ] Windows: os itens acima.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |

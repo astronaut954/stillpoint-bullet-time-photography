@@ -581,6 +581,36 @@ bool CameraFleet::WriteSetting(const CameraContext& camera, const std::string& k
     return false;
 }
 
+bool CameraFleet::SetLive(const CameraContext& camera, const std::string& file, std::string& error)
+{
+    if (camera.fake)
+    {
+        error = "simulated camera";
+        return false;
+    }
+    Worker* w = WorkerFor(camera.shortName);
+    if (!w)
+    {
+        error = "camera is not connected";
+        return false;
+    }
+    w->process->WriteLine(file.empty() ? WorkerProtocol::Join({ "live", "off" }) : WorkerProtocol::Join({ "live", "on", file }));
+    std::vector<std::string> reply;
+    if (!WaitReply(*w, "liveresult", reply, kReplyTimeoutMs) || reply.size() < 2)
+    {
+        bool changed = false;
+        w->process->Kill();
+        DropWorker(*w, "stopped responding", changed);
+        error = "camera is not responding";
+        return false;
+    }
+    if (reply[1] == "ok")
+        return true;
+    // "err", código do SDK, o passo que falhou
+    error = (reply.size() >= 4 ? reply[3] : std::string("live image")) + (reply.size() >= 3 ? " (" + reply[2] + ")" : "");
+    return false;
+}
+
 bool CameraFleet::TestCamera(const CameraContext& camera)
 {
     if (camera.fake)

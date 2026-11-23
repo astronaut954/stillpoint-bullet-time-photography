@@ -132,6 +132,17 @@ namespace
         // seguinte desta câmera (medido no SdkMultiprocTest --repeat).
         struct Deferred { EdsDirectoryItemRef item = nullptr; int prefix = 0; };
         std::deque<Deferred> deferred;
+
+        // Imagem ao vivo (etapa 21, parte 6b): ligada, um quadro vai para liveFile a cada ~150 ms
+        bool live = false;
+        fs::path liveFile;
+        EdsUInt32 liveDeviceBefore = 0;      // para onde o visor ia antes (volta ao desligar)
+        EdsUInt32 liveModeBefore = 1;        // "Live View shooting" da câmera antes (0 = desligado no menu)
+        bool liveModeChanged = false;
+        long long liveNextMs = 0;
+        long long liveSinceMs = 0;           // quando ligou (os primeiros quadros demoram: a câmera sobe o espelho)
+        int liveFailures = 0;                // quadros seguidos que não vieram
+        bool liveGotFrame = false;
     } g;
 
     std::string SafeName(std::string name)
@@ -334,6 +345,135 @@ namespace
         return false;
     }
 
+    // ---- Imagem ao vivo ----
+    // Liga: o visor da câmera passa a ir também para o computador. Nas DSLR o espelho sobe (como apertar o botão
+    // de Live View na câmera). Devolve o erro do SDK e, em `what`, qual passo falhou.
+    EdsError LiveOn(const fs::path& file, std::string& what)
+    {
+        if (g.live)
+        {
+            g.liveFile = file;
+            return EDS_ERR_OK;
+        }
+        // Algumas câmeras têm o Live View desligado no menu: liga (e devolve ao desligar)
+        EdsUInt32 mode = 1;
+        g.liveModeChanged = false;
+        if (EdsGetPropertyData(g.cam.camera, kEdsPropID_Evf_Mode, 0, sizeof(mode), &mode) == EDS_ERR_OK && mode == 0)
+        {
+            EdsUInt32 on = 1;
+            const EdsError errMode = EdsSetPropertyData(g.cam.camera, kEdsPropID_Evf_Mode, 0, sizeof(on), &on);
+            if (errMode != EDS_ERR_OK)
+            {
+                what = "turning Live View on in the camera";
+                return errMode;
+            }
+            g.liveModeBefore = 0;
+            g.liveModeChanged = true;
+            Pump(200);
+        }
+        EdsUInt32 device = 0;
+        EdsError err = EdsGetPropertyData(g.cam.camera, kEdsPropID_Evf_OutputDevice, 0, sizeof(device), &device);
+        if (err != EDS_ERR_OK)
+        {
+            what = "reading where the viewfinder image goes";
+            return err;
+        }
+        g.liveDeviceBefore = device;
+        EdsUInt32 want = device | kEdsEvfOutputDevice_PC;
+        err = EdsSetPropertyData(g.cam.camera, kEdsPropID_Evf_OutputDevice, 0, sizeof(want), &want);
+        if (err != EDS_ERR_OK)
+        {
+            what = "sending the viewfinder image to the computer";
+            return err;
+        }
+        g.live = true;
+        g.liveFile = file;
+        g.liveSinceMs = NowMs();
+        g.liveNextMs = g.liveSinceMs + 300;
+        g.liveFailures = 0;
+        g.liveGotFrame = false;
+        return EDS_ERR_OK;
+    }
+
+    void LiveOff()
+    {
+        if (!g.live)
+            return;
+        g.live = false;
+        EdsUInt32 device = g.liveDeviceBefore & ~static_cast<EdsUInt32>(kEdsEvfOutputDevice_PC);
+        const EdsError err = EdsSetPropertyData(g.cam.camera, kEdsPropID_Evf_OutputDevice, 0, sizeof(device), &device);
+        if (err != EDS_ERR_OK)
+            Note("Live image: could not turn it off (" + Hex(err) + ")");
+        if (g.liveModeChanged)
+        {
+            EdsUInt32 off = g.liveModeBefore;
+            EdsSetPropertyData(g.cam.camera, kEdsPropID_Evf_Mode, 0, sizeof(off), &off);
+            g.liveModeChanged = false;
+        }
+        std::error_code ec;
+        fs::remove(g.liveFile, ec);
+    }
+
+    // Um quadro: pede à câmera, grava ao lado e troca o arquivo de uma vez
+    void LiveFrame()
+    {
+        g.liveNextMs = NowMs() + 150;
+        EdsStreamRef stream = nullptr;
+        EdsEvfImageRef image = nullptr;
+        EdsError err = EdsCreateMemoryStream(0, &stream);
+        if (err == EDS_ERR_OK)
+            err = EdsCreateEvfImageRef(stream, &image);
+        if (err == EDS_ERR_OK)
+            err = EdsDownloadEvfImage(g.cam.camera, image);
+        if (err == EDS_ERR_OK)
+        {
+            EdsVoid* data = nullptr;
+            EdsUInt64 length = 0;
+            EdsGetPointer(stream, &data);
+            EdsGetLength(stream, &length);
+            if (data != nullptr && length > 0)
+            {
+                fs::path part = g.liveFile;
+                part += ".part";
+                {
+                    std::ofstream out(part, std::ios::binary | std::ios::trunc);
+                    out.write(static_cast<const char*>(data), static_cast<std::streamsize>(length));
+                }
+                std::error_code ec;
+                fs::rename(part, g.liveFile, ec);
+                if (ec)
+                {
+                    // Windows não troca um arquivo que o app está lendo neste instante: o próximo quadro tenta de novo
+                    fs::remove(part, ec);
+                }
+                if (!g.liveGotFrame)
+                {
+                    g.liveGotFrame = true;
+                    Note("Live image: first frame after " + std::to_string(NowMs() - g.liveSinceMs) + " ms, " + std::to_string(static_cast<long long>(length)) + " bytes");
+                }
+                g.liveFailures = 0;
+            }
+        }
+        else
+        {
+            // "Ainda não está pronta" é normal logo depois de ligar (o espelho sobe); o resto conta como falha
+            ++g.liveFailures;
+            const bool starting = !g.liveGotFrame && NowMs() - g.liveSinceMs < 6000;
+            if (!starting && g.liveFailures >= 20)
+            {
+                Note("Live image: stopped coming (" + Hex(err) + ")");
+                Send({ "livefail", Hex(err) });
+                LiveOff();
+            }
+            else if (!g.liveGotFrame && g.liveFailures == 1)
+                Note("Live image: waiting for the first frame (" + Hex(err) + ")");
+        }
+        if (image)
+            EdsRelease(image);
+        if (stream)
+            EdsRelease(stream);
+    }
+
     void Fire(Worker::Item& item)
     {
         item.fired = true;
@@ -384,8 +524,31 @@ namespace
             EdsSendCommand(g.cam.camera, kEdsCameraCommand_PressShutterButton, kEdsCameraCommand_ShutterButton_OFF);
             Send({ "identified" });
         }
+        else if (cmd == "live" && f.size() >= 2)
+        {
+            if (f[1] == "on" && f.size() >= 3)
+            {
+                std::string what;
+                const EdsError err = g.planActive ? EDS_ERR_DEVICE_BUSY : LiveOn(fs::path(f[2]), what);
+                if (err == EDS_ERR_OK)
+                    Send({ "liveresult", "ok" });
+                else
+                    Send({ "liveresult", "err", Hex(err), g.planActive ? "the camera is shooting" : what });
+            }
+            else
+            {
+                LiveOff();
+                Send({ "liveresult", "ok" });
+            }
+        }
         else if (cmd == "shoot" && f.size() >= 5)
         {
+            // A imagem ao vivo desliga antes de qualquer disparo: com o espelho em cima o tempo do disparo é outro
+            if (g.live)
+            {
+                LiveOff();
+                Pump(400);
+            }
             g.t0 = std::atoll(f[1].c_str());
             g.dir = fs::path(f[2]);
             g.cam.shortName = f[3];
@@ -487,6 +650,8 @@ int main(int argc, char** argv)
                 DrainDeferred();
             }
         }
+        if (g.live && !g.planActive && !g.lost && NowMs() >= g.liveNextMs)
+            LiveFrame();
         if (g.lost)
         {
             Send({ "lost", g.lostReason });
@@ -505,6 +670,7 @@ int main(int argc, char** argv)
     {
         if (!g.lost)
         {
+            LiveOff();        // o visor volta para onde estava
             DrainDeferred();  // nada fica preso na câmera ao sair
             EdsCloseSession(g.cam.camera);
         }
