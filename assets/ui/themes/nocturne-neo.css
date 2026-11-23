@@ -1124,8 +1124,14 @@ table.cs tr.has-note td { border-bottom-color: transparent; }
 .timing-step { display: grid; grid-template-columns: 56px auto minmax(0, 1fr) 26px; align-items: center; gap: 10px; padding: 6px 10px; border: 1px solid var(--noct-border); background: var(--noct-surface-inner); }
 /* Arrastando um passo: todos encolhem para uma linha com o resumo das câmeras */
 .timing-step .step-sum { display: none; font: 11px var(--noct-font-mono); color: var(--noct-text-muted); text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.timing-custom.reordering .timing-step .step-cams { display: none; }
+.timing-step .step-main { min-width: 0; }
+.timing-custom.reordering .timing-step .step-body { overflow: hidden; transition: height .2s ease; }
 .timing-custom.reordering .timing-step .step-sum { display: block; }
+/* Muitas câmeras: os números recolhidos em duas fileiras, com o botão que mostra todos ou recolhe */
+.timing-step .step-cams.short { max-height: 48px; overflow: hidden; }
+.timing-step .step-cams.anim { overflow: hidden; }
+.timing-step .step-more { display: flex; align-items: center; gap: 12px; margin-top: 6px; min-width: 0; }
+.timing-step .step-more-sum { font: 11px var(--noct-font-mono); color: var(--noct-text-muted); text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .timing-step.can-drag { cursor: grab; user-select: none; -webkit-user-select: none; }
 .timing-step.dragging { position: relative; z-index: 2; cursor: grabbing; border-color: var(--noct-pending); box-shadow: 0 0 24px rgba(var(--noct-pending-rgb), .3); opacity: .55; }
 .timing-custom { position: relative; }  /* a linha de destino (.camera-drop) se posiciona por aqui */

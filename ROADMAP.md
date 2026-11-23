@@ -1348,6 +1348,11 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      enquanto um passo é arrastado, todos encolhem para uma linha com o resumo ("44 cameras · 1–44"), e a lista
      rola sozinha perto das bordas; ao soltar, os números voltam (`stepPointerMove`, `stepAutoScroll`, classe
      `reordering`). Linha pequena da Timeline em faixa: mais folga em cima e embaixo (pedido do dono).
+     (4) Timing › Custom com muitas câmeras, pedido do dono (2026-11-23): com mais de 44 câmeras, os números de
+     cada passo começam recolhidos em duas fileiras, com o botão "··· Show all N" (vira "Show less") e o resumo do
+     passo ao lado; a troca é animada, e ao arrastar um passo todos recolhem com animação em vez de sumir de uma
+     vez. Escolhas do agente a confirmar: o limite de 44, as duas fileiras, o botão por passo (não um para todos)
+     e os passos abertos valerem só até fechar o app.
    - **Parte 6b, a fazer:** a imagem ao vivo das câmeras Canon de verdade (o processo de cada câmera em `src/worker`
      e o protocolo): ligar o visor ao vivo, mandar os quadros e desligar antes de cada disparo. Só o dono consegue
      testar (câmeras reais).

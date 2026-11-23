@@ -12626,10 +12626,39 @@
         });
         chips.appendChild(chip);
       }
-      row.appendChild(chips);
-      // Resumo do passo, que aparece no lugar dos números enquanto se arrasta um passo (ver stepPointerMove)
-      const count = (st.cams || []).filter((o) => o >= 1 && o <= N).length;
-      row.appendChild(el("span", "step-sum", !count ? "No cameras" : count + (count === 1 ? " camera · " : " cameras · ") + timingLabel(st.cams.filter((o) => o >= 1 && o <= N))));
+      // Resumo do passo ("44 cameras · 1–44"): aparece no lugar dos números enquanto se arrasta um passo e, com
+      // muitas câmeras, ao lado do botão que mostra ou recolhe os números
+      const mine = (st.cams || []).filter((o) => o >= 1 && o <= N);
+      const sumText = !mine.length ? "No cameras" : mine.length + (mine.length === 1 ? " camera · " : " cameras · ") + timingLabel(mine);
+      const main = el("div", "step-main");
+      main.appendChild(el("span", "step-sum", sumText));
+      const body = el("div", "step-body");
+      body.appendChild(chips);
+      // Muitas câmeras (pedido do dono, 2026-11-23): os números começam recolhidos em duas fileiras, com um botão
+      // "···" que mostra todos ou recolhe de novo; a troca é animada
+      if (N > STEP_SHORT_FROM) {
+        const open = stepOpen.has(st);
+        chips.classList.toggle("short", !open);
+        const more = el("div", "step-more");
+        const info = el("span", "step-more-sum", sumText);
+        const toggle = button(open ? "Show less" : "··· Show all " + N, () => {
+          const h0 = chips.offsetHeight;
+          const now = !stepOpen.has(st);
+          if (now) stepOpen.add(st); else stepOpen.delete(st);
+          chips.classList.toggle("short", !now);
+          const h1 = chips.offsetHeight;
+          toggle.textContent = now ? "Show less" : "··· Show all " + N;
+          chips.classList.add("anim");
+          const a = chips.animate([{ maxHeight: h0 + "px" }, { maxHeight: h1 + "px" }], { duration: 200, easing: "ease" });
+          a.onfinish = a.oncancel = () => chips.classList.remove("anim");
+        });
+        toggle.classList.add("step-more-btn");
+        more.appendChild(toggle);
+        more.appendChild(info);
+        body.appendChild(more);
+      }
+      main.appendChild(body);
+      row.appendChild(main);
       const remove = button("", () => { timing.steps.splice(i, 1); timingSave(); renderTiming(); }, { icon: "close", title: "Remove this step", kind: "btn-link step-x" });
       remove.disabled = timing.steps.length <= 1;
       row.appendChild(remove);
@@ -12640,6 +12669,11 @@
     });
     root.appendChild(button("Add step", () => { timing.steps.push({ after: 1, cams: [] }); timingSave(); renderTiming(); }, { kind: "btn-link" }));
   }
+
+  // Custom com muitas câmeras: a partir daqui os números de cada passo começam recolhidos; stepOpen guarda os
+  // passos que o usuário abriu (só nesta sessão do app)
+  const STEP_SHORT_FROM = 44;
+  const stepOpen = new WeakSet();
 
   // ----- Custom: marcar várias câmeras de um passo arrastando por cima dos números -----
   let chipPaint = null;
@@ -12733,6 +12767,12 @@
     const d = stepDrag;
     if (!d || !d.moved) return;
     const sc = d.scroller, b = sc === document.scrollingElement ? { top: 0, bottom: window.innerHeight } : sc.getBoundingClientRect();
+    // Enquanto os passos encolhem, o passo arrastado continua à vista: a lista rola até ele ficar debaixo do mouse
+    if (performance.now() - d.since < 320) {
+      const r = d.row.getBoundingClientRect();
+      sc.scrollTop += r.top - d.ty + r.height / 2 - d.lastY;
+      stepDragPlace();
+    }
     const edge = 48, up = b.top + edge - d.lastY, down = d.lastY - (b.bottom - edge);
     const v = up > 0 ? -Math.min(18, 4 + up / 3) : down > 0 ? Math.min(18, 4 + down / 3) : 0;
     if (v) { const before = sc.scrollTop; sc.scrollTop += v; if (sc.scrollTop !== before) stepDragPlace(); }
@@ -12749,11 +12789,14 @@
       d.row.classList.add("dragging");
       // Com muitas câmeras cada passo fica mais alto que o painel e não dá para chegar no outro passo (pedido do
       // dono, 2026-11-23): durante o arraste os passos encolhem para uma linha com o resumo das câmeras
+      // O recolhimento é animado, para não ser brusco (pedido do dono, 2026-11-23)
+      const bodies = [...d.root.querySelectorAll(".step-body")];
+      bodies.forEach((b) => { b.style.height = b.offsetHeight + "px"; });
       d.root.classList.add("reordering");
+      void d.root.offsetHeight;
+      bodies.forEach((b) => { b.style.height = "0px"; });
       d.scroller = stepScroller(d.root);
-      // o passo arrastado continua à vista: a lista rola até ele ficar debaixo do mouse, onde der
-      const r = d.row.getBoundingClientRect();
-      d.scroller.scrollTop += r.top + r.height / 2 - e.clientY;
+      d.since = performance.now();
       d.raf = requestAnimationFrame(stepAutoScroll);
     }
     stepDragPlace();
@@ -12767,6 +12810,7 @@
     d.row.classList.remove("dragging");
     d.row.style.transform = "";
     d.root.classList.remove("reordering");
+    d.root.querySelectorAll(".step-body").forEach((b) => { b.style.height = ""; });
     const marker = d.root.querySelector(".camera-drop");
     if (marker) marker.remove();
     const show = (index) => { const r = stepRows(d.root)[index]; if (r && d.moved) r.scrollIntoView({ block: "nearest" }); };
