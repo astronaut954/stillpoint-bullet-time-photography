@@ -4226,7 +4226,8 @@
     const isText = (t) => t && (t.tagName === "TEXTAREA" || t.tagName === "SELECT" || (t.tagName === "INPUT" && !["checkbox", "radio", "button", "range"].includes(t.type)));
     // Mac: uma tecla apertada esconde o cursor até o mouse se mexer (é do sistema, pensado para quem digita texto);
     // nos atalhos desta tela o programa pede o cursor de volta na hora
-    const showCursor = () => { if (typeof window.cursorShow === "function") window.cursorShow(); };
+    // (o sistema esconde o cursor DEPOIS de a página receber a tecla: por isso o pedido é repetido logo em seguida)
+    const showCursor = () => { if (typeof window.cursorShow !== "function") return; window.cursorShow(); [30, 90, 200].forEach((ms) => setTimeout(() => window.cursorShow(), ms)); };
     const setSpace = (on) => {
       exp.spaceDown = on; const o = $("exportSettings"); if (o) o.classList.toggle("space-pan", on); if (on && exp.alignQuiet) exp.alignQuiet();
       // Mac: com a tecla segurada, cada repetição dela escondia o cursor até o mouse se mexer (o cursor piscava
@@ -5765,8 +5766,8 @@
     // o "+" no meio do canvas, e os cabos junto com o que está fora do canvas. A barra some como o Activity na tela
     // cheia e volta quando o mouse chega perto da borda esquerda; escondida, fica um puxador com uma seta (forma H4).
     // (a letra entre parênteses é o atalho: as mesmas do Photoshop onde existe igual)
-    const TOOLS = [["pointer", "toolPointer", "Pointer: move, resize or rotate, depending on where the mouse is (V)", "v"],
-      ["handles", "toolPointer", "Handles only: resize by the corners and rotate by the top handle; dragging anywhere else does nothing (A)", "a"], ["move", "toolMove", "Move the photo (M)", "m"],
+    const TOOLS = [["pointer", "toolPointer", "Select: move, resize or rotate, depending on where the mouse is (V)", "v"],
+      ["handles", "toolPointer", "Direct select: resize by the corners and rotate by the top handle; dragging anywhere else does nothing (A)", "a"], ["move", "toolMove", "Move the photo (M)", "m"],
       ["rotate", "toolRotate", "Rotate the photo (R)", "r"], ["scale", "toolScale", "Resize the photo (S)", "s"], ["pan", "toolPan", "Move the view: the photo stays where it is (H)", "h"],
       ["zoom", "toolZoom", "Zoom the view: click to zoom in, " + (navigator.platform.indexOf("Mac") >= 0 ? "⌥" : "Alt") + " + click to zoom out (Z)", "z"]];
     if (!TOOLS.some((t) => t[0] === alignPrefs.tool)) alignPrefs.tool = "pointer";

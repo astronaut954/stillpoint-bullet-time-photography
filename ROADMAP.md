@@ -1534,6 +1534,9 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      (3) ferramenta nova, atalho A: como a seta, mas só as alças funcionam (cantos = tamanho, alça de cima =
      giro); arrastar em outro lugar não faz nada. Nome provisório "Handles only"; o dono pediu sugestões de
      nome para ela e para a "Pointer" (decisão pendente); (4) a barra fica centrada na altura, à esquerda.
+     Decisão do dono (2026-11-24): os nomes são "Select" (V) e "Direct select" (A), com o mesmo ícone de seta,
+     cheia numa e vazada na outra. O cursor continuava sumindo ao apertar um atalho (gravação): o pedido de
+     mostrar o cursor chegava antes de o sistema escondê-lo; passou a ser repetido 30, 90 e 200 ms depois.
      Falta: o passo 3 do Align cameras virar este editor (forma B), com Play the sequence.
      (b) Os botões da janela Guided aim subiam e desciam quando o número de instruções mudava: o espaço das
      instruções passou a ser fixo (seis linhas).
