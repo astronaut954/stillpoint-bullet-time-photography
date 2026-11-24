@@ -1480,6 +1480,16 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      guardadas como já se faz na pasta Originals. Levantamento de onde isso mexe: ver a resposta do agente dessa
      data (lista de sessões, fileira de fotos, aviso depois do disparo, Export em cinco pontos, Lightroom, Align
      cameras, Test shot, session.json). Nada decidido nem feito.
+     **Decisões do dono (2026-11-24, terceira leva):**
+     tela do Align photos: as guias ficam na barra (forma A do protótipo anterior), mas a barra tem de ficar DENTRO
+     da foto grande e se esconder como o Activity na tela cheia (some e volta quando o mouse chega perto), com uma
+     indicação de que está ali, e as guias têm de se distinguir das ferramentas. Protótipos (guias A/B/C; barra
+     escondida D/E) em https://claude.ai/artifact/EQZuntMLJS7WH3vQwrjB3W, aguardando a escolha.
+     Proporções misturadas, respostas do dono: a proporção é escolhida uma vez (ele acha que talvez não seja "por
+     projeto", porque depende das câmeras e das configurações delas); o app pergunta na primeira vez que as
+     câmeras fotografam em proporções diferentes; tem de dar para mudar depois em algum lugar (a definir) e
+     continua dando para mudar na exportação; as sessões já feitas não mudam; a opção "As shot" some. Ainda é uma
+     etapa futura, não começada.
      (b) Os botões da janela Guided aim subiam e desciam quando o número de instruções mudava: o espaço das
      instruções passou a ser fixo (seis linhas).
      (c) "Camera 03 / Camera 04 · Not connected" apareciam sem nunca terem sido ligadas: vinham do alinhamento
