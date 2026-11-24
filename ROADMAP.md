@@ -1466,6 +1466,20 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      para reutilizar em vários projetos, hoje não existe (o alinhamento fica no projeto e cada sessão guarda a
      cópia do que valia quando foi fotografada); (iii) o aviso de marcas desiguais: o dono quer saber quanto isso
      prejudica antes de decidir se é faixa ou janela. Os testes automáticos continuam sendo relatados sempre.
+     **Decisões do dono (2026-11-24, segunda leva):**
+     passo 3 do Align cameras, **forma B** (vira a tela do Align photos, com "Play the sequence"), ainda não
+     implementada; antes, o dono pediu mais na tela do Align photos (aqui e no Export): o "+" no meio do canvas
+     ligado de início, poder escondê-lo, esconder os cabos e o que está fora do canvas, e uma barra de ferramentas à
+     esquerda (Pointer como hoje, Move the photo, Rotate, Scale, Move the view). Protótipo (guias na barra, forma
+     A, ou num bloco View, forma B) em https://claude.ai/artifact/2LGwvBxnrqEi5NncN8NeuN, aguardando a escolha;
+     aviso de marcas desiguais: **faixa, forma A**, feita (`alUneven`, `alUnevenNote`; passos 2 e 3; teste
+     automático no cenário 27);
+     ordem: **parte 7 (From this scene) antes do rig reutilizável**.
+     **Proporções misturadas (ideia do dono, 2026-11-24, em aberto):** deixar de permitir fotos em proporções
+     diferentes na interface; a pessoa escolhe uma proporção e o app mostra sempre as fotos nela, com as originais
+     guardadas como já se faz na pasta Originals. Levantamento de onde isso mexe: ver a resposta do agente dessa
+     data (lista de sessões, fileira de fotos, aviso depois do disparo, Export em cinco pontos, Lightroom, Align
+     cameras, Test shot, session.json). Nada decidido nem feito.
      (b) Os botões da janela Guided aim subiam e desciam quando o número de instruções mudava: o espaço das
      instruções passou a ser fixo (seis linhas).
      (c) "Camera 03 / Camera 04 · Not connected" apareciam sem nunca terem sido ligadas: vinham do alinhamento

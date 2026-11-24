@@ -2322,6 +2322,16 @@ as três marcas numa foto, **Guided aim**.
 - [ ] No **Activity**: a linha "Live image of ...: largura x altura". Anotar os números.
 - [ ] Windows: os itens acima.
 
+## 57. Align cameras: aviso de marcas a distâncias desiguais e botão sempre "Align cameras" (2026-11-24)
+
+- [ ] Com um suporte de marcas desiguais (a do meio fora do meio): no passo 2, faixa âmbar no alto, "Marks not
+      evenly spaced. The middle one is at N% of the way..."; **Review alignment** continua funcionando; no passo 3
+      a mesma faixa embaixo das fotos; nenhuma instrução de altura ("higher / lower than the others").
+- [ ] Com a haste de marcas iguais: nenhuma faixa.
+- [ ] O botão do **Test shot** é sempre **Align cameras**; com alinhamento guardado no projeto abre a janela "This
+      project already has an alignment" (**Cancel** / **Align cameras**).
+- [ ] Windows: os itens acima.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |
