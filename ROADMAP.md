@@ -1559,6 +1559,9 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      (5184×3456 e 6000×4000, a mesma proporção) não ficam do tamanho do canvas: o canvas é a área comum em
      pixels do original, então a foto de 6000 px a 100% sobra e é cortada no centro (mostra 86% do que a de
      5184 px mostra). Proposta a decidir: igualar pelo tamanho (a foto maior reduzida para caber no canvas).
+     Roteiro 5 (resumo do aviso do rig, 12 câmeras simuladas e depois 4): "8 cameras not connected (SL3_3, T7_3,
+     SL3_4 and 5 more)": ok. A linha saía duas vezes no Activity, uma em vermelho (o aviso registrava por conta
+     própria e o programa registrava de novo): corrigido, fica uma linha só, âmbar.
      **Decisões do dono no meio dos testes (2026-11-24), a fazer DEPOIS dos roteiros:** (i) arrastar os pontos
      que o programa achou, de um jeito que não entre em conflito com a busca automática e que deixe refazer a
      busca; (ii) o botão Align cameras não deve depender do Test shot: protótipos com as posições no Camera

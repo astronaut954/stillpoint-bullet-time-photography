@@ -2282,6 +2282,8 @@ def scenario_live_many(t, name, photos):
                 said = lambda: t.js("() => [...document.querySelectorAll('li')].map((l) => l.textContent).filter((x) => /rig is not the one/.test(x)).pop() || ''")
                 t.wait(lambda: bool(said()), 12)
                 check(t, "rig notice with many cameras missing: the count and the first three, not the whole list", "192 cameras not connected (" in said() and " and 189 more)" in said() and len(said()) < 200, said()[:300])
+                lines = t.js("() => [...document.querySelectorAll('.log-list li')].filter((l) => /rig is not the one/.test(l.textContent)).map((l) => l.className)")
+                check(t, "rig notice: one line in the Activity, amber (not two, one of them red)", lines == ["warn"], lines)
             t.js("() => document.getElementById('liveBtn').click()")
             titles = lambda: json.loads(urllib.request.urlopen("http://127.0.0.1:%d/windows" % PORT).read().decode())
             t.wait(lambda: any(x and "Live" in x for x in titles()), 5)

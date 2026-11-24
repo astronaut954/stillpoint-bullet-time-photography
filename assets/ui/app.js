@@ -8234,8 +8234,10 @@
         : [list.length + many + " (" + list.slice(0, 3).map((c) => c.name).join(", ") + " and " + (list.length - 3) + " more)"]);
       const parts = some(e.missing || [], " not connected", " cameras not connected").concat(some(e.fresh || [], " is new", " new cameras"));
       const text = "The rig is not the one of this project · " + parts.join(" · ");
-      toast(text, 9000, { warn: true });
+      // (a linha da Activity vem antes do aviso: o aviso também registra, a não ser que a mesma linha acabe de entrar;
+      // na ordem contrária saíam duas linhas, uma delas em vermelho; teste do dono, 2026-11-24)
       log(text, "warn");
+      toast(text, 9000, { warn: true });
     },
     rigAnswered(e) {
       const ask = rigAsks[e.id];
