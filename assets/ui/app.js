@@ -139,6 +139,7 @@
     toolPan: '<path d="M4.600 7.200V3.500a.9.9 0 0 1 1.800 0v3M6.400 6.300V2.700a.9.9 0 0 1 1.800 0v3.600M8.200 6.500V3.500a.9.9 0 0 1 1.800 0v5.200c0 2.200-1.400 3.700-3.500 3.700-1.500 0-2.400-.7-3.200-2L2.200 8.300a.9.9 0 0 1 1.500-1l.9 1.200"/>',
     guideEdges: '<path d="M3.500 3.500h7v7h-7z"/><path d="M1.500 1.500h2v2h-2zM10.500 1.500h2v2h-2zM1.500 10.500h2v2h-2zM10.500 10.500h2v2h-2z"/>',
     grip: '<path d="M5 3l4 4-4 4"/>',
+    toolZoom: '<circle cx="6" cy="6" r="3.800"/><path d="M8.800 8.800l3.700 3.700"/>',
     plus: '<path d="M3 7h8M7 3v8"/>',
     swap: '<path d="M2.5 5h8l-2.5-2.5M11.5 9h-8l2.5 2.5"/>',
     lens: '<rect x="1.5" y="2.5" width="11" height="9"/><path d="M1.5 5.5c1.4-1.6 2.3-1.6 3.7 0s2.3 1.6 3.7 0 2.3-1.6 3.6 0M4.5 8.5h5"/>',
@@ -4235,6 +4236,12 @@
       setSpace(false);
     }, true);
     window.addEventListener("blur", () => { if (exp.spaceDown) setSpace(false); });
+    // Uma letra sozinha escolhe a ferramenta da barra (V M R S H Z)
+    document.addEventListener("keydown", (e) => {
+      if (e.metaKey || e.ctrlKey || e.altKey || e.repeat || e.key.length !== 1 || !exp.aligning || !exp.alignToolKey || $("exportOverlay").classList.contains("hidden") || isText(e.target)) return;
+      if (!$("dialogOverlay").classList.contains("hidden")) return;
+      if (exp.alignToolKey(e.key.toLowerCase())) { e.preventDefault(); e.stopImmediatePropagation(); }
+    }, true);
     // ⌘0 (Ctrl+0 no Windows): a vista volta ao centro e a 100%
     document.addEventListener("keydown", (e) => {
       if (e.key !== "0" || !(e.metaKey || e.ctrlKey) || !exp.aligning || $("exportOverlay").classList.contains("hidden") || isText(e.target)) return;
@@ -5734,7 +5741,7 @@
     ["tl", "tr", "bl", "br"].forEach((c) => { handles[c] = el("div", "align-handle align-handle-" + c); box.appendChild(handles[c]); });
     const rotLine = el("div", "align-rot-line"); const rotHandle = el("div", "align-rot-handle");
     box.append(rotLine, rotHandle);
-    const tagText = pad(item.order || cur + 1) + " · Drag to move · scroll to zoom · hold space and drag to pan · ⌥ scroll to rotate · ⌘ arrows 1 px (⇧ 10)";
+    const tagText = pad(item.order || cur + 1) + " · Drag to move · scroll to zoom · hold space and drag to pan · ⌥ scroll to rotate · Ctrl scroll to move up or down (with ⌥, sideways) · ⌘ arrows 1 px (⇧ 10)";
     const tag = el("span", "crop-tag", tagText);
     const wait = el("div", "align-wait", "Measuring the photos…");
     stage.append(layers, common, ratio, box, tag, wait);
@@ -5744,8 +5751,10 @@
     // só, arrastando em qualquer lugar. Guias (cada uma liga e desliga por si, com a faixa acesa ao lado, forma C3):
     // o "+" no meio do canvas, e os cabos junto com o que está fora do canvas. A barra some como o Activity na tela
     // cheia e volta quando o mouse chega perto da borda esquerda; escondida, fica um puxador com uma seta (forma H4).
-    const TOOLS = [["pointer", "toolPointer", "Pointer: move, resize or rotate, depending on where the mouse is"], ["move", "toolMove", "Move the photo"],
-      ["rotate", "toolRotate", "Rotate the photo"], ["scale", "toolScale", "Resize the photo"], ["pan", "toolPan", "Move the view (the photo stays where it is)"]];
+    // (a letra entre parênteses é o atalho: as mesmas do Photoshop onde existe igual)
+    const TOOLS = [["pointer", "toolPointer", "Pointer: move, resize or rotate, depending on where the mouse is (V)", "v"], ["move", "toolMove", "Move the photo (M)", "m"],
+      ["rotate", "toolRotate", "Rotate the photo (R)", "r"], ["scale", "toolScale", "Resize the photo (S)", "s"], ["pan", "toolPan", "Move the view: the photo stays where it is (H)", "h"],
+      ["zoom", "toolZoom", "Zoom the view: click to zoom in, " + (navigator.platform.indexOf("Mac") >= 0 ? "⌥" : "Alt") + " + click to zoom out (Z)", "z"]];
     if (!TOOLS.some((t) => t[0] === alignPrefs.tool)) alignPrefs.tool = "pointer";
     const cross = el("div", "align-cross");
     ratio.appendChild(cross);
@@ -5795,6 +5804,7 @@
     stage.addEventListener("pointerleave", () => toolsNear(false));
     grip.addEventListener("pointerenter", () => toolsNear(true));
     paintTools(true);
+    exp.alignToolKey = (letter) => { const t = TOOLS.find((x) => x[3] === letter); if (!t) return false; alignPrefs.tool = t[0]; saveAlignPrefs(); paintTools(); return true; };
     // Fileira de miniaturas, com um ponto da cor da referência
     const stripScroll = el("div", "export-strip-scroll");
     const strip = el("ul", "export-strip");
@@ -5910,6 +5920,15 @@
         if (need != null && cand.rot !== a.rot) { cand.scale = need; Object.assign(a, cand); return true; }
       }
       if (covers(cand)) { Object.assign(a, cand); return true; }
+      if (cand.scale < a.scale && cand.rot === a.rot && cand.dx === a.dx && cand.dy === a.dy && covers(a)) {
+        // Diminuir além do limite: vai até o menor tamanho que ainda cobre a área útil (sem parar antes)
+        let lo = cand.scale, hi = a.scale; const t = Object.assign({}, cand);
+        for (let i = 0; i < 22; i++) { const mid = (lo + hi) / 2; t.scale = mid; if (covers(t)) hi = mid; else lo = mid; }
+        const moved = hi < a.scale - 1e-6;
+        t.scale = hi; t.base = hi; Object.assign(a, t);
+        stage.classList.add("locked"); clearTimeout(lockFlash); lockFlash = setTimeout(() => stage.classList.remove("locked"), 300);
+        return moved;
+      }
       if ((cand.dx !== a.dx || cand.dy !== a.dy) && cand.scale === a.scale && cand.rot === a.rot) {
         // Mover além do limite: cada eixo vai até onde ainda cobre a área útil (a foto encosta na borda, sem parar
         // antes) e o outro eixo continua livre
@@ -6199,10 +6218,21 @@
       return Math.abs(x) <= box.offsetWidth * a.scale / 2 && Math.abs(y) <= box.offsetHeight * a.scale / 2;
     };
     stage.addEventListener("pointermove", (e) => { if (!drag && sizes[item.file]) stage.dataset.over = overPhoto(e) ? "in" : "out"; });
+    const zoomAt = (e, factor) => {
+      const r = stage.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
+      const ux = (mx - cx) / scaleK, uy = (my - cy) / scaleK;
+      view.zoom = Math.max(0.3, Math.min(8, view.zoom * factor));
+      const k = baseK * view.zoom, W = stage.clientWidth, H = stage.clientHeight;
+      view.px = mx - W / 2 - ux * k; view.py = my - H / 2 - uy * k;
+      layout();
+    };
+    stage.addEventListener("pointermove", (e) => { stage.classList.toggle("alt", e.altKey); });
     stage.addEventListener("pointerdown", (e) => {
       if (e.button !== 0 || e.target.closest("button") || e.target.closest(".align-tools, .align-tools-grip") || !sizes[item.file]) return;
-      e.preventDefault(); stage.setPointerCapture(e.pointerId);
+      e.preventDefault();
       const toolNow = alignPrefs.tool || "pointer";
+      if (toolNow === "zoom" && !exp.spaceDown) { zoomAt(e, e.altKey ? 1 / 1.5 : 1.5); return; }
+      stage.setPointerCapture(e.pointerId);
       // Pointer: fora da foto que está sendo alinhada, arrastar desloca a vista (pedido do dono, 2026-11-24)
       const onPart = e.target === rotHandle || e.target.classList.contains("align-handle");
       if (exp.spaceDown || toolNow === "pan" || (toolNow === "pointer" && !onPart && !overPhoto(e))) {
@@ -6214,6 +6244,8 @@
         drag = { kind: "rot", rot: a.rot, angle: Math.atan2(e.clientY - c.y, e.clientX - c.x) }; stage.classList.add("rotating");
       } else if (toolNow === "scale" || (toolNow === "pointer" && e.target.classList.contains("align-handle"))) {
         drag = { kind: "scale", scale: a.scale, dist: Math.max(1, Math.hypot(e.clientX - c.x, e.clientY - c.y)) }; stage.classList.add("resizing");
+        // (o cursor fica o mesmo enquanto o botão está apertado, esteja o mouse em cima do que estiver)
+        stage.dataset.resize = e.target.classList.contains("align-handle-tr") || e.target.classList.contains("align-handle-bl") ? "nesw" : "nwse";
       } else {
         drag = { kind: "move", x: e.clientX, y: e.clientY, dx: a.dx, dy: a.dy }; stage.classList.add("dragging");
       }
@@ -6246,6 +6278,13 @@
       if (!sizes[item.file]) return;
       e.preventDefault();
       const d = Math.max(-40, Math.min(40, e.deltaY));
+      if (e.ctrlKey || e.metaKey) {  // Ctrl + roda: move a foto para cima e para baixo; com Alt junto, para os lados
+        lockStart();
+        const stepPx = -d / scaleK;
+        tryApply((cand) => { if (e.altKey) cand.dx += stepPx; else cand.dy += stepPx; });
+        sync(); layout(); saveSoon();
+        return;
+      }
       if (e.altKey) {  // ⌥ + roda: gira a foto
         lockStart();
         tryApply((cand) => { cand.rot = Math.round((cand.rot - d * 0.01) * 100) / 100; });
@@ -6253,12 +6292,7 @@
         return;
       }
       // Roda: zoom da vista (30% a 800%), em volta do ponto sob o mouse
-      const r = stage.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
-      const ux = (mx - cx) / scaleK, uy = (my - cy) / scaleK;
-      view.zoom = Math.max(0.3, Math.min(8, view.zoom * Math.exp(-d * 0.004)));
-      const k = baseK * view.zoom, W = stage.clientWidth, H = stage.clientHeight;
-      view.px = mx - W / 2 - ux * k; view.py = my - H / 2 - uy * k;
-      layout();
+      zoomAt(e, Math.exp(-d * 0.004));
     }, { passive: false });
     exp.keyMove = (ddx, ddy, big) => { const step = big ? 10 : 1; stepOnce((cand) => { cand.dx += ddx * step; cand.dy += ddy * step; }); };
   }
@@ -7097,7 +7131,7 @@
     renderExport();
   }
   function editStep(session, items, st, outer, rows, rerender) {
-    exp.keyNav = null; exp.keyMove = null;
+    exp.keyNav = null; exp.keyMove = null; exp.alignToolKey = null;
     cropLoad(session, st);
     const name = session.name;
     const hasEd = session.inProject && session.edited > 0;

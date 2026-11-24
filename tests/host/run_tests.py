@@ -2600,7 +2600,7 @@ def scenario_align_tools(t, name, photos):
         time.sleep(0.5)
         d = st()
         check(t, "align tools: with the mouse near the left edge the bar shows, inside the big photo, and the grip goes", d["near"] and d["barIn"] and d["barOp"] == "1" and d["gripOp"] == "0", d)
-        check(t, "align tools: five tools, Pointer chosen from the start", d["tools"] == ["pointer*", "move", "rotate", "scale", "pan"] and d["tool"] == "pointer", d["tools"])
+        check(t, "align tools: six tools, Pointer chosen from the start", d["tools"] == ["pointer*", "move", "rotate", "scale", "pan", "zoom"] and d["tool"] == "pointer", d["tools"])
         t.shot("align-tools-bar")
         cx, cy = box["x"] + box["width"] * 0.6, box["y"] + box["height"] * 0.5
         def drag(dx, dy):
@@ -2666,6 +2666,43 @@ def scenario_align_tools(t, name, photos):
         check(t, "align tools: Pointer outside the photo shows the hand and dragging moves the view only", c_out == ["out", "grab"] and vc == vb, (c_out, vb, vc))
         pick(".align-tool[data-tool=rotate]")
         check(t, "align tools: Rotate uses the round arrow cursor of the rotate handle", "url(" in cur()[1], cur())
+        pick(".align-tool[data-tool=pointer]")
+        # Atalhos: uma letra escolhe a ferramenta
+        tool = lambda: t.js("() => document.querySelector('.align-stage').dataset.tool")
+        got = []
+        for k in "mrshzv":
+            t.page.keyboard.press(k); time.sleep(0.15); got.append(tool())
+        check(t, "align tools: the letters M R S H Z V pick the tools", got == ["move", "rotate", "scale", "pan", "zoom", "pointer"], got)
+        # Zoom: clicar aproxima em volta do ponto; com Alt, afasta
+        zw = lambda: t.js("() => document.querySelector('.align-stage .align-ratio').getBoundingClientRect().width")
+        t.page.keyboard.press("z"); time.sleep(0.15)
+        z0 = zw(); vz = vals()
+        t.page.mouse.click(cx, cy); time.sleep(0.3)
+        z1 = zw()
+        t.page.keyboard.down("Alt"); t.page.mouse.click(cx, cy); t.page.keyboard.up("Alt"); time.sleep(0.3)
+        z2 = zw()
+        check(t, "align tools: with Zoom, a click zooms the view in and Alt + click zooms out, without touching the photo", z1 > z0 * 1.4 and abs(z2 - z0) < 1 and vals() == vz, (z0, z1, z2))
+        t.page.keyboard.press("v"); time.sleep(0.15)
+        # Ctrl + roda move a foto para cima e para baixo; com Alt junto, para os lados
+        t.page.mouse.move(cx, cy)
+        w0 = vals()
+        t.page.keyboard.down("Control"); t.page.mouse.wheel(0, 30); time.sleep(0.3); w1 = vals()
+        t.page.keyboard.down("Alt"); t.page.mouse.wheel(0, 30); time.sleep(0.3); w2 = vals()
+        t.page.keyboard.up("Alt"); t.page.keyboard.up("Control"); time.sleep(0.5)
+        check(t, "align tools: Ctrl + scroll moves the photo up or down, Ctrl + Alt + scroll sideways", w1[1] != w0[1] and w1[0] == w0[0] and w2[0] != w1[0] and w2[1] == w1[1] and w2[2:] == w0[2:], (w0, w1, w2))
+        # Diminuir de uma vez só além do limite: a foto vai até o limite (não fica parada no tamanho de antes)
+        pick(".align-tool[data-tool=scale]")
+        sx = box["x"] + box["width"] * 0.9
+        t.page.mouse.move(sx, cy); t.page.mouse.down(); t.page.mouse.move(sx + 60, cy, steps=3); t.page.mouse.up(); time.sleep(0.4)
+        big = float(vals()[2])
+        t.page.mouse.move(sx, cy); t.page.mouse.down(); t.page.mouse.move(cx + 3, cy, steps=1)
+        res_cur = t.js("() => getComputedStyle(document.querySelector('.align-stage')).cursor")
+        t.page.mouse.up(); time.sleep(0.4)
+        small = float(vals()[2])
+        t.page.mouse.move(sx, cy); t.page.mouse.down(); t.page.mouse.move(cx + 3, cy, steps=1); t.page.mouse.up(); time.sleep(0.4)
+        again = float(vals()[2])
+        check(t, "align tools: shrinking past the limit in one go stops at the limit, not before", small < big - 5 and abs(again - small) < 0.15, (big, small, again))
+        check(t, "align tools: the cursor stays the resize one while the button is down", res_cur == "nwse-resize", res_cur)
         pick(".align-tool[data-tool=pointer]")
         check(t, "align tools: no page error", len(t.errors) == errors_before, t.errors[errors_before:])
     finally:

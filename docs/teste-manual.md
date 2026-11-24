@@ -2354,6 +2354,11 @@ Em **Export sessions** › sessão com mais de uma foto › **Align photos**.
 - [ ] Cursores: com a seta, em cima da foto aparecem as quatro setas (arrastar move a foto) e fora dela a mão
       (arrastar desloca a vista); movendo a foto o cursor continua sendo as quatro setas; com a ferramenta de
       girar, o mesmo cursor redondo da alça de girar.
+- [ ] Diminuir a foto (alça de canto com a seta, ou a ferramenta de tamanho) vai até o limite, sem parar antes; o
+      cursor não muda enquanto o botão está apertado.
+- [ ] Atalhos: **V** seta, **M** mover a foto, **R** girar, **S** tamanho, **H** mover a vista, **Z** zoom.
+- [ ] Ferramenta de zoom (lupa, a sexta da barra): clique aproxima em volta do ponto; Alt (⌥) + clique afasta.
+- [ ] Ctrl + roda do mouse: a foto sobe e desce; Ctrl + Alt (⌥) + roda: vai para os lados.
 - [ ] A ferramenta e as guias escolhidas continuam ao trocar de foto e ao abrir o app de novo.
 - [ ] Windows: os itens acima.
 

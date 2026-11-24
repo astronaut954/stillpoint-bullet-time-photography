@@ -1686,6 +1686,11 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .align-stage[data-tool="pointer"][data-over="out"] { cursor: grab; }
 .align-stage[data-tool="scale"] { cursor: nwse-resize; }
 .align-stage[data-tool="pan"] { cursor: grab; }
+.align-stage[data-tool="zoom"] { cursor: zoom-in; }
+.align-stage[data-tool="zoom"].alt { cursor: zoom-out; }
+.align-stage[data-tool="zoom"] .align-handle, .align-stage[data-tool="zoom"] .align-rot-handle { cursor: inherit; }
+.align-stage.resizing, .align-stage.resizing * { cursor: nwse-resize !important; }
+.align-stage.resizing[data-resize="nesw"], .align-stage.resizing[data-resize="nesw"] * { cursor: nesw-resize !important; }
 .align-stage[data-tool="move"] .align-handle, .align-stage[data-tool="rotate"] .align-handle, .align-stage[data-tool="scale"] .align-handle, .align-stage[data-tool="pan"] .align-handle,
 .align-stage[data-tool="move"] .align-rot-handle, .align-stage[data-tool="rotate"] .align-rot-handle, .align-stage[data-tool="scale"] .align-rot-handle, .align-stage[data-tool="pan"] .align-rot-handle { cursor: inherit; }
 .align-tools, .align-tools *, .align-tools-grip { cursor: pointer; }

@@ -1509,6 +1509,15 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      quatro setas (não a mão); com a seta, em cima da foto aparece o cursor de mover e fora dela o da mão.
      Consequência do último pedido, para o cursor não mentir: com a seta, arrastar FORA da foto agora desloca a
      vista (antes movia a foto de qualquer lugar). O dono foi avisado; se não quiser, volta.
+     Segundo retorno do dono (2026-11-24, duas gravações) e o que foi feito: (1) diminuir a foto travava antes do
+     limite (um passo que passasse do limite era recusado inteiro): agora vai até o menor tamanho que ainda cobre
+     o canvas; (2) o cursor mudava durante o redimensionar com a seta: fica o de redimensionar enquanto o botão
+     está apertado; (3) atalhos das ferramentas: V seta, M mover a foto, R girar, S tamanho, H mover a vista, Z
+     zoom (letras escolhidas por mim, as do Photoshop onde há igual; o dono pode trocar); (4) ferramenta de zoom
+     nova: clique aproxima 1,5× em volta do ponto, Alt + clique afasta; (5) Ctrl (ou ⌘) + roda move a foto para
+     cima e para baixo; com Alt junto, para os lados. ABERTO: com o espaço segurado, o cursor pisca durante o
+     arrasto (gravação 1). Hipótese não confirmada: no Mac, cada repetição da tecla esconde o cursor até o mouse
+     se mexer; se for isso, o conserto é na parte nativa do Mac.
      Falta: o passo 3 do Align cameras virar este editor (forma B), com Play the sequence.
      (b) Os botões da janela Guided aim subiam e desciam quando o número de instruções mudava: o espaço das
      instruções passou a ser fixo (seis linhas).
