@@ -3016,6 +3016,7 @@
       const d = al.data[camera];
       if (!r || !r.ok || !d) { al.msg = ""; alRender(); toast("The marks could not be read in this photo. Click them again."); return; }
       d.marks = r.marks; d.w = r.width; d.h = r.height; d.found = true; d.tried = true; d.manual = true;
+      d.auto = JSON.parse(JSON.stringify(r.marks)); d.adjusted = false; al.drags = [];
       if (isRef) { al.ref = camera; al.refPlain = r.distinct === false; }
       // Conferir antes de procurar (decisão do dono, 2026-11-23): se os pontos clicados não têm cor própria, a
       // procura nas outras fotos seria lenta e poderia falhar; a pessoa clica de novo ou manda procurar assim mesmo
@@ -3049,7 +3050,9 @@
         d.found = !!r.ok && !!r.marks;
         d.marks = d.found ? r.marks : null;
         d.manual = false;
+        d.auto = d.found ? JSON.parse(JSON.stringify(r.marks)) : null; d.adjusted = false;
       });
+      al.drags = [];
       alSolve();
       alRender();
     });
@@ -3096,7 +3099,8 @@
   // Volta ao começo do passo 2: nenhuma marca, pronto para os três cliques
   function alMarksAgain() {
     al.check = ""; al.ref = ""; al.clicks = null;
-    al.photos.forEach((p) => { const d = al.data[p.camera]; if (d) { d.found = false; d.marks = null; d.tried = false; d.manual = false; d.live = null; } });
+    al.photos.forEach((p) => { const d = al.data[p.camera]; if (d) { d.found = false; d.marks = null; d.tried = false; d.manual = false; d.live = null; d.auto = null; d.adjusted = false; } });
+    al.drags = [];
     al.solved = {}; al.aim = null;
     alRender();
   }
@@ -3444,9 +3448,47 @@
       // Enquanto arrasta, uma folha transparente cobre a janela: o mouse fica sempre sobre ela (mão fechada, sem
       // piscar quando passa por outras partes da tela) e nada é selecionado.
       let panned = false;
+      // Qual ponto está sob o mouse (a até 14 px na tela)? Só quando há marcas achadas e nada em curso
+      const dotAt = (e) => {
+        if (al.busy || al.space || !d.found || !d.marks || (al.clicks && al.clicks.camera === p.camera)) return -1;
+        const r = el.getBoundingClientRect();
+        let best = -1, bestD = 14;
+        d.marks.forEach((m, k) => { const dist = Math.hypot(e.clientX - (r.left + m[0] * r.width), e.clientY - (r.top + m[1] * r.height)); if (dist < bestD) { bestD = dist; best = k; } });
+        return best;
+      };
+      frame.addEventListener("mousemove", (e) => { if (!frame.classList.contains("dot-drag")) frame.classList.toggle("on-dot", dotAt(e) >= 0); });
+      frame.addEventListener("mouseleave", () => frame.classList.remove("on-dot"));
       frame.addEventListener("mousedown", (e) => {
         if (e.button !== 0 || e.target.closest(".al-zbtns")) return;
         e.preventDefault();
+        const k = dotAt(e);
+        if (k >= 0) {
+          // Arrastar um ponto: ele acompanha o mouse (mantendo a distância de onde foi pego) e vale ao soltar
+          const r0 = el.getBoundingClientRect(), from = d.marks[k].slice();
+          const grab = { x: e.clientX - (r0.left + from[0] * r0.width), y: e.clientY - (r0.top + from[1] * r0.height) };
+          const dot = el.querySelectorAll(".al-dot")[k];
+          let to = null;
+          panned = true;  // (o clique que fecha este gesto não é uma marca nova)
+          frame.classList.add("dot-drag");
+          const shield = document.createElement("div");
+          shield.className = "al-shield dot";
+          document.body.appendChild(shield);
+          const move = (ev) => {
+            const r = el.getBoundingClientRect();
+            to = [Math.max(0, Math.min(1, (ev.clientX - grab.x - r.left) / r.width)), Math.max(0, Math.min(1, (ev.clientY - grab.y - r.top) / r.height))];
+            if (dot) { dot.style.left = (to[0] * 100) + "%"; dot.style.top = (to[1] * 100) + "%"; }
+            el.querySelectorAll(".al-seg").forEach((x) => { x.style.visibility = "hidden"; });
+          };
+          const up = () => {
+            window.removeEventListener("mousemove", move); window.removeEventListener("mouseup", up);
+            shield.remove(); frame.classList.remove("dot-drag");
+            setTimeout(() => { panned = false; }, 0);
+            if (to && (Math.abs(to[0] - from[0]) > 1e-6 || Math.abs(to[1] - from[1]) > 1e-6)) alDotMoved(p.camera, k, to, from);
+          };
+          window.addEventListener("mousemove", move);
+          window.addEventListener("mouseup", up);
+          return;
+        }
         const start = { x: e.clientX, y: e.clientY, px: view.px, py: view.py };
         let shield = null;
         const move = (ev) => {
@@ -3548,6 +3590,27 @@
     }
     alRender();
   }
+  // Ajuste fino (decisão do dono, 2026-11-24): cada ponto que o programa achou pode ser arrastado na foto grande. O
+  // ponto fica exatamente onde foi solto (sem encaixe automático) e só a conta daquela câmera muda: a foto de
+  // referência da procura e as outras fotos não são tocadas. "Back to automatic" devolve os pontos achados pelo
+  // programa (ficam guardados em d.auto). Uma procura nova (Fire again, marcar de novo) substitui o ajuste.
+  function alDotMoved(camera, k, to, from) {
+    const d = al.data[camera];
+    if (!d || !d.marks) return;
+    d.marks[k] = [Math.max(0, Math.min(1, to[0])), Math.max(0, Math.min(1, to[1]))];
+    if (from) (al.drags = al.drags || []).push({ camera, k, from });
+    d.adjusted = !d.auto || d.marks.some((m, i) => Math.abs(m[0] - d.auto[i][0]) > 1e-6 || Math.abs(m[1] - d.auto[i][1]) > 1e-6);
+    alSolve();
+    alRender();
+  }
+  function alDotsAuto(camera) {
+    const d = al.data[camera];
+    if (!d || !d.auto) return;
+    d.marks = JSON.parse(JSON.stringify(d.auto)); d.adjusted = false;
+    al.drags = (al.drags || []).filter((x) => x.camera !== camera);
+    alSolve();
+    alRender();
+  }
   // Clique duplo: o primeiro clique dele não vale como marca
   function alDropLastClick() {
     if (!al.lastClick || Date.now() - al.lastClick.t > 600 || !al.clicks || !al.clicks.points.length) return;
@@ -3578,6 +3641,12 @@
       al.clicks.points.pop();
       if (!al.clicks.points.length) al.clicks = null;
       alRender();
+      return;
+    }
+    if (al.drags && al.drags.length) {  // o último ponto arrastado volta para onde estava
+      const g = al.drags.pop();
+      al.sel = g.camera;
+      alDotMoved(g.camera, g.k, g.from, null);
       return;
     }
     const u = al.undo;
@@ -3677,7 +3746,13 @@
           '<span class="al-ord ' + (k < done ? "done" : k === done ? "on" : "") + '"><i>' + (k < done ? "✓" : k + 1) + "</i>" + t + " mark</span>").join("") + "</div>" +
           '<p class="al-hint dim">' + (done < 3 ? "Click the " + ["top", "middle", "bottom"][done] + " mark in the photo." : "Finding the marks") + (done ? " " + (navigator.platform.indexOf("Mac") >= 0 ? "Cmd" : "Ctrl") + "+Z takes back the last click." : "") + '</p><p class="al-hint dim">Scroll to zoom · drag to move · double-click for the whole photo.</p>';
       }
-      else html += '<ul class="in-list">' + alLines(sel.camera).map(([c, t]) => '<li class="' + c + '">' + alEsc(t) + "</li>").join("") + "</ul>";
+      else {
+        html += '<ul class="in-list">' + alLines(sel.camera).map(([c, t]) => '<li class="' + c + '">' + alEsc(t) + "</li>").join("") + "</ul>";
+        // Ajuste fino dos pontos (ao lado da foto)
+        sideHtml = '<div class="al-title">Fine-tune</div><p class="al-hint dim">Drag a point to put it exactly on its mark. Scroll to zoom in first.</p>' +
+          (d.adjusted ? '<span class="cs-tag diff" id="csAlignAdjusted">Adjusted by hand</span><p class="al-hint dim">' + (navigator.platform.indexOf("Mac") >= 0 ? "Cmd" : "Ctrl") + '+Z takes back the last drag.</p>' +
+            '<button type="button" class="btn btn-small btn-secondary" id="csAlignDotsAuto" title="Puts the three points of this photo back where the app found them">Back to automatic</button>' : "");
+      }
       html += "</div>";
       // Guided aim: uma câmera por vez, numa janela própria (pode ir para outro monitor), com a imagem ao vivo
       html += '<button type="button" class="btn btn-small btn-secondary" id="csAlignGuided"' + (al.ref && !al.busy && !al.check ? "" : ' disabled title="Click the three marks in one photo first"') + ">Guided aim</button>";
@@ -3689,6 +3764,7 @@
         under.querySelector("#csAlignCheckGo").addEventListener("click", () => { const cam = al.check; al.check = ""; alFindAll([cam]); });
       }
       side.innerHTML = sideHtml;
+      { const auto = side.querySelector("#csAlignDotsAuto"); if (auto) auto.addEventListener("click", () => alDotsAuto(sel.camera)); }
       row.appendChild(side);
       view.appendChild(row);
       view.appendChild(under);

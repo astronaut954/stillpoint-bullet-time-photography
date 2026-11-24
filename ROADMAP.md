@@ -1562,6 +1562,15 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      Roteiro 5 (resumo do aviso do rig, 12 câmeras simuladas e depois 4): "8 cameras not connected (SL3_3, T7_3,
      SL3_4 and 5 more)": ok. A linha saía duas vezes no Activity, uma em vermelho (o aviso registrava por conta
      própria e o programa registrava de novo): corrigido, fica uma linha só, âmbar.
+     **Feito (2026-11-24): arrastar os pontos achados (ajuste fino), item (i) abaixo.** No passo 2, na foto grande,
+     cada um dos três pontos pode ser arrastado; fica exatamente onde é solto (sem encaixe automático) e só a
+     conta daquela câmera muda. Para não entrar em conflito com a busca automática: a foto de referência da
+     busca e as outras fotos não são tocadas; os pontos achados pelo programa ficam guardados, e "Back to
+     automatic" (ao lado da foto, com a etiqueta "Adjusted by hand") devolve os três; Ctrl+Z desfaz o último
+     arrasto; uma busca nova (Fire again, ou marcar as três de novo) substitui o ajuste. Um clique parado em
+     cima de um ponto não começa uma marcação; fora dos pontos, o clique continua começando. Escolhas minhas,
+     que o dono pode mudar: os textos ("Fine-tune", "Adjusted by hand", "Back to automatic"), a distância de
+     14 px para pegar um ponto, e o ajuste se perder no Fire again. Teste automático: cenário 29.
      **Decisões do dono no meio dos testes (2026-11-24), a fazer DEPOIS dos roteiros:** (i) arrastar os pontos
      que o programa achou, de um jeito que não entre em conflito com a busca automática e que deixe refazer a
      busca; (ii) o botão Align cameras não deve depender do Test shot: protótipos com as posições no Camera

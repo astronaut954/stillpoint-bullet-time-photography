@@ -2570,6 +2570,82 @@ def scenario_align_uneven(t, name, photos):
         t.restart_app()
 
 
+def scenario_align_drag(t, name, photos):
+    line("\n== 29. Align cameras: a found point can be dragged (fine-tune), taken back and put back to automatic")
+    t.dismiss()
+    t.env["STILLPOINT_FAKE_CAMERAS"] = "4"
+    t.env["STILLPOINT_FAKE_PHOTOS"] = "pole"
+    t.env["STILLPOINT_FAKE_FIXED"] = "all"
+    try:
+        t.restart_app()
+        t.dismiss()
+        errors_before = len(t.errors)
+        t.js("() => document.getElementById('camSettingsBtn').click()")
+        time.sleep(1.0)
+        t.js("() => document.getElementById('csTest').click()")
+        t.wait(lambda: t.js("() => document.getElementById('csTestBox').classList.contains('has-photos')"), 30)
+        align_open(t)
+        time.sleep(0.3)
+        t.button("Use the Test shot photos")
+        t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item').length === 4"), 20)
+        t.wait(lambda: t.js("() => { const p = document.querySelector('#csAlignMain .ma-row .al-zoom'); return !!p && p.style.backgroundImage.length > 10; }"), 15)
+        order_dir = os.path.join(t.data, "Order photos")
+        sess = sorted(d for d in os.listdir(order_dir) if not d.startswith("."))[-1]
+        sel = t.js("() => document.querySelector('#csAlignMain .ma-item.sel').dataset.camera")
+        f = [x for x in os.listdir(os.path.join(order_dir, sess)) if "_" + sel + "_IMG_" in x][0]
+        c = _mark_centers(os.path.join(order_dir, sess, f))
+        t.js("() => document.querySelectorAll('.toast').forEach((e) => e.remove())")
+        box = t.page.locator("#csAlignMain .ma-row > .al-photo").bounding_box()
+        for q in c:
+            t.page.mouse.click(box["x"] + q[0] * box["width"], box["y"] + q[1] * box["height"])
+            time.sleep(0.25)
+        ok = t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item.ready, #csAlignMain .ma-item.needs').length === 4 && !/Finding/.test(document.querySelector('#csAlignMain').textContent)"), 60)
+        time.sleep(0.5)
+        # Os pontos da foto grande (em fração da foto) e os das miniaturas das outras câmeras
+        dots = lambda: t.js("() => [...document.querySelectorAll('#csAlignMain .ma-row .al-zoom .al-dot')].map((d) => [parseFloat(d.style.left) / 100, parseFloat(d.style.top) / 100])")
+        others = lambda: t.js("() => [...document.querySelectorAll('#csAlignMain .ma-item:not(.sel) .al-dot')].map((d) => d.style.left + d.style.top).join('|')")
+        side = lambda: t.js("() => { const s = document.querySelector('#csAlignMain .ma-side'); return { text: s ? s.textContent : '', tag: !!document.getElementById('csAlignAdjusted'), auto: !!document.getElementById('csAlignDotsAuto') }; }")
+        lines = lambda: t.js("() => { const l = document.querySelector('#csAlignMain .in-list'); return l ? l.textContent : ''; }")
+        d0 = dots(); o0 = others(); s0 = side(); l0 = lines()
+        check(t, "align drag: with the marks found, the side of the photo says a point can be dragged (no tag yet)", ok and len(d0) == 3 and "Fine-tune" in s0["text"] and "Drag a point" in s0["text"] and not s0["tag"] and not s0["auto"], s0)
+        box = t.page.locator("#csAlignMain .ma-row .al-zoom").bounding_box()
+        px = lambda m: (box["x"] + m[0] * box["width"], box["y"] + m[1] * box["height"])
+        x, y = px(d0[1])
+        t.page.mouse.move(x + 3, y + 2); time.sleep(0.15)
+        cur = t.js("() => getComputedStyle(document.querySelector('#csAlignMain .ma-row .al-frame')).cursor")
+        t.page.mouse.down(); t.page.mouse.move(x + 3 + 40, y + 2 + 10, steps=4); t.page.mouse.up(); time.sleep(0.6)
+        d1 = dots(); s1 = side()
+        t.shot("align-drag")
+        moved = abs((d1[1][0] - d0[1][0]) * box["width"] - 40) < 1.5 and abs((d1[1][1] - d0[1][1]) * box["height"] - 10) < 1.5
+        check(t, "align drag: dragging the middle point moves just that point, exactly by the drag (no snapping), with the move cursor", cur == "move" and moved and d1[0] == d0[0] and d1[2] == d0[2], (cur, d0, d1))
+        check(t, "align drag: the photo is tagged 'Adjusted by hand', with 'Back to automatic', and no new mark was started", s1["tag"] and s1["auto"] and "Click the marks" not in s1["text"], s1)
+        check(t, "align drag: the other photos keep their points and the instructions of this camera change", others() == o0 and lines() != l0, (l0, lines()))
+        can = t.js("() => { const b = [...document.querySelectorAll('#csAlign button')].find((x) => x.textContent.trim() === 'Review alignment'); return !!b && !b.disabled; }")
+        check(t, "align drag: 'Review alignment' stays available", can)
+        t.page.keyboard.press("ControlOrMeta+z"); time.sleep(0.5)
+        d2 = dots()
+        check(t, "align drag: Ctrl+Z takes the drag back (and the tag goes)", d2 == d0 and not side()["tag"], (d0, d2))
+        x, y = px(d0[0])
+        t.page.mouse.move(x, y); t.page.mouse.down(); t.page.mouse.move(x - 25, y + 6, steps=3); t.page.mouse.up(); time.sleep(0.5)
+        x, y = px(d0[2])
+        t.page.mouse.move(x, y); t.page.mouse.down(); t.page.mouse.move(x + 18, y - 4, steps=3); t.page.mouse.up(); time.sleep(0.5)
+        d3 = dots()
+        t.js("() => document.getElementById('csAlignDotsAuto').click()"); time.sleep(0.5)
+        check(t, "align drag: 'Back to automatic' puts the three points back where the app found them", d3[0] != d0[0] and d3[2] != d0[2] and dots() == d0 and not side()["tag"] and lines() == l0, (d0, d3, dots()))
+        # Um clique parado em cima de um ponto não começa uma marcação; um clique fora dos pontos começa
+        x, y = px(d0[1])
+        t.page.mouse.click(x, y); time.sleep(0.5)
+        on_dot = "Click the marks" not in side()["text"]
+        t.page.mouse.click(box["x"] + box["width"] * 0.15, box["y"] + box["height"] * 0.8); time.sleep(0.5)
+        check(t, "align drag: a plain click on a point starts nothing; a click away from the points starts marking again, as before", on_dot and "Click the marks" in side()["text"], side())
+        t.page.keyboard.press("ControlOrMeta+z"); time.sleep(0.4)
+        check(t, "align drag: no page error", len(t.errors) == errors_before, t.errors[errors_before:])
+    finally:
+        for k in ("STILLPOINT_FAKE_PHOTOS", "STILLPOINT_FAKE_FIXED"):
+            t.env.pop(k, None)
+        t.restart_app()
+
+
 def scenario_align_tools(t, name, photos):
     line("\n== 28. Export › Align photos: the tool bar inside the big photo, the center cross and the guides")
     t.dismiss()
@@ -2839,7 +2915,7 @@ def main():
                 only = os.environ.get("STILLPOINT_TEST_ONLY", "")  # para depurar: só os cenários com este nome
                 for sc in [x for x in (scenario_cleared, scenario_delete_edit_undo, scenario_photo_delete_restore,
                            scenario_remove_from_collection, scenario_delete_session, scenario_cancel, scenario_rapid_in_lightroom, scenario_crop_before_lightroom,
-                           scenario_export_edit, scenario_export_trash, scenario_lightroom_crop, scenario_undo_own_item, scenario_orientation, scenario_selection_kept, scenario_align_undo, scenario_flip, scenario_photoshop, scenario_rig_state, scenario_align_marks, scenario_align_cameras, scenario_camera_tags, scenario_guided_aim, scenario_live_many, scenario_custom_drag, scenario_align_gone, scenario_align_uneven, scenario_align_tools) if any(o in x.__name__ for o in only.split(","))]:  # vários, separados por vírgula
+                           scenario_export_edit, scenario_export_trash, scenario_lightroom_crop, scenario_undo_own_item, scenario_orientation, scenario_selection_kept, scenario_align_undo, scenario_flip, scenario_photoshop, scenario_rig_state, scenario_align_marks, scenario_align_cameras, scenario_camera_tags, scenario_guided_aim, scenario_live_many, scenario_custom_drag, scenario_align_gone, scenario_align_uneven, scenario_align_tools, scenario_align_drag) if any(o in x.__name__ for o in only.split(","))]:  # vários, separados por vírgula
                     try:
                         sc(t, name, photos)
                     except Exception:  # noqa: BLE001
