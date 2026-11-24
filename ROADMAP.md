@@ -1485,6 +1485,9 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      da foto grande e se esconder como o Activity na tela cheia (some e volta quando o mouse chega perto), com uma
      indicação de que está ali, e as guias têm de se distinguir das ferramentas. Protótipos (guias A/B/C; barra
      escondida D/E) em https://claude.ai/artifact/EQZuntMLJS7WH3vQwrjB3W, aguardando a escolha.
+     Resposta do dono: guias na mesma barra (forma C), mas não gostou do desenho; barra escondida, não gostou de
+     nenhuma. Variações (guias C1 a C4; escondida H1 a H4) em https://claude.ai/artifact/31cTyv5ew52R1pwdgYV941,
+     aguardando a escolha.
      Proporções misturadas, respostas do dono: a proporção é escolhida uma vez (ele acha que talvez não seja "por
      projeto", porque depende das câmeras e das configurações delas); o app pergunta na primeira vez que as
      câmeras fotografam em proporções diferentes; tem de dar para mudar depois em algum lugar (a definir) e
