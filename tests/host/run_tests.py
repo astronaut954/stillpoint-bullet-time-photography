@@ -2649,6 +2649,11 @@ def scenario_align_tools(t, name, photos):
         check(t, "align tools: the grip has a green glow", "rgb" in t.js("() => getComputedStyle(document.querySelector('.align-tools-grip')).boxShadow"))
         # Pointer: em cima da foto, o cursor de mover (e arrastar move a foto); fora dela, o de deslocar a vista
         cur = lambda: t.js("() => { const s = document.querySelector('.align-stage'); return [s.dataset.over, getComputedStyle(s).cursor]; }")
+        # (a foto precisa de folga para poder sair do lugar: a 100% a trava da área útil recusa o movimento)
+        pick(".align-tool[data-tool=scale]")
+        sx = box["x"] + box["width"] * 0.9
+        t.page.mouse.move(sx, cy); t.page.mouse.down(); t.page.mouse.move(sx + 8, cy, steps=3); t.page.mouse.up(); time.sleep(0.5)
+        pick(".align-tool[data-tool=pointer]")
         t.page.mouse.move(cx, cy); time.sleep(0.2)
         c_in = cur(); va = vals()
         drag(10, 6)
