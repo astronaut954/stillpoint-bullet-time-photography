@@ -3606,10 +3606,9 @@
     w.className = "ma";
     const list = document.createElement("div");
     list.className = "ma-list";
-    const order = al.photos.slice().sort((a, b) => {
-      const fa = alLines(a.camera).filter(([c]) => c === "fix").length, fb = alLines(b.camera).filter(([c]) => c === "fix").length;
-      return fb - fa || a.order - b.order;
-    });
+    // A lista fica sempre na ordem do rig. Antes vinham primeiro as câmeras com mais ajustes a fazer, e com o Live aim
+    // a lista se reordenava sozinha enquanto a pessoa mexia na câmera (retorno do dono, 2026-11-24)
+    const order = al.photos.slice().sort((a, b) => a.order - b.order);
     const marked = al.photos.some((p) => (al.data[p.camera] || {}).tried);
     (marked ? order : al.photos).forEach((p) => {
       // Abaixo do nome: a situação numa etiqueta (âmbar = falta algo; verde = pronta) e o primeiro ajuste

@@ -74,3 +74,6 @@
   .ga-main { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; gap: 14px; }
   .ga-side .ga-btns { margin-top: 12px; }
 }
+
+/* Bolinha do "Live aim on": vermelha, com um contorno escuro fino para se ler em cima do botão verde */
+.ga-rec { color: #ff2d2d; text-shadow: 0 0 1px rgba(0, 0, 0, .9); }

@@ -1546,6 +1546,10 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      connected, Save without it, volta ao normal): ok. Correções do cursor no Mac (pisca com o espaço e sumiço
      nos atalhos): ok. Faltam os roteiros 3 (Review alignment depois do Fire again), 4 (marcas desiguais) e 5
      (resumo do aviso do rig, com câmeras simuladas), e tudo no Windows.
+     Roteiro 3 (Review alignment bloqueia com a câmera mexida e libera depois do Fire again; o Live aim volta
+     sozinho): ok. Dois pedidos do dono nesse roteiro, feitos: a bolinha do "● Live aim on" é vermelha; a lista
+     de câmeras do passo 2 fica sempre na ordem do rig (antes vinham primeiro as com mais ajustes, e com o Live
+     aim a lista se reordenava enquanto ele mexia na câmera).
      **Decisões do dono no meio dos testes (2026-11-24), a fazer DEPOIS dos roteiros:** (i) arrastar os pontos
      que o programa achou, de um jeito que não entre em conflito com a busca automática e que deixe refazer a
      busca; (ii) o botão Align cameras não deve depender do Test shot: protótipos com as posições no Camera
