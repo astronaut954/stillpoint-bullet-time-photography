@@ -457,7 +457,7 @@
     // Janela Match automatically (passos 1 e 3): desfaz as escolhas feitas nela (caixas e valores)
     if (typeof csMatchHistoryActive === "function" && csMatchHistoryActive()) { if (e.key === "y" || e.shiftKey) csMatchRedo(); else csMatchUndo(); return; }
     // Align cameras, passo 2: desfaz o último clique de marca (ou a marcação que acabou de ser feita)
-    if (typeof alUndoActive === "function" && alUndoActive()) { if (!(e.key === "y" || e.shiftKey)) alUndo(); return; }
+    if (typeof alUndoActive === "function" && alUndoActive()) { if (e.key === "y" || e.shiftKey) alRedo(); else alUndo(); return; }
     if (e.key === "y" || e.shiftKey) doRedo(); else doUndo();
   }, true);
 
@@ -3016,7 +3016,7 @@
       const d = al.data[camera];
       if (!r || !r.ok || !d) { al.msg = ""; alRender(); toast("The marks could not be read in this photo. Click them again."); return; }
       d.marks = r.marks; d.w = r.width; d.h = r.height; d.found = true; d.tried = true; d.manual = true;
-      d.auto = JSON.parse(JSON.stringify(r.marks)); d.adjusted = false; al.drags = [];
+      d.auto = JSON.parse(JSON.stringify(r.marks)); d.adjusted = false; al.drags = []; al.redos = [];
       if (isRef) { al.ref = camera; al.refPlain = r.distinct === false; }
       // Conferir antes de procurar (decisão do dono, 2026-11-23): se os pontos clicados não têm cor própria, a
       // procura nas outras fotos seria lenta e poderia falhar; a pessoa clica de novo ou manda procurar assim mesmo
@@ -3543,10 +3543,17 @@
   document.addEventListener("keydown", (e) => {
     if (e.key !== " " || !alUndoActive() || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
     e.preventDefault();
-    if (!al.space) { al.space = true; $("csAlignMain").classList.add("space-pan"); }
+    if (!al.space) alSpace(true);
   }, true);
-  document.addEventListener("keyup", (e) => { if (e.key === " " && al.space) { al.space = false; $("csAlignMain").classList.remove("space-pan"); } }, true);
-  window.addEventListener("blur", () => { if (al.space) { al.space = false; $("csAlignMain").classList.remove("space-pan"); } });
+  // (Mac: as repetições da tecla segurada escondiam o cursor e ele piscava durante o arrasto; o mesmo conserto do
+  // Align photos: o programa engole as repetições e pede o cursor de volta)
+  function alSpace(on) {
+    al.space = on; $("csAlignMain").classList.toggle("space-pan", on);
+    if (typeof window.spaceHold === "function") window.spaceHold(on ? "1" : "0");
+    if (on && typeof window.cursorShow === "function") { window.cursorShow(); [30, 90, 200].forEach((ms) => setTimeout(() => window.cursorShow(), ms)); }
+  }
+  document.addEventListener("keyup", (e) => { if (e.key === " " && al.space) alSpace(false); }, true);
+  window.addEventListener("blur", () => { if (al.space) alSpace(false); });
   // A linha da haste: posta depois que a foto tem tamanho na tela
   function alPlaceLines(root) {
     // A foto grande no tamanho que cabe (largura até 640 px e altura do que sobra), sem deformar
@@ -3598,16 +3605,26 @@
     const d = al.data[camera];
     if (!d || !d.marks) return;
     d.marks[k] = [Math.max(0, Math.min(1, to[0])), Math.max(0, Math.min(1, to[1]))];
-    if (from) (al.drags = al.drags || []).push({ camera, k, from });
+    if (from) { (al.drags = al.drags || []).push({ camera, k, from }); al.redos = []; }
     d.adjusted = !d.auto || d.marks.some((m, i) => Math.abs(m[0] - d.auto[i][0]) > 1e-6 || Math.abs(m[1] - d.auto[i][1]) > 1e-6);
     alSolve();
     alRender();
+  }
+  // Refazer (Ctrl+Shift+Z ou Ctrl+Y): o último arrasto desfeito volta
+  function alRedo() {
+    if (al.busy || al.firing || !al.redos || !al.redos.length) return;
+    const g = al.redos.pop(), d = al.data[g.camera];
+    if (!d || !d.marks) return;
+    al.sel = g.camera;
+    const from = d.marks[g.k].slice();
+    (al.drags = al.drags || []).push({ camera: g.camera, k: g.k, from });
+    alDotMoved(g.camera, g.k, g.to, null);
   }
   function alDotsAuto(camera) {
     const d = al.data[camera];
     if (!d || !d.auto) return;
     d.marks = JSON.parse(JSON.stringify(d.auto)); d.adjusted = false;
-    al.drags = (al.drags || []).filter((x) => x.camera !== camera);
+    al.drags = (al.drags || []).filter((x) => x.camera !== camera); al.redos = [];
     alSolve();
     alRender();
   }
@@ -3646,6 +3663,7 @@
     if (al.drags && al.drags.length) {  // o último ponto arrastado volta para onde estava
       const g = al.drags.pop();
       al.sel = g.camera;
+      (al.redos = al.redos || []).push({ camera: g.camera, k: g.k, to: al.data[g.camera].marks[g.k].slice() });
       alDotMoved(g.camera, g.k, g.from, null);
       return;
     }
@@ -3750,7 +3768,7 @@
         html += '<ul class="in-list">' + alLines(sel.camera).map(([c, t]) => '<li class="' + c + '">' + alEsc(t) + "</li>").join("") + "</ul>";
         // Ajuste fino dos pontos (ao lado da foto)
         sideHtml = '<div class="al-title">Fine-tune</div><p class="al-hint dim">Drag a point to put it exactly on its mark. Scroll to zoom in first.</p>' +
-          (d.adjusted ? '<span class="cs-tag diff" id="csAlignAdjusted">Adjusted by hand</span><p class="al-hint dim">' + (navigator.platform.indexOf("Mac") >= 0 ? "Cmd" : "Ctrl") + '+Z takes back the last drag.</p>' +
+          (d.adjusted ? '<span class="cs-tag diff" id="csAlignAdjusted">Adjusted by hand</span><p class="al-hint dim">' + (navigator.platform.indexOf("Mac") >= 0 ? "Cmd" : "Ctrl") + '+Z takes back the last drag, ' + (navigator.platform.indexOf("Mac") >= 0 ? "Shift+Cmd" : "Shift+Ctrl") + '+Z redoes it.</p>' +
             '<button type="button" class="btn btn-small btn-secondary" id="csAlignDotsAuto" title="Puts the three points of this photo back where the app found them">Back to automatic</button>' : "");
       }
       html += "</div>";
