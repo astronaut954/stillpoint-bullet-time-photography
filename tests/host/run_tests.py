@@ -37,6 +37,14 @@ def line(text):
     print(text, flush=True)
 
 
+def align_open(t):
+    """Clica em "Align cameras" no Test shot; com alinhamento guardado, confirma na janela de aviso."""
+    t.js("() => document.getElementById('csAlignBtn').click()")
+    time.sleep(0.3)
+    t.js("() => { const o = document.getElementById('dialogOverlay'); if (o.classList.contains('hidden')) return; const b = [...o.querySelectorAll('button')].find((x) => x.textContent.trim() === 'Align cameras'); if (b) b.click(); }")
+    time.sleep(0.2)
+
+
 class T:
     """Tudo de uma rodada: pastas, o app, o Lightroom de mentira e a página."""
 
@@ -1944,10 +1952,19 @@ def scenario_align_cameras(t, name, photos):
         al = rig.get("alignment") or {}
         check(t, "align: the alignment is saved with the project (stillpoint-rig.json), one entry per camera, by serial number",
               len(al.get("cameras", [])) == 4 and all(c.get("serial") and len(c.get("marks", [])) == 3 for c in al["cameras"]), al.get("cameras"))
-        check(t, "align: back in the Test shot, 'Cameras aligned · date' and 'Align again'",
-              t.js("() => !document.querySelector('.cs-sheet').classList.contains('aligning') && /^Cameras aligned · /.test(document.querySelector('#csGallery .al-saved').textContent) && document.getElementById('csAlignBtn').textContent === 'Align again'"))
-        # Align again › Fire › Fire again: as marcas são achadas sozinhas (pela foto de referência guardada)
-        t.button("Align again")
+        check(t, "align: back in the Test shot, 'Cameras aligned · date', and the button is still 'Align cameras'",
+              t.js("() => !document.querySelector('.cs-sheet').classList.contains('aligning') && /^Cameras aligned · /.test(document.querySelector('#csGallery .al-saved').textContent) && document.getElementById('csAlignBtn').textContent === 'Align cameras'"))
+        # Com alinhamento guardado, o botão abre antes uma janela de aviso (pedido do dono, 2026-11-24)
+        t.js("() => document.getElementById('csAlignBtn').click()")
+        time.sleep(0.4)
+        d = t.js("() => { const o = document.getElementById('dialogOverlay'); return { open: !o.classList.contains('hidden'), text: o.textContent, btns: [...o.querySelectorAll('button')].map((b) => b.textContent.trim()), aligning: document.querySelector('.cs-sheet').classList.contains('aligning') }; }")
+        check(t, "align: with a saved alignment, a window warns before opening (date, 'replaces that one when you save', Cancel / Align cameras)",
+              d["open"] and not d["aligning"] and "This project already has an alignment" in d["text"] and "The cameras were aligned on " in d["text"] and "replaces that one when you save" in d["text"] and d["btns"] == ["Cancel", "Align cameras"], d)
+        t.js("() => [...document.querySelectorAll('#dialogOverlay button')].find((b) => b.textContent.trim() === 'Cancel').click()")
+        time.sleep(0.3)
+        check(t, "align: Cancel in that window leaves everything as it was", t.js("() => document.getElementById('dialogOverlay').classList.contains('hidden') && !document.querySelector('.cs-sheet').classList.contains('aligning')"))
+        # Align cameras (na janela) › Fire › Fire again: as marcas são achadas sozinhas (pela foto de referência guardada)
+        align_open(t)
         t.button("Fire")
         t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item').length === 4"), 30)
         check(t, "align: a new alignment starts without marks (click them again)", t.wait(lambda: t.js("() => /Click the three marks/.test(document.getElementById('csAlignMain').textContent)"), 10))
@@ -2106,7 +2123,7 @@ def scenario_guided_aim(t, name, photos):
         time.sleep(1.0)
         t.js("() => document.getElementById('csTest').click()")
         t.wait(lambda: t.js("() => document.getElementById('csTestBox').classList.contains('has-photos')"), 30)
-        t.js("() => document.getElementById('csAlignBtn').click()")  # "Align cameras" ou, com alinhamento guardado, "Align again"
+        align_open(t)  # "Align cameras" ou, com alinhamento guardado, "Align again"
         time.sleep(0.3)
         t.button("Use the Test shot photos")
         t.wait(lambda: t.js("() => document.querySelector('#csAlignStep2').classList.contains('on') && document.querySelectorAll('#csAlignMain .ma-item').length === 4"), 20)
@@ -2439,7 +2456,7 @@ def scenario_align_gone(t, name, photos):
         time.sleep(1.0)
         t.js("() => document.getElementById('csTest').click()")
         t.wait(lambda: t.js("() => document.getElementById('csTestBox').classList.contains('has-photos')"), 30)
-        t.js("() => document.getElementById('csAlignBtn').click()")
+        align_open(t)
         time.sleep(0.3)
         t.button("Use the Test shot photos")
         t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item').length === 4"), 20)

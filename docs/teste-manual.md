@@ -2138,7 +2138,8 @@ Project.
 - [x] Na lista, abaixo de "Camera NN": etiqueta âmbar ("2 changes", "Marks not found") ou verde ("Ready") e o
       primeiro ajuste.
 - [x] **Review alignment**: passo **3 Save** com as quatro fotos alinhadas (as três bolas sobre a cruz) e os valores
-      Move, Rotate, Size; **Save alignment** volta ao Test shot com "Cameras aligned · data" e **Align again**.
+      Move, Rotate, Size; **Save alignment** volta ao Test shot com "Cameras aligned · data"; o botão continua **Align cameras** e,
+      com alinhamento guardado, abre antes a janela "This project already has an alignment" (**Cancel** / **Align cameras**).
 - [x] Fechar e abrir o app com o mesmo Project: **Camera settings** › **Test shot** mostra "Cameras aligned · data".
 - [x] **Cancel** em qualquer passo volta ao Test shot sem mudar o alinhamento guardado.
 - [ ] Windows: os itens acima.
@@ -2168,12 +2169,12 @@ STILLPOINT_FAKE_FOCAL=35` (o `STILLPOINT_FAKE_FOCAL` faz as fotos simuladas dize
 
 - [x] Sem mudar nada: **Camera settings** › **Test shot** mostra "Cameras aligned · data", sem aviso.
 - [x] Abrir com `STILLPOINT_FAKE_FOCAL=35,35,50,35` (a câmera 03 mudou o zoom) › **Test shot**: aviso âmbar com moldura
-      "Align again · SL3_2 zoom changed" e o botão **Align again** com moldura.
+      "Align again · SL3_2 zoom changed" e o botão **Align cameras** com moldura.
 - [x] Com esse aviso, **It's bullet time** e **Export sessions** › a sessão nova › **Align photos**: as outras três
       fotos vêm alinhadas e a da câmera 03 vem sem alinhamento.
 - [ ] Abrir com `STILLPOINT_FAKE_CAMERAS=5` › **Test shot**: "Align again · 1 new camera".
 - [x] Abrir com `STILLPOINT_FAKE_CAMERAS=3` › **Test shot**: "Align again · T7_2 not connected".
-- [ ] **Align again** › alinhar e salvar: o aviso some e volta "Cameras aligned · data".
+- [ ] **Align cameras** (e **Align cameras** na janela de aviso) › alinhar e salvar: o aviso some e volta "Cameras aligned · data".
 - [ ] Windows: os itens acima.
 
 ## 50. Camera settings com avisos numa câmera (2026-11-22)
@@ -2302,7 +2303,7 @@ settings** › **Test shot** › **Align cameras**, marcar as três marcas numa 
 - [ ] **Review alignment**: na grade ela aparece como **Not connected** / "No alignment"; o aviso âmbar diz qual é
       e o que acontece; o botão é **Save without it**.
 - [ ] **Save without it**: salva; a Activity diz qual câmera ficou sem alinhamento.
-- [ ] Ligar a câmera de volta, **Align again** e **Fire**: ela volta ao normal e o botão é **Save alignment**.
+- [ ] Ligar a câmera de volta, **Align cameras** (confirmar na janela de aviso) e **Fire**: ela volta ao normal e o botão é **Save alignment**.
 - [ ] Windows: os itens acima.
 
 ## 56. Live aim com câmeras Canon de verdade (parte 6b, 2026-11-23)

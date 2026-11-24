@@ -1453,6 +1453,13 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      haste, e a altura não é estimada. Com haste de marcas iguais nada muda (testes da haste simulada passam, mais
      4 novos). Sem aviso na tela de que as marcas são desiguais (pendência para o dono). Rolagem de lado na coluna
      de sessões do Align photos do Export: corrigida (CSS).
+     **Pedido do dono (2026-11-24): o botão do Test shot é sempre "Align cameras"** (antes virava "Align again"
+     com alinhamento guardado). Com alinhamento já guardado no projeto, uma janela avisa antes de abrir: "This
+     project already has an alignment", com a data, o que mudou nas câmeras desde então (se mudou) e "Cancel" /
+     "Align cameras" (`alAskOpen`). A nota ao lado do botão ("Cameras aligned · data" ou "Align again · o que
+     mudou") não foi mexida. Teste automático no cenário do Align cameras.
+     Aviso de marcas a distâncias desiguais: protótipo (formas A e B) em
+     https://claude.ai/artifact/NGyWUTCHV74amd7xaeZFHG, aguardando a escolha.
      (b) Os botões da janela Guided aim subiam e desciam quando o número de instruções mudava: o espaço das
      instruções passou a ser fixo (seis linhas).
      (c) "Camera 03 / Camera 04 · Not connected" apareciam sem nunca terem sido ligadas: vinham do alinhamento

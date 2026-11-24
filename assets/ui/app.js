@@ -2766,10 +2766,22 @@
     const m = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][d.getMonth()];
     return m + " " + d.getDate() + ", " + String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
   }
-  // As ações do Test shot: "Align cameras", ou, com alinhamento guardado, "Cameras aligned · data" e "Align again"
+  // As ações do Test shot: "Align cameras" e, com alinhamento guardado, a nota "Cameras aligned · data"
   const alNote = document.createElement("span");
   alNote.className = "ts-note al-saved hidden";
-  const alEntryBtn = button("Align cameras", () => alOpen(), { kind: "btn-secondary btn-small" });
+  // O botão é sempre "Align cameras". Com um alinhamento já guardado no projeto, uma janela avisa antes de abrir
+  // (pedido do dono, 2026-11-24; antes o botão virava "Align again" e abria direto)
+  function alAskOpen() {
+    const sv = al.saved;
+    if (!sv || !sv.savedAt) { alOpen(); return; }
+    const changes = alChanges();
+    dialog("This project already has an alignment",
+      "The cameras were aligned on " + alWhen(sv.savedAt) + ". " +
+      (changes.length ? "Since then: " + changes.join(" · ") + ". " : "") +
+      "If you align again, the new alignment replaces that one when you save it. Until you save, nothing changes.",
+      [{ label: "Cancel" }, { label: "Align cameras", primary: true, onClick: () => alOpen() }]);
+  }
+  const alEntryBtn = button("Align cameras", () => alAskOpen(), { kind: "btn-secondary btn-small" });
   alEntryBtn.id = "csAlignBtn";
   // Parte 5: o que mudou nas câmeras desde o alinhamento (o programa confere: câmera que saiu, mudou de posição,
   // mudou o zoom, ou câmera nova). Com mudança, o aviso fica âmbar e pede para alinhar de novo.
@@ -2789,7 +2801,7 @@
     alNote.classList.toggle("hidden", !saved);
     alNote.classList.toggle("warn", changes.length > 0);
     alNote.title = changes.length ? "The cameras changed since the alignment of " + alWhen(al.saved.savedAt) + ". Those that changed get no automatic alignment until you align again; the others stay aligned." : "";
-    alEntryBtn.textContent = saved ? "Align again" : "Align cameras";
+    alEntryBtn.textContent = "Align cameras";
     alEntryBtn.className = "btn btn-small " + (saved && !changes.length ? "btn-link" : "btn-secondary");
   }
   // Depois de um Test shot: o programa lê o zoom das fotos novas e diz se o alinhamento ainda vale
