@@ -1541,6 +1541,17 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      vez que se entra no Align photos (a ferramenta deixou de ser guardada; as guias continuam guardadas). A seta
      cheia do Select ficou sem contorno e um pouco menor, para parecer do mesmo tamanho da vazada.
      Falta: o passo 3 do Align cameras virar este editor (forma B), com Play the sequence.
+     **Testes com câmeras de verdade (2026-11-24, Mac, SL3 + T7 + T5), feitos pelo dono:** roteiro 1 (janela "This
+     project already has an alignment" e botão sempre Align cameras): ok. Roteiro 2 (câmera faltando: Not
+     connected, Save without it, volta ao normal): ok. Correções do cursor no Mac (pisca com o espaço e sumiço
+     nos atalhos): ok. Faltam os roteiros 3 (Review alignment depois do Fire again), 4 (marcas desiguais) e 5
+     (resumo do aviso do rig, com câmeras simuladas), e tudo no Windows.
+     **Decisões do dono no meio dos testes (2026-11-24), a fazer DEPOIS dos roteiros:** (i) arrastar os pontos
+     que o programa achou, de um jeito que não entre em conflito com a busca automática e que deixe refazer a
+     busca; (ii) o botão Align cameras não deve depender do Test shot: protótipos com as posições no Camera
+     settings; (iii) câmeras desligadas no meio do Align cameras (gravação: passo 2 abre vazio, sem explicação,
+     por "Use the Test shot photos" sem câmera ligada; o aviso do rig cobre os botões de baixo): protótipos.
+     Depois disso volta-se ao passo 3 do Align cameras como editor.
      (b) Os botões da janela Guided aim subiam e desciam quando o número de instruções mudava: o espaço das
      instruções passou a ser fixo (seis linhas).
      (c) "Camera 03 / Camera 04 · Not connected" apareciam sem nunca terem sido ligadas: vinham do alinhamento
