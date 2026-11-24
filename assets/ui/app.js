@@ -6014,7 +6014,9 @@
       };
       inp.addEventListener("change", typed);
       // Clicar na caixa seleciona o número inteiro (digitar já substitui); Esc desiste do que foi digitado
-      inp.addEventListener("focus", () => setTimeout(() => { if (document.activeElement === inp) inp.select(); }, 0));
+      // (na hora, sem esperar: selecionar depois de um instante apagava o que já tivesse sido digitado)
+      inp.addEventListener("pointerdown", (e) => { if (document.activeElement !== inp && e.button === 0) { e.preventDefault(); inp.focus(); inp.select(); } });
+      inp.addEventListener("focus", () => inp.select());
       inp.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); inp.value = get().toFixed(decimals); inp.blur(); } });
       // ⌘Z / ⇧⌘Z com o cursor nesta caixa: desfaz e refaz o ajuste da foto, como fora dela (decisão do dono, 2026-11-11;
       // nos outros campos de texto o desfazer é o do texto). Com um número digitado e ainda não confirmado, o primeiro

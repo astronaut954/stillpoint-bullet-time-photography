@@ -2728,6 +2728,7 @@ def scenario_align_tools(t, name, photos):
             f = t.page.locator(".align-panel .align-ctl input").nth(i); f.click(); t.page.keyboard.press("ControlOrMeta+a"); t.page.keyboard.press("Backspace")
             if text: t.page.keyboard.type(text)
             shown = f.input_value(); t.page.keyboard.press("Enter"); time.sleep(0.4); return shown
+        field(3, "-0,001")  # (a caixa passa a mostrar "-0.00": o caso que já enganou a limpeza)
         typed = field(3, "a1x,5..2-")
         after = vals()[3]
         check(t, "align tools: the number boxes take only digits and one comma or dot", typed == "1,52" and abs(float(after) - 1.52) < 0.011, (typed, after))
