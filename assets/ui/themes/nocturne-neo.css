@@ -2383,6 +2383,11 @@ body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform:
 .align-keeps.warn { color: var(--noct-pending, #f0a020); border: 1px solid currentColor; padding: 3px 7px; }
 .sv ~ .al-warn { max-width: none; }
 .sv:has(~ #csAlignGone) { max-height: calc(100% - 118px); }  /* com o aviso de câmera não conectada, a grade cede a altura dele */
+/* Aviso de marcas a distâncias desiguais: faixa no alto do passo 2 e antes do resumo no passo 3 */
+.al-warn.al-uneven { max-width: none; margin: 0 0 14px; }
+.sv ~ .al-warn.al-uneven { margin: 10px 0 0; }
+.sv:has(~ #csAlignUneven) { max-height: calc(100% - 112px); }
+.sv:has(~ #csAlignUneven):has(~ #csAlignGone) { max-height: calc(100% - 180px); }
 .al-objs-3 { grid-template-columns: repeat(3, 1fr); }
 .al-bands { display: flex; align-items: center; gap: 14px; margin-top: 12px; border: 1px solid var(--noct-border); padding: 10px 12px; }
 .al-bands span { flex: 1; font: 400 13px/1.45 var(--noct-font-sans); color: var(--noct-text); }

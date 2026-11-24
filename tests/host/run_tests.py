@@ -10,6 +10,7 @@ Relatório em build/host-test/report.txt (e capturas de tela de cada falha ao la
 """
 from PIL import Image
 import json
+import re
 import os
 import shutil
 import subprocess
@@ -2474,6 +2475,7 @@ def scenario_align_gone(t, name, photos):
             time.sleep(0.25)
         ok = t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item.ready, #csAlignMain .ma-item.needs').length === 4 && !/Finding/.test(document.querySelector('#csAlignMain').textContent)"), 60)
         check(t, "align gone: the marks clicked in one photo are found in the four", ok)
+        check(t, "align, evenly spaced marks: no note about uneven marks", t.js("() => !document.getElementById('csAlignUneven')"))
         check(t, "align, all connected: no camera is shown as not connected", t.js("() => document.querySelectorAll('#csAlignMain .ma-item.gone').length") == 0)
         names = t.js("() => [...document.querySelectorAll('#csAlignMain .ma-item')].map(i => [i.querySelector('.al-num').textContent, i.dataset.camera]).sort().map(x => x[1])")
         # (não a câmera da foto onde as marcas foram clicadas: esse caso não está coberto aqui)
@@ -2509,6 +2511,58 @@ def scenario_align_gone(t, name, photos):
     finally:
         if gone:
             t.js("(n) => window.fakeUnplug(n, '0')", gone)
+        t.js("() => { const c = [...document.querySelectorAll('#csAlign button')].find((b) => b.textContent.trim() === 'Cancel'); if (c && !document.getElementById('csAlign').classList.contains('hidden')) c.click(); }")
+        t.env.pop("STILLPOINT_FAKE_FIXED", None)
+        t.restart_app()
+
+
+def scenario_align_uneven(t, name, photos):
+    line("\n== 27. Align cameras: marks that are not evenly spaced get an amber note (and the alignment still works)")
+    t.dismiss()
+    t.env["STILLPOINT_FAKE_CAMERAS"] = "4"
+    t.env["STILLPOINT_FAKE_PHOTOS"] = "pole"
+    t.env["STILLPOINT_FAKE_FIXED"] = "all"
+    try:
+        t.restart_app()
+        t.dismiss()
+        errors_before = len(t.errors)
+        t.js("() => document.getElementById('camSettingsBtn').click()")
+        time.sleep(1.0)
+        t.js("() => document.getElementById('csTest').click()")
+        t.wait(lambda: t.js("() => document.getElementById('csTestBox').classList.contains('has-photos')"), 30)
+        align_open(t)
+        time.sleep(0.3)
+        t.button("Use the Test shot photos")
+        t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item').length === 4"), 20)
+        t.wait(lambda: t.js("() => { const p = document.querySelector('#csAlignMain .ma-row .al-zoom'); return !!p && p.style.backgroundImage.length > 10; }"), 15)
+        order_dir = os.path.join(t.data, "Order photos")
+        sess = sorted(d for d in os.listdir(order_dir) if not d.startswith("."))[-1]
+        sel = t.js("() => document.querySelector('#csAlignMain .ma-item.sel').dataset.camera")
+        f = [x for x in os.listdir(os.path.join(order_dir, sess)) if "_" + sel + "_IMG_" in x][0]
+        c = _mark_centers(os.path.join(order_dir, sess, f))
+        # A terceira "marca" é um ponto da haste abaixo da marca azul: a do meio deixa de estar no meio
+        low = (c[2][0] + (c[2][0] - c[1][0]) * 0.55, c[2][1] + (c[2][1] - c[1][1]) * 0.55)
+        t.js("() => document.querySelectorAll('.toast').forEach((e) => e.remove())")
+        box = t.page.locator("#csAlignMain .ma-row > .al-photo").bounding_box()
+        for q in (c[0], c[1], low):
+            t.page.mouse.click(box["x"] + q[0] * box["width"], box["y"] + q[1] * box["height"])
+            time.sleep(0.25)
+        ok = t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item.ready, #csAlignMain .ma-item.needs').length === 4 && !/Finding/.test(document.querySelector('#csAlignMain').textContent)"), 60)
+        time.sleep(0.5)
+        d = t.js("() => { const w = document.getElementById('csAlignUneven'); return { text: w ? w.textContent : '', first: w ? w === document.getElementById('csAlignMain').firstElementChild : false, found: document.querySelectorAll('#csAlignMain .ma-item .cs-tag').length }; }")
+        pct = int((re.search(r"at (\d+)% of the way", d["text"]) or [0, 0])[1])
+        check(t, "align, uneven marks: an amber note on top of step 2 says where the middle mark is and what the app does about it",
+              ok and d["first"] and "Marks not evenly spaced." in d["text"] and 28 <= pct <= 44 and "matched by the length of the pole" in d["text"] and "height of each camera is not estimated" in d["text"] and "use three marks at equal distances" in d["text"], d)
+        lines = t.js("() => document.querySelector('#csAlignMain .in-list') ? document.querySelector('#csAlignMain .in-list').textContent : document.querySelector('#csAlignMain').textContent")
+        check(t, "align, uneven marks: no instruction about the height of the camera", "igher than" not in lines and "ower than" not in lines, lines[-300:])
+        can = t.js("() => { const b = [...document.querySelectorAll('#csAlign button')].find((x) => x.textContent.trim() === 'Review alignment'); return !!b && !b.disabled; }")
+        check(t, "align, uneven marks: the note does not block 'Review alignment'", can)
+        t.button("Review alignment")
+        t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .sv-cell').length") == 4, 5)
+        d = t.js("() => { const w = document.getElementById('csAlignUneven'), sv = document.querySelector('#csAlignMain .sv'), foot = [...document.querySelectorAll('#csAlign button')].find((x) => x.textContent.trim() === 'Save alignment'); return { text: w ? w.textContent : '', after: !!w && !!(sv.compareDocumentPosition(w) & 4), save: !!foot && !foot.disabled, fits: w ? w.getBoundingClientRect().bottom <= document.getElementById('csAlignMain').getBoundingClientRect().bottom + 1 : false }; }")
+        check(t, "align, uneven marks: the same note before saving, under the photos, and 'Save alignment' still works", "Marks not evenly spaced." in d["text"] and "use three marks" not in d["text"] and d["after"] and d["save"] and d["fits"], d)
+        check(t, "align uneven: no page error", len(t.errors) == errors_before, t.errors[errors_before:])
+    finally:
         t.js("() => { const c = [...document.querySelectorAll('#csAlign button')].find((b) => b.textContent.trim() === 'Cancel'); if (c && !document.getElementById('csAlign').classList.contains('hidden')) c.click(); }")
         t.env.pop("STILLPOINT_FAKE_FIXED", None)
         t.restart_app()
@@ -2593,7 +2647,7 @@ def main():
                 only = os.environ.get("STILLPOINT_TEST_ONLY", "")  # para depurar: só os cenários com este nome
                 for sc in [x for x in (scenario_cleared, scenario_delete_edit_undo, scenario_photo_delete_restore,
                            scenario_remove_from_collection, scenario_delete_session, scenario_cancel, scenario_rapid_in_lightroom, scenario_crop_before_lightroom,
-                           scenario_export_edit, scenario_export_trash, scenario_lightroom_crop, scenario_undo_own_item, scenario_orientation, scenario_selection_kept, scenario_align_undo, scenario_flip, scenario_photoshop, scenario_rig_state, scenario_align_marks, scenario_align_cameras, scenario_camera_tags, scenario_guided_aim, scenario_live_many, scenario_custom_drag, scenario_align_gone) if any(o in x.__name__ for o in only.split(","))]:  # vários, separados por vírgula
+                           scenario_export_edit, scenario_export_trash, scenario_lightroom_crop, scenario_undo_own_item, scenario_orientation, scenario_selection_kept, scenario_align_undo, scenario_flip, scenario_photoshop, scenario_rig_state, scenario_align_marks, scenario_align_cameras, scenario_camera_tags, scenario_guided_aim, scenario_live_many, scenario_custom_drag, scenario_align_gone, scenario_align_uneven) if any(o in x.__name__ for o in only.split(","))]:  # vários, separados por vírgula
                     try:
                         sc(t, name, photos)
                     except Exception:  # noqa: BLE001

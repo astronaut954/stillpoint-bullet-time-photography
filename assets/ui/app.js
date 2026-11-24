@@ -3143,6 +3143,32 @@
       if (quiet) gaAfterLive(); else alRender();
     });
   }
+  // As três marcas não estão a distâncias iguais (a mesma regra de AlignMarks::EvenlySpaced: em alguma câmera a do
+  // meio está a mais de 6% do meio)? Devolve onde ela está, em % do caminho, na câmera em que mais foge; senão null.
+  function alUneven() {
+    let worst = null;
+    al.photos.forEach((p) => {
+      const d = al.data[p.camera];
+      if (!d || !d.found || !d.marks || !d.w || !d.h) return;
+      const m = d.marks.map((q) => [q[0] * d.w, q[1] * d.h]);
+      const vx = m[2][0] - m[0][0], vy = m[2][1] - m[0][1], len2 = vx * vx + vy * vy;
+      if (len2 < 1) return;
+      const t = ((m[1][0] - m[0][0]) * vx + (m[1][1] - m[0][1]) * vy) / len2;
+      if (Math.abs(t - 0.5) > 0.06 && (worst === null || Math.abs(t - 0.5) > Math.abs(worst - 0.5))) worst = t;
+    });
+    return worst === null ? null : Math.round(worst * 100);
+  }
+  // O aviso de marcas desiguais (faixa âmbar, forma A, decisão do dono em 2026-11-24): não impede nada
+  function alUnevenNote(full) {
+    const pct = alUneven();
+    if (pct === null) return null;
+    const w = document.createElement("div");
+    w.className = "al-warn al-uneven";
+    w.id = "csAlignUneven";
+    w.innerHTML = "<b>Marks not evenly spaced.</b> The middle one is at " + pct + "% of the way, not in the middle. The photos are matched by the length of the pole each camera sees, and the height of each camera is not estimated." +
+      (full ? " For the complete alignment, use three marks at equal distances." : "");
+    return w;
+  }
   // As instruções de uma câmera: [classe, texto]; fix = falta mexer, ok = bom, info = só informa
   function alLines(camera) {
     const d = al.data[camera], n = alAim(camera);
@@ -3661,6 +3687,8 @@
     }
     w.appendChild(view);
     main.appendChild(w);
+    const uneven = marked ? alUnevenNote(true) : null;
+    if (uneven) main.insertBefore(uneven, main.firstChild);
     if (al.busy || al.firing) alWait(main);
     requestAnimationFrame(() => alPlaceLines(main));
     const need = al.photos.filter((p) => alBad(p.camera)).length;
@@ -3712,6 +3740,8 @@
     });
     main.innerHTML = "";
     main.appendChild(sv);
+    const uneven = alUnevenNote(false);
+    if (uneven) main.appendChild(uneven);
     if (gone.length) {
       const one = gone.length === 1;
       main.insertAdjacentHTML("beforeend", '<div class="al-warn" id="csAlignGone"><b>' + (one ? "1 camera of the rig is not connected: " : gone.length + " cameras of the rig are not connected: ") +
