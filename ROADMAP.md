@@ -1550,6 +1550,15 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      sozinho): ok. Dois pedidos do dono nesse roteiro, feitos: a bolinha do "● Live aim on" é vermelha; a lista
      de câmeras do passo 2 fica sempre na ordem do rig (antes vinham primeiro as com mais ajustes, e com o Live
      aim a lista se reordenava enquanto ele mexia na câmera).
+     Roteiro 4 (suporte de marcas desiguais, capturas do dono): faixa âmbar com "42% of the way"; nenhuma
+     instrução de altura; Review alignment e Save funcionaram; no Align photos com o alinhamento do rig o Size
+     ficou 132,5 (T5, 5184 px), 127,1 e 125,6 (as de 6000 px) e o suporte coincide nas três fotos (leitura minha
+     das capturas; o dono não soube confirmar sozinho). "Keeps 50% of the photos": as câmeras estavam fora da
+     mira (Move Y até 777 px, instruções "Turn 2° right, 5° up" não seguidas), e o corte compensa isso.
+     **Dúvida do dono, decisão pendente:** com Alignment "None", fotos de câmeras com resoluções diferentes
+     (5184×3456 e 6000×4000, a mesma proporção) não ficam do tamanho do canvas: o canvas é a área comum em
+     pixels do original, então a foto de 6000 px a 100% sobra e é cortada no centro (mostra 86% do que a de
+     5184 px mostra). Proposta a decidir: igualar pelo tamanho (a foto maior reduzida para caber no canvas).
      **Decisões do dono no meio dos testes (2026-11-24), a fazer DEPOIS dos roteiros:** (i) arrastar os pontos
      que o programa achou, de um jeito que não entre em conflito com a busca automática e que deixe refazer a
      busca; (ii) o botão Align cameras não deve depender do Test shot: protótipos com as posições no Camera
