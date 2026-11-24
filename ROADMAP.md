@@ -1462,7 +1462,7 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      https://claude.ai/artifact/NGyWUTCHV74amd7xaeZFHG, aguardando a escolha.
      **Ideias do dono (2026-11-24), em aberto:** (i) no passo 3 do Align cameras, tocar a sequência já alinhada e
      ajustar cada foto na mão como no Align photos do Export: protótipos (formas A e B) em
-     https://claude.ai/artifact/L9ccmkpqHd1ZBDVEVeMBxm, aguardando a escolha; (ii) guardar um rig (alinhamento)
+     https://claude.ai/artifact/DFQfxaDaE4zkSAd3dxcM6S, aguardando a escolha; (ii) guardar um rig (alinhamento)
      para reutilizar em vários projetos, hoje não existe (o alinhamento fica no projeto e cada sessão guarda a
      cópia do que valia quando foi fotografada); (iii) o aviso de marcas desiguais: o dono quer saber quanto isso
      prejudica antes de decidir se é faixa ou janela. Os testes automáticos continuam sendo relatados sempre.
