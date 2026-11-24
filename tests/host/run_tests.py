@@ -2600,7 +2600,7 @@ def scenario_align_tools(t, name, photos):
         time.sleep(0.5)
         d = st()
         check(t, "align tools: with the mouse near the left edge the bar shows, inside the big photo, and the grip goes", d["near"] and d["barIn"] and d["barOp"] == "1" and d["gripOp"] == "0", d)
-        check(t, "align tools: six tools, Pointer chosen from the start", d["tools"] == ["pointer*", "handles", "move", "rotate", "scale", "pan", "zoom"] and d["tool"] == "pointer", d["tools"])
+        check(t, "align tools: seven tools, Direct select chosen from the start", d["tools"] == ["pointer", "handles*", "move", "rotate", "scale", "pan", "zoom"] and d["tool"] == "handles", d["tools"])
         t.shot("align-tools-bar")
         cx, cy = box["x"] + box["width"] * 0.6, box["y"] + box["height"] * 0.5
         def drag(dx, dy):
@@ -2746,6 +2746,12 @@ def scenario_align_tools(t, name, photos):
         field(3, ""); field(2, ""); field(0, "")
         v = vals()
         check(t, "align tools: an emptied box goes back to 0 (Size: 100, or the smallest that still covers)", float(v[3]) == 0 and float(v[0]) == 0 and 99.9 <= float(v[2]) < 130, v)
+        # Sair do Align photos e entrar de novo: a ferramenta volta a ser a Direct select
+        pick(".align-tool[data-tool=rotate]")
+        t.button("Done aligning"); time.sleep(0.8)
+        t.button("Align photos"); time.sleep(0.8)
+        t.wait(lambda: t.js("() => !!document.querySelector('.align-stage .align-tools') && !document.querySelector('.align-stage .align-wait')"), 20)
+        check(t, "align tools: leaving Align photos and coming back picks Direct select again", t.js("() => document.querySelector('.align-stage').dataset.tool") == "handles")
         check(t, "align tools: no page error", len(t.errors) == errors_before, t.errors[errors_before:])
     finally:
         t.js("() => { try { localStorage.removeItem('stillpoint.alignPrefs'); } catch (e) {} }")

@@ -2370,6 +2370,8 @@ Em **Export sessions** › sessão com mais de uma foto › **Align photos**.
 - [ ] Ctrl ou ⌘ + roda: a vista sobe e desce; com Alt (⌥), vai para os lados; a foto não muda (os números do
       **This photo** ficam iguais).
 - [ ] Mac: apertar um atalho de ferramenta não faz o cursor sumir.
+- [ ] Ao entrar no **Align photos** a ferramenta escolhida é sempre a **Direct select** (seta vazada), mesmo que
+      outra estivesse escolhida antes de sair; as guias ficam como estavam.
 - [ ] A ferramenta e as guias escolhidas continuam ao trocar de foto e ao abrir o app de novo.
 - [ ] Windows: os itens acima.
 

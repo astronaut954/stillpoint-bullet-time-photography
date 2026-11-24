@@ -5770,7 +5770,7 @@
       ["handles", "toolPointer", "Direct select: resize by the corners and rotate by the top handle; dragging anywhere else does nothing (A)", "a"], ["move", "toolMove", "Move the photo (M)", "m"],
       ["rotate", "toolRotate", "Rotate the photo (R)", "r"], ["scale", "toolScale", "Resize the photo (S)", "s"], ["pan", "toolPan", "Move the view: the photo stays where it is (H)", "h"],
       ["zoom", "toolZoom", "Zoom the view: click to zoom in, " + (navigator.platform.indexOf("Mac") >= 0 ? "⌥" : "Alt") + " + click to zoom out (Z)", "z"]];
-    if (!TOOLS.some((t) => t[0] === alignPrefs.tool)) alignPrefs.tool = "pointer";
+    if (!TOOLS.some((t) => t[0] === alignPrefs.tool)) alignPrefs.tool = "handles";
     const cross = el("div", "align-cross");
     ratio.appendChild(cross);
     const tools = el("div", "align-tools");
@@ -6264,7 +6264,7 @@
     stage.addEventListener("pointerdown", (e) => {
       if (e.button !== 0 || e.target.closest("button") || e.target.closest(".align-tools, .align-tools-grip") || !sizes[item.file]) return;
       e.preventDefault();
-      const toolNow = alignPrefs.tool || "pointer";
+      const toolNow = alignPrefs.tool || "handles";
       stage.setPointerCapture(e.pointerId);
       // Zoom: um clique aproxima (com Alt, afasta); segurar e arrastar para a direita aproxima, para a esquerda afasta
       if (toolNow === "zoom" && !exp.spaceDown) { drag = { kind: "zoom", x: e.clientX, zoom: view.zoom, at: zoomAnchor(e), moved: false, alt: e.altKey, ev: e }; return; }
@@ -6506,6 +6506,7 @@
     if (exp.aligningShown !== !!exp.aligning) {
       exp.aligningShown = !!exp.aligning;
       exp.alignView = { zoom: 1, px: 0, py: 0 };  // cada entrada começa sem zoom
+      alignPrefs.tool = "handles";  // e com a ferramenta Direct select (decisão do dono, 2026-11-24); as guias continuam guardadas
       outer.classList.remove("layout-change"); void outer.offsetWidth; outer.classList.add("layout-change");
       setTimeout(() => outer.classList.remove("layout-change"), 400);
     }

@@ -1537,6 +1537,9 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      Decisão do dono (2026-11-24): os nomes são "Select" (V) e "Direct select" (A), com o mesmo ícone de seta,
      cheia numa e vazada na outra. O cursor continuava sumindo ao apertar um atalho (gravação): o pedido de
      mostrar o cursor chegava antes de o sistema escondê-lo; passou a ser repetido 30, 90 e 200 ms depois.
+     Decisão do dono (2026-11-24): a ferramenta que vem escolhida é sempre a Direct select, e volta a ela toda
+     vez que se entra no Align photos (a ferramenta deixou de ser guardada; as guias continuam guardadas). A seta
+     cheia do Select ficou sem contorno e um pouco menor, para parecer do mesmo tamanho da vazada.
      Falta: o passo 3 do Align cameras virar este editor (forma B), com Play the sequence.
      (b) Os botões da janela Guided aim subiam e desciam quando o número de instruções mudava: o espaço das
      instruções passou a ser fixo (seis linhas).
