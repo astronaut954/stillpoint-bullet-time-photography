@@ -2350,6 +2350,10 @@ Em **Export sessions** › sessão com mais de uma foto › **Align photos**.
       lugar muda o tamanho. Mão: arrastar move a vista, sem mexer na foto.
 - [ ] Cruz: liga e desliga a cruz no centro do canvas. Moldura: liga e desliga a moldura, as alças e o que sobra
       da foto fora do canvas.
+- [ ] A barra começa a sumir assim que o mouse sai da área dela, e some devagar; a aba da seta tem um brilho verde.
+- [ ] Cursores: com a seta, em cima da foto aparecem as quatro setas (arrastar move a foto) e fora dela a mão
+      (arrastar desloca a vista); movendo a foto o cursor continua sendo as quatro setas; com a ferramenta de
+      girar, o mesmo cursor redondo da alça de girar.
 - [ ] A ferramenta e as guias escolhidas continuam ao trocar de foto e ao abrir o app de novo.
 - [ ] Windows: os itens acima.
 

@@ -1502,6 +1502,13 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      ferramenta e as guias ficam guardadas entre fotos e sessões do app. Sem a guia da moldura, somem a
      moldura, as alças e o que sobra da foto fora do canvas. Girar com a ferramenta de girar pode aumentar o Size
      (regra que já existia: a foto girada cresce para continuar cobrindo o canvas). Teste automático: cenário 28.
+     Retorno do dono (2026-11-24) e ajustes feitos: a barra começa a sumir assim que o mouse sai da área dela
+     (sem espera) e some mais devagar (0,5 s); aparece com o mouse na borda esquerda da foto ou na área dela; a
+     aba da seta ganhou um brilho verde; linhas dos ícones mais finas; ícones das guias centrados no espaço à
+     direita da faixa; a ferramenta de girar usa o mesmo cursor da alça de girar; movendo a foto o cursor é o de
+     quatro setas (não a mão); com a seta, em cima da foto aparece o cursor de mover e fora dela o da mão.
+     Consequência do último pedido, para o cursor não mentir: com a seta, arrastar FORA da foto agora desloca a
+     vista (antes movia a foto de qualquer lugar). O dono foi avisado; se não quiser, volta.
      Falta: o passo 3 do Align cameras virar este editor (forma B), com Play the sequence.
      (b) Os botões da janela Guided aim subiam e desciam quando o número de instruções mudava: o espaço das
      instruções passou a ser fixo (seis linhas).

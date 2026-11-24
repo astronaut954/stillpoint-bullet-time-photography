@@ -1652,24 +1652,25 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .align-stage.locked .align-ratio.crop-frame { border-color: var(--noct-pending); box-shadow: 0 0 0 2px var(--noct-pending), 0 0 0 999px rgba(0, 0, 0, .35); }
 .align-left { display: flex; flex-direction: column; gap: 12px; min-width: 0; min-height: 0; }
 .align-stage.export-preview { flex: 1 1 auto; min-height: 240px; height: auto; display: block; cursor: grab; user-select: none; -webkit-user-select: none; touch-action: none; }
-.align-stage.dragging { cursor: grabbing; }
+.align-stage.dragging { cursor: move; }  /* movendo a foto: as quatro setas, não a mão (pedido do dono, 2026-11-24) */
 /* Barra de ferramentas dentro da foto grande do Align photos: some para a esquerda e volta com o mouse perto da borda;
    escondida, fica o puxador com a seta. Ferramenta escolhida = cheia; guia ligada = faixa acesa ao lado (forma C3). */
-.align-tools { position: absolute; left: 10px; top: 10px; z-index: 6; display: flex; flex-direction: column; gap: 4px; padding: 6px; background: rgba(0, 12, 4, .86); border: 1px solid var(--noct-border-strong); transform: translateX(calc(-100% - 12px)); opacity: 0; transition: transform .18s ease, opacity .18s ease; }
-.align-stage.tools-near .align-tools { transform: none; opacity: 1; }
+.align-tools { position: absolute; left: 10px; top: 10px; z-index: 6; display: flex; flex-direction: column; gap: 4px; padding: 6px; background: rgba(0, 12, 4, .86); border: 1px solid var(--noct-border-strong); transform: translateX(calc(-100% - 12px)); opacity: 0; transition: transform .5s ease, opacity .5s ease; }
+.align-stage.tools-near .align-tools { transform: none; opacity: 1; transition-duration: .16s; }
+.align-tools svg, .align-tools-grip svg { stroke-width: 1.1; }
 .align-tool, .align-guide { width: 36px; height: 36px; box-sizing: border-box; display: grid; place-items: center; padding: 0; background: transparent; color: var(--noct-primary); cursor: pointer; border-radius: 0; }
 .align-tool { border: 1px solid var(--noct-border-strong); }
 .align-tool:hover { border-color: var(--noct-primary); }
 .align-tool.on { background: var(--noct-primary); border-color: var(--noct-primary); color: var(--noct-on-primary); }
 .align-tools-sep { height: 1px; background: var(--noct-border-strong); margin: 5px 0 3px; }
-.align-guide { position: relative; border: 0; color: var(--noct-text-dim); }
+.align-guide { position: relative; border: 0; padding-left: 3px; color: var(--noct-text-dim); }
 .align-guide::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--noct-border-strong); }
 .align-guide.on { color: var(--noct-primary); background: rgba(var(--noct-primary-rgb), .12); }
 .align-guide.on::before { background: var(--noct-primary); }
 .align-guide:hover { color: var(--noct-primary); }
 .align-tool:focus-visible, .align-guide:focus-visible { outline: 2px solid var(--noct-primary); outline-offset: 2px; }
-.align-tools-grip { position: absolute; left: 0; top: calc(50% - 34px); width: 12px; height: 68px; z-index: 6; box-sizing: border-box; display: grid; place-items: center; background: rgba(0, 12, 4, .9); border: 1px solid var(--noct-border-strong); border-left: 0; color: var(--noct-primary); transition: opacity .18s ease; }
-.align-stage.tools-near .align-tools-grip { opacity: 0; pointer-events: none; }
+.align-tools-grip { position: absolute; left: 0; top: calc(50% - 34px); width: 12px; height: 68px; z-index: 6; box-sizing: border-box; display: grid; place-items: center; background: rgba(0, 12, 4, .9); border: 1px solid var(--noct-border-strong); border-left: 0; color: var(--noct-primary); box-shadow: 0 0 14px rgba(var(--noct-primary-rgb), .55), 0 0 3px rgba(var(--noct-primary-rgb), .7); transition: opacity .5s ease; }
+.align-stage.tools-near .align-tools-grip { opacity: 0; pointer-events: none; transition-duration: .16s; }
 /* O "+" no meio do canvas */
 .align-cross { position: absolute; left: 50%; top: 50%; width: 0; height: 0; pointer-events: none; z-index: 3; }
 .align-cross::before, .align-cross::after { content: ""; position: absolute; background: var(--noct-primary); }
@@ -1680,7 +1681,9 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .align-stage.clean .align-box { outline-color: transparent; }
 /* O mouse de cada ferramenta */
 .align-stage[data-tool="move"] { cursor: move; }
-.align-stage[data-tool="rotate"] { cursor: crosshair; }
+.align-stage[data-tool="rotate"] { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18.5 12a6.5 6.5 0 1 1-2.2-4.9' stroke='%23fff' stroke-width='4.5'/%3E%3Cpath d='M17.5 3.5v4.5H13' stroke='%23fff' stroke-width='4.5'/%3E%3Cpath d='M18.5 12a6.5 6.5 0 1 1-2.2-4.9' stroke='%23000' stroke-width='2'/%3E%3Cpath d='M17.5 3.5v4.5H13' stroke='%23000' stroke-width='2'/%3E%3C/g%3E%3C/svg%3E") 12 12, alias; }
+.align-stage[data-tool="pointer"][data-over="in"] { cursor: move; }
+.align-stage[data-tool="pointer"][data-over="out"] { cursor: grab; }
 .align-stage[data-tool="scale"] { cursor: nwse-resize; }
 .align-stage[data-tool="pan"] { cursor: grab; }
 .align-stage[data-tool="move"] .align-handle, .align-stage[data-tool="rotate"] .align-handle, .align-stage[data-tool="scale"] .align-handle, .align-stage[data-tool="pan"] .align-handle,

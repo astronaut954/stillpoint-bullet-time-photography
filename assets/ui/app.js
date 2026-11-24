@@ -5782,14 +5782,16 @@
     grip.title = "Tools";
     stage.append(tools, grip);
     // Perto da borda esquerda (ou em cima da barra) ela aparece; longe, some depois de um instante
-    let toolsTimer = 0;
-    const toolsNear = (near) => {
-      clearTimeout(toolsTimer);
-      if (near) { alignScreen.toolsNear = true; stage.classList.add("tools-near"); }
-      else toolsTimer = setTimeout(() => { alignScreen.toolsNear = false; stage.classList.remove("tools-near"); }, 700);
-    };
+    // A barra aparece com o mouse na borda esquerda (ou no puxador) e começa a sumir assim que ele sai da área dela
+    // (pedido do dono, 2026-11-24: sem espera; o sumiço é que é mais lento, no CSS)
+    const toolsNear = (near) => { alignScreen.toolsNear = near; stage.classList.toggle("tools-near", near); };
     if (alignScreen.toolsNear) stage.classList.add("tools-near");  // (a tela é refeita a cada mudança: a barra fica como estava)
-    stage.addEventListener("pointermove", (e) => { const r = stage.getBoundingClientRect(); toolsNear(e.clientX - r.left < 76 || !!e.target.closest(".align-tools, .align-tools-grip")); });
+    const TOOLS_PAD = 10;
+    stage.addEventListener("pointermove", (e) => {
+      const r = stage.getBoundingClientRect(); const x = e.clientX - r.left, y = e.clientY - r.top;
+      const inBar = x < tools.offsetLeft + tools.offsetWidth + TOOLS_PAD && y < tools.offsetTop + tools.offsetHeight + TOOLS_PAD;
+      toolsNear(inBar || x < 14);
+    });
     stage.addEventListener("pointerleave", () => toolsNear(false));
     grip.addEventListener("pointerenter", () => toolsNear(true));
     paintTools(true);
@@ -6189,12 +6191,23 @@
     // girar (alça de cima ou ⌥ + roda). Todos presos à área útil (lockStart/tryApply).
     let drag = null;
     const centerOnScreen = () => { const r = stage.getBoundingClientRect(); return { x: r.left + cx + a.dx * scaleK, y: r.top + cy + a.dy * scaleK }; };
+    // O mouse está em cima da foto que está sendo alinhada? (conta o giro e o tamanho dela)
+    const overPhoto = (e) => {
+      const c = centerOnScreen(); const t = -(a.rot || 0) * Math.PI / 180;
+      const dx = e.clientX - c.x, dy = e.clientY - c.y;
+      const x = dx * Math.cos(t) - dy * Math.sin(t), y = dx * Math.sin(t) + dy * Math.cos(t);
+      return Math.abs(x) <= box.offsetWidth * a.scale / 2 && Math.abs(y) <= box.offsetHeight * a.scale / 2;
+    };
+    stage.addEventListener("pointermove", (e) => { if (!drag && sizes[item.file]) stage.dataset.over = overPhoto(e) ? "in" : "out"; });
     stage.addEventListener("pointerdown", (e) => {
       if (e.button !== 0 || e.target.closest("button") || e.target.closest(".align-tools, .align-tools-grip") || !sizes[item.file]) return;
       e.preventDefault(); stage.setPointerCapture(e.pointerId);
-      document.body.classList.add("photo-drag");  // a mão fechada continua fora da prévia
       const toolNow = alignPrefs.tool || "pointer";
-      if (exp.spaceDown || toolNow === "pan") { drag = { kind: "pan", x: e.clientX, y: e.clientY, px: view.px, py: view.py }; stage.classList.add("panning"); return; }
+      // Pointer: fora da foto que está sendo alinhada, arrastar desloca a vista (pedido do dono, 2026-11-24)
+      const onPart = e.target === rotHandle || e.target.classList.contains("align-handle");
+      if (exp.spaceDown || toolNow === "pan" || (toolNow === "pointer" && !onPart && !overPhoto(e))) {
+        document.body.classList.add("photo-drag");  // a mão fechada continua fora da prévia
+        drag = { kind: "pan", x: e.clientX, y: e.clientY, px: view.px, py: view.py }; stage.classList.add("panning"); return; }
       lockStart();
       const c = centerOnScreen();
       if (toolNow === "rotate" || (toolNow === "pointer" && e.target === rotHandle)) {
