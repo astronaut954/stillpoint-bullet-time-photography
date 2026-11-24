@@ -2612,7 +2612,7 @@ def scenario_align_tools(t, name, photos):
         drag(0, 60)
         v1 = vals()
         # (o giro pode obrigar a foto a crescer para continuar cobrindo o canvas: regra que já existia)
-        check(t, "align tools: with Rotate, dragging anywhere turns the photo (and does not move it)", v1[3] != v0[3] and v1[:2] == v0[:2], (v0, v1))
+        check(t, "align tools: with Rotate, dragging anywhere turns the photo (and does not move it)", abs(float(v1[3]) - float(v0[3])) > 1 and [float(x) for x in v1[:2]] == [float(x) for x in v0[:2]], (v0, v1))
         pick(".align-tool[data-tool=scale]")
         drag(70, 0)
         v2 = vals()
