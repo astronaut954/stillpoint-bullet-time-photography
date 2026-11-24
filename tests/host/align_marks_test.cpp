@@ -181,8 +181,35 @@ namespace
     }
 }
 
+namespace
+{
+    // Suporte improvisado, com a marca do meio fora do meio (teste real de 2026-11-24): o tamanho vem do comprimento
+    // com que cada câmera vê a haste, e as fotos alinhadas ficam com a haste do mesmo tamanho
+    void TestUneven()
+    {
+        const double lens[] = { 300, 240, 360 };
+        std::vector<AlignMarks::Camera> in;
+        for (double L : lens)
+        {
+            AlignMarks::Camera c; c.width = 1200; c.height = 800;
+            c.p[0] = { 600, 200 }; c.p[1] = { 600, 200 + L * 0.43 }; c.p[2] = { 600, 200 + L };
+            in.push_back(c);
+        }
+        Check("uneven marks: recognized as not evenly spaced", !AlignMarks::EvenlySpaced(in));
+        std::vector<AlignMarks::Recipe> rc; std::vector<AlignMarks::Aim> am;
+        AlignMarks::Solve(in, rc, am);
+        double worst = 0;
+        for (size_t i = 0; i < in.size(); ++i) worst = std::max(worst, std::abs(rc[i].scale * lens[i] - 300));
+        Check("uneven marks: after the alignment the pole has the same length in every photo", worst < 0.5, Num(worst));
+        Check("uneven marks: the height is not guessed", std::abs(am[0].height) < 1e-9 && std::abs(am[2].height) < 1e-9);
+        for (auto& c : in) c.p[1].y = (c.p[0].y + c.p[2].y) / 2 + 3;
+        Check("even marks (3 px off the middle): still taken as evenly spaced", AlignMarks::EvenlySpaced(in));
+    }
+}
+
 int main()
 {
+    TestUneven();
     TestRig();
     TestSolve();
     TestFind(true);

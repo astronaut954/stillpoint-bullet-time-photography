@@ -1443,6 +1443,16 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      ponto de partida já estar a mais de 3% da foto). Com câmeras simuladas a regra antiga continua. Sem teste com
      câmera ainda. Pergunta do dono em aberto: deixar a pessoa mudar o limite de confiança da procura (opinião do
      agente: não; decisão dele).
+     **Quarto retorno do dono (2026-11-24, gravação do Export):** as fotos alinhadas pelo rig ficaram piores que
+     sem alinhamento. Visto na gravação: a marca do meio no mesmo lugar e a haste em pé nas três fotos, mas o
+     TAMANHO diferente em cada uma (a haste com cerca de 150, 112 e 160 px na prévia). Causa conferida com as
+     marcas dos quadros dele: `Solve` tira o tamanho da distância verdadeira, calculada pela perspectiva supondo as
+     três marcas a distâncias iguais; no suporte improvisado a do meio está a 43% do caminho, e a conta dava uma
+     câmera 21% maior quando o comprimento visto difere só 8%. Corrigido: `EvenlySpaced` (a marca do meio a menos
+     de 6% do meio em todas as câmeras); se não, o tamanho de todas vem do comprimento com que cada câmera vê a
+     haste, e a altura não é estimada. Com haste de marcas iguais nada muda (testes da haste simulada passam, mais
+     4 novos). Sem aviso na tela de que as marcas são desiguais (pendência para o dono). Rolagem de lado na coluna
+     de sessões do Align photos do Export: corrigida (CSS).
      (b) Os botões da janela Guided aim subiam e desciam quando o número de instruções mudava: o espaço das
      instruções passou a ser fixo (seis linhas).
      (c) "Camera 03 / Camera 04 · Not connected" apareciam sem nunca terem sido ligadas: vinham do alinhamento

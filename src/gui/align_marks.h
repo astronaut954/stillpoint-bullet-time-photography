@@ -73,5 +73,8 @@ namespace AlignMarks
     };
 
     // Calcula a receita e as instruções de todas as câmeras juntas (o tamanho e a altura são relativos às outras).
+    // As três marcas estão a distâncias iguais em todas as câmeras (a do meio a menos de 6% do meio)? Se não, Solve
+    // tira o tamanho do comprimento aparente da haste e não estima a altura.
+    bool EvenlySpaced(const std::vector<Camera>& cams);
     void Solve(const std::vector<Camera>& cams, std::vector<Recipe>& recipes, std::vector<Aim>& aims);
 }

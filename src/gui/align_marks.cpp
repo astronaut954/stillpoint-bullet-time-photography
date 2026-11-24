@@ -837,11 +837,29 @@ namespace AlignMarks
         return out;
     }
 
+    bool EvenlySpaced(const std::vector<Camera>& cams)
+    {
+        for (const Camera& c : cams)
+        {
+            const double vx = c.p[2].x - c.p[0].x, vy = c.p[2].y - c.p[0].y, len2 = vx * vx + vy * vy;
+            if (len2 < 1) continue;
+            const double t = ((c.p[1].x - c.p[0].x) * vx + (c.p[1].y - c.p[0].y) * vy) / len2;
+            if (std::abs(t - 0.5) > 0.06) return false;
+        }
+        return true;
+    }
+
     void Solve(const std::vector<Camera>& cams, std::vector<Recipe>& recipes, std::vector<Aim>& aims)
     {
         recipes.assign(cams.size(), {});
         aims.assign(cams.size(), {});
         std::vector<double> apparent(cams.size(), 0), heights(cams.size(), 0);
+        // A conta da distância verdadeira supõe as três marcas a distâncias iguais. Num suporte improvisado isso não
+        // vale (teste do dono, 2026-11-24: marca do meio a 43% do caminho; o tamanho das fotos alinhadas saía até 20%
+        // diferente de uma para outra). A perspectiva sozinha tira a marca do meio do centro só uns poucos por cento;
+        // se em alguma câmera ela está a mais de 6% do meio, as marcas não são igualmente espaçadas: aí o tamanho de
+        // todas vem do comprimento com que cada câmera vê a haste, e a altura não é estimada.
+        const bool even = EvenlySpaced(cams);
         for (size_t i = 0; i < cams.size(); ++i)
         {
             const Camera& c = cams[i];
@@ -870,9 +888,14 @@ namespace AlignMarks
             double up[3] = { (X1[0] - X3[0]) / L, (X1[1] - X3[1]) / L, (X1[2] - X3[2]) / L };
             heights[i] = -(X2[0] * up[0] + X2[1] * up[1] + X2[2] * up[2]) / spacing;
             apparent[i] = f / dist;  // tamanho com que esta câmera vê a haste (pixels por espaço)
+            if (!even)
+            {
+                apparent[i] = std::hypot(c.p[0].x - c.p[2].x, c.p[0].y - c.p[2].y) / 2;
+                heights[i] = 0;
+            }
 
             Recipe& rc = recipes[i];
-            rc.distance = dist;
+            rc.distance = even || apparent[i] <= 0 ? dist : f / apparent[i];
             rc.dx = cx - c.p[1].x;
             rc.dy = cy - c.p[1].y;
             const double lean = std::atan2(c.p[0].x - c.p[2].x, c.p[2].y - c.p[0].y) * 180 / kPi;  // positivo = tombada para a direita

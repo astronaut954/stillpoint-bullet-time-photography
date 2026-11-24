@@ -1730,7 +1730,7 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .export-settings.layout-change > * { animation: export-layout-in .28s ease both; }
 @media (prefers-reduced-motion: reduce) { .export-settings.layout-change > * { animation: none; } .export-body { transition: none; } }
 .export-body.aligning .export-sessions .save-tools { display: none; }
-.export-body.aligning .export-list { padding: 12px 8px; gap: 8px; align-items: center; }
+.export-body.aligning .export-list { padding: 12px 4px; gap: 8px; align-items: center; overflow-x: hidden; }  /* (com a barra de rolagem vertical a coluna de 92 px não cabia e aparecia uma rolagem de lado) */
 .export-body.aligning .export-item { grid-template-columns: 64px; gap: 0; padding: 4px; }
 .export-body.aligning .export-item > .export-check, .export-body.aligning .export-item > span:not(.export-thumb) { display: none; }
 .export-body.aligning .export-item.off .export-thumb { opacity: .4; }
