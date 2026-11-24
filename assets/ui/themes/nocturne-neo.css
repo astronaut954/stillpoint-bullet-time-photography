@@ -1688,7 +1688,10 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .align-stage[data-tool="pan"] { cursor: grab; }
 .align-stage[data-tool="zoom"] { cursor: zoom-in; }
 .align-stage[data-tool="handles"] { cursor: default; }
-.align-tool[data-tool="pointer"] svg path { fill: currentColor; stroke-width: .45; }  /* cheia e sem contorno, um pouco menor: do mesmo tamanho aparente da vazada */
+/* Seta do Select: cheia. Não escolhida (clara no escuro), sem contorno e um pouco menor; escolhida (escura no claro),
+   com um contorno fino, porque escura no claro ela parece menor. As duas medidas foram acertadas pelo dono no Mac dele. */
+.align-tool[data-tool="pointer"] svg path { fill: currentColor; stroke: none; transform: scale(.96); transform-box: fill-box; transform-origin: center; }
+.align-tool[data-tool="pointer"].on svg path { stroke: currentColor; stroke-width: .45; transform: none; }
 .align-stage[data-tool="zoom"].alt { cursor: zoom-out; }
 .align-stage[data-tool="zoom"].zooming { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke-linecap='round'%3E%3Ccircle cx='10' cy='10' r='6.5' stroke='%23fff' stroke-width='4.5'/%3E%3Cpath d='M15 15l6 6' stroke='%23fff' stroke-width='4.5'/%3E%3Ccircle cx='10' cy='10' r='6.5' stroke='%23000' stroke-width='2'/%3E%3Cpath d='M15 15l6 6' stroke='%23000' stroke-width='2'/%3E%3C/g%3E%3C/svg%3E") 10 10, zoom-in; }  /* arrastando: a lupa sem + nem − */
 /* Botão apertado: o cursor do gesto vale na tela toda (não muda ao sair da foto grande) */
