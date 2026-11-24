@@ -486,6 +486,24 @@ namespace NativeWindow
         Send<void>(app, "setMainMenu:", bar);
     }
 
+    void QuietSpaceRepeat(bool on)
+    {
+        static bool quiet = false;
+        static id monitor = nullptr;
+        quiet = on;
+        if (monitor || !on)
+            return;
+        // NSEventMaskKeyDown = 1 << 10; tecla 49 = barra de espaço
+        monitor = Send<id>(GetClass("NSEvent"), "addLocalMonitorForEventsMatchingMask:handler:",
+            static_cast<unsigned long long>(1ull << 10),
+            ^id(id event)
+            {
+                if (quiet && Send<unsigned short>(event, "keyCode") == 49 && Send<BOOL>(event, "isARepeat"))
+                    return static_cast<id>(nullptr);
+                return event;
+            });
+    }
+
     void CycleWindows(bool backwards)
     {
         id app = Send<id>(GetClass("NSApplication"), "sharedApplication");

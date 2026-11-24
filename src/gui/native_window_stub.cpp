@@ -43,6 +43,7 @@ namespace NativeWindow
     bool SetFullScreen(void*, const std::string&) { return false; }
     void IdentifyScreens(int) {}
     void CycleWindows(bool) {}
+    void QuietSpaceRepeat(bool) {}
     void PlaceNear(void*, void*, int, int) {}
     void SetWindowed(void*, bool) {}
 }

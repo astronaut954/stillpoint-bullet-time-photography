@@ -1518,6 +1518,15 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      cima e para baixo; com Alt junto, para os lados. ABERTO: com o espaço segurado, o cursor pisca durante o
      arrasto (gravação 1). Hipótese não confirmada: no Mac, cada repetição da tecla esconde o cursor até o mouse
      se mexer; se for isso, o conserto é na parte nativa do Mac.
+     Terceiro retorno do dono (2026-11-24) e o que foi feito: (1) caixas de número do This photo: só entram
+     algarismos, uma vírgula ou ponto e o menos no começo (o menos fica porque Move X/Y e Rotate têm valores
+     negativos); caixa vazia confirmada = 0 (Size: 100, ou o menor que ainda cobre o canvas); clicar seleciona o
+     número inteiro; Esc desiste; (2) espaço segurado: a mão fecha ao arrastar; para o pisca, tentativa na parte
+     nativa do Mac (NativeWindow::QuietSpaceRepeat: as repetições do espaço não chegam à página enquanto ele
+     está segurado), ESCRITA SEM COMPILAR NO MAC e com a causa ainda como hipótese; (3) zoom: segurar e
+     arrastar (direita aproxima, esquerda afasta) com a lupa sem sinal; Alt troca o cursor na hora; (4) a pinça
+     do trackpad chegava como roda + Ctrl e movia a foto: agora só move com a tecla Ctrl de verdade apertada, e
+     a pinça dá zoom; (5) com o botão apertado, o cursor do gesto vale na tela toda.
      Falta: o passo 3 do Align cameras virar este editor (forma B), com Play the sequence.
      (b) Os botões da janela Guided aim subiam e desciam quando o número de instruções mudava: o espaço das
      instruções passou a ser fixo (seis linhas).

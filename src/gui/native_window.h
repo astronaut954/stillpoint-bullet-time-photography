@@ -64,6 +64,11 @@ namespace NativeWindow
     // Windows: não faz nada.
     void CycleWindows(bool backwards);
 
+    // Mac: enquanto on, as repetições da barra de espaço segurada não chegam à página. Sem isso, cada repetição
+    // escondia o cursor até o mouse se mexer, e ele piscava durante o arrasto com o espaço (Align photos).
+    // Windows: não faz nada.
+    void QuietSpaceRepeat(bool on);
+
     // Põe a janela um pouco para a direita e para baixo de outra (dx, dy em pontos), para ficar
     // claro que é uma janela nova ("Another window" da Live). Não faz nada se a outra estiver em
     // tela cheia.

@@ -2682,7 +2682,21 @@ def scenario_align_tools(t, name, photos):
         t.page.keyboard.down("Alt"); t.page.mouse.click(cx, cy); t.page.keyboard.up("Alt"); time.sleep(0.3)
         z2 = zw()
         check(t, "align tools: with Zoom, a click zooms the view in and Alt + click zooms out, without touching the photo", z1 > z0 * 1.4 and abs(z2 - z0) < 1 and vals() == vz, (z0, z1, z2))
+        # Segurar e arrastar: para a direita aproxima, para a esquerda afasta; o cursor é a lupa sem sinal, na tela toda
+        t.page.mouse.move(cx, cy); t.page.mouse.down(); t.page.mouse.move(cx + 80, cy, steps=4)
+        z3 = zw(); zc = t.js("() => [getComputedStyle(document.querySelector('.align-stage')).cursor.slice(0, 4), getComputedStyle(document.querySelector('.export-settings h2, .export-settings')).cursor.slice(0, 4)]")
+        t.page.mouse.move(cx - 60, cy, steps=4); z4 = zw()
+        t.page.mouse.up(); time.sleep(0.3)
+        check(t, "align tools: with Zoom, holding and dragging right zooms in and left zooms out, with the plain magnifier everywhere", z3 > z0 * 1.5 and z4 < z0 and zc == ["url(", "url("] and vals() == vz, (z0, z3, z4, zc))
+        t.page.keyboard.down("Alt"); time.sleep(0.15)
+        alt_cur = t.js("() => getComputedStyle(document.querySelector('.align-stage')).cursor")
+        t.page.keyboard.up("Alt"); time.sleep(0.15)
+        check(t, "align tools: holding Alt turns the Zoom cursor into zoom out at once, without moving the mouse", alt_cur == "zoom-out" and t.js("() => getComputedStyle(document.querySelector('.align-stage')).cursor") == "zoom-in", alt_cur)
+        # Pinça do trackpad (roda + Ctrl sem a tecla Ctrl): zoom da vista, a foto não sai do lugar
         t.page.keyboard.press("v"); time.sleep(0.15)
+        p0 = zw(); pv = vals()
+        t.js("([x, y]) => document.querySelector('.align-stage').dispatchEvent(new WheelEvent('wheel', { deltaY: -20, ctrlKey: true, clientX: x, clientY: y, bubbles: true, cancelable: true }))", [cx, cy]); time.sleep(0.5)
+        check(t, "align tools: a trackpad pinch zooms the view and leaves the photo alone", zw() > p0 * 1.1 and vals() == pv, (p0, zw(), pv, vals()))
         # Ctrl + roda move a foto para cima e para baixo; com Alt junto, para os lados
         t.page.mouse.move(cx, cy)
         w0 = vals()
@@ -2704,6 +2718,22 @@ def scenario_align_tools(t, name, photos):
         check(t, "align tools: shrinking past the limit in one go stops at the limit, not before", small < big - 5 and abs(again - small) < 0.15, (big, small, again))
         check(t, "align tools: the cursor stays the resize one while the button is down", res_cur == "nwse-resize", res_cur)
         pick(".align-tool[data-tool=pointer]")
+        # Botão apertado: o cursor do gesto vale fora da foto grande também
+        t.page.mouse.move(cx, cy); t.page.mouse.down(); t.page.mouse.move(cx + 2, cy + 2)
+        out_cur = t.js("() => getComputedStyle(document.querySelector('.export-settings')).cursor")
+        t.page.mouse.up(); time.sleep(0.3)
+        check(t, "align tools: while the button is down the cursor is the same outside the big photo", out_cur == "move" and not t.js("() => document.body.classList.contains('align-drag')"), out_cur)
+        # Caixas de número: só algarismos, vírgula ou ponto e o menos no começo; vazia = 0 (Size: 100)
+        def field(i, text):
+            f = t.page.locator(".align-panel .align-ctl input").nth(i); f.click(); t.page.keyboard.press("ControlOrMeta+a"); t.page.keyboard.press("Backspace")
+            if text: t.page.keyboard.type(text)
+            shown = f.input_value(); t.page.keyboard.press("Enter"); time.sleep(0.4); return shown
+        typed = field(3, "a1x,5..2-")
+        after = vals()[3]
+        check(t, "align tools: the number boxes take only digits and one comma or dot", typed == "1,52" and abs(float(after) - 1.52) < 0.011, (typed, after))
+        field(3, ""); field(2, ""); field(0, "")
+        v = vals()
+        check(t, "align tools: an emptied box goes back to 0 (Size: 100, or the smallest that still covers)", float(v[3]) == 0 and float(v[0]) == 0 and 99.9 <= float(v[2]) < 130, v)
         check(t, "align tools: no page error", len(t.errors) == errors_before, t.errors[errors_before:])
     finally:
         t.js("() => { try { localStorage.removeItem('stillpoint.alignPrefs'); } catch (e) {} }")

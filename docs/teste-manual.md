@@ -2359,6 +2359,13 @@ Em **Export sessions** › sessão com mais de uma foto › **Align photos**.
 - [ ] Atalhos: **V** seta, **M** mover a foto, **R** girar, **S** tamanho, **H** mover a vista, **Z** zoom.
 - [ ] Ferramenta de zoom (lupa, a sexta da barra): clique aproxima em volta do ponto; Alt (⌥) + clique afasta.
 - [ ] Ctrl + roda do mouse: a foto sobe e desce; Ctrl + Alt (⌥) + roda: vai para os lados.
+- [ ] Caixas **Move X**, **Move Y**, **Size**, **Rotate**: letras não entram; apagar tudo e dar Enter zera (Size
+      volta a 100); clicar seleciona o número inteiro; Esc desiste do que foi digitado.
+- [ ] Espaço segurado e arrastando: a mão fecha e o cursor não pisca (Mac).
+- [ ] Lupa: segurar e arrastar para a direita aproxima, para a esquerda afasta, com a lupa sem + nem −; segurar
+      Alt (⌥) troca para a lupa com − sem precisar mexer o mouse.
+- [ ] Pinça no trackpad: dá zoom na vista, a foto não sai do lugar.
+- [ ] Com o botão apertado (qualquer ferramenta), levar o mouse para fora da foto grande: o cursor não muda.
 - [ ] A ferramenta e as guias escolhidas continuam ao trocar de foto e ao abrir o app de novo.
 - [ ] Windows: os itens acima.
 

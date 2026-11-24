@@ -4224,7 +4224,16 @@
   // Espaço segurado na tela "Align photos": arrastar desloca a vista (como no Photoshop/Lightroom)
   {
     const isText = (t) => t && (t.tagName === "TEXTAREA" || t.tagName === "SELECT" || (t.tagName === "INPUT" && !["checkbox", "radio", "button", "range"].includes(t.type)));
-    const setSpace = (on) => { exp.spaceDown = on; const o = $("exportSettings"); if (o) o.classList.toggle("space-pan", on); if (on && exp.alignQuiet) exp.alignQuiet(); };
+    const setSpace = (on) => {
+      exp.spaceDown = on; const o = $("exportSettings"); if (o) o.classList.toggle("space-pan", on); if (on && exp.alignQuiet) exp.alignQuiet();
+      // Mac: com a tecla segurada, cada repetição dela escondia o cursor até o mouse se mexer (o cursor piscava
+      // durante o arrasto); o programa passa a engolir as repetições do espaço enquanto ele está segurado
+      if (typeof window.spaceHold === "function") window.spaceHold(on ? "1" : "0");
+    };
+    // Ctrl de verdade apertado (o gesto de pinça do trackpad chega como roda + Ctrl sem a tecla) e Alt (cursor do zoom)
+    document.addEventListener("keydown", (e) => { if (e.key === "Control") exp.ctrlDown = true; if (e.key === "Alt" && exp.alignAlt) exp.alignAlt(true); }, true);
+    document.addEventListener("keyup", (e) => { if (e.key === "Control") exp.ctrlDown = false; if (e.key === "Alt" && exp.alignAlt) exp.alignAlt(false); }, true);
+    window.addEventListener("blur", () => { exp.ctrlDown = false; if (exp.alignAlt) exp.alignAlt(false); });
     document.addEventListener("keydown", (e) => {
       if (e.key !== " " || !exp.aligning || $("exportOverlay").classList.contains("hidden") || isText(e.target)) return;
       e.preventDefault(); e.stopImmediatePropagation();
@@ -5989,12 +5998,24 @@
       ["pointerup", "pointercancel", "lostpointercapture"].forEach((ev) => b.addEventListener(ev, () => { if (timer || repeat) { stop(); save(); } }));
       return b;
     };
-    const control = (key, label, unit, step, bigStep, decimals, get, apply) => {
+    const control = (key, label, unit, step, bigStep, decimals, get, apply, neutral) => {
       const r = el("div", "align-ctl");
       const inp = document.createElement("input"); inp.type = "text"; inp.className = "lent-num align-num"; inp.value = get().toFixed(decimals);
       inp.setAttribute("aria-label", label);
-      const typed = () => { const v = parseFloat(inp.value.replace(",", ".")); if (!isNaN(v)) stepOnce((c) => apply(c, v - get())); else sync(); };
+      inp.inputMode = "decimal";
+      // Caixa vazia confirmada = o valor neutro (0; no Size, 100). Só entram algarismos, "," ou "." (um só) e o sinal
+      // de menos no começo (pedido do dono, 2026-11-24)
+      const clean = (t) => { let neg = /^\s*[-−]/.test(t), seen = false; const d = t.replace(/[^0-9.,]/g, "").replace(/[.,]/g, (m) => (seen ? "" : ((seen = true), m))); return (neg ? "-" : "") + d; };
+      inp.addEventListener("input", () => { const c = clean(inp.value); if (c !== inp.value) { const pos = Math.max(0, inp.selectionStart - (inp.value.length - c.length)); inp.value = c; try { inp.setSelectionRange(pos, pos); } catch (e) {} } });
+      const typed = () => {
+        const t = inp.value.trim().replace(",", ".");
+        const v = t === "" || t === "-" || t === "." || t === "-." ? neutral || 0 : parseFloat(t);
+        if (!isNaN(v) && Math.abs(v - get()) > 1e-9) stepOnce((c) => apply(c, v - get())); else sync();
+      };
       inp.addEventListener("change", typed);
+      // Clicar na caixa seleciona o número inteiro (digitar já substitui); Esc desiste do que foi digitado
+      inp.addEventListener("focus", () => setTimeout(() => { if (document.activeElement === inp) inp.select(); }, 0));
+      inp.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); inp.value = get().toFixed(decimals); inp.blur(); } });
       // ⌘Z / ⇧⌘Z com o cursor nesta caixa: desfaz e refaz o ajuste da foto, como fora dela (decisão do dono, 2026-11-11;
       // nos outros campos de texto o desfazer é o do texto). Com um número digitado e ainda não confirmado, o primeiro
       // ⌘Z só descarta esse número.
@@ -6016,7 +6037,7 @@
     };
     control("dx", "Move X", "Pixels of the original · steps of 1 (⇧ 10)", 1, 10, 0, () => a.dx, (c, d) => { c.dx += d; });
     control("dy", "Move Y", "Pixels of the original · steps of 1 (⇧ 10)", 1, 10, 0, () => a.dy, (c, d) => { c.dy += d; });
-    control("scale", "Size", "Percent of the original · steps of 0.1 (⇧ 1)", 0.1, 1, 1, () => a.scale * 100, (c, d) => { c.scale = Math.max(0.05, Math.min(20, c.scale + d / 100)); });
+    control("scale", "Size", "Percent of the original · steps of 0.1 (⇧ 1)", 0.1, 1, 1, () => a.scale * 100, (c, d) => { c.scale = Math.max(0.05, Math.min(20, c.scale + d / 100)); }, 100);
     control("rot", "Rotate", "Degrees, clockwise · steps of 0.05 (⇧ 0.5)", 0.05, 0.5, 2, () => a.rot, (c, d) => { c.rot = Math.round((c.rot + d) * 1000) / 1000; });
     // Flip (protótipo aprovado pelo dono, 2026-11-11): dois botões que ligam e desligam, da largura do "− número +" das
     // linhas de cima, e "Apply to all" embaixo deles, que dá a todas as fotos da sessão o espelhamento desta. O
@@ -6218,26 +6239,31 @@
       return Math.abs(x) <= box.offsetWidth * a.scale / 2 && Math.abs(y) <= box.offsetHeight * a.scale / 2;
     };
     stage.addEventListener("pointermove", (e) => { if (!drag && sizes[item.file]) stage.dataset.over = overPhoto(e) ? "in" : "out"; });
-    const zoomAt = (e, factor) => {
-      const r = stage.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
-      const ux = (mx - cx) / scaleK, uy = (my - cy) / scaleK;
-      view.zoom = Math.max(0.3, Math.min(8, view.zoom * factor));
+    // Zoom da vista (30% a 800%) mantendo no lugar o ponto da foto que está sob o mouse
+    const zoomAnchor = (e) => { const r = stage.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top; return { mx, my, ux: (mx - cx) / scaleK, uy: (my - cy) / scaleK }; };
+    const zoomTo = (p, zoom) => {
+      view.zoom = Math.max(0.3, Math.min(8, zoom));
       const k = baseK * view.zoom, W = stage.clientWidth, H = stage.clientHeight;
-      view.px = mx - W / 2 - ux * k; view.py = my - H / 2 - uy * k;
+      view.px = p.mx - W / 2 - p.ux * k; view.py = p.my - H / 2 - p.uy * k;
       layout();
     };
+    const zoomAt = (e, factor) => zoomTo(zoomAnchor(e), view.zoom * factor);
     stage.addEventListener("pointermove", (e) => { stage.classList.toggle("alt", e.altKey); });
+    exp.alignAlt = (on) => stage.classList.toggle("alt", on);  // (a tecla muda o cursor na hora, sem mexer o mouse)
+    // Enquanto o botão está apertado o cursor é o mesmo na tela toda, não só em cima da foto grande
+    const holdCursor = (value) => { document.body.style.setProperty("--drag-cursor", value || getComputedStyle(stage).cursor); document.body.classList.add("align-drag"); };
     stage.addEventListener("pointerdown", (e) => {
       if (e.button !== 0 || e.target.closest("button") || e.target.closest(".align-tools, .align-tools-grip") || !sizes[item.file]) return;
       e.preventDefault();
       const toolNow = alignPrefs.tool || "pointer";
-      if (toolNow === "zoom" && !exp.spaceDown) { zoomAt(e, e.altKey ? 1 / 1.5 : 1.5); return; }
       stage.setPointerCapture(e.pointerId);
+      // Zoom: um clique aproxima (com Alt, afasta); segurar e arrastar para a direita aproxima, para a esquerda afasta
+      if (toolNow === "zoom" && !exp.spaceDown) { drag = { kind: "zoom", x: e.clientX, zoom: view.zoom, at: zoomAnchor(e), moved: false, alt: e.altKey, ev: e }; return; }
       // Pointer: fora da foto que está sendo alinhada, arrastar desloca a vista (pedido do dono, 2026-11-24)
       const onPart = e.target === rotHandle || e.target.classList.contains("align-handle");
       if (exp.spaceDown || toolNow === "pan" || (toolNow === "pointer" && !onPart && !overPhoto(e))) {
         document.body.classList.add("photo-drag");  // a mão fechada continua fora da prévia
-        drag = { kind: "pan", x: e.clientX, y: e.clientY, px: view.px, py: view.py }; stage.classList.add("panning"); return; }
+        drag = { kind: "pan", x: e.clientX, y: e.clientY, px: view.px, py: view.py }; stage.classList.add("panning"); holdCursor("grabbing"); return; }
       lockStart();
       const c = centerOnScreen();
       if (toolNow === "rotate" || (toolNow === "pointer" && e.target === rotHandle)) {
@@ -6249,6 +6275,7 @@
       } else {
         drag = { kind: "move", x: e.clientX, y: e.clientY, dx: a.dx, dy: a.dy }; stage.classList.add("dragging");
       }
+      holdCursor();
     });
     let moveEv = null, moveRaf = 0;
     stage.addEventListener("pointermove", (e) => {
@@ -6258,6 +6285,12 @@
     });
     const dragMove = (e) => {
       if (drag.kind === "pan") { view.px = drag.px + e.clientX - drag.x; view.py = drag.py + e.clientY - drag.y; layout(); return; }
+      if (drag.kind === "zoom") {
+        if (!drag.moved && Math.abs(e.clientX - drag.x) < 4) return;
+        if (!drag.moved) { drag.moved = true; stage.classList.add("zooming"); holdCursor(); }
+        zoomTo(drag.at, drag.zoom * Math.exp((e.clientX - drag.x) * 0.008));
+        return;
+      }
       const c = centerOnScreen();
       if (drag.kind === "move") tryApply((cand) => { cand.dx = drag.dx + (e.clientX - drag.x) / scaleK; cand.dy = drag.dy + (e.clientY - drag.y) / scaleK; });
       else if (drag.kind === "scale") tryApply((cand) => { cand.scale = Math.max(0.05, Math.min(20, drag.scale * Math.max(1, Math.hypot(e.clientX - c.x, e.clientY - c.y)) / drag.dist)); });
@@ -6267,8 +6300,9 @@
     const endDrag = (e) => {
       if (!drag) return;
       if (moveRaf) { cancelAnimationFrame(moveRaf); moveRaf = 0; if (moveEv) dragMove(moveEv); }  // a última posição do mouse vale
-      const pan = drag.kind === "pan";
-      drag = null; stage.classList.remove("dragging", "resizing", "rotating", "panning"); document.body.classList.remove("photo-drag");
+      const pan = drag.kind === "pan" || drag.kind === "zoom";
+      if (drag.kind === "zoom" && !drag.moved && e && e.type === "pointerup") zoomTo(drag.at, drag.zoom * (drag.alt ? 1 / 1.5 : 1.5));
+      drag = null; stage.classList.remove("dragging", "resizing", "rotating", "panning", "zooming"); document.body.classList.remove("photo-drag", "align-drag");
       if (pan) return;  // deslocar a vista não muda a foto
       a.dx = Math.round(a.dx); a.dy = Math.round(a.dy); sync(); layout(); save();
     };
@@ -6278,6 +6312,8 @@
       if (!sizes[item.file]) return;
       e.preventDefault();
       const d = Math.max(-40, Math.min(40, e.deltaY));
+      // Pinça do trackpad (chega como roda + Ctrl, sem a tecla Ctrl apertada): zoom da vista
+      if (e.ctrlKey && !exp.ctrlDown && !e.metaKey) { zoomAt(e, Math.exp(-d * 0.012)); return; }
       if (e.ctrlKey || e.metaKey) {  // Ctrl + roda: move a foto para cima e para baixo; com Alt junto, para os lados
         lockStart();
         const stepPx = -d / scaleK;
@@ -7131,7 +7167,7 @@
     renderExport();
   }
   function editStep(session, items, st, outer, rows, rerender) {
-    exp.keyNav = null; exp.keyMove = null; exp.alignToolKey = null;
+    exp.keyNav = null; exp.keyMove = null; exp.alignToolKey = null; exp.alignAlt = null;
     cropLoad(session, st);
     const name = session.name;
     const hasEd = session.inProject && session.edited > 0;

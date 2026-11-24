@@ -4548,6 +4548,13 @@ namespace
             });
         };
         bindCycle(window);
+        // Align photos, espaço segurado: no Mac as repetições da tecla não chegam à página (o cursor piscava)
+        window.bind("spaceHold", [](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            NativeWindow::QuietSpaceRepeat(!args.empty() && args[0] == "1");
+            return "null";
+        });
 
         auto screensJson = []
         {

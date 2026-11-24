@@ -1688,6 +1688,11 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .align-stage[data-tool="pan"] { cursor: grab; }
 .align-stage[data-tool="zoom"] { cursor: zoom-in; }
 .align-stage[data-tool="zoom"].alt { cursor: zoom-out; }
+.align-stage[data-tool="zoom"].zooming { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke-linecap='round'%3E%3Ccircle cx='10' cy='10' r='6.5' stroke='%23fff' stroke-width='4.5'/%3E%3Cpath d='M15 15l6 6' stroke='%23fff' stroke-width='4.5'/%3E%3Ccircle cx='10' cy='10' r='6.5' stroke='%23000' stroke-width='2'/%3E%3Cpath d='M15 15l6 6' stroke='%23000' stroke-width='2'/%3E%3C/g%3E%3C/svg%3E") 10 10, zoom-in; }  /* arrastando: a lupa sem + nem − */
+/* Botão apertado: o cursor do gesto vale na tela toda (não muda ao sair da foto grande) */
+body.align-drag, body.align-drag * { cursor: var(--drag-cursor, default) !important; user-select: none !important; -webkit-user-select: none !important; }
+/* Espaço segurado e arrastando: a mão fecha */
+.export-settings.space-pan .align-stage.panning, .export-settings.space-pan .align-stage.panning * { cursor: grabbing !important; }
 .align-stage[data-tool="zoom"] .align-handle, .align-stage[data-tool="zoom"] .align-rot-handle { cursor: inherit; }
 .align-stage.resizing, .align-stage.resizing * { cursor: nwse-resize !important; }
 .align-stage.resizing[data-resize="nesw"], .align-stage.resizing[data-resize="nesw"] * { cursor: nesw-resize !important; }
