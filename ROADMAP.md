@@ -1460,6 +1460,12 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      mudou") não foi mexida. Teste automático no cenário do Align cameras.
      Aviso de marcas a distâncias desiguais: protótipo (formas A e B) em
      https://claude.ai/artifact/NGyWUTCHV74amd7xaeZFHG, aguardando a escolha.
+     **Ideias do dono (2026-11-24), em aberto:** (i) no passo 3 do Align cameras, tocar a sequência já alinhada e
+     ajustar cada foto na mão como no Align photos do Export: protótipos (formas A e B) em
+     https://claude.ai/artifact/L9ccmkpqHd1ZBDVEVeMBxm, aguardando a escolha; (ii) guardar um rig (alinhamento)
+     para reutilizar em vários projetos, hoje não existe (o alinhamento fica no projeto e cada sessão guarda a
+     cópia do que valia quando foi fotografada); (iii) o aviso de marcas desiguais: o dono quer saber quanto isso
+     prejudica antes de decidir se é faixa ou janela. Os testes automáticos continuam sendo relatados sempre.
      (b) Os botões da janela Guided aim subiam e desciam quando o número de instruções mudava: o espaço das
      instruções passou a ser fixo (seis linhas).
      (c) "Camera 03 / Camera 04 · Not connected" apareciam sem nunca terem sido ligadas: vinham do alinhamento
