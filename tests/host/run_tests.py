@@ -2568,6 +2568,83 @@ def scenario_align_uneven(t, name, photos):
         t.restart_app()
 
 
+def scenario_align_tools(t, name, photos):
+    line("\n== 28. Export › Align photos: the tool bar inside the big photo, the center cross and the guides")
+    t.dismiss()
+    t.env["STILLPOINT_FAKE_CAMERAS"] = "4"
+    t.env["STILLPOINT_FAKE_PHOTOS"] = "pole"
+    try:
+        t.restart_app()
+        t.dismiss()
+        errors_before = len(t.errors)
+        t.js("() => { try { localStorage.removeItem('stillpoint.alignPrefs'); } catch (e) {} }")
+        t.js("() => document.getElementById('shootBtn').click()")
+        t.wait(lambda: t.js("() => !document.getElementById('shootBtn').disabled && !document.getElementById('saveBtn').disabled"), 60)
+        time.sleep(1.5)
+        t.js("() => document.querySelectorAll('.toast').forEach((e) => e.remove())")
+        t.dismiss()
+        t.js("() => document.getElementById('saveBtn').click()")
+        time.sleep(1.2)
+        t.button("Align photos")
+        time.sleep(0.8)
+        t.js("() => { const o = document.getElementById('dialogOverlay'); if (!o.classList.contains('hidden')) { const b = [...o.querySelectorAll('button')].find((x) => /^Use /.test(x.textContent.trim())) || o.querySelectorAll('button')[0]; b.click(); } }")
+        t.wait(lambda: t.js("() => !!document.querySelector('.align-stage .align-tools') && !document.querySelector('.align-stage .align-wait')"), 20)
+        time.sleep(0.8)
+        st = lambda: t.js("() => { const s = document.querySelector('.align-stage'), b = s.querySelector('.align-tools').getBoundingClientRect(), r = s.getBoundingClientRect(), g = s.querySelector('.align-tools-grip'), c = s.querySelector('.align-cross'), f = s.querySelector('.align-ratio').getBoundingClientRect(), cb = c.getBoundingClientRect(); return { near: s.classList.contains('tools-near'), barIn: b.left >= r.left && b.right <= r.right && b.top >= r.top, barOp: getComputedStyle(s.querySelector('.align-tools')).opacity, gripOp: getComputedStyle(g).opacity, gripEdge: Math.round(g.getBoundingClientRect().left - r.left), tool: s.dataset.tool, tools: [...s.querySelectorAll('.align-tool')].map((x) => x.dataset.tool + (x.classList.contains('on') ? '*' : '')), guides: [...s.querySelectorAll('.align-guide')].map((x) => x.dataset.guide + (x.classList.contains('on') ? '*' : '')), cross: !c.classList.contains('hidden'), crossAt: [Math.round(cb.left - (f.left + f.width / 2)), Math.round(cb.top - (f.top + f.height / 2))], clean: s.classList.contains('clean'), clip: s.querySelector('.align-layers').style.clipPath, handle: getComputedStyle(s.querySelector('.align-handle')).display }; }")
+        vals = lambda: t.js("() => [...document.querySelectorAll('.align-panel .align-ctl input')].map((i) => i.value)")
+        d = st()
+        check(t, "align tools: away from the left edge the bar is hidden and a grip with an arrow sits on the edge", not d["near"] and d["barOp"] == "0" and d["gripOp"] == "1" and d["gripEdge"] <= 1, d)
+        check(t, "align tools: the cross in the middle of the canvas is on from the start, with the handles", d["cross"] and abs(d["crossAt"][0]) <= 1 and abs(d["crossAt"][1]) <= 1 and not d["clean"] and d["handle"] != "none" and d["guides"] == ["cross*", "edges*"], d)
+        box = t.page.locator(".align-stage").bounding_box()
+        t.page.mouse.move(box["x"] + 30, box["y"] + 60)
+        time.sleep(0.5)
+        d = st()
+        check(t, "align tools: with the mouse near the left edge the bar shows, inside the big photo, and the grip goes", d["near"] and d["barIn"] and d["barOp"] == "1" and d["gripOp"] == "0", d)
+        check(t, "align tools: five tools, Pointer chosen from the start", d["tools"] == ["pointer*", "move", "rotate", "scale", "pan"] and d["tool"] == "pointer", d["tools"])
+        t.shot("align-tools-bar")
+        cx, cy = box["x"] + box["width"] * 0.6, box["y"] + box["height"] * 0.5
+        def drag(dx, dy):
+            t.page.mouse.move(cx, cy); t.page.mouse.down(); t.page.mouse.move(cx + dx, cy + dy, steps=4); t.page.mouse.up(); time.sleep(0.5)
+        def pick(sel):
+            t.js("(q) => document.querySelector(q).click()", sel); time.sleep(0.3)
+        v0 = vals()
+        pick(".align-tool[data-tool=rotate]")
+        drag(0, 60)
+        v1 = vals()
+        # (o giro pode obrigar a foto a crescer para continuar cobrindo o canvas: regra que já existia)
+        check(t, "align tools: with Rotate, dragging anywhere turns the photo (and does not move it)", v1[3] != v0[3] and v1[:2] == v0[:2], (v0, v1))
+        pick(".align-tool[data-tool=scale]")
+        drag(70, 0)
+        v2 = vals()
+        check(t, "align tools: with Scale, dragging anywhere resizes it (and does not turn or move it)", v2[2] != v1[2] and v2[3] == v1[3] and v2[:2] == v1[:2], (v1, v2))
+        pick(".align-tool[data-tool=move]")
+        drag(14, 9)
+        v3 = vals()
+        check(t, "align tools: with Move the photo, dragging moves it", v3[:2] != v2[:2] and v3[2:] == v2[2:], (v2, v3))
+        pick(".align-tool[data-tool=pan]")
+        drag(40, 25)
+        v4 = vals()
+        check(t, "align tools: with Move the view, dragging moves the view and leaves the photo as it is", v4 == v3, (v3, v4))
+        pick(".align-guide[data-guide=cross]")
+        pick(".align-guide[data-guide=edges]")
+        d = st()
+        check(t, "align tools: the two guides switch off on their own: no cross, no handles, nothing outside the canvas", not d["cross"] and d["clean"] and d["handle"] == "none" and d["clip"].startswith("inset(") and d["guides"] == ["cross", "edges"] and d["tools"][4] == "pan*", d)
+        t.page.mouse.move(box["x"] + box["width"] * 0.7, box["y"] + box["height"] * 0.5)
+        time.sleep(1.2)
+        t.shot("align-tools-clean")
+        t.js("() => { exp_next = [...document.querySelectorAll('.export-strip li')][1]; if (exp_next) exp_next.click(); }")
+        time.sleep(1.0)
+        d = st()
+        check(t, "align tools: the tool and the guides stay as chosen on the next photo", d["tool"] == "pan" and not d["cross"] and d["clean"], d)
+        pick(".align-tool[data-tool=pointer]")
+        pick(".align-guide[data-guide=cross]")
+        pick(".align-guide[data-guide=edges]")
+        check(t, "align tools: no page error", len(t.errors) == errors_before, t.errors[errors_before:])
+    finally:
+        t.js("() => { try { localStorage.removeItem('stillpoint.alignPrefs'); } catch (e) {} }")
+        t.restart_app()
+
+
 def scenario_align_marks(t, name, photos):
     line("\n== 20. Automatic alignment: the three marks and the recipe (calculation only, no window yet)")
     prog = os.path.join(BUILD, "AlignMarksTest")
@@ -2647,7 +2724,7 @@ def main():
                 only = os.environ.get("STILLPOINT_TEST_ONLY", "")  # para depurar: só os cenários com este nome
                 for sc in [x for x in (scenario_cleared, scenario_delete_edit_undo, scenario_photo_delete_restore,
                            scenario_remove_from_collection, scenario_delete_session, scenario_cancel, scenario_rapid_in_lightroom, scenario_crop_before_lightroom,
-                           scenario_export_edit, scenario_export_trash, scenario_lightroom_crop, scenario_undo_own_item, scenario_orientation, scenario_selection_kept, scenario_align_undo, scenario_flip, scenario_photoshop, scenario_rig_state, scenario_align_marks, scenario_align_cameras, scenario_camera_tags, scenario_guided_aim, scenario_live_many, scenario_custom_drag, scenario_align_gone, scenario_align_uneven) if any(o in x.__name__ for o in only.split(","))]:  # vários, separados por vírgula
+                           scenario_export_edit, scenario_export_trash, scenario_lightroom_crop, scenario_undo_own_item, scenario_orientation, scenario_selection_kept, scenario_align_undo, scenario_flip, scenario_photoshop, scenario_rig_state, scenario_align_marks, scenario_align_cameras, scenario_camera_tags, scenario_guided_aim, scenario_live_many, scenario_custom_drag, scenario_align_gone, scenario_align_uneven, scenario_align_tools) if any(o in x.__name__ for o in only.split(","))]:  # vários, separados por vírgula
                     try:
                         sc(t, name, photos)
                     except Exception:  # noqa: BLE001

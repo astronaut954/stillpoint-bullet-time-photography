@@ -1493,6 +1493,16 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      câmeras fotografam em proporções diferentes; tem de dar para mudar depois em algum lugar (a definir) e
      continua dando para mudar na exportação; as sessões já feitas não mudam; a opção "As shot" some. Ainda é uma
      etapa futura, não começada.
+     Escolha do dono: guias na forma C3 (faixa à esquerda do botão) e barra escondida na forma H4, com uma seta
+     apontando para a direita no lugar dos três pontos. **Feito (primeira parte, só no Align photos da
+     exportação):** barra dentro da foto grande, à esquerda, com cinco ferramentas (seta, que é o padrão e age como
+     antes; mover a foto; girar; mudar o tamanho; mover a vista) e duas guias (cruz do centro; moldura e alças).
+     Os botões só têm ícone, com o texto ao parar o mouse; a barra aparece quando o
+     mouse chega à borda esquerda da foto e some 0,7 s depois de sair; escondida, sobra uma aba com a seta. A
+     ferramenta e as guias ficam guardadas entre fotos e sessões do app. Sem a guia da moldura, somem a
+     moldura, as alças e o que sobra da foto fora do canvas. Girar com a ferramenta de girar pode aumentar o Size
+     (regra que já existia: a foto girada cresce para continuar cobrindo o canvas). Teste automático: cenário 28.
+     Falta: o passo 3 do Align cameras virar este editor (forma B), com Play the sequence.
      (b) Os botões da janela Guided aim subiam e desciam quando o número de instruções mudava: o espaço das
      instruções passou a ser fixo (seis linhas).
      (c) "Camera 03 / Camera 04 · Not connected" apareciam sem nunca terem sido ligadas: vinham do alinhamento

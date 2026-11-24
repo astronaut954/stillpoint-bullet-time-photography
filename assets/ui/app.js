@@ -131,6 +131,14 @@
   const ICONS = {
     alert: '<path d="M7 1.8L13 12.2H1L7 1.8z"/><path d="M7 5.6v3"/><path d="M7 10.4v.1"/>',
     minus: '<path d="M3 7h8"/>',
+    // Ferramentas da tela "Align photos" (barra dentro da foto grande)
+    toolPointer: '<path d="M3 1.8l8 4.5-3.5 1 2.1 3.8-1.5.8-2.100-3.8L3.300 10.800z"/>',
+    toolMove: '<path d="M7 1.5v11M1.5 7h11"/><path d="M5.400 3.100L7 1.500l1.600 1.600M5.400 10.900L7 12.500l1.600-1.600M3.100 5.400L1.500 7l1.600 1.600M10.900 5.400L12.500 7l-1.600 1.600"/>',
+    toolRotate: '<path d="M11.500 7.200a4.500 4.500 0 1 1-1.500-3.600"/><path d="M10.400 1.500v2.500H7.900"/>',
+    toolScale: '<path d="M2.500 11.500l9-9"/><path d="M7.500 2.500h4v4M6.500 11.500h-4v-4"/>',
+    toolPan: '<path d="M4.600 7.200V3.500a.9.9 0 0 1 1.800 0v3M6.400 6.300V2.700a.9.9 0 0 1 1.800 0v3.600M8.200 6.500V3.500a.9.9 0 0 1 1.800 0v5.200c0 2.200-1.400 3.700-3.500 3.700-1.500 0-2.400-.7-3.200-2L2.200 8.300a.9.9 0 0 1 1.500-1l.9 1.200"/>',
+    guideEdges: '<path d="M3.500 3.500h7v7h-7z"/><path d="M1.500 1.500h2v2h-2zM10.500 1.500h2v2h-2zM1.500 10.500h2v2h-2zM10.500 10.500h2v2h-2z"/>',
+    grip: '<path d="M5 3l4 4-4 4"/>',
     plus: '<path d="M3 7h8M7 3v8"/>',
     swap: '<path d="M2.5 5h8l-2.5-2.5M11.5 9h-8l2.5 2.5"/>',
     lens: '<rect x="1.5" y="2.5" width="11" height="9"/><path d="M1.5 5.5c1.4-1.6 2.3-1.6 3.7 0s2.3 1.6 3.7 0 2.3-1.6 3.6 0M4.5 8.5h5"/>',
@@ -5731,6 +5739,60 @@
     const wait = el("div", "align-wait", "Measuring the photos…");
     stage.append(layers, common, ratio, box, tag, wait);
     left.appendChild(stage);
+    // ---- Barra de ferramentas e guias, dentro da foto grande (decisões do dono, 2026-11-24) ----
+    // Ferramentas (uma por vez): Pointer é como sempre foi (o mouse muda conforme onde está); as outras fazem uma coisa
+    // só, arrastando em qualquer lugar. Guias (cada uma liga e desliga por si, com a faixa acesa ao lado, forma C3):
+    // o "+" no meio do canvas, e os cabos junto com o que está fora do canvas. A barra some como o Activity na tela
+    // cheia e volta quando o mouse chega perto da borda esquerda; escondida, fica um puxador com uma seta (forma H4).
+    const TOOLS = [["pointer", "toolPointer", "Pointer: move, resize or rotate, depending on where the mouse is"], ["move", "toolMove", "Move the photo"],
+      ["rotate", "toolRotate", "Rotate the photo"], ["scale", "toolScale", "Resize the photo"], ["pan", "toolPan", "Move the view (the photo stays where it is)"]];
+    if (!TOOLS.some((t) => t[0] === alignPrefs.tool)) alignPrefs.tool = "pointer";
+    const cross = el("div", "align-cross");
+    ratio.appendChild(cross);
+    const tools = el("div", "align-tools");
+    tools.id = "alignTools";
+    const toolBtns = {};
+    const paintTools = (first) => {
+      stage.dataset.tool = alignPrefs.tool;
+      TOOLS.forEach(([key]) => { toolBtns[key].classList.toggle("on", alignPrefs.tool === key); toolBtns[key].setAttribute("aria-pressed", alignPrefs.tool === key ? "true" : "false"); });
+      cross.classList.toggle("hidden", alignPrefs.cross === false);
+      stage.classList.toggle("clean", alignPrefs.edges === false);
+      guideBtns.cross.classList.toggle("on", alignPrefs.cross !== false);
+      guideBtns.edges.classList.toggle("on", alignPrefs.edges !== false);
+      guideBtns.cross.title = "Center cross: " + (alignPrefs.cross !== false ? "on" : "off");
+      guideBtns.edges.title = "Handles and what is outside the canvas: " + (alignPrefs.edges !== false ? "on" : "off");
+      if (!first && exp.alignLayout) exp.alignLayout();
+    };
+    TOOLS.forEach(([key, ic, title]) => {
+      const b = el("button", "align-tool");
+      b.type = "button"; b.dataset.tool = key; b.title = title; b.innerHTML = icon(ic, 18);
+      b.addEventListener("click", () => { alignPrefs.tool = key; saveAlignPrefs(); paintTools(); });
+      toolBtns[key] = b; tools.appendChild(b);
+    });
+    tools.appendChild(el("span", "align-tools-sep"));
+    const guideBtns = {};
+    [["cross", "plus"], ["edges", "guideEdges"]].forEach(([key, ic]) => {
+      const b = el("button", "align-guide");
+      b.type = "button"; b.dataset.guide = key; b.innerHTML = icon(ic, 18);
+      b.addEventListener("click", () => { alignPrefs[key] = alignPrefs[key] === false; saveAlignPrefs(); paintTools(); });
+      guideBtns[key] = b; tools.appendChild(b);
+    });
+    const grip = el("div", "align-tools-grip");
+    grip.innerHTML = icon("grip", 12);
+    grip.title = "Tools";
+    stage.append(tools, grip);
+    // Perto da borda esquerda (ou em cima da barra) ela aparece; longe, some depois de um instante
+    let toolsTimer = 0;
+    const toolsNear = (near) => {
+      clearTimeout(toolsTimer);
+      if (near) { alignScreen.toolsNear = true; stage.classList.add("tools-near"); }
+      else toolsTimer = setTimeout(() => { alignScreen.toolsNear = false; stage.classList.remove("tools-near"); }, 700);
+    };
+    if (alignScreen.toolsNear) stage.classList.add("tools-near");  // (a tela é refeita a cada mudança: a barra fica como estava)
+    stage.addEventListener("pointermove", (e) => { const r = stage.getBoundingClientRect(); toolsNear(e.clientX - r.left < 76 || !!e.target.closest(".align-tools, .align-tools-grip")); });
+    stage.addEventListener("pointerleave", () => toolsNear(false));
+    grip.addEventListener("pointerenter", () => toolsNear(true));
+    paintTools(true);
     // Fileira de miniaturas, com um ponto da cor da referência
     const stripScroll = el("div", "export-strip-scroll");
     const strip = el("ul", "export-strip");
@@ -6099,6 +6161,9 @@
       ratio.style.display = ""; ratio.classList.add("free");
       ratio.style.left = (cx + frame.x * scaleK) + "px"; ratio.style.top = (cy + frame.y * scaleK) + "px"; ratio.style.width = (frame.w * scaleK) + "px"; ratio.style.height = (frame.h * scaleK) + "px";
       ratio.setAttribute("data-size", "Canvas · " + Math.round(frame.w) + " × " + Math.round(frame.h) + " px · " + rn(frame.w, frame.h));
+      // Guia "cabos e o que está fora do canvas" desligada: as fotos aparecem só dentro do canvas
+      { const fl = cx + frame.x * scaleK, ft = cy + frame.y * scaleK, fw2 = frame.w * scaleK, fh2 = frame.h * scaleK;
+        layers.style.clipPath = stage.classList.contains("clean") ? "inset(" + Math.max(0, ft) + "px " + Math.max(0, W - fl - fw2) + "px " + Math.max(0, H - ft - fh2) + "px " + Math.max(0, fl) + "px)" : ""; }
       const sz = sizes[item.file];
       cf.textContent = "Canvas " + Math.round(frame.w) + " × " + Math.round(frame.h) + " px (" + rn(frame.w, frame.h) + ")" + (sz ? " · this photo " + sz.w + " × " + sz.h + " px (" + rn(sz.w, sz.h) + ")" : "");
       cf.title = "The canvas is what every export gets: what every photo covers as shot and, with an aspect ratio, the largest frame in that ratio inside it. No photo is enlarged on its own; each one is moved, resized and rotated behind the canvas.";
@@ -6125,15 +6190,16 @@
     let drag = null;
     const centerOnScreen = () => { const r = stage.getBoundingClientRect(); return { x: r.left + cx + a.dx * scaleK, y: r.top + cy + a.dy * scaleK }; };
     stage.addEventListener("pointerdown", (e) => {
-      if (e.button !== 0 || e.target.closest("button") || !sizes[item.file]) return;
+      if (e.button !== 0 || e.target.closest("button") || e.target.closest(".align-tools, .align-tools-grip") || !sizes[item.file]) return;
       e.preventDefault(); stage.setPointerCapture(e.pointerId);
       document.body.classList.add("photo-drag");  // a mão fechada continua fora da prévia
-      if (exp.spaceDown) { drag = { kind: "pan", x: e.clientX, y: e.clientY, px: view.px, py: view.py }; stage.classList.add("panning"); return; }
+      const toolNow = alignPrefs.tool || "pointer";
+      if (exp.spaceDown || toolNow === "pan") { drag = { kind: "pan", x: e.clientX, y: e.clientY, px: view.px, py: view.py }; stage.classList.add("panning"); return; }
       lockStart();
       const c = centerOnScreen();
-      if (e.target === rotHandle) {
+      if (toolNow === "rotate" || (toolNow === "pointer" && e.target === rotHandle)) {
         drag = { kind: "rot", rot: a.rot, angle: Math.atan2(e.clientY - c.y, e.clientX - c.x) }; stage.classList.add("rotating");
-      } else if (e.target.classList.contains("align-handle")) {
+      } else if (toolNow === "scale" || (toolNow === "pointer" && e.target.classList.contains("align-handle"))) {
         drag = { kind: "scale", scale: a.scale, dist: Math.max(1, Math.hypot(e.clientX - c.x, e.clientY - c.y)) }; stage.classList.add("resizing");
       } else {
         drag = { kind: "move", x: e.clientX, y: e.clientY, dx: a.dx, dy: a.dy }; stage.classList.add("dragging");

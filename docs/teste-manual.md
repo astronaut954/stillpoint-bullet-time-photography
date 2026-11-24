@@ -2332,6 +2332,27 @@ as três marcas numa foto, **Guided aim**.
       project already has an alignment" (**Cancel** / **Align cameras**).
 - [ ] Windows: os itens acima.
 
+## 58. Align photos: barra de ferramentas e guias dentro da foto grande (2026-11-24)
+
+Em **Export sessions** › sessão com mais de uma foto › **Align photos**.
+
+- [ ] Com o mouse longe da borda esquerda da foto grande: só uma aba estreita com uma seta para a direita.
+- [ ] Mouse na borda esquerda da foto grande: aparece a barra (dentro da foto). Os botões só têm ícone; o texto
+      aparece ao parar o mouse em cima. De cima para baixo: seta ("Pointer: move, resize or rotate, depending on
+      where the mouse is"), quatro setas ("Move the photo"), seta circular ("Rotate the photo"), seta diagonal
+      ("Resize the photo"), mão ("Move the view (the photo stays where it is)"); depois de uma separação, as duas
+      guias, com uma faixa à esquerda: cruz ("Center cross: on") e moldura ("Handles and what is outside the
+      canvas: on"). Tirando o mouse, a barra some em menos de um segundo.
+- [ ] Seta (já vem escolhida): tudo como antes (arrastar a foto move, alças dos cantos mudam o tamanho, alça de
+      cima gira).
+- [ ] Quatro setas: arrastar em qualquer lugar move a foto. Seta circular: arrastar em qualquer lugar gira (o
+      **Size** pode subir junto, para a foto continuar cobrindo o canvas). Seta diagonal: arrastar em qualquer
+      lugar muda o tamanho. Mão: arrastar move a vista, sem mexer na foto.
+- [ ] Cruz: liga e desliga a cruz no centro do canvas. Moldura: liga e desliga a moldura, as alças e o que sobra
+      da foto fora do canvas.
+- [ ] A ferramenta e as guias escolhidas continuam ao trocar de foto e ao abrir o app de novo.
+- [ ] Windows: os itens acima.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |
