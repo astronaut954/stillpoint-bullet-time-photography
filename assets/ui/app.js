@@ -3273,7 +3273,20 @@
     L.marks = marks; L.w = event.width; L.h = event.height;
     if (!L.moved && d.tried) {  // (logo depois de um Fire again as marcas da foto ainda estão sendo procuradas: espera)
       const k = d.w && d.h ? (L.h / L.w) / (d.h / d.w) : 1;
-      L.moved = !d.found || !d.marks || marks.some((m, i) => Math.hypot(m[0] - d.marks[i][0], 0.5 + (m[1] - 0.5) * k - d.marks[i][1]) > 0.006);
+      const far = (list, limit) => list.some((m, i) => Math.hypot(m[0] - d.marks[i][0], 0.5 + (m[1] - 0.5) * k - d.marks[i][1]) > limit);
+      if (!d.found || !d.marks) L.moved = true;
+      else if (!ga.real) L.moved = far(marks, 0.006);
+      else {
+        // Câmera de verdade: a imagem ao vivo e a foto nunca dão as marcas exatamente no mesmo ponto (outra
+        // definição, outro ruído), e comparar uma com a outra fazia toda câmera contar como mexida para sempre: o
+        // "Review alignment" não abria nem depois do "Fire again" (teste do dono, 2026-11-23). Então a comparação é
+        // da imagem ao vivo com ela mesma: os primeiros quadros depois da foto viram o ponto de partida, e a câmera
+        // conta como mexida quando as marcas saem dali. Um ponto de partida já longe da foto (mais de 3% da
+        // largura) também conta: a câmera foi mexida entre a foto e a imagem ao vivo.
+        L.seen = (L.seen || 0) + 1;
+        if (L.seen === 3) L.base = marks.map((m) => [m[0], m[1]]);
+        if (L.base) L.moved = far(L.base, 0.03) || marks.some((m, i) => Math.hypot(m[0] - L.base[i][0], (m[1] - L.base[i][1]) * L.h / L.w) > 0.008);
+      }
     }
     if (L.moved) alSolve(true); else if (was) gaAfterLive(); else { gaPush(); gaAuto(); }
   }

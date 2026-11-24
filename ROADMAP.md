@@ -1434,6 +1434,15 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      com as câmeras, nem com fotos inteiras reais (só quadros ao vivo).** Limites conhecidos: o suporte dele não
      tem as marcas a distâncias iguais, e a conta de distância e altura (`Solve`) supõe distâncias iguais; marca
      branca ou cinza é a mais fraca das três.
+     **Terceiro retorno do dono (2026-11-24):** a procura nova "funcionou direitinho"; o suporte era um improviso
+     (pedestal de microfone, dois panos e uma meia) e o objetivo é o alinhamento valer com fundos e contrastes
+     variados. O "Review alignment" não abria: com câmera de verdade, as marcas da imagem ao vivo nunca coincidem
+     com as da foto no limite de 0,6% da largura, então toda câmera contava como "mexida" para sempre, mesmo depois
+     do "Fire again". Corrigido em `gaFrame`: com câmera de verdade a imagem ao vivo é comparada com ela mesma (o
+     terceiro quadro depois da foto vira o ponto de partida; mexida = sair dali mais de 0,8% da largura, ou o
+     ponto de partida já estar a mais de 3% da foto). Com câmeras simuladas a regra antiga continua. Sem teste com
+     câmera ainda. Pergunta do dono em aberto: deixar a pessoa mudar o limite de confiança da procura (opinião do
+     agente: não; decisão dele).
      (b) Os botões da janela Guided aim subiam e desciam quando o número de instruções mudava: o espaço das
      instruções passou a ser fixo (seis linhas).
      (c) "Camera 03 / Camera 04 · Not connected" apareciam sem nunca terem sido ligadas: vinham do alinhamento
