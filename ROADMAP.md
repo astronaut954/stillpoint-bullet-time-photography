@@ -1571,6 +1571,13 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      cima de um ponto não começa uma marcação; fora dos pontos, o clique continua começando. Escolhas minhas,
      que o dono pode mudar: os textos ("Fine-tune", "Adjusted by hand", "Back to automatic"), a distância de
      14 px para pegar um ponto, e o ajuste se perder no Fire again. Teste automático: cenário 29.
+     Retorno do dono sobre o ajuste fino (2026-11-24): não gostou do desenho da coluna à direita nem das
+     instruções do Guided aim ("muito amador"): protótipos F1 a F4 e G1 a G4 em
+     https://claude.ai/artifact/Ny8SkEjc9hJqxN4JCfoRS1, aguardando a escolha. Feitos na hora: Ctrl+Shift+Z refaz
+     o arrasto; o espaço segurado no passo 2 recebeu o mesmo conserto do cursor do Align photos (Mac). EM
+     ABERTO: na gravação do passo Edit do Export, a foto 03 (T5) aparece mais ampliada; medida minha na
+     gravação: o suporte tem 225, 210 e 255 px de comprimento nas fotos 01, 02 e 03. Causa não determinada
+     (falta saber qual Alignment estava escolhido e os Size de cada foto).
      **Decisões do dono no meio dos testes (2026-11-24), a fazer DEPOIS dos roteiros:** (i) arrastar os pontos
      que o programa achou, de um jeito que não entre em conflito com a busca automática e que deixe refazer a
      busca; (ii) o botão Align cameras não deve depender do Test shot: protótipos com as posições no Camera
