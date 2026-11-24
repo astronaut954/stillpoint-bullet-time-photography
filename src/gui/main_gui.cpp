@@ -4549,6 +4549,11 @@ namespace
         };
         bindCycle(window);
         // Align photos, espaço segurado: no Mac as repetições da tecla não chegam à página (o cursor piscava)
+        window.bind("cursorShow", [](const std::string&) -> std::string
+        {
+            NativeWindow::ShowCursor();
+            return "null";
+        });
         window.bind("spaceHold", [](const std::string& request) -> std::string
         {
             const auto args = ParseStringArgs(request);

@@ -2358,7 +2358,6 @@ Em **Export sessions** › sessão com mais de uma foto › **Align photos**.
       cursor não muda enquanto o botão está apertado.
 - [ ] Atalhos: **V** seta, **M** mover a foto, **R** girar, **S** tamanho, **H** mover a vista, **Z** zoom.
 - [ ] Ferramenta de zoom (lupa, a sexta da barra): clique aproxima em volta do ponto; Alt (⌥) + clique afasta.
-- [ ] Ctrl + roda do mouse: a foto sobe e desce; Ctrl + Alt (⌥) + roda: vai para os lados.
 - [ ] Caixas **Move X**, **Move Y**, **Size**, **Rotate**: letras não entram; apagar tudo e dar Enter zera (Size
       volta a 100); clicar seleciona o número inteiro; Esc desiste do que foi digitado.
 - [ ] Espaço segurado e arrastando: a mão fecha e o cursor não pisca (Mac).
@@ -2366,6 +2365,11 @@ Em **Export sessions** › sessão com mais de uma foto › **Align photos**.
       Alt (⌥) troca para a lupa com − sem precisar mexer o mouse.
 - [ ] Pinça no trackpad: dá zoom na vista, a foto não sai do lugar.
 - [ ] Com o botão apertado (qualquer ferramenta), levar o mouse para fora da foto grande: o cursor não muda.
+- [ ] A barra fica centrada na altura do lado esquerdo da foto grande; são sete ferramentas (a segunda, seta
+      vazada, atalho **A**: só as alças funcionam; arrastar no meio da foto ou fora dela não faz nada).
+- [ ] Ctrl ou ⌘ + roda: a vista sobe e desce; com Alt (⌥), vai para os lados; a foto não muda (os números do
+      **This photo** ficam iguais).
+- [ ] Mac: apertar um atalho de ferramenta não faz o cursor sumir.
 - [ ] A ferramenta e as guias escolhidas continuam ao trocar de foto e ao abrir o app de novo.
 - [ ] Windows: os itens acima.
 

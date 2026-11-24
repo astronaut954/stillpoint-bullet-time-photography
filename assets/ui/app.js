@@ -4224,14 +4224,18 @@
   // Espaço segurado na tela "Align photos": arrastar desloca a vista (como no Photoshop/Lightroom)
   {
     const isText = (t) => t && (t.tagName === "TEXTAREA" || t.tagName === "SELECT" || (t.tagName === "INPUT" && !["checkbox", "radio", "button", "range"].includes(t.type)));
+    // Mac: uma tecla apertada esconde o cursor até o mouse se mexer (é do sistema, pensado para quem digita texto);
+    // nos atalhos desta tela o programa pede o cursor de volta na hora
+    const showCursor = () => { if (typeof window.cursorShow === "function") window.cursorShow(); };
     const setSpace = (on) => {
       exp.spaceDown = on; const o = $("exportSettings"); if (o) o.classList.toggle("space-pan", on); if (on && exp.alignQuiet) exp.alignQuiet();
       // Mac: com a tecla segurada, cada repetição dela escondia o cursor até o mouse se mexer (o cursor piscava
       // durante o arrasto); o programa passa a engolir as repetições do espaço enquanto ele está segurado
       if (typeof window.spaceHold === "function") window.spaceHold(on ? "1" : "0");
+      if (on) showCursor();
     };
     // Ctrl de verdade apertado (o gesto de pinça do trackpad chega como roda + Ctrl sem a tecla) e Alt (cursor do zoom)
-    document.addEventListener("keydown", (e) => { if (e.key === "Control") exp.ctrlDown = true; if (e.key === "Alt" && exp.alignAlt) exp.alignAlt(true); }, true);
+    document.addEventListener("keydown", (e) => { if (e.key === "Control") exp.ctrlDown = true; if (e.key === "Alt" && exp.alignAlt) { exp.alignAlt(true); if (exp.aligning) showCursor(); } }, true);
     document.addEventListener("keyup", (e) => { if (e.key === "Control") exp.ctrlDown = false; if (e.key === "Alt" && exp.alignAlt) exp.alignAlt(false); }, true);
     window.addEventListener("blur", () => { exp.ctrlDown = false; if (exp.alignAlt) exp.alignAlt(false); });
     document.addEventListener("keydown", (e) => {
@@ -4249,7 +4253,7 @@
     document.addEventListener("keydown", (e) => {
       if (e.metaKey || e.ctrlKey || e.altKey || e.repeat || e.key.length !== 1 || !exp.aligning || !exp.alignToolKey || $("exportOverlay").classList.contains("hidden") || isText(e.target)) return;
       if (!$("dialogOverlay").classList.contains("hidden")) return;
-      if (exp.alignToolKey(e.key.toLowerCase())) { e.preventDefault(); e.stopImmediatePropagation(); }
+      if (exp.alignToolKey(e.key.toLowerCase())) { e.preventDefault(); e.stopImmediatePropagation(); showCursor(); }
     }, true);
     // ⌘0 (Ctrl+0 no Windows): a vista volta ao centro e a 100%
     document.addEventListener("keydown", (e) => {
@@ -5750,7 +5754,7 @@
     ["tl", "tr", "bl", "br"].forEach((c) => { handles[c] = el("div", "align-handle align-handle-" + c); box.appendChild(handles[c]); });
     const rotLine = el("div", "align-rot-line"); const rotHandle = el("div", "align-rot-handle");
     box.append(rotLine, rotHandle);
-    const tagText = pad(item.order || cur + 1) + " · Drag to move · scroll to zoom · hold space and drag to pan · ⌥ scroll to rotate · Ctrl scroll to move up or down (with ⌥, sideways) · ⌘ arrows 1 px (⇧ 10)";
+    const tagText = pad(item.order || cur + 1) + " · Drag to move · scroll to zoom · hold space and drag to pan · ⌥ scroll to rotate · Ctrl scroll to pan up or down (with ⌥, sideways) · ⌘ arrows 1 px (⇧ 10)";
     const tag = el("span", "crop-tag", tagText);
     const wait = el("div", "align-wait", "Measuring the photos…");
     stage.append(layers, common, ratio, box, tag, wait);
@@ -5761,7 +5765,8 @@
     // o "+" no meio do canvas, e os cabos junto com o que está fora do canvas. A barra some como o Activity na tela
     // cheia e volta quando o mouse chega perto da borda esquerda; escondida, fica um puxador com uma seta (forma H4).
     // (a letra entre parênteses é o atalho: as mesmas do Photoshop onde existe igual)
-    const TOOLS = [["pointer", "toolPointer", "Pointer: move, resize or rotate, depending on where the mouse is (V)", "v"], ["move", "toolMove", "Move the photo (M)", "m"],
+    const TOOLS = [["pointer", "toolPointer", "Pointer: move, resize or rotate, depending on where the mouse is (V)", "v"],
+      ["handles", "toolPointer", "Handles only: resize by the corners and rotate by the top handle; dragging anywhere else does nothing (A)", "a"], ["move", "toolMove", "Move the photo (M)", "m"],
       ["rotate", "toolRotate", "Rotate the photo (R)", "r"], ["scale", "toolScale", "Resize the photo (S)", "s"], ["pan", "toolPan", "Move the view: the photo stays where it is (H)", "h"],
       ["zoom", "toolZoom", "Zoom the view: click to zoom in, " + (navigator.platform.indexOf("Mac") >= 0 ? "⌥" : "Alt") + " + click to zoom out (Z)", "z"]];
     if (!TOOLS.some((t) => t[0] === alignPrefs.tool)) alignPrefs.tool = "pointer";
@@ -5807,7 +5812,8 @@
     const TOOLS_PAD = 10;
     stage.addEventListener("pointermove", (e) => {
       const r = stage.getBoundingClientRect(); const x = e.clientX - r.left, y = e.clientY - r.top;
-      const inBar = x < tools.offsetLeft + tools.offsetWidth + TOOLS_PAD && y < tools.offsetTop + tools.offsetHeight + TOOLS_PAD;
+      const top = tools.offsetTop - tools.offsetHeight / 2;  // (a barra fica centrada na altura: top 50% e meia altura para cima)
+      const inBar = x < tools.offsetLeft + tools.offsetWidth + TOOLS_PAD && y > top - TOOLS_PAD && y < top + tools.offsetHeight + TOOLS_PAD;
       toolsNear(inBar || x < 14);
     });
     stage.addEventListener("pointerleave", () => toolsNear(false));
@@ -6263,14 +6269,16 @@
       if (toolNow === "zoom" && !exp.spaceDown) { drag = { kind: "zoom", x: e.clientX, zoom: view.zoom, at: zoomAnchor(e), moved: false, alt: e.altKey, ev: e }; return; }
       // Pointer: fora da foto que está sendo alinhada, arrastar desloca a vista (pedido do dono, 2026-11-24)
       const onPart = e.target === rotHandle || e.target.classList.contains("align-handle");
+      if (toolNow === "handles" && !onPart && !exp.spaceDown) return;  // só as alças: arrastar em outro lugar não faz nada
       if (exp.spaceDown || toolNow === "pan" || (toolNow === "pointer" && !onPart && !overPhoto(e))) {
         document.body.classList.add("photo-drag");  // a mão fechada continua fora da prévia
         drag = { kind: "pan", x: e.clientX, y: e.clientY, px: view.px, py: view.py }; stage.classList.add("panning"); holdCursor("grabbing"); return; }
       lockStart();
       const c = centerOnScreen();
-      if (toolNow === "rotate" || (toolNow === "pointer" && e.target === rotHandle)) {
+      const byHandle = toolNow === "pointer" || toolNow === "handles";
+      if (toolNow === "rotate" || (byHandle && e.target === rotHandle)) {
         drag = { kind: "rot", rot: a.rot, angle: Math.atan2(e.clientY - c.y, e.clientX - c.x) }; stage.classList.add("rotating");
-      } else if (toolNow === "scale" || (toolNow === "pointer" && e.target.classList.contains("align-handle"))) {
+      } else if (toolNow === "scale" || (byHandle && e.target.classList.contains("align-handle"))) {
         drag = { kind: "scale", scale: a.scale, dist: Math.max(1, Math.hypot(e.clientX - c.x, e.clientY - c.y)) }; stage.classList.add("resizing");
         // (o cursor fica o mesmo enquanto o botão está apertado, esteja o mouse em cima do que estiver)
         stage.dataset.resize = e.target.classList.contains("align-handle-tr") || e.target.classList.contains("align-handle-bl") ? "nesw" : "nwse";
@@ -6316,13 +6324,9 @@
       const d = Math.max(-40, Math.min(40, e.deltaY));
       // Pinça do trackpad (chega como roda + Ctrl, sem a tecla Ctrl apertada): zoom da vista
       if (e.ctrlKey && !exp.ctrlDown && !e.metaKey) { zoomAt(e, Math.exp(-d * 0.012)); return; }
-      if (e.ctrlKey || e.metaKey) {  // Ctrl + roda: move a foto para cima e para baixo; com Alt junto, para os lados
-        lockStart();
-        const stepPx = -d / scaleK;
-        tryApply((cand) => { if (e.altKey) cand.dx += stepPx; else cand.dy += stepPx; });
-        sync(); layout(); saveSoon();
-        return;
-      }
+      // Ctrl (ou ⌘) + roda: desloca a vista para cima e para baixo; com Alt junto, para os lados. A foto não se mexe
+      // (correção do dono, 2026-11-24: é a vista, como nos programas da Adobe)
+      if (e.ctrlKey || e.metaKey) { if (e.altKey) view.px -= d * 1.5; else view.py -= d * 1.5; layout(); return; }
       if (e.altKey) {  // ⌥ + roda: gira a foto
         lockStart();
         tryApply((cand) => { cand.rot = Math.round((cand.rot - d * 0.01) * 100) / 100; });

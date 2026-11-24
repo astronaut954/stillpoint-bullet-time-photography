@@ -318,6 +318,7 @@ namespace NativeWindow
     // Cmd+` é do Mac; no Windows o sistema já troca de janela com Alt+Tab
     void CycleWindows(bool) {}
     void QuietSpaceRepeat(bool) {}
+    void ShowCursor() {}
 
     void PlaceNear(void* nativeWindow, void* reference, int dx, int dy)
     {

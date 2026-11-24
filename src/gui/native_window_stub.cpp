@@ -44,6 +44,7 @@ namespace NativeWindow
     void IdentifyScreens(int) {}
     void CycleWindows(bool) {}
     void QuietSpaceRepeat(bool) {}
+    void ShowCursor() {}
     void PlaceNear(void*, void*, int, int) {}
     void SetWindowed(void*, bool) {}
 }

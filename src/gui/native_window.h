@@ -68,6 +68,9 @@ namespace NativeWindow
     // escondia o cursor até o mouse se mexer, e ele piscava durante o arrasto com o espaço (Align photos).
     // Windows: não faz nada.
     void QuietSpaceRepeat(bool on);
+    // Mac: mostra de novo o cursor que o sistema esconde quando uma tecla é apertada (até o mouse se mexer).
+    // Windows: não faz nada.
+    void ShowCursor();
 
     // Põe a janela um pouco para a direita e para baixo de outra (dx, dy em pontos), para ficar
     // claro que é uma janela nova ("Another window" da Live). Não faz nada se a outra estiver em

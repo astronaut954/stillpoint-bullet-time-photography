@@ -1655,8 +1655,8 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .align-stage.dragging { cursor: move; }  /* movendo a foto: as quatro setas, não a mão (pedido do dono, 2026-11-24) */
 /* Barra de ferramentas dentro da foto grande do Align photos: some para a esquerda e volta com o mouse perto da borda;
    escondida, fica o puxador com a seta. Ferramenta escolhida = cheia; guia ligada = faixa acesa ao lado (forma C3). */
-.align-tools { position: absolute; left: 10px; top: 10px; z-index: 6; display: flex; flex-direction: column; gap: 4px; padding: 6px; background: rgba(0, 12, 4, .86); border: 1px solid var(--noct-border-strong); transform: translateX(calc(-100% - 12px)); opacity: 0; transition: transform .5s ease, opacity .5s ease; }
-.align-stage.tools-near .align-tools { transform: none; opacity: 1; transition-duration: .16s; }
+.align-tools { position: absolute; left: 10px; top: 50%; z-index: 6; display: flex; flex-direction: column; gap: 4px; padding: 6px; background: rgba(0, 12, 4, .86); border: 1px solid var(--noct-border-strong); transform: translate(calc(-100% - 12px), -50%); opacity: 0; transition: transform .5s ease, opacity .5s ease; }
+.align-stage.tools-near .align-tools { transform: translate(0, -50%); opacity: 1; transition-duration: .16s; }
 .align-tools svg, .align-tools-grip svg { stroke-width: 1.1; }
 .align-tool, .align-guide { width: 36px; height: 36px; box-sizing: border-box; display: grid; place-items: center; padding: 0; background: transparent; color: var(--noct-primary); cursor: pointer; border-radius: 0; }
 .align-tool { border: 1px solid var(--noct-border-strong); }
@@ -1687,6 +1687,8 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .align-stage[data-tool="scale"] { cursor: nwse-resize; }
 .align-stage[data-tool="pan"] { cursor: grab; }
 .align-stage[data-tool="zoom"] { cursor: zoom-in; }
+.align-stage[data-tool="handles"] { cursor: default; }
+.align-tool[data-tool="pointer"] svg path { fill: currentColor; }  /* seta cheia; a de "só as alças" é vazada */
 .align-stage[data-tool="zoom"].alt { cursor: zoom-out; }
 .align-stage[data-tool="zoom"].zooming { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke-linecap='round'%3E%3Ccircle cx='10' cy='10' r='6.5' stroke='%23fff' stroke-width='4.5'/%3E%3Cpath d='M15 15l6 6' stroke='%23fff' stroke-width='4.5'/%3E%3Ccircle cx='10' cy='10' r='6.5' stroke='%23000' stroke-width='2'/%3E%3Cpath d='M15 15l6 6' stroke='%23000' stroke-width='2'/%3E%3C/g%3E%3C/svg%3E") 10 10, zoom-in; }  /* arrastando: a lupa sem + nem − */
 /* Botão apertado: o cursor do gesto vale na tela toda (não muda ao sair da foto grande) */

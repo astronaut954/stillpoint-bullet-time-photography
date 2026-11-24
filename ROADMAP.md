@@ -1527,6 +1527,13 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      arrastar (direita aproxima, esquerda afasta) com a lupa sem sinal; Alt troca o cursor na hora; (4) a pinça
      do trackpad chegava como roda + Ctrl e movia a foto: agora só move com a tecla Ctrl de verdade apertada, e
      a pinça dá zoom; (5) com o botão apertado, o cursor do gesto vale na tela toda.
+     Quarto retorno do dono (2026-11-24) e o que foi feito: (1) Ctrl ou ⌘ + roda desloca a VISTA (para cima e
+     para baixo; com Alt, para os lados), não a foto (eu tinha entendido errado o pedido anterior); (2) ao
+     apertar um atalho o cursor sumia até mexer o mouse: confirma que o Mac esconde o cursor a cada tecla; o
+     programa agora pede o cursor de volta nos atalhos desta tela (NativeWindow::ShowCursor, não compilado aqui);
+     (3) ferramenta nova, atalho A: como a seta, mas só as alças funcionam (cantos = tamanho, alça de cima =
+     giro); arrastar em outro lugar não faz nada. Nome provisório "Handles only"; o dono pediu sugestões de
+     nome para ela e para a "Pointer" (decisão pendente); (4) a barra fica centrada na altura, à esquerda.
      Falta: o passo 3 do Align cameras virar este editor (forma B), com Play the sequence.
      (b) Os botões da janela Guided aim subiam e desciam quando o número de instruções mudava: o espaço das
      instruções passou a ser fixo (seis linhas).

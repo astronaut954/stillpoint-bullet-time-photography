@@ -2600,7 +2600,7 @@ def scenario_align_tools(t, name, photos):
         time.sleep(0.5)
         d = st()
         check(t, "align tools: with the mouse near the left edge the bar shows, inside the big photo, and the grip goes", d["near"] and d["barIn"] and d["barOp"] == "1" and d["gripOp"] == "0", d)
-        check(t, "align tools: six tools, Pointer chosen from the start", d["tools"] == ["pointer*", "move", "rotate", "scale", "pan", "zoom"] and d["tool"] == "pointer", d["tools"])
+        check(t, "align tools: six tools, Pointer chosen from the start", d["tools"] == ["pointer*", "handles", "move", "rotate", "scale", "pan", "zoom"] and d["tool"] == "pointer", d["tools"])
         t.shot("align-tools-bar")
         cx, cy = box["x"] + box["width"] * 0.6, box["y"] + box["height"] * 0.5
         def drag(dx, dy):
@@ -2628,7 +2628,7 @@ def scenario_align_tools(t, name, photos):
         pick(".align-guide[data-guide=cross]")
         pick(".align-guide[data-guide=edges]")
         d = st()
-        check(t, "align tools: the two guides switch off on their own: no cross, no handles, nothing outside the canvas", not d["cross"] and d["clean"] and d["handle"] == "none" and d["clip"].startswith("inset(") and d["guides"] == ["cross", "edges"] and d["tools"][4] == "pan*", d)
+        check(t, "align tools: the two guides switch off on their own: no cross, no handles, nothing outside the canvas", not d["cross"] and d["clean"] and d["handle"] == "none" and d["clip"].startswith("inset(") and d["guides"] == ["cross", "edges"] and d["tools"][5] == "pan*", d)
         t.page.mouse.move(box["x"] + box["width"] * 0.7, box["y"] + box["height"] * 0.5)
         time.sleep(1.2)
         t.shot("align-tools-clean")
@@ -2670,9 +2670,9 @@ def scenario_align_tools(t, name, photos):
         # Atalhos: uma letra escolhe a ferramenta
         tool = lambda: t.js("() => document.querySelector('.align-stage').dataset.tool")
         got = []
-        for k in "mrshzv":
+        for k in "amrshzv":
             t.page.keyboard.press(k); time.sleep(0.15); got.append(tool())
-        check(t, "align tools: the letters M R S H Z V pick the tools", got == ["move", "rotate", "scale", "pan", "zoom", "pointer"], got)
+        check(t, "align tools: the letters A M R S H Z V pick the tools", got == ["handles", "move", "rotate", "scale", "pan", "zoom", "pointer"], got)
         # Zoom: clicar aproxima em volta do ponto; com Alt, afasta
         zw = lambda: t.js("() => document.querySelector('.align-stage .align-ratio').getBoundingClientRect().width")
         t.page.keyboard.press("z"); time.sleep(0.15)
@@ -2697,13 +2697,24 @@ def scenario_align_tools(t, name, photos):
         p0 = zw(); pv = vals()
         t.js("([x, y]) => document.querySelector('.align-stage').dispatchEvent(new WheelEvent('wheel', { deltaY: -20, ctrlKey: true, clientX: x, clientY: y, bubbles: true, cancelable: true }))", [cx, cy]); time.sleep(0.5)
         check(t, "align tools: a trackpad pinch zooms the view and leaves the photo alone", zw() > p0 * 1.1 and vals() == pv, (p0, zw(), pv, vals()))
-        # Ctrl + roda move a foto para cima e para baixo; com Alt junto, para os lados
+        # Ctrl + roda desloca a vista para cima e para baixo; com Alt junto, para os lados. A foto não se mexe
+        pos = lambda: t.js("() => { const r = document.querySelector('.align-stage .align-ratio').getBoundingClientRect(); return [Math.round(r.left), Math.round(r.top)]; }")
         t.page.mouse.move(cx, cy)
-        w0 = vals()
-        t.page.keyboard.down("Control"); t.page.mouse.wheel(0, 30); time.sleep(0.3); w1 = vals()
-        t.page.keyboard.down("Alt"); t.page.mouse.wheel(0, 30); time.sleep(0.3); w2 = vals()
-        t.page.keyboard.up("Alt"); t.page.keyboard.up("Control"); time.sleep(0.5)
-        check(t, "align tools: Ctrl + scroll moves the photo up or down, Ctrl + Alt + scroll sideways", w1[1] != w0[1] and w1[0] == w0[0] and w2[0] != w1[0] and w2[1] == w1[1] and w2[2:] == w0[2:], (w0, w1, w2))
+        w0 = vals(); q0 = pos()
+        t.page.keyboard.down("Control"); t.page.mouse.wheel(0, 30); time.sleep(0.3); q1 = pos()
+        t.page.keyboard.down("Alt"); t.page.mouse.wheel(0, 30); time.sleep(0.3); q2 = pos()
+        t.page.keyboard.up("Alt"); t.page.keyboard.up("Control"); time.sleep(0.3)
+        check(t, "align tools: Ctrl + scroll pans the view up or down, Ctrl + Alt + scroll sideways, and the photo stays", q1[1] != q0[1] and q1[0] == q0[0] and q2[0] != q1[0] and q2[1] == q1[1] and vals() == w0, (q0, q1, q2))
+        # Só as alças (A): arrastar no meio da foto ou fora dela não faz nada; a alça de canto muda o tamanho
+        t.page.keyboard.press("a"); time.sleep(0.15)
+        h0 = vals(); hq = pos()
+        drag(20, 12)
+        t.page.mouse.move(box["x"] + box["width"] - 6, box["y"] + box["height"] - 6); t.page.mouse.down(); t.page.mouse.move(box["x"] + box["width"] - 40, box["y"] + box["height"] - 30, steps=3); t.page.mouse.up(); time.sleep(0.3)
+        still = vals() == h0 and pos() == hq
+        hb = t.page.locator(".align-handle-br").bounding_box()
+        t.page.mouse.move(hb["x"] + 5, hb["y"] + 5); t.page.mouse.down(); t.page.mouse.move(hb["x"] + 45, hb["y"] + 35, steps=3); t.page.mouse.up(); time.sleep(0.4)
+        check(t, "align tools: with Handles only, dragging the photo or the empty area does nothing and a corner handle resizes", still and vals()[2] != h0[2] and vals()[:2] == h0[:2], (h0, vals(), still))
+        t.page.keyboard.press("v"); time.sleep(0.15)
         # Diminuir de uma vez só além do limite: a foto vai até o limite (não fica parada no tamanho de antes)
         pick(".align-tool[data-tool=scale]")
         sx = box["x"] + box["width"] * 0.9

@@ -504,6 +504,11 @@ namespace NativeWindow
             });
     }
 
+    void ShowCursor()
+    {
+        Send<void>(GetClass("NSCursor"), "setHiddenUntilMouseMoves:", static_cast<BOOL>(0));
+    }
+
     void CycleWindows(bool backwards)
     {
         id app = Send<id>(GetClass("NSApplication"), "sharedApplication");
