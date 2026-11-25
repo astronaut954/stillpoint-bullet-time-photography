@@ -3177,14 +3177,20 @@
     const fromLive = anyMoved ? al.photos.filter((p) => has(p) || alMoved(p.camera)).map((p) => (alMoved(p.camera) ? live(p) : photo(p))) : [];
     if (!quiet) { al.solved = {}; al.aim = null; }
     const run = (al.solveRun = (al.solveRun || 0) + 1);
-    if (!fromPhotos.length && !fromLive.length) return;
+    // Uma conta "quiet" (quadro ao vivo) que chega enquanto a conta das fotos ainda não voltou toma o lugar dela: então
+    // ela também refaz a das fotos. Sem isso a das fotos era descartada e as instruções ficavam vazias (corrida vista
+    // no teste automático do Fire again de uma câmera, 2026-11-24).
+    const full = !quiet || !!al.solveOwed;
+    al.solveOwed = full;
+    if (!fromPhotos.length && !fromLive.length) { al.solveOwed = false; return; }
     const call = (cams) => { try { return Promise.resolve(window.alignSolve(JSON.stringify({ cameras: cams }))); } catch (e) { return Promise.resolve(null); } };
-    Promise.all([quiet ? null : call(fromPhotos), anyMoved ? call(fromLive) : null]).then(([a, b]) => {
+    Promise.all([full && fromPhotos.length ? call(fromPhotos) : null, anyMoved ? call(fromLive) : null]).then(([a, b]) => {
       if (run !== al.solveRun) return;
+      al.solveOwed = false;
       if (a) { al.solved = {}; a.forEach((r) => { al.solved[r.camera] = r; }); }
       al.aim = null;
       if (b) { al.aim = {}; b.forEach((r) => { al.aim[r.camera] = r; }); }
-      if (quiet) gaAfterLive(); else alRender();
+      if (full) alRender(); else gaAfterLive();
     });
   }
   // As três marcas não estão a distâncias iguais (a mesma regra de AlignMarks::EvenlySpaced: em alguma câmera a do

@@ -2227,7 +2227,8 @@ def scenario_guided_aim(t, name, photos):
         fl = (A("() => window.__aimFlash"), t.js("() => window.__mainFlash"), [x for x in t.js("() => [...document.querySelectorAll('.log-list li')].map((l) => l.textContent)")[act0:] if "Bullet time" in x])
         check(t, "guided aim: the flash of that shot shows in the Guided aim window, not in the main one, and the Activity says nothing about a bullet time", fl[0] >= 1 and fl[1] == 0 and fl[2] == [], fl)
         check(t, "guided aim: after it, the instruments of this camera are back and the camera on screen is the same",
-              A("() => document.querySelectorAll('#gaInst .inst').length") == 4 and A("() => document.getElementById('gaName').textContent") == cur, A("() => document.getElementById('gaInst').textContent"))
+              A("() => document.querySelectorAll('#gaInst .inst').length") == 4 and A("() => document.getElementById('gaName').textContent") == cur,
+              (A("() => [document.getElementById('gaInst').textContent, document.getElementById('gaFire').textContent, document.getElementById('gaName').textContent]"), cur))
         # Next camera / Previous camera passam por todas, na ordem, dando a volta; a aba leva direto
         name_of = lambda cam: "Camera %s · %s" % (num(cam), cam)
         cur_cam = [n for n in names if name_of(n) == cur][0]
