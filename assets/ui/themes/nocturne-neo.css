@@ -2420,8 +2420,24 @@ body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform:
 /* Ajuste fino: o ponto sob o mouse pode ser arrastado */
 .al-frame.on-dot, .al-frame.dot-drag { cursor: move; }
 .al-shield.dot { cursor: move; }
-.ma-side #csAlignAdjusted { display: inline-block; margin: 10px 0 2px; }
-.ma-side #csAlignDotsAuto { margin-top: 8px; }
+/* Painel dos pontos (forma F3): uma linha por ponto, com o estado e a volta de cada um */
+.ma-side { width: 230px; }
+.al-points { border: 1px solid var(--noct-border-strong); padding: 12px; background: rgba(0, 20, 6, .5); }
+.al-points-head { display: flex; justify-content: space-between; margin-bottom: 10px; font: 700 11px var(--noct-font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--noct-primary); }
+.al-points-head .by-hand { color: var(--noct-pending); }
+.al-point { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-top: 1px solid var(--noct-border-strong); }
+.al-point i { width: 10px; height: 10px; box-sizing: content-box; border: 2px solid #fff; box-shadow: 0 0 0 1px #000; flex: none; }
+.al-point.hand i { border-color: #ffb000; }
+.al-point .n { flex: 1; font: 500 13px var(--noct-font-sans); color: var(--noct-text); }
+.al-point .s { font: 500 10px var(--noct-font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--noct-text-dim); }
+.al-point.hand .s { color: var(--noct-pending); }
+.al-point-back { width: 22px; height: 22px; padding: 0; display: grid; place-items: center; background: transparent; border: 1px solid var(--noct-primary); border-radius: 0; color: var(--noct-primary); font: 400 13px var(--noct-font-mono); cursor: pointer; }
+.al-point-back:disabled { border-color: var(--noct-border-strong); color: var(--noct-text-dim); opacity: .35; cursor: default; }
+.al-point-back:not(:disabled):hover { background: var(--noct-primary); color: var(--noct-on-primary); }
+.al-points #csAlignDotsAuto { display: block; width: 100%; margin-top: 12px; }
+.al-points + .al-hint { margin-top: 10px; }
+.al-dot.hand { border-color: #ffb000; box-shadow: 0 0 0 1px #000, 0 0 10px #ffb000; }
+.al-dot.hand::after { background: #ffb000; }
 .al-zoom .al-dot, .al-zoom .al-aim { transform: scale(var(--iz, 1)); }
 .al-zoom .al-arrow { transform: scale(var(--iz, 1)); transform-origin: 0 0; }
 .al-ztag { position: absolute; right: 6px; top: 6px; z-index: 2; padding: 3px 6px; background: rgba(0,0,0,.7); color: var(--noct-primary); font: 700 10px var(--noct-font-mono); letter-spacing: .1em; text-transform: uppercase; pointer-events: none; }

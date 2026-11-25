@@ -3387,7 +3387,8 @@
       el.appendChild(line);
     }
     const clicking = big && al.clicks && al.clicks.camera === p.camera;
-    (pts || []).forEach((m, k) => { el.insertAdjacentHTML("beforeend", '<span class="al-dot' + (clicking ? " num" : "") + '" style="left:' + (m[0] * 100) + "%;top:" + (m[1] * 100) + '%">' + (clicking ? k + 1 : "") + "</span>"); });
+    const handPts = big && !clicking ? alHandPoints(p.camera) : [];
+    (pts || []).forEach((m, k) => { el.insertAdjacentHTML("beforeend", '<span class="al-dot' + (clicking ? " num" : "") + (handPts[k] && d.found ? " hand" : "") + '" style="left:' + (m[0] * 100) + "%;top:" + (m[1] * 100) + '%">' + (clicking ? k + 1 : "") + "</span>"); });
     if (big) {
       const n = alAim(p.camera);
       if (d.urlBig || d.urlMid) el.style.backgroundImage = 'url("' + (d.urlBig || d.urlMid) + '")';
@@ -3620,6 +3621,18 @@
     (al.drags = al.drags || []).push({ camera: g.camera, k: g.k, from });
     alDotMoved(g.camera, g.k, g.to, null);
   }
+  // Quais dos três pontos desta foto foram postos à mão (estão fora de onde o programa achou)
+  function alHandPoints(camera) {
+    const d = al.data[camera];
+    if (!d || !d.marks) return [false, false, false];
+    return d.marks.map((m, i) => !d.auto || Math.abs(m[0] - d.auto[i][0]) > 1e-6 || Math.abs(m[1] - d.auto[i][1]) > 1e-6);
+  }
+  // Um ponto só de volta para onde o programa achou (entra no desfazer, como um arrasto)
+  function alDotAuto(camera, k) {
+    const d = al.data[camera];
+    if (!d || !d.auto || !d.marks) return;
+    alDotMoved(camera, k, d.auto[k].slice(), d.marks[k].slice());
+  }
   function alDotsAuto(camera) {
     const d = al.data[camera];
     if (!d || !d.auto) return;
@@ -3767,9 +3780,13 @@
       else {
         html += '<ul class="in-list">' + alLines(sel.camera).map(([c, t]) => '<li class="' + c + '">' + alEsc(t) + "</li>").join("") + "</ul>";
         // Ajuste fino dos pontos (ao lado da foto)
-        sideHtml = '<div class="al-title">Fine-tune</div><p class="al-hint dim">Drag a point to put it exactly on its mark. Scroll to zoom in first.</p>' +
-          (d.adjusted ? '<span class="cs-tag diff" id="csAlignAdjusted">Adjusted by hand</span><p class="al-hint dim">' + (navigator.platform.indexOf("Mac") >= 0 ? "Cmd" : "Ctrl") + '+Z takes back the last drag, ' + (navigator.platform.indexOf("Mac") >= 0 ? "Shift+Cmd" : "Shift+Ctrl") + '+Z redoes it.</p>' +
-            '<button type="button" class="btn btn-small btn-secondary" id="csAlignDotsAuto" title="Puts the three points of this photo back where the app found them">Back to automatic</button>' : "");
+        // Ajuste fino dos pontos: painel ao lado da foto, uma linha por ponto (forma F3, escolhida pelo dono em 2026-11-24)
+        const hand = alHandPoints(sel.camera), nHand = hand.filter(Boolean).length;
+        sideHtml = '<div class="al-points"><div class="al-points-head"><span>Points</span>' + (nHand ? '<span class="by-hand" id="csAlignAdjusted">' + nHand + " by hand</span>" : "") + "</div>" +
+          ["Top", "Middle", "Bottom"].map((name, k) => '<div class="al-point' + (hand[k] ? " hand" : "") + '"><i></i><span class="n">' + name + '</span><span class="s">' + (hand[k] ? "By hand" : "Automatic") + "</span>" +
+            '<button type="button" class="al-point-back" data-k="' + k + '"' + (hand[k] ? "" : " disabled") + ' title="Puts this point back where the app found it" aria-label="' + name + ' point back to automatic">↺</button></div>').join("") +
+          '<button type="button" class="btn btn-small btn-secondary" id="csAlignDotsAuto"' + (nHand ? "" : " disabled") + ' title="Puts the three points of this photo back where the app found them">Back to automatic</button></div>' +
+          '<p class="al-hint dim">Drag a point to put it exactly on its mark. Scroll to zoom in first.</p>';
       }
       html += "</div>";
       // Guided aim: uma câmera por vez, numa janela própria (pode ir para outro monitor), com a imagem ao vivo
@@ -3783,6 +3800,7 @@
       }
       side.innerHTML = sideHtml;
       { const auto = side.querySelector("#csAlignDotsAuto"); if (auto) auto.addEventListener("click", () => alDotsAuto(sel.camera)); }
+      side.querySelectorAll(".al-point-back").forEach((b) => b.addEventListener("click", () => alDotAuto(sel.camera, +b.dataset.k)));
       row.appendChild(side);
       view.appendChild(row);
       view.appendChild(under);

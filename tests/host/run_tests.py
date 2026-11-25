@@ -2604,10 +2604,10 @@ def scenario_align_drag(t, name, photos):
         # Os pontos da foto grande (em fração da foto) e os das miniaturas das outras câmeras
         dots = lambda: t.js("() => [...document.querySelectorAll('#csAlignMain .ma-row .al-zoom .al-dot')].map((d) => [parseFloat(d.style.left) / 100, parseFloat(d.style.top) / 100])")
         others = lambda: t.js("() => [...document.querySelectorAll('#csAlignMain .ma-item:not(.sel) .al-dot')].map((d) => d.style.left + d.style.top).join('|')")
-        side = lambda: t.js("() => { const s = document.querySelector('#csAlignMain .ma-side'); return { text: s ? s.textContent : '', tag: !!document.getElementById('csAlignAdjusted'), auto: !!document.getElementById('csAlignDotsAuto') }; }")
+        side = lambda: t.js("() => { const s = document.querySelector('#csAlignMain .ma-side'); return { text: s ? s.textContent : '', tag: !!document.getElementById('csAlignAdjusted'), auto: !!document.getElementById('csAlignDotsAuto') && !document.getElementById('csAlignDotsAuto').disabled, rows: [...document.querySelectorAll('#csAlignMain .al-point')].map((r) => r.querySelector('.s').textContent + (r.querySelector('.al-point-back').disabled ? '' : '*')) }; }")
         lines = lambda: t.js("() => { const l = document.querySelector('#csAlignMain .in-list'); return l ? l.textContent : ''; }")
         d0 = dots(); o0 = others(); s0 = side(); l0 = lines()
-        check(t, "align drag: with the marks found, the side of the photo says a point can be dragged (no tag yet)", ok and len(d0) == 3 and "Fine-tune" in s0["text"] and "Drag a point" in s0["text"] and not s0["tag"] and not s0["auto"], s0)
+        check(t, "align drag: with the marks found, the side of the photo says a point can be dragged (no tag yet)", ok and len(d0) == 3 and "Points" in s0["text"] and "Drag a point" in s0["text"] and not s0["tag"] and not s0["auto"] and s0["rows"] == ["Automatic"] * 3, s0)
         box = t.page.locator("#csAlignMain .ma-row .al-zoom").bounding_box()
         px = lambda m: (box["x"] + m[0] * box["width"], box["y"] + m[1] * box["height"])
         x, y = px(d0[1])
@@ -2618,7 +2618,7 @@ def scenario_align_drag(t, name, photos):
         t.shot("align-drag")
         moved = abs((d1[1][0] - d0[1][0]) * box["width"] - 40) < 1.5 and abs((d1[1][1] - d0[1][1]) * box["height"] - 10) < 1.5
         check(t, "align drag: dragging the middle point moves just that point, exactly by the drag (no snapping), with the move cursor", cur == "move" and moved and d1[0] == d0[0] and d1[2] == d0[2], (cur, d0, d1))
-        check(t, "align drag: the photo is tagged 'Adjusted by hand', with 'Back to automatic', and no new mark was started", s1["tag"] and s1["auto"] and "Click the marks" not in s1["text"], s1)
+        check(t, "align drag: the panel says '1 by hand' and marks the middle point, with 'Back to automatic'; no new mark was started", s1["tag"] and s1["auto"] and s1["rows"] == ["Automatic", "By hand*", "Automatic"] and "1 by hand" in s1["text"] and "Click the marks" not in s1["text"] and t.js("() => [...document.querySelectorAll('#csAlignMain .ma-row .al-zoom .al-dot')].map((d) => d.classList.contains('hand'))") == [False, True, False], s1)
         check(t, "align drag: the other photos keep their points and the instructions of this camera change", others() == o0 and lines() != l0, (l0, lines()))
         can = t.js("() => { const b = [...document.querySelectorAll('#csAlign button')].find((x) => x.textContent.trim() === 'Review alignment'); return !!b && !b.disabled; }")
         check(t, "align drag: 'Review alignment' stays available", can)
@@ -2633,6 +2633,11 @@ def scenario_align_drag(t, name, photos):
         x, y = px(d0[2])
         t.page.mouse.move(x, y); t.page.mouse.down(); t.page.mouse.move(x + 18, y - 4, steps=3); t.page.mouse.up(); time.sleep(0.5)
         d3 = dots()
+        # A volta de um ponto só (o de cima), e o Ctrl+Z dela
+        t.js("() => document.querySelector('#csAlignMain .al-point-back[data-k=\"0\"]').click()"); time.sleep(0.5)
+        one = dots(); r1 = side()["rows"]
+        t.page.keyboard.press("ControlOrMeta+z"); time.sleep(0.5)
+        check(t, "align drag: the ↺ of one point puts just that point back, and Ctrl+Z takes that back too", one[0] == d0[0] and one[2] == d3[2] and r1 == ["Automatic", "Automatic", "By hand*"] and dots() == d3, (one, r1, dots()))
         t.js("() => document.getElementById('csAlignDotsAuto').click()"); time.sleep(0.5)
         check(t, "align drag: 'Back to automatic' puts the three points back where the app found them", d3[0] != d0[0] and d3[2] != d0[2] and dots() == d0 and not side()["tag"] and lines() == l0, (d0, d3, dots()))
         # Um clique parado em cima de um ponto não começa uma marcação; um clique fora dos pontos começa
