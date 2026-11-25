@@ -1980,6 +1980,12 @@ def scenario_align_cameras(t, name, photos):
         d4b = pl()
         check(t, "align, play the sequence: Stop goes back to adjusting on the photo that was showing (handles, tools and references back)",
               d4b["play"] and not d4b["stop"] and d4b["box"] != "none" and d4b["tools"] != "none" and not d4b["panel"] and d4b["where"].startswith("Camera %02d of 04" % (shown + 1)), (shown, d4b))
+        # Clicar na foto grande enquanto toca sai do modo de tocar
+        t.js("() => document.getElementById('alignPlay').click()")
+        t.wait(lambda: t.js("() => !!document.querySelector('#csAlignMain .align-stage.playing')"), 10); time.sleep(0.4)
+        sb = t.page.locator("#csAlignMain .align-stage").bounding_box()
+        t.page.mouse.click(sb["x"] + sb["width"] / 2, sb["y"] + sb["height"] / 2); time.sleep(0.7)
+        check(t, "align, play the sequence: a click on the big photo while it plays leaves the play mode", pl()["play"] and not t.js("() => !!document.querySelector('#csAlignMain .align-stage.playing')"), pl()["where"])
         t.js("() => document.querySelectorAll('#csAlignMain .export-strip li.frame')[0].click()"); time.sleep(0.6)
         # Ajuste na mão: Rotate + na câmera 01; o rodapé conta, Ctrl+Z desfaz, "Back to the stick values" também
         t.wait(lambda: t.js("() => !document.querySelector('#csAlignMain .align-wait')"), 10)

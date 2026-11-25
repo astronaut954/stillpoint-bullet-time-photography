@@ -4064,6 +4064,7 @@
       // (o editor terminou de montar as camadas: mostra a foto da vez e segue tocando)
       attach: (view) => { ed.view = view; const o = alPlayOrder(ed); ed.pos = Math.min(ed.pos, o.length - 1); view.show(o[ed.pos]); alPlayTick(ed); },
       playStep: (d) => alPlayStep(ed, d),
+      playStop: () => alPlayStop(ed),
     };
     exp.photo = 0; exp.alignView = null; alignPrefs.tool = "handles";
     rigApply(session, st, true).then(() => {
@@ -6783,6 +6784,8 @@
     stage.addEventListener("pointerdown", (e) => {
       if (e.button !== 0 || e.target.closest("button") || e.target.closest(".align-tools, .align-tools-grip") || !sizes[item.file]) return;
       e.preventDefault();
+      // Tocando a sequência: clicar ou arrastar na foto grande sai do modo de tocar (pedido do dono, 2026-11-25)
+      if (playing) { rigStep.playStop(); return; }
       const toolNow = alignPrefs.tool || "handles";
       stage.setPointerCapture(e.pointerId);
       // Zoom: um clique aproxima (com Alt, afasta); segurar e arrastar para a direita aproxima, para a esquerda afasta
