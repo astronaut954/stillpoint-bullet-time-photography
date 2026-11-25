@@ -3493,8 +3493,7 @@
       }
       el.insertAdjacentHTML("beforeend", '<span class="al-aim"></span>');
       if (n && d.found && !(al.clicks && al.clicks.camera === p.camera)) {
-        if (Math.abs(n.pan) >= 1) el.insertAdjacentHTML("beforeend", '<span class="al-arrow" style="left:' + (n.pan < 0 ? 38 : 56) + '%;top:44%">' + (n.pan < 0 ? "←" : "→") + "</span>");
-        if (Math.abs(n.tilt) >= 1) el.insertAdjacentHTML("beforeend", '<span class="al-arrow" style="left:47.5%;top:' + (n.tilt > 0 ? 26 : 58) + '%">' + (n.tilt > 0 ? "↑" : "↓") + "</span>");
+        // (as setas laranjas em cima da foto saíram: atrapalhavam e os instrumentos já dizem para que lado; dono, 2026-11-24)
       }
       // A moldura (tamanho fixo) e, dentro, a foto com as marcas, que aproxima e desloca (zoom): a roda aproxima em
       // volta do mouse (100% a 800%); espaço + arrastar desloca. O mesmo jeito do Align photos do Export.

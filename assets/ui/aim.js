@@ -155,8 +155,7 @@
     }
     html += '<span class="al-aim"></span>';
     const a = st.arrows || {};
-    if (a.pan) html += '<span class="al-arrow" style="left:' + (a.pan < 0 ? 38 : 56) + '%;top:42%">' + (a.pan < 0 ? "←" : "→") + "</span>";
-    if (a.tilt) html += '<span class="al-arrow" style="left:47.5%;top:' + (a.tilt > 0 ? 24 : 58) + '%">' + (a.tilt > 0 ? "↑" : "↓") + "</span>";
+    // (as setas laranjas em cima da imagem saíram: atrapalhavam e os instrumentos já dizem para que lado; dono, 2026-11-24)
     host.innerHTML = html;
   }
   // As abas, do jeito que couber (decisões do dono, 2026-11-22):

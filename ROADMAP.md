@@ -1601,6 +1601,8 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      Teste do dono com câmeras (2026-11-24): o Fire again de uma câmera só funciona. Pedido dele, feito: o
      clarão do disparo aparece na janela Guided aim (em cima da imagem), não na principal; e a janela principal
      deixa de mostrar o andamento desse disparo ("Bullet time complete" no Activity).
+     Decisão do dono (2026-11-24): as setas laranjas em cima da foto (passo 2 do Align cameras e janela Guided
+     aim) saíram: atrapalhavam, e os instrumentos já dizem para que lado. O clarão na janela Guided aim: ok.
      **Decisões do dono no meio dos testes (2026-11-24), a fazer DEPOIS dos roteiros:** (i) arrastar os pontos
      que o programa achou, de um jeito que não entre em conflito com a busca automática e que deixe refazer a
      busca; (ii) o botão Align cameras não deve depender do Test shot: protótipos com as posições no Camera
