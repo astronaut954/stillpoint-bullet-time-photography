@@ -1962,9 +1962,9 @@ def scenario_align_cameras(t, name, photos):
         # Com alinhamento guardado, o botão abre antes uma janela de aviso (pedido do dono, 2026-11-24)
         t.js("() => document.getElementById('alignBtn').click()")
         time.sleep(0.8)
-        d = t.js("() => { const o = document.getElementById('dialogOverlay'); return { open: !o.classList.contains('hidden'), text: o.textContent, btns: [...o.querySelectorAll('button')].map((b) => b.textContent.trim()), aligning: document.querySelector('.cs-sheet').classList.contains('aligning') }; }")
-        check(t, "align: with a saved alignment, a window warns before opening (date, 'replaces that one when you save', Cancel / Align cameras)",
-              d["open"] and not d["aligning"] and "This project already has an alignment" in d["text"] and "The cameras were aligned on " in d["text"] and "replaces that one when you save" in d["text"] and d["btns"] == ["Cancel", "Align cameras"], d)
+        d = t.js("() => { const o = document.getElementById('dialogOverlay'); return { open: !o.classList.contains('hidden'), text: o.textContent, btns: [...o.querySelectorAll('button')].map((b) => b.textContent.trim()), aligning: document.querySelector('.cs-sheet').classList.contains('aligning'), behind: !document.getElementById('camSettingsOverlay').classList.contains('hidden') }; }")
+        check(t, "align: with a saved alignment, a window warns before opening, over the main window (date, 'replaces that one when you save', Cancel / Align cameras)",
+              d["open"] and not d["aligning"] and not d["behind"] and "This project already has an alignment" in d["text"] and "The cameras were aligned on " in d["text"] and "replaces that one when you save" in d["text"] and d["btns"] == ["Cancel", "Align cameras"], d)
         t.js("() => [...document.querySelectorAll('#dialogOverlay button')].find((b) => b.textContent.trim() === 'Cancel').click()")
         time.sleep(0.3)
         check(t, "align: Cancel in that window leaves everything as it was (back in the main window)", t.js("() => document.getElementById('dialogOverlay').classList.contains('hidden') && !document.querySelector('.cs-sheet').classList.contains('aligning') && document.getElementById('camSettingsOverlay').classList.contains('hidden')"))
@@ -2728,6 +2728,9 @@ def scenario_align_entry(t, name, photos):
         t.wait(lambda: t.js("() => !document.getElementById('alignBtn').disabled"), 20)
         b = t.js("() => { const a = document.getElementById('alignBtn'), o = document.getElementById('orderBtn'); return [a.textContent, a.parentNode === o.parentNode, a.previousElementSibling === o]; }")
         check(t, "align entry: 'Align cameras' sits in the Cameras panel of the main window, after 'Reorder by photo'", b == ["Align cameras", True, True], b)
+        # Download wait saiu do painel Bullet time: está em Settings › Advanced (e continua valendo para o disparo)
+        dw = t.js("() => { const d = document.getElementById('downloadWait'); return { pane: d.closest('.settings-pane') ? d.closest('.settings-pane').dataset.pane : '', shoot: !!d.closest('.shoot-panel'), fields: [...document.querySelectorAll('.shoot-panel > .fields .field > span:first-child')].map((x) => x.textContent), label: d.closest('.settings-row').querySelector('.export-label').textContent }; }")
+        check(t, "settings: 'Download wait' is in Settings › Advanced, and the Bullet time panel keeps Countdown and Sessions", dw == {"pane": "advanced", "shoot": False, "fields": ["Countdown", "Sessions"], "label": "Download wait"}, dw)
         t.js("() => document.getElementById('alignBtn').click()")
         ok = t.wait(lambda: t.js("() => !document.getElementById('csAlign').classList.contains('hidden') || !document.getElementById('dialogOverlay').classList.contains('hidden')"), 8)
         # (um projeto que já tem alinhamento pergunta antes; a resposta é "Align cameras")

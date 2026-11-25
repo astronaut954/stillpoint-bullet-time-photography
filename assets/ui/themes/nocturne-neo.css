@@ -444,6 +444,8 @@ button { font: inherit; }
 
 /* ---------- Disparo ---------- */
 .fields { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+.shoot-panel > .fields { grid-template-columns: 1fr 1fr; }  /* Countdown e Sessions (o Download wait foi para Settings › Advanced) */
+.settings-wait { display: inline-block; width: 110px; margin-bottom: 6px; }
 .field { display: flex; flex-direction: column; gap: 6px; font: 700 11px var(--noct-font-mono); color: var(--noct-text-muted); text-transform: uppercase; letter-spacing: var(--noct-tracking-widest); }
 .input-unit { position: relative; display: block; }
 .input-unit input {

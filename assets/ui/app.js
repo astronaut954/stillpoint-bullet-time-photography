@@ -2789,7 +2789,7 @@
       "The cameras were aligned on " + alWhen(sv.savedAt) + ". " +
       (changes.length ? "Since then: " + changes.join(" · ") + ". " : "") +
       "If you align again, the new alignment replaces that one when you save it. Until you save, nothing changes.",
-      [{ label: "Cancel", onClick: () => { if (al.fromMain) { al.fromMain = false; closeCamSettingsNow(); } } }, { label: "Align cameras", primary: true, onClick: () => alOpen() }]);
+      [{ label: "Cancel", onClick: () => { al.fromMain = false; } }, { label: "Align cameras", primary: true, onClick: () => alOpen() }]);
   }
   // Align cameras pela janela principal (painel Cameras, forma P3): abre direto a janela do alinhamento, sem passar pelo
   // Test shot (ela tem o próprio Fire). Ao sair (Cancel ou Save alignment) volta para a janela principal.
@@ -2797,9 +2797,8 @@
     if (busy || al.open) return;
     Promise.resolve(window.alignInfo && window.alignInfo()).catch(() => null).then((info) => {
       al.saved = info || null;
-      $("camSettingsBtn").click();
       al.fromMain = true;
-      alAskOpen();
+      alAskOpen();  // (a janela de aviso aparece em cima da janela principal; o Camera settings só abre, por baixo do alinhamento, em alOpen)
     });
   });
   // Parte 5: o que mudou nas câmeras desde o alinhamento (o programa confere: câmera que saiu, mudou de posição,
@@ -2848,6 +2847,9 @@
   }
   function alOpen() {
     if (busy || csTest.capturing) return;
+    // A janela do alinhamento mora dentro da do Camera settings: abre-a só agora (antes ela aparecia por trás da
+    // janela de aviso; retorno do dono, 2026-11-25)
+    if ($("camSettingsOverlay").classList.contains("hidden")) $("camSettingsBtn").click();
     csSetZoom(false);
     Object.assign(al, { undo: null, step: 1, firing: false, session: "", photos: [], data: {}, sel: "", clicks: null, ref: "", solved: {}, busy: false, msg: "" });
     // Câmeras do rig que não estão conectadas (decisão do dono, 2026-11-23: avisar, sem bloquear): as que tiraram

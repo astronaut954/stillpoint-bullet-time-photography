@@ -119,10 +119,8 @@
             <span>Sessions</span>
             <span class="input-unit"><input id="sessions" type="text" inputmode="numeric" maxlength="3" autocomplete="off" spellcheck="false" value="1"></span>
           </label>
-          <label class="field">
-            <span>Download wait</span>
-            <span class="input-unit"><input id="downloadWait" type="text" inputmode="numeric" maxlength="3" autocomplete="off" spellcheck="false" value="10"><em>sec</em></span>
-          </label>
+          <!-- Download wait foi para Settings › Advanced (forma D3, decisão do dono em 2026-11-25): é um recurso antigo,
+               que só interessa em casos muito específicos -->
         </div>
         <!-- Timing: como as câmeras disparam (todas juntas, uma depois da outra, grupos...) -->
         <div id="timingSummary" class="timing-summary">
@@ -468,6 +466,13 @@
           </div>
         </div>
         <div class="settings-pane" data-pane="advanced">
+          <div class="settings-row">
+            <span class="export-label">Download wait</span>
+            <div>
+              <span class="input-unit settings-wait"><input id="downloadWait" type="text" inputmode="numeric" maxlength="3" autocomplete="off" spellcheck="false" value="10"><em>sec</em></span>
+              <div class="export-note">How long the app waits for the photos to arrive after a shot before going on. 10 seconds is enough for almost every rig; raise it only if photos go missing with slow cards or many cameras. Kept with the project.</div>
+            </div>
+          </div>
           <div class="settings-row">
             <span class="export-label">Debug</span>
             <div>
