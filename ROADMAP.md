@@ -1739,17 +1739,20 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      navegador embutido do Mac (só troca o cursor quando o mouse se mexe); o conserto seria na parte nativa do
      Mac, que o agente não compila. Pendente a confirmação do dono de que é isso que incomoda. (c) Corrigido de
      passagem: a entrada dos valores da haste no passo 3 virava um passo do ⌘Z, e desfazê-lo dava erro.
-     **Causa dos cursores "bugados" no Mac (2026-11-25), CONFIRMADA pelo dono:** não era o código. O dono instalou
-     o Xcode 27.2 num macOS 26.6.2 e o programa passou a ser compilado com o SDK 27.2 (antes: Command Line Tools,
-     SDK 26.5). Com isso o navegador embutido do Mac tratava os cursores de outro jeito: com o mouse solto o
-     cursor não mudava (alças dos cantos, mão e cruz do Select, dedo nos botões) e o de girar piscava; com o botão
-     apertado funcionava. Prova: o mesmo código compilado com `DEVELOPER_DIR=/Library/Developer/CommandLineTools`
-     numa pasta separada voltou ao normal; a 2.21.0 instalada também estava normal. CORRIGIDO no `CMakeLists.txt`
-     (não conferido pelo agente, que não compila no Mac): quando as Command Line Tools têm o SDK da versão do
-     sistema (`/Library/Developer/CommandLineTools/SDKs/MacOSX<versão>.sdk`), é ele que vale; se não achar, a
-     configuração avisa. Vale também para o que é publicado, que é compilado no Mac do dono. A observar quando o
-     Mac for para o macOS 27: os cursores podem voltar a se comportar assim com o SDK 27, e aí o conserto tem de
-     ser no código. Item (b) acima (mão com o espaço e o mouse parado): o dono não reclamou disso; fica como está.
+     **Cursores "bugados" no Mac (2026-11-25): NÃO ERA DO STILLPOINT.** Com o mouse solto o cursor não mudava
+     (alças dos cantos, mão e cruz do Select, dedo nos botões) e o de girar piscava; com o botão apertado
+     funcionava. Causa achada pelo dono: ao mesmo tempo outro programa (o Codex) rodava testes automáticos no
+     simulador de iOS do Xcode; quando esses testes pararam, os cursores voltaram ao normal. O agente tinha
+     atribuído o defeito à compilação com o SDK 27.2 do Xcode recém-instalado (o dono duvidou, com razão): ERRADO.
+     A prova contrária veio do próprio dono: o mesmo binário (sdk 26.5, mesma hora de geração) funcionou numa
+     abertura e falhou na seguinte. Lição: antes de culpar a compilação, conferir se o mesmo binário se comporta
+     igual em duas aberturas. Do que foi feito nessa investigação: (1) FICA, defeito real e antigo, com teste:
+     girar pela alça com o Select mostrava a mão em vez do cursor de girar; (2) FICA: a entrada dos valores da
+     haste no passo 3 não é mais um passo do ⌘Z; (3) o `CMakeLists.txt` passou a usar o SDK da versão do sistema
+     quando as Command Line Tools o têm (com o Xcode 27.2 selecionado, a compilação ia para o SDK 27.2 num macOS
+     26): feito pela explicação errada; mantém a compilação como era antes de o Xcode ser instalado; A DECIDIR
+     com o dono se fica ou sai. Item (b) acima (mão com o espaço e o mouse parado): visto na gravação feita com
+     os testes do simulador rodando, então também não vale como defeito; nada a fazer.
      Pergunta do dono: alinhar sem as marcas, por um objeto ou pessoa da cena. É a parte 7 (From this scene), já
      prevista, a fazer antes do rig reutilizável.
      **Decisões do dono no meio dos testes (2026-11-24), a fazer DEPOIS dos roteiros:** (i) arrastar os pontos
