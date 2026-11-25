@@ -2485,6 +2485,8 @@ Em **Export sessions** › sessão com mais de uma foto › **Align photos**.
 - [ ] Desligar uma câmera, **Fire again**, religar a câmera: ela aparece como **No new photo** · "Connected again:
       fire again to include it".
 - [ ] Windows: os itens acima.
+- Sem câmeras reais: abrir com `STILLPOINT_FAKE_CAMERAS=4 STILLPOINT_FAKE_PHOTOS=pole`; **Control + Option + número**
+  (Windows: **Ctrl + Alt + número**) desliga a câmera simulada dessa posição e, de novo, liga.
 
 ## Resultado
 

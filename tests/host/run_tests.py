@@ -2769,8 +2769,8 @@ def scenario_align_entry(t, name, photos):
         note = t.js("() => document.getElementById('downloadWait').closest('.settings-row').querySelector('.export-note').textContent")
         check(t, "settings: the Download wait text says it is the time with no photo arriving, not the time of the whole session", "with no photo arriving" in note and "While photos keep arriving, the app keeps waiting" in note, note)
         # As fotos não chegaram a tempo: faixa âmbar com o caminho até o ajuste
-        t.js("() => window.onCoreEvent({ type: 'downloadTimeout', lost: [] })"); time.sleep(0.4)
-        tw = t.js("() => { const x = document.getElementById('toast'), b = document.getElementById('toastWaitBtn'); return { shown: !x.classList.contains('hidden'), warn: x.classList.contains('kind-warn'), kind: x.querySelector('.toast-kind-text').textContent, text: x.querySelector('.toast-text').textContent, btn: b ? b.textContent : '', close: !!x.querySelector('.toast-close') }; }")
+        # (pede a faixa e lê na mesma hora: o aviso do rig deste teste pode entrar no lugar logo depois)
+        tw = t.js("() => { window.onCoreEvent({ type: 'downloadTimeout', lost: [] }); const x = document.getElementById('toast'), b = document.getElementById('toastWaitBtn'); return { shown: !x.classList.contains('hidden'), warn: x.classList.contains('kind-warn'), kind: x.querySelector('.toast-kind-text').textContent, text: x.querySelector('.toast-text').textContent, btn: b ? b.textContent : '', close: !!x.querySelector('.toast-close') }; }")
         check(t, "download wait: when the photos do not arrive, an amber warning says so and offers 'Change Download wait'",
               tw == {"shown": True, "warn": True, "kind": "Warning", "text": "Some photos did not arrive in time. Nothing arrived for %s sec." % t.js("() => document.getElementById('downloadWait').value"), "btn": "Change Download wait", "close": True}, tw)
         t.shot("download-wait-toast")
@@ -2802,6 +2802,11 @@ def scenario_align_entry(t, name, photos):
             t.js("(n) => window.fakeUnplug(n, '0')", n)
         okd = t.wait(lambda: s1() == ["", "3 cameras", False], 20)
         check(t, "align entry, step 1: when the cameras come back the band goes away and Fire lights up again", okd, s1())
+        # (atalho de teste, só com câmeras simuladas: Ctrl + Alt + número desliga e liga a câmera dessa posição)
+        t.page.keyboard.press("Control+Alt+Digit2")
+        okk = t.wait(lambda: s1()[1] == "2 cameras · 1 not connected", 15)
+        t.page.keyboard.press("Control+Alt+Digit2")
+        check(t, "simulated cameras: Ctrl+Alt+2 turns camera 02 off, and again turns it on", okk and t.wait(lambda: s1() == ["", "3 cameras", False], 15), s1())
         t.button("Cancel"); time.sleep(0.6)
         check(t, "align entry: Cancel goes back to the main window (Camera settings does not stay open)", t.js("() => document.getElementById('camSettingsOverlay').classList.contains('hidden')"))
         # Pelo botão: Fire, e o passo 2 chega com as fotos

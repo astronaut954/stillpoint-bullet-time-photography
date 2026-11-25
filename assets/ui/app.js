@@ -8650,6 +8650,19 @@
     if (handler) handler(event);
   };
 
+  // Só com câmeras simuladas (STILLPOINT_FAKE_CAMERAS), para testar sem gastar bateria: Ctrl + Alt + número
+  // (no Mac, Control + Option + número) desliga a câmera dessa posição; de novo, liga. Com câmeras de verdade
+  // o atalho não existe.
+  document.addEventListener("keydown", (e) => {
+    if (typeof window.fakeUnplug !== "function" || !e.ctrlKey || !e.altKey || e.metaKey) return;
+    const m = /^Digit([1-9])$/.exec(e.code || "");
+    if (!m) return;
+    const cam = placedCameras().find((c) => c.order === Number(m[1]));
+    if (!cam) return;
+    e.preventDefault();
+    window.fakeUnplug(cam.name, cam.connected ? "1" : "0");
+  }, true);
+
   // Sem o menu do botão direito do navegador ("Reload" deixava a janela em branco);
   // nos campos de texto ele continua, para copiar e colar.
   document.addEventListener("contextmenu", (e) => {
