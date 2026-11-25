@@ -8244,8 +8244,25 @@
       ui.progress.textContent = text;
     },
     downloadTimeout(e) {
+      const lost = e.lost.length ? "Lost connection: " + e.lost.map((n) => cameraLabel(n)).join(", ") + "." : "";
       log("Some photos did not arrive in time.", "error",
-        e.lost.length ? "Lost connection: " + e.lost.map((n) => cameraLabel(n)).join(", ") + "." : "No camera was disconnected. Try a longer Download wait (Settings › Advanced).");
+        lost || "No camera was disconnected, and nothing arrived for the whole Download wait. Try a longer Download wait (Settings › Advanced).");
+      // Faixa âmbar com o caminho até o ajuste (decisão do dono, 2026-11-25): sem câmera caída, o
+      // que resolve é aumentar o Download wait; com câmera caída, o aviso diz qual foi
+      toast(lost ? "Some photos did not arrive in time. " + lost : "Some photos did not arrive in time. Nothing arrived for " + intValue(ui.downloadWait, 1, 10) + " sec.",
+        12000, { warn: true, silent: true });
+      if (lost) return;
+      const close = ui.toast.querySelector(".toast-close");
+      const b = el("button", "btn btn-link btn-small toast-action", "Change Download wait");
+      b.type = "button";
+      b.id = "toastWaitBtn";
+      b.addEventListener("click", () => {
+        hideToast();
+        openSettings("advanced");
+        ui.downloadWait.focus();
+        ui.downloadWait.select();
+      });
+      close.before(b);
     },
     sessionInterrupted() { if (!orderCapture() && !oneShot()) log("The session stopped before the end.", "error"); },
     sessionCompleted() {},

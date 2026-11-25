@@ -178,9 +178,35 @@ namespace
         }
     }
 
+    // Enquanto uma foto vem, o SDK chama isto de tempos em tempos. Avisa o app no máximo duas vezes
+    // por segundo: é o sinal de que a foto continua chegando (o app só desiste da espera quando passa
+    // o tempo do Download wait sem chegar nada).
+    struct DownloadProgress
+    {
+        int prefix = 0;
+        long long lastSentMs = 0;
+    };
+    EdsError EDSCALLBACK OnDownloadProgress(EdsUInt32 percent, EdsVoid* context, EdsBool* cancel)
+    {
+        if (cancel)
+            *cancel = 0;
+        auto* p = static_cast<DownloadProgress*>(context);
+        if (!p)
+            return EDS_ERR_OK;
+        const long long now = NowMs();
+        if (now - p->lastSentMs >= 500)
+        {
+            p->lastSentMs = now;
+            Send({ "photopart", std::to_string(p->prefix), std::to_string(static_cast<unsigned>(percent)) });
+        }
+        return EDS_ERR_OK;
+    }
+
     // Baixa uma foto que a câmera ofereceu e avisa o app. Não solta o item: quem chama solta.
     void DownloadItem(EdsDirectoryItemRef item, int prefix)
     {
+        // A câmera ofereceu a foto: o app fica sabendo que ela começou a vir
+        Send({ "photostart", std::to_string(prefix) });
         EdsDirectoryItemInfo info{};
         EdsError err = EdsGetDirectoryItemInfo(item, &info);
         if (err == EDS_ERR_OK)
@@ -192,6 +218,11 @@ namespace
             err = EdsCreateFileStream(path.string().c_str(), kEdsFileCreateDisposition_CreateAlways, kEdsAccess_ReadWrite, &stream);
             if (err == EDS_ERR_OK)
             {
+                DownloadProgress progress;
+                progress.prefix = prefix;
+                progress.lastSentMs = NowMs();
+                // Se o SDK recusar o acompanhamento, a foto vem do mesmo jeito (só sem os avisos do meio)
+                EdsSetProgressCallback(stream, OnDownloadProgress, kEdsProgressOption_Periodically, &progress);
                 err = EdsDownload(item, info.size, stream);
                 if (err == EDS_ERR_OK)
                     err = EdsDownloadComplete(item);

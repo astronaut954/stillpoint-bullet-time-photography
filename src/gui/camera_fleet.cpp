@@ -870,6 +870,9 @@ bool CameraFleet::RunSequence(const SequenceSettings& settings)
 
         // Lê os avisos dos trabalhadores: disparos (OnShotFired), fotos (progresso), falhas
         std::set<std::string> shootDone;
+        // Última vez que algo chegou de uma câmera (disparo, começo de foto, pedaço de foto, foto
+        // pronta). A espera pelas fotos só desiste quando passa o Download wait inteiro sem nada disso.
+        auto lastArrival = Clock::now();
         auto consume = [&]()
         {
             for (auto& w : workers)
@@ -880,6 +883,8 @@ bool CameraFleet::RunSequence(const SequenceSettings& settings)
                 {
                     const auto f = w->inbox.front();
                     w->inbox.pop_front();
+                    if (f[0] == "fired" || f[0] == "photostart" || f[0] == "photopart" || f[0] == "photo")
+                        lastArrival = Clock::now();
                     if (f[0] == "fired" && f.size() >= 5)
                     {
                         const int prefix = std::atoi(f[1].c_str());
@@ -944,8 +949,10 @@ bool CameraFleet::RunSequence(const SequenceSettings& settings)
         consume();
 
         listener.OnWaitingForDownloads();
+        // O Download wait é o tempo máximo SEM CHEGAR NADA, e não o tempo total da sessão: enquanto
+        // as fotos continuam vindo, a espera continua (decisão do dono, 2026-11-25)
         const int maxWaitMs = settings.downloadWaitSeconds * 1000;
-        const auto waitStart = Clock::now();
+        lastArrival = Clock::now();
         bool sessionFailed = false;
         while (true)
         {
@@ -957,7 +964,7 @@ bool CameraFleet::RunSequence(const SequenceSettings& settings)
             if (expectedDownloads <= 0)
                 break;
             if (cancelRequested) { cancelled = true; break; }
-            if (Clock::now() - waitStart > std::chrono::milliseconds(maxWaitMs))
+            if (Clock::now() - lastArrival > std::chrono::milliseconds(maxWaitMs))
             {
                 // Quem não respondeu a um ping em 2 s é dado como caído
                 for (auto& w : workers)

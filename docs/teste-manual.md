@@ -2443,6 +2443,22 @@ Em **Export sessions** › sessão com mais de uma foto › **Align photos**.
       sem o **Camera settings** por trás.
 - [ ] Windows: os itens acima.
 
+## 64. Download wait: espera enquanto as fotos chegam (2026-11-25, câmeras reais)
+
+- [ ] **Settings** › **Advanced**: o texto do **Download wait** diz que é o tempo sem chegar nenhuma foto.
+- [ ] Câmeras em RAW (ou RAW + JPEG), **Download wait** em **2**, **It's bullet time**: a sessão termina com todas
+      as fotos, mesmo levando mais de 2 segundos no total. (Antes da mudança, parava com "Some photos did not
+      arrive in time".)
+- [ ] Mesmo ajuste, três sessões seguidas (**Sessions** em **3**): as três completas.
+- [ ] **Download wait** de volta em **10**. Disparar e, logo depois do disparo, desligar o cabo USB de uma câmera:
+      depois de uns 10 segundos sem chegar nada, faixa âmbar embaixo: "Some photos did not arrive in time. Lost
+      connection: (nome da câmera)." sem botão de ajuste. As fotos das outras câmeras ficam na sessão.
+- [ ] Se a faixa aparecer sem câmera caída: ela mostra o botão **Change Download wait**, que abre **Settings** na aba
+      **Advanced** com o campo selecionado.
+- [ ] **Camera settings** › **Test shot**, **Reorder by photo** e **Align cameras** › **Fire**: continuam recebendo as
+      fotos como antes.
+- [ ] Windows: os itens acima.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |

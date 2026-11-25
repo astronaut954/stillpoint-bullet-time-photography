@@ -1661,6 +1661,16 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      Texto do Download wait corrigido depois da dúvida do dono: no código a espera é o TOTAL da sessão (do fim dos
      disparos até a última foto chegar), não por câmera; como as câmeras baixam ao mesmo tempo, mais câmeras não
      pedem mais tempo. As câmeras simuladas não usam essa espera (por isso 300 simuladas não falharam).
+     Escolha do dono (2026-11-25, "1 + 3"), FEITO no código, AGUARDANDO TESTE COM CÂMERAS: (1) o Download wait
+     passa a ser o tempo máximo SEM CHEGAR NADA; enquanto as fotos continuam vindo, o app continua esperando. Para
+     isso o processo de cada câmera avisa quando uma foto começa a vir ("photostart") e, no máximo duas vezes por
+     segundo, que ela continua vindo ("photopart", pelo acompanhamento de download do SDK da Canon); o
+     coordenador zera o relógio a cada aviso desses, a cada disparo e a cada foto pronta. Só na janela: a versão
+     de terminal não mudou. (3) Quando o tempo acaba mesmo assim, faixa âmbar "Some photos did not arrive in time.
+     Nothing arrived for N sec." com o botão "Change Download wait", que abre Settings › Advanced com o campo
+     pronto para digitar; com câmera caída, a faixa diz qual foi e não oferece o ajuste. NÃO VERIFICADO pelo
+     agente: a parte do processo da câmera não compila no ambiente do agente (só conferência de escrita com um
+     SDK de mentira) e as câmeras simuladas não usam essa espera; depende do teste do dono no Mac e no Windows.
      Pergunta do dono: alinhar sem as marcas, por um objeto ou pessoa da cena. É a parte 7 (From this scene), já
      prevista, a fazer antes do rig reutilizável.
      **Decisões do dono no meio dos testes (2026-11-24), a fazer DEPOIS dos roteiros:** (i) arrastar os pontos

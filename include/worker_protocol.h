@@ -16,7 +16,9 @@
 //        dispara uma foto por item, em t0 (relógio do computador, ms desde 1970) + ms;
 //        cada foto é gravada em <pasta>/<nº>_<nome>_<nome original>; responde, por item,
 //        "fired\t<nº>\t<ok|err>\t<código>\t<instante ms>" e depois "photo\t<nº>\t<caminho>"
-//        (ou "photofail\t<nº>\t<código>"); no fim, "shootdone"
+//        (ou "photofail\t<nº>\t<código>"); no fim, "shootdone". Enquanto a foto vem: "photostart\t<nº>"
+//        quando a câmera oferece o arquivo e "photopart\t<nº>\t<0 a 100>" no máximo duas vezes por
+//        segundo; servem só para o app saber que ainda há foto chegando (espera do Download wait)
 //   cancel                                itens do plano que ainda não dispararam não disparam
 //   live\ton\t<arquivo>                    liga a imagem ao vivo (etapa 21, parte 6b): o visor da câmera passa a vir
 //                                         também para o computador, e cada quadro (JPEG) é gravado nesse arquivo
@@ -34,7 +36,8 @@
 //   lost\t<motivo>                        a câmera caiu (o processo sai em seguida)
 //   log\t<texto>                          mensagem para o log do app
 //   livefail\t<código>                    a imagem ao vivo parou de vir (depois de ligada); o processo a desliga
-//   pong, settings, setresult, liveresult, identified, fired, photo, photofail, shootdone, bye
+//   pong, settings, setresult, liveresult, identified, fired, photostart, photopart, photo, photofail,
+//   shootdone, bye
 //
 // Parâmetros do trabalhador: StillpointWorker --wait <s> [--avoid <índices>] [--log <pasta>]
 //   --wait: quantos segundos procurar uma câmera livre antes de responder "none"
