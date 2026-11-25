@@ -2461,6 +2461,17 @@ Em **Export sessions** › sessão com mais de uma foto › **Align photos**.
       fotos como antes.
 - [ ] Windows: os itens acima.
 
+## 65. Test shot: faixa Align again (2026-11-25)
+
+- [ ] Projeto com alinhamento guardado, nada mudou: **Camera settings** › **Test shot**: nenhum texto de alinhamento
+      ao lado de **Hide photos** e nenhuma faixa.
+- [ ] Mudar o zoom de uma câmera e dar **Test shot**: faixa âmbar acima das fotos, com **Align again**, a frase
+      dizendo qual câmera mudou e desde quando, e o botão **Align cameras** à direita.
+- [ ] **Align cameras** da faixa: janela "This project already has an alignment"; **Align cameras** abre o passo 1;
+      **Cancel** volta para o **Camera settings** com as fotos do Test shot.
+- [ ] **Hide photos**: a faixa some junto com as fotos.
+- [ ] Windows: os itens acima.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |

@@ -1688,7 +1688,9 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      ("photostart"/"photopart") funcionam com as câmeras reais no Mac.
      Testes do dono (Mac, câmeras reais, 2026-11-25): RAW + JPEG em 3 sessões e a espera nova com Download wait
      em 1 e 2 s: ok. Decisão do dono: o aviso âmbar "Align again · ..." do Test shot FICA. Pedido: um caminho dali
-     para realinhar; protótipos N1 a N4 em https://claude.ai/artifact/91Kz6vJUt5bRsTp87RpNfi (aguardando escolha).
+     para realinhar; protótipos N1 a N4 em https://claude.ai/artifact/91Kz6vJUt5bRsTp87RpNfi. Escolha do dono: N4. FEITO, AGUARDANDO
+     TESTE: faixa âmbar acima das fotos do Test shot (etiqueta Align again, a explicação inteira e o botão Align
+     cameras, que faz a mesma pergunta do botão da janela principal e, ao sair, volta para o Camera settings).
      Pergunta do dono: alinhar sem as marcas, por um objeto ou pessoa da cena. É a parte 7 (From this scene), já
      prevista, a fazer antes do rig reutilizável.
      **Decisões do dono no meio dos testes (2026-11-24), a fazer DEPOIS dos roteiros:** (i) arrastar os pontos

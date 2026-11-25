@@ -2777,8 +2777,16 @@
     return m + " " + d.getDate() + ", " + String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
   }
   // As ações do Test shot: "Align cameras" e, com alinhamento guardado, a nota "Cameras aligned · data"
-  const alNote = document.createElement("span");
-  alNote.className = "ts-note al-saved hidden";
+  // Faixa âmbar acima das fotos do Test shot (forma N4, escolha do dono em 2026-11-25): etiqueta, a explicação
+  // inteira e o botão que abre o Align cameras
+  const alNote = document.createElement("div");
+  alNote.className = "al-again al-saved hidden";
+  alNote.innerHTML = '<span class="al-again-kind">Align again</span><span class="al-again-text"></span><button class="btn btn-small al-again-btn" type="button">Align cameras</button>';
+  alNote.querySelector(".al-again-btn").addEventListener("click", () => {
+    if (busy || al.open) return;
+    al.fromMain = false;
+    alAskOpen();
+  });
   // O botão é sempre "Align cameras". Com um alinhamento já guardado no projeto, uma janela avisa antes de abrir
   // (pedido do dono, 2026-11-24; antes o botão virava "Align again" e abria direto)
   function alAskOpen() {
@@ -2817,10 +2825,11 @@
     const changes = alChanges();
     // Só o aviso de que as câmeras mudaram. "Cameras aligned · data" saiu daqui: o Align cameras não
     // é mais desta janela (pedido do dono, 2026-11-25)
-    alNote.textContent = saved && changes.length ? "Align again · " + changes.join(" · ") : "";
-    alNote.classList.toggle("hidden", !(saved && changes.length));
-    alNote.classList.toggle("warn", changes.length > 0);
-    alNote.title = changes.length ? "The cameras changed since the alignment of " + alWhen(al.saved.savedAt) + ". Those that changed get no automatic alignment until you align again; the others stay aligned." : "";
+    const on = !!(saved && changes.length);
+    alNote.querySelector(".al-again-text").textContent = !on ? "" : changes.join(" · ") + " since the alignment of " + alWhen(al.saved.savedAt) + ". "
+      + (changes.length === 1 ? "It gets" : "Those that changed get") + " no automatic alignment until you align again; the others stay aligned.";
+    alNote.classList.toggle("hidden", !on);
+    alNote.classList.toggle("warn", on);
   }
   // Depois de um Test shot: o programa lê o zoom das fotos novas e diz se o alinhamento ainda vale
   function alCheck(list) {
@@ -2836,7 +2845,8 @@
   }
   // (o botão Align cameras do Test shot saiu: o caminho é o da janela principal; decisão do dono, 2026-11-25. Aqui
   // fica só o estado do alinhamento, que o Test shot confere)
-  csGallery.setActions([alNote, csHideBtn]);
+  csGallery.setActions([csHideBtn]);
+  csHideBtn.closest(".gallery-head").after(alNote);
   function alLoadSaved() {
     Promise.resolve(window.alignInfo && window.alignInfo()).then((info) => { al.saved = info || null; alRenderEntry(); }).catch(() => {});
   }

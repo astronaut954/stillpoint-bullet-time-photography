@@ -2497,7 +2497,12 @@ body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform:
 .al-objs-3 { grid-template-columns: repeat(3, 1fr); }
 .al-bands { display: flex; align-items: center; gap: 14px; margin-top: 12px; border: 1px solid var(--noct-border); padding: 10px 12px; }
 .al-bands span { flex: 1; font: 400 13px/1.45 var(--noct-font-sans); color: var(--noct-text); }
-.gallery-actions .al-saved.warn { color: var(--noct-pending, #f0a020); border: 1px solid currentColor; padding: 4px 8px; }
+/* Test shot: faixa âmbar "Align again" acima das fotos (forma N4) */
+.al-again { display: flex; align-items: center; border: 1px solid var(--noct-pending, #f0a020); color: var(--noct-pending, #f0a020); margin: 8px 0 10px; }
+.al-again.hidden, .cs-test:not(.has-photos) .al-again { display: none; }
+.al-again-kind { align-self: stretch; display: flex; align-items: center; padding: 9px 10px; background: var(--noct-pending, #f0a020); color: #0a0d0a; font: 600 11px/1 var(--noct-font-mono); letter-spacing: .14em; text-transform: uppercase; white-space: nowrap; }
+.al-again-text { flex: 1; padding: 7px 12px; font: 400 12.5px/1.4 var(--noct-font-sans); }
+.al-again-btn { margin: 5px 6px; border-color: var(--noct-pending, #f0a020); color: var(--noct-pending, #f0a020); white-space: nowrap; }
 /* Camera settings: contador de avisos ao lado do nome e a lista que ele abre */
 .cs-tag-more { display: inline-block; margin-left: 8px; padding: 0 2px; border: 0; background: transparent; color: var(--noct-pending); line-height: 0; vertical-align: -1px; cursor: pointer; }
 .cs-tag-more:focus-visible { outline: 1px solid var(--noct-text); outline-offset: 2px; }
