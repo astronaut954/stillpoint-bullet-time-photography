@@ -1739,6 +1739,17 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      navegador embutido do Mac (só troca o cursor quando o mouse se mexe); o conserto seria na parte nativa do
      Mac, que o agente não compila. Pendente a confirmação do dono de que é isso que incomoda. (c) Corrigido de
      passagem: a entrada dos valores da haste no passo 3 virava um passo do ⌘Z, e desfazê-lo dava erro.
+     **Causa dos cursores "bugados" no Mac (2026-11-25), CONFIRMADA pelo dono:** não era o código. O dono instalou
+     o Xcode 27.2 num macOS 26.6.2 e o programa passou a ser compilado com o SDK 27.2 (antes: Command Line Tools,
+     SDK 26.5). Com isso o navegador embutido do Mac tratava os cursores de outro jeito: com o mouse solto o
+     cursor não mudava (alças dos cantos, mão e cruz do Select, dedo nos botões) e o de girar piscava; com o botão
+     apertado funcionava. Prova: o mesmo código compilado com `DEVELOPER_DIR=/Library/Developer/CommandLineTools`
+     numa pasta separada voltou ao normal; a 2.21.0 instalada também estava normal. CORRIGIDO no `CMakeLists.txt`
+     (não conferido pelo agente, que não compila no Mac): quando as Command Line Tools têm o SDK da versão do
+     sistema (`/Library/Developer/CommandLineTools/SDKs/MacOSX<versão>.sdk`), é ele que vale; se não achar, a
+     configuração avisa. Vale também para o que é publicado, que é compilado no Mac do dono. A observar quando o
+     Mac for para o macOS 27: os cursores podem voltar a se comportar assim com o SDK 27, e aí o conserto tem de
+     ser no código. Item (b) acima (mão com o espaço e o mouse parado): o dono não reclamou disso; fica como está.
      Pergunta do dono: alinhar sem as marcas, por um objeto ou pessoa da cena. É a parte 7 (From this scene), já
      prevista, a fazer antes do rig reutilizável.
      **Decisões do dono no meio dos testes (2026-11-24), a fazer DEPOIS dos roteiros:** (i) arrastar os pontos

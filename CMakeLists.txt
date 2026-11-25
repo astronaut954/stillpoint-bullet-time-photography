@@ -6,6 +6,26 @@ file(READ "${CMAKE_SOURCE_DIR}/VERSION" STILLPOINT_VERSION)
 string(STRIP "${STILLPOINT_VERSION}" STILLPOINT_VERSION)
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/VERSION")
 
+# macOS: compilar com o SDK do sistema que está no Mac, e não com o de um sistema mais novo.
+# Com o Xcode 27.2 num macOS 26, o programa saía "feito para o macOS 27" e o navegador embutido (WebKit) passava a
+# tratar os cursores de outro jeito: no Align photos o cursor não mudava com o mouse solto (alças, Select) e o de
+# girar piscava (visto pelo dono em 2026-11-25; voltou ao normal compilando com o SDK 26). Por isso, quando as
+# Command Line Tools têm o SDK da versão do sistema, é ele que vale. Para escolher outro: -DCMAKE_OSX_SYSROOT=...
+# ou a variável SDKROOT. (Tem de vir antes do project().)
+if(CMAKE_HOST_APPLE AND NOT CMAKE_OSX_SYSROOT AND NOT DEFINED ENV{SDKROOT})
+    execute_process(COMMAND sw_vers -productVersion
+        OUTPUT_VARIABLE STILLPOINT_MACOS OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+    string(REGEX MATCH "^[0-9]+" STILLPOINT_MACOS_MAJOR "${STILLPOINT_MACOS}")
+    set(STILLPOINT_SDK "/Library/Developer/CommandLineTools/SDKs/MacOSX${STILLPOINT_MACOS_MAJOR}.sdk")
+    if(STILLPOINT_MACOS_MAJOR AND EXISTS "${STILLPOINT_SDK}")
+        set(CMAKE_OSX_SYSROOT "${STILLPOINT_SDK}" CACHE PATH "SDK do macOS usado na compilacao" FORCE)
+        message(STATUS "Stillpoint: macOS ${STILLPOINT_MACOS}, SDK ${STILLPOINT_SDK}")
+    else()
+        message(WARNING "Stillpoint: nao achei o SDK do macOS ${STILLPOINT_MACOS} em ${STILLPOINT_SDK}; "
+            "a compilacao usa o SDK padrao das ferramentas, que pode ser de um sistema mais novo.")
+    endif()
+endif()
+
 project(Stillpoint VERSION ${STILLPOINT_VERSION} LANGUAGES CXX)
 file(WRITE "${CMAKE_BINARY_DIR}/stillpoint-version.txt" "${STILLPOINT_VERSION}")
 
