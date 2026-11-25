@@ -1697,7 +1697,14 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      igual); com todas caídas, Fire e Fire again não fazem nada e não avisam; a câmera só aparece como Not
      connected depois de um Fire again; o aviso do rig fica em cima da borda do rodapé da janela. Protótipos em
      três partes (D1/D2 uma câmera cai; E1/E2 todas caem; T1/T2 o aviso do rig):
-     https://claude.ai/artifact/X9w1VSLjnvcszJuEezPZ4W (aguardando escolha).
+     https://claude.ai/artifact/X9w1VSLjnvcszJuEezPZ4W. Escolha do dono: D2, E2 e T2. FEITO, AGUARDANDO TESTE
+     (conferido só com câmeras simuladas): a câmera que cai fica apagada na lista na hora (Not connected · Turn it
+     on to reconnect) e uma faixa âmbar no alto diz qual foi; ao religar volta sozinha, com as fotos e marcas que
+     tinha. Enquanto está desligada fica fora da contagem, do Review e do Save (como a que some num Fire again).
+     Sem nenhuma ligada: faixa e rodapé "No camera connected", Fire / Fire again apagados. O aviso do rig não
+     aparece com o Align cameras aberto (a linha continua indo para a Activity). Acrescentado pelo agente, A
+     CONFIRMAR com o dono: a câmera que sumiu num Fire again e depois foi religada aparece como "No new photo ·
+     Connected again: fire again to include it" (antes continuava dizendo Not connected mesmo ligada).
      Pergunta do dono: alinhar sem as marcas, por um objeto ou pessoa da cena. É a parte 7 (From this scene), já
      prevista, a fazer antes do rig reutilizável.
      **Decisões do dono no meio dos testes (2026-11-24), a fazer DEPOIS dos roteiros:** (i) arrastar os pontos

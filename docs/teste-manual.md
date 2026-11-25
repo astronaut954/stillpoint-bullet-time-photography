@@ -2472,6 +2472,20 @@ Em **Export sessions** › sessão com mais de uma foto › **Align photos**.
 - [ ] **Hide photos**: a faixa some junto com as fotos.
 - [ ] Windows: os itens acima.
 
+## 66. Câmeras que caem com o Align cameras aberto (2026-11-25, câmeras reais)
+
+- [ ] **Align cameras** › **Fire**, passo 2 com as fotos. Desligar uma câmera: em poucos segundos ela fica apagada na
+      lista, com **Not connected** e "Turn it on to reconnect"; faixa âmbar no alto dizendo qual câmera caiu; rodapé
+      com "1 not connected". Nenhum aviso do rig em cima dos botões (a linha aparece no **Activity**).
+- [ ] Religar a câmera: ela volta ao normal na lista sozinha, com as marcas que tinha, e a faixa some.
+- [ ] Desligar todas: faixa e rodapé "No camera connected"; **Fire again** apagado. Religar: volta ao normal.
+- [ ] No passo 1 (antes do **Fire**), desligar todas: faixa e rodapé "No camera connected"; **Fire** apagado.
+- [ ] Com uma câmera desligada, **Review alignment**: ela aparece como **Not connected** · **No alignment**, o aviso
+      explica o que acontece ao salvar e o botão é **Save without it**.
+- [ ] Desligar uma câmera, **Fire again**, religar a câmera: ela aparece como **No new photo** · "Connected again:
+      fire again to include it".
+- [ ] Windows: os itens acima.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |

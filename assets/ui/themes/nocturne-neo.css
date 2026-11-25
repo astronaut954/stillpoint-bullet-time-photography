@@ -2502,6 +2502,8 @@ body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform:
 .al-again.hidden, .cs-test:not(.has-photos) .al-again { display: none; }
 .al-again-kind { align-self: stretch; display: flex; align-items: center; padding: 9px 10px; background: var(--noct-pending, #f0a020); color: #0a0d0a; font: 600 11px/1 var(--noct-font-mono); letter-spacing: .14em; text-transform: uppercase; white-space: nowrap; }
 .al-again-text { flex: 1; padding: 7px 12px; font: 400 12.5px/1.4 var(--noct-font-sans); }
+#csAlignOff { margin: 12px 22px 0; flex: 0 0 auto; }
+#csAlignNote.warn { color: var(--noct-pending, #f0a020); }
 .al-again-btn { margin: 5px 6px; border-color: var(--noct-pending, #f0a020); color: var(--noct-pending, #f0a020); white-space: nowrap; }
 /* Camera settings: contador de avisos ao lado do nome e a lista que ele abre */
 .cs-tag-more { display: inline-block; margin-left: 8px; padding: 0 2px; border: 0; background: transparent; color: var(--noct-pending); line-height: 0; vertical-align: -1px; cursor: pointer; }

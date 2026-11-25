@@ -2536,9 +2536,33 @@ def scenario_align_gone(t, name, photos):
         num = "%02d" % (names.index(gone) + 1)
         place = names.index(gone)
         t.js("(n) => window.fakeUnplug(n, '1')", gone)
-        time.sleep(1.5)
-        t.js("() => document.querySelectorAll('.toast').forEach((e) => e.remove())")
+        live = lambda: t.js("() => { const g = [...document.querySelectorAll('#csAlignMain .ma-item.gone')], b = document.getElementById('csAlignOff'), f = [...document.querySelectorAll('#csAlignFoot button')].find((x) => /^Fire/.test(x.textContent.trim())); return { gone: g.map((i) => i.dataset.camera), text: g.map((i) => i.textContent).join(' | '), n: document.querySelectorAll('#csAlignMain .ma-item').length, band: b.classList.contains('hidden') ? '' : b.querySelector('.al-again-kind').textContent + ': ' + b.querySelector('.al-again-text').textContent, note: document.getElementById('csAlignNote').textContent, warn: document.getElementById('csAlignNote').classList.contains('warn'), fireOff: f.disabled, toast: false, sel: (document.querySelector('#csAlignMain .ma-item.sel') || { dataset: {} }).dataset.camera || '' }; }")
+        t.wait(lambda: live()["gone"] == [gone], 10)
+        d = live()
+        check(t, "align, a camera drops at step 2: at once it is greyed in the list, in place, as 'Not connected · Turn it on to reconnect'", d["gone"] == [gone] and d["n"] == 4 and "Not connected" in d["text"] and "Turn it on to reconnect" in d["text"], d)
+        check(t, "align, a camera drops: an amber band at the top names it and says it comes back by itself", d["band"] == "Not connected: Camera %s (%s) turned off or disconnected. Turn it on to reconnect: it comes back by itself. Until then it is left out of the alignment." % (num, gone), d["band"])
+        check(t, "align, a camera drops: the footer counts it and 'Fire again' stays on", "1 not connected" in d["note"] and not d["fireOff"], d)
+        t.shot("align-camera-dropped")
+        t.js("(n) => window.fakeUnplug(n, '0')", gone)
+        ok = t.wait(lambda: live()["gone"] == [] and live()["band"] == "", 15)
+        d = live()
+        check(t, "align, the camera is turned on again: it comes back to the list by itself, with its marks, and the band goes away", ok and d["n"] == 4 and "not connected" not in d["note"] and t.js("() => document.querySelectorAll('#csAlignMain .ma-item.ready, #csAlignMain .ma-item.needs').length") == 4, d)
+        # Todas caem: a faixa diz "No camera connected" e o Fire again fica apagado
+        for n in names:
+            t.js("(n) => window.fakeUnplug(n, '1')", n)
+        t.wait(lambda: len(live()["gone"]) == 4, 10)
+        d = live()
+        check(t, "align, every camera drops: band 'No camera connected', footer 'No camera connected' in amber, 'Fire again' off",
+              d["band"] == "No camera connected: All 4 cameras turned off or disconnected. Turn them on to reconnect: they come back by themselves." and d["note"] == "No camera connected" and d["warn"] and d["fireOff"], d)
+        t.shot("align-no-camera")
+        for n in names:
+            if n != gone:
+                t.js("(n) => window.fakeUnplug(n, '0')", n)
+        t.wait(lambda: live()["gone"] == [gone] and not live()["fireOff"], 15)
+        check(t, "align, the others come back: only the one still off stays greyed, and a connected camera is the chosen one", live()["gone"] == [gone] and live()["sel"] not in ("", gone), live())
+        time.sleep(1.0)
         t.button("Fire again")
+        t.wait(lambda: t.js("() => /last one it took/.test((document.querySelector('#csAlignMain .ma-item.gone') || {}).textContent || '')"), 60)
         t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item.gone').length === 1 && document.querySelectorAll('#csAlignMain .ma-item.ready, #csAlignMain .ma-item:not(.gone).needs').length === 3 && !/Finding/.test(document.querySelector('#csAlignMain').textContent)"), 60)
         d = t.js("() => { const its = [...document.querySelectorAll('#csAlignMain .ma-item')], g = its.find((i) => i.classList.contains('gone')); return g ? { pos: its.indexOf(g), n: its.length, cam: g.dataset.camera, text: g.textContent, photo: g.querySelector('.al-photo').style.backgroundImage.length > 10, foot: document.querySelector('#csAlign').textContent } : null; }")
         check(t, "align, one unplugged, after 'Fire again': it stays in the list, in its place, marked 'Not connected' with its last photo", bool(d) and d["n"] == 4 and d["pos"] == place and d["cam"] == gone and "Not connected" in d["text"] and "last one it took" in d["text"] and d["photo"], d)
@@ -2768,6 +2792,16 @@ def scenario_align_entry(t, name, photos):
         time.sleep(0.6)
         st = t.js("() => ({ open: !document.getElementById('csAlign').classList.contains('hidden'), step1: document.getElementById('csAlignStep1').classList.contains('on'), foot: [...document.querySelectorAll('#csAlignFoot button')].map((x) => x.textContent.trim()) })")
         check(t, "align entry: it opens the Align cameras window at step 1 with no Test shot, with its own Fire", ok and st["open"] and st["step1"] and st["foot"] == ["Cancel", "Fire"], st)
+        cams3 = ["SL3_1", "T7_1", "SL3_2"]
+        for n in cams3:
+            t.js("(n) => window.fakeUnplug(n, '1')", n)
+        s1 = lambda: t.js("() => { const b = document.getElementById('csAlignOff'), f = [...document.querySelectorAll('#csAlignFoot button')].find((x) => x.textContent.trim() === 'Fire'); return [b.classList.contains('hidden') ? '' : b.querySelector('.al-again-kind').textContent, document.getElementById('csAlignNote').textContent, f ? f.disabled : null]; }")
+        okd = t.wait(lambda: s1() == ["No camera connected", "No camera connected", True], 15)
+        check(t, "align entry, step 1 with every camera off: band and footer say 'No camera connected' and Fire is off (it was lit and did nothing)", okd and len(cams3) == 3, (cams3, s1()))
+        for n in cams3:
+            t.js("(n) => window.fakeUnplug(n, '0')", n)
+        okd = t.wait(lambda: s1() == ["", "3 cameras", False], 20)
+        check(t, "align entry, step 1: when the cameras come back the band goes away and Fire lights up again", okd, s1())
         t.button("Cancel"); time.sleep(0.6)
         check(t, "align entry: Cancel goes back to the main window (Camera settings does not stay open)", t.js("() => document.getElementById('camSettingsOverlay').classList.contains('hidden')"))
         # Pelo botão: Fire, e o passo 2 chega com as fotos
