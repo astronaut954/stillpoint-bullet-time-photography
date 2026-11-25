@@ -1632,6 +1632,8 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      Folha das faixas (PDF), retorno do dono: a instrução mandava medir "entre os centros das faixas", que não
      têm marca de centro. Agora a régua é o espaço vazio entre uma faixa e a seguinte, de borda a borda, com um
      desenho no pé da folha; e ao salvar o PDF ele abre (antes só mostrava a pasta).
+     Teste do dono com câmeras (2026-11-25, Mac): Your marks com "Not equal", tamanhos iguais no Align photos e o
+     PDF abrindo ao salvar: "tudo certo".
      Pergunta do dono: alinhar sem as marcas, por um objeto ou pessoa da cena. É a parte 7 (From this scene), já
      prevista, a fazer antes do rig reutilizável.
      **Decisões do dono no meio dos testes (2026-11-24), a fazer DEPOIS dos roteiros:** (i) arrastar os pontos
