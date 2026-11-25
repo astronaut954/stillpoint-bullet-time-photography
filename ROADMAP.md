@@ -1619,7 +1619,10 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      diferença, o que bate com o medido na gravação). Com os pontos automáticos o meio dava 42 a 43%, caía na
      conta pelo comprimento, e saía certo (roteiro 4). Não é resolução (alinhada e fotografada no mesmo tamanho)
      nem erro de tela. O limite de 6% não separa um suporte de marcas desiguais de um efeito de perspectiva.
-     DECISÃO PENDENTE do dono: como o programa deve saber se as marcas são iguais (ver a conversa).
+     Decisão do dono (2026-11-25): opção 1, o programa pergunta à pessoa se as marcas estão a distâncias iguais
+     (deixa de adivinhar pelo limite de 6%). Protótipos de onde a pergunta fica (M1 cartões no passo 1, M2
+     seletor no rodapé do passo 1, M3 pergunta no passo 2 com o valor medido) em
+     https://claude.ai/artifact/VEcsBntJrQNU4c72JAhJ6a, aguardando a escolha.
      **Decisões do dono no meio dos testes (2026-11-24), a fazer DEPOIS dos roteiros:** (i) arrastar os pontos
      que o programa achou, de um jeito que não entre em conflito com a busca automática e que deixe refazer a
      busca; (ii) o botão Align cameras não deve depender do Test shot: protótipos com as posições no Camera
