@@ -1729,6 +1729,16 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      disparar de novo), os ajustes feitos na mão são descartados, porque os valores da haste mudaram. ⌘Z / ⇧⌘Z
      desfazem e refazem cada ajuste. Teste automático: cenário do Align cameras (editor, tocador, ajuste, ⌘Z,
      Back to the stick values, o que é salvo e a chegada igual ao Export).
+     Retorno do dono (2026-11-25, gravação no Mac, câmeras simuladas): "a experiência do mouse está bugada" no
+     passo 3 e no Align photos do Export. Visto na gravação pelo agente: (a) com a ferramenta Select, girar pela
+     alça de cima mostrava a mão aberta em vez do cursor de girar. Causa: durante o gesto o programa copiava o
+     cursor que a foto grande tinha naquele ponto (fora da foto, no Select, é a mão), e não o do gesto. CORRIGIDO
+     (`holdCursor` recebe o cursor do gesto: girar, redimensionar ou mover), com teste automático. Defeito antigo,
+     também no Export. (b) Com o espaço segurado e o mouse parado, o cursor continua seta e só vira mão quando o
+     mouse se mexe ou o botão é apertado: NÃO CORRIGIDO; no Chromium do teste a mão aparece na hora, então é do
+     navegador embutido do Mac (só troca o cursor quando o mouse se mexe); o conserto seria na parte nativa do
+     Mac, que o agente não compila. Pendente a confirmação do dono de que é isso que incomoda. (c) Corrigido de
+     passagem: a entrada dos valores da haste no passo 3 virava um passo do ⌘Z, e desfazê-lo dava erro.
      Pergunta do dono: alinhar sem as marcas, por um objeto ou pessoa da cena. É a parte 7 (From this scene), já
      prevista, a fazer antes do rig reutilizável.
      **Decisões do dono no meio dos testes (2026-11-24), a fazer DEPOIS dos roteiros:** (i) arrastar os pontos

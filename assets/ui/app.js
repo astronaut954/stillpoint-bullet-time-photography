@@ -4074,7 +4074,7 @@
   }
   // Uma mudança terminou (o editor chama no lugar de gravar na sessão): vira um passo do ⌘Z e atualiza o rodapé
   function alEditChanged(ed) {
-    if (al.edit !== ed) return;
+    if (al.edit !== ed || !ed.ready) return;  // (a entrada dos valores da haste não é um passo do ⌘Z)
     const now = JSON.stringify(ed.st.align.byFile);
     if (now !== ed.snap) {
       const before = ed.snap;
@@ -6815,7 +6815,9 @@
       } else {
         drag = { kind: "move", x: e.clientX, y: e.clientY, dx: a.dx, dy: a.dy }; stage.classList.add("dragging");
       }
-      holdCursor();
+      // O cursor do gesto, e não o que a foto grande tinha naquele ponto: girando pela alça com o Select, o cursor
+      // virava a mão (era o da área fora da foto); visto na gravação do dono, 2026-11-25
+      holdCursor(drag.kind === "rot" ? getComputedStyle(rotHandle).cursor : drag.kind === "scale" ? (stage.dataset.resize === "nesw" ? "nesw-resize" : "nwse-resize") : "move");
     });
     let moveEv = null, moveRaf = 0;
     stage.addEventListener("pointermove", (e) => {
