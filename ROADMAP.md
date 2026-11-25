@@ -1686,6 +1686,9 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      AGUARDANDO TESTE: o processo da câmera lê a qualidade antes do plano e avisa quantos arquivos cada disparo
      manda; o coordenador espera todos. Os registros também confirmaram que os avisos novos de foto chegando
      ("photostart"/"photopart") funcionam com as câmeras reais no Mac.
+     Testes do dono (Mac, câmeras reais, 2026-11-25): RAW + JPEG em 3 sessões e a espera nova com Download wait
+     em 1 e 2 s: ok. Decisão do dono: o aviso âmbar "Align again · ..." do Test shot FICA. Pedido: um caminho dali
+     para realinhar; protótipos N1 a N4 em https://claude.ai/artifact/91Kz6vJUt5bRsTp87RpNfi (aguardando escolha).
      Pergunta do dono: alinhar sem as marcas, por um objeto ou pessoa da cena. É a parte 7 (From this scene), já
      prevista, a fazer antes do rig reutilizável.
      **Decisões do dono no meio dos testes (2026-11-24), a fazer DEPOIS dos roteiros:** (i) arrastar os pontos
