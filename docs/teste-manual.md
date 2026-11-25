@@ -2394,6 +2394,20 @@ Em **Export sessions** › sessão com mais de uma foto › **Align photos**.
 - [ ] **Review alignment** e **Save alignment** usam os pontos ajustados.
 - [ ] Windows: os itens acima.
 
+## 60. Instrumentos dos ajustes (Guided aim e passo 2 do Align cameras, 2026-11-24)
+
+- [ ] Passo 2, embaixo da foto grande: o nome da câmera e **Guided aim** na mesma linha; embaixo, quatro blocos em
+      duas colunas (Aim, Level, Size, Height), cada um com um desenho; âmbar no que falta ajustar.
+- [ ] Janela **Stillpoint · Guided aim**: os quatro blocos empilhados à direita da imagem; **← Previous camera** e
+      **Next camera →** embaixo da imagem.
+- [ ] Com **● Live aim on**, mexendo a câmera: o quadrado anda no alvo, a linha do nível inclina, e os blocos
+      viram verdes quando o ajuste fica bom.
+- [ ] Clicar em **● Live aim on** (vira **Live aim off**): aparece **Fire again** ao lado. Clicar nele tira uma foto
+      com todas as câmeras ("Taking photos…") e os blocos se atualizam.
+- [ ] Com marcas a distâncias desiguais, o bloco Height diz "Not estimated".
+- [ ] Tela cheia (**Full screen**): os blocos ficam maiores. Janela estreita: descem para baixo da imagem.
+- [ ] Windows: os itens acima.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |

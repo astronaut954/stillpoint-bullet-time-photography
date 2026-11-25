@@ -3200,6 +3200,57 @@
     return out;
   }
   const alBad = (camera) => alLines(camera).some(([c]) => c === "fix");
+  // Os mesmos ajustes do alLines, com os números, para os instrumentos (alLines continua sendo o texto, para quem
+  // lê a tela por voz e para os testes). A altura aparece sempre: igual, mais alta/baixa, ou "Not estimated" quando
+  // as marcas não têm distâncias iguais.
+  function alInst(camera) {
+    const d = al.data[camera], n = alAim(camera);
+    if (!d || !d.tried) return [];
+    if (ga.open && ga.cam === camera && ga.lost) return [{ k: "warn", cls: "fix", text: "Not found in the live image" }];
+    if (!d.found && !alMoved(camera)) return [{ k: "warn", cls: "fix", text: "Not found", sub: "click the three marks in this photo" }];
+    if (!n) return [];
+    const ph = Math.abs(n.pan) >= 1, pv = Math.abs(n.tilt) >= 1, out = [];
+    out.push(ph || pv ? { k: "aim", cls: "fix", text: [ph ? Math.abs(n.pan).toFixed(0) + "° " + (n.pan < 0 ? "left" : "right") : "", pv ? Math.abs(n.tilt).toFixed(0) + "° " + (n.tilt > 0 ? "up" : "down") : ""].filter(Boolean).join(" · "), v: { pan: n.pan, tilt: n.tilt } }
+      : { k: "aim", cls: "ok", text: "On the middle mark", v: { pan: n.pan, tilt: n.tilt } });
+    out.push(Math.abs(n.roll) >= 1 ? { k: "level", cls: "fix", text: Math.abs(n.roll).toFixed(1) + "° to the " + (n.roll > 0 ? "left" : "right"), v: { roll: n.roll } } : { k: "level", cls: "ok", text: "Level", v: { roll: n.roll } });
+    out.push(Math.abs(n.sizePct) >= 2 ? { k: "size", cls: "fix", text: Math.abs(n.sizePct).toFixed(0) + "% " + (n.sizePct > 0 ? "bigger" : "smaller"), sub: n.sizePct > 0 ? "step back or zoom out" : "step closer or zoom in", v: { sizePct: n.sizePct } }
+      : { k: "size", cls: "ok", text: "Same as the others", v: { sizePct: n.sizePct } });
+    out.push(alUneven() ? { k: "height", cls: "info", text: "Not estimated", sub: "marks not evenly spaced", v: { unknown: true } }
+      : Math.abs(n.height) >= 0.33 ? { k: "height", cls: "info", text: (n.height > 0 ? "Higher" : "Lower") + " than the others", sub: "the app corrects the photo", v: { height: n.height } }
+      : { k: "height", cls: "ok", text: "Same as the others", v: { height: n.height } });
+    return out;
+  }
+  // Instrumentos (forma G2a / U2, escolhidas pelo dono em 2026-11-24): um desenho por ajuste, que se mexe com a câmera.
+  // O MESMO código está em app.js (passo 2 do Align cameras) e em aim.js (janela Guided aim): mudar nos dois.
+  //   aim: o quadrado mostra onde a marca do meio está em relação ao centro;  level: a linha inclina com a câmera;
+  //   size: o traço anda para a direita (vê maior) ou para a esquerda (vê menor);  height: mais alta ou mais baixa.
+  function instSvg(it) {
+    const w = 86, h = 64, AM = "#ffb000", GR = "#39ff6a", DK = "#1f6b33", IN = "#7fae86";
+    const col = it.cls === "fix" ? AM : it.cls === "ok" ? GR : IN, v = it.v || {};
+    const clamp = (x) => Math.max(-1, Math.min(1, x || 0));
+    let body = '<rect x=".5" y=".5" width="' + (w - 1) + '" height="' + (h - 1) + '" fill="none" stroke="' + DK + '"/>';
+    if (it.k === "aim") {
+      const x = w / 2 + clamp(v.pan / 8) * (w / 2 - 9), y = h / 2 - clamp(v.tilt / 8) * (h / 2 - 9);
+      body += '<path d="M' + w / 2 + " 4v" + (h - 8) + "M4 " + h / 2 + "h" + (w - 8) + '" stroke="' + DK + '"/><rect x="' + (w / 2 - 8) + '" y="' + (h / 2 - 8) + '" width="16" height="16" fill="none" stroke="' + GR + '"/>' +
+        (it.cls === "fix" ? '<path d="M' + x + " " + y + "L" + w / 2 + " " + h / 2 + '" stroke="' + AM + '" stroke-dasharray="2 2"/>' : "") + '<rect x="' + (x - 4.5) + '" y="' + (y - 4.5) + '" width="9" height="9" fill="' + col + '"/>';
+    } else if (it.k === "level") {
+      body += '<path d="M6 ' + h / 2 + "h" + (w - 12) + '" stroke="' + DK + '" stroke-dasharray="3 3"/><g transform="rotate(' + (-clamp(v.roll / 10) * 30) + " " + w / 2 + " " + h / 2 + ')"><path d="M8 ' + h / 2 + "h" + (w - 16) + "M" + w / 2 + " " + (h / 2 - 6) + 'v12" stroke="' + col + '" stroke-width="2"/></g>';
+    } else if (it.k === "size") {
+      body += '<rect x="10" y="' + (h / 2 - 3) + '" width="' + (w - 20) + '" height="6" fill="' + DK + '"/><rect x="' + (w / 2 - 5) + '" y="' + (h / 2 - 7) + '" width="10" height="14" fill="none" stroke="' + GR + '"/><rect x="' + (w / 2 + clamp(v.sizePct / 25) * (w / 2 - 14) - 3) + '" y="' + (h / 2 - 10) + '" width="6" height="20" fill="' + col + '"/>';
+    } else if (it.k === "height") {
+      body += '<path d="M' + w / 2 + " 8v" + (h - 16) + '" stroke="' + DK + '" stroke-width="2"/><path d="M' + (w / 2 - 12) + " " + h / 2 + 'h24" stroke="' + DK + '" stroke-dasharray="2 2"/>' +
+        (v.unknown ? "" : '<rect x="' + (w / 2 - 7) + '" y="' + (h / 2 - clamp(v.height / 2) * (h / 2 - 11) - 3) + '" width="14" height="6" fill="' + col + '"/>');
+    } else {
+      body += '<path d="M' + w / 2 + " " + (h / 2 - 14) + 'v16" stroke="' + AM + '" stroke-width="3"/><rect x="' + (w / 2 - 1.5) + '" y="' + (h / 2 + 8) + '" width="3" height="3" fill="' + AM + '"/>';
+    }
+    return '<svg viewBox="0 0 ' + w + " " + h + '" aria-hidden="true">' + body + "</svg>";
+  }
+  function instHtml(list, esc) {
+    const NAMES = { aim: "Aim", level: "Level", size: "Size", height: "Height", warn: "Marks" };
+    return (list || []).map((it) => '<div class="inst ' + it.cls + '" data-k="' + it.k + '">' + instSvg(it) + '<div class="inst-t"><span class="inst-k">' + NAMES[it.k] + '</span><span class="inst-v">' + esc(it.text) + "</span>" +
+      (it.sub ? '<span class="inst-s">' + esc(it.sub) + "</span>" : "") + "</div></div>").join("");
+  }
+
   // =================== Guided aim (etapa 21, parte 6; desenho aprovado pelo dono em 2026-11-14) ===================
   // Uma janela própria (assets/ui/aim.html), como a Live: uma câmera por vez, com a imagem ao vivo (Live aim), as
   // setas e as instruções em letra grande. O estado é desta página: ela manda o que a janela mostra (aimPush) e
@@ -3231,6 +3282,8 @@
       marks: L ? L.marks : !ga.liveOn && d.found ? d.marks : null,
       arrows: n && known ? { pan: Math.abs(n.pan) >= 1 ? n.pan : 0, tilt: Math.abs(n.tilt) >= 1 ? n.tilt : 0 } : {},
       lines: alLines(p.camera),
+      inst: alInst(p.camera),
+      firing: !!al.firing || !!csTest.capturing,
       tabs: list.map((q) => ({ camera: q.camera, order: q.order, state: gaTab(q.camera) })),
       ready: list.length > 0 && list.every((q) => gaTab(q.camera) === "done"),
       live: { want: ga.want, on: ga.liveOn, none: ga.none, starting: !!ga.starting },
@@ -3356,6 +3409,7 @@
     else if (a.type === "prev") gaStep(-1);
     else if (a.type === "nextchange") { const next = gaCandidate(); if (next) gaGo(next); }
     else if (a.type === "go") { if (a.camera !== ga.cam && alPhotoOf(a.camera)) gaGo(a.camera); }
+    else if (a.type === "fire") { if (!al.firing) { alFire(); gaPush(); } }  // Fire again pela janela (sem imagem ao vivo)
     else if (a.type === "live") { ga.want = !ga.want; ga.lost = false; ga.okSince = 0; gaLiveSet(); gaPush(); }
   };
   // A janela foi fechada (ou aberta) do lado de lá
@@ -3761,7 +3815,9 @@
       const under = document.createElement("div");
       under.className = "ma-under";
       const d = al.data[sel.camera] || {};
-      let html = "<div><h4>Camera " + alNum(sel) + " · " + alEsc(sel.camera) + "</h4>", sideHtml = "";
+      // O nome da câmera e o Guided aim na mesma linha; embaixo, a largura toda da foto para os instrumentos
+      // (o botão ficava solto ao lado do texto: retorno do dono, 2026-11-24)
+      let html = '<div><div class="ma-head"><h4>Camera ' + alNum(sel) + " · " + alEsc(sel.camera) + '</h4><button type="button" class="btn btn-small btn-secondary" id="csAlignGuided"' + (al.ref && !al.busy && !al.check ? "" : ' disabled title="Click the three marks in one photo first"') + ">Guided aim</button></div>", sideHtml = "";
       if (al.busy) html += "";  // (a tela de espera cobre o passo: alWait)
       else if (al.check === sel.camera) {
         const others = al.photos.filter((q) => q.file && q.camera !== sel.camera).length;
@@ -3778,8 +3834,8 @@
           '<p class="al-hint dim">' + (done < 3 ? "Click the " + ["top", "middle", "bottom"][done] + " mark in the photo." : "Finding the marks") + (done ? " " + (navigator.platform.indexOf("Mac") >= 0 ? "Cmd" : "Ctrl") + "+Z takes back the last click." : "") + '</p><p class="al-hint dim">Scroll to zoom · drag to move · double-click for the whole photo.</p>';
       }
       else {
-        html += '<ul class="in-list">' + alLines(sel.camera).map(([c, t]) => '<li class="' + c + '">' + alEsc(t) + "</li>").join("") + "</ul>";
-        // Ajuste fino dos pontos (ao lado da foto)
+        // Os instrumentos (forma U2); a lista em texto continua na página, fora da vista
+        html += '<div class="inst-grid" id="csAlignInst">' + instHtml(alInst(sel.camera), alEsc) + '</div><ul class="in-list inst-text">' + alLines(sel.camera).map(([c, t]) => '<li class="' + c + '">' + alEsc(t) + "</li>").join("") + "</ul>";
         // Ajuste fino dos pontos: painel ao lado da foto, uma linha por ponto (forma F3, escolhida pelo dono em 2026-11-24)
         const hand = alHandPoints(sel.camera), nHand = hand.filter(Boolean).length;
         sideHtml = '<div class="al-points"><div class="al-points-head"><span>Points</span>' + (nHand ? '<span class="by-hand" id="csAlignAdjusted">' + nHand + " by hand</span>" : "") + "</div>" +
@@ -3789,8 +3845,7 @@
           '<p class="al-hint dim">Drag a point to put it exactly on its mark. Scroll to zoom in first.</p>';
       }
       html += "</div>";
-      // Guided aim: uma câmera por vez, numa janela própria (pode ir para outro monitor), com a imagem ao vivo
-      html += '<button type="button" class="btn btn-small btn-secondary" id="csAlignGuided"' + (al.ref && !al.busy && !al.check ? "" : ' disabled title="Click the three marks in one photo first"') + ">Guided aim</button>";
+      // (Guided aim: uma câmera por vez, numa janela própria, com a imagem ao vivo; o botão está no cabeçalho acima)
       under.innerHTML = html;
       under.querySelector("#csAlignGuided").addEventListener("click", gaOpen);
       const again = under.querySelector("#csAlignCheckAgain");

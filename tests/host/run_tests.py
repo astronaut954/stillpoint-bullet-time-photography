@@ -2173,8 +2173,18 @@ def scenario_guided_aim(t, name, photos):
               len(tabs()) == 4 and tabs()[names.index(first)] == num(first) + " · CHANGE*" and sum(x.endswith("*") for x in tabs()) == 1
               and A("() => { const b = document.querySelector('#gaProg button.here'); return b.classList.contains('needs') && getComputedStyle(b).borderRadius === '0px'; }"), tabs())
         check(t, "guided aim: Live aim on, Previous camera, Next camera and the note about one camera at a time",
-              A("() => [...document.querySelectorAll('.ga-side button')].map(b => b.textContent).join('|')") == "● Live aim on|← Previous camera|Next camera →"
+              A("() => [...document.querySelectorAll('.ga-side button:not(.hidden)')].map(b => b.textContent).join('|')") == "● Live aim on"
+              and A("() => [...document.querySelectorAll('#gaUnder button')].map(b => b.textContent).join('|')") == "← Previous camera|Next camera →"
+              and A("() => { const u = document.getElementById('gaUnder').getBoundingClientRect(), p = document.getElementById('gaPhoto').getBoundingClientRect(); return u.top >= p.bottom && Math.abs(u.width - p.width) < 2; }")
               and "one camera at a time" in A("() => document.querySelector('.ga-note').textContent"))
+        # Os instrumentos (forma G2a): um bloco por ajuste, com o desenho; mexem com a câmera ao vivo
+        inst = lambda: A("() => [...document.querySelectorAll('#gaInst .inst')].map((i) => i.dataset.k + ':' + i.className.replace('inst ', '') + ':' + i.querySelector('.inst-v').textContent + ':' + (i.querySelector('svg rect[fill]:last-of-type, svg g') || i).outerHTML.length)")
+        i0 = inst()
+        check(t, "guided aim: four instruments (Aim, Level, Size, Height), each with its drawing, and the text list out of sight",
+              [x.split(":")[0] for x in i0] == ["aim", "level", "size", "height"] and A("() => document.querySelectorAll('#gaInst .inst svg').length") == 4
+              and A("() => { const r = document.getElementById('gaLines').getBoundingClientRect(); return r.width <= 1 && r.height <= 1; }"), i0)
+        moved = t.wait(lambda: A("() => document.getElementById('gaInst').innerHTML") != A("() => window.__inst0 || (window.__inst0 = document.getElementById('gaInst').innerHTML)"), 8)
+        check(t, "guided aim: with Live aim the instruments change as the camera moves", moved, (i0, inst()))
         check(t, "guided aim: the options bar is the one of the Live window (Display, Always on top, Close)",
               A("() => [...document.querySelectorAll('#gaTools .segmented button')].map(b => b.textContent + (b.classList.contains('on') ? '*' : '')).join('|')") == "Window*|Full screen"
               and A("() => document.getElementById('gaClose').textContent") == "CloseEsc" and A("() => !!document.getElementById('gaOnTop')"))
@@ -2191,6 +2201,8 @@ def scenario_guided_aim(t, name, photos):
         # Live aim off: a foto parada, sem a etiqueta LIVE
         aim.click("#gaLive")
         ok = t.wait(lambda: A("() => document.getElementById('gaLive').textContent === 'Live aim off' && document.getElementById('gaLiveTag').classList.contains('hidden') && /^Camera \\d of 4$/.test(document.getElementById('gaInfo').textContent)"), 5)
+        fire = A("() => { const f = document.getElementById('gaFire'); return [f.classList.contains('hidden'), f.textContent, f.disabled]; }")
+        check(t, "guided aim: with Live aim off, 'Fire again' shows in the window", fire == [False, "Fire again", False], fire)
         check(t, "guided aim: clicking 'Live aim on' turns it off (no LIVE tag, the last photo)", ok, A("() => [document.getElementById('gaLive').textContent, document.getElementById('gaInfo').textContent]"))
         cur = A("() => document.getElementById('gaName').textContent")
         time.sleep(2.0)

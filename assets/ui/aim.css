@@ -48,7 +48,20 @@
 .ga-frame { position: absolute; z-index: 4; box-sizing: border-box; border: 2px solid var(--noct-text); pointer-events: none; }
 .ga-mini span.here { background: #fff; }
 .ga-main { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 26px; flex: 1; min-height: 0; }
-.ga-photo-box { min-width: 0; min-height: 0; }
+.ga-photo-box { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 12px; }
+.ga-photo-fit { flex: 1; min-height: 0; min-width: 0; }
+.ga-under { flex: none; display: flex; justify-content: space-between; gap: 10px; max-width: 100%; }
+/* Instrumentos na janela Guided aim: empilhados, com espaço fixo para os quatro (os botões não sobem e descem) */
+.ga-inst { display: flex; flex-direction: column; gap: 8px; min-height: 352px; }
+.ga-inst .inst { grid-template-columns: 86px 1fr; gap: 14px; padding: 10px; }
+.ga-inst .inst svg { width: 86px; height: 64px; }
+.ga-inst .inst-k { font-size: 11px; margin-bottom: 4px; }
+.ga-inst .inst-v { font-size: 18px; }
+.ga-inst .inst-s { font-size: 13px; }
+.ga-win.full .ga-inst .inst { grid-template-columns: 130px 1fr; }
+.ga-win.full .ga-inst .inst svg { width: 130px; height: 97px; }
+.ga-win.full .ga-inst .inst-v { font-size: 24px; }
+.ga-win.full .ga-inst { min-height: 484px; }
 .ga-main .al-photo { width: 100%; background-image: none; }
 .ga-main .al-photo img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .ga-main .al-photo img:not([src]) { display: none; }
@@ -73,6 +86,7 @@
 @media (max-width: 820px) {
   .ga-main { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; gap: 14px; }
   .ga-side .ga-btns { margin-top: 12px; }
+  .ga-inst { min-height: 0; display: grid; grid-template-columns: 1fr 1fr; }
 }
 
 /* Bolinha do "Live aim on": vermelha, com um contorno escuro fino para se ler em cima do botão verde */

@@ -1583,6 +1583,16 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      aim na forma G2 (instrumentos), mas quer variações e saber se é responsivo; e pediu para melhorar também as
      instruções embaixo da foto do passo 2. Protótipos G2a a G2d, janela estreita e larga, e U1 a U3 em
      https://claude.ai/artifact/SNMLhTGQy9K9qhBWxHu5kz, aguardando a escolha.
+     Escolhas do dono (2026-11-24): G2a no Guided aim, com Previous camera / Next camera embaixo da imagem; U2
+     embaixo da foto do passo 2, com o botão Guided aim mais bem colocado. FEITO: instrumentos (Aim, Level, Size,
+     Height), o mesmo desenho nas duas telas, que se mexem com a câmera ao vivo (o texto antigo continua na
+     página, fora da vista, para leitores de tela e para os testes); Previous / Next embaixo da imagem, da
+     largura dela; no passo 2, o nome da câmera e o Guided aim na mesma linha e os instrumentos em duas colunas
+     na largura da foto (escolha minha para o lugar do botão; o dono só disse que estava mal colocado). Pedido
+     novo, FEITO: com o Live aim desligado, ou numa câmera sem imagem ao vivo, a janela Guided aim mostra "Fire
+     again", que tira uma foto nova com TODAS as câmeras (não existe disparo de uma câmera só no Align cameras)
+     e atualiza os instrumentos. Height: passou a aparecer sempre (igual, mais alta/baixa, ou "Not estimated"
+     quando as marcas não têm distâncias iguais); antes só aparecia quando havia diferença.
      **Decisões do dono no meio dos testes (2026-11-24), a fazer DEPOIS dos roteiros:** (i) arrastar os pontos
      que o programa achou, de um jeito que não entre em conflito com a busca automática e que deixe refazer a
      busca; (ii) o botão Align cameras não deve depender do Test shot: protótipos com as posições no Camera

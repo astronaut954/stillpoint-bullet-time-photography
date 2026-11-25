@@ -29,18 +29,23 @@
       </div>
       <div class="ga-main">
         <div id="gaPhotoBox" class="ga-photo-box">
-          <div id="gaPhoto" class="al-photo">
-            <img id="gaImg" alt="">
-            <span id="gaNum" class="al-num"></span>
-            <span id="gaLiveTag" class="live-tag hidden">● LIVE</span>
-            <div id="gaMarks"></div>
+          <div id="gaPhotoFit" class="ga-photo-fit">
+            <div id="gaPhoto" class="al-photo">
+              <img id="gaImg" alt="">
+              <span id="gaNum" class="al-num"></span>
+              <span id="gaLiveTag" class="live-tag hidden">● LIVE</span>
+              <div id="gaMarks"></div>
+            </div>
           </div>
+          <!-- Previous / Next camera embaixo da imagem (pedido do dono, 2026-11-24) -->
+          <div id="gaUnder" class="ga-under"><button id="gaPrev" class="btn btn-secondary" type="button">← Previous camera</button><button id="gaNext" class="btn btn-primary" type="button">Next camera →</button></div>
         </div>
         <div class="ga-side">
-          <ul id="gaLines" class="in-list"></ul>
-          <div class="ga-btns"><button id="gaLive" class="btn btn-primary" type="button">● Live aim on</button></div>
-          <div class="ga-btns ga-btns-2"><button id="gaPrev" class="btn btn-secondary" type="button">← Previous camera</button><button id="gaNext" class="btn btn-primary" type="button">Next camera →</button></div>
-          <p class="ga-note">Live aim works on one camera at a time: this one. Cameras without a live image use Fire again.</p>
+          <!-- Os instrumentos (forma G2a): um bloco por ajuste, que se mexe com a câmera. A lista em texto fica fora da vista -->
+          <div id="gaInst" class="ga-inst"></div>
+          <ul id="gaLines" class="in-list inst-text"></ul>
+          <div class="ga-btns"><button id="gaLive" class="btn btn-primary" type="button">● Live aim on</button><button id="gaFire" class="btn btn-secondary hidden" type="button">Fire again</button></div>
+          <p class="ga-note">Live aim works on one camera at a time: this one. Without a live image, change the camera and use Fire again.</p>
         </div>
       </div>
     </div>

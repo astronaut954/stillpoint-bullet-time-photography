@@ -26,6 +26,37 @@
   const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const send = (type, camera) => { if (typeof window.aimAction === "function") window.aimAction(JSON.stringify(camera ? { type, camera } : { type })); };
 
+  // Instrumentos (forma G2a / U2, escolhidas pelo dono em 2026-11-24): um desenho por ajuste, que se mexe com a câmera.
+  // O MESMO código está em app.js (passo 2 do Align cameras) e em aim.js (janela Guided aim): mudar nos dois.
+  //   aim: o quadrado mostra onde a marca do meio está em relação ao centro;  level: a linha inclina com a câmera;
+  //   size: o traço anda para a direita (vê maior) ou para a esquerda (vê menor);  height: mais alta ou mais baixa.
+  function instSvg(it) {
+    const w = 86, h = 64, AM = "#ffb000", GR = "#39ff6a", DK = "#1f6b33", IN = "#7fae86";
+    const col = it.cls === "fix" ? AM : it.cls === "ok" ? GR : IN, v = it.v || {};
+    const clamp = (x) => Math.max(-1, Math.min(1, x || 0));
+    let body = '<rect x=".5" y=".5" width="' + (w - 1) + '" height="' + (h - 1) + '" fill="none" stroke="' + DK + '"/>';
+    if (it.k === "aim") {
+      const x = w / 2 + clamp(v.pan / 8) * (w / 2 - 9), y = h / 2 - clamp(v.tilt / 8) * (h / 2 - 9);
+      body += '<path d="M' + w / 2 + " 4v" + (h - 8) + "M4 " + h / 2 + "h" + (w - 8) + '" stroke="' + DK + '"/><rect x="' + (w / 2 - 8) + '" y="' + (h / 2 - 8) + '" width="16" height="16" fill="none" stroke="' + GR + '"/>' +
+        (it.cls === "fix" ? '<path d="M' + x + " " + y + "L" + w / 2 + " " + h / 2 + '" stroke="' + AM + '" stroke-dasharray="2 2"/>' : "") + '<rect x="' + (x - 4.5) + '" y="' + (y - 4.5) + '" width="9" height="9" fill="' + col + '"/>';
+    } else if (it.k === "level") {
+      body += '<path d="M6 ' + h / 2 + "h" + (w - 12) + '" stroke="' + DK + '" stroke-dasharray="3 3"/><g transform="rotate(' + (-clamp(v.roll / 10) * 30) + " " + w / 2 + " " + h / 2 + ')"><path d="M8 ' + h / 2 + "h" + (w - 16) + "M" + w / 2 + " " + (h / 2 - 6) + 'v12" stroke="' + col + '" stroke-width="2"/></g>';
+    } else if (it.k === "size") {
+      body += '<rect x="10" y="' + (h / 2 - 3) + '" width="' + (w - 20) + '" height="6" fill="' + DK + '"/><rect x="' + (w / 2 - 5) + '" y="' + (h / 2 - 7) + '" width="10" height="14" fill="none" stroke="' + GR + '"/><rect x="' + (w / 2 + clamp(v.sizePct / 25) * (w / 2 - 14) - 3) + '" y="' + (h / 2 - 10) + '" width="6" height="20" fill="' + col + '"/>';
+    } else if (it.k === "height") {
+      body += '<path d="M' + w / 2 + " 8v" + (h - 16) + '" stroke="' + DK + '" stroke-width="2"/><path d="M' + (w / 2 - 12) + " " + h / 2 + 'h24" stroke="' + DK + '" stroke-dasharray="2 2"/>' +
+        (v.unknown ? "" : '<rect x="' + (w / 2 - 7) + '" y="' + (h / 2 - clamp(v.height / 2) * (h / 2 - 11) - 3) + '" width="14" height="6" fill="' + col + '"/>');
+    } else {
+      body += '<path d="M' + w / 2 + " " + (h / 2 - 14) + 'v16" stroke="' + AM + '" stroke-width="3"/><rect x="' + (w / 2 - 1.5) + '" y="' + (h / 2 + 8) + '" width="3" height="3" fill="' + AM + '"/>';
+    }
+    return '<svg viewBox="0 0 ' + w + " " + h + '" aria-hidden="true">' + body + "</svg>";
+  }
+  function instHtml(list, esc) {
+    const NAMES = { aim: "Aim", level: "Level", size: "Size", height: "Height", warn: "Marks" };
+    return (list || []).map((it) => '<div class="inst ' + it.cls + '" data-k="' + it.k + '">' + instSvg(it) + '<div class="inst-t"><span class="inst-k">' + NAMES[it.k] + '</span><span class="inst-v">' + esc(it.text) + "</span>" +
+      (it.sub ? '<span class="inst-s">' + esc(it.sub) + "</span>" : "") + "</div></div>").join("");
+  }
+
   // ----- O que a página principal mandou -----
   function render() {
     const st = S.state;
@@ -36,6 +67,8 @@
       $("gaInfo").textContent = "";
       $("gaProg").innerHTML = ""; $("gaMini").innerHTML = ""; S.tabsHtml = ""; fitTabs();
       $("gaLines").innerHTML = '<li class="info">Open Test shot › Align cameras in the main window.</li>';
+      $("gaInst").innerHTML = '<p class="ga-note">Open Test shot › Align cameras in the main window.</p>'; S.instHtml = "";
+      $("gaFire").classList.add("hidden");
       $("gaImg").removeAttribute("src");
       $("gaMarks").innerHTML = "";
       $("gaNum").textContent = "";
@@ -66,6 +99,8 @@
     const lines = $("gaLines");
     lines.innerHTML = "";
     (st.lines || []).forEach(([cls, text]) => { const li = document.createElement("li"); li.className = cls; li.textContent = text; lines.appendChild(li); });
+    // Os instrumentos: refeitos a cada estado que chega (com Live aim, a cada quadro: mexem junto com a câmera)
+    { const html = instHtml(st.inst, esc); if (S.instHtml !== html) { S.instHtml = html; $("gaInst").innerHTML = html; } }
     $("gaNum").textContent = pad(st.order);
     $("gaLiveTag").classList.toggle("hidden", !live);
     // Live aim: ligado (cheio), desligado (vazado) ou sem imagem ao vivo nesta câmera (apagado)
@@ -76,7 +111,10 @@
     else b.textContent = !can ? "No live image" : want ? "Starting live image…" : "Live aim off";
     b.className = "btn " + (want && can ? "btn-primary" : "btn-secondary");
     b.disabled = !can;
-    b.title = can ? "" : "This camera has no live image. Change it and use Fire again in the main window.";
+    b.title = can ? "" : "This camera has no live image. Change it and use Fire again.";
+    // Sem a imagem ao vivo (desligada, ou a câmera não tem): Fire again tira uma foto nova com as câmeras e as
+    // instruções se atualizam (pedido do dono, 2026-11-24)
+    { const f = $("gaFire"); f.classList.toggle("hidden", can && want); f.disabled = !!st.firing; f.textContent = st.firing ? "Taking photos…" : "Fire again"; }
     $("gaPrev").disabled = st.total < 2;
     $("gaNext").disabled = st.total < 2;
     // A imagem: o quadro ao vivo desta câmera ou a última foto
@@ -205,10 +243,11 @@
   }
   // A imagem no maior tamanho que cabe na coluna, sem deformar
   function fit() {
-    const box = $("gaPhotoBox"), ph = $("gaPhoto");
+    const box = $("gaPhotoFit"), ph = $("gaPhoto");
     const ratio = parseFloat(ph.style.aspectRatio) || 1.5;
     const w = Math.max(120, Math.min(box.clientWidth, box.clientHeight * ratio));
     ph.style.width = w + "px";
+    $("gaUnder").style.width = w + "px";  // Previous / Next camera, embaixo da imagem, da largura dela
     ph.querySelectorAll(".al-seg").forEach((s) => {
       const W = ph.clientWidth, H = ph.clientHeight;
       const ax = s.dataset.ax * W, ay = s.dataset.ay * H, bx = s.dataset.bx * W, by = s.dataset.by * H;
@@ -231,6 +270,7 @@
 
   // ----- Botões -----
   $("gaLive").addEventListener("click", () => send("live"));
+  $("gaFire").addEventListener("click", () => send("fire"));
   $("gaPrev").addEventListener("click", () => send("prev"));
   $("gaNext").addEventListener("click", () => send("next"));
   $("gaTabsPrev").addEventListener("click", () => slideTabs(-1));
