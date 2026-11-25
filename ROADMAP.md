@@ -1671,6 +1671,13 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      pronto para digitar; com câmera caída, a faixa diz qual foi e não oferece o ajuste. NÃO VERIFICADO pelo
      agente: a parte do processo da câmera não compila no ambiente do agente (só conferência de escrita com um
      SDK de mentira) e as câmeras simuladas não usam essa espera; depende do teste do dono no Mac e no Windows.
+     Retorno do dono (2026-11-25, Mac, câmeras reais): (a) o texto "Cameras aligned · data" ao lado de Hide photos
+     no Test shot não faz mais sentido, já que o Align cameras saiu dessa janela. FEITO: o texto saiu; o aviso
+     âmbar "Align again · ..." (câmeras mudaram desde o alinhamento) continua ali, PENDENTE de decisão do dono.
+     (b) Com Download wait em 1 ou 2 s e 3 sessões o programa se comportou de forma estranha (miniaturas que
+     pareciam corrompidas, etiqueta "missing"). EM INVESTIGAÇÃO, aguardando os registros do dono. Hipótese (não
+     verificada): entre o disparo e a câmera oferecer a foto não chega nada, e esse intervalo pode passar de 1 a
+     2 s; a sessão para e as fotos chegam depois, com a sessão já fechada.
      Pergunta do dono: alinhar sem as marcas, por um objeto ou pessoa da cena. É a parte 7 (From this scene), já
      prevista, a fazer antes do rig reutilizável.
      **Decisões do dono no meio dos testes (2026-11-24), a fazer DEPOIS dos roteiros:** (i) arrastar os pontos

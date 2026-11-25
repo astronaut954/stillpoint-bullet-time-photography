@@ -2815,8 +2815,10 @@
   function alRenderEntry() {
     const saved = al.saved && al.saved.savedAt;
     const changes = alChanges();
-    alNote.textContent = !saved ? "" : changes.length ? "Align again · " + changes.join(" · ") : "Cameras aligned · " + alWhen(al.saved.savedAt);
-    alNote.classList.toggle("hidden", !saved);
+    // Só o aviso de que as câmeras mudaram. "Cameras aligned · data" saiu daqui: o Align cameras não
+    // é mais desta janela (pedido do dono, 2026-11-25)
+    alNote.textContent = saved && changes.length ? "Align again · " + changes.join(" · ") : "";
+    alNote.classList.toggle("hidden", !(saved && changes.length));
     alNote.classList.toggle("warn", changes.length > 0);
     alNote.title = changes.length ? "The cameras changed since the alignment of " + alWhen(al.saved.savedAt) + ". Those that changed get no automatic alignment until you align again; the others stay aligned." : "";
   }
