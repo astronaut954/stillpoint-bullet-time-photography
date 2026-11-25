@@ -2488,6 +2488,25 @@ Em **Export sessions** › sessão com mais de uma foto › **Align photos**.
 - Sem câmeras reais: abrir com `STILLPOINT_FAKE_CAMERAS=4 STILLPOINT_FAKE_PHOTOS=pole`; **Control + Option + número**
   (Windows: **Ctrl + Alt + número**) desliga a câmera simulada dessa posição e, de novo, liga.
 
+## 67. Align cameras, passo 3: ajustar na mão e tocar a sequência (2026-11-25, câmeras simuladas servem)
+
+- [ ] **Align cameras** › **Fire** › clicar as três marcas › **Review alignment**: o passo 3 é a tela do **Align photos**
+      (foto grande com a anterior e a seguinte por cima, barra de ferramentas à esquerda, **References**, **This photo**,
+      miniaturas embaixo), já com os valores da haste. Em cima: "Camera 01 of NN", "Keeps N% of each photo",
+      **Play the sequence** e **Back to the stick values** (apagado).
+- [ ] Mexer na foto (arrastar, **Rotate** **+**, **Size**): o rodapé passa a "Values from the stick · 1 photo adjusted
+      by hand" e **Back to the stick values** acende. **⌘Z** desfaz o último ajuste; **⇧⌘Z** refaz.
+- [ ] **← →** trocam de câmera; os atalhos das ferramentas (V, A, M, R, S, H, Z), espaço + arrastar e a roda funcionam
+      como no **Align photos** do Export.
+- [ ] **Play the sequence**: as fotos tocam em vai e volta, como vão ficar; **‹**, pausa, **›**, **Speed** **−** **+** e
+      **Reverse loop** funcionam; **← Back to adjusting** volta para o editor na foto que estava na tela.
+- [ ] **Back to the stick values**: todas as fotos voltam aos valores da haste e o rodapé volta a "0 photos".
+- [ ] Ajustar uma foto e **Save alignment**: o **Activity** diz "(N cameras, 1 adjusted by hand)". Fotografar uma sessão
+      e abrir **Export sessions** › **Align photos**: a foto ajustada aparece como foi deixada no passo 3.
+- [ ] Com uma câmera desligada: ela aparece na fileira de miniaturas, tracejada, como **Not connected**; o aviso do que
+      acontece ao salvar fica embaixo; o botão é **Save without it**.
+- [ ] Windows: os itens acima.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |

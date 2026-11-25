@@ -2513,3 +2513,22 @@ body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform:
 .cs-tag-pop-row { display: flex; align-items: baseline; gap: 10px; }
 .cs-tag-pop-row .cs-focus-tag { margin: 0; flex: none; vertical-align: 0; }
 .cs-tag-pop-row span:last-child:not(.cs-focus-tag) { font: 400 12px/1.4 var(--noct-font-sans); color: var(--noct-text); }
+
+/* Align cameras, passo 3 (forma B): o editor do Align photos dentro da janela, e o tocador da sequência */
+.ts-main.rig-edit { display: flex; flex-direction: column; gap: 12px; }
+.rig-top { flex: 0 0 auto; }
+.rig-top .btn-primary svg { margin-right: 6px; }
+.rig-outer { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 12px; }
+.rig-edit > .al-warn { flex: 0 0 auto; margin: 0; max-width: none; }
+.rig-edit.space-pan .align-stage, .rig-edit.space-pan .align-stage * { cursor: grab !important; }
+.rig-edit.space-pan .align-stage.panning, .rig-edit.space-pan .align-stage.panning * { cursor: grabbing !important; }
+.export-preview.rig-play { flex: 1 1 auto; min-height: 240px; height: auto; display: block; position: relative; }
+.rig-play-canvas { position: absolute; overflow: hidden; background: #000; outline: 1px solid var(--noct-primary); }
+.rig-play-canvas .align-layer { position: absolute; transform-origin: 50% 50%; }
+.rig-play-canvas .align-layer img { width: 100%; height: 100%; max-width: none; max-height: none; display: block; }
+.rig-play-ctl .log-option { margin-left: 8px; }
+.rig-play-ctl .play-speed { min-width: 44px; text-align: center; font: 600 12px var(--noct-font-mono); }
+#csAlignNote.rig-note { font: 500 11px var(--noct-font-mono); letter-spacing: .12em; text-transform: uppercase; }
+.export-strip li.frame.gone { border: 1px dashed var(--noct-pending, #f0a020); cursor: default; }
+.export-strip li.frame.gone .frame-img { background: #000; }
+.export-strip .frame-gone { grid-area: 1 / 1; align-self: end; justify-self: center; margin-bottom: 4px; font: 700 8px var(--noct-font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--noct-pending, #f0a020); white-space: nowrap; }

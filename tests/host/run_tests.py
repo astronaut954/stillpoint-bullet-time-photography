@@ -1945,16 +1945,65 @@ def scenario_align_cameras(t, name, photos):
         err = abs(mid[0] - centers[1][0]) * 1800 + abs(mid[1] - centers[1][1]) * 1200 if mid else 999
         check(t, "align: the clicks go to the center of the marks (within 4 px)", err < 4, err)
         t.button("Review alignment")
-        check(t, "align: step 3 Save shows the four photos already aligned, with the values",
-              t.js("() => document.querySelector('#csAlignStep3').classList.contains('on') && document.querySelectorAll('#csAlignMain .sv-cell').length === 4 && /Move .* px/.test(document.querySelector('#csAlignMain .sv-vals').textContent)"))
-        keeps = t.js("() => { const e = document.getElementById('csAlignKeeps'); return e ? [e.className, e.textContent] : null; }")
-        check(t, "align: step 3 says how much of each photo the alignment keeps (amber warning below 80%)",
-              bool(keeps) and "keeps" in keeps[1] and "%" in keeps[1] and (keeps[0] == "al-warn") == (int(keeps[1].split("keeps ")[1].split("%")[0]) < 80), keeps)
+        t.wait(lambda: t.js("() => !!document.querySelector('#csAlignMain .align-stage') && !document.querySelector('#csAlignMain .align-wait') && /Keeps/.test(document.getElementById('alignKeeps').textContent)"), 15)
+        s3 = lambda: t.js("() => { const f = [...document.querySelectorAll('#csAlignMain .align-num')].map((i) => i.value); return { on: document.getElementById('csAlignStep3').classList.contains('on'), thumbs: document.querySelectorAll('#csAlignMain .export-strip li.frame:not(.gone)').length, where: (document.querySelector('#csAlignMain .align-where') || {}).textContent || '', fields: f, tools: !!document.getElementById('alignTools'), flip: !!document.querySelector('#csAlignMain .flip-row'), ratio: /Aspect ratio/.test(document.getElementById('csAlignMain').textContent), note: document.getElementById('csAlignNote').textContent, back: document.getElementById('alignBackStick').disabled, play: document.getElementById('alignPlay').textContent.trim(), sub: document.getElementById('csAlignSub').textContent }; }")
+        d3 = s3()
+        check(t, "align: step 3 is the Align photos editor on the four photos (big photo, tools, Move/Size/Rotate, thumbnails), opening with the values from the stick",
+              d3["on"] and d3["thumbs"] == 4 and d3["where"].startswith("Camera 01 of 04") and len(d3["fields"]) == 4 and d3["tools"] and "Adjust any photo by hand and play the sequence" in d3["sub"], d3)
+        check(t, "align: step 3 has no Flip and no Aspect ratio (the camera alignment does not keep them), 'Play the sequence' and 'Back to the stick values' (off: nothing adjusted)",
+              not d3["flip"] and not d3["ratio"] and d3["play"] == "Play the sequence" and d3["back"] and d3["note"] == "Values from the stick · 0 photos adjusted by hand", d3)
+        keeps = t.js("() => { const e = document.getElementById('alignKeeps'); return e ? [e.className, e.textContent] : null; }")
+        check(t, "align: step 3 says how much of each photo the alignment keeps (amber below 80%)",
+              bool(keeps) and keeps[1].startswith("Keeps ") and keeps[1].endswith("% of each photo") and ("warn" in keeps[0]) == (int(keeps[1].split("Keeps ")[1].split("%")[0]) < 80), keeps)
+        # Tocar a sequência: a foto como vai ficar, com ‹ pausa ›, Speed e Reverse loop; volta para o ajuste
+        t.js("() => document.getElementById('alignPlay').click()"); time.sleep(0.9)
+        pl = t.js("() => ({ tag: (document.querySelector('#csAlignMain .rig-play .crop-tag') || {}).textContent || '', layers: document.querySelectorAll('#csAlignMain .rig-play-canvas .align-layer').length, vis: [...document.querySelectorAll('#csAlignMain .rig-play-canvas .align-layer')].filter((l) => l.style.visibility === 'visible').length, ctl: document.querySelector('#csAlignMain .rig-play-ctl').textContent, back: document.getElementById('alignPlayBack').textContent.trim(), editor: !!document.querySelector('#csAlignMain .align-stage') })")
+        check(t, "align, play the sequence: one photo at a time 'as it will be after the alignment', with Speed and Reverse loop, in place of the editor",
+              pl["layers"] == 4 and pl["vis"] == 1 and "as it will be after the alignment" in pl["tag"] and "Speed" in pl["ctl"] and "Reverse loop" in pl["ctl"] and "1.0x" in pl["ctl"] and not pl["editor"], pl)
+        tag0 = pl["tag"]
+        moved = t.wait(lambda: t.js("() => document.querySelector('#csAlignMain .rig-play .crop-tag').textContent") != tag0, 3)
+        t.js("() => document.getElementById('alignPlayPause').click()"); time.sleep(0.2)
+        tag1 = t.js("() => document.querySelector('#csAlignMain .rig-play .crop-tag').textContent"); time.sleep(0.7)
+        check(t, "align, play the sequence: it plays by itself and the pause button stops it", moved and t.js("() => document.querySelector('#csAlignMain .rig-play .crop-tag').textContent") == tag1, (tag0, tag1))
+        t.shot("align-step3-play")
+        t.js("() => { [...document.querySelectorAll('#csAlignMain .export-strip li.frame')][0].click(); document.getElementById('alignPlayBack').click(); }"); time.sleep(0.8)
+        check(t, "align, play the sequence: 'Back to adjusting' returns to the editor, on the photo that was showing", t.js("() => !!document.querySelector('#csAlignMain .align-stage') && !document.querySelector('#csAlignMain .rig-play')") and s3()["where"].startswith("Camera 01 of 04"), s3()["where"])
+        # Ajuste na mão: Rotate + na câmera 01; o rodapé conta, Ctrl+Z desfaz, "Back to the stick values" também
+        t.wait(lambda: t.js("() => !document.querySelector('#csAlignMain .align-wait')"), 10)
+        f0 = s3()["fields"]
+        rb = t.js("() => { const b = [...document.querySelectorAll('#csAlignMain .align-ctl')].find((r) => /Rotate/.test(r.textContent)).querySelectorAll('button')[1].getBoundingClientRect(); return [b.left + b.width / 2, b.top + b.height / 2]; }")
+        for _ in range(6):
+            t.page.mouse.click(rb[0], rb[1]); time.sleep(0.12)
+        time.sleep(0.5)
+        d4 = s3()
+        check(t, "align, step 3: adjusting a photo by hand changes its value, the footer counts it and 'Back to the stick values' lights up",
+              abs(float(d4["fields"][3]) - float(f0[3]) - 0.3) < 0.011 and d4["note"] == "Values from the stick · 1 photo adjusted by hand" and not d4["back"], (f0, d4))
+        t.shot("align-step3-adjusted")
+        t.page.keyboard.press("Control+z"); time.sleep(0.6)
+        d5 = s3()
+        check(t, "align, step 3: Ctrl+Z takes the last adjustment back", abs(float(d5["fields"][3]) - float(f0[3]) - 0.25) < 0.011, d5["fields"])
+        t.js("() => document.getElementById('alignBackStick').click()"); time.sleep(0.6)
+        d6 = s3()
+        check(t, "align, step 3: 'Back to the stick values' drops the adjustments", d6["fields"] == f0 and d6["note"] == "Values from the stick · 0 photos adjusted by hand" and d6["back"], d6)
+        # De novo, e fica: o que for salvo tem de ser a receita da haste com este giro a mais só na câmera 01
+        for _ in range(4):
+            t.page.mouse.click(rb[0], rb[1]); time.sleep(0.12)
+        time.sleep(0.5)
+        hand_rot = float(s3()["fields"][3])
+        ed1 = [float(x) for x in s3()["fields"]]
+        t.page.keyboard.press("ArrowRight"); time.sleep(0.6)
+        ed2 = [float(x) for x in s3()["fields"]]
+        check(t, "align, step 3: → goes to the next camera (the adjusted one is marked in the thumbnails)", s3()["where"].startswith("Camera 02 of 04") and t.js("() => document.querySelectorAll('#csAlignMain .export-strip li.frame.aligned').length") == 1, s3()["where"])
         t.shot("align-step3")
         t.button("Save alignment")
         time.sleep(0.6)
         rig = json.load(open(os.path.join(t.project, "stillpoint-rig.json")))
         al = rig.get("alignment") or {}
+        byo = sorted(al.get("cameras", []), key=lambda c: c.get("order", 0))
+        check(t, "align: the photo adjusted by hand is saved with its new rotation; the others keep the values from the stick",
+              len(byo) == 4 and abs(byo[0]["rot"] - hand_rot) < 0.006 and all(abs(c["rot"]) < abs(hand_rot) or abs(c["rot"] - hand_rot) > 0.05 for c in byo[1:]), [(c.get("order"), c.get("rot"), c.get("scale")) for c in byo])
+        logged = t.js("() => [...document.querySelectorAll('li')].map((l) => l.textContent).filter((x) => /Cameras aligned \\(/.test(x)).pop() || ''")
+        check(t, "align: the Activity says how many were adjusted by hand", "(4 cameras, 1 adjusted by hand)" in logged, logged)
         check(t, "align: the alignment is saved with the project (stillpoint-rig.json), one entry per camera, by serial number",
               len(al.get("cameras", [])) == 4 and all(c.get("serial") and len(c.get("marks", [])) == 3 for c in al["cameras"]), al.get("cameras"))
         check(t, "align: after saving, back in the main window (Camera settings closed)",
@@ -2037,6 +2086,12 @@ def scenario_align_cameras(t, name, photos):
         t.js("() => [...document.querySelectorAll('#exportSettings .segmented:not(.orient-seg) button')].find(x => x.textContent.trim() === '16:9').click()")
         ok = t.wait(lambda: len(parse(saved())) == 4, 15)
         check(t, "export: a session shot with aligned cameras gets the alignment of the rig by itself (one entry per photo)", ok, saved())
+        # O que foi ajustado na mão no passo 3 chega igual ao Export: mesma posição em relação ao tamanho, mesmo giro,
+        # e a mesma relação de tamanho com a câmera 02 (o tamanho comum muda com a proporção escolhida)
+        ex = parse(saved()); x1, x2 = ex.get(files[0]) or [0, 0, 1, 0], ex.get(files[1]) or [0, 0, 1, 0]
+        rt = (abs(x1[0] / x1[2] - ed1[0] / (ed1[2] / 100)), abs(x1[1] / x1[2] - ed1[1] / (ed1[2] / 100)), abs(x1[3] - ed1[3]), abs(x1[2] / x2[2] - ed1[2] / ed2[2]))
+        check(t, "export: the photo adjusted by hand in step 3 comes out as it was left there (position, rotation and size against camera 02)",
+              rt[0] < 1.5 and rt[1] < 1.5 and rt[2] < 0.006 and rt[3] < 0.002, (rt, ed1, ed2, x1, x2))
         after_px, mid_px = spread(saved()), spread(saved(), (1,))
         # (a marca do meio fica no mesmo ponto; as de cima e de baixo, a poucos pixels: câmeras em alturas diferentes
         # veem a haste um pouco encurtada, e isso mover, girar e mudar o tamanho não desfaz)
@@ -2571,9 +2626,9 @@ def scenario_align_gone(t, name, photos):
         time.sleep(0.3)
         check(t, "align, one unplugged: clicking it does not choose it", t.js("() => document.querySelector('#csAlignMain .ma-item.sel').dataset.camera") != gone)
         t.button("Review alignment")
-        t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .sv-cell').length") == 4, 5)
-        d = t.js("() => { const cs = [...document.querySelectorAll('#csAlignMain .sv-cell')], g = cs.find((c) => c.classList.contains('gone')), w = document.getElementById('csAlignGone'); return { pos: cs.indexOf(g), cell: g ? g.textContent : '', warn: w ? w.textContent : '', btns: [...document.querySelectorAll('#csAlign .btn-primary')].map((b) => b.textContent.trim()) }; }")
-        check(t, "align, save: the unplugged camera is in the grid, in its place, as 'Not connected · No alignment'", d["pos"] == place and "Not connected" in d["cell"] and ("Camera " + num) in d["cell"] and "No alignment" in d["cell"], d)
+        t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .export-strip li.frame').length") == 4, 10)
+        d = t.js("() => { const cs = [...document.querySelectorAll('#csAlignMain .export-strip li.frame')], g = cs.find((c) => c.classList.contains('gone')), w = document.getElementById('csAlignGone'); return { pos: cs.indexOf(g), cell: g ? g.textContent : '', warn: w ? w.textContent : '', btns: [...document.querySelectorAll('#csAlign .btn-primary')].map((b) => b.textContent.trim()) }; }")
+        check(t, "align, save: the unplugged camera is in the row of thumbnails, in its place, as 'Not connected' (no alignment)", d["pos"] == place and "Not connected" in d["cell"] and num in d["cell"] and t.js("() => /is not connected: no alignment/.test(document.querySelector('#csAlignMain .export-strip li.frame.gone').title)"), d)
         check(t, "align, save: the warning names the camera and says what saving does", ("1 camera of the rig is not connected: Camera " + num + ".") in d["warn"] and "the one it had is erased" in d["warn"] and "fire again" in d["warn"], d["warn"])
         check(t, "align, save: the button says 'Save without it' (the warning does not block)", "Save without it" in d["btns"] and "Save alignment" not in d["btns"], d["btns"])
         t.button("Save without it")
@@ -2653,8 +2708,8 @@ def scenario_align_uneven(t, name, photos):
         can = t.js("() => { const b = [...document.querySelectorAll('#csAlign button')].find((x) => x.textContent.trim() === 'Review alignment'); return !!b && !b.disabled; }")
         check(t, "align, uneven marks: the note does not block 'Review alignment'", can)
         t.button("Review alignment")
-        t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .sv-cell').length") == 4, 5)
-        d = t.js("() => { const w = document.getElementById('csAlignUneven'), sv = document.querySelector('#csAlignMain .sv'), foot = [...document.querySelectorAll('#csAlign button')].find((x) => x.textContent.trim() === 'Save alignment'); return { text: w ? w.textContent : '', after: !!w && !!(sv.compareDocumentPosition(w) & 4), save: !!foot && !foot.disabled, fits: w ? w.getBoundingClientRect().bottom <= document.getElementById('csAlignMain').getBoundingClientRect().bottom + 1 : false }; }")
+        t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .export-strip li.frame').length") == 4, 10)
+        d = t.js("() => { const w = document.getElementById('csAlignUneven'), sv = document.querySelector('#csAlignMain .rig-outer'), foot = [...document.querySelectorAll('#csAlign button')].find((x) => x.textContent.trim() === 'Save alignment'); return { text: w ? w.textContent : '', after: !!w && !!(sv.compareDocumentPosition(w) & 4), save: !!foot && !foot.disabled, fits: w ? w.getBoundingClientRect().bottom <= document.getElementById('csAlignMain').getBoundingClientRect().bottom + 1 : false }; }")
         check(t, "align, uneven marks: the same note before saving, under the photos, and 'Save alignment' still works", "Marks not at equal distances" in d["text"] and "use three marks" not in d["text"] and d["after"] and d["save"] and d["fits"], d)
         check(t, "align uneven: no page error", len(t.errors) == errors_before, t.errors[errors_before:])
     finally:

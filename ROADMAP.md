@@ -1708,6 +1708,27 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      Para testar sem câmeras reais: com câmeras simuladas, Ctrl + Alt + número (Mac: Control + Option + número)
      desliga e liga a câmera dessa posição. Teste do dono (Mac, 4 simuladas, 2026-11-25): roteiro inteiro ok,
      incluindo o texto "No new photo". Pendente: câmeras reais (seção 66 do teste manual) e Windows.
+     Decisão do dono (2026-11-25): os testes com câmeras reais ficam pausados; segue-se com o que não precisa delas.
+     **Passo 3 do Align cameras = o editor do Align photos (forma B), FEITO em 2026-11-25, AGUARDANDO TESTE.** O
+     passo 3 deixou de ser a grade de fotos paradas: é a mesma tela do Align photos do Export (`alignScreen`, com a
+     barra de ferramentas, as guias, References, Move X/Y, Size, Rotate, Fit to canvas, Reset photo, Reset all e a
+     fileira de miniaturas), em cima das fotos do alinhamento e já com os valores calculados pela haste. Em cima:
+     "Camera NN of NN · ← → other cameras", "Keeps N% of each photo" (âmbar abaixo de 80%), "Play the sequence" e
+     "Back to the stick values". Rodapé: "Values from the stick · N photos adjusted by hand". Play the sequence
+     troca o editor pelo tocador (cada foto como vai ficar, só o que sobra no canvas; ‹ pausa ›, Speed, Reverse
+     loop; "← Back to adjusting"). Ao salvar, cada ajuste feito na mão volta a ser a receita da câmera (o inverso
+     de `rigCompute`); as não mexidas guardam exatamente o valor da haste. Nada é gravado na sessão das fotos de
+     alinhamento. Como foi ligado: `st.rigStep` (fotos, tamanhos e o que fazer quando algo muda) e
+     `session.rigDraft` (o alinhamento ainda não guardado); as teclas do editor valem com `rigEditOn()`.
+     Diferenças para o protótipo, A CONFIRMAR com o dono: (1) sem Flip e sem Apply to all (o alinhamento das
+     câmeras não guarda espelhamento); (2) sem o bloco Aspect ratio / Position (as fotos entram como saíram);
+     (3) Reset photo e Reset all voltam aos valores da haste (no Export voltam a "sem ajuste", o que aqui deixaria
+     a câmera sem alinhamento); (4) a tela do tocador na forma B não tinha sido desenhada: seguiu a da forma A;
+     (5) a câmera não conectada aparece na fileira de miniaturas, no lugar dela, tracejada em âmbar, e o aviso do
+     que acontece ao salvar fica embaixo do editor; (6) se as marcas mudarem (voltar ao passo 2 e marcar ou
+     disparar de novo), os ajustes feitos na mão são descartados, porque os valores da haste mudaram. ⌘Z / ⇧⌘Z
+     desfazem e refazem cada ajuste. Teste automático: cenário do Align cameras (editor, tocador, ajuste, ⌘Z,
+     Back to the stick values, o que é salvo e a chegada igual ao Export).
      Pergunta do dono: alinhar sem as marcas, por um objeto ou pessoa da cena. É a parte 7 (From this scene), já
      prevista, a fazer antes do rig reutilizável.
      **Decisões do dono no meio dos testes (2026-11-24), a fazer DEPOIS dos roteiros:** (i) arrastar os pontos
