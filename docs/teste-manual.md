@@ -2379,11 +2379,15 @@ Em **Export sessions** › sessão com mais de uma foto › **Align photos**.
 
 **Camera settings** › **Test shot** › **Align cameras** › **Fire**, marcar as três marcas numa foto e esperar as outras.
 
-- [ ] À direita da foto grande: "Fine-tune" e "Drag a point to put it exactly on its mark. Scroll to zoom in first."
+- [ ] À direita da foto grande: o painel **Points**, com as linhas Top, Middle e Bottom, cada uma com "Automatic";
+      embaixo, **Back to automatic** (apagado) e a dica "Drag a point to put it exactly on its mark. Scroll to zoom
+      in first."
 - [ ] Com o mouse em cima de um ponto o cursor vira o de mover; arrastar leva só aquele ponto, que fica onde foi
-      solto. As outras fotos não mudam; as instruções desta câmera se atualizam.
-- [ ] Depois de arrastar: etiqueta **Adjusted by hand** e botão **Back to automatic** à direita da foto.
-- [ ] Ctrl+Z (⌘Z) desfaz o último arrasto. **Back to automatic** devolve os três pontos achados pelo programa.
+      solto e passa a âmbar. As outras fotos não mudam; as instruções desta câmera se atualizam.
+- [ ] Depois de arrastar: no painel, "1 by hand" no alto e "By hand" na linha do ponto; o ↺ dessa linha devolve só
+      aquele ponto; **Back to automatic** devolve os três.
+- [ ] Ctrl+Z (⌘Z) desfaz o último arrasto; Ctrl+Shift+Z (⇧⌘Z) refaz.
+- [ ] Espaço segurado e arrastando (Mac): o cursor não pisca.
 - [ ] Com zoom (roda do mouse) dá para arrastar com precisão; arrastar fora dos pontos continua deslocando a foto.
 - [ ] Um clique parado em cima de um ponto não faz nada; um clique fora dos pontos começa a marcar de novo.
 - [ ] **Fire again** troca as fotos e procura as marcas de novo: o ajuste à mão da foto antiga não vale mais.
