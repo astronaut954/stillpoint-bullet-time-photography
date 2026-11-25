@@ -1612,6 +1612,14 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      decide o tamanho). Para confirmar, o Align photos passou a registrar nos detalhes técnicos do Activity uma
      "Rig alignment check": por câmera, a foto em que foi alinhada, a foto da sessão, as três marcas, a haste e a
      "aligned pole" (haste × tamanho), que tem de ser igual em todas. Aguardando a captura do dono.
+     CAUSA ACHADA (2026-11-25, números do "Rig alignment check" do dono): depois do ajuste à mão a marca do meio
+     ficou a 46,3%, 45,6% e 47,2% do caminho nas três câmeras, ou seja, dentro dos 6% que o programa aceita como
+     "distâncias iguais". Ele então usou a conta completa (a de marcas iguais), que lê o desvio do meio como
+     perspectiva, e deu tamanhos 1,0000 / 0,9535 / 1,1787: haste alinhada de 1520, 1447 e 1701 px (12% e 18% de
+     diferença, o que bate com o medido na gravação). Com os pontos automáticos o meio dava 42 a 43%, caía na
+     conta pelo comprimento, e saía certo (roteiro 4). Não é resolução (alinhada e fotografada no mesmo tamanho)
+     nem erro de tela. O limite de 6% não separa um suporte de marcas desiguais de um efeito de perspectiva.
+     DECISÃO PENDENTE do dono: como o programa deve saber se as marcas são iguais (ver a conversa).
      **Decisões do dono no meio dos testes (2026-11-24), a fazer DEPOIS dos roteiros:** (i) arrastar os pontos
      que o programa achou, de um jeito que não entre em conflito com a busca automática e que deixe refazer a
      busca; (ii) o botão Align cameras não deve depender do Test shot: protótipos com as posições no Camera
