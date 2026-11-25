@@ -1761,6 +1761,10 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      mexem na vista; Stop deixa na tela a foto que estava passando. A tela separada do tocador saiu do código.
      (2) ⌘Z / ⇧⌘Z mantinham a foto que estava na tela: agora voltam para a foto em que a mudança foi feita, como
      no Export.
+     Teste do dono (2026-11-25): os dois ok. Novos retornos: (1) clicar ou arrastar na foto grande enquanto toca
+     tem de sair do modo de tocar: FEITO, com teste (AGUARDANDO TESTE do dono); (2) o lugar do Play the sequence
+     "parece deslocado do restante da lógica do layout": protótipos Y1 a Y4 em
+     https://claude.ai/artifact/1fotVQhStGmWhxoKjFpNHU (aguardando escolha).
      Pergunta do dono: alinhar sem as marcas, por um objeto ou pessoa da cena. É a parte 7 (From this scene), já
      prevista, a fazer antes do rig reutilizável.
      **Decisões do dono no meio dos testes (2026-11-24), a fazer DEPOIS dos roteiros:** (i) arrastar os pontos
