@@ -1691,6 +1691,13 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      para realinhar; protótipos N1 a N4 em https://claude.ai/artifact/91Kz6vJUt5bRsTp87RpNfi. Escolha do dono: N4. FEITO, AGUARDANDO
      TESTE: faixa âmbar acima das fotos do Test shot (etiqueta Align again, a explicação inteira e o botão Align
      cameras, que faz a mesma pergunta do botão da janela principal e, ao sair, volta para o Camera settings).
+     Teste do dono (Mac): faixa Align again ok. Teste automático completo: 538 de 538.
+     Câmeras desconectadas no meio do Align cameras, conferido pelo agente com câmeras simuladas (2026-11-25):
+     quando caem, a janela não muda (passo 1 continua "4 cameras" e Fire aceso; no passo 2 a lista continua
+     igual); com todas caídas, Fire e Fire again não fazem nada e não avisam; a câmera só aparece como Not
+     connected depois de um Fire again; o aviso do rig fica em cima da borda do rodapé da janela. Protótipos em
+     três partes (D1/D2 uma câmera cai; E1/E2 todas caem; T1/T2 o aviso do rig):
+     https://claude.ai/artifact/X9w1VSLjnvcszJuEezPZ4W (aguardando escolha).
      Pergunta do dono: alinhar sem as marcas, por um objeto ou pessoa da cena. É a parte 7 (From this scene), já
      prevista, a fazer antes do rig reutilizável.
      **Decisões do dono no meio dos testes (2026-11-24), a fazer DEPOIS dos roteiros:** (i) arrastar os pontos
