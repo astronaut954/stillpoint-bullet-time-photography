@@ -2717,6 +2717,50 @@ def scenario_align_drag(t, name, photos):
         t.restart_app()
 
 
+def scenario_align_entry(t, name, photos):
+    line("\n== 30. Align cameras from the main window (Cameras panel), without a Test shot")
+    t.dismiss()
+    t.env["STILLPOINT_FAKE_CAMERAS"] = "3"
+    t.env["STILLPOINT_FAKE_PHOTOS"] = "pole"
+    try:
+        t.restart_app()
+        t.dismiss()
+        errors_before = len(t.errors)
+        t.wait(lambda: t.js("() => !document.getElementById('alignBtn').disabled"), 20)
+        b = t.js("() => { const a = document.getElementById('alignBtn'), o = document.getElementById('orderBtn'); return [a.textContent, a.parentNode === o.parentNode, a.previousElementSibling === o]; }")
+        check(t, "align entry: 'Align cameras' sits in the Cameras panel of the main window, after 'Reorder by photo'", b == ["Align cameras", True, True], b)
+        t.js("() => document.getElementById('alignBtn').click()")
+        ok = t.wait(lambda: t.js("() => !document.getElementById('csAlign').classList.contains('hidden') || !document.getElementById('dialogOverlay').classList.contains('hidden')"), 8)
+        # (um projeto que já tem alinhamento pergunta antes; a resposta é "Align cameras")
+        t.js("() => { const o = document.getElementById('dialogOverlay'); if (!o.classList.contains('hidden')) [...o.querySelectorAll('button')].find((x) => x.textContent.trim() === 'Align cameras').click(); }")
+        time.sleep(0.6)
+        st = t.js("() => ({ open: !document.getElementById('csAlign').classList.contains('hidden'), step1: document.getElementById('csAlignStep1').classList.contains('on'), foot: [...document.querySelectorAll('#csAlignFoot button')].map((x) => x.textContent.trim()) })")
+        check(t, "align entry: it opens the Align cameras window at step 1 with no Test shot (so no 'Use the Test shot photos'), with its own Fire", ok and st["open"] and st["step1"] and st["foot"] == ["Cancel", "Fire"], st)
+        t.button("Cancel"); time.sleep(0.6)
+        check(t, "align entry: Cancel goes back to the main window (Camera settings does not stay open)", t.js("() => document.getElementById('camSettingsOverlay').classList.contains('hidden')"))
+        # Pelo botão: Fire, e o passo 2 chega com as fotos
+        t.js("() => document.getElementById('alignBtn').click()"); time.sleep(0.8)
+        t.js("() => { const o = document.getElementById('dialogOverlay'); if (!o.classList.contains('hidden')) [...o.querySelectorAll('button')].find((x) => x.textContent.trim() === 'Align cameras').click(); }")
+        time.sleep(0.5)
+        t.button("Fire")
+        got = t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item').length === 3"), 60)
+        check(t, "align entry: Fire from there takes the photos and goes to step 2", got)
+        t.button("Cancel"); time.sleep(0.6)
+        check(t, "align entry: Cancel at step 2 also goes back to the main window", t.js("() => document.getElementById('camSettingsOverlay').classList.contains('hidden')"))
+        # Pelo Test shot continua existindo, e de lá o Cancel volta para o Camera settings
+        t.js("() => document.getElementById('camSettingsBtn').click()"); time.sleep(1.0)
+        t.js("() => document.getElementById('csTest').click()")
+        t.wait(lambda: t.js("() => document.getElementById('csTestBox').classList.contains('has-photos')"), 30)
+        align_open(t); time.sleep(0.4)
+        t.button("Cancel"); time.sleep(0.6)
+        check(t, "align entry: opened from the Test shot, Cancel stays in Camera settings, as before", t.js("() => !document.getElementById('camSettingsOverlay').classList.contains('hidden') && document.getElementById('csAlign').classList.contains('hidden')"))
+        t.js("() => document.getElementById('csDone').click()")
+        check(t, "align entry: no page error", len(t.errors) == errors_before, t.errors[errors_before:])
+    finally:
+        t.env.pop("STILLPOINT_FAKE_PHOTOS", None)
+        t.restart_app()
+
+
 def scenario_align_tools(t, name, photos):
     line("\n== 28. Export › Align photos: the tool bar inside the big photo, the center cross and the guides")
     t.dismiss()
@@ -2986,7 +3030,7 @@ def main():
                 only = os.environ.get("STILLPOINT_TEST_ONLY", "")  # para depurar: só os cenários com este nome
                 for sc in [x for x in (scenario_cleared, scenario_delete_edit_undo, scenario_photo_delete_restore,
                            scenario_remove_from_collection, scenario_delete_session, scenario_cancel, scenario_rapid_in_lightroom, scenario_crop_before_lightroom,
-                           scenario_export_edit, scenario_export_trash, scenario_lightroom_crop, scenario_undo_own_item, scenario_orientation, scenario_selection_kept, scenario_align_undo, scenario_flip, scenario_photoshop, scenario_rig_state, scenario_align_marks, scenario_align_cameras, scenario_camera_tags, scenario_guided_aim, scenario_live_many, scenario_custom_drag, scenario_align_gone, scenario_align_uneven, scenario_align_tools, scenario_align_drag) if any(o in x.__name__ for o in only.split(","))]:  # vários, separados por vírgula
+                           scenario_export_edit, scenario_export_trash, scenario_lightroom_crop, scenario_undo_own_item, scenario_orientation, scenario_selection_kept, scenario_align_undo, scenario_flip, scenario_photoshop, scenario_rig_state, scenario_align_marks, scenario_align_cameras, scenario_camera_tags, scenario_guided_aim, scenario_live_many, scenario_custom_drag, scenario_align_gone, scenario_align_uneven, scenario_align_tools, scenario_align_drag, scenario_align_entry) if any(o in x.__name__ for o in only.split(","))]:  # vários, separados por vírgula
                     try:
                         sc(t, name, photos)
                     except Exception:  # noqa: BLE001

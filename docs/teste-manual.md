@@ -2423,6 +2423,16 @@ Em **Export sessions** › sessão com mais de uma foto › **Align photos**.
       seguinte, de borda a borda, com um desenho no pé da folha.
 - [ ] Windows: os itens acima.
 
+## 62. Align cameras pela janela principal (2026-11-25)
+
+- [ ] Janela principal, painel **Cameras**, no alto: **Camera settings**, **Reorder by photo** e **Align cameras**.
+- [ ] **Align cameras** abre a janela do alinhamento no passo 1, sem precisar de **Test shot**; embaixo há **Cancel** e
+      **Fire** (sem "Use the Test shot photos"). Num projeto que já tem alinhamento, antes vem a janela de aviso.
+- [ ] **Fire** tira as fotos e vai para o passo 2. **Cancel** (em qualquer passo) e **Save alignment** voltam para a
+      janela principal.
+- [ ] Pelo **Test shot** o botão continua funcionando como antes, e de lá o **Cancel** volta ao **Camera settings**.
+- [ ] Windows: os itens acima.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |

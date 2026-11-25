@@ -1258,6 +1258,7 @@
     ui.shootBtn.disabled = shooting ? shootCancelling : (busy || connected === 0 || sdkBusy);
     ui.orderBtn.disabled = busy || connected === 0 || sdkBusy;
     $("camSettingsBtn").disabled = busy || connected === 0;
+    $("alignBtn").disabled = busy || connected === 0;
     // Fotografando: o botão do Test shot vira "Cancel"
     $("csTest").textContent = csTest.capturing ? (csTest.cancelling ? "Cancelling…" : "Cancel") : "Test shot";
     $("csTest").classList.toggle("btn-danger", csTest.capturing);
@@ -2788,9 +2789,20 @@
       "The cameras were aligned on " + alWhen(sv.savedAt) + ". " +
       (changes.length ? "Since then: " + changes.join(" · ") + ". " : "") +
       "If you align again, the new alignment replaces that one when you save it. Until you save, nothing changes.",
-      [{ label: "Cancel" }, { label: "Align cameras", primary: true, onClick: () => alOpen() }]);
+      [{ label: "Cancel", onClick: () => { if (al.fromMain) { al.fromMain = false; closeCamSettingsNow(); } } }, { label: "Align cameras", primary: true, onClick: () => alOpen() }]);
   }
-  const alEntryBtn = button("Align cameras", () => alAskOpen(), { kind: "btn-secondary btn-small" });
+  const alEntryBtn = button("Align cameras", () => { al.fromMain = false; alAskOpen(); }, { kind: "btn-secondary btn-small" });
+  // Align cameras pela janela principal (painel Cameras, forma P3): abre direto a janela do alinhamento, sem passar pelo
+  // Test shot (ela tem o próprio Fire). Ao sair (Cancel ou Save alignment) volta para a janela principal.
+  $("alignBtn").addEventListener("click", () => {
+    if (busy || al.open) return;
+    Promise.resolve(window.alignInfo && window.alignInfo()).catch(() => null).then((info) => {
+      al.saved = info || null;
+      $("camSettingsBtn").click();
+      al.fromMain = true;
+      alAskOpen();
+    });
+  });
   alEntryBtn.id = "csAlignBtn";
   // Parte 5: o que mudou nas câmeras desde o alinhamento (o programa confere: câmera que saiu, mudou de posição,
   // mudou o zoom, ou câmera nova). Com mudança, o aviso fica âmbar e pede para alinhar de novo.
@@ -2867,6 +2879,7 @@
     al.firing = false;
     gaClose();
     alShow(false);
+    if (al.fromMain) { al.fromMain = false; closeCamSettingsNow(); }  // veio da janela principal: volta para ela
   }
   function alHead(title, sub, step) {
     $("csAlignTitle").textContent = title;

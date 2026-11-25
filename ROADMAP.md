@@ -1637,6 +1637,10 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      Item (ii), lugar do botão Align cameras: protótipos P1 (botão no rodapé do Camera settings), P2 (texto no
      rodapé, junto de Calibrate with chart) e P3 (painel Cameras da janela principal) em
      https://claude.ai/artifact/5J28vhRwouPL4dv3BTycfc, aguardando a escolha.
+     Escolha do dono (2026-11-25): P3. FEITO: botão "Align cameras" no painel Cameras da janela principal, depois
+     de "Reorder by photo"; abre a janela do alinhamento direto no passo 1, sem Test shot (o "Use the Test shot
+     photos" só aparece quando há fotos de teste); Cancel ou Save alignment voltam para a janela principal. O
+     botão do alto do Test shot continua existindo (pendente: o dono decidir se fica ou sai). Cenário 30.
      Pergunta do dono: alinhar sem as marcas, por um objeto ou pessoa da cena. É a parte 7 (From this scene), já
      prevista, a fazer antes do rig reutilizável.
      **Decisões do dono no meio dos testes (2026-11-24), a fazer DEPOIS dos roteiros:** (i) arrastar os pontos
