@@ -3315,6 +3315,7 @@
       lines: alLines(p.camera),
       inst: alInst(p.camera),
       firing: !!al.firing || !!al.firingOne || !!csTest.capturing,
+      flashN: ga.flashN || 0,
       tabs: list.map((q) => ({ camera: q.camera, order: q.order, state: gaTab(q.camera) })),
       ready: list.length > 0 && list.every((q) => gaTab(q.camera) === "done"),
       live: { want: ga.want, on: ga.liveOn, none: ga.none, starting: !!ga.starting },
@@ -8030,6 +8031,9 @@
   // Enquanto as fotos do "Reorder by photo" são tiradas, os avisos de disparo
   // vão para essa janela, não para a atividade nem para a contagem.
   const orderCapture = () => (order.open && order.capturing) || csTest.capturing;
+  // Foto de uma câmera só pedida pela janela Guided aim (Fire again de lá): nada disto aparece na janela principal
+  // (o clarão, a linha de andamento, "Bullet time complete"); o clarão vai para a janela Guided aim
+  const oneShot = () => !!al.firingOne;
   const captureGallery = () => (csTest.capturing ? csGallery : orderGallery);
 
   const handlers = {
@@ -8114,24 +8118,25 @@
 
     // Sequência
     sessionStarted(e) {
-      if (orderCapture()) return;
+      if (orderCapture() || oneShot()) return;
       if (e.total > 1) log("Session " + e.index + " of " + e.total);
       ui.progress.textContent = e.total > 1 ? "Session " + e.index + " of " + e.total : "Shooting";
       activity.busyText = e.total > 1 ? "Shooting session " + e.index + " of " + e.total : "Shooting";
     },
     sessionFolderFailed() { log("Could not create the folder for the session.", "error"); },
     countdownStarted() {
-      if (orderCapture()) return;
+      if (orderCapture() || oneShot()) return;
       $("countdownCancel").disabled = shootCancelling;
       ui.countdownOverlay.classList.remove("hidden");
     },
     countdownTick(e) {
-      if (orderCapture()) return;
+      if (orderCapture() || oneShot()) return;
       ui.countdownOverlay.classList.remove("hidden");
       ui.countdownNumber.textContent = e.seconds;
     },
     trigger() {
       ui.countdownOverlay.classList.add("hidden");
+      if (oneShot()) { ga.flashN = (ga.flashN || 0) + 1; gaPush(); return; }
       if (orderCapture()) return;
       // Clarão rápido no lugar de texto
       ui.flash.classList.remove("hidden");
@@ -8142,7 +8147,7 @@
     },
     // Disparo do plano recusado pela câmera: anota (resumo no fim) e mostra na linha de andamento
     shotFired(e) {
-      if (e.ok || orderCapture()) return;
+      if (e.ok || orderCapture() || oneShot()) return;
       const shot = shootPlan && shootPlan.shots[e.index - 1];
       const gap = shot ? repeatGap(shootPlan.shots, shot) : Infinity;
       shootMissing.push({ camera: e.camera, index: e.index, gap });
@@ -8157,12 +8162,14 @@
     },
     waitingDownloads() {
       activity.busyText = "Receiving photos";
+      if (oneShot()) return;
       if (orderCapture()) { csWaitSet("Receiving photos", 0, 0); return captureGallery().message("Receiving photos"); }
       ui.progress.textContent = "Receiving photos";
     },
     downloadProgress(e) {
       const text = "Receiving photos, " + e.done + " of " + e.total;
       activity.busyText = text;
+      if (oneShot()) return;
       if (orderCapture()) { csWaitSet("Receiving photos", e.done, e.total); return captureGallery().message(text); }
       ui.progress.textContent = text;
     },
@@ -8170,17 +8177,17 @@
       log("Some photos did not arrive in time.", "error",
         e.lost.length ? "Lost connection: " + e.lost.map((n) => cameraLabel(n)).join(", ") + "." : "No camera was disconnected. Try a longer download wait.");
     },
-    sessionInterrupted() { if (!orderCapture()) log("The session stopped before the end.", "error"); },
+    sessionInterrupted() { if (!orderCapture() && !oneShot()) log("The session stopped before the end.", "error"); },
     sessionCompleted() {},
     sequenceCancelled() {
       ui.countdownOverlay.classList.add("hidden");
-      if (orderCapture()) return;
+      if (orderCapture() || oneShot()) return;
       shootCancelled = true;
       log("Bullet time cancelled", "warn", "Photos that already arrived stay in the session.");
       ui.progress.textContent = "Cancelled.";
     },
     sequenceFinished(e) {
-      if (orderCapture()) return;
+      if (orderCapture() || oneShot()) return;
       lastShootAt = Date.now();
       if (shootCancelled) return;  // já avisado em sequenceCancelled
       ui.progress.classList.remove("warn");

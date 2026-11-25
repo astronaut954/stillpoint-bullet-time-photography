@@ -2212,6 +2212,9 @@ def scenario_guided_aim(t, name, photos):
         od = os.path.join(t.data, "Order photos")
         files = lambda: {d: sorted((f, os.path.getmtime(os.path.join(od, d, f))) for f in os.listdir(os.path.join(od, d)) if "_IMG_" in f) for d in os.listdir(od) if not d.startswith(".")}
         f0 = files()
+        t.js("() => { window.__mainFlash = 0; new MutationObserver(() => { if (!document.getElementById('flash').classList.contains('hidden')) window.__mainFlash++; }).observe(document.getElementById('flash'), { attributes: true }); }")
+        act0 = t.js("() => document.querySelectorAll('.log-list li').length")
+        aim.evaluate("() => { window.__aimFlash = 0; new MutationObserver(() => { if (!document.getElementById('gaFlash').classList.contains('hidden')) window.__aimFlash++; }).observe(document.getElementById('gaFlash'), { attributes: true }); }")
         aim.click("#gaFire")
         took = t.wait(lambda: A("() => document.getElementById('gaFire').textContent") != "Fire again", 5)
         back = t.wait(lambda: A("() => document.getElementById('gaFire').textContent") == "Fire again" and t.js("() => !document.getElementById('csAlignWait')") and A("() => document.querySelectorAll('#gaInst .inst').length") >= 1, 40)
@@ -2221,6 +2224,8 @@ def scenario_guided_aim(t, name, photos):
         new_one = [x for x in list(f1.values())[0] if ("_" + fire_cam + "_IMG_") in x[0]]; old_one = [x for x in list(f0.values())[0] if ("_" + fire_cam + "_IMG_") in x[0]]
         check(t, "guided aim: 'Fire again' in the window takes a new photo with this camera only (the other photos stay as they were)",
               back and same_others and len(new_one) == 1 and new_one != old_one and len(list(f1.values())[0]) == len(list(f0.values())[0]), (took, back, f0, f1))
+        fl = (A("() => window.__aimFlash"), t.js("() => window.__mainFlash"), [x for x in t.js("() => [...document.querySelectorAll('.log-list li')].map((l) => l.textContent)")[act0:] if "Bullet time" in x])
+        check(t, "guided aim: the flash of that shot shows in the Guided aim window, not in the main one, and the Activity says nothing about a bullet time", fl[0] >= 1 and fl[1] == 0 and fl[2] == [], fl)
         check(t, "guided aim: after it, the instruments of this camera are back and the camera on screen is the same",
               A("() => document.querySelectorAll('#gaInst .inst').length") == 4 and A("() => document.getElementById('gaName').textContent") == cur, A("() => document.getElementById('gaInst').textContent"))
         # Next camera / Previous camera passam por todas, na ordem, dando a volta; a aba leva direto

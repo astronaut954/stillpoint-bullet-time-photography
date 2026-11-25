@@ -99,6 +99,9 @@
     const lines = $("gaLines");
     lines.innerHTML = "";
     (st.lines || []).forEach(([cls, text]) => { const li = document.createElement("li"); li.className = cls; li.textContent = text; lines.appendChild(li); });
+    // O clarão do disparo desta janela (Fire again daqui): em cima da imagem
+    if (st.flashN && S.flashN !== undefined && st.flashN !== S.flashN) { const f = $("gaFlash"); f.classList.remove("hidden"); f.style.animation = "none"; void f.offsetWidth; f.style.animation = ""; setTimeout(() => f.classList.add("hidden"), 500); }
+    S.flashN = st.flashN || 0;
     // Os instrumentos: refeitos a cada estado que chega (com Live aim, a cada quadro: mexem junto com a câmera)
     { const html = instHtml(st.inst, esc); if (S.instHtml !== html) { S.instHtml = html; $("gaInst").innerHTML = html; } }
     $("gaNum").textContent = pad(st.order);
