@@ -2430,7 +2430,8 @@ Em **Export sessions** › sessão com mais de uma foto › **Align photos**.
       **Fire** (sem "Use the Test shot photos"). Num projeto que já tem alinhamento, antes vem a janela de aviso.
 - [ ] **Fire** tira as fotos e vai para o passo 2. **Cancel** (em qualquer passo) e **Save alignment** voltam para a
       janela principal.
-- [ ] Pelo **Test shot** o botão continua funcionando como antes, e de lá o **Cancel** volta ao **Camera settings**.
+- [ ] No **Test shot** (dentro do **Camera settings**) não há mais botão **Align cameras**: só o estado do alinhamento
+      ("Cameras aligned · data" ou "Align again · …") ao lado de **Hide photos**.
 - [ ] Windows: os itens acima.
 
 ## Resultado

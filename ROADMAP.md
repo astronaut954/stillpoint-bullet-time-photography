@@ -1641,6 +1641,14 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      de "Reorder by photo"; abre a janela do alinhamento direto no passo 1, sem Test shot (o "Use the Test shot
      photos" só aparece quando há fotos de teste); Cancel ou Save alignment voltam para a janela principal. O
      botão do alto do Test shot continua existindo (pendente: o dono decidir se fica ou sai). Cenário 30.
+     Decisão do dono (2026-11-25): um caminho só para o Align cameras. FEITO: saiu o botão do alto do Test shot e,
+     com ele, o "Use the Test shot photos" do passo 1 (não há mais como chegar ao alinhamento com fotos de teste
+     na tela; o Fire da janela faz as fotos). No Test shot ficou só o estado do alinhamento ("Cameras aligned ·
+     data" ou "Align again · …"). Os testes automáticos passaram a abrir o alinhamento pela janela principal.
+     Pedidos novos do dono, com protótipos em https://claude.ai/artifact/KN4Eg5XTWwuNZBhF1ptwxT aguardando a escolha: (a) na
+     menor largura da janela os três botões do painel Cameras não cabem (C1 só ícones, C2 nomes curtos, C3
+     segunda linha, C4 um botão e um menu); (b) o Download wait é um recurso antigo e chama atenção demais no
+     Bullet time (D1 dentro do Advanced, D2 linha discreta embaixo do botão, D3 nas preferências do programa).
      Pergunta do dono: alinhar sem as marcas, por um objeto ou pessoa da cena. É a parte 7 (From this scene), já
      prevista, a fazer antes do rig reutilizável.
      **Decisões do dono no meio dos testes (2026-11-24), a fazer DEPOIS dos roteiros:** (i) arrastar os pontos
