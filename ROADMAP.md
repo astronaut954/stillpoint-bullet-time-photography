@@ -1582,7 +1582,7 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      o estado e a volta de cada um (↺), "Back to automatic" para os três, ponto à mão em âmbar na foto. Guided
      aim na forma G2 (instrumentos), mas quer variações e saber se é responsivo; e pediu para melhorar também as
      instruções embaixo da foto do passo 2. Protótipos G2a a G2d, janela estreita e larga, e U1 a U3 em
-     https://claude.ai/artifact/JdHdF6g8gQb0g5eLJJ9S6j, aguardando a escolha.
+     https://claude.ai/artifact/SNMLhTGQy9K9qhBWxHu5kz, aguardando a escolha.
      **Decisões do dono no meio dos testes (2026-11-24), a fazer DEPOIS dos roteiros:** (i) arrastar os pontos
      que o programa achou, de um jeito que não entre em conflito com a busca automática e que deixe refazer a
      busca; (ii) o botão Align cameras não deve depender do Test shot: protótipos com as posições no Camera
