@@ -2522,10 +2522,11 @@ body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform:
 .rig-edit > .al-warn { flex: 0 0 auto; margin: 0; max-width: none; }
 .rig-edit.space-pan .align-stage, .rig-edit.space-pan .align-stage * { cursor: grab !important; }
 .rig-edit.space-pan .align-stage.panning, .rig-edit.space-pan .align-stage.panning * { cursor: grabbing !important; }
-.export-preview.rig-play { flex: 1 1 auto; min-height: 240px; height: auto; display: block; position: relative; }
-.rig-play-canvas { position: absolute; overflow: hidden; background: #000; outline: 1px solid var(--noct-primary); }
-.rig-play-canvas .align-layer { position: absolute; transform-origin: 50% 50%; }
-.rig-play-canvas .align-layer img { width: 100%; height: 100%; max-width: none; max-height: none; display: block; }
+/* Tocando a sequência no próprio editor: sem alças e sem barra de ferramentas; o painel da direita espera */
+.align-stage.playing .align-tools, .align-stage.playing .align-tools-grip, .align-stage.playing .align-box { display: none !important; }
+.align-stage.playing, .align-stage.playing * { cursor: grab; }
+.align-panel.playing { opacity: .4; pointer-events: none; }
+.rig-play-ctl { display: inline-flex; align-items: center; gap: 6px; }
 .rig-play-ctl .log-option { margin-left: 8px; }
 .rig-play-ctl .play-speed { min-width: 44px; text-align: center; font: 600 12px var(--noct-font-mono); }
 #csAlignNote.rig-note { font: 500 11px var(--noct-font-mono); letter-spacing: .12em; text-transform: uppercase; }

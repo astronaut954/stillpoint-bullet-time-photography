@@ -2498,8 +2498,10 @@ Em **Export sessions** › sessão com mais de uma foto › **Align photos**.
       by hand" e **Back to the stick values** acende. **⌘Z** desfaz o último ajuste; **⇧⌘Z** refaz.
 - [ ] **← →** trocam de câmera; os atalhos das ferramentas (V, A, M, R, S, H, Z), espaço + arrastar e a roda funcionam
       como no **Align photos** do Export.
-- [ ] **Play the sequence**: as fotos tocam em vai e volta, como vão ficar; **‹**, pausa, **›**, **Speed** **−** **+** e
-      **Reverse loop** funcionam; **← Back to adjusting** volta para o editor na foto que estava na tela.
+- [ ] **Play the sequence**: toca na própria tela, sem trocar de tela: somem as fotos de referência por cima, as alças,
+      a barra de ferramentas e o que está fora do canvas; o painel da direita fica apagado. Na linha de cima: **‹**,
+      pausa, **›**, **Speed** **−** **+**, **Reverse loop** e **Stop**. **Stop** volta ao ajuste na foto que estava passando.
+- [ ] Ajustar a câmera 01, ir para outra câmera e **⌘Z**: o programa volta para a câmera 01 e desfaz o ajuste.
 - [ ] **Back to the stick values**: todas as fotos voltam aos valores da haste e o rodapé volta a "0 photos".
 - [ ] Ajustar uma foto e **Save alignment**: o **Activity** diz "(N cameras, 1 adjusted by hand)". Fotografar uma sessão
       e abrir **Export sessions** › **Align photos**: a foto ajustada aparece como foi deixada no passo 3.

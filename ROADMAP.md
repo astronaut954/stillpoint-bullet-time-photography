@@ -1753,6 +1753,14 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      26): feito pela explicação errada; mantém a compilação como era antes de o Xcode ser instalado; A DECIDIR
      com o dono se fica ou sai. Item (b) acima (mão com o espaço e o mouse parado): visto na gravação feita com
      os testes do simulador rodando, então também não vale como defeito; nada a fazer.
+     Teste do dono do passo 3 (Mac, 8 simuladas, 2026-11-25): "de resto tudo certo". Dois retornos, FEITOS,
+     AGUARDANDO TESTE: (1) Play the sequence trocava de tela ("péssimo"): agora toca NA PRÓPRIA tela do editor;
+     enquanto toca saem as fotos de referência por cima, as alças, a barra de ferramentas e o que está fora do
+     canvas (o mesmo que o guia "Handles and what is outside the canvas" esconde), o painel da direita fica
+     apagado e os controles (‹ pausa ›, Speed, Reverse loop, Stop) entram na linha de cima; arrastar e a roda só
+     mexem na vista; Stop deixa na tela a foto que estava passando. A tela separada do tocador saiu do código.
+     (2) ⌘Z / ⇧⌘Z mantinham a foto que estava na tela: agora voltam para a foto em que a mudança foi feita, como
+     no Export.
      Pergunta do dono: alinhar sem as marcas, por um objeto ou pessoa da cena. É a parte 7 (From this scene), já
      prevista, a fazer antes do rig reutilizável.
      **Decisões do dono no meio dos testes (2026-11-24), a fazer DEPOIS dos roteiros:** (i) arrastar os pontos

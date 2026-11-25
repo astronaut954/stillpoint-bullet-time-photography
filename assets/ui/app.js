@@ -4060,6 +4060,10 @@
       touched: (f) => alEditTouched(ed, f),
       top: (box) => alEditTop(ed, box),
       gone: () => alGoneAll(),
+      playing: () => ed.playing,
+      // (o editor terminou de montar as camadas: mostra a foto da vez e segue tocando)
+      attach: (view) => { ed.view = view; const o = alPlayOrder(ed); ed.pos = Math.min(ed.pos, o.length - 1); view.show(o[ed.pos]); alPlayTick(ed); },
+      playStep: (d) => alPlayStep(ed, d),
     };
     exp.photo = 0; exp.alignView = null; alignPrefs.tool = "handles";
     rigApply(session, st, true).then(() => {
@@ -4077,8 +4081,9 @@
     if (al.edit !== ed || !ed.ready) return;  // (a entrada dos valores da haste não é um passo do ⌘Z)
     const now = JSON.stringify(ed.st.align.byFile);
     if (now !== ed.snap) {
-      const before = ed.snap;
-      const go = (snap) => { if (!al.open || al.step !== 3 || al.edit !== ed) return false; ed.st.align.byFile = JSON.parse(snap); ed.snap = snap; alRender(); };
+      const before = ed.snap, at = exp.photo || 0;
+      // (como no Export: desfazer e refazer voltam para a foto em que a mudança foi feita)
+      const go = (snap) => { if (!al.open || al.step !== 3 || al.edit !== ed) return false; ed.st.align.byFile = JSON.parse(snap); ed.snap = snap; if (ed.playing) { clearTimeout(ed.timer); ed.playing = false; } exp.photo = at; alRender(); };
       recordAction({ label: "Align cameras · photo adjustment", undo: () => go(before), redo: () => go(now) });
       ed.snap = now;
     }
@@ -4092,9 +4097,53 @@
     n.textContent = "Values from the stick · " + k + (k === 1 ? " photo" : " photos") + " adjusted by hand";
     n.classList.add("rig-note");
   }
+  // Tocar a sequência, na própria tela (pedido do dono, 2026-11-25): o editor monta uma camada por foto e entrega
+  // "show(k)"; daqui saem o relógio e os controles (‹ pausa ›, Speed, Reverse loop; 1x = 220 ms por foto, como no
+  // tocador da janela principal). Parar deixa na tela a foto que estava passando.
+  function alPlayOrder(ed) { return cycleOrder(ed.items.length, ed.reverse); }
+  function alPlayTick(ed) {
+    clearTimeout(ed.timer); ed.timer = 0;
+    if (al.edit !== ed || !ed.playing || ed.paused || !ed.view || ed.items.length < 2) return;
+    ed.timer = setTimeout(() => { const o = alPlayOrder(ed); ed.pos = (ed.pos + 1) % o.length; ed.view.show(o[ed.pos]); alPlayTick(ed); }, 220 / PLAY_SPEEDS[ed.speed]);
+  }
+  function alPlayStep(ed, d) {
+    if (!ed.view) return;
+    ed.paused = true; if (ed.paint) ed.paint();
+    const o = alPlayOrder(ed); ed.pos = (ed.pos + d + o.length) % o.length; ed.view.show(o[ed.pos]);
+    alPlayTick(ed);
+  }
+  function alPlayStop(ed) {
+    clearTimeout(ed.timer); ed.timer = 0;
+    if (ed.view) exp.photo = ed.view.at();
+    ed.playing = false; ed.view = null; ed.paint = null;
+    alRender();
+  }
   function alEditTop(ed, box) {
+    if (ed.playing) {
+      const prev = button("", () => alPlayStep(ed, -1), { icon: "left", title: "Previous photo" });
+      const pause = button("", () => { ed.paused = !ed.paused; ed.paint(); alPlayTick(ed); }, { icon: "pause", title: "Pause" });
+      const next = button("", () => alPlayStep(ed, 1), { icon: "right", title: "Next photo" });
+      pause.id = "alignPlayPause";
+      const speedVal = el("span", "play-speed", "");
+      const slower = button("", () => { ed.speed = Math.max(0, ed.speed - 1); ed.paint(); alPlayTick(ed); }, { icon: "minus", title: "Slower" });
+      const faster = button("", () => { ed.speed = Math.min(PLAY_SPEEDS.length - 1, ed.speed + 1); ed.paint(); alPlayTick(ed); }, { icon: "plus", title: "Faster" });
+      const rev = checkOption("Reverse loop", ed.reverse, (v) => { const k = ed.view ? ed.view.at() : 0; ed.reverse = v; ed.pos = k; alPlayTick(ed); });
+      rev.title = "Play back and forth (1, 2, 3, 2, 1...)";
+      ed.paint = () => {
+        pause.innerHTML = icon(ed.paused ? "play" : "pause"); pause.title = ed.paused ? "Play" : "Pause";
+        speedVal.textContent = PLAY_SPEEDS[ed.speed].toFixed(2).replace(/0$/, "") + "x";
+        slower.disabled = ed.speed === 0; faster.disabled = ed.speed === PLAY_SPEEDS.length - 1;
+      };
+      const stop = button("Stop", () => alPlayStop(ed), { kind: "btn-primary", title: "Stop playing and go back to adjusting, on the photo that is showing" });
+      stop.id = "alignPlayStop";
+      const ctl = el("span", "rig-play-ctl");
+      ctl.append(prev, pause, next, el("span", "align-auto-label", "Speed"), slower, speedVal, faster, rev);
+      box.append(ctl, stop);
+      ed.paint();
+      return;
+    }
     const play = button("Play the sequence", () => { ed.playing = true; ed.paused = false; ed.pos = Math.max(0, Math.min(ed.items.length - 1, exp.photo || 0)); alRender(); },
-      { kind: "btn-primary", icon: "play", title: "Play the photos as they will be after the alignment" });
+      { kind: "btn-primary", icon: "play", title: "Play the photos here, as they will be after the alignment" });
     play.id = "alignPlay";
     const back = button("Back to the stick values", () => {
       ed.items.forEach((it) => { ed.st.align.byFile[it.file] = Object.assign({}, ed.stick[it.file]); });
@@ -4104,96 +4153,17 @@
     back.disabled = !alEditHand(ed);
     box.append(play, back);
   }
-  // Tocar a sequência: cada foto como vai ficar (só o que sobra dentro do canvas), em vai e volta, com os mesmos
-  // controles do tocador da janela principal (‹ pausa ›, Speed, Reverse loop; 1x = 220 ms por foto)
-  function alEditPlayer(ed, main) {
-    const n = ed.items.length, st = ed.st;
-    const top = el("div", "export-scope rig-top");
-    const back = button("← Back to adjusting", () => { ed.playing = false; clearTimeout(ed.timer); ed.timer = 0; exp.photo = cur(); alRender(); }, { kind: "btn-secondary" });
-    back.id = "alignPlayBack";
-    const order = () => cycleOrder(n, ed.reverse);
-    const cur = () => { const o = order(); return o[ed.pos % o.length] || 0; };
-    const stage = el("div", "export-preview rig-play");
-    const canvas = el("div", "rig-play-canvas");
-    const tag = el("span", "crop-tag", "");
-    stage.append(canvas, tag);
-    const frame = commonFrame(ed.items, ed.sizes, st);
-    const layers = ed.items.map((it) => {
-      const l = el("div", "align-layer"); const im = document.createElement("img"); im.alt = ""; l.appendChild(im);
-      orderPhoto(al.session, it.file, 1600).then((url) => { if (url) im.src = url; });
-      canvas.appendChild(l);
-      return l;
-    });
-    const strip = el("ul", "export-strip");
-    ed.items.forEach((it, k) => {
-      const li = el("li", "frame");
-      li.innerHTML = '<div class="frame-img"><img alt=""><span class="frame-badge"></span></div>';
-      li.querySelector(".frame-badge").textContent = pad(it.order || k + 1);
-      orderPhoto(al.session, it.file, 320).then((url) => { if (url) li.querySelector("img").src = url; });
-      li.addEventListener("click", () => { ed.pos = k; show(); });
-      strip.appendChild(li);
-    });
-    const show = () => {
-      const k = cur();
-      layers.forEach((l, i) => { l.style.visibility = i === k ? "visible" : "hidden"; });
-      [...strip.children].forEach((li, i) => li.classList.toggle("selected", i === k));
-      tag.textContent = "Photo " + pad(ed.items[k].order || k + 1) + " of " + pad(n) + " · as it will be after the alignment";
-    };
-    const layout = () => {
-      const W = stage.clientWidth, H = stage.clientHeight;
-      if (!W || !H || !frame) return;
-      const K = Math.min(W / frame.w, H / frame.h);
-      canvas.style.width = (frame.w * K) + "px"; canvas.style.height = (frame.h * K) + "px";
-      canvas.style.left = ((W - frame.w * K) / 2) + "px"; canvas.style.top = ((H - frame.h * K) / 2) + "px";
-      ed.items.forEach((it, i) => {
-        const sz = ed.sizes[it.file], a = effectiveAlign(sz, alignOf(st, it.file), frame, st), w = sz.w * K, h = sz.h * K, l = layers[i];
-        l.style.width = w + "px"; l.style.height = h + "px";
-        l.style.left = (frame.w * K / 2 + a.dx * K - w / 2) + "px"; l.style.top = (frame.h * K / 2 + a.dy * K - h / 2) + "px";
-        l.style.transform = "scale(" + a.scale + ") rotate(" + a.rot + "deg)";
-      });
-    };
-    const tick = () => { clearTimeout(ed.timer); ed.timer = 0; if (ed.paused || !ed.playing || n < 2) return; ed.timer = setTimeout(() => { ed.pos = (ed.pos + 1) % order().length; show(); tick(); }, 220 / PLAY_SPEEDS[ed.speed]); };
-    const step = (d) => { ed.paused = true; paint(); const o = order(); ed.pos = (ed.pos + d + o.length) % o.length; show(); tick(); };
-    const prev = button("", () => step(-1), { icon: "left", title: "Previous photo" });
-    const pause = button("", () => { ed.paused = !ed.paused; paint(); tick(); }, { icon: "pause", title: "Pause" });
-    const next = button("", () => step(1), { icon: "right", title: "Next photo" });
-    pause.id = "alignPlayPause";
-    const speedVal = el("span", "play-speed", "");
-    const slower = button("", () => { ed.speed = Math.max(0, ed.speed - 1); paint(); tick(); }, { icon: "minus", title: "Slower" });
-    const faster = button("", () => { ed.speed = Math.min(PLAY_SPEEDS.length - 1, ed.speed + 1); paint(); tick(); }, { icon: "plus", title: "Faster" });
-    const rev = checkOption("Reverse loop", ed.reverse, (v) => { const k = cur(); ed.reverse = v; ed.pos = k; show(); tick(); });
-    rev.title = "Play back and forth (1, 2, 3, 2, 1...)";
-    const paint = () => {
-      pause.innerHTML = icon(ed.paused ? "play" : "pause"); pause.title = ed.paused ? "Play" : "Pause";
-      speedVal.textContent = PLAY_SPEEDS[ed.speed].toFixed(2).replace(/0$/, "") + "x";
-      slower.disabled = ed.speed === 0; faster.disabled = ed.speed === PLAY_SPEEDS.length - 1;
-    };
-    const ctl = el("span", "align-auto rig-play-ctl");
-    ctl.append(prev, pause, next, el("span", "align-auto-label", "Speed"), slower, speedVal, faster, rev);
-    top.append(back, ctl);
-    const slot = el("div", "export-strip-slot"); const scroll = el("div", "export-strip-scroll"); scroll.appendChild(strip); slot.appendChild(scroll);
-    const outer = el("div", "rig-outer rig-playing");
-    outer.append(stage, slot);
-    main.append(top, outer);
-    if (!frame) tag.textContent = "Could not work out the canvas from the photo sizes.";
-    paint(); layout(); show(); tick();
-    if (window.ResizeObserver) new ResizeObserver(layout).observe(stage);
-    // (← → trocam de foto e o espaço pausa, como no tocador da janela principal)
-    exp.keyNav = (d) => step(d);
-    exp.keyMove = null; exp.alignToolKey = null;
-  }
   function alRenderSave() {
     alHead("Align cameras · save", "This is what the app will do to the photos of every new session. Adjust any photo by hand and play the sequence to check. Nothing changes on the cameras.", 3);
     const main = $("csAlignMain");
     const ed = alEditEnsure();
-    clearTimeout(ed.timer); ed.timer = 0;
+    clearTimeout(ed.timer); ed.timer = 0; ed.view = null;
     main.className = "ts-main rig-edit";
     main.innerHTML = "";
     al.editOn = true;
     const gone = alGoneAll();
     if (!ed.ready) main.insertAdjacentHTML("beforeend", '<p class="sv-sum">Measuring the photos…</p>');
     else if (ed.failed) main.insertAdjacentHTML("beforeend", '<p class="sv-sum" id="csAlignNoEdit">The photos could not be laid over each other to adjust them here. The values from the stick are still saved.</p>');
-    else if (ed.playing) alEditPlayer(ed, main);
     else {
       const top = el("div", "export-scope rig-top"), outer = el("div", "rig-outer"), rows = el("div", "export-rows hidden");
       outer.appendChild(rows);
@@ -4661,14 +4631,13 @@
   }
 
   // O editor do Align photos está na tela? No Export (Align photos) ou no passo 3 do Align cameras
-  function rigEditOn() { return typeof al !== "undefined" && al.open && al.step === 3 && !!al.edit && al.edit.ready && !al.edit.playing && $("dialogOverlay").classList.contains("hidden"); }
-  function rigPlayOn() { return typeof al !== "undefined" && al.open && al.step === 3 && !!al.edit && al.edit.ready && al.edit.playing && $("dialogOverlay").classList.contains("hidden"); }
+  function rigEditOn() { return typeof al !== "undefined" && al.open && al.step === 3 && !!al.edit && al.edit.ready && $("dialogOverlay").classList.contains("hidden"); }
   function alignEditOn() { return (exp.aligning && !$("exportOverlay").classList.contains("hidden")) || rigEditOn(); }
   // ← → no Save sessions: trocam a foto da prévia (Photos) e a do Tilt (Lenticular)
   document.addEventListener("keydown", (e) => {
     const arrows = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
     if (!arrows[e.key] || selectMenu || openMenu) return;
-    if (!rigEditOn() && !rigPlayOn() && ($("exportOverlay").classList.contains("hidden") || tabScope() !== $("exportOverlay"))) return;
+    if (!rigEditOn() && ($("exportOverlay").classList.contains("hidden") || tabScope() !== $("exportOverlay"))) return;
     const t = e.target;
     if (t && (t.tagName === "TEXTAREA" || t.tagName === "SELECT" || (t.tagName === "INPUT" && !["checkbox", "radio", "button"].includes(t.type)))) return;
     // Tela de alinhamento: ⌘ + setas movem a foto 1 px (⇧ 10); ↑ ↓ sozinhas trocam de sessão
@@ -6197,6 +6166,10 @@
   function alignScreen(session, items, st, outer, rows, top, rerender) {
     alignLoad(session, st); cropLoad(session, st);
     const rigStep = st.rigStep || null;
+    // Passo 3 do Align cameras, "Play the sequence": toca aqui mesmo, sem trocar de tela. Enquanto toca, saem as
+    // fotos de referência por cima e some o que o guia "Handles and what is outside the canvas" esconde
+    // (pedido do dono, 2026-11-25)
+    const playing = !!(rigStep && rigStep.playing());
     const photoUrl = (file, size) => (rigStep ? rigStep.photo(file, size) : sessionPhotoOriginal(session.name, file, size));
     const goPhoto = rigStep ? rerender : photoRerender;
     const REF_COLORS = { prev: "#4da3ff", next: "#ff8a3d" };
@@ -6269,7 +6242,7 @@
     ["tl", "tr", "bl", "br"].forEach((c) => { handles[c] = el("div", "align-handle align-handle-" + c); box.appendChild(handles[c]); });
     const rotLine = el("div", "align-rot-line"); const rotHandle = el("div", "align-rot-handle");
     box.append(rotLine, rotHandle);
-    const tagText = pad(item.order || cur + 1) + " · Drag to move · scroll to zoom · hold space and drag to pan · ⌥ scroll to rotate · Ctrl scroll to pan up or down (with ⌥, sideways) · ⌘ arrows 1 px (⇧ 10)";
+    let tagText = pad(item.order || cur + 1) + " · Drag to move · scroll to zoom · hold space and drag to pan · ⌥ scroll to rotate · Ctrl scroll to pan up or down (with ⌥, sideways) · ⌘ arrows 1 px (⇧ 10)";
     const tag = el("span", "crop-tag", tagText);
     const wait = el("div", "align-wait", "Measuring the photos…");
     stage.append(layers, common, ratio, box, tag, wait);
@@ -6692,13 +6665,28 @@
     // Na ordem da lista References (pedido do dono, 2026-11-16): a Previous photo por cima, a atual no meio e a Next
     // photo embaixo; as referências tingidas. Cada camada com a sua opacidade (onion skin)
     const order = [];
-    ["prev", "next"].forEach((key) => { const k = refIndex[key]; if (alignPrefs[key] && k >= 0 && k < n && k !== cur && !order.some((o) => o.k === k)) order.push({ k, key }); });
+    if (!playing) ["prev", "next"].forEach((key) => { const k = refIndex[key]; if (alignPrefs[key] && k >= 0 && k < n && k !== cur && !order.some((o) => o.k === k)) order.push({ k, key }); });
     const refKeyOf = {};
     order.forEach((o) => { layerOf[o.k] = makeLayer(items[o.k], o.key); refKeyOf[o.k] = o.key; });
     layerOf[cur] = makeLayer(item, "");
     order.filter((o) => o.key === "next").forEach((o) => layers.appendChild(layerOf[o.k]));
     layers.appendChild(layerOf[cur]);
     order.filter((o) => o.key === "prev").forEach((o) => layers.appendChild(layerOf[o.k]));
+    // Tocando: uma camada por foto, todas no lugar; só a da vez aparece
+    let playAt = cur;
+    const showFrame = (k) => {
+      playAt = k;
+      Object.keys(layerOf).forEach((j) => { layerOf[j].style.visibility = +j === k ? "visible" : "hidden"; });
+      [...strip.children].filter((x) => !x.classList.contains("gone")).forEach((li, j) => li.classList.toggle("selected", j === k));
+      where.textContent = "Camera " + pad(items[k].order || k + 1) + " of " + pad(n) + " · playing";
+      tagText = "Photo " + pad(items[k].order || k + 1) + " of " + pad(n) + " · as it will be after the alignment";
+      tag.textContent = tagText + (Math.abs(view.zoom - 1) > 0.001 ? " · zoom " + Math.round(view.zoom * 100) + "%" : "");
+    };
+    if (playing) {
+      items.forEach((it, k) => { if (k !== cur) { layerOf[k] = makeLayer(it, ""); layerOf[k].classList.remove("align-current"); layers.appendChild(layerOf[k]); } });
+      stage.classList.add("playing", "clean");
+      panel.classList.add("playing");
+    }
 
     // A área útil é o canvas (o recorte na proporção escolhida); a foto tem de cobri-lo sempre
     const usefulRect = () => commonFrame(items, sizes, st);  // o recorte é o canvas inteiro
@@ -6728,8 +6716,9 @@
         l.style.left = (cx + al.dx * scaleK - w / 2) + "px"; l.style.top = (cy + al.dy * scaleK - h / 2) + "px";
         l.style.transform = "scale(" + al.scale + ") rotate(" + al.rot + "deg)";
         l.querySelector("img").style.transform = flipCss(alignFlip(al)).trim();  // (a moldura e as alças não espelham)
-        l.style.opacity = l.classList.contains("align-ref") ? opOf(refKeyOf[k]) : alignPrefs.opacity;
-        if (+k === cur) { box.style.display = ""; box.style.width = w + "px"; box.style.height = h + "px"; box.style.left = l.style.left; box.style.top = l.style.top; box.style.transform = l.style.transform;
+        l.style.opacity = playing ? 1 : l.classList.contains("align-ref") ? opOf(refKeyOf[k]) : alignPrefs.opacity;
+        if (playing) box.style.display = "none";
+        else if (+k === cur) { box.style.display = ""; box.style.width = w + "px"; box.style.height = h + "px"; box.style.left = l.style.left; box.style.top = l.style.top; box.style.transform = l.style.transform;
           // alças com o mesmo tamanho na tela, seja qual for o zoom da foto
           const inv = 1 / al.scale; [...box.children].forEach((hd) => { hd.style.setProperty("--inv", inv); }); }
       });
@@ -6743,7 +6732,7 @@
       ratio.setAttribute("data-size", "Canvas · " + Math.round(frame.w) + " × " + Math.round(frame.h) + " px · " + rn(frame.w, frame.h));
       // Guia "cabos e o que está fora do canvas" desligada: as fotos aparecem só dentro do canvas
       { const fl = cx + frame.x * scaleK, ft = cy + frame.y * scaleK, fw2 = frame.w * scaleK, fh2 = frame.h * scaleK;
-        layers.style.clipPath = stage.classList.contains("clean") ? "inset(" + Math.max(0, ft) + "px " + Math.max(0, W - fl - fw2) + "px " + Math.max(0, H - ft - fh2) + "px " + Math.max(0, fl) + "px)" : ""; }
+        layers.style.clipPath = stage.classList.contains("clean") || playing ? "inset(" + Math.max(0, ft) + "px " + Math.max(0, W - fl - fw2) + "px " + Math.max(0, H - ft - fh2) + "px " + Math.max(0, fl) + "px)" : ""; }
       const sz = sizes[item.file];
       cf.textContent = "Canvas " + Math.round(frame.w) + " × " + Math.round(frame.h) + " px (" + rn(frame.w, frame.h) + ")" + (sz ? " · this photo " + sz.w + " × " + sz.h + " px (" + rn(sz.w, sz.h) + ")" : "");
       cf.title = "The canvas is what every export gets: what every photo covers as shot and, with an aspect ratio, the largest frame in that ratio inside it. No photo is enlarged on its own; each one is moved, resized and rotated behind the canvas.";
@@ -6754,6 +6743,7 @@
       const frame0 = commonFrame(items, sizes, st);
       if (frame0) Object.assign(a, effectiveAlign(sizes[item.file], a, frame0, st));  // o que vale para esta foto (só grava quando a pessoa mexer)
       sync(); layout(); markPosDots();
+      if (playing) rigStep.attach({ show: showFrame, at: () => playAt });
     });
     if (window.ResizeObserver) new ResizeObserver(layout).observe(stage);
 
@@ -6796,11 +6786,11 @@
       const toolNow = alignPrefs.tool || "handles";
       stage.setPointerCapture(e.pointerId);
       // Zoom: um clique aproxima (com Alt, afasta); segurar e arrastar para a direita aproxima, para a esquerda afasta
-      if (toolNow === "zoom" && !exp.spaceDown) { drag = { kind: "zoom", x: e.clientX, zoom: view.zoom, at: zoomAnchor(e), moved: false, alt: e.altKey, ev: e }; return; }
+      if (toolNow === "zoom" && !exp.spaceDown && !playing) { drag = { kind: "zoom", x: e.clientX, zoom: view.zoom, at: zoomAnchor(e), moved: false, alt: e.altKey, ev: e }; return; }
       // Pointer: fora da foto que está sendo alinhada, arrastar desloca a vista (pedido do dono, 2026-11-24)
       const onPart = e.target === rotHandle || e.target.classList.contains("align-handle");
-      if (toolNow === "handles" && !onPart && !exp.spaceDown) return;  // só as alças: arrastar em outro lugar não faz nada
-      if (exp.spaceDown || toolNow === "pan" || (toolNow === "pointer" && !onPart && !overPhoto(e))) {
+      if (toolNow === "handles" && !onPart && !exp.spaceDown && !playing) return;  // só as alças: arrastar em outro lugar não faz nada
+      if (playing || exp.spaceDown || toolNow === "pan" || (toolNow === "pointer" && !onPart && !overPhoto(e))) {
         document.body.classList.add("photo-drag");  // a mão fechada continua fora da prévia
         drag = { kind: "pan", x: e.clientX, y: e.clientY, px: view.px, py: view.py }; stage.classList.add("panning"); holdCursor("grabbing"); return; }
       lockStart();
@@ -6859,7 +6849,7 @@
       // Ctrl (ou ⌘) + roda: desloca a vista para cima e para baixo; com Alt junto, para os lados. A foto não se mexe
       // (correção do dono, 2026-11-24: é a vista, como nos programas da Adobe)
       if (e.ctrlKey || e.metaKey) { if (e.altKey) view.px -= d * 1.5; else view.py -= d * 1.5; layout(); return; }
-      if (e.altKey) {  // ⌥ + roda: gira a foto
+      if (e.altKey && !playing) {  // ⌥ + roda: gira a foto
         lockStart();
         tryApply((cand) => { cand.rot = Math.round((cand.rot - d * 0.01) * 100) / 100; });
         sync(); layout(); saveSoon();
@@ -6869,6 +6859,8 @@
       zoomAt(e, Math.exp(-d * 0.004));
     }, { passive: false });
     exp.keyMove = (ddx, ddy, big) => { const step = big ? 10 : 1; stepOnce((cand) => { cand.dx += ddx * step; cand.dy += ddy * step; }); };
+    // Tocando: as setas trocam de foto (pausando) e as teclas das ferramentas e de mover não valem
+    if (playing) { exp.keyMove = null; exp.alignToolKey = null; exp.keyNav = (d) => rigStep.playStep(d); }
   }
 
   function lentSizeRow(l, box, rerender, label) {

@@ -1955,19 +1955,32 @@ def scenario_align_cameras(t, name, photos):
         keeps = t.js("() => { const e = document.getElementById('alignKeeps'); return e ? [e.className, e.textContent] : null; }")
         check(t, "align: step 3 says how much of each photo the alignment keeps (amber below 80%)",
               bool(keeps) and keeps[1].startswith("Keeps ") and keeps[1].endswith("% of each photo") and ("warn" in keeps[0]) == (int(keeps[1].split("Keeps ")[1].split("%")[0]) < 80), keeps)
-        # Tocar a sequência: a foto como vai ficar, com ‹ pausa ›, Speed e Reverse loop; volta para o ajuste
-        t.js("() => document.getElementById('alignPlay').click()"); time.sleep(0.9)
-        pl = t.js("() => ({ tag: (document.querySelector('#csAlignMain .rig-play .crop-tag') || {}).textContent || '', layers: document.querySelectorAll('#csAlignMain .rig-play-canvas .align-layer').length, vis: [...document.querySelectorAll('#csAlignMain .rig-play-canvas .align-layer')].filter((l) => l.style.visibility === 'visible').length, ctl: document.querySelector('#csAlignMain .rig-play-ctl').textContent, back: document.getElementById('alignPlayBack').textContent.trim(), editor: !!document.querySelector('#csAlignMain .align-stage') })")
-        check(t, "align, play the sequence: one photo at a time 'as it will be after the alignment', with Speed and Reverse loop, in place of the editor",
-              pl["layers"] == 4 and pl["vis"] == 1 and "as it will be after the alignment" in pl["tag"] and "Speed" in pl["ctl"] and "Reverse loop" in pl["ctl"] and "1.0x" in pl["ctl"] and not pl["editor"], pl)
-        tag0 = pl["tag"]
-        moved = t.wait(lambda: t.js("() => document.querySelector('#csAlignMain .rig-play .crop-tag').textContent") != tag0, 3)
+        # Tocar a sequência: na própria tela, sem as referências por cima e sem as alças; ‹ pausa ›, Speed, Reverse loop
+        t.js("() => document.getElementById('alignPlay').click()")
+        t.wait(lambda: t.js("() => !!document.querySelector('#csAlignMain .align-stage.playing') && [...document.querySelectorAll('#csAlignMain .align-layer')].some((l) => l.style.visibility === 'visible')"), 10)
+        pl = lambda: t.js("() => { const st = document.querySelector('#csAlignMain .align-stage'), ls = [...document.querySelectorAll('#csAlignMain .align-layer')]; return { stage: !!st, layers: ls.length, vis: ls.filter((l) => l.style.visibility === 'visible').length, refs: document.querySelectorAll('#csAlignMain .align-layer.align-ref').length, box: getComputedStyle(document.querySelector('#csAlignMain .align-box')).display, tools: getComputedStyle(document.getElementById('alignTools')).display, clip: document.querySelector('#csAlignMain .align-layers').style.clipPath.slice(0, 5), tag: document.querySelector('#csAlignMain .align-stage .crop-tag').textContent, where: document.querySelector('#csAlignMain .align-where').textContent, ctl: (document.querySelector('#csAlignMain .rig-play-ctl') || {}).textContent || '', stop: !!document.getElementById('alignPlayStop'), play: !!document.getElementById('alignPlay'), panel: document.querySelector('#csAlignMain .align-panel').classList.contains('playing'), sel: [...document.querySelectorAll('#csAlignMain .export-strip li.frame')].findIndex((l) => l.classList.contains('selected')) }; }")
+        d = pl()
+        check(t, "align, play the sequence: it plays in the same screen (the editor stays), one photo at a time, with no reference photos over it",
+              d["stage"] and d["layers"] == 4 and d["vis"] == 1 and d["refs"] == 0 and "as it will be after the alignment" in d["tag"] and "playing" in d["where"], d)
+        check(t, "align, play the sequence: while it plays the handles, the tool bar and what is outside the canvas are hidden, and the panel on the right waits",
+              d["box"] == "none" and d["tools"] == "none" and d["clip"] == "inset" and d["panel"], d)
+        check(t, "align, play the sequence: the controls come in the top row (Speed, Reverse loop, Stop in place of Play)", "Speed" in d["ctl"] and "Reverse loop" in d["ctl"] and "1.0x" in d["ctl"] and d["stop"] and not d["play"], d)
+        tag0 = d["tag"]
+        moved = t.wait(lambda: pl()["tag"] != tag0, 3)
         t.js("() => document.getElementById('alignPlayPause').click()"); time.sleep(0.2)
-        tag1 = t.js("() => document.querySelector('#csAlignMain .rig-play .crop-tag').textContent"); time.sleep(0.7)
-        check(t, "align, play the sequence: it plays by itself and the pause button stops it", moved and t.js("() => document.querySelector('#csAlignMain .rig-play .crop-tag').textContent") == tag1, (tag0, tag1))
+        d1 = pl(); time.sleep(0.7); d2 = pl()
+        check(t, "align, play the sequence: it plays by itself, the thumbnails follow, and the pause button stops it", moved and d1["tag"] == d2["tag"] and d2["sel"] >= 0, (tag0, d1["tag"], d2["sel"]))
+        t.page.keyboard.press("ArrowRight"); time.sleep(0.3)
+        d3b = pl()
+        check(t, "align, play the sequence: → goes one photo forward while paused", d3b["tag"] != d2["tag"] and d3b["vis"] == 1, (d2["tag"], d3b["tag"]))
         t.shot("align-step3-play")
-        t.js("() => { [...document.querySelectorAll('#csAlignMain .export-strip li.frame')][0].click(); document.getElementById('alignPlayBack').click(); }"); time.sleep(0.8)
-        check(t, "align, play the sequence: 'Back to adjusting' returns to the editor, on the photo that was showing", t.js("() => !!document.querySelector('#csAlignMain .align-stage') && !document.querySelector('#csAlignMain .rig-play')") and s3()["where"].startswith("Camera 01 of 04"), s3()["where"])
+        shown = d3b["sel"]
+        t.js("() => document.getElementById('alignPlayStop').click()"); time.sleep(0.8)
+        t.wait(lambda: t.js("() => !document.querySelector('#csAlignMain .align-wait')"), 10)
+        d4b = pl()
+        check(t, "align, play the sequence: Stop goes back to adjusting on the photo that was showing (handles, tools and references back)",
+              d4b["play"] and not d4b["stop"] and d4b["box"] != "none" and d4b["tools"] != "none" and not d4b["panel"] and d4b["where"].startswith("Camera %02d of 04" % (shown + 1)), (shown, d4b))
+        t.js("() => document.querySelectorAll('#csAlignMain .export-strip li.frame')[0].click()"); time.sleep(0.6)
         # Ajuste na mão: Rotate + na câmera 01; o rodapé conta, Ctrl+Z desfaz, "Back to the stick values" também
         t.wait(lambda: t.js("() => !document.querySelector('#csAlignMain .align-wait')"), 10)
         f0 = s3()["fields"]
@@ -1979,9 +1992,10 @@ def scenario_align_cameras(t, name, photos):
         check(t, "align, step 3: adjusting a photo by hand changes its value, the footer counts it and 'Back to the stick values' lights up",
               abs(float(d4["fields"][3]) - float(f0[3]) - 0.3) < 0.011 and d4["note"] == "Values from the stick · 1 photo adjusted by hand" and not d4["back"], (f0, d4))
         t.shot("align-step3-adjusted")
+        t.page.keyboard.press("ArrowRight"); time.sleep(0.5)
         t.page.keyboard.press("Control+z"); time.sleep(0.6)
         d5 = s3()
-        check(t, "align, step 3: Ctrl+Z takes the last adjustment back", abs(float(d5["fields"][3]) - float(f0[3]) - 0.25) < 0.011, d5["fields"])
+        check(t, "align, step 3: Ctrl+Z takes the last adjustment back and returns to the photo where it was made (as in Export)", d5["where"].startswith("Camera 01 of 04") and abs(float(d5["fields"][3]) - float(f0[3]) - 0.25) < 0.011, (d5["where"], d5["fields"]))
         t.js("() => document.getElementById('alignBackStick').click()"); time.sleep(0.6)
         d6 = s3()
         check(t, "align, step 3: 'Back to the stick values' drops the adjustments", d6["fields"] == f0 and d6["note"] == "Values from the stick · 0 photos adjusted by hand" and d6["back"], d6)
