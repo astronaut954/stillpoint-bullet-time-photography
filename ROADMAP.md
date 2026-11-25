@@ -1705,6 +1705,9 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      aparece com o Align cameras aberto (a linha continua indo para a Activity). Acrescentado pelo agente, A
      CONFIRMAR com o dono: a câmera que sumiu num Fire again e depois foi religada aparece como "No new photo ·
      Connected again: fire again to include it" (antes continuava dizendo Not connected mesmo ligada).
+     Para testar sem câmeras reais: com câmeras simuladas, Ctrl + Alt + número (Mac: Control + Option + número)
+     desliga e liga a câmera dessa posição. Teste do dono (Mac, 4 simuladas, 2026-11-25): roteiro inteiro ok,
+     incluindo o texto "No new photo". Pendente: câmeras reais (seção 66 do teste manual) e Windows.
      Pergunta do dono: alinhar sem as marcas, por um objeto ou pessoa da cena. É a parte 7 (From this scene), já
      prevista, a fazer antes do rig reutilizável.
      **Decisões do dono no meio dos testes (2026-11-24), a fazer DEPOIS dos roteiros:** (i) arrastar os pontos
