@@ -8245,7 +8245,7 @@
     },
     downloadTimeout(e) {
       log("Some photos did not arrive in time.", "error",
-        e.lost.length ? "Lost connection: " + e.lost.map((n) => cameraLabel(n)).join(", ") + "." : "No camera was disconnected. Try a longer download wait.");
+        e.lost.length ? "Lost connection: " + e.lost.map((n) => cameraLabel(n)).join(", ") + "." : "No camera was disconnected. Try a longer Download wait (Settings › Advanced).");
     },
     sessionInterrupted() { if (!orderCapture() && !oneShot()) log("The session stopped before the end.", "error"); },
     sessionCompleted() {},

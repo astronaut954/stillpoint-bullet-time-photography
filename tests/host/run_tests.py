@@ -2726,8 +2726,11 @@ def scenario_align_entry(t, name, photos):
         t.dismiss()
         errors_before = len(t.errors)
         t.wait(lambda: t.js("() => !document.getElementById('alignBtn').disabled"), 20)
-        b = t.js("() => { const a = document.getElementById('alignBtn'), o = document.getElementById('orderBtn'); return [a.textContent, a.parentNode === o.parentNode, a.previousElementSibling === o]; }")
+        b = t.js("() => { const a = document.getElementById('alignBtn'), o = document.getElementById('orderBtn'); return [a.getAttribute('aria-label'), a.parentNode === o.parentNode, a.previousElementSibling === o]; }")
         check(t, "align entry: 'Align cameras' sits in the Cameras panel of the main window, after 'Reorder by photo'", b == ["Align cameras", True, True], b)
+        ic = t.js("() => ['camSettingsBtn', 'orderBtn', 'alignBtn'].map((id) => { const e = document.getElementById(id), r = e.getBoundingClientRect(); return [e.getAttribute('aria-label'), e.textContent.trim(), !!e.querySelector('svg'), Math.round(r.width), Math.round(r.height), e.title.split(':')[0]]; })")
+        check(t, "cameras panel: the three buttons are icons of the same size, with the name in the tooltip and for screen readers",
+              ic == [["Camera settings", "", True, 34, 34, "Camera settings"], ["Reorder by photo", "", True, 34, 34, "Reorder by photo"], ["Align cameras", "", True, 34, 34, "Align cameras"]], ic)
         # Download wait saiu do painel Bullet time: está em Settings › Advanced (e continua valendo para o disparo)
         dw = t.js("() => { const d = document.getElementById('downloadWait'); return { pane: d.closest('.settings-pane') ? d.closest('.settings-pane').dataset.pane : '', shoot: !!d.closest('.shoot-panel'), fields: [...document.querySelectorAll('.shoot-panel > .fields .field > span:first-child')].map((x) => x.textContent), label: d.closest('.settings-row').querySelector('.export-label').textContent }; }")
         check(t, "settings: 'Download wait' is in Settings › Advanced, and the Bullet time panel keeps Countdown and Sessions", dw == {"pane": "advanced", "shoot": False, "fields": ["Countdown", "Sessions"], "label": "Download wait"}, dw)

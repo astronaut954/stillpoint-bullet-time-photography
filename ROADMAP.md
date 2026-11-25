@@ -1656,6 +1656,11 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      an alignment" aparecia com o Camera settings por trás; agora aparece em cima da janela principal e o Camera
      settings só abre, por baixo do alinhamento, quando a pessoa confirma. Testes do dono (Mac): Align cameras
      pela janela principal ok.
+     Escolha do dono (2026-11-25): ícones R1 (duas setas) e A3 (cantos de visor com cruz). FEITO: os três botões do
+     painel Cameras são só ícone, em qualquer largura, com o nome ao parar o mouse (e para leitores de tela).
+     Texto do Download wait corrigido depois da dúvida do dono: no código a espera é o TOTAL da sessão (do fim dos
+     disparos até a última foto chegar), não por câmera; como as câmeras baixam ao mesmo tempo, mais câmeras não
+     pedem mais tempo. As câmeras simuladas não usam essa espera (por isso 300 simuladas não falharam).
      Pergunta do dono: alinhar sem as marcas, por um objeto ou pessoa da cena. É a parte 7 (From this scene), já
      prevista, a fazer antes do rig reutilizável.
      **Decisões do dono no meio dos testes (2026-11-24), a fazer DEPOIS dos roteiros:** (i) arrastar os pontos

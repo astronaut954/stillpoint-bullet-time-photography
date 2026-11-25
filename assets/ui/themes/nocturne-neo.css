@@ -927,6 +927,8 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
 .cameras-panel .camera-list.scrolling { padding-right: 12px; }
 .cameras-panel > .empty { flex: 1 1 auto; min-height: 0; overflow: auto; }
 .panel-actions { display: flex; gap: 8px; align-items: center; }
+.panel-icon { width: 34px; height: 34px; padding: 0; display: inline-grid; place-items: center; flex: none; }
+.panel-icon svg { display: block; }
 .camera.can-drag { cursor: grab; user-select: none; -webkit-user-select: none; }  /* sem selecionar texto ao arrastar */
 .camera.dragging { position: relative; z-index: 2; background: var(--noct-surface); cursor: grabbing; border-color: var(--noct-pending); box-shadow: 0 0 24px rgba(var(--noct-pending-rgb), .3); opacity: .55; }  /* meio transparente: dá para ver o que está embaixo */
 .camera-drop { position: absolute; left: 0; right: 2px; height: 2px; background: var(--noct-primary); box-shadow: 0 0 8px var(--noct-primary); pointer-events: none; }

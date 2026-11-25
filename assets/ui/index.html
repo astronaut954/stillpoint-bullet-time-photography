@@ -87,10 +87,12 @@
         <div class="panel-head">
           <h2>Cameras<span id="cameraCount" class="count hidden"></span></h2>
           <div class="panel-actions">
-            <button id="camSettingsBtn" class="btn btn-secondary btn-small" disabled title="See and match the settings of all cameras">Camera settings</button>
-            <button id="orderBtn" class="btn btn-secondary btn-small" disabled>Reorder by photo</button>
+            <!-- Os três botões do painel são só ícone, em qualquer largura (forma C1; ícones R1 e A3, escolhidos pelo dono em
+                 2026-11-25): com os nomes por extenso eles não cabiam na janela estreita. O nome aparece ao parar o mouse. -->
+            <button id="camSettingsBtn" class="btn btn-secondary btn-small panel-icon" disabled aria-label="Camera settings" title="Camera settings: see and match the settings of all cameras"><svg viewBox="0 0 14 14" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.100" stroke-linecap="square" aria-hidden="true"><path d="M2 4h6M11 4h1M2 10h1M6 10h6"/><rect x="8" y="2.500" width="3" height="3"/><rect x="3" y="8.500" width="3" height="3"/></svg></button>
+            <button id="orderBtn" class="btn btn-secondary btn-small panel-icon" disabled aria-label="Reorder by photo" title="Reorder by photo: takes a photo with each camera so you can put them in order"><svg viewBox="0 0 14 14" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.100" stroke-linecap="square" aria-hidden="true"><path d="M4.500 12V2M2.500 4l2-2 2 2M9.500 2v10M7.500 10l2 2 2-2"/></svg></button>
             <!-- Align cameras na janela principal (forma P3, escolhida pelo dono em 2026-11-25): não depende do Test shot -->
-            <button id="alignBtn" class="btn btn-secondary btn-small" disabled title="Line the cameras up with a stick with three marks. The app corrects in the photos what the cameras cannot fix.">Align cameras</button>
+            <button id="alignBtn" class="btn btn-secondary btn-small panel-icon" disabled aria-label="Align cameras" title="Align cameras: line the cameras up with a stick with three marks. The app corrects in the photos what the cameras cannot fix."><svg viewBox="0 0 14 14" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.100" stroke-linecap="square" aria-hidden="true"><path d="M2 2.500V5M2 2.500h2.500M12 2.500V5M12 2.500H9.500M2 11.500V9M2 11.500h2.500M12 11.500V9M12 11.500H9.500"/><path d="M7 5v4M5 7h4"/></svg></button>
           </div>
         </div>
         <ul id="cameraList" class="camera-list"></ul>
@@ -470,7 +472,7 @@
             <span class="export-label">Download wait</span>
             <div>
               <span class="input-unit settings-wait"><input id="downloadWait" type="text" inputmode="numeric" maxlength="3" autocomplete="off" spellcheck="false" value="10"><em>sec</em></span>
-              <div class="export-note">How long the app waits for the photos to arrive after a shot before going on. 10 seconds is enough for almost every rig; raise it only if photos go missing with slow cards or many cameras. Kept with the project.</div>
+              <div class="export-note">The longest the app waits, after a shot, for all the photos of that session to arrive. The cameras send their photos at the same time, so more cameras do not need more time. If the time runs out, the session stops with "Some photos did not arrive in time": only then raise it. Kept with the project.</div>
             </div>
           </div>
           <div class="settings-row">
