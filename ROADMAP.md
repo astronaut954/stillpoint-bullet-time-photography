@@ -1603,6 +1603,15 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      deixa de mostrar o andamento desse disparo ("Bullet time complete" no Activity).
      Decisão do dono (2026-11-24): as setas laranjas em cima da foto (passo 2 do Align cameras e janela Guided
      aim) saíram: atrapalhavam, e os instrumentos já dizem para que lado. O clarão na janela Guided aim: ok.
+     Investigação da foto 03 mais ampliada (2026-11-24): (a) no roteiro 4 (pontos automáticos, as mesmas três
+     câmeras) medi nas capturas do dono a haste igual nas três fotos, dentro de 2%; (b) li o caminho todo do
+     tamanho (conta das marcas, receita do rig, Align photos, prévia do Edit, exportação): tudo em pixels do
+     original de cada foto, sem diferença entre as telas; (c) a sessão com o defeito (24 Nov 20:43:24, fotos RAW
+     .CR3/.CR2) foi feita depois de o dono ajustar pontos à mão. Hipótese mais provável, NÃO confirmada: os
+     pontos de cima e de baixo ficaram em lugares diferentes da haste em cada foto (é a distância entre eles que
+     decide o tamanho). Para confirmar, o Align photos passou a registrar nos detalhes técnicos do Activity uma
+     "Rig alignment check": por câmera, a foto em que foi alinhada, a foto da sessão, as três marcas, a haste e a
+     "aligned pole" (haste × tamanho), que tem de ser igual em todas. Aguardando a captura do dono.
      **Decisões do dono no meio dos testes (2026-11-24), a fazer DEPOIS dos roteiros:** (i) arrastar os pontos
      que o programa achou, de um jeito que não entre em conflito com a busca automática e que deixe refazer a
      busca; (ii) o botão Align cameras não deve depender do Test shot: protótipos com as posições no Camera

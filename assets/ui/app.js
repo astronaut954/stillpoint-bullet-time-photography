@@ -5715,6 +5715,33 @@
       return out;
     });
   }
+  // Conferência do alinhamento do rig, nos detalhes técnicos da Activity (Show technical details), ao entrar no Align
+  // photos: para cada câmera, o tamanho da foto em que foi alinhada e o da foto da sessão, onde ficaram as três
+  // marcas, o comprimento da haste que ela vê e o tamanho que a receita manda. "Haste alinhada" (haste × tamanho) tem
+  // de dar o mesmo número em todas as câmeras. Serve para investigar fotos que saem de tamanhos diferentes (dono,
+  // 2026-11-24); não muda nada no que o programa faz.
+  function rigDiag(session, st) {
+    const rig = rigOf(session);
+    if (!rig || !st) return;
+    const items = sessionItems(session).filter((i) => i.previewable);
+    Promise.all(items.map((it) => photoSizeOf(session.name, it.file))).then((list) => {
+      log("Rig alignment check · " + session.name + " · saved " + (rig.savedAt || "?") + " · Alignment: " + (alignModeOf(session, st) || "none"), "tech");
+      items.forEach((it, k) => {
+        const sz = list[k], cam = it.files[0] && it.files[0].camera, r = rig.cameras.find((c) => c.camera === cam), a = st.align.byFile[it.file];
+        if (!r) { log(pad(it.order || k + 1) + " " + cam + " · not in the rig alignment", "tech"); return; }
+        const m = (r.marks || []).map((q) => [q[0] * r.width, q[1] * r.height]);
+        let pole = 0, mid = 0;
+        if (m.length === 3) {
+          const vx = m[2][0] - m[0][0], vy = m[2][1] - m[0][1];
+          pole = Math.hypot(vx, vy);
+          mid = pole > 0 ? ((m[1][0] - m[0][0]) * vx + (m[1][1] - m[0][1]) * vy) / (pole * pole) : 0;
+        }
+        log(pad(it.order || k + 1) + " " + cam + " · aligned on " + r.width + "×" + r.height + " · photo " + (sz ? sz.w + "×" + sz.h : "?") + " · " + it.file.split(".").pop() +
+          " · marks " + m.map((q) => Math.round(q[0]) + "," + Math.round(q[1])).join(" / ") + " · pole " + pole.toFixed(0) + " px · middle at " + (mid * 100).toFixed(1) + "%" +
+          " · rig size " + (+r.scale).toFixed(4) + " rot " + (+r.rot).toFixed(2) + " · aligned pole " + (pole * r.scale).toFixed(0) + " px · Size now " + (a ? (a.scale * 100).toFixed(1) : "100.0"), "tech");
+      });
+    });
+  }
   // Põe o alinhamento do rig nas fotos que estão no automático (sem ajuste da pessoa) e guarda; all: em todas
   // (Back to automatic). Devolve Promise<true> se mudou algo.
   function rigApply(session, st, all) {
@@ -6710,6 +6737,7 @@
       exp.aligningShown = !!exp.aligning;
       exp.alignView = { zoom: 1, px: 0, py: 0 };  // cada entrada começa sem zoom
       alignPrefs.tool = "handles";  // e com a ferramenta Direct select (decisão do dono, 2026-11-24); as guias continuam guardadas
+      if (exp.aligning) { const sx = sessions.find((x) => x.name === exp.active); if (sx) rigDiag(sx, settingsFor(sx.name)); }
       outer.classList.remove("layout-change"); void outer.offsetWidth; outer.classList.add("layout-change");
       setTimeout(() => outer.classList.remove("layout-change"), 400);
     }

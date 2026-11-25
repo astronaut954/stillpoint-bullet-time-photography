@@ -2049,6 +2049,12 @@ def scenario_align_cameras(t, name, photos):
         kp = t.js("() => { const e = document.getElementById('alignKeeps'); return [e.textContent, e.classList.contains('warn')]; }")
         check(t, "Align photos: 'Keeps N% of the photos' next to Alignment, amber below 80%",
               kp[0].startswith("Keeps ") and kp[1] == (int(kp[0].split()[1].rstrip("%")) < 80), kp)
+        # A conferência do alinhamento do rig sai nos detalhes técnicos da Activity ao entrar no Align photos; a haste
+        # alinhada (haste × tamanho) tem de dar o mesmo em todas as câmeras
+        tech = t.js("() => [...document.querySelectorAll('.log-list li')].map((l) => l.textContent).filter((x) => /Rig alignment check|aligned pole/.test(x))")
+        poles = [float(re.search(r"aligned pole (\d+) px", x).group(1)) for x in tech if "aligned pole" in x]
+        check(t, "Align photos: entering it logs the rig alignment check, and the aligned pole is the same in every camera",
+              any("Rig alignment check" in x for x in tech) and len(poles) >= 3 and max(poles) - min(poles) <= max(poles) * 0.02, (poles, tech[-4:]))
         auto_text = saved()
         b = t.page.locator('#exportSettings .align-ctl', has_text="Size").locator("button").nth(1)
         b.click(modifiers=["Shift"])
