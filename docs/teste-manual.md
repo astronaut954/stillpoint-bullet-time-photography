@@ -2434,6 +2434,15 @@ Em **Export sessions** › sessão com mais de uma foto › **Align photos**.
       ("Cameras aligned · data" ou "Align again · …") ao lado de **Hide photos**.
 - [ ] Windows: os itens acima.
 
+## 63. Download wait em Settings › Advanced (2026-11-25)
+
+- [ ] Painel **Bullet time**: só **Countdown** e **Sessions** na linha de cima.
+- [ ] **Settings** (ícone no alto da janela) › aba **Advanced**: linha **Download wait**, com o campo em segundos e a
+      explicação. Mudar o valor vale para o próximo disparo e fica guardado com o projeto.
+- [ ] **Align cameras** num projeto que já tem alinhamento: a janela de aviso aparece em cima da janela principal,
+      sem o **Camera settings** por trás.
+- [ ] Windows: os itens acima.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |

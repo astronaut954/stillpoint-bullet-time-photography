@@ -1649,6 +1649,13 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      menor largura da janela os três botões do painel Cameras não cabem (C1 só ícones, C2 nomes curtos, C3
      segunda linha, C4 um botão e um menu); (b) o Download wait é um recurso antigo e chama atenção demais no
      Bullet time (D1 dentro do Advanced, D2 linha discreta embaixo do botão, D3 nas preferências do programa).
+     Escolhas do dono (2026-11-25): painel Cameras na forma C1 (só ícones), em qualquer largura; faltam os ícones
+     de Reorder e Align (opções R1 a R4 e A1 a A4 em https://claude.ai/artifact/Y74xpH5CLxiiefX6QE597c, aguardando). Download wait
+     na forma D3, FEITO: saiu do painel Bullet time (ficam Countdown e Sessions) e está em Settings › Advanced, com
+     a explicação; continua guardado com o projeto. Retorno do dono, FEITO: a janela "This project already has
+     an alignment" aparecia com o Camera settings por trás; agora aparece em cima da janela principal e o Camera
+     settings só abre, por baixo do alinhamento, quando a pessoa confirma. Testes do dono (Mac): Align cameras
+     pela janela principal ok.
      Pergunta do dono: alinhar sem as marcas, por um objeto ou pessoa da cena. É a parte 7 (From this scene), já
      prevista, a fazer antes do rig reutilizável.
      **Decisões do dono no meio dos testes (2026-11-24), a fazer DEPOIS dos roteiros:** (i) arrastar os pontos
