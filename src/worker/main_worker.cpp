@@ -125,6 +125,7 @@ namespace
         fs::path dir;
         bool planActive = false;
         std::deque<int> pendingPrefixes;  // fotos que ainda vão chegar, na ordem
+        int filesPerShot = 1;             // 2 quando a câmera grava RAW + JPEG: cada disparo manda dois arquivos
         // Download adiado (decisão de 2026-10-22): enquanto um plano ainda tem disparos por
         // fazer, as fotos que a câmera oferece ficam na fila (a câmera as segura na memória
         // interna) e só são baixadas depois do último disparo, em ordem. Um download leva ~1 s
@@ -510,9 +511,11 @@ namespace
         item.fired = true;
         const EdsError down = EdsSendCommand(g.cam.camera, kEdsCameraCommand_PressShutterButton, kEdsCameraCommand_ShutterButton_Completely_NonAF);
         const long long at = NowMs();
+        // Um número por arquivo que vai chegar: em RAW + JPEG os dois arquivos do disparo levam o mesmo número
         if (down == EDS_ERR_OK)
-            g.pendingPrefixes.push_back(item.prefix);
-        Send({ "fired", std::to_string(item.prefix), down == EDS_ERR_OK ? "ok" : "err", Hex(down), std::to_string(at) });
+            for (int i = 0; i < g.filesPerShot; ++i)
+                g.pendingPrefixes.push_back(item.prefix);
+        Send({ "fired", std::to_string(item.prefix), down == EDS_ERR_OK ? "ok" : "err", Hex(down), std::to_string(at), std::to_string(g.filesPerShot) });
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
         EdsSendCommand(g.cam.camera, kEdsCameraCommand_PressShutterButton, kEdsCameraCommand_ShutterButton_OFF);
         if (down == EDS_ERR_COMM_DISCONNECTED || down == EDS_ERR_DEVICE_NOT_FOUND)
@@ -579,6 +582,18 @@ namespace
             {
                 LiveOff();
                 Pump(400);
+            }
+            // Quantos arquivos cada disparo vai mandar (lido antes do plano, para não atrasar o disparo):
+            // em RAW + JPEG são dois. Segunda imagem: bits 4-7 da qualidade (0 ou 0xF = nenhuma).
+            {
+                EdsUInt32 quality = 0;
+                g.filesPerShot = 1;
+                if (EdsGetPropertyData(g.cam.camera, kEdsPropID_ImageQuality, 0, sizeof(quality), &quality) == EDS_ERR_OK)
+                {
+                    const unsigned second = (static_cast<unsigned>(quality) >> 4) & 0xF;
+                    if (second != 0 && second != 0xF)
+                        g.filesPerShot = 2;
+                }
             }
             g.t0 = std::atoll(f[1].c_str());
             g.dir = fs::path(f[2]);

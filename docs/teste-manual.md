@@ -2449,7 +2449,9 @@ Em **Export sessions** › sessão com mais de uma foto › **Align photos**.
 - [ ] Câmeras em RAW (ou RAW + JPEG), **Download wait** em **2**, **It's bullet time**: a sessão termina com todas
       as fotos, mesmo levando mais de 2 segundos no total. (Antes da mudança, parava com "Some photos did not
       arrive in time".)
-- [ ] Mesmo ajuste, três sessões seguidas (**Sessions** em **3**): as três completas.
+- [ ] Câmeras em RAW + JPEG, **Download wait** em **10**, **Sessions** em **3**, **It's bullet time**: três sessões,
+      cada uma com o JPEG e o RAW de cada câmera na pasta certa, sem "Camera is busy" no **Activity** e sem etiqueta
+      **missing**. O texto de espera conta os arquivos ("Receiving photos, 4 of 6").
 - [ ] **Download wait** de volta em **10**. Disparar e, logo depois do disparo, desligar o cabo USB de uma câmera:
       depois de uns 10 segundos sem chegar nada, faixa âmbar embaixo: "Some photos did not arrive in time. Lost
       connection: (nome da câmera)." sem botão de ajuste. As fotos das outras câmeras ficam na sessão.

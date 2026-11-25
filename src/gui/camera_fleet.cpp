@@ -890,6 +890,9 @@ bool CameraFleet::RunSequence(const SequenceSettings& settings)
                         const int prefix = std::atoi(f[1].c_str());
                         const bool ok = f[2] == "ok";
                         CameraContext* cam = CameraNamed(w->shortName);
+                        // RAW + JPEG: o disparo manda dois arquivos, e a sessão só termina com os dois
+                        if (ok && f.size() >= 6 && std::atoi(f[5].c_str()) > 1)
+                            expectedDownloads += std::atoi(f[5].c_str()) - 1;
                         if (!ok)
                         {
                             --expectedDownloads;

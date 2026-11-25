@@ -15,7 +15,7 @@
 //   shoot\t<t0 ms>\t<pasta>\t<nome>\t<nº:ms,nº:ms...>
 //        dispara uma foto por item, em t0 (relógio do computador, ms desde 1970) + ms;
 //        cada foto é gravada em <pasta>/<nº>_<nome>_<nome original>; responde, por item,
-//        "fired\t<nº>\t<ok|err>\t<código>\t<instante ms>" e depois "photo\t<nº>\t<caminho>"
+//        "fired\t<nº>\t<ok|err>\t<código>\t<instante ms>\t<arquivos>" (arquivos: 2 em RAW + JPEG) e depois "photo\t<nº>\t<caminho>"
 //        (ou "photofail\t<nº>\t<código>"); no fim, "shootdone". Enquanto a foto vem: "photostart\t<nº>"
 //        quando a câmera oferece o arquivo e "photopart\t<nº>\t<0 a 100>" no máximo duas vezes por
 //        segundo; servem só para o app saber que ainda há foto chegando (espera do Download wait)

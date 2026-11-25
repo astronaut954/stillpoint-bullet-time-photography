@@ -1678,6 +1678,14 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      pareciam corrompidas, etiqueta "missing"). EM INVESTIGAÇÃO, aguardando os registros do dono. Hipótese (não
      verificada): entre o disparo e a câmera oferecer a foto não chega nada, e esse intervalo pode passar de 1 a
      2 s; a sessão para e as fotos chegam depois, com a sessão já fechada.
+     CAUSA ACHADA nos registros do dono (2026-11-25): não era o Download wait. Em RAW + JPEG cada disparo manda
+     dois arquivos, mas o programa contava um por disparo: a sessão "terminava" com os JPEG, a sessão seguinte
+     disparava com os RAW ainda vindo (os RAW contavam como fotos dela), e a terceira encontrava as câmeras
+     ocupadas ("Camera is busy", etiqueta missing). Defeito antigo, de qualquer valor de Download wait, que só
+     aparece com RAW + JPEG e mais de uma sessão (ou plano com mais de um disparo por câmera). CORRIGIDO no código,
+     AGUARDANDO TESTE: o processo da câmera lê a qualidade antes do plano e avisa quantos arquivos cada disparo
+     manda; o coordenador espera todos. Os registros também confirmaram que os avisos novos de foto chegando
+     ("photostart"/"photopart") funcionam com as câmeras reais no Mac.
      Pergunta do dono: alinhar sem as marcas, por um objeto ou pessoa da cena. É a parte 7 (From this scene), já
      prevista, a fazer antes do rig reutilizável.
      **Decisões do dono no meio dos testes (2026-11-24), a fazer DEPOIS dos roteiros:** (i) arrastar os pontos
