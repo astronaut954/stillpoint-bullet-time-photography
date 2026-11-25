@@ -39,11 +39,16 @@ def line(text):
 
 
 def align_open(t):
-    """Clica em "Align cameras" no Test shot; com alinhamento guardado, confirma na janela de aviso."""
-    t.js("() => document.getElementById('csAlignBtn').click()")
-    time.sleep(0.3)
+    """Abre o Align cameras pelo botão da janela principal (painel Cameras); com o Camera settings aberto, fecha-o
+    antes (o Test shot não tem mais o botão); com alinhamento guardado, confirma na janela de aviso."""
+    if t.js("() => !document.getElementById('camSettingsOverlay').classList.contains('hidden')"):
+        t.js("() => document.getElementById('csDone').click()")
+        time.sleep(0.5)
+    t.wait(lambda: t.js("() => !document.getElementById('alignBtn').disabled"), 30)
+    t.js("() => document.getElementById('alignBtn').click()")
+    t.wait(lambda: t.js("() => !document.getElementById('csAlign').classList.contains('hidden') || !document.getElementById('dialogOverlay').classList.contains('hidden')"), 8)
     t.js("() => { const o = document.getElementById('dialogOverlay'); if (o.classList.contains('hidden')) return; const b = [...o.querySelectorAll('button')].find((x) => x.textContent.trim() === 'Align cameras'); if (b) b.click(); }")
-    time.sleep(0.2)
+    time.sleep(0.3)
 
 
 class T:
@@ -1812,9 +1817,9 @@ def scenario_align_cameras(t, name, photos):
         time.sleep(1.0)
         t.js("() => document.getElementById('csTest').click()")
         check(t, "align: the Test shot shows the photos", t.wait(lambda: t.js("() => document.getElementById('csTestBox').classList.contains('has-photos')"), 30))
-        check(t, "align: 'Align cameras' is next to 'Hide photos'",
-              t.js("() => [...document.querySelectorAll('#csGallery .gallery-actions button')].map(b => b.textContent.trim()).join('|')") == "Align cameras|Hide photos")
-        t.button("Align cameras")
+        check(t, "align: the Test shot no longer has an 'Align cameras' button (the way in is the main window)",
+              t.js("() => [...document.querySelectorAll('#csGallery .gallery-actions button')].map(b => b.textContent.trim()).join('|')") == "Hide photos")
+        align_open(t)
         check(t, "align: step 1 Prepare, with the three objects, the line with the PDF button under them, and Fire",
               t.js("() => !document.getElementById('csAlign').classList.contains('hidden') && document.querySelector('#csAlignStep1').classList.contains('on') && document.querySelectorAll('#csAlignMain .al-obj').length === 3 && !!document.querySelector('#csAlignMain .al-bands #csAlignBands')")
               and t.js("() => getComputedStyle(document.getElementById('csBody')).display === 'none' && getComputedStyle(document.querySelector('.cs-head')).display === 'none'"))
@@ -1827,13 +1832,12 @@ def scenario_align_cameras(t, name, photos):
         head = open(pdf, "rb").read() if ok else b""
         check(t, "align: 'Save bands (PDF)' saves 'Stillpoint bands.pdf' (a PDF with the three orange bands)",
               ok and head.startswith(b"%PDF-1.4") and head.count(b"1 0.416 0 rg") == 6 and b"edge to edge" in head and b"centers of the bands" not in head and head.rstrip().endswith(b"%%EOF"), (save_dir, len(head)))
-        check(t, "align: Prepare offers 'Use the Test shot photos' next to Fire",
-              t.js("() => [...document.querySelectorAll('#csAlignFoot button')].map(b => b.textContent).join('|')") == "Cancel|Use the Test shot photos|Fire")
+        check(t, "align: Prepare offers Cancel and Fire",
+              t.js("() => [...document.querySelectorAll('#csAlignFoot button')].map(b => b.textContent).join('|')") == "Cancel|Fire")
         before = sorted(os.listdir(os.path.join(t.data, "Order photos")))
-        t.button("Use the Test shot photos")
-        check(t, "align: it goes to Mark and aim with the photos of the Test shot, without firing again",
-              t.wait(lambda: t.js("() => document.querySelector('#csAlignStep2').classList.contains('on') && document.querySelectorAll('#csAlignMain .ma-item').length === 4"), 10)
-              and sorted(os.listdir(os.path.join(t.data, "Order photos"))) == before)
+        t.button("Fire")
+        check(t, "align: Fire takes the photos and goes to Mark and aim",
+              t.wait(lambda: t.js("() => document.querySelector('#csAlignStep2').classList.contains('on') && document.querySelectorAll('#csAlignMain .ma-item').length === 4"), 40))
         t.button("← Back")
         t.button("Fire")
         check(t, "align: after Fire, step 2 Mark and aim with one row per camera",
@@ -1953,17 +1957,17 @@ def scenario_align_cameras(t, name, photos):
         al = rig.get("alignment") or {}
         check(t, "align: the alignment is saved with the project (stillpoint-rig.json), one entry per camera, by serial number",
               len(al.get("cameras", [])) == 4 and all(c.get("serial") and len(c.get("marks", [])) == 3 for c in al["cameras"]), al.get("cameras"))
-        check(t, "align: back in the Test shot, 'Cameras aligned · date', and the button is still 'Align cameras'",
-              t.js("() => !document.querySelector('.cs-sheet').classList.contains('aligning') && /^Cameras aligned · /.test(document.querySelector('#csGallery .al-saved').textContent) && document.getElementById('csAlignBtn').textContent === 'Align cameras'"))
+        check(t, "align: after saving, back in the main window (Camera settings closed)",
+              t.js("() => !document.querySelector('.cs-sheet').classList.contains('aligning') && document.getElementById('camSettingsOverlay').classList.contains('hidden')"))
         # Com alinhamento guardado, o botão abre antes uma janela de aviso (pedido do dono, 2026-11-24)
-        t.js("() => document.getElementById('csAlignBtn').click()")
-        time.sleep(0.4)
+        t.js("() => document.getElementById('alignBtn').click()")
+        time.sleep(0.8)
         d = t.js("() => { const o = document.getElementById('dialogOverlay'); return { open: !o.classList.contains('hidden'), text: o.textContent, btns: [...o.querySelectorAll('button')].map((b) => b.textContent.trim()), aligning: document.querySelector('.cs-sheet').classList.contains('aligning') }; }")
         check(t, "align: with a saved alignment, a window warns before opening (date, 'replaces that one when you save', Cancel / Align cameras)",
               d["open"] and not d["aligning"] and "This project already has an alignment" in d["text"] and "The cameras were aligned on " in d["text"] and "replaces that one when you save" in d["text"] and d["btns"] == ["Cancel", "Align cameras"], d)
         t.js("() => [...document.querySelectorAll('#dialogOverlay button')].find((b) => b.textContent.trim() === 'Cancel').click()")
         time.sleep(0.3)
-        check(t, "align: Cancel in that window leaves everything as it was", t.js("() => document.getElementById('dialogOverlay').classList.contains('hidden') && !document.querySelector('.cs-sheet').classList.contains('aligning')"))
+        check(t, "align: Cancel in that window leaves everything as it was (back in the main window)", t.js("() => document.getElementById('dialogOverlay').classList.contains('hidden') && !document.querySelector('.cs-sheet').classList.contains('aligning') && document.getElementById('camSettingsOverlay').classList.contains('hidden')"))
         # Align cameras (na janela) › Fire › Fire again: as marcas são achadas sozinhas (pela foto de referência guardada)
         align_open(t)
         t.button("Fire")
@@ -1980,9 +1984,8 @@ def scenario_align_cameras(t, name, photos):
         ok = t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item.ready, #csAlignMain .ma-item.needs').length === 4 && ![...document.querySelectorAll('#csAlignMain .cs-tag')].some(e => e.textContent === 'Marks not found') && !/Finding|Taking/.test(document.getElementById('csAlignFoot').textContent + document.getElementById('csAlignMain').textContent)"), 60)
         check(t, "align: after Fire again, the marks are found in every new photo by themselves", ok)
         t.button("Cancel")
-        check(t, "align: Cancel goes back to the Test shot without changing the saved alignment",
+        check(t, "align: Cancel goes back without changing the saved alignment",
               t.js("() => !document.querySelector('.cs-sheet').classList.contains('aligning')") and json.load(open(os.path.join(t.project, "stillpoint-rig.json")))["alignment"]["savedAt"] == al["savedAt"])
-        t.button("Done")
         time.sleep(0.5)
         # Uma sessão nova guarda o alinhamento que valia
         s = t.shoot()
@@ -2132,7 +2135,7 @@ def scenario_guided_aim(t, name, photos):
         t.wait(lambda: t.js("() => document.getElementById('csTestBox').classList.contains('has-photos')"), 30)
         align_open(t)  # "Align cameras" ou, com alinhamento guardado, "Align again"
         time.sleep(0.3)
-        t.button("Use the Test shot photos")
+        t.button("Fire")
         t.wait(lambda: t.js("() => document.querySelector('#csAlignStep2').classList.contains('on') && document.querySelectorAll('#csAlignMain .ma-item').length === 4"), 20)
         t.wait(lambda: t.js("() => { const p = document.querySelector('#csAlignMain .ma-row .al-zoom'); return !!p && p.style.backgroundImage.length > 10; }"), 15)
         check(t, "guided aim: the button is under the big photo and waits for the three marks",
@@ -2501,7 +2504,7 @@ def scenario_align_gone(t, name, photos):
         t.wait(lambda: t.js("() => document.getElementById('csTestBox').classList.contains('has-photos')"), 30)
         align_open(t)
         time.sleep(0.3)
-        t.button("Use the Test shot photos")
+        t.button("Fire")
         t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item').length === 4"), 20)
         t.wait(lambda: t.js("() => { const p = document.querySelector('#csAlignMain .ma-row .al-zoom'); return !!p && p.style.backgroundImage.length > 10; }"), 15)
         order_dir = os.path.join(t.data, "Order photos")
@@ -2579,7 +2582,7 @@ def scenario_align_uneven(t, name, photos):
         check(t, "align, your marks: step 1 asks about the marks, with 'Equal distances' chosen", m0 == ["even*:Equal distances", "uneven:Not equal"] and "Kept with the project" in t.js("() => document.getElementById('csAlignMain').textContent"), m0)
         # Primeiro com "Equal distances" e marcas que não estão a distâncias iguais: o programa avisa, sem trocar a conta
         stage = "equal"
-        t.button("Use the Test shot photos")
+        t.button("Fire")
         t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item').length === 4"), 20)
         t.wait(lambda: t.js("() => { const p = document.querySelector('#csAlignMain .ma-row .al-zoom'); return !!p && p.style.backgroundImage.length > 10; }"), 15)
         order_dir = os.path.join(t.data, "Order photos")
@@ -2603,20 +2606,16 @@ def scenario_align_uneven(t, name, photos):
         t.js("() => [...document.querySelectorAll('#csAlignFoot button')].find((b) => /Back$/.test(b.textContent.trim())).click()"); time.sleep(0.5)
         t.js("() => document.querySelector('#csAlignMain .al-mark[data-marks=uneven]').click()"); time.sleep(0.4)
         check(t, "align, your marks: clicking 'Not equal' chooses it, and it is kept with the project", t.js("() => document.querySelector('#csAlignMain .al-mark.on').dataset.marks") == "uneven" and t.js("() => window.alignMarks('')") == "uneven")
-        t.button("Use the Test shot photos")
+        t.button("Fire")
         t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item').length === 4"), 20)
         t.wait(lambda: t.js("() => { const p = document.querySelector('#csAlignMain .ma-row .al-zoom'); return !!p && p.style.backgroundImage.length > 10; }"), 15)
-        t.js("() => document.querySelectorAll('.toast').forEach((e) => e.remove())")
-        box = t.page.locator("#csAlignMain .ma-row > .al-photo").bounding_box()
-        for q in (c[0], c[1], low):
-            t.page.mouse.click(box["x"] + q[0] * box["width"], box["y"] + q[1] * box["height"])
-            time.sleep(0.25)
+        # (as fotos novas: as marcas são achadas sozinhas, pela foto de referência de antes)
         ok = t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item.ready, #csAlignMain .ma-item.needs').length === 4 && !/Finding/.test(document.querySelector('#csAlignMain').textContent)"), 60)
         time.sleep(0.5)
         d = t.js("() => { const w = document.getElementById('csAlignUneven'); return { text: w ? w.textContent : '', first: w ? w === document.getElementById('csAlignMain').firstElementChild : false, found: document.querySelectorAll('#csAlignMain .ma-item .cs-tag').length }; }")
         check(t, "align, uneven marks: an amber note on top of step 2 says what the app does about it",
               ok and d["first"] and "Marks not at equal distances" in d["text"] and "matched by the length of the pole" in d["text"] and "height of each camera is not estimated" in d["text"] and "use three marks at equal distances" in d["text"], d)
-        check(t, "align, uneven marks: the Height instrument says 'Not estimated'", "Not estimated" in t.js("() => document.getElementById('csAlignInst').textContent"))
+        check(t, "align, uneven marks: the Height instrument says 'Not estimated'", "Not estimated" in t.js("() => (document.getElementById('csAlignInst') || {}).textContent || ''"), t.js("() => document.querySelector('#csAlignMain .ma-view') ? document.querySelector('#csAlignMain .ma-view').textContent.slice(0, 400) : document.getElementById('csAlignMain').textContent.slice(-500)"))
         lines = t.js("() => document.querySelector('#csAlignMain .in-list') ? document.querySelector('#csAlignMain .in-list').textContent : document.querySelector('#csAlignMain').textContent")
         check(t, "align, uneven marks: no instruction about the height of the camera", "igher than" not in lines and "ower than" not in lines, lines[-300:])
         can = t.js("() => { const b = [...document.querySelectorAll('#csAlign button')].find((x) => x.textContent.trim() === 'Review alignment'); return !!b && !b.disabled; }")
@@ -2649,7 +2648,7 @@ def scenario_align_drag(t, name, photos):
         t.wait(lambda: t.js("() => document.getElementById('csTestBox').classList.contains('has-photos')"), 30)
         align_open(t)
         time.sleep(0.3)
-        t.button("Use the Test shot photos")
+        t.button("Fire")
         t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item').length === 4"), 20)
         t.wait(lambda: t.js("() => { const p = document.querySelector('#csAlignMain .ma-row .al-zoom'); return !!p && p.style.backgroundImage.length > 10; }"), 15)
         order_dir = os.path.join(t.data, "Order photos")
@@ -2735,7 +2734,7 @@ def scenario_align_entry(t, name, photos):
         t.js("() => { const o = document.getElementById('dialogOverlay'); if (!o.classList.contains('hidden')) [...o.querySelectorAll('button')].find((x) => x.textContent.trim() === 'Align cameras').click(); }")
         time.sleep(0.6)
         st = t.js("() => ({ open: !document.getElementById('csAlign').classList.contains('hidden'), step1: document.getElementById('csAlignStep1').classList.contains('on'), foot: [...document.querySelectorAll('#csAlignFoot button')].map((x) => x.textContent.trim()) })")
-        check(t, "align entry: it opens the Align cameras window at step 1 with no Test shot (so no 'Use the Test shot photos'), with its own Fire", ok and st["open"] and st["step1"] and st["foot"] == ["Cancel", "Fire"], st)
+        check(t, "align entry: it opens the Align cameras window at step 1 with no Test shot, with its own Fire", ok and st["open"] and st["step1"] and st["foot"] == ["Cancel", "Fire"], st)
         t.button("Cancel"); time.sleep(0.6)
         check(t, "align entry: Cancel goes back to the main window (Camera settings does not stay open)", t.js("() => document.getElementById('camSettingsOverlay').classList.contains('hidden')"))
         # Pelo botão: Fire, e o passo 2 chega com as fotos
@@ -2747,13 +2746,11 @@ def scenario_align_entry(t, name, photos):
         check(t, "align entry: Fire from there takes the photos and goes to step 2", got)
         t.button("Cancel"); time.sleep(0.6)
         check(t, "align entry: Cancel at step 2 also goes back to the main window", t.js("() => document.getElementById('camSettingsOverlay').classList.contains('hidden')"))
-        # Pelo Test shot continua existindo, e de lá o Cancel volta para o Camera settings
+        # O Test shot não tem mais o botão (um caminho só)
         t.js("() => document.getElementById('camSettingsBtn').click()"); time.sleep(1.0)
         t.js("() => document.getElementById('csTest').click()")
         t.wait(lambda: t.js("() => document.getElementById('csTestBox').classList.contains('has-photos')"), 30)
-        align_open(t); time.sleep(0.4)
-        t.button("Cancel"); time.sleep(0.6)
-        check(t, "align entry: opened from the Test shot, Cancel stays in Camera settings, as before", t.js("() => !document.getElementById('camSettingsOverlay').classList.contains('hidden') && document.getElementById('csAlign').classList.contains('hidden')"))
+        check(t, "align entry: the Test shot has no 'Align cameras' button any more", t.js("() => !document.getElementById('csAlignBtn') && [...document.querySelectorAll('#csGallery .gallery-actions button')].map(b => b.textContent.trim()).join('|') === 'Hide photos'"))
         t.js("() => document.getElementById('csDone').click()")
         check(t, "align entry: no page error", len(t.errors) == errors_before, t.errors[errors_before:])
     finally:

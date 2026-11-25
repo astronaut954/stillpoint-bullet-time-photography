@@ -2791,7 +2791,6 @@
       "If you align again, the new alignment replaces that one when you save it. Until you save, nothing changes.",
       [{ label: "Cancel", onClick: () => { if (al.fromMain) { al.fromMain = false; closeCamSettingsNow(); } } }, { label: "Align cameras", primary: true, onClick: () => alOpen() }]);
   }
-  const alEntryBtn = button("Align cameras", () => { al.fromMain = false; alAskOpen(); }, { kind: "btn-secondary btn-small" });
   // Align cameras pela janela principal (painel Cameras, forma P3): abre direto a janela do alinhamento, sem passar pelo
   // Test shot (ela tem o próprio Fire). Ao sair (Cancel ou Save alignment) volta para a janela principal.
   $("alignBtn").addEventListener("click", () => {
@@ -2803,7 +2802,6 @@
       alAskOpen();
     });
   });
-  alEntryBtn.id = "csAlignBtn";
   // Parte 5: o que mudou nas câmeras desde o alinhamento (o programa confere: câmera que saiu, mudou de posição,
   // mudou o zoom, ou câmera nova). Com mudança, o aviso fica âmbar e pede para alinhar de novo.
   function alChanges() {
@@ -2822,8 +2820,6 @@
     alNote.classList.toggle("hidden", !saved);
     alNote.classList.toggle("warn", changes.length > 0);
     alNote.title = changes.length ? "The cameras changed since the alignment of " + alWhen(al.saved.savedAt) + ". Those that changed get no automatic alignment until you align again; the others stay aligned." : "";
-    alEntryBtn.textContent = "Align cameras";
-    alEntryBtn.className = "btn btn-small " + (saved && !changes.length ? "btn-link" : "btn-secondary");
   }
   // Depois de um Test shot: o programa lê o zoom das fotos novas e diz se o alinhamento ainda vale
   function alCheck(list) {
@@ -2837,7 +2833,9 @@
     });
     Promise.resolve(window.alignCheck(JSON.stringify({ session: session.name, photos }))).then((info) => { al.saved = info || null; alRenderEntry(); }).catch(() => {});
   }
-  csGallery.setActions([alNote, alEntryBtn, csHideBtn]);
+  // (o botão Align cameras do Test shot saiu: o caminho é o da janela principal; decisão do dono, 2026-11-25. Aqui
+  // fica só o estado do alinhamento, que o Test shot confere)
+  csGallery.setActions([alNote, csHideBtn]);
   function alLoadSaved() {
     Promise.resolve(window.alignInfo && window.alignInfo()).then((info) => { al.saved = info || null; alRenderEntry(); }).catch(() => {});
   }
@@ -2939,7 +2937,7 @@
       const n = alConnected().length;
       alFoot(plural(n, "camera", "cameras"), al.firing ? [["Cancel", "btn-secondary", alCancelFire]] :
         // Com fotos do Test shot na tela, dá para usar essas e não fotografar de novo (decisão do dono, 2026-11-16, opção C)
-        [["Cancel", "btn-secondary", alClose]].concat(alTestPhotos() ? [["Use the Test shot photos", "btn-secondary", alUseTest, { title: "Uses the photos already taken in the Test shot, if the stick was in them." }]] : [],
+        [["Cancel", "btn-secondary", alClose]].concat([],  // ("Use the Test shot photos" saiu junto com o caminho pelo Test shot: daqui só o Fire)
           [["Fire", "btn-primary", alFire, { disabled: !n || busy }]]));
       return;
     }
