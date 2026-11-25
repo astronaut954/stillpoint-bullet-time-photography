@@ -112,9 +112,9 @@
     b.className = "btn " + (want && can ? "btn-primary" : "btn-secondary");
     b.disabled = !can;
     b.title = can ? "" : "This camera has no live image. Change it and use Fire again.";
-    // Sem a imagem ao vivo (desligada, ou a câmera não tem): Fire again tira uma foto nova com as câmeras e as
+    // Sem a imagem ao vivo (desligada, ou a câmera não tem): Fire again tira uma foto nova só com esta câmera e as
     // instruções se atualizam (pedido do dono, 2026-11-24)
-    { const f = $("gaFire"); f.classList.toggle("hidden", can && want); f.disabled = !!st.firing; f.textContent = st.firing ? "Taking photos…" : "Fire again"; }
+    { const f = $("gaFire"); f.classList.toggle("hidden", can && want); f.disabled = !!st.firing; f.textContent = st.firing ? "Taking the photo…" : "Fire again"; f.title = "Takes a new photo with this camera only and updates what to change"; }
     $("gaPrev").disabled = st.total < 2;
     $("gaNext").disabled = st.total < 2;
     // A imagem: o quadro ao vivo desta câmera ou a última foto

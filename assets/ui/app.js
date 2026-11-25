@@ -2935,6 +2935,37 @@
     if (csTest.capturing && !csTest.cancelling) csTakeTest();
   }
   // O Test shot terminou: com fotos (list) ou sem (list nulo)
+  // Uma foto nova só de uma câmera (Fire again da janela Guided aim; pedido do dono, 2026-11-24): as fotos e as
+  // marcas das outras câmeras ficam como estão; nesta, a foto é trocada e as marcas são procuradas de novo.
+  function alFireOne(camera) {
+    const p = alPhotoOf(camera);
+    if (!p || busy || al.busy || al.firing || al.firingOne || csTest.capturing || typeof window.takeOrderPhotoOf !== "function") return;
+    if (!alConnected().some((c) => c.name === camera)) { toast("Camera " + alNum(p) + " is not connected.", 0, { warn: true }); return; }
+    al.firingOne = camera;
+    gaPush();
+    window.takeOrderPhotoOf(String(intValue(ui.downloadWait, 1, 10)), camera, al.session);
+  }
+  function alGotOne(e) {
+    const camera = al.firingOne;
+    al.firingOne = "";
+    if (!al.open || !camera || e.camera !== camera) { gaPush(); return; }
+    const session = (e.sessions || []).find((x) => x.name === al.session), p = alPhotoOf(camera);
+    const photos = session ? session.photos.filter((q) => q.camera === camera) : [];
+    const pick = photos.find((q) => /\.jpe?g$/i.test(q.file)) || photos.find((q) => q.previewable) || photos[0];
+    if (!e.ok || !pick || !p) { gaPush(); toast("The photo could not be taken. Try again when the camera is ready.", 0, { warn: true }); return; }
+    csTest.sessions = e.sessions;
+    p.file = pick.file; p.previewable = pick.previewable;
+    const old = al.data[camera] || {};
+    al.data[camera] = { marks: null, found: false, tried: false, w: 0, h: 0, url: "", ratio: old.ratio || 0, manual: false };
+    al.drags = (al.drags || []).filter((x) => x.camera !== camera); al.redos = [];
+    if (al.view && al.view.camera === camera) al.view = null;
+    if (al.clicks && al.clicks.camera === camera) al.clicks = null;
+    if (p.previewable) orderPhoto(al.session, p.file, 480).then((url) => { const d = al.data[camera]; if (d && url) { d.url = url; alRenderSoon(); } });
+    // com uma foto de referência, o app procura as marcas só nesta foto
+    if (al.ref) alFindAll(al.photos.filter((q) => q.camera !== camera).map((q) => q.camera));
+    else { alSolve(); alRender(); }
+    gaPush();
+  }
   function alGotPhotos(list) {
     if (!al.open || !al.firing) return;
     al.firing = false;
@@ -3283,7 +3314,7 @@
       arrows: n && known ? { pan: Math.abs(n.pan) >= 1 ? n.pan : 0, tilt: Math.abs(n.tilt) >= 1 ? n.tilt : 0 } : {},
       lines: alLines(p.camera),
       inst: alInst(p.camera),
-      firing: !!al.firing || !!csTest.capturing,
+      firing: !!al.firing || !!al.firingOne || !!csTest.capturing,
       tabs: list.map((q) => ({ camera: q.camera, order: q.order, state: gaTab(q.camera) })),
       ready: list.length > 0 && list.every((q) => gaTab(q.camera) === "done"),
       live: { want: ga.want, on: ga.liveOn, none: ga.none, starting: !!ga.starting },
@@ -3409,7 +3440,7 @@
     else if (a.type === "prev") gaStep(-1);
     else if (a.type === "nextchange") { const next = gaCandidate(); if (next) gaGo(next); }
     else if (a.type === "go") { if (a.camera !== ga.cam && alPhotoOf(a.camera)) gaGo(a.camera); }
-    else if (a.type === "fire") { if (!al.firing) { alFire(); gaPush(); } }  // Fire again pela janela (sem imagem ao vivo)
+    else if (a.type === "fire") alFireOne(ga.cam);  // Fire again pela janela: só a câmera que está na tela
     else if (a.type === "live") { ga.want = !ga.want; ga.lost = false; ga.okSince = 0; gaLiveSet(); gaPush(); }
   };
   // A janela foi fechada (ou aberta) do lado de lá
@@ -8269,6 +8300,7 @@
       if (e.debugFolder) log("Debug data saved", "tech", e.debugFolder);
       log("Match automatically: " + (blocks.length ? plural(blocks.length, "camera", "cameras") + " changed" : "no change"), e.ok ? "ok" : "warn");
     },
+    orderPhotoOne(e) { alGotOne(e); },
     orderPhotos(e) {
       csCardHide();
       if (csTest.capturing && csTest.cancelling) return;  // cancelado: as fotos não são mostradas

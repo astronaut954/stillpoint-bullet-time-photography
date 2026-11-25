@@ -2207,6 +2207,22 @@ def scenario_guided_aim(t, name, photos):
         cur = A("() => document.getElementById('gaName').textContent")
         time.sleep(2.0)
         check(t, "guided aim: with Live aim off the camera does not change by itself", A("() => document.getElementById('gaName').textContent") == cur)
+        # Fire again na janela: uma foto nova só da câmera da tela; as fotos das outras ficam as mesmas
+        fire_cam = cur.split(" · ")[1]
+        od = os.path.join(t.data, "Order photos")
+        files = lambda: {d: sorted((f, os.path.getmtime(os.path.join(od, d, f))) for f in os.listdir(os.path.join(od, d)) if "_IMG_" in f) for d in os.listdir(od) if not d.startswith(".")}
+        f0 = files()
+        aim.click("#gaFire")
+        took = t.wait(lambda: A("() => document.getElementById('gaFire').textContent") != "Fire again", 5)
+        back = t.wait(lambda: A("() => document.getElementById('gaFire').textContent") == "Fire again" and t.js("() => !document.getElementById('csAlignWait')") and A("() => document.querySelectorAll('#gaInst .inst').length") >= 1, 40)
+        time.sleep(0.5)
+        f1 = files()
+        same_others = len(f0) == 1 and list(f0) == list(f1) and all(x in list(f1.values())[0] for x in list(f0.values())[0] if ("_" + fire_cam + "_IMG_") not in x[0])
+        new_one = [x for x in list(f1.values())[0] if ("_" + fire_cam + "_IMG_") in x[0]]; old_one = [x for x in list(f0.values())[0] if ("_" + fire_cam + "_IMG_") in x[0]]
+        check(t, "guided aim: 'Fire again' in the window takes a new photo with this camera only (the other photos stay as they were)",
+              back and same_others and len(new_one) == 1 and new_one != old_one and len(list(f1.values())[0]) == len(list(f0.values())[0]), (took, back, f0, f1))
+        check(t, "guided aim: after it, the instruments of this camera are back and the camera on screen is the same",
+              A("() => document.querySelectorAll('#gaInst .inst').length") == 4 and A("() => document.getElementById('gaName').textContent") == cur, A("() => document.getElementById('gaInst').textContent"))
         # Next camera / Previous camera passam por todas, na ordem, dando a volta; a aba leva direto
         name_of = lambda cam: "Camera %s · %s" % (num(cam), cam)
         cur_cam = [n for n in names if name_of(n) == cur][0]

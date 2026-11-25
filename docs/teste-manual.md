@@ -2403,7 +2403,7 @@ Em **Export sessions** › sessão com mais de uma foto › **Align photos**.
 - [ ] Com **● Live aim on**, mexendo a câmera: o quadrado anda no alvo, a linha do nível inclina, e os blocos
       viram verdes quando o ajuste fica bom.
 - [ ] Clicar em **● Live aim on** (vira **Live aim off**): aparece **Fire again** ao lado. Clicar nele tira uma foto
-      com todas as câmeras ("Taking photos…") e os blocos se atualizam.
+      só com a câmera que está na tela ("Taking the photo…"); as outras não disparam, e os blocos se atualizam.
 - [ ] Com marcas a distâncias desiguais, o bloco Height diz "Not estimated".
 - [ ] Tela cheia (**Full screen**): os blocos ficam maiores. Janela estreita: descem para baixo da imagem.
 - [ ] Windows: os itens acima.

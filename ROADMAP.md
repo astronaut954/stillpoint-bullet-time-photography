@@ -1593,6 +1593,11 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      again", que tira uma foto nova com TODAS as câmeras (não existe disparo de uma câmera só no Align cameras)
      e atualiza os instrumentos. Height: passou a aparecer sempre (igual, mais alta/baixa, ou "Not estimated"
      quando as marcas não têm distâncias iguais); antes só aparecia quando havia diferença.
+     Correção pedida pelo dono (2026-11-24): o "Fire again" da janela Guided aim dispara SÓ a câmera que está na
+     tela. Feito com um disparo com plano de uma câmera (takeOrderPhotoOf): a foto nova entra na sessão do Test
+     shot no lugar da antiga daquela câmera, as fotos e as marcas das outras ficam como estão, e as marcas são
+     procuradas de novo só nela. O "Fire again" da janela principal continua disparando todas. Não testado com
+     câmeras de verdade (só simuladas).
      **Decisões do dono no meio dos testes (2026-11-24), a fazer DEPOIS dos roteiros:** (i) arrastar os pontos
      que o programa achou, de um jeito que não entre em conflito com a busca automática e que deixe refazer a
      busca; (ii) o botão Align cameras não deve depender do Test shot: protótipos com as posições no Camera

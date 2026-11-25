@@ -4784,6 +4784,71 @@ namespace
             return "null";
         });
 
+        // takeOrderPhotoOf(espera, câmera, sessão): uma foto só da câmera pedida (Fire again da janela Guided aim,
+        // pedido do dono em 2026-11-24). As fotos das outras câmeras ficam: a foto nova entra na sessão do Test
+        // shot no lugar da antiga daquela câmera. Avisa com "orderPhotoOne".
+        window.bind("takeOrderPhotoOf", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            if (args.size() < 3 || args[1].empty() || args[2].empty())
+                return "null";
+            SequenceSettings settings;
+            settings.countdownSeconds = 0;
+            settings.sessionCount = 1;
+            settings.downloadWaitSeconds = std::max(1, std::atoi(args[0].c_str()));
+            settings.playSounds = false;
+            const std::string camera = args[1], target = args[2];
+            settings.schedule.push_back({ camera, 0 });
+            run("orderPhotoOne", [&, settings, camera, target]
+            {
+                bool ok = false;
+                if (!cameraConnecting())
+                {
+                    std::set<std::string> before;
+                    for (const auto& session : orderStore.ListSessions())
+                        before.insert(session.name);
+                    EnsureSingleShot(controller, singleShotWarned);
+                    const std::string previous = controller.GetOutputFolder();
+                    controller.SetOutputFolder(orderStore.Root().string());
+                    if (fakeCount)
+                        fakeRun(settings);
+                    else
+                        controller.RunSequence(settings);
+                    controller.SetOutputFolder(previous);
+                    std::error_code ec;
+                    const std::filesystem::path targetDir = orderStore.SessionDir(target);
+                    for (const auto& session : orderStore.ListSessions())
+                    {
+                        if (before.count(session.name) || session.name == target)
+                            continue;
+                        const std::filesystem::path fresh = orderStore.SessionDir(session.name);
+                        std::vector<std::string> arrived;
+                        for (const auto& photo : session.photos)
+                            if (photo.camera == camera)
+                                arrived.push_back(photo.file);
+                        if (!arrived.empty() && std::filesystem::is_directory(targetDir, ec))
+                        {
+                            // sai a foto antiga desta câmera, entra a nova
+                            for (const auto& old : orderStore.ListSessions())
+                                if (old.name == target)
+                                    for (const auto& photo : old.photos)
+                                        if (photo.camera == camera)
+                                            std::filesystem::remove(targetDir / std::filesystem::u8path(photo.file), ec);
+                            for (const auto& file : arrived)
+                            {
+                                std::filesystem::rename(fresh / std::filesystem::u8path(file), targetDir / std::filesystem::u8path(file), ec);
+                                if (!ec)
+                                    ok = true;
+                            }
+                        }
+                        std::filesystem::remove_all(fresh, ec);
+                    }
+                }
+                listener.Emit(Json("orderPhotoOne").Add("camera", camera).Add("session", target).Add("ok", ok).Raw("sessions", SessionsJson(orderStore)));
+            });
+            return "null";
+        });
+
         // cancelTest(): para o Test shot (com ou sem ajuste) entre uma foto e outra ou
         // esperando as fotos; com ajuste, as câmeras voltam como estavam.
         std::atomic<bool> testCancel{ false };
