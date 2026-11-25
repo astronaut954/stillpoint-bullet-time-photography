@@ -2420,6 +2420,19 @@ body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform:
 /* Ajuste fino: o ponto sob o mouse pode ser arrastado */
 .al-frame.on-dot, .al-frame.dot-drag { cursor: move; }
 .al-shield.dot { cursor: move; }
+/* Your marks (passo 1 do Align cameras, forma M1): dois cartões, um escolhido */
+.al-marks-title { margin-top: 18px; }
+.al-marks { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.al-mark { display: grid; grid-template-columns: 40px 1fr; gap: 12px; align-items: center; padding: 12px; text-align: left; background: transparent; border: 1px solid var(--noct-border-strong); border-radius: 0; color: inherit; cursor: pointer; font: inherit; }
+.al-mark svg { width: 40px; height: 70px; display: block; }
+.al-mark.on { border-color: var(--noct-primary); background: rgba(57, 255, 106, .08); }
+.al-mark:hover { border-color: var(--noct-primary); }
+.al-mark-t { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.al-mark-t b { display: flex; align-items: center; gap: 8px; font: 600 14px var(--noct-font-sans); color: var(--noct-primary); }
+.al-mark-t b i { width: 12px; height: 12px; box-sizing: border-box; border: 1px solid var(--noct-primary); flex: none; }
+.al-mark.on .al-mark-t b i { background: var(--noct-primary); }
+.al-mark-t > span { font: 400 12px/1.45 var(--noct-font-sans); color: var(--noct-text-muted); }
+.al-marks-note { margin-top: 8px; }
 /* Instrumentos dos ajustes da câmera (Guided aim e passo 2 do Align cameras): desenho + nome + instrução.
    Âmbar = falta ajustar; verde = bom; apagado = só informação. */
 .inst { display: grid; grid-template-columns: 44px 1fr; gap: 8px; align-items: center; padding: 6px; border: 1px solid var(--noct-border-strong); background: rgba(0, 20, 6, .5); min-width: 0; box-sizing: border-box; }

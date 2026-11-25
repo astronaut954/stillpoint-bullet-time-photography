@@ -32,8 +32,8 @@ namespace BandsPdf
         c += "0 g\n" + Text(15, 20, 6, true, "Stillpoint \267 alignment bands");
         c += "0.2 g\n";
         c += Text(15, 29, 3.6, false, "1. Print at 100% (no \"fit to page\").  2. Cut the three orange bands.");
-        c += Text(15, 35, 3.6, false, "3. Wrap each one around the pole and tape it.  4. Use the ruler below so the");
-        c += Text(15, 41, 3.6, false, "    space between the bands is the same (one ruler from center to center).");
+        c += Text(15, 35, 3.6, false, "3. Wrap each one around the pole and tape it.  4. Leave exactly one ruler of empty pole");
+        c += Text(15, 41, 3.6, false, "    between a band and the next one, edge to edge (see the drawing at the bottom).");
         // As três faixas: laranja forte (o app acha as marcas pela cor), com a linha de corte tracejada
         for (double y : { 52.0, 100.0, 148.0 })
         {
@@ -45,7 +45,23 @@ namespace BandsPdf
         c += Line(15, 212, 195, 212);
         for (int i = 0; i <= 18; ++i)
             c += Line(15 + i * 10, 212, 15 + i * 10, i % 5 ? 218 : 221);
-        c += "0 g\n" + Text(48, 208, 3.6, false, "Spacing ruler \267 18 cm \267 cut it and use it between the centers of the bands");
+        c += "0 g\n" + Text(40, 208, 3.6, false, "Spacing ruler \267 18 cm \267 cut it out: it is the empty space between two bands");
+        // O desenho: a haste com as três faixas e a régua nos dois espaços, de borda a borda (a instrução antiga falava
+        // em "centro da faixa", que não tem marca nenhuma: retorno do dono, 2026-11-25)
+        c += "0.45 G 1.4 w\n" + Line(27, 232, 27, 280);
+        for (double y : { 234.0, 252.0, 270.0 })
+            c += "1 0.416 0 rg\n" + Rect(23, y, 8, 7) + "f\n";
+        c += "0 G 0.5 w\n";
+        for (double y : { 241.0, 259.0 })
+        {
+            c += Rect(34, y, 3.5, 11) + "S\n";
+            for (int i = 1; i < 4; ++i)
+                c += Line(34, y + i * 2.75, 36, y + i * 2.75);
+            c += Line(31.5, y, 39, y) + Line(31.5, y + 11, 39, y + 11);
+        }
+        c += "0.2 g\n" + Text(45, 244, 3.4, false, "The ruler fits exactly in the empty space between two bands:");
+        c += Text(45, 250, 3.4, false, "one end at the edge of a band, the other end at the edge of the next.");
+        c += Text(45, 260, 3.4, false, "Do it for both spaces, so the three bands are at the same distance.");
         c += "0.45 g\n" + Text(15, 285, 3, false, "Stillpoint \267 Camera settings \233 Test shot \233 Align cameras");
 
         std::vector<std::string> objs = {

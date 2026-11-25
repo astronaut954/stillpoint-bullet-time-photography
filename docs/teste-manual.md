@@ -2408,6 +2408,21 @@ Em **Export sessions** › sessão com mais de uma foto › **Align photos**.
 - [ ] Tela cheia (**Full screen**): os blocos ficam maiores. Janela estreita: descem para baixo da imagem.
 - [ ] Windows: os itens acima.
 
+## 61. Your marks e a folha das faixas (2026-11-25)
+
+- [ ] **Align cameras**, passo 1, à direita, embaixo de "How": "Your marks", com os cartões **Equal distances**
+      (escolhido) e **Not equal**, e "Kept with the project."
+- [ ] Com o suporte de marcas desiguais e **Equal distances**: no passo 2 aparece a faixa âmbar "These marks do not
+      look evenly spaced…" mandando voltar ao passo 1.
+- [ ] **← Back**, escolher **Not equal**, **Fire**: a faixa passa a ser "Marks not at equal distances (your choice in
+      step 1)…", o bloco Height diz "Not estimated", e arrastar pontos não muda mais a conta usada.
+- [ ] Salvar com **Not equal**, fazer um bullet time e conferir no **Export sessions** › **Align photos** que o suporte
+      sai do mesmo tamanho nas fotos (nos detalhes técnicos do Activity, "aligned pole" igual em todas).
+- [ ] Fechar e abrir o programa: a escolha continua a mesma naquele projeto.
+- [ ] **Save bands (PDF)**: o PDF abre sozinho depois de salvo; a instrução fala no espaço vazio entre uma faixa e a
+      seguinte, de borda a borda, com um desenho no pé da folha.
+- [ ] Windows: os itens acima.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |

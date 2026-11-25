@@ -849,7 +849,7 @@ namespace AlignMarks
         return true;
     }
 
-    void Solve(const std::vector<Camera>& cams, std::vector<Recipe>& recipes, std::vector<Aim>& aims)
+    void Solve(const std::vector<Camera>& cams, std::vector<Recipe>& recipes, std::vector<Aim>& aims, int spacing)
     {
         recipes.assign(cams.size(), {});
         aims.assign(cams.size(), {});
@@ -859,7 +859,10 @@ namespace AlignMarks
         // diferente de uma para outra). A perspectiva sozinha tira a marca do meio do centro só uns poucos por cento;
         // se em alguma câmera ela está a mais de 6% do meio, as marcas não são igualmente espaçadas: aí o tamanho de
         // todas vem do comprimento com que cada câmera vê a haste, e a altura não é estimada.
-        const bool even = EvenlySpaced(cams);
+        // O limite de 6% não separa um suporte desigual de um efeito de perspectiva (teste do dono, 2026-11-25: com a
+        // marca do meio a 46% o programa usou a conta completa e os tamanhos saíram até 18% diferentes). Por isso a
+        // pessoa passa a dizer como são as marcas (spacing); o limite só vale quando ela não disse.
+        const bool even = spacing < 0 ? EvenlySpaced(cams) : spacing > 0;
         for (size_t i = 0; i < cams.size(); ++i)
         {
             const Camera& c = cams[i];

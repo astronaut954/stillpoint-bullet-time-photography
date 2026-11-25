@@ -44,6 +44,7 @@ namespace Rig
     {
         std::string panel;                 // JSON da página: Countdown, Sessions, Download wait e Timing
         std::string alignment;             // JSON do alinhamento das câmeras (etapa 21; Test shot › Align cameras)
+        std::string alignMarks;            // "even" ou "uneven": o que a pessoa disse das marcas do suporte ("" = não disse)
         std::vector<std::string> order;    // números de série, na ordem do Project (inclui as que não estão ligadas)
         std::map<std::string, Camera> cameras;
     };

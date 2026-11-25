@@ -75,6 +75,7 @@ namespace Rig
         if (!ok || !root.isObject() || root.get("stillpoint").asString() != "rig") return state;
         if (root.has("panel")) state.panel = JsonLite::Stringify(root.get("panel"), 0);
         if (root.get("alignment").isObject()) state.alignment = JsonLite::Stringify(root.get("alignment"), 0);
+        if (root.get("alignMarks").asString() == "even" || root.get("alignMarks").asString() == "uneven") state.alignMarks = root.get("alignMarks").asString();
         for (const auto& item : root.get("order").items())
             if (!item.asString().empty() && !Has(state.order, item.asString())) state.order.push_back(item.asString());
         for (const auto& item : root.get("cameras").items())
@@ -115,6 +116,7 @@ namespace Rig
             const JsonLite::Value alignment = JsonLite::Parse(state.alignment, &ok);
             if (ok) root.set("alignment", alignment);
         }
+        if (!state.alignMarks.empty()) root.set("alignMarks", state.alignMarks);
         JsonLite::Value order = JsonLite::Value::NewArray();
         for (const auto& serial : state.order) order.push(JsonLite::Value(serial));
         root.set("order", order);

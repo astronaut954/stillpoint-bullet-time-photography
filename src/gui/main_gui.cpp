@@ -5482,7 +5482,9 @@ namespace
             }
             std::vector<AlignMarks::Recipe> recipes;
             std::vector<AlignMarks::Aim> aims;
-            AlignMarks::Solve(cams, recipes, aims);
+            // "spacing": "even" ou "uneven", o que a pessoa escolheu no passo 1 (Your marks); sem isso, o limite de 6%
+            const std::string spacing = in.get("spacing").asString();
+            AlignMarks::Solve(cams, recipes, aims, spacing == "even" ? 1 : spacing == "uneven" ? 0 : -1);
             std::string out = "[";
             for (size_t i = 0; i < cams.size(); ++i)
             {
@@ -5548,7 +5550,7 @@ namespace
             if (ok)
             {
                 Log("Bands saved to " + file.string());
-                Platform::RevealInFileManager(file);
+                Platform::OpenWithDefaultApp(file);  // salva e já abre o PDF (pedido do dono, 2026-11-25; antes só mostrava a pasta)
             }
             return Json("alignBands").Add("ok", ok).Add("file", file.string()).Str();
         });
@@ -5893,6 +5895,19 @@ namespace
                 aligner.Post([&, turn, name, file, st] { aimRealJob(turn, name, file, st); });
             });
             return Json("aimLive").Add("ok", true).Add("starting", true).Str();
+        });
+        // alignMarks("" | "even" | "uneven"): lê (sem argumento) ou guarda com o projeto o que a pessoa disse das
+        // marcas do suporte (Your marks, passo 1 do Align cameras). Devolve o valor que está valendo ("" = não disse).
+        window.bind("alignMarks", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            std::lock_guard<std::mutex> lock(rigMutex);
+            if (!args.empty() && (args[0] == "even" || args[0] == "uneven") && rigState.alignMarks != args[0])
+            {
+                rigState.alignMarks = args[0];
+                rigSave();
+            }
+            return JsonString(rigState.alignMarks);
         });
         // alignInfo(): o alinhamento guardado (null se não houver), com o que mudou desde então ("changes", "added")
         window.bind("alignInfo", [&](const std::string&) -> std::string

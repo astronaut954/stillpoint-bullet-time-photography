@@ -2844,9 +2844,23 @@
     // foto nesta janela e sumiram num "Fire again". As do alinhamento guardado que não estão ligadas NÃO entram: no
     // teste do dono apareciam câmeras de um alinhamento antigo, de outro rig, que ele nem tinha ligado
     al.gone = [];
+    // Your marks (decisão do dono, 2026-11-25): a pessoa diz se as marcas estão a distâncias iguais; fica guardado com o
+    // projeto. Sem resposta guardada vale "even" (é o que as instruções pedem).
+    if (!al.marks) al.marks = "even";
+    Promise.resolve(typeof window.alignMarks === "function" ? window.alignMarks("") : "").then((v) => { if (v === "even" || v === "uneven") { al.marks = v; if (al.open && al.step === 1) alRender(); } }).catch(() => {});
     alShow(true);
     alRender();
   }
+  function alSetMarks(v) {
+    if (al.marks === v) return;
+    al.marks = v;
+    if (typeof window.alignMarks === "function") window.alignMarks(v);
+    alRender();
+  }
+  const AL_MARKS = [["even", "Equal distances", "The complete alignment: aim, level, size and the height of each camera."],
+    ["uneven", "Not equal", "The photos are matched by the length of the pole. The height is not estimated."]];
+  const alMarksPole = (even) => '<svg viewBox="0 0 40 70" aria-hidden="true"><path d="M20 4v62" stroke="#cfd8cf" stroke-width="3"/><path d="M10 66h20" stroke="#cfd8cf" stroke-width="2"/>' +
+    [12, even ? 34 : 27, 56].map((y) => '<rect x="14" y="' + (y - 3) + '" width="12" height="6" fill="#ff7a00"/>').join("") + "</svg>";
   function alClose() {
     if (!al.open) return;
     if (al.firing && csTest.capturing && !csTest.cancelling) csTakeTest();  // cancela as fotos em andamento
@@ -2894,8 +2908,12 @@
         main.innerHTML = '<div class="al-cols"><div><div class="al-title">Use any of these</div><div class="al-objs al-objs-3">' +
           AL_OBJ.map(([t, s, g]) => '<div class="al-obj"><svg viewBox="0 0 120 200" aria-hidden="true">' + g + "</svg><b>" + t + "</b><span>" + s + "</span></div>").join("") +
           '</div><div class="al-bands"><span>No tape or balls? Print three orange bands and a spacing ruler, and wrap them around any of these.</span><button type="button" class="btn btn-secondary btn-small" id="csAlignBands">Save bands (PDF)</button></div>' +
-          '</div><div><div class="al-title">How</div><ol class="al-steps"><li>Put three marks on it, <b>at the same distance</b> from each other (about 30 cm), in a color that stands out.</li><li>Stand it <b>upright where the subject will be</b>.</li><li>Fire. Then click the three marks in one photo: the app finds them in the others and tells you what to change on each camera.</li></ol><div class="al-warn">Pale marks and uneven spaces make the alignment wrong.</div></div></div>';
+          '</div><div><div class="al-title">How</div><ol class="al-steps"><li>Put three marks on it, <b>at the same distance</b> from each other (about 30 cm), in a color that stands out.</li><li>Stand it <b>upright where the subject will be</b>.</li><li>Fire. Then click the three marks in one photo: the app finds them in the others and tells you what to change on each camera.</li></ol><div class="al-title al-marks-title">Your marks</div><div class="al-marks" role="radiogroup" aria-label="Your marks">' +
+          AL_MARKS.map(([v, t, x]) => '<button type="button" class="al-mark' + (al.marks === v ? " on" : "") + '" data-marks="' + v + '" role="radio" aria-checked="' + (al.marks === v) + '">' + alMarksPole(v === "even") +
+            '<span class="al-mark-t"><b><i></i>' + t + "</b><span>" + x + "</span></span></button>").join("") +
+          '</div><p class="al-hint dim al-marks-note">Kept with the project. Pale marks still make the alignment wrong.</p></div></div>';
       }
+      main.querySelectorAll(".al-mark").forEach((b) => b.addEventListener("click", () => alSetMarks(b.dataset.marks)));
       const bands = $("csAlignBands");
       if (bands) bands.addEventListener("click", () => {
         bands.disabled = true;
@@ -3183,7 +3201,7 @@
     const full = !quiet || !!al.solveOwed;
     al.solveOwed = full;
     if (!fromPhotos.length && !fromLive.length) { al.solveOwed = false; return; }
-    const call = (cams) => { try { return Promise.resolve(window.alignSolve(JSON.stringify({ cameras: cams }))); } catch (e) { return Promise.resolve(null); } };
+    const call = (cams) => { try { return Promise.resolve(window.alignSolve(JSON.stringify({ cameras: cams, spacing: al.marks === "uneven" ? "uneven" : "even" }))); } catch (e) { return Promise.resolve(null); } };
     Promise.all([full && fromPhotos.length ? call(fromPhotos) : null, anyMoved ? call(fromLive) : null]).then(([a, b]) => {
       if (run !== al.solveRun) return;
       al.solveOwed = false;
@@ -3195,7 +3213,9 @@
   }
   // As três marcas não estão a distâncias iguais (a mesma regra de AlignMarks::EvenlySpaced: em alguma câmera a do
   // meio está a mais de 6% do meio)? Devolve onde ela está, em % do caminho, na câmera em que mais foge; senão null.
-  function alUneven() {
+  // As marcas são desiguais? É o que a pessoa disse no passo 1 (Your marks); o programa não decide mais sozinho.
+  function alUneven() { return al.marks === "uneven"; }
+  function alMiddlePct() {
     let worst = null;
     al.photos.forEach((p) => {
       const d = al.data[p.camera];
@@ -3210,13 +3230,17 @@
   }
   // O aviso de marcas desiguais (faixa âmbar, forma A, decisão do dono em 2026-11-24): não impede nada
   function alUnevenNote(full) {
-    const pct = alUneven();
-    if (pct === null) return null;
+    const pct = alMiddlePct();
+    if (!alUneven() && pct === null) return null;
     const w = document.createElement("div");
     w.className = "al-warn al-uneven";
     w.id = "csAlignUneven";
-    w.innerHTML = "<b>Marks not evenly spaced.</b> The middle one is at " + pct + "% of the way, not in the middle. The photos are matched by the length of the pole each camera sees, and the height of each camera is not estimated." +
-      (full ? " For the complete alignment, use three marks at equal distances." : "");
+    // Disse "Not equal": a faixa lembra o que isso muda. Disse "Equal distances" mas as fotos mostram a marca do meio
+    // longe do meio: avisa que a resposta não combina com as fotos, sem trocar a conta (o programa não adivinha mais).
+    w.innerHTML = alUneven()
+      ? "<b>Marks not at equal distances</b> (your choice in step 1). The photos are matched by the length of the pole each camera sees, and the height of each camera is not estimated." + (full ? " For the complete alignment, use three marks at equal distances." : "")
+      : "<b>These marks do not look evenly spaced.</b> The middle one is at " + pct + "% of the way, and you chose Equal distances in step 1. If they are not at the same distance, go back to step 1 and choose Not equal: otherwise the photos come out in different sizes.";
+    if (!alUneven()) w.dataset.mismatch = "1";
     return w;
   }
   // As instruções de uma câmera: [classe, texto]; fix = falta mexer, ok = bom, info = só informa
@@ -3252,7 +3276,7 @@
     out.push(Math.abs(n.roll) >= 1 ? { k: "level", cls: "fix", text: Math.abs(n.roll).toFixed(1) + "° to the " + (n.roll > 0 ? "left" : "right"), v: { roll: n.roll } } : { k: "level", cls: "ok", text: "Level", v: { roll: n.roll } });
     out.push(Math.abs(n.sizePct) >= 2 ? { k: "size", cls: "fix", text: Math.abs(n.sizePct).toFixed(0) + "% " + (n.sizePct > 0 ? "bigger" : "smaller"), sub: n.sizePct > 0 ? "step back or zoom out" : "step closer or zoom in", v: { sizePct: n.sizePct } }
       : { k: "size", cls: "ok", text: "Same as the others", v: { sizePct: n.sizePct } });
-    out.push(alUneven() ? { k: "height", cls: "info", text: "Not estimated", sub: "marks not evenly spaced", v: { unknown: true } }
+    out.push(alUneven() ? { k: "height", cls: "info", text: "Not estimated", sub: "marks not at equal distances", v: { unknown: true } }
       : Math.abs(n.height) >= 0.33 ? { k: "height", cls: "info", text: (n.height > 0 ? "Higher" : "Lower") + " than the others", sub: "the app corrects the photo", v: { height: n.height } }
       : { k: "height", cls: "ok", text: "Same as the others", v: { height: n.height } });
     return out;

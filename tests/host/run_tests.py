@@ -1826,7 +1826,7 @@ def scenario_align_cameras(t, name, photos):
         ok = bool(save_dir) and t.wait(lambda: os.path.exists(pdf), 5)
         head = open(pdf, "rb").read() if ok else b""
         check(t, "align: 'Save bands (PDF)' saves 'Stillpoint bands.pdf' (a PDF with the three orange bands)",
-              ok and head.startswith(b"%PDF-1.4") and head.count(b"1 0.416 0 rg") == 3 and head.rstrip().endswith(b"%%EOF"), (save_dir, len(head)))
+              ok and head.startswith(b"%PDF-1.4") and head.count(b"1 0.416 0 rg") == 6 and b"edge to edge" in head and b"centers of the bands" not in head and head.rstrip().endswith(b"%%EOF"), (save_dir, len(head)))
         check(t, "align: Prepare offers 'Use the Test shot photos' next to Fire",
               t.js("() => [...document.querySelectorAll('#csAlignFoot button')].map(b => b.textContent).join('|')") == "Cancel|Use the Test shot photos|Fire")
         before = sorted(os.listdir(os.path.join(t.data, "Order photos")))
@@ -2574,6 +2574,11 @@ def scenario_align_uneven(t, name, photos):
         t.wait(lambda: t.js("() => document.getElementById('csTestBox').classList.contains('has-photos')"), 30)
         align_open(t)
         time.sleep(0.3)
+        # Your marks (passo 1): dois cartões, "Equal distances" escolhido; a pessoa diz que as marcas não são iguais
+        m0 = t.js("() => [...document.querySelectorAll('#csAlignMain .al-mark')].map((b) => b.dataset.marks + (b.classList.contains('on') ? '*' : '') + ':' + b.querySelector('b').textContent)")
+        check(t, "align, your marks: step 1 asks about the marks, with 'Equal distances' chosen", m0 == ["even*:Equal distances", "uneven:Not equal"] and "Kept with the project" in t.js("() => document.getElementById('csAlignMain').textContent"), m0)
+        # Primeiro com "Equal distances" e marcas que não estão a distâncias iguais: o programa avisa, sem trocar a conta
+        stage = "equal"
         t.button("Use the Test shot photos")
         t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item').length === 4"), 20)
         t.wait(lambda: t.js("() => { const p = document.querySelector('#csAlignMain .ma-row .al-zoom'); return !!p && p.style.backgroundImage.length > 10; }"), 15)
@@ -2591,10 +2596,27 @@ def scenario_align_uneven(t, name, photos):
             time.sleep(0.25)
         ok = t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item.ready, #csAlignMain .ma-item.needs').length === 4 && !/Finding/.test(document.querySelector('#csAlignMain').textContent)"), 60)
         time.sleep(0.5)
+        mm = t.js("() => { const w = document.getElementById('csAlignUneven'); return { text: w ? w.textContent : '', mis: w ? w.dataset.mismatch || '' : '', inst: [...document.querySelectorAll('#csAlignInst .inst')].map((i) => i.dataset.k + ':' + i.querySelector('.inst-v').textContent) }; }")
+        check(t, "align, your marks: with 'Equal distances' chosen and marks that are not, an amber note says so (and the height is still estimated: the app does not switch by itself)",
+              ok and mm["mis"] == "1" and "do not look evenly spaced" in mm["text"] and "choose Not equal" in mm["text"] and not any("Not estimated" in x for x in mm["inst"]), mm)
+        # Volta ao passo 1 e escolhe "Not equal": as mesmas fotos, a outra conta
+        t.js("() => [...document.querySelectorAll('#csAlignFoot button')].find((b) => /Back$/.test(b.textContent.trim())).click()"); time.sleep(0.5)
+        t.js("() => document.querySelector('#csAlignMain .al-mark[data-marks=uneven]').click()"); time.sleep(0.4)
+        check(t, "align, your marks: clicking 'Not equal' chooses it, and it is kept with the project", t.js("() => document.querySelector('#csAlignMain .al-mark.on').dataset.marks") == "uneven" and t.js("() => window.alignMarks('')") == "uneven")
+        t.button("Use the Test shot photos")
+        t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item').length === 4"), 20)
+        t.wait(lambda: t.js("() => { const p = document.querySelector('#csAlignMain .ma-row .al-zoom'); return !!p && p.style.backgroundImage.length > 10; }"), 15)
+        t.js("() => document.querySelectorAll('.toast').forEach((e) => e.remove())")
+        box = t.page.locator("#csAlignMain .ma-row > .al-photo").bounding_box()
+        for q in (c[0], c[1], low):
+            t.page.mouse.click(box["x"] + q[0] * box["width"], box["y"] + q[1] * box["height"])
+            time.sleep(0.25)
+        ok = t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item.ready, #csAlignMain .ma-item.needs').length === 4 && !/Finding/.test(document.querySelector('#csAlignMain').textContent)"), 60)
+        time.sleep(0.5)
         d = t.js("() => { const w = document.getElementById('csAlignUneven'); return { text: w ? w.textContent : '', first: w ? w === document.getElementById('csAlignMain').firstElementChild : false, found: document.querySelectorAll('#csAlignMain .ma-item .cs-tag').length }; }")
-        pct = int((re.search(r"at (\d+)% of the way", d["text"]) or [0, 0])[1])
-        check(t, "align, uneven marks: an amber note on top of step 2 says where the middle mark is and what the app does about it",
-              ok and d["first"] and "Marks not evenly spaced." in d["text"] and 28 <= pct <= 44 and "matched by the length of the pole" in d["text"] and "height of each camera is not estimated" in d["text"] and "use three marks at equal distances" in d["text"], d)
+        check(t, "align, uneven marks: an amber note on top of step 2 says what the app does about it",
+              ok and d["first"] and "Marks not at equal distances" in d["text"] and "matched by the length of the pole" in d["text"] and "height of each camera is not estimated" in d["text"] and "use three marks at equal distances" in d["text"], d)
+        check(t, "align, uneven marks: the Height instrument says 'Not estimated'", "Not estimated" in t.js("() => document.getElementById('csAlignInst').textContent"))
         lines = t.js("() => document.querySelector('#csAlignMain .in-list') ? document.querySelector('#csAlignMain .in-list').textContent : document.querySelector('#csAlignMain').textContent")
         check(t, "align, uneven marks: no instruction about the height of the camera", "igher than" not in lines and "ower than" not in lines, lines[-300:])
         can = t.js("() => { const b = [...document.querySelectorAll('#csAlign button')].find((x) => x.textContent.trim() === 'Review alignment'); return !!b && !b.disabled; }")
@@ -2602,10 +2624,11 @@ def scenario_align_uneven(t, name, photos):
         t.button("Review alignment")
         t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .sv-cell').length") == 4, 5)
         d = t.js("() => { const w = document.getElementById('csAlignUneven'), sv = document.querySelector('#csAlignMain .sv'), foot = [...document.querySelectorAll('#csAlign button')].find((x) => x.textContent.trim() === 'Save alignment'); return { text: w ? w.textContent : '', after: !!w && !!(sv.compareDocumentPosition(w) & 4), save: !!foot && !foot.disabled, fits: w ? w.getBoundingClientRect().bottom <= document.getElementById('csAlignMain').getBoundingClientRect().bottom + 1 : false }; }")
-        check(t, "align, uneven marks: the same note before saving, under the photos, and 'Save alignment' still works", "Marks not evenly spaced." in d["text"] and "use three marks" not in d["text"] and d["after"] and d["save"] and d["fits"], d)
+        check(t, "align, uneven marks: the same note before saving, under the photos, and 'Save alignment' still works", "Marks not at equal distances" in d["text"] and "use three marks" not in d["text"] and d["after"] and d["save"] and d["fits"], d)
         check(t, "align uneven: no page error", len(t.errors) == errors_before, t.errors[errors_before:])
     finally:
         t.js("() => { const c = [...document.querySelectorAll('#csAlign button')].find((b) => b.textContent.trim() === 'Cancel'); if (c && !document.getElementById('csAlign').classList.contains('hidden')) c.click(); }")
+        t.js("() => window.alignMarks && window.alignMarks('even')")  # (fica guardado com o projeto: os outros cenários contam com 'even')
         t.env.pop("STILLPOINT_FAKE_FIXED", None)
         t.restart_app()
 

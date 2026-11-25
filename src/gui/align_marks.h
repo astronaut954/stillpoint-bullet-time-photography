@@ -76,5 +76,8 @@ namespace AlignMarks
     // As três marcas estão a distâncias iguais em todas as câmeras (a do meio a menos de 6% do meio)? Se não, Solve
     // tira o tamanho do comprimento aparente da haste e não estima a altura.
     bool EvenlySpaced(const std::vector<Camera>& cams);
-    void Solve(const std::vector<Camera>& cams, std::vector<Recipe>& recipes, std::vector<Aim>& aims);
+    // spacing: o que a pessoa disse das marcas (decisão do dono, 2026-11-25). 1 = a distâncias iguais (a conta completa,
+    // com a perspectiva e a altura); 0 = desiguais (o tamanho vem do comprimento da haste; a altura não é estimada);
+    // -1 = não disse: o programa decide pelo limite de 6% (EvenlySpaced), como antes.
+    void Solve(const std::vector<Camera>& cams, std::vector<Recipe>& recipes, std::vector<Aim>& aims, int spacing = -1);
 }

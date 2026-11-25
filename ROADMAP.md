@@ -1623,6 +1623,17 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      (deixa de adivinhar pelo limite de 6%). Protótipos de onde a pergunta fica (M1 cartões no passo 1, M2
      seletor no rodapé do passo 1, M3 pergunta no passo 2 com o valor medido) em
      https://claude.ai/artifact/VEcsBntJrQNU4c72JAhJ6a, aguardando a escolha.
+     Escolha do dono (2026-11-25): M1. FEITO: no passo 1, "Your marks" com dois cartões (Equal distances, o que vale
+     sem resposta; Not equal), guardado com o projeto (campo alignMarks do arquivo do rig). A conta obedece à
+     resposta (AlignMarks::Solve com spacing); o limite de 6% só vale quando ninguém disse. Com "Equal distances"
+     e fotos que mostram a marca do meio a mais de 6% do meio, uma faixa âmbar avisa que a resposta não combina
+     com as fotos e manda voltar ao passo 1; o programa não troca a conta sozinho. Com "Not equal", a faixa
+     lembra o que muda e o Height diz "Not estimated".
+     Folha das faixas (PDF), retorno do dono: a instrução mandava medir "entre os centros das faixas", que não
+     têm marca de centro. Agora a régua é o espaço vazio entre uma faixa e a seguinte, de borda a borda, com um
+     desenho no pé da folha; e ao salvar o PDF ele abre (antes só mostrava a pasta).
+     Pergunta do dono: alinhar sem as marcas, por um objeto ou pessoa da cena. É a parte 7 (From this scene), já
+     prevista, a fazer antes do rig reutilizável.
      **Decisões do dono no meio dos testes (2026-11-24), a fazer DEPOIS dos roteiros:** (i) arrastar os pontos
      que o programa achou, de um jeito que não entre em conflito com a busca automática e que deixe refazer a
      busca; (ii) o botão Align cameras não deve depender do Test shot: protótipos com as posições no Camera
