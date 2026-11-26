@@ -6260,7 +6260,8 @@
   // Alguma foto com ajuste da pessoa por cima do automático?
   function rigTouched(st) {
     const auto = st.align.auto;
-    return !!auto && Object.keys(auto).some((f) => rigEntryText(st.align.byFile[f]) !== auto[f]);
+    // (espelhada também conta: "Back to automatic" tira o espelhamento; decisão do dono, 2026-11-26)
+    return !!auto && Object.keys(auto).some((f) => rigEntryText(st.align.byFile[f]) !== auto[f] || !!alignFlip(st.align.byFile[f]));
   }
   // Mantém as sessões do Export com o alinhamento do rig em dia: na primeira vez, e quando a proporção muda (o fator
   // comum de tamanho depende do canvas). Chamado ao abrir o Export e a cada desenho da tela.
@@ -6418,7 +6419,7 @@
       boxA.appendChild(sel);
       appSelect(sel);
       if (rig && mode === "rig") {
-        const back = button("Back to automatic", () => { expTrack(); rigApply(session, st, true).then(() => { expTrack(); rerender(); }); }, { kind: "btn-link", title: "Drops your adjustments and goes back to the alignment of the rig" });
+        const back = button("Back to automatic", () => { expTrack(); st.align.byFile = {}; rigApply(session, st, true).then((changed) => { if (!changed) alignSave(session, st); expTrack(); rerender(); }); }, { kind: "btn-link", title: "Drops your adjustments and goes back to the alignment of the rig" });
         back.id = "alignBackAuto";
         back.disabled = !rigTouched(st);
         boxA.appendChild(back);

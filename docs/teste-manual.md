@@ -2635,20 +2635,26 @@ Precisa de uma sessão fotografada com as câmeras alinhadas, com **Rig · …**
 
 Retornos do dono (2026-11-26, 17:37), a conferir:
 
-- [ ] Mudar o tamanho com a ferramenta **Resize photo** (barra de ferramentas à esquerda da foto): só a caixa de
+- [x] Mudar o tamanho com a ferramenta **Resize photo** (barra de ferramentas à esquerda da foto): só a caixa de
       **Size** fica âmbar; **Move X** e **Move Y** não, enquanto o número mostrado for o mesmo do rig.
-- [ ] Janela estreita: a linha de cima não quebra em várias linhas. Sem lugar, o "Keeps N% of the photos" vira
+- [x] Janela estreita: a linha de cima não quebra em várias linhas. Sem lugar, o "Keeps N% of the photos" vira
       "Keeps N%" e, se ainda faltar, "Photo NN of NN · ← → other photos" vira "Photo NN of NN".
-- [ ] O seletor **Alignment** com "· edited" não tem espaço vazio depois do texto.
-- [ ] Mouse em cima do **Keeps N%**: o cursor vira "?" e a caixa padrão explica o número (o mesmo no passo **3 Save**
+- [x] O seletor **Alignment** com "· edited" não tem espaço vazio depois do texto.
+- [x] Mouse em cima do **Keeps N%**: o cursor vira "?" e a caixa padrão explica o número (o mesmo no passo **3 Save**
       do **Align cameras**).
-- [ ] **Fit to canvas** numa foto girada e fora do centro: o primeiro clique centra e encaixa mantendo o giro; o
+- [x] **Fit to canvas** numa foto girada e fora do centro: o primeiro clique centra e encaixa mantendo o giro; o
       segundo tira o giro e encaixa a foto reta. Numa foto girada que já está centrada e encaixada, o primeiro clique
       já tira o giro.
-- [ ] Foto espelhada (**Flip**): a miniatura ganha o quadrado e "Edited", o seletor diz "· edited" e o **This photo**
+- [x] Foto espelhada (**Flip**): a miniatura ganha o quadrado e "Edited", o seletor diz "· edited" e o **This photo**
       mostra a etiqueta "Edited".
-- [ ] Depois de usar o **Align cameras** e abrir o **Export sessions** sem fechar o programa, o "Keeps N%" aparece no
+- [x] Depois de usar o **Align cameras** e abrir o **Export sessions** sem fechar o programa, o "Keeps N%" aparece no
       Align photos (antes ficava vazio).
+
+Decisão do dono (2026-11-26, 17:54), a conferir:
+
+- [ ] Com uma foto só espelhada (**Flip**), o **Back to automatic** (no alto, à direita) fica aceso; clicar tira o
+      espelhamento e as marcas somem. **⌘Z** traz o espelhamento de volta.
+- [ ] Com fotos mexidas e espelhadas, **Back to automatic** volta tudo ao rig, sem espelhamento.
 
 ## Resultado
 

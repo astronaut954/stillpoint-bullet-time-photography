@@ -1967,6 +1967,11 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
         A DECIDIR: o "Back to automatic" não tira o espelhamento; com uma foto só espelhada o seletor diz "· edited"
         e o botão fica apagado. Testes automáticos: Align cameras 102 de 102, Flip 64 de 64; sem verificações novas
         para estes retornos; rodada completa não refeita.
+        Teste do dono (2026-11-26, 17:54): retornos aprovados ("tudo certo com os testes"; o texto do Keeps e o
+        entendimento do Fit to canvas ficam como estão). **DECISÃO DO DONO: o "Back to automatic" acende com foto
+        espelhada e tira o espelhamento.** FEITO, AGUARDANDO TESTE (`rigTouched` conta o espelhamento; o botão
+        limpa tudo antes do `rigApply`). Teste automático do cenário do Align cameras: 104 de 104 (duas
+        verificações novas); rodada completa não refeita.
      3. IDEIA PARA DEPOIS (só anotar): a feature de label passar a aceitar várias labels, não só uma.
      **PASSAGEM PARA UM CHAT NOVO (2026-11-26):** o dono pediu um prompt de continuação porque as respostas
      estavam demorando demais. Ordem combinada do que falta, do mais próximo ao mais distante: (a) item 1 acima;
