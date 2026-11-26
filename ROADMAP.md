@@ -1931,6 +1931,23 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      anteriores. Causa não encontrada; investigar antes de fechar a etapa.
      FALTA: protótipos, em cima da tela real, de onde ficam a âncora, o botão de edição global e a ferramenta do
      canvas, antes de implementar.
+     Teste do dono (2026-11-26, 16:46): seção 73 aprovada. Respostas: as caixas de número CONTINUAM selecionando
+     o valor ao clicar (ele não quer tirar a seleção); a mão de arrastar do Framing está certa como ficou.
+     **PEDIDOS NOVOS DO DONO (2026-11-26, 16:46), NÃO FEITOS:**
+     1. DEFEITO: no Align photos do Export, com "Rig · …" escolhido em Alignment, "Reset all" zera tudo; tem de
+        voltar aos valores do rig (como já faz no passo 3 do Align cameras, onde volta aos valores da haste).
+        Conferir "Reset photo" junto.
+     2. PROTÓTIPOS (antes de implementar): no Align photos, um indicativo visual de que o alinhamento já não é o
+        original do rig, e a indicação, nas miniaturas, de quais fotos estão diferentes.
+     3. IDEIA PARA DEPOIS (só anotar): a feature de label passar a aceitar várias labels, não só uma.
+     **PASSAGEM PARA UM CHAT NOVO (2026-11-26):** o dono pediu um prompt de continuação porque as respostas
+     estavam demorando demais. Ordem combinada do que falta, do mais próximo ao mais distante: (a) item 1 acima;
+     (b) protótipos do item 2; (c) protótipos de onde ficam a âncora (N2), o botão de edição global e a
+     ferramenta do canvas, e depois a implementação; (d) resolução, decisão D ("Highest camera" / "Lowest
+     camera", aviso acima de 25%, linha Resolution no bloco "New sessions" e no Export › Framing, protótipos A1
+     e E já aprovados); (e) passo 2 do Align cameras cortado em janela estreita; (f) falha intermitente do
+     cenário "Guided aim" nos testes automáticos; (g) parte 7 da etapa (From this scene) e rig reutilizável;
+     (h) pausados: testes com câmeras reais (seção 66 e outros) e o lote inteiro no Windows.
      **A DECIDIR:** onde mais o S4 vale: no Export (sessão com formas diferentes: "As shot" apagado?) e na janela
      "Mixed ratios" das sessões sem rig alinhado (tirar "Keep as shot"?); as sessões já feitas não mudam
      (registro de 2026-11-24).
