@@ -1122,7 +1122,7 @@ def scenario_flip(t, name, photos):
     check(t, "the Flip row is there, under Rotate, as wide as the − number + above it", st["row"] == {"inside": True, "left": 0, "right": 0}, st["row"])
     check(t, "nothing flipped at first", st["on"] == [False, False] and not any(st["marks"]), st)
     # A foto 01 um passo para a esquerda (Move X −; o Position saiu desta tela em 2026-11-26), depois espelhada na horizontal
-    t.page.click("#exportSettings .align-ctl button >> nth=0")
+    t.page.click("#exportSettings .align-ctl input >> nth=0"); t.page.keyboard.type("-150"); t.page.keyboard.press("Enter")
     time.sleep(0.8)
     moved = entry(0)
     t.page.click("#exportSettings .flip-btn[data-flip=h]")

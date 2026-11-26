@@ -1925,6 +1925,10 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      - Sobre a mão de arrastar da prévia do Framing: o dono disse que pediu para tirar porque não arrastava "por
        um bug". Verificado no código: em foto com alinhamento próprio o arraste é desligado de propósito (etiqueta
        "This photo is aligned: move it in Align photos"). A CONFIRMAR com ele se há um caso que deveria arrastar.
+     PENDÊNCIA DO AGENTE (testes automáticos): o cenário "Guided aim" falhou em 2 das 3 últimas rodadas
+     completas, de jeitos diferentes (a janela do Align cameras fechada na hora de clicar as marcas; a aba da
+     câmera 01 como "Ready" em vez de "Change"), e passa sempre que roda sozinho ou com os dois cenários
+     anteriores. Causa não encontrada; investigar antes de fechar a etapa.
      FALTA: protótipos, em cima da tela real, de onde ficam a âncora, o botão de edição global e a ferramenta do
      canvas, antes de implementar.
      **A DECIDIR:** onde mais o S4 vale: no Export (sessão com formas diferentes: "As shot" apagado?) e na janela
