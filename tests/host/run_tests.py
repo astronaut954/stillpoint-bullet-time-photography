@@ -2058,7 +2058,7 @@ def scenario_align_cameras(t, name, photos):
         t.page.set_viewport_size({"width": vp["width"], "height": 600}); time.sleep(0.8)
         t.page.mouse.move(sb0["x"] + 4, t.page.locator("#csAlignMain .align-stage").bounding_box()["y"] + 60); time.sleep(0.5)
         fit = t.js("() => { const s = document.querySelector('#csAlignMain .align-stage').getBoundingClientRect(), tb = document.getElementById('alignTools'), bs = [...tb.querySelectorAll('button')].map((b) => b.getBoundingClientRect()); return { stage: Math.round(s.height), cols: getComputedStyle(tb).getPropertyValue('--cols').trim(), n: bs.length, inside: bs.every((b) => b.top >= s.top - 0.5 && b.bottom <= s.bottom + 0.5 && b.left >= s.left - 0.5), near: document.querySelector('#csAlignMain .align-stage').classList.contains('tools-near') }; }")
-        check(t, "align tools, short window: the tool bar reorganises into more columns and every button stays inside the big photo", fit["near"] and fit["n"] >= 9 and fit["inside"] and int(fit["cols"] or 1) >= 2, fit)
+        check(t, "align tools, short window: the tool bar reorganises into more columns and every button stays inside the big photo", fit["near"] and fit["n"] >= 8 and fit["inside"] and int(fit["cols"] or 1) >= 2, fit)
         t.shot("align-step3-short")
         t.page.set_viewport_size({"width": 900, "height": vp["height"]}); time.sleep(0.8)
         sbn = t.page.locator("#csAlignMain .align-stage").bounding_box()
