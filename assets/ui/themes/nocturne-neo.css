@@ -2612,3 +2612,4 @@ body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform:
 .align-block h3:has(.align-anchor) .align-edited-tag { margin-left: 0; flex: 0 0 auto; }
 .align-block h3:has(.align-anchor) .align-anchor { flex: 0 0 auto; margin: 0; }
 .align-title-right { display: inline-flex; align-items: center; gap: 12px; margin-left: auto; flex: 0 0 auto; }
+.align-cross.under-anchor { visibility: hidden; }

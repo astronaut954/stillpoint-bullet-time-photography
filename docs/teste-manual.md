@@ -2706,6 +2706,13 @@ Retornos do dono (2026-11-26, 19:45), a conferir:
 - [ ] Âncora num canto, giro pela alça até o limite: a foto vai até o maior giro possível e para ali (borda
       laranja), sem ficar presa antes; voltando o mouse, volta junto.
 
+Retornos do dono (2026-11-26, 19:58), a conferir:
+
+- [ ] Âncora num canto, giro pela alça até o limite e além: a foto para no limite sem crescer de repente (antes
+      pulava para 200% ou 300% de tamanho bem no limite).
+- [ ] Com a âncora no centro do canvas, a cruz do centro do canvas some da foto (o botão da cruz, na barra de
+      ferramentas, continua aceso); tirando a âncora do centro, ou tocando a sequência, a cruz volta.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |

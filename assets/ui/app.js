@@ -6741,6 +6741,16 @@
       const f = pinAt || anchorFrac(), was = anchorAt(a, f), now = anchorAt(Object.assign({}, cand, { dx: a.dx, dy: a.dy }), f);
       return Object.assign({}, cand, { dx: cand.dx + was.x - now.x, dy: cand.dy + was.y - now.y });
     };
+    // As bordas da foto que passam pela âncora (ela num canto ou numa borda) não se afastam quando a foto cresce: se
+    // uma delas corta o canvas, nenhuma ampliação resolve. A conta de cobrir tem uma folga minúscula medida na foto,
+    // que cresce com a ampliação: bem no limite do giro, ampliar 3 ou 4 vezes "resolvia" por essa folga, e a foto
+    // crescia de repente (gravação do dono, 2026-11-26). Esta conferência não depende do tamanho: a foto, ampliada
+    // ao máximo em volta da âncora, tem de cobrir o canvas com meio pixel de sobra.
+    const edgesClear = (cand) => {
+      const sz = sizes[item.file]; if (!sz || !lockRect) return true;
+      const r = lockRect, big = pin(Object.assign({}, cand, { scale: 20 }));
+      return photoCovers(sz.w, sz.h, big, { x: r.x - 0.5, y: r.y - 0.5, w: r.w + 1, h: r.h + 1 });
+    };
     const tryApply = (change) => {
       const cand = Object.assign({}, a); change(cand);
       pinAt = anchorFrac();
@@ -6748,7 +6758,7 @@
       // Girar (ou mover com giro): o tamanho em uso é o base, ou o mínimo acima dele que ainda cobre a área (como o
       // Lightroom); ao desfazer o giro ele volta ao base
       if (cand.rot !== a.rot || (cand.scale === a.scale && (cand.dx !== a.dx || cand.dy !== a.dy))) {
-        const need = minCoverScale(cand, cand.base || cand.scale);
+        const need = cand.rot !== a.rot && !edgesClear(cand) ? null : minCoverScale(cand, cand.base || cand.scale);
         if (need != null && cand.rot !== a.rot) { cand.scale = need; Object.assign(a, pin(cand)); return true; }
       }
       if (covers(pin(cand))) { Object.assign(a, pin(cand)); return true; }
@@ -6788,7 +6798,7 @@
       // Girar além do limite: vai até o maior giro que ainda dá (como o tamanho e o mover), em vez de ficar parado
       // onde estava e só andar quando o mouse volta a um ângulo possível (gravação do dono, 2026-11-26)
       if (cand.rot !== a.rot && cand.dx === a.dx && cand.dy === a.dy) {
-        const at = (t) => { const c = Object.assign({}, cand, { rot: Math.round((a.rot + (cand.rot - a.rot) * t) * 1000) / 1000 }); const need = minCoverScale(c, c.base || c.scale); if (need == null) return null; c.scale = need; return c; };
+        const at = (t) => { const c = Object.assign({}, cand, { rot: Math.round((a.rot + (cand.rot - a.rot) * t) * 1000) / 1000 }); if (!edgesClear(c)) return null; const need = minCoverScale(c, c.base || c.scale); if (need == null) return null; c.scale = need; return c; };
         let lo = 0, hi = 1, best = null;
         for (let i = 0; i < 14; i++) { const mid = (lo + hi) / 2, c = at(mid); if (c) { lo = mid; best = c; } else hi = mid; }
         stage.classList.add("locked"); clearTimeout(lockFlash); lockFlash = setTimeout(() => stage.classList.remove("locked"), 300);
@@ -7198,6 +7208,9 @@
         if (tagEl.textContent !== text) tagEl.textContent = text;
         anchorMark.classList.toggle("at-point", !!where);
         // (no painel: o botão do centro do canvas fica aceso quando a âncora está lá; pedido do dono, 2026-11-26)
+        // (a cruz do centro do canvas some, só na foto, enquanto a âncora está em cima dela: as duas nem sempre caíam
+        // no mesmo pixel; o botão da cruz na barra continua como está; ideia do dono, 2026-11-26)
+        cross.classList.toggle("under-anchor", where === "canvas center" && !playing);
         anchorHome.classList.toggle("on", where === "canvas center"); anchorHome.setAttribute("aria-pressed", where === "canvas center" ? "true" : "false");
         anchorHome.title = where === "canvas center" ? "The anchor is on the center of the canvas" : "Put the anchor back on the center of the canvas"; }
       // Proporção de um tamanho: a mais próxima das quatro; "~" quando não é exata

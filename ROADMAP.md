@@ -2023,6 +2023,17 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      quando a âncora está no centro do canvas (jeito escolhido pelo agente de "indicar no painel": a confirmar);
      (d) "Edited" invadia "Anchor" em painel estreito: o título quebra em duas linhas, com "Anchor", a grade, o
      botão e o número da foto juntos na de baixo.
+     Retornos do dono (2026-11-26, 19:58, com gravação): (a) DEFEITO: no limite do giro a foto crescia de repente
+     (265% e 304% na gravação). Causa confirmada por simulação com os números da gravação (foto 1800 × 1200, canvas
+     1520 × 1013, âncora no canto de cima à esquerda): a procura do maior giro possível parava exatamente onde
+     uma borda que passa pela âncora já corta o canvas por centésimos de pixel, e ali a folga da conta de cobrir
+     (medida na foto, cresce com a ampliação) deixava "resolver" ampliando 2 a 4 vezes; a simulação deu −13,443° e
+     217% antes, −13,42° e 123% depois. Correção: `edgesClear` (a foto ampliada ao máximo em volta da âncora tem
+     de cobrir o canvas com meio pixel de sobra) antes de aceitar um giro. FEITO, AGUARDANDO TESTE. (b) Ideia do
+     dono, FEITA: a cruz do centro do canvas some da foto enquanto a âncora está em cima dela (`under-anchor`).
+     (c) O dono não gostou do título em duas linhas: PROTÓTIPOS em https://claude.ai/artifact/B85J2XBGpDSEwav27KJ8oA
+     (T1 sem a palavra "Anchor"; T2 o número da foto vira a marca de editada; T3 "This photo · edited" no próprio
+     título). AGUARDA A ESCOLHA DO DONO.
      FALTA: botão de edição global (G2) e ferramenta do canvas (C1).
      3. IDEIA PARA DEPOIS (só anotar): a feature de label passar a aceitar várias labels, não só uma.
      **PASSAGEM PARA UM CHAT NOVO (2026-11-26):** o dono pediu um prompt de continuação porque as respostas
