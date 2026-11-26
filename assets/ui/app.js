@@ -4268,7 +4268,7 @@
     top.classList.remove("fit-probe");
     if (!over) return;
     top.classList.add("compact");
-    if (keeps && keeps.dataset.short) { keeps.textContent = keeps.dataset.short; if (!keeps.title) keeps.title = keeps.dataset.full; }
+    if (keeps && keeps.dataset.short) keeps.textContent = keeps.dataset.short;
     if (chips.length < 2) return;
     chips.forEach((c) => c.classList.add("hidden"));
     const w = el("span", "al-chip al-warns"); w.id = "csAlignWarns"; w.tabIndex = 0;
@@ -6204,7 +6204,9 @@
   }
   const KEEP_WARN = 0.8;  // abaixo disto, aviso em âmbar (decisão do dono, 2026-11-16, opção B)
   function alignKeepsShow(session, st) {
-    const node = $("alignKeeps");
+    // (a janela do Align cameras, depois de usada, fica com um "alignKeeps" guardado: procurar na tela certa, senão
+    // o "Keeps" do Export não aparecia depois de um Align cameras na mesma abertura do programa)
+    const node = document.querySelector((st.rigStep ? "#csAlign" : "#exportSettings") + " #alignKeeps") || $("alignKeeps");
     if (!node) return;
     alignKeeps(session, st).then((v) => {
       if (!node.isConnected) return;
@@ -6212,10 +6214,27 @@
       node.textContent = v == null ? "" : "Keeps " + Math.round(v * 100) + (st.rigStep ? "% of each photo" : "% of the photos");
       node.classList.toggle("warn", low);
       node.dataset.full = node.textContent; node.dataset.short = v == null ? "" : "Keeps " + Math.round(v * 100) + "%";
-      if (st.rigStep) setTimeout(alCompactTop, 0);
-      node.title = low && st.rigStep ? "This alignment cuts a lot of each photo: the cameras are far from each other's framing. To keep more, go back, fix the cameras and fire again." : low ? "The alignment cuts a lot of the photos. To keep more, fix the cameras in Camera settings › Test shot › Align cameras and shoot again." : "How much of each photo is left after the canvas and the alignment (average)";
+      if (st.rigStep) setTimeout(alCompactTop, 0); else expAlignTopFit();
+      node.removeAttribute("title");
+      // (explicação na caixa padrão do app, com o cursor de ajuda; pedido do dono, 2026-11-26)
+      node.dataset.itip = KEEPS_TIP + (low && st.rigStep ? "This alignment cuts a lot of each photo: the cameras are far from each other's framing. To keep more, go back, fix the cameras and fire again." : low ? "The alignment cuts a lot of the photos. To keep more, fix the cameras in Camera settings › Test shot › Align cameras and shoot again." : "");
     });
   }
+  const KEEPS_TIP = "How much of each photo ends up in the final image, on average. To line the photos up, each one is moved, rotated and resized, and the canvas is the area that all of them still cover: what falls outside it is cut. The closer the cameras are to the same framing, the higher this number. ";
+  // Linha de cima do Align photos do Export em janela estreita: nada quebra em várias linhas; sem lugar, primeiro o
+  // "Keeps" fica só com o número, depois o texto da esquerda perde o "← → other photos" (gravação do dono, 2026-11-26)
+  function expAlignTopFit() {
+    const top = document.querySelector("#exportSettings.aligning .export-scope");
+    if (!top) return;
+    const keeps = top.querySelector("#alignKeeps"), where = top.querySelector(".align-where");
+    if (where && !where.dataset.full) where.dataset.full = where.textContent;
+    if (keeps && keeps.dataset.full) keeps.textContent = keeps.dataset.full;
+    if (where) where.textContent = where.dataset.full;
+    const over = () => top.scrollWidth > top.clientWidth + 1;
+    if (over() && keeps && keeps.dataset.short) keeps.textContent = keeps.dataset.short;
+    if (over() && where) where.textContent = where.dataset.full.split(" · ")[0];
+  }
+  window.addEventListener("resize", expAlignTopFit);
   // A mesma conta para a receita das câmeras, antes de haver sessão (passo Save do Align cameras): quanto sobra das
   // fotos se elas forem exportadas na proporção em que saíram. cams: [{ w, h, dx, dy, rot, scale }] (dx, dy em frações)
   function rigKeeps(cams) {
@@ -6579,7 +6598,7 @@
     // seletor diz "· edited" e fica âmbar; a miniatura de cada foto mexida ganha um quadrado ao lado do número e a
     // palavra "Edited" embaixo. Refeito a cada mudança guardada (alignSave).
     const rigMode = !rigStep && !!rigOf(session) && alignModeOf(session, st) === "rig";
-    const rigEdited = (file, cur) => { const auto = st.align.auto; return rigMode && !!auto && file in auto && rigEntryText(cur || st.align.byFile[file]) !== auto[file]; };
+    const rigEdited = (file, cur) => { const auto = st.align.auto; return rigMode && !!auto && file in auto && (rigEntryText(cur || st.align.byFile[file]) !== auto[file] || !!alignFlip(cur || st.align.byFile[file])); };
     stripScroll.classList.toggle("rig-marks", rigMode);
     exp.rigMarks = () => {
       let any = false;
@@ -6600,8 +6619,10 @@
         sel.options[0].textContent = sel.dataset.base + (any ? " · edited" : "");
         sel.classList.toggle("edited", any && sel.value === "rig");
       }
+      expAlignTopFit();
     };
     exp.rigMarks();
+    expAlignTopFit();
     // Passo 3 do Align cameras: a câmera não conectada aparece na fileira, no lugar dela, sem foto e sem alinhamento
     if (rigStep) rigStep.gone().forEach((g) => {
       const li = el("li", "frame gone");
@@ -6869,11 +6890,17 @@
       if (!sizes[item.file]) return;
       lockStart();
       const sz = sizes[item.file];
-      const need = minCoverOf(sz.w, sz.h, Object.assign({}, a, { dx: 0, dy: 0 }), 0.05, lockRect);
+      let need = minCoverOf(sz.w, sz.h, Object.assign({}, a, { dx: 0, dy: 0 }), 0.05, lockRect);
       if (!need) return;
+      // Pedido do dono (2026-11-26): se a foto já está centrada no menor tamanho (o clique não mudaria nada) e está
+      // girada, o clique tira o giro e encaixa a foto reta no canvas
+      if (Math.abs(a.dx) < 0.5 && Math.abs(a.dy) < 0.5 && Math.abs(a.scale - need) < 5e-4 && Math.abs(a.rot) > 1e-9) {
+        const flat = minCoverOf(sz.w, sz.h, Object.assign({}, a, { dx: 0, dy: 0, rot: 0 }), 0.05, lockRect);
+        if (flat) { a.rot = 0; need = flat; }
+      }
       a.dx = 0; a.dy = 0; a.scale = need; a.base = need;
       sync(); layout(); save();
-    }, { kind: "btn-secondary", title: "Centre this photo and make it the smallest size that still covers the canvas (the rotation stays)" }));
+    }, { kind: "btn-secondary", title: "Centre this photo and make it the smallest size that still covers the canvas (the rotation stays). Click again to take the rotation off too." }));
     // (no passo 3 do Align cameras, "reset" é voltar ao valor da haste: sem valor nenhum a câmera ficaria sem alinhamento)
     // No Export, com "Rig" escolhido em Alignment, "reset" é voltar ao alinhamento do rig (defeito apontado pelo dono,
     // 2026-11-26: zerava tudo). O espelhamento sai junto, como no reset sem rig.
@@ -6935,18 +6962,19 @@
     self.querySelector("h3").insertBefore(rigTag, self.querySelector("h3 .align-cur"));
     const rigNotes = () => {
       const txt = rigMode && st.align.auto ? st.align.auto[item.file] : "";
-      const v = txt ? txt.split(",").map(Number) : null, now = rigEntryText(a).split(",");
+      const v = txt ? txt.split(",").map(Number) : null;
       const show = { dx: v && v[0].toFixed(0), dy: v && v[1].toFixed(0), scale: v && (v[2] * 100).toFixed(1), rot: v && v[3].toFixed(2) };
-      let any = false;
+      const now = { dx: a.dx.toFixed(0), dy: a.dy.toFixed(0), scale: (a.scale * 100).toFixed(1), rot: a.rot.toFixed(2) };
+      // (a etiqueta acompanha a miniatura: espelhada também conta; decisão do dono, 2026-11-26)
+      let any = rigEdited(item.file, a);
       ["dx", "dy", "scale", "rot"].forEach((key, i) => {
         const inp = fields[key], row = inp && inp.closest(".align-ctl");
         if (!row) return;
-        const on = !!v && now[i] !== txt.split(",")[i];
-        any = any || on;
+        const on = !!v && Number(now[key]) !== Number(show[key]);  // (o número mostrado é outro; "-0" e "0" são o mesmo)
         inp.classList.toggle("rig-edited", on);
         let note = row.querySelector(".align-rig");
         if (on && !note) { note = el("span", "align-rig"); row.appendChild(note); }
-        if (note) { note.textContent = on ? "Rig " + show[key] : ""; note.classList.toggle("hidden", !on); }
+        if (note) { note.textContent = on ? "Rig " + String(Number(show[key]) === 0 ? show[key].replace("-", "") : show[key]) : ""; note.classList.toggle("hidden", !on); }
       });
       rigTag.classList.toggle("hidden", !any);
     };

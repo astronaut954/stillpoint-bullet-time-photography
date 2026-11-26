@@ -2619,19 +2619,36 @@ Precisa de uma sessão fotografada com as câmeras alinhadas (**Align cameras** 
 
 Precisa de uma sessão fotografada com as câmeras alinhadas, com **Rig · …** em **Alignment**.
 
-- [ ] **Export sessions** › aba **Framing** › **Align photos**, sem mexer em nada: o seletor **Alignment** (no alto, à
+- [x] **Export sessions** › aba **Framing** › **Align photos**, sem mexer em nada: o seletor **Alignment** (no alto, à
       direita) diz só "Rig · data" em verde; nenhuma miniatura tem marca; o painel **This photo** não tem etiqueta.
-- [ ] Mudar **Size** de uma foto: o seletor passa a "Rig · data · edited", em âmbar; a miniatura dessa foto ganha um
+- [x] Mudar **Size** de uma foto: o seletor passa a "Rig · data · edited", em âmbar; a miniatura dessa foto ganha um
       quadrado ao lado do número e a palavra "Edited" embaixo; no painel **This photo** aparece a etiqueta "Edited" ao
       lado do título, a caixa de **Size** fica âmbar e, à direita dela, "Rig" com o valor do rig.
-- [ ] Mudar também **Rotate**, **Move X** e **Move Y**: cada caixa mudada fica âmbar com o valor do rig ao lado.
-- [ ] Ir para uma foto não mexida (clique na miniatura): o painel **This photo** fica sem etiqueta e sem âmbar; o
+- [x] Mudar também **Rotate**, **Move X** e **Move Y**: cada caixa mudada fica âmbar com o valor do rig ao lado.
+- [x] Ir para uma foto não mexida (clique na miniatura): o painel **This photo** fica sem etiqueta e sem âmbar; o
       seletor continua "· edited".
-- [ ] **Reset photo** na foto mexida: as marcas dela somem. **Reset all** ou **Back to automatic**: todas somem e o
+- [x] **Reset photo** na foto mexida: as marcas dela somem. **Reset all** ou **Back to automatic**: todas somem e o
       seletor volta ao verde.
-- [ ] **⌘Z**: as marcas voltam junto com o ajuste.
-- [ ] Com **None** em **Alignment**, e no passo **3 Save** do **Align cameras**: nenhuma dessas marcas aparece.
-- [ ] A fileira de miniaturas ficou um pouco mais alta (lugar para a palavra "Edited"); a foto grande não é cortada.
+- [x] **⌘Z**: as marcas voltam junto com o ajuste.
+- [x] Com **None** em **Alignment**, e no passo **3 Save** do **Align cameras**: nenhuma dessas marcas aparece.
+- [x] A fileira de miniaturas ficou um pouco mais alta (lugar para a palavra "Edited"); a foto grande não é cortada.
+
+Retornos do dono (2026-11-26, 17:37), a conferir:
+
+- [ ] Mudar o tamanho com a ferramenta **Resize photo** (barra de ferramentas à esquerda da foto): só a caixa de
+      **Size** fica âmbar; **Move X** e **Move Y** não, enquanto o número mostrado for o mesmo do rig.
+- [ ] Janela estreita: a linha de cima não quebra em várias linhas. Sem lugar, o "Keeps N% of the photos" vira
+      "Keeps N%" e, se ainda faltar, "Photo NN of NN · ← → other photos" vira "Photo NN of NN".
+- [ ] O seletor **Alignment** com "· edited" não tem espaço vazio depois do texto.
+- [ ] Mouse em cima do **Keeps N%**: o cursor vira "?" e a caixa padrão explica o número (o mesmo no passo **3 Save**
+      do **Align cameras**).
+- [ ] **Fit to canvas** numa foto girada e fora do centro: o primeiro clique centra e encaixa mantendo o giro; o
+      segundo tira o giro e encaixa a foto reta. Numa foto girada que já está centrada e encaixada, o primeiro clique
+      já tira o giro.
+- [ ] Foto espelhada (**Flip**): a miniatura ganha o quadrado e "Edited", o seletor diz "· edited" e o **This photo**
+      mostra a etiqueta "Edited".
+- [ ] Depois de usar o **Align cameras** e abrir o **Export sessions** sem fechar o programa, o "Keeps N%" aparece no
+      Align photos (antes ficava vazio).
 
 ## Resultado
 

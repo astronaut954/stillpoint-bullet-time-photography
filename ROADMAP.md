@@ -1956,6 +1956,17 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
         mesmo jeito que não acende o "Back to automatic": A CONFIRMAR com o dono. Testes automáticos: cenários do
         Align cameras (102 de 102), Flip (64 de 64) e desfazer do Align photos (20 de 20); rodada completa não
         refeita.
+        Teste do dono (2026-11-26, 17:37): seção 75 aprovada, com retornos, FEITOS, AGUARDANDO TESTE: (a) a caixa
+        só fica âmbar quando o número mostrado é outro (a ferramenta de tamanho mexia frações de pixel na posição);
+        (b) linha de cima do Align photos sem quebra de linha, com textos curtos quando falta lugar
+        (`expAlignTopFit`); (c) seletor "· edited" sem largura mínima a mais; (d) "Keeps N%" com cursor de ajuda e
+        explicação na caixa padrão (`KEEPS_TIP`; texto escrito pelo agente, a confirmar); (e) "Fit to canvas": se o
+        clique não mudaria nada e a foto está girada, tira o giro (entendimento do agente do pedido: a confirmar);
+        (f) DECISÃO DO DONO: foto espelhada também ganha as marcas. Achado junto: o "Keeps" do Export não aparecia
+        depois de um Align cameras na mesma abertura (dois elementos com o mesmo nome; corrigido).
+        A DECIDIR: o "Back to automatic" não tira o espelhamento; com uma foto só espelhada o seletor diz "· edited"
+        e o botão fica apagado. Testes automáticos: Align cameras 102 de 102, Flip 64 de 64; sem verificações novas
+        para estes retornos; rodada completa não refeita.
      3. IDEIA PARA DEPOIS (só anotar): a feature de label passar a aceitar várias labels, não só uma.
      **PASSAGEM PARA UM CHAT NOVO (2026-11-26):** o dono pediu um prompt de continuação porque as respostas
      estavam demorando demais. Ordem combinada do que falta, do mais próximo ao mais distante: (a) item 1 acima;

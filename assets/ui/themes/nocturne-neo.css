@@ -2566,7 +2566,9 @@ body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform:
 /* Align photos do Export: alinhamento diferente do rig (decisão do dono, 2026-11-26: protótipos B e C juntos).
    O seletor Alignment diz "· edited" em âmbar; a miniatura mexida tem um quadrado ao lado do número e "Edited"
    embaixo; no This photo, a etiqueta "Edited" e as caixas mudadas em âmbar, com o valor do rig ao lado. */
-#alignModeSel.edited { border-color: var(--noct-pending); color: var(--noct-pending); width: auto; min-width: 300px; }
+#alignModeSel.edited { border-color: var(--noct-pending); color: var(--noct-pending); }
+#alignKeeps[data-itip] { cursor: help; }
+.export-settings.aligning .export-scope > *, .export-settings.aligning .export-scope .align-auto > * { white-space: nowrap; flex-shrink: 0; }
 .export-strip-scroll.rig-marks { height: 80px; }
 .export-strip .frame { position: relative; }
 .frame-edit-dot { display: inline-block; width: 6px; height: 6px; margin-left: 5px; vertical-align: middle; position: relative; top: -1px; background: var(--noct-pending); border-radius: 0; }
