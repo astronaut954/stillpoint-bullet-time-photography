@@ -2239,6 +2239,12 @@
   // batch: as sessões do mesmo disparo ("Sessions" > 1); a escolha feita na janela vale para todas as misturadas
   function maybeWarnMixed(session, info, batch) {
     if (!info.mixed) return;
+    // Com as câmeras alinhadas a janela não abre (decisão M1 do dono, 2026-11-26): a proporção foi escolhida no Align
+    // cameras e a sessão já nasceu com ela. Ficam a etiqueta na lista e a linha do disparo em âmbar.
+    if (rigOf(session)) {
+      if (/^Done/.test(ui.progress.textContent) && !/Mixed ratios/.test(ui.progress.textContent)) { ui.progress.textContent += " · Mixed ratios"; ui.progress.classList.add("warn"); }
+      return;
+    }
     const names = batch && batch.length ? batch : [session.name];
     let memo = null;
     const chooseAll = (r) => { if (memo) memo.choice = r; names.forEach((n) => {
@@ -4076,6 +4082,14 @@
     });
     const session = { name: al.session, photos: [], rigDraft: { savedAt: "draft", cameras: photos.map((p) => { const n = al.solved[p.camera], d = al.data[p.camera]; return { camera: p.camera, dx: n.dx, dy: n.dy, rot: n.rot, scale: n.scale, width: d.w, height: d.h }; }) } };
     const ed = al.edit = { sig, session, items, st, sizes, ready: false, failed: false, playing: false, paused: false, speed: PLAY_SPEEDS.indexOf(1), reverse: true, pos: 0, stick: {}, snap: "", timer: 0 };
+    // A proporção das sessões novas (decisão do dono, 2026-11-26, alternativa B): começa na que foi salva com o
+    // alinhamento anterior; com as câmeras em formas diferentes, "As shot" não vale (S4) e a pessoa tem de escolher
+    {
+      const sv = al.saved || {}, mixed = alRatioInfo().mixed;
+      if (RATIOS[sv.ratio]) { st.crop.ratio = sv.ratio; st.crop.orient = sv.orient === "h" || sv.orient === "v" ? sv.orient : ""; }
+      st.crop.loaded = true;
+      ed.ratioOpen = mixed && st.crop.ratio === "asshot";  // falta escolher
+    }
     st.rigStep = {
       items, sizes,
       photo: (file, size) => orderPhoto(al.session, file, size),
@@ -4090,6 +4104,8 @@
       attach: (view) => { ed.view = view; const o = alPlayOrder(ed); ed.pos = Math.min(ed.pos, o.length - 1); view.show(o[ed.pos]); alPlayTick(ed); },
       playStep: (d) => alPlayStep(ed, d),
       playStop: () => alPlayStop(ed),
+      mixed: () => alRatioInfo().mixed,
+      ratio: (ratio, orient) => alEditRatio(ed, ratio, orient),
     };
     exp.photo = 0; exp.alignView = null; alignPrefs.tool = "handles";
     rigApply(session, st, true).then(() => {
@@ -4101,6 +4117,46 @@
       alRender();
     });
     return ed;
+  }
+  // As formas das fotos do alinhamento (como ratioInfo das sessões): { byGroup, present, common, mixed }
+  function alRatioInfo() {
+    const byGroup = {}, counts = {};
+    alLive().filter((p) => al.solved[p.camera]).forEach((p) => { const d = al.data[p.camera], r = d && ratioName(d.w, d.h); if (r) { byGroup[pad(p.order) + "_" + p.camera] = r; counts[r] = (counts[r] || 0) + 1; } });
+    const present = Object.keys(counts);
+    const common = present.slice().sort((a, b) => counts[b] - counts[a] || keepFraction("3:2", b) - keepFraction("3:2", a) || RATIO_ORDER.indexOf(a) - RATIO_ORDER.indexOf(b))[0] || "";
+    return { byGroup, present, common, mixed: present.length > 1 };
+  }
+  // Trocar a proporção das sessões novas no passo 3: os valores da haste são refeitos para o quadro novo (o fator
+  // comum de tamanho muda com ele) e os ajustes feitos à mão acompanham na mesma medida. Um passo do ⌘Z.
+  function alEditRatio(ed, ratio, orient) {
+    if (al.edit !== ed || !ed.ready || !(ratio === "asshot" || RATIOS[ratio])) return;
+    if (ratio === "asshot" && alRatioInfo().mixed) return;  // (S4)
+    if (ed.playing) { clearTimeout(ed.timer); ed.playing = false; }
+    const st = ed.st;
+    const state = () => ({ ratio: st.crop.ratio, orient: st.crop.orient, open: ed.ratioOpen, by: JSON.stringify(st.align.byFile), stick: JSON.stringify(ed.stick) });
+    const put = (q) => { if (!al.open || al.step !== 3 || al.edit !== ed) return false; st.crop.ratio = q.ratio; st.crop.orient = q.orient; ed.ratioOpen = q.open; st.align.byFile = JSON.parse(q.by); ed.stick = JSON.parse(q.stick); ed.snap = q.by; if (ed.playing) { clearTimeout(ed.timer); ed.playing = false; } alRender(); };
+    const before = state(), prev = JSON.parse(before.by), old = JSON.parse(before.stick);
+    const touched = ed.items.filter((it) => alEditTouched(ed, it.file)).map((it) => it.file);
+    st.crop.ratio = ratio; st.crop.orient = ratio === "asshot" || ratio === "1:1" ? "" : orient || "";
+    ed.ratioOpen = false;
+    ed.ready = false;  // (a entrada dos valores novos não é um passo à parte)
+    rigApply(ed.session, st, true).then(() => {
+      if (al.edit !== ed) return;
+      ed.items.forEach((it) => {
+        const f = it.file, s1 = st.align.byFile[f];
+        if (!s1) return;
+        ed.stick[f] = Object.assign({}, s1);
+        if (touched.includes(f) && prev[f] && old[f] && old[f].scale > 0) {
+          const k = s1.scale / old[f].scale, a = prev[f];
+          st.align.byFile[f] = Object.assign({}, a, { dx: a.dx * k, dy: a.dy * k, scale: a.scale * k, base: (a.base || a.scale) * k });
+        }
+      });
+      ed.snap = JSON.stringify(st.align.byFile);
+      ed.ready = true;
+      const after = state();
+      recordAction({ label: "Align cameras · aspect ratio", undo: () => put(before), redo: () => put(after) });
+      alRender();
+    });
   }
   // Uma mudança terminou (o editor chama no lugar de gravar na sessão): vira um passo do ⌘Z e atualiza o rodapé
   function alEditChanged(ed) {
@@ -4149,6 +4205,15 @@
   function alEditTop(ed, box) {
     const uneven = alUnevenNote(false);
     if (uneven) box.insertBefore(uneven, box.firstChild);  // (a etiqueta das marcas, junto do Keeps)
+    // As câmeras fotografaram em formas diferentes: o aviso fica aqui (com o rig alinhado, a janela "Mixed ratios"
+    // não abre depois do disparo: decisão M1 do dono, 2026-11-26)
+    const info = alRatioInfo();
+    if (info.mixed) {
+      const m = el("span", "al-chip", "Mixed ratios"); m.id = "csAlignMixed";
+      m.dataset.itip = ratioText(info) + (ed.ratioOpen ? " Choose an aspect ratio in New sessions, on the right: with different shapes, As shot is not available."
+        : " New sessions are cropped to " + ratioShown(ed.session.name, ed.st) + ". To keep every photo whole, set the cameras to the same ratio in Camera settings and fire again.");
+      box.insertBefore(m, box.firstChild);
+    }
     const back = button("Back to the stick values", () => {
       ed.items.forEach((it) => { ed.st.align.byFile[it.file] = Object.assign({}, ed.stick[it.file]); });
       alEditChanged(ed); alRender();
@@ -4212,7 +4277,8 @@
         " photos go into the next sessions without correction until you align again. To include " + (one ? "it" : "them") + ", plug " + (one ? "it" : "them") + " back, go back and fire again.</div>");
     }
     alFoot("", [["← Back", "btn-secondary", () => { al.step = 2; alRender(); }], ["Cancel", "btn-secondary", alCancel],
-      [!gone.length ? "Save alignment" : gone.length === 1 ? "Save without it" : "Save without them", "btn-primary", alSave, { disabled: !alLive().some((p) => al.solved[p.camera]) }]]);
+      [!gone.length ? "Save alignment" : gone.length === 1 ? "Save without it" : "Save without them", "btn-primary", alSave,
+        { disabled: !alLive().some((p) => al.solved[p.camera]) || !!ed.ratioOpen, title: ed.ratioOpen ? "The cameras shot in different shapes. Choose an aspect ratio in New sessions first." : "" }]]);
     alFootWarn();
     if (ed.ready) alEditFootNote(ed);
   }
@@ -4235,12 +4301,15 @@
     });
     if (!cameras.length) return;
     const left = alGoneAll().map((g) => "Camera " + alNum(g));
-    Promise.resolve(window.alignSave(JSON.stringify({ cameras }))).then((info) => {
+    if (ed && ed.ratioOpen) return;
+    const ratio = ed ? ed.st.crop.ratio : "asshot", orient = ed ? ed.st.crop.orient || "" : "";
+    const shape = ratio === "asshot" ? "as shot" : orient === "v" ? RATIO_TURNED[ratio] || ratio : ratio;
+    Promise.resolve(window.alignSave(JSON.stringify({ cameras, ratio, orient }))).then((info) => {
       al.saved = info || null;
       alRenderEntry();
       alClose();
       const out = left;
-      log("Cameras aligned (" + plural(cameras.length, "camera", "cameras") + (hand ? ", " + hand + " adjusted by hand" : "") + "). The alignment is saved with the project." + (out.length ? " Not connected, left without alignment: " + out.join(", ") + "." : ""), out.length ? "warn" : undefined);
+      log("Cameras aligned (" + plural(cameras.length, "camera", "cameras") + (hand ? ", " + hand + " adjusted by hand" : "") + "). The alignment is saved with the project. New sessions: " + shape + "." + (out.length ? " Not connected, left without alignment: " + out.join(", ") + "." : ""), out.length ? "warn" : undefined);
     });
   }
   orderGallery.setActions([
@@ -5743,6 +5812,8 @@
       box.appendChild(note);
     } else if (info && info.mixed && st.crop.ratio === "asshot" && !sessionAligned(session, st)) box.appendChild(mixedWarn("Mixed ratios · " + ratioText(info).replace(/^Camera/, "camera") + " " + MIXED_EFFECT));
     else if (info && info.mixed) box.appendChild(el("div", "export-note", "Mixed ratios · " + ratioText(info).replace(/^Camera/, "camera") + " Every photo goes through the same frame, so nothing jumps."));
+    // A sessão nasceu com a proporção salva no Align cameras (protótipo E, aprovado em 2026-11-26)
+    { const rig = rigOf(session); if (!locked && rig && (rig.ratio === "asshot" || RATIOS[rig.ratio])) { const n = el("div", "export-note", "Aspect ratio starts from Align cameras. Changing it here applies to this session only."); n.id = "exportRigNote"; box.appendChild(n); } }
     addTip(box, "The shape every export gets: converted photos, the sequence and the lenticular print (Fill) are cut to it; the originals are never cropped. " +
       "One crop for the whole session, and every converted photo comes out with the same pixel size (the smallest camera's).", "Aspect ratio");
     if (st.crop.ratio !== "asshot") {
@@ -6645,9 +6716,21 @@
     self.appendChild(cf);
     // Proporção (a mesma da aba Framing; vale para a sessão inteira) e a posição da foto atual dentro da folga que
     // ela tem sobre a área útil (decisão do dono, 2026-11-03: o recorte não se move aqui; a foto, sim)
-    const ar = rigStep ? el("div") : block("");
+    const ar = rigStep ? block("New sessions") : block("");
+    if (rigStep) ar.id = "alignNewSessions";
     const arRows = el("div", "align-rows");
-    if (!rigStep) {
+    if (rigStep) {
+      // Passo 3 do Align cameras (protótipo A1, aprovado em 2026-11-26): a proporção com que as sessões novas nascem
+      const mixed = rigStep.mixed(), open = mixed && st.crop.ratio === "asshot";
+      const r = row("Aspect ratio");
+      const ratioSeg = segmented(ratioOptions(session.name, st), open ? "" : st.crop.ratio, (v) => rigStep.ratio(v, st.crop.orient),
+        (v) => (v === "asshot" && mixed ? "The cameras shot in different shapes: choose a ratio. As shot is back when every camera shoots the same ratio." : ""));
+      const group = el("span", "ratio-group");
+      group.append(ratioSeg, orientControl(session, st, false, (v) => rigStep.ratio(st.crop.ratio, v)));
+      r.appendChild(group);
+      arRows.appendChild(r);
+      addTip(arRows, "The shape every new session starts with. It is saved with the alignment; Export sessions can still change it for one session. The photos in Originals stay as the cameras shot them.", "Aspect ratio");
+    } else {
       const info = ratioInfoCached(session.name);
       const r = row("Aspect ratio");
       const ratioSeg = segmented(ratioOptions(session.name, st), st.crop.ratio, (v) => { st.crop.ratio = v; cropShare(session, st); rerender(); },

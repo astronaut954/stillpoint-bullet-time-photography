@@ -38,6 +38,20 @@ def line(text):
     print(text, flush=True)
 
 
+def rig_ratio(t, label):
+    """Passo 3 do Align cameras: escolhe a proporção das sessões novas (bloco New sessions)."""
+    t.js("(l) => { const b = [...document.querySelectorAll('#alignNewSessions .segmented:not(.orient-seg) button')].find((x) => x.textContent.trim() === l); if (b) b.click(); }", label)
+    time.sleep(1.2)
+
+
+def rig_state(t):
+    return t.js("""() => ({ seg: [...document.querySelectorAll('#alignNewSessions .segmented:not(.orient-seg) button')].map((b) => b.textContent + (b.classList.contains('on') ? '*' : '') + (b.disabled ? '-' : '')).join(' '),
+      orient: [...document.querySelectorAll('#alignNewSessions .orient-seg button')].map((b) => (b.classList.contains('on') ? '*' : '.') + (b.disabled ? '-' : '')).join(' '),
+      mixed: (document.getElementById('csAlignMixed') || { dataset: {} }).dataset.itip || '', keeps: (document.getElementById('alignKeeps') || {}).textContent || '',
+      save: [...document.querySelectorAll('#csAlign button')].filter((b) => /^Save/.test(b.textContent.trim())).map((b) => b.textContent.trim() + (b.disabled ? '-' : '')).join(),
+      canvas: (document.querySelector('#csAlignMain .align-cf') || {}).textContent || '', title: (document.querySelector('#alignNewSessions h3') || {}).textContent || '' })""")
+
+
 def align_open(t):
     """Abre o Align cameras pelo botão da janela principal (painel Cameras); com o Camera settings aberto, fecha-o
     antes (o Test shot não tem mais o botão); com alinhamento guardado, confirma na janela de aviso."""
@@ -174,7 +188,8 @@ class T:
         self.wait(lambda: self.js("() => !document.getElementById('shootBtn').disabled"), 20)
         self.page.click("#shootBtn")
         new = self.wait(lambda: [s["name"] for s in self.sessions() if s["name"] not in before and len(s["photos"]) >= 4], 40)
-        if self.wait(lambda: self.dialog_title() == "Mixed ratios", 4):
+        self.mixed_asked = bool(self.wait(lambda: self.dialog_title() == "Mixed ratios", 4))
+        if self.mixed_asked:
             if keep_as_shot:
                 self.dialog_click("Keep as shot")
             else:
@@ -1964,8 +1979,8 @@ def scenario_align_cameras(t, name, photos):
         check(t, "align, step 3: with the mouse over it the play bar lights up", t.js("() => getComputedStyle(document.getElementById('alignPlayBar')).opacity") == "1" and t.js("() => document.querySelector('#csAlignMain .align-stage').classList.contains('play-near')"))
         check(t, "align: step 3 is the Align photos editor on the four photos (big photo, tools, Move/Size/Rotate, thumbnails), opening with the values from the stick",
               d3["on"] and d3["thumbs"] == 4 and d3["where"].startswith("Camera 01 of 04") and len(d3["fields"]) == 4 and d3["tools"] and "Adjust any photo by hand and play the sequence" in d3["sub"], d3)
-        check(t, "align: step 3 has no Flip and no Aspect ratio (the camera alignment does not keep them), 'Play the sequence' and 'Back to the stick values' (off: nothing adjusted)",
-              not d3["flip"] and not d3["ratio"] and d3["play"].startswith("Play the sequence") and d3["back"] and d3["note"] == "Values from the stick · 0 photos adjusted by hand", d3)
+        check(t, "align: step 3 has no Flip (the camera alignment does not keep it), the Aspect ratio of the new sessions, 'Play the sequence' and 'Back to the stick values' (off: nothing adjusted)",
+              not d3["flip"] and d3["ratio"] and d3["play"].startswith("Play the sequence") and d3["back"] and d3["note"] == "Values from the stick · 0 photos adjusted by hand", d3)
         check(t, "align: step 3 has the play controls over the big photo, at the top right (‹ ▶ › Speed, Reverse loop), and the top row keeps only the camera, Keeps and Back to the stick values",
               d3["bar"][0] and 0 <= d3["bar"][1] <= 14 and 0 <= d3["bar"][2] <= 14 and d3["bar"][3] and "Play" not in d3["topRow"] and "Speed" not in d3["topRow"] and "Back to the stick values" in d3["topRow"], (d3["bar"], d3["topRow"]))
         keeps = t.js("() => { const e = document.getElementById('alignKeeps'); return e ? [e.className, e.textContent] : null; }")
@@ -2100,10 +2115,28 @@ def scenario_align_cameras(t, name, photos):
         ed2 = [float(x) for x in s3()["fields"]]
         check(t, "align, step 3: → goes to the next camera (the adjusted one is marked in the thumbnails)", s3()["where"].startswith("Camera 02 of 04") and t.js("() => document.querySelectorAll('#csAlignMain .export-strip li.frame.aligned').length") == 1, s3()["where"])
         t.shot("align-step3")
+        # Bloco New sessions (protótipo A1; decisões B e S4 do dono, 2026-11-26): a câmera 02 fotografa em 16:9 e as
+        # outras em 3:2, então "As shot" não vale e é preciso escolher uma proporção antes de salvar
+        r0 = rig_state(t)
+        check(t, "align, step 3: with cameras in different shapes, New sessions offers the ratios with As shot unavailable and nothing chosen; Save alignment waits",
+              r0["title"] == "New sessions" and r0["seg"] == "As shot- 3:2 4:3 16:9 1:1" and r0["save"] == "Save alignment-", r0)
+        check(t, "align, step 3: the Mixed ratios label next to Keeps says which camera and asks for a ratio", "Camera 02 shot 16:9; the others 3:2." in r0["mixed"] and "Choose an aspect ratio in New sessions" in r0["mixed"], r0["mixed"])
+        rig_ratio(t, "16:9")
+        r1 = rig_state(t)
+        rig_ratio(t, "3:2")
+        r2 = rig_state(t)
+        check(t, "align, step 3: choosing a ratio changes the canvas and Keeps, and Save alignment lights up", "(16:9)" in r1["canvas"] and "(3:2)" in r2["canvas"] and r1["keeps"] != r2["keeps"] and r2["seg"] == "As shot- 3:2* 4:3 16:9 1:1" and r2["save"] == "Save alignment" and "cropped to 3:2" in r2["mixed"], (r1, r2))
+        check(t, "align, step 3: the adjustment made by hand survives the change of ratio (same rotation, still counted)", abs(float(s3()["fields"][3]) - ed2[3]) < 0.011 and s3()["note"] == "Values from the stick · 1 photo adjusted by hand", (s3()["fields"], ed2, s3()["note"]))
+        t.page.keyboard.press("Control+z"); time.sleep(1.0)
+        r3 = rig_state(t)
+        t.page.keyboard.press("Control+Shift+z"); time.sleep(1.0)
+        r4 = rig_state(t)
+        check(t, "align, step 3: Ctrl+Z and Ctrl+Shift+Z undo and redo the ratio", r3["seg"] == "As shot- 3:2 4:3 16:9* 1:1" and r4["seg"] == r2["seg"], (r3["seg"], r4["seg"]))
         t.button("Save alignment")
         time.sleep(0.6)
         rig = json.load(open(os.path.join(t.project, "stillpoint-rig.json")))
         al = rig.get("alignment") or {}
+        check(t, "align: the ratio of the new sessions is saved with the alignment", al.get("ratio") == "3:2" and al.get("orient", "") == "", (al.get("ratio"), al.get("orient")))
         byo = sorted(al.get("cameras", []), key=lambda c: c.get("order", 0))
         check(t, "align: the photo adjusted by hand is saved with its new rotation; the others keep the values from the stick",
               len(byo) == 4 and abs(byo[0]["rot"] - hand_rot) < 0.006 and all(abs(c["rot"]) < abs(hand_rot) or abs(c["rot"] - hand_rot) > 0.05 for c in byo[1:]), [(c.get("order"), c.get("rot"), c.get("scale")) for c in byo])
@@ -2150,6 +2183,11 @@ def scenario_align_cameras(t, name, photos):
             info = json.load(open(p)) if os.path.exists(p) else {}
         check(t, "align: a new session keeps the alignment that was valid when it was shot (session.json)",
               (info.get("alignment") or {}).get("savedAt") == al.get("savedAt"), list(info.keys()))
+        # Decisões B e M1 (2026-11-26): a sessão nasce com a proporção do alinhamento e a janela Mixed ratios não abre
+        check(t, "align: a new session starts with the ratio saved with the alignment (session.json)", info.get("crop") == "3:2|0.500|0.500", info.get("crop"))
+        tag = t.js("(n) => { const g = document.querySelector('#sessionList li.folder[data-name=\"' + n + '\"] .mixed-tag'); return g ? g.dataset.itip : ''; }", s)
+        check(t, "align: with the cameras aligned, the Mixed ratios window does not open after the shot; the label stays in the list, with the crop",
+              not t.mixed_asked and "Camera 02 shot 16:9" in (tag or "") and "Crop on export: 3:2" in (tag or ""), (t.mixed_asked, tag))
         # ---- Parte 4: o Export usa o alinhamento da sessão (Align photos, seletor Alignment) ----
         import math
         o = t.originals(s)
@@ -2736,6 +2774,7 @@ def scenario_align_gone(t, name, photos):
         check(t, "align, save: the unplugged camera is in the row of thumbnails, in its place, as 'Not connected' (no alignment)", d["pos"] == place and "Not connected" in d["cell"] and num in d["cell"] and t.js("() => /is not connected: no alignment/.test(document.querySelector('#csAlignMain .export-strip li.frame.gone').title)"), d)
         check(t, "align, save: the warning names the camera and says what saving does", ("1 camera of the rig is not connected: Camera " + num + ".") in d["warn"] and "the one it had is erased" in d["warn"] and "fire again" in d["warn"], d["warn"])
         check(t, "align, save: the button says 'Save without it' (the warning does not block)", "Save without it" in d["btns"] and "Save alignment" not in d["btns"], d["btns"])
+        rig_ratio(t, "3:2")
         t.button("Save without it")
         t.wait(lambda: t.js("() => document.getElementById('csAlign').classList.contains('hidden')"), 10)
         time.sleep(0.5)
@@ -2830,6 +2869,9 @@ def scenario_align_uneven(t, name, photos):
         t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .export-strip li.frame').length") == 4, 10)
         d = t.js("() => { const w = document.getElementById('csAlignUneven'), sv = document.querySelector('#csAlignMain .rig-outer'), foot = [...document.querySelectorAll('#csAlign button')].find((x) => x.textContent.trim() === 'Save alignment'); return { text: w ? w.textContent + ' | ' + (w.dataset.itip || '') : '', label: w ? w.textContent : '', after: !!w && !!w.closest('.rig-top') && w.nextElementSibling && w.nextElementSibling.id === 'alignKeeps', save: !!foot && !foot.disabled }; }")
         check(t, "align, uneven marks: the same label in step 3, in the top row next to Keeps, and 'Save alignment' still works", d["label"] == "Marks not at equal distances" and "matched by the length of the pole" in d["text"] and "use three marks" not in d["text"] and d["after"] and d["save"], d)
+        # (aqui as câmeras fotografaram todas na mesma forma: "As shot" vale e nada espera uma escolha)
+        ru = rig_state(t)
+        check(t, "align, step 3: with every camera in the same shape, As shot is the choice and no Mixed ratios label shows", ru["seg"].startswith("As shot* ") and ru["mixed"] == "", ru)
         check(t, "align uneven: no page error", len(t.errors) == errors_before, t.errors[errors_before:])
     finally:
         t.js("() => { const c = [...document.querySelectorAll('#csAlign button')].find((b) => b.textContent.trim() === 'Cancel'); if (c && !document.getElementById('csAlign').classList.contains('hidden')) c.click(); }")

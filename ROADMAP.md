@@ -1852,6 +1852,24 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      instantâneas (`.itip`) ficou igual à do "?" e no mesmo lugar; a etiqueta das marcas desiguais do Align
      cameras passou a usá-la; um elemento com cursor de ajuda e só `title` cai na mesma caixa (rede de segurança).
      Elemento novo com cursor de ajuda: usar `data-itip`.
+     Teste do dono (2026-11-26): caixa padrão e "?" aprovados. Pedido: o triângulo de alerta do Camera settings
+     com cursor de ajuda, não a mão de link (feito; a lista que ele abre tem desenho próprio, com etiquetas: fica
+     como está até o dono dizer o contrário).
+     **DECISÃO DO DONO (2026-11-26): S4** — "As shot" some só quando as câmeras fotografam em formas diferentes;
+     com todas na mesma forma continua disponível.
+     **FEITO (primeira parte: proporção; `docs/teste-manual.md`, seção 68):** bloco "New sessions" no painel da
+     direita do passo 3 (A1) com Aspect ratio e orientação; com formas diferentes, "As shot" apagado, nada
+     escolhido e "Save alignment" apagado até escolher (interpretação do agente de "obrigar a escolher": a
+     confirmar); etiqueta "Mixed ratios" ao lado do Keeps; trocar a proporção refaz os valores da haste para o
+     quadro novo e leva junto os ajustes feitos à mão (um passo do ⌘Z); `alignSave` grava `ratio` e `orient` em
+     stillpoint-rig.json; a sessão nova nasce com `crop` igual (session.json); com rig alinhado a janela "Mixed
+     ratios" não abre (M1); nota de origem no Export › Framing (E, por enquanto só da proporção).
+     **FALTA (segunda parte: resolução, decisão D):** linha Resolution no bloco "New sessions" e no Export ›
+     Framing, etiqueta de ampliação acima de 25%, cena igualada com qualquer alinhamento, canvas pela câmera de
+     maior resolução; mexe em `commonFrame` (app.js) e em `Export::ComputeCommonFrame` (programa).
+     **A DECIDIR:** onde mais o S4 vale: no Export (sessão com formas diferentes: "As shot" apagado?) e na janela
+     "Mixed ratios" das sessões sem rig alinhado (tirar "Keep as shot"?); as sessões já feitas não mudam
+     (registro de 2026-11-24).
      DÚVIDA ANOTADA PARA DEPOIS (Edit in Lightroom Classic): copiar as edições das fotos de uma sessão, ou de
      uma foto, para outras sessões e fotos de outras sessões. A investigar quando chegar a vez; não planejado.
      Pergunta do dono: alinhar sem as marcas, por um objeto ou pessoa da cena. É a parte 7 (From this scene), já

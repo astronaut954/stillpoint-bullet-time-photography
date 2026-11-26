@@ -2093,7 +2093,16 @@ namespace
                     const std::string alignment = alignCurrent(true);
                     Json info;
                     info.Add("shotAt", shotAt).Add("timing", timingText).Add("plan", planText).Raw("cameras", cams);
-                    if (!alignment.empty()) info.Raw("alignment", alignment);
+                    if (!alignment.empty())
+                    {
+                        info.Raw("alignment", alignment);
+                        // A sessão nasce com a proporção salva no Align cameras (o Export deixa trocar depois)
+                        bool ok = false;
+                        const JsonLite::Value rig = JsonLite::Parse(alignment, &ok);
+                        const std::string ratio = ok ? rig.get("ratio").asString() : std::string(), orient = ok ? rig.get("orient").asString() : std::string();
+                        if (ok && rig.get("cameras").items().size() > 0 && !ratio.empty() && ratio != "asshot")
+                            info.Add("crop", ratio + (orient.empty() ? "" : "/" + orient) + "|0.500|0.500");
+                    }
                     store.WriteSessionInfo(session.name, info.Str());
                 }
             };
@@ -5527,6 +5536,16 @@ namespace
                 list.push(one);
             }
             root.set("cameras", list);
+            // A proporção com que as sessões novas nascem (decisão do dono, 2026-11-26): "asshot", "3:2", "4:3",
+            // "16:9" ou "1:1", e a orientação ("h", "v" ou vazia: a das fotos)
+            {
+                const std::string ratio = in.get("ratio").asString(), orient = in.get("orient").asString();
+                if (ratio == "asshot" || ratio == "3:2" || ratio == "4:3" || ratio == "16:9" || ratio == "1:1")
+                {
+                    root.set("ratio", ratio);
+                    root.set("orient", orient == "h" || orient == "v" ? orient : std::string());
+                }
+            }
             const std::string text = JsonLite::Stringify(root, 0);
             {
                 std::lock_guard<std::mutex> lock(rigMutex);

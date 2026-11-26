@@ -2525,6 +2525,30 @@ Em **Export sessions** › sessão com mais de uma foto › **Align photos**.
       acontece ao salvar fica embaixo; o botão é **Save without it**.
 - [ ] Windows: os itens acima.
 
+## 68. Proporção das sessões novas no Align cameras e caixa de explicação padrão (2026-11-26, câmeras simuladas servem)
+
+Com `STILLPOINT_FAKE_CAMERAS=8 STILLPOINT_FAKE_PHOTOS=pole` a câmera 02 fotografa sempre em 16:9 e as outras em 3:2.
+
+- [ ] **Camera settings** › **Align cameras** › **Fire** › clicar as três marcas › **Review alignment**. No passo
+      **3 Save**, em cima, à esquerda de "Keeps", aparece a etiqueta âmbar **Mixed ratios**; com o mouse em cima, a
+      explicação aparece na caixa do app (a mesma do **?**), à direita, dizendo "Camera 02 shot 16:9; the others 3:2."
+      e pedindo uma proporção.
+- [ ] No painel da direita, rolar até o bloco **New sessions**: linha **Aspect ratio** com **As shot** apagado e
+      nenhuma opção escolhida. **Save alignment** (embaixo, à direita) está apagado.
+- [ ] Clicar **3:2**: o quadro verde da foto grande muda de forma, "Keeps" muda e **Save alignment** acende. Clicar o
+      botão de orientação em pé (ao lado das proporções): as opções viram 2:3, 3:4, 9:16. **⌘Z** desfaz, **⇧⌘Z** refaz.
+- [ ] Com um ajuste feito à mão numa foto (ex.: **Rotate** **+**), trocar a proporção: o ajuste continua lá.
+- [ ] **Save alignment**: a Activity diz "Cameras aligned (… ). The alignment is saved with the project. New sessions: 3:2."
+- [ ] **Fire** na janela principal: a janela **Mixed ratios** NÃO abre; a sessão nova aparece na lista com a etiqueta
+      **Mixed ratios** (com o mouse em cima: "Crop on export: 3:2").
+- [ ] **Export sessions** › **Framing**: **Aspect ratio** já está em **3:2**, com a nota "Aspect ratio starts from Align
+      cameras. Changing it here applies to this session only." Trocar ali não muda o alinhamento salvo.
+- [ ] Sem alinhamento salvo (projeto novo): **Fire** abre a janela **Mixed ratios** como antes.
+- [ ] **Camera settings**: com o mouse no triângulo de alerta ao lado do nome da câmera 02, o cursor é o de ajuda (?),
+      não a mão de link.
+- [ ] Qualquer elemento em que o cursor vira **?** (etiquetas **Mixed ratios**, **Edited**, fotos na Trash, alerta nas
+      miniaturas, etiqueta das marcas no Align cameras) mostra a explicação na mesma caixa do **?** das opções, à direita.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |
