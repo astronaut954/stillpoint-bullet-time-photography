@@ -2115,6 +2115,22 @@ def scenario_align_cameras(t, name, photos):
         ed2 = [float(x) for x in s3()["fields"]]
         check(t, "align, step 3: → goes to the next camera (the adjusted one is marked in the thumbnails)", s3()["where"].startswith("Camera 02 of 04") and t.js("() => document.querySelectorAll('#csAlignMain .export-strip li.frame.aligned').length") == 1, s3()["where"])
         t.shot("align-step3")
+        # Janela estreita (protótipo K3, 2026-11-26): os avisos viram uma etiqueta com a contagem e o Keeps encurta
+        vp = t.page.viewport_size
+        topst = lambda: t.js("() => { const top = document.querySelector('#csAlignMain .rig-top'); return { compact: top.classList.contains('compact'), h: top.offsetHeight, vis: [...top.querySelectorAll('.align-auto > *')].filter((e) => !e.classList.contains('hidden')).map((e) => e.textContent) }; }")
+        w0 = topst()
+        t.js("() => { const k = document.getElementById('alignKeeps'); const c = document.createElement('span'); c.className = 'al-chip'; c.id = 'csAlignUneven'; c.textContent = 'Marks not at equal distances'; c.dataset.itip = 'Probe.'; k.before(c); }")
+        t.page.set_viewport_size({"width": 1000, "height": vp["height"]}); time.sleep(0.8)
+        w1 = topst()
+        t.page.hover("#csAlignWarns"); time.sleep(0.3)
+        wp = t.js("() => (document.getElementById('csAlignWarnPop') || {}).textContent || ''")
+        t.page.mouse.move(5, 5); time.sleep(0.2)
+        t.page.set_viewport_size(vp); time.sleep(0.8)
+        w2 = topst()
+        t.js("() => { const c = document.getElementById('csAlignUneven'); if (c) c.remove(); window.dispatchEvent(new Event('resize')); }"); time.sleep(0.3)
+        check(t, "align, step 3, narrow window: the top row stays on one line, the warnings join in '2 warnings' (the list opens on hover) and Keeps gets short; wide again, the full texts are back",
+              not w0["compact"] and w1["compact"] and w1["h"] == w0["h"] and w1["vis"][0] == "2 warnings" and re.match(r"^Keeps \d+%$", w1["vis"][1] or "") and "Mixed ratios" in wp and "Uneven marks" in wp and "Camera 02 shot 16:9" in wp
+              and not w2["compact"] and "Marks not at equal distances" in w2["vis"], (w0, w1, wp, w2))
         # Bloco New sessions (protótipo A1; decisões B e S4 do dono, 2026-11-26): a câmera 02 fotografa em 16:9 e as
         # outras em 3:2, então "As shot" não vale e é preciso escolher uma proporção antes de salvar
         r0 = rig_state(t)

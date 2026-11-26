@@ -2582,6 +2582,14 @@ Vale no **Align photos** do Export e no passo **3 Save** do **Align cameras**.
 - [ ] As letras **V** e **A** continuam trocando de ferramenta e o botão acompanha.
 - [ ] Sair e entrar de novo no Align photos: volta para **Select**.
 
+## 72. Passo 3 do Align cameras em janela estreita (2026-11-26, câmeras simuladas servem)
+
+- [ ] No passo **3 Save**, com dois avisos na linha de cima (ex.: **Mixed ratios** e a etiqueta das marcas), estreitar
+      a janela: quando a linha não cabe mais, os avisos viram uma etiqueta só, **2 warnings**, e "Keeps NN% of each
+      photo" vira **Keeps NN%**. A linha continua com uma altura só.
+- [ ] Com o mouse em **2 warnings**: abre a lista com cada aviso e a explicação. Tirando o mouse, fecha.
+- [ ] Alargar a janela de novo: as etiquetas e o texto inteiro do Keeps voltam.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |

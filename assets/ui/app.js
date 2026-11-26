@@ -4249,6 +4249,49 @@
     back.disabled = !alEditHand(ed);
     box.append(back);
   }
+  // Janela estreita (protótipo K3, escolha do dono em 2026-11-26): quando a linha de cima do passo 3 não cabe numa
+  // linha só, os avisos viram uma etiqueta com a contagem (a lista abre com o mouse em cima, como o triângulo do
+  // Camera settings) e o Keeps encurta. Com largura de sobra, tudo volta ao texto inteiro.
+  function alCompactTop() {
+    const top = document.querySelector("#csAlignMain .rig-top");
+    if (!top) { alWarnPopOff(); return; }
+    const auto = top.querySelector(".align-auto"), keeps = top.querySelector("#alignKeeps");
+    if (!auto) return;
+    const old = top.querySelector("#csAlignWarns"); if (old) old.remove();
+    alWarnPopOff();
+    const chips = [...auto.querySelectorAll(".al-chip")];
+    chips.forEach((c) => c.classList.remove("hidden"));
+    if (keeps && keeps.dataset.full) keeps.textContent = keeps.dataset.full;
+    top.classList.remove("compact");
+    top.classList.add("fit-probe");
+    const over = top.scrollWidth > top.clientWidth + 1;
+    top.classList.remove("fit-probe");
+    if (!over) return;
+    top.classList.add("compact");
+    if (keeps && keeps.dataset.short) { keeps.textContent = keeps.dataset.short; if (!keeps.title) keeps.title = keeps.dataset.full; }
+    if (chips.length < 2) return;
+    chips.forEach((c) => c.classList.add("hidden"));
+    const w = el("span", "al-chip al-warns"); w.id = "csAlignWarns"; w.tabIndex = 0;
+    w.innerHTML = '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><path d="M8 2.2 14.2 13H1.8z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M8 6.4v3.2M8 11.2v.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>';
+    w.appendChild(document.createTextNode(chips.length + " warnings"));
+    const show = () => {
+      alWarnPopOff();
+      const pop = el("div", "al-warn-pop"); pop.id = "csAlignWarnPop";
+      pop.appendChild(el("b", "", chips.length + " warnings"));
+      const grid = el("div", "al-warn-rows");
+      chips.forEach((c) => { grid.append(el("span", "al-chip", c.id === "csAlignUneven" ? "Uneven marks" : c.textContent), el("span", "", c.dataset.itip || c.textContent)); });
+      pop.appendChild(grid);
+      document.body.appendChild(pop);
+      const r = w.getBoundingClientRect();
+      pop.style.left = Math.max(8, Math.min(r.left, window.innerWidth - pop.offsetWidth - 8)) + "px";
+      pop.style.top = (r.bottom + 6) + "px";
+    };
+    w.addEventListener("pointerenter", show); w.addEventListener("focus", show);
+    w.addEventListener("pointerleave", alWarnPopOff); w.addEventListener("blur", alWarnPopOff);
+    auto.insertBefore(w, auto.firstChild);
+  }
+  function alWarnPopOff() { const p = $("csAlignWarnPop"); if (p) p.remove(); }
+  window.addEventListener("resize", () => { if (al.open && al.step === 3) alCompactTop(); });
   // Os controles de tocar, sobre a foto: ‹ ▶ › Speed − 1.0x + Reverse loop; tocando, o ▶ vira pausa e entra o Stop.
   // Parado, ‹ › trocam de câmera.
   function alEditTransport(ed, bar) {
@@ -6165,6 +6208,8 @@
       const low = v != null && v < KEEP_WARN && alignModeOf(session, st) === "rig";
       node.textContent = v == null ? "" : "Keeps " + Math.round(v * 100) + (st.rigStep ? "% of each photo" : "% of the photos");
       node.classList.toggle("warn", low);
+      node.dataset.full = node.textContent; node.dataset.short = v == null ? "" : "Keeps " + Math.round(v * 100) + "%";
+      if (st.rigStep) setTimeout(alCompactTop, 0);
       node.title = low && st.rigStep ? "This alignment cuts a lot of each photo: the cameras are far from each other's framing. To keep more, go back, fix the cameras and fire again." : low ? "The alignment cuts a lot of the photos. To keep more, fix the cameras in Camera settings › Test shot › Align cameras and shoot again." : "How much of each photo is left after the canvas and the alignment (average)";
     });
   }

@@ -1899,6 +1899,14 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      https://claude.ai/artifact/5W9SVCVmnx6SnGE11VeGjH (K1 duas linhas; K2 uma linha com textos curtos; K3 avisos
      juntos numa etiqueta com contagem). AGUARDA A ESCOLHA DO DONO. Visto na captura: o passo 2 também corta a
      coluna da direita em 1000 px de largura (a tratar junto).
+     Teste do dono (2026-11-26): seção 71 aprovada. **Escolha: K3** — feito (`alCompactTop`, seção 72); o corte
+     da coluna da direita do passo 2 em janela estreita continua por tratar.
+     **Ferramentas novas: entendimento confirmado pelo dono**, com a regra: o canvas não pode ficar maior que as
+     fotos, do mesmo jeito que as fotos não podem ficar menores que o canvas.
+     **DECISÃO DO DONO (2026-11-26): o "Position" do painel do Align photos sai** (gravação: está com defeito e
+     não faz sentido ali) **e dá lugar a uma ÂNCORA por foto**, salva conforme a pessoa ajusta, valendo para o
+     tamanho e o giro. A definir com protótipo: como a âncora é posta (grade de 9 pontos, ponto livre arrastado
+     na foto, ou os dois) e se o "Position" da aba Framing (sessão sem alinhamento) continua.
      **A DECIDIR:** onde mais o S4 vale: no Export (sessão com formas diferentes: "As shot" apagado?) e na janela
      "Mixed ratios" das sessões sem rig alinhado (tirar "Keep as shot"?); as sessões já feitas não mudam
      (registro de 2026-11-24).
