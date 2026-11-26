@@ -2049,6 +2049,7 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      `align-anchor-pop` embaixo dele com "Canvas center", "Photo center" e a linha "Photo" com a grade; etiqueta
      "Edited" com moldura de volta (T3 desfeito). A caixa continua aberta depois de escolher (escolha do agente,
      a confirmar); fecha ao clicar fora, no botão ou com Esc.
+     Pedido do dono (2026-11-26, 20:52): tirar "Photo center" (redundante com o quadrado do meio). FEITO.
      FALTA: botão de edição global (G2) e ferramenta do canvas (C1).
      3. IDEIA PARA DEPOIS (só anotar): a feature de label passar a aceitar várias labels, não só uma.
      **PASSAGEM PARA UM CHAT NOVO (2026-11-26):** o dono pediu um prompt de continuação porque as respostas

@@ -2319,7 +2319,7 @@ def scenario_align_cameras(t, name, photos):
         t.page.click("#exportSettings .align-anchor-btn")   # (o ícone da âncora abre a caixa com as opções)
         time.sleep(0.4)
         pop = t.js("() => { const p = document.querySelector('#exportSettings .align-anchor-pop'); return { open: !p.classList.contains('hidden'), items: [...p.querySelectorAll('.align-anchor-item')].map((b) => b.textContent.trim() + (b.classList.contains('on') ? '*' : '')), dots: p.querySelectorAll('.align-anchor-dot').length }; }")
-        check(t, "anchor: the anchor icon in the title of This photo opens the box with 'Canvas center' (lit: the anchor starts there), 'Photo center' and the 9 points", pop["open"] and pop["items"] == ["Canvas center*", "Photo center"] and pop["dots"] == 9, pop)
+        check(t, "anchor: the anchor icon in the title of This photo opens the box with 'Canvas center' (lit: the anchor starts there) and the 9 points of the photo", pop["open"] and pop["items"] == ["Canvas center*"] and pop["dots"] == 9, pop)
         t.page.click("#exportSettings .align-anchor-dot:nth-child(5)")
         time.sleep(0.6)
         a0, v0 = amark(), fvals()

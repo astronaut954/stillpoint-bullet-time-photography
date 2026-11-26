@@ -7026,8 +7026,8 @@
       anchorGrid.appendChild(d);
     }
     // Âncora atrás de um ícone (decisão do dono, 2026-11-26: protótipo A1, a caixa embaixo do ícone, com o conteúdo
-    // do A3): o botão com a âncora fica no título; clicar abre a caixa com "Canvas center", "Photo center" e a
-    // grade dos 9 pontos da foto. Fecha ao clicar fora, no botão de novo ou com Esc.
+    // do A3): o botão com a âncora fica no título; clicar abre a caixa com "Canvas center" e a grade dos 9 pontos
+    // da foto. Fecha ao clicar fora, no botão de novo ou com Esc.
     const ANCHOR_SVG = '<svg viewBox="0 0 14 14" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="square" aria-hidden="true"><circle cx="7" cy="2.9" r="1.5"/><path d="M7 4.4v8M4.6 6.6h4.8M2.4 8.6a4.6 4.6 0 0 0 9.2 0"/></svg>';
     const CENTER_SVG = '<svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><rect x="1.5" y="2.5" width="11" height="9"/><path d="M7 5v4M5 7h4"/></svg>';
     const anchorBtn = el("button", "align-anchor-btn"); anchorBtn.type = "button"; anchorBtn.innerHTML = ANCHOR_SVG;
@@ -7041,8 +7041,7 @@
       const f = anchorFracAt(fr.x + fr.w / 2, fr.y + fr.h / 2);
       a.ax = f.x; a.ay = f.y; anchorShow(); layout(); save();
     });
-    const anchorMid = anchorItem(ANCHOR_SVG, "Photo center");
-    anchorMid.addEventListener("click", () => { a.ax = 0.5; a.ay = 0.5; anchorShow(); layout(); save(); });
+    // ("Photo center" saiu a pedido do dono, 2026-11-26: é o quadrado do meio da grade)
     { const row = el("div", "align-anchor-row"); row.append(el("span", "align-anchor-lab", "Photo"), anchorGrid); anchorPop.appendChild(row); }
     self.appendChild(anchorPop);
     const anchorPopOutside = (e) => { if (!anchorPop.contains(e.target) && !anchorBtn.contains(e.target)) anchorPopSet(false); };
@@ -7080,7 +7079,6 @@
     const anchorShow = () => {
       const f = sizes[item.file] ? anchorFrac() : { x: 0.5, y: 0.5 };
       [...anchorGrid.children].forEach((d) => d.classList.toggle("on", Math.abs(+d.dataset.x - f.x) < 0.004 && Math.abs(+d.dataset.y - f.y) < 0.004));
-      anchorMid.classList.toggle("on", Math.abs(f.x - 0.5) < 0.004 && Math.abs(f.y - 0.5) < 0.004);
     };
     anchorMark.addEventListener("pointerdown", (e) => {
       // (com a barra de espaço apertada o gesto é da vista: a âncora não se mexe; pedido do dono, 2026-11-26)
