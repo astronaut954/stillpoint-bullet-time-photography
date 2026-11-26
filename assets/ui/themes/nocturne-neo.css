@@ -1012,7 +1012,7 @@ table.cs tr.has-note td { border-bottom-color: transparent; }
 .cs-copy select { height: 36px; line-height: 34px; max-width: 170px; }
 .info-tip { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border: 1px solid var(--noct-border-strong);
   border-radius: 50%; font: 700 11px var(--noct-font-mono); color: var(--noct-text-muted); cursor: help; letter-spacing: 0;
-  box-sizing: border-box; padding-left: 1px; }  /* (o "?" ficava um pouco à esquerda do centro do círculo: dono, 2026-11-26) */
+  box-sizing: border-box; padding-left: .5px; }  /* (o "?" ficava um pouco à esquerda do centro do círculo: dono, 2026-11-26) */
 .info-tip:hover, .info-tip:focus { color: var(--noct-primary); border-color: var(--noct-primary); outline: none; }
 .info-tip-text { display: none; position: absolute; left: 26px; top: -8px; z-index: 5; width: 340px; padding: 12px 14px; background: var(--noct-surface);
   border: 1px solid var(--noct-border-strong); box-shadow: 0 12px 32px rgba(0, 0, 0, .55); font: 12px/1.9 var(--noct-font-mono); letter-spacing: 0;
@@ -1839,10 +1839,11 @@ body.align-drag, body.align-drag * { cursor: var(--drag-cursor, default) !import
 .dialog:has(.ratio-others) .dialog-actions { flex-wrap: nowrap; }
 /* Explicação instantânea (data-itip) */
 .itip {
-  position: fixed; z-index: 96; pointer-events: none; max-width: 300px;
-  padding: 8px 10px; background: var(--noct-surface); border: 1px solid var(--noct-pending);
-  color: var(--noct-text); font: 11px/1.45 var(--noct-font-mono);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, .5);
+  /* (igual à caixa do "?" das opções, .info-tip-text: padrão de toda explicação, dono 2026-11-26) */
+  position: fixed; z-index: 96; pointer-events: none; width: max-content; max-width: 320px;
+  padding: 12px 14px; background: var(--noct-surface); border: 1px solid var(--noct-border-strong);
+  color: var(--noct-text-muted); font: 12px/1.9 var(--noct-font-mono); letter-spacing: 0; text-transform: none;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .55);
 }
 .cs-review-thumb { display: block; width: 48px; height: 32px; background: var(--noct-surface-inner) center / cover no-repeat; border: 1px solid var(--noct-border); }
 .cs-review-thumb.changed { border-color: var(--noct-primary); }

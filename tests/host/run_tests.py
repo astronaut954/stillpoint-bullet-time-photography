@@ -2792,7 +2792,7 @@ def scenario_align_uneven(t, name, photos):
             time.sleep(0.25)
         ok = t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item.ready, #csAlignMain .ma-item.needs').length === 4 && !/Finding/.test(document.querySelector('#csAlignMain').textContent)"), 60)
         time.sleep(0.5)
-        mm = t.js("() => { const w = document.getElementById('csAlignUneven'); return { text: w ? w.textContent + ' | ' + w.title : '', mis: w ? w.dataset.mismatch || '' : '', inst: [...document.querySelectorAll('#csAlignInst .inst')].map((i) => i.dataset.k + ':' + i.querySelector('.inst-v').textContent) }; }")
+        mm = t.js("() => { const w = document.getElementById('csAlignUneven'); return { text: w ? w.textContent + ' | ' + (w.dataset.itip || '') : '', mis: w ? w.dataset.mismatch || '' : '', inst: [...document.querySelectorAll('#csAlignInst .inst')].map((i) => i.dataset.k + ':' + i.querySelector('.inst-v').textContent) }; }")
         check(t, "align, your marks: with 'Equal distances' chosen and marks that are not, an amber note says so (and the height is still estimated: the app does not switch by itself)",
               ok and mm["mis"] == "1" and "do not look evenly spaced" in mm["text"] and "choose Not equal" in mm["text"] and not any("Not estimated" in x for x in mm["inst"]), mm)
         # Volta ao passo 1 e escolhe "Not equal": as mesmas fotos, a outra conta
@@ -2805,9 +2805,22 @@ def scenario_align_uneven(t, name, photos):
         # (as fotos novas: as marcas são achadas sozinhas, pela foto de referência de antes)
         ok = t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item.ready, #csAlignMain .ma-item.needs').length === 4 && !/Finding/.test(document.querySelector('#csAlignMain').textContent)"), 60)
         time.sleep(0.5)
-        d = t.js("() => { const w = document.getElementById('csAlignUneven'); return { text: w ? w.textContent + ' | ' + w.title : '', label: w ? w.textContent : '', first: w ? !!w.previousElementSibling && w.previousElementSibling.classList.contains('al-hint') && w.tagName === 'SPAN' : false, found: document.querySelectorAll('#csAlignMain .ma-item .cs-tag').length }; }")
+        d = t.js("() => { const w = document.getElementById('csAlignUneven'); return { text: w ? w.textContent + ' | ' + (w.dataset.itip || '') : '', label: w ? w.textContent : '', first: w ? !!w.previousElementSibling && w.previousElementSibling.classList.contains('al-hint') && w.tagName === 'SPAN' : false, found: document.querySelectorAll('#csAlignMain .ma-item .cs-tag').length }; }")
         check(t, "align, uneven marks: a short amber label under the hint of the points in step 2; the whole explanation shows on hover",
               ok and d["first"] and d["label"] == "Marks not at equal distances" and "Marks not at equal distances" in d["text"] and "matched by the length of the pole" in d["text"] and "height of each camera is not estimated" in d["text"] and "use three marks at equal distances" in d["text"], d)
+        # A explicação da etiqueta aparece na caixa padrão do app (a mesma do "?"), à direita, e não na legenda do sistema
+        t.page.hover("#csAlignUneven"); time.sleep(0.4)
+        hb = t.js("""() => { const w = document.getElementById('csAlignUneven'), b = document.querySelector('.itip'), cs = getComputedStyle(b), r = w.getBoundingClientRect(), q = b.getBoundingClientRect();
+          return { shown: !b.classList.contains('hidden'), text: b.textContent, title: w.getAttribute('title') || '', font: cs.fontSize, pad: cs.paddingLeft, right: q.left >= r.right || q.right <= r.left, cursor: getComputedStyle(w).cursor }; }""")
+        check(t, "help cursor: the uneven marks label shows its explanation in the app's own box, beside it, like the ? of the options (no system tooltip)",
+              hb["shown"] and "matched by the length of the pole" in hb["text"] and hb["title"] == "" and hb["font"] == "12px" and hb["pad"] == "14px" and hb["right"] and hb["cursor"] == "help", hb)
+        t.page.mouse.move(5, 5); time.sleep(0.2)
+        # Padrão: um elemento com cursor de ajuda e só a legenda do sistema também usa a caixa do app
+        g = t.js("""() => { const x = document.createElement('span'); x.id = 'helpProbe'; x.title = 'Probe text'; x.textContent = 'probe'; x.style.cssText = 'cursor:help;position:fixed;left:200px;top:200px;z-index:999'; document.body.appendChild(x); return true; }""")
+        t.page.hover("#helpProbe"); time.sleep(0.3)
+        gp = t.js("() => { const b = document.querySelector('.itip'); const r = { shown: !b.classList.contains('hidden'), text: b.textContent }; document.getElementById('helpProbe').remove(); return r; }")
+        check(t, "help cursor: any element with the ? cursor and only a system tooltip also uses the app's box", gp["shown"] and gp["text"] == "Probe text", gp)
+        t.page.mouse.move(5, 5); time.sleep(0.2)
         check(t, "align, uneven marks: the Height instrument says 'Not estimated'", "Not estimated" in t.js("() => (document.getElementById('csAlignInst') || {}).textContent || ''"), t.js("() => document.querySelector('#csAlignMain .ma-view') ? document.querySelector('#csAlignMain .ma-view').textContent.slice(0, 400) : document.getElementById('csAlignMain').textContent.slice(-500)"))
         lines = t.js("() => document.querySelector('#csAlignMain .in-list') ? document.querySelector('#csAlignMain .in-list').textContent : document.querySelector('#csAlignMain').textContent")
         check(t, "align, uneven marks: no instruction about the height of the camera", "igher than" not in lines and "ower than" not in lines, lines[-300:])
@@ -2815,7 +2828,7 @@ def scenario_align_uneven(t, name, photos):
         check(t, "align, uneven marks: the note does not block 'Review alignment'", can)
         t.button("Review alignment")
         t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .export-strip li.frame').length") == 4, 10)
-        d = t.js("() => { const w = document.getElementById('csAlignUneven'), sv = document.querySelector('#csAlignMain .rig-outer'), foot = [...document.querySelectorAll('#csAlign button')].find((x) => x.textContent.trim() === 'Save alignment'); return { text: w ? w.textContent + ' | ' + w.title : '', label: w ? w.textContent : '', after: !!w && !!w.closest('.rig-top') && w.nextElementSibling && w.nextElementSibling.id === 'alignKeeps', save: !!foot && !foot.disabled }; }")
+        d = t.js("() => { const w = document.getElementById('csAlignUneven'), sv = document.querySelector('#csAlignMain .rig-outer'), foot = [...document.querySelectorAll('#csAlign button')].find((x) => x.textContent.trim() === 'Save alignment'); return { text: w ? w.textContent + ' | ' + (w.dataset.itip || '') : '', label: w ? w.textContent : '', after: !!w && !!w.closest('.rig-top') && w.nextElementSibling && w.nextElementSibling.id === 'alignKeeps', save: !!foot && !foot.disabled }; }")
         check(t, "align, uneven marks: the same label in step 3, in the top row next to Keeps, and 'Save alignment' still works", d["label"] == "Marks not at equal distances" and "matched by the length of the pole" in d["text"] and "use three marks" not in d["text"] and d["after"] and d["save"], d)
         check(t, "align uneven: no page error", len(t.errors) == errors_before, t.errors[errors_before:])
     finally:

@@ -2456,8 +2456,10 @@
     list.addEventListener("pointerdown", hideRailTip);
     list.addEventListener("scroll", hideRailTip);
   }
-  // Explicação instantânea ([data-itip]): uma caixa no visual do app, embaixo do elemento, sem a espera da
-  // legenda do sistema. Usada no ícone de alerta da proporção (Camera settings).
+  // Explicação instantânea ([data-itip]): uma caixa no visual do app, sem a espera da legenda do sistema.
+  // PADRÃO (dono, 2026-11-26): todo elemento em que o mouse vira "?" mostra a explicação na mesma caixa e no mesmo
+  // lugar do "?" das opções (à direita do elemento; sem espaço, à esquerda). Um elemento com cursor de ajuda e só
+  // a legenda do sistema (title) também cai aqui, para nenhum ficar de fora.
   const itip = el("div", "itip hidden");
   document.body.appendChild(itip);
   let itipOn = null, itipTitles = [];
@@ -2468,23 +2470,32 @@
   function showItip(t) {
     if (!t || t === itipOn) return;
     hideItip();
+    const text = t.dataset.itip || t.getAttribute("title") || "";
+    if (!text) return;
     itipOn = t;
     // Sem a legenda do sistema (ex.: o nome da câmera na miniatura) por cima da caixa
     for (let n = t; n && n.nodeType === 1; n = n.parentElement) if (n.hasAttribute("title")) { itipTitles.push([n, n.getAttribute("title")]); n.removeAttribute("title"); }
-    itip.textContent = t.dataset.itip;
+    itip.textContent = text;
     itip.classList.remove("hidden");
     const r = t.getBoundingClientRect();
     const w = itip.offsetWidth, h = itip.offsetHeight;
-    let left = r.left + r.width / 2 - w / 2;
-    left = Math.max(8, Math.min(left, window.innerWidth - w - 8));
-    let top = r.bottom + 8;
-    if (top + h > window.innerHeight - 8) top = r.top - h - 8;
+    let left = r.right + 8, top = r.top - 8;  // (a mesma conta de placeTip, a do "?")
+    if (left + w > window.innerWidth - 8) left = Math.max(8, r.left - w - 8);
+    if (top + h > window.innerHeight - 8) top = Math.max(8, window.innerHeight - h - 8);
     itip.style.left = left + "px";
-    itip.style.top = top + "px";
+    itip.style.top = Math.max(8, top) + "px";
   }
-  document.addEventListener("pointerover", (e) => { if (e.pointerType !== "touch") showItip(e.target.closest("[data-itip]")); });
+  // O elemento com explicação: o que tem data-itip ou, sem ele, o que tem legenda do sistema e cursor de ajuda
+  function itipTarget(node) {
+    if (!node || !node.closest) return null;
+    const own = node.closest("[data-itip]");
+    if (own) return own;
+    const titled = node.closest("[title]");
+    return titled && !titled.closest(".info-tip") && getComputedStyle(titled).cursor === "help" ? titled : null;
+  }
+  document.addEventListener("pointerover", (e) => { if (e.pointerType !== "touch") showItip(itipTarget(e.target)); });
   document.addEventListener("pointerout", (e) => { if (itipOn && !(e.relatedTarget && itipOn.contains(e.relatedTarget))) hideItip(); });
-  document.addEventListener("focusin", (e) => showItip(e.target.closest("[data-itip]")));
+  document.addEventListener("focusin", (e) => showItip(itipTarget(e.target)));
   document.addEventListener("focusout", hideItip);
   document.addEventListener("pointerdown", hideItip, true);
   document.addEventListener("scroll", hideItip, true);
@@ -3327,7 +3338,7 @@
     // Disse "Not equal": a etiqueta lembra o que isso muda. Disse "Equal distances" mas as fotos mostram a marca do
     // meio longe do meio: avisa que a resposta não combina com as fotos, sem trocar a conta (o programa não adivinha).
     w.textContent = alUneven() ? "Marks not at equal distances" : "Marks do not look evenly spaced";
-    w.title = alUneven()
+    w.dataset.itip = alUneven()
       ? "Marks not at equal distances (your choice in step 1). The photos are matched by the length of the pole each camera sees, and the height of each camera is not estimated." + (full ? " For the complete alignment, use three marks at equal distances." : "")
       : "These marks do not look evenly spaced. The middle one is at " + pct + "% of the way, and you chose Equal distances in step 1. If they are not at the same distance, go back to step 1 and choose Not equal: otherwise the photos come out in different sizes.";
     if (!alUneven()) w.dataset.mismatch = "1";

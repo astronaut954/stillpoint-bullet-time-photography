@@ -1836,9 +1836,22 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      sessions" no painel da direita; A2 barra acima da foto; E como chega ao Export). AGUARDA A ESCOLHA DO DONO.
      Ainda a confirmar: igualar pela largura com proporções diferentes.
      **ESCOLHA DO DONO (2026-11-26): A1** (bloco "New sessions" no painel da direita do passo 3, embaixo de
-     "This photo") **e E** (no Export › Framing, linha Resolution com etiqueta âmbar e a nota de origem). Dúvida
-     do dono, SEM DECISÃO: tirar a opção "As shot" mais para a frente (não havia decisão registrada sobre isso).
-     Pedido: o "?" dos ícones de ajuda um pouco mais para a direita, para centralizar (feito no tema).
+     "This photo") **e E** (no Export › Framing, linha Resolution com etiqueta âmbar e a nota de origem). "As shot":
+     CORREÇÃO DO AGENTE: havia registro, sim (acima, 2026-11-24, "Proporções misturadas": a proporção é escolhida
+     uma vez, o app pergunta na primeira vez que as câmeras fotografam em proporções diferentes, dá para mudar
+     depois e na exportação, as sessões já feitas não mudam, "a opção As shot some"); o agente não achou na busca
+     e disse ao dono que não havia. Lembrança do dono em 2026-11-26: os originais ficam sempre como saíram da
+     câmera (Originals); havendo divergência de proporção entre as câmeras, a pessoa NÃO pode ficar em "As shot",
+     tem de escolher uma proporção. A CONFIRMAR com o dono: "As shot" some sempre (registro de 2026-11-24) ou só
+     quando as câmeras divergem (mensagem de 2026-11-26). A alternativa B (proporção no Align cameras) responde ao
+     "lugar para mudar depois" que estava a definir.
+     Ícone de ajuda: o "?" foi 0,5 px para a direita (pedido), depois o dono pediu um pouco para a esquerda: ficou
+     em 0,25 px.
+     **PADRÃO (dono, 2026-11-26): todo elemento em que o mouse vira "?" mostra a explicação na caixa do "?" das
+     opções** (mesmo visual, à direita do elemento), nunca na legenda do sistema. Feito: a caixa das explicações
+     instantâneas (`.itip`) ficou igual à do "?" e no mesmo lugar; a etiqueta das marcas desiguais do Align
+     cameras passou a usá-la; um elemento com cursor de ajuda e só `title` cai na mesma caixa (rede de segurança).
+     Elemento novo com cursor de ajuda: usar `data-itip`.
      DÚVIDA ANOTADA PARA DEPOIS (Edit in Lightroom Classic): copiar as edições das fotos de uma sessão, ou de
      uma foto, para outras sessões e fotos de outras sessões. A investigar quando chegar a vez; não planejado.
      Pergunta do dono: alinhar sem as marcas, por um objeto ou pessoa da cena. É a parte 7 (From this scene), já
