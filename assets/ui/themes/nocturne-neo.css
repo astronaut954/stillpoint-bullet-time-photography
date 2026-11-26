@@ -1011,7 +1011,8 @@ table.cs tr.has-note td { border-bottom-color: transparent; }
 .cs-copy { display: inline-flex; align-items: center; gap: 8px; font: 700 11px var(--noct-font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--noct-text-muted); }
 .cs-copy select { height: 36px; line-height: 34px; max-width: 170px; }
 .info-tip { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border: 1px solid var(--noct-border-strong);
-  border-radius: 50%; font: 700 11px var(--noct-font-mono); color: var(--noct-text-muted); cursor: help; letter-spacing: 0; }
+  border-radius: 50%; font: 700 11px var(--noct-font-mono); color: var(--noct-text-muted); cursor: help; letter-spacing: 0;
+  box-sizing: border-box; padding-left: 1px; }  /* (o "?" ficava um pouco à esquerda do centro do círculo: dono, 2026-11-26) */
 .info-tip:hover, .info-tip:focus { color: var(--noct-primary); border-color: var(--noct-primary); outline: none; }
 .info-tip-text { display: none; position: absolute; left: 26px; top: -8px; z-index: 5; width: 340px; padding: 12px 14px; background: var(--noct-surface);
   border: 1px solid var(--noct-border-strong); box-shadow: 0 12px 32px rgba(0, 0, 0, .55); font: 12px/1.9 var(--noct-font-mono); letter-spacing: 0;

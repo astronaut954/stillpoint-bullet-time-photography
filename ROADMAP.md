@@ -1835,6 +1835,12 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      PROTÓTIPOS DE ONDE FICAM NO PASSO 3: https://claude.ai/artifact/77mFoJ4gYJzQYbVz2sDTGX (A1 bloco "New
      sessions" no painel da direita; A2 barra acima da foto; E como chega ao Export). AGUARDA A ESCOLHA DO DONO.
      Ainda a confirmar: igualar pela largura com proporções diferentes.
+     **ESCOLHA DO DONO (2026-11-26): A1** (bloco "New sessions" no painel da direita do passo 3, embaixo de
+     "This photo") **e E** (no Export › Framing, linha Resolution com etiqueta âmbar e a nota de origem). Dúvida
+     do dono, SEM DECISÃO: tirar a opção "As shot" mais para a frente (não havia decisão registrada sobre isso).
+     Pedido: o "?" dos ícones de ajuda um pouco mais para a direita, para centralizar (feito no tema).
+     DÚVIDA ANOTADA PARA DEPOIS (Edit in Lightroom Classic): copiar as edições das fotos de uma sessão, ou de
+     uma foto, para outras sessões e fotos de outras sessões. A investigar quando chegar a vez; não planejado.
      Pergunta do dono: alinhar sem as marcas, por um objeto ou pessoa da cena. É a parte 7 (From this scene), já
      prevista, a fazer antes do rig reutilizável.
      **Decisões do dono no meio dos testes (2026-11-24), a fazer DEPOIS dos roteiros:** (i) arrastar os pontos
