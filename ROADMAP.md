@@ -1972,6 +1972,7 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
         espelhada e tira o espelhamento.** FEITO, AGUARDANDO TESTE (`rigTouched` conta o espelhamento; o botão
         limpa tudo antes do `rigApply`). Teste automático do cenário do Align cameras: 104 de 104 (duas
         verificações novas); rodada completa não refeita.
+        Teste do dono (2026-11-26, 17:59): aprovado. Item 2 dos pedidos novos ENCERRADO.
      3. IDEIA PARA DEPOIS (só anotar): a feature de label passar a aceitar várias labels, não só uma.
      **PASSAGEM PARA UM CHAT NOVO (2026-11-26):** o dono pediu um prompt de continuação porque as respostas
      estavam demorando demais. Ordem combinada do que falta, do mais próximo ao mais distante: (a) item 1 acima;

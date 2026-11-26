@@ -2652,9 +2652,9 @@ Retornos do dono (2026-11-26, 17:37), a conferir:
 
 Decisão do dono (2026-11-26, 17:54), a conferir:
 
-- [ ] Com uma foto só espelhada (**Flip**), o **Back to automatic** (no alto, à direita) fica aceso; clicar tira o
+- [x] Com uma foto só espelhada (**Flip**), o **Back to automatic** (no alto, à direita) fica aceso; clicar tira o
       espelhamento e as marcas somem. **⌘Z** traz o espelhamento de volta.
-- [ ] Com fotos mexidas e espelhadas, **Back to automatic** volta tudo ao rig, sem espelhamento.
+- [x] Com fotos mexidas e espelhadas, **Back to automatic** volta tudo ao rig, sem espelhamento.
 
 ## Resultado
 
