@@ -1997,8 +1997,8 @@ def scenario_align_cameras(t, name, photos):
         t.js("() => { const b = document.getElementById('alignBackStick'); if (b && !b.disabled) b.click(); }"); time.sleep(0.5)
         # Cancel com trabalho feito pergunta antes: "Keep aligning" fica; (o "Leave without saving" é conferido adiante)
         t.js("() => [...document.querySelectorAll('#csAlignFoot button')].find((b) => b.textContent.trim() === 'Cancel').click()"); time.sleep(0.5)
-        ask = t.js("() => { const o = document.getElementById('dialogOverlay'); return [!o.classList.contains('hidden'), o.textContent.includes('Leave without saving?'), [...o.querySelectorAll('button')].map((b) => b.textContent.trim())]; }")
-        check(t, "align: Cancel with marks and adjustments made asks before leaving ('Keep aligning' / 'Leave without saving')", ask[0] and ask[1] and ask[2] == ["Keep aligning", "Leave without saving"], ask)
+        ask = t.js("() => { const o = document.getElementById('dialogOverlay'); return [!o.classList.contains('hidden'), o.textContent.includes('Leave without saving?'), [...o.querySelectorAll('button')].map((b) => b.textContent.trim() + (b.classList.contains('btn-primary') ? '*' : ''))]; }")
+        check(t, "align: Cancel with marks and adjustments made asks before leaving ('Keep aligning' in green / 'Leave without saving')", ask[0] and ask[1] and ask[2] == ["Keep aligning*", "Leave without saving"], ask)
         t.js("() => [...document.querySelectorAll('#dialogOverlay button')].find((b) => b.textContent.trim() === 'Keep aligning').click()"); time.sleep(0.4)
         check(t, "align: 'Keep aligning' stays in the window, with everything as it was", t.js("() => !document.getElementById('csAlign').classList.contains('hidden') && document.getElementById('csAlignStep3').classList.contains('on')") and len(s3()["fields"]) == 4)
         # Tocar a sequência: na própria tela, sem as referências por cima e sem as alças; ‹ pausa ›, Speed, Reverse loop

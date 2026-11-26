@@ -2892,7 +2892,7 @@
     if (!work) { alClose(); return; }
     dialog("Leave without saving?",
       "The marks and the adjustments made here are not saved yet. If you leave now they are lost, and the alignment the project had stays as it was.",
-      [{ label: "Keep aligning" }, { label: "Leave without saving", primary: true, onClick: () => alClose() }]);
+      [{ label: "Keep aligning", primary: true }, { label: "Leave without saving", onClick: () => alClose() }]);  // (o verde é o que não perde nada: pedido do dono, 2026-11-26)
   }
   function alClose() {
     if (!al.open) return;
