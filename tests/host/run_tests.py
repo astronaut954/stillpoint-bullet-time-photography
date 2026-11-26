@@ -2290,7 +2290,7 @@ def scenario_align_cameras(t, name, photos):
               notes: [...ex.querySelectorAll('.align-rig:not(.hidden)')].map((e) => e.closest('.align-ctl').querySelector('.align-lab').textContent + ':' + e.textContent),
               boxes: [...ex.querySelectorAll('.align-num.rig-edited')].length }; }""")
         m1 = marks()
-        check(t, "Align photos: an edited photo is marked (selector '· edited' in amber, square and 'Edited' on its thumbnail, 'This photo · edited' in the panel title and the rig value next to Size; with the anchor off the photo centre, Move changes too)",
+        check(t, "Align photos: an edited photo is marked (selector '· edited' in amber, square and 'Edited' on its thumbnail, 'Edited' tag and the rig value next to Size; with the anchor off the photo centre, Move changes too)",
               m1["sel"].endswith(" · edited") and m1["amber"] and m1["thumbs"].count("dw") == 1 and m1["tag"] and any(re.match(r"Size:Rig \d+\.\d$", n) for n in m1["notes"]) and m1["boxes"] == len(m1["notes"]), m1)
         t.button("Back to automatic")
         check(t, "Align photos: 'Back to automatic' returns to the alignment of the rig", t.wait(lambda: saved() == auto_text and back_off() is True, 8), saved())
@@ -2316,10 +2316,14 @@ def scenario_align_cameras(t, name, photos):
         agrid = lambda: t.js("() => [...document.querySelectorAll('#exportSettings .align-anchor-dot')].map((d) => (d.classList.contains('on') ? 'X' : '.')).join('')")
         fvals = lambda: t.js("() => [...document.querySelectorAll('#exportSettings .align-ctl .align-num')].map((i) => parseFloat(i.value))")
         time.sleep(0.6)
+        t.page.click("#exportSettings .align-anchor-btn")   # (o ícone da âncora abre a caixa com as opções)
+        time.sleep(0.4)
+        pop = t.js("() => { const p = document.querySelector('#exportSettings .align-anchor-pop'); return { open: !p.classList.contains('hidden'), items: [...p.querySelectorAll('.align-anchor-item')].map((b) => b.textContent.trim() + (b.classList.contains('on') ? '*' : '')), dots: p.querySelectorAll('.align-anchor-dot').length }; }")
+        check(t, "anchor: the anchor icon in the title of This photo opens the box with 'Canvas center' (lit: the anchor starts there), 'Photo center' and the 9 points", pop["open"] and pop["items"] == ["Canvas center*", "Photo center"] and pop["dots"] == 9, pop)
         t.page.click("#exportSettings .align-anchor-dot:nth-child(5)")
         time.sleep(0.6)
         a0, v0 = amark(), fvals()
-        check(t, "anchor: the grid in the title of This photo puts the anchor on a point of the photo (centre) and lights that square", agrid() == "....X...." and len(parse(saved())) == 4 and ",0.5000,0.5000" in saved(), (agrid(), saved()))
+        check(t, "anchor: the grid in the box puts the anchor on a point of the photo (centre) and lights that square", agrid() == "....X...." and len(parse(saved())) == 4 and ",0.5000,0.5000" in saved(), (agrid(), saved()))
         t.page.mouse.move(a0[0], a0[1]); t.page.mouse.down(); t.page.mouse.move(a0[0] - 160, a0[1] - 120, steps=4); t.page.mouse.up()
         time.sleep(0.6)
         a1 = amark()

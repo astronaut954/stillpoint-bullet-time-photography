@@ -2713,11 +2713,18 @@ Retornos do dono (2026-11-26, 19:58), a conferir:
 - [x] Com a âncora no centro do canvas, a cruz do centro do canvas some da foto (o botão da cruz, na barra de
       ferramentas, continua aceso); tirando a âncora do centro, ou tocando a sequência, a cruz volta.
 
-Escolha do dono (2026-11-26, 20:15): título T3, a conferir:
+Layout novo (decisão do dono, 2026-11-26, 20:45: A1 com o conteúdo do A3), a conferir:
 
-- [ ] Título do painel **This photo** numa linha só: "This photo", a grade de 9 quadrados, o botão quadrado e o
-      número da foto (sem a palavra "Anchor"). Com a foto mexida, o título vira "This photo · edited", em âmbar, sem
-      moldura; com a foto igual ao rig, volta a "This photo" em verde.
+- [ ] Título do painel **This photo** numa linha só: "This photo", a etiqueta "Edited" com moldura âmbar (só com a
+      foto mexida), um botão com o ícone de âncora e o número da foto.
+- [ ] Clicar o botão da âncora: ele acende e abre uma caixa embaixo dele, por cima do painel, com **Canvas center**,
+      **Photo center** e a linha "Photo" com a grade de 9 quadrados. Fica aceso o que corresponde a onde a âncora
+      está (ao abrir pela primeira vez, **Canvas center**).
+- [ ] **Photo center** leva a âncora ao centro da foto (acende também o quadrado do meio da grade); **Canvas center**
+      leva ao centro do canvas; cada quadrado da grade leva ao ponto da foto. A caixa continua aberta depois da
+      escolha.
+- [ ] A caixa fecha ao clicar fora dela, ao clicar o botão da âncora de novo e com **Esc** (o Esc fecha só a caixa;
+      a tela continua no Align photos).
 
 ## Resultado
 

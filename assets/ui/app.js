@@ -7011,13 +7011,12 @@
     panel.addEventListener("scroll", () => { alignScreen.panelScroll = panel.scrollTop; });
     if (keepPanel) { panel.scrollTop = keepPanel; requestAnimationFrame(() => { panel.scrollTop = keepPanel; }); }
 
-    // (protótipo T3 aprovado, 2026-11-26: "· edited" escrito no próprio título, em âmbar, sem moldura; tudo numa linha)
-    const rigTag = el("span", "align-edited-tag hidden", " · edited");
+    // (a etiqueta "Edited", com moldura; o T3, "· edited" no título, foi desfeito a pedido do dono em 2026-11-26)
+    const rigTag = el("span", "align-edited-tag hidden", "Edited");
     self.querySelector("h3").insertBefore(rigTag, self.querySelector("h3 .align-cur"));
     // Âncora (protótipo AN2 aprovado, 2026-11-26): a grade de 9 pontos da foto no título do painel, como atalho, e o
     // losango "Anchor" na foto, que se arrasta para qualquer ponto dela
     const anchorWrap = el("span", "align-anchor");
-    // (sem a palavra "Anchor": saiu com o protótipo T3; a explicação fica na legenda de cada quadrado)
     const anchorGrid = el("span", "align-anchor-grid");
     const ANCHOR_NAMES = ["Top left", "Top", "Top right", "Left", "Center", "Right", "Bottom left", "Bottom", "Bottom right"];
     for (let i = 0; i < 9; i++) {
@@ -7026,17 +7025,34 @@
       d.addEventListener("click", () => { a.ax = +d.dataset.x; a.ay = +d.dataset.y; anchorShow(); layout(); save(); });
       anchorGrid.appendChild(d);
     }
-    anchorWrap.appendChild(anchorGrid);
-    // Botão de voltar a âncora ao centro do canvas (protótipo R1 aprovado, 2026-11-26)
-    const anchorHome = el("button", "align-anchor-home"); anchorHome.type = "button";
-    anchorHome.innerHTML = '<svg viewBox="0 0 14 14" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><rect x="1.5" y="2.5" width="11" height="9"/><path d="M7 5v4M5 7h4"/></svg>';
-    anchorHome.title = "Put the anchor back on the center of the canvas"; anchorHome.setAttribute("aria-label", anchorHome.title);
+    // Âncora atrás de um ícone (decisão do dono, 2026-11-26: protótipo A1, a caixa embaixo do ícone, com o conteúdo
+    // do A3): o botão com a âncora fica no título; clicar abre a caixa com "Canvas center", "Photo center" e a
+    // grade dos 9 pontos da foto. Fecha ao clicar fora, no botão de novo ou com Esc.
+    const ANCHOR_SVG = '<svg viewBox="0 0 14 14" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="square" aria-hidden="true"><circle cx="7" cy="2.9" r="1.5"/><path d="M7 4.4v8M4.6 6.6h4.8M2.4 8.6a4.6 4.6 0 0 0 9.2 0"/></svg>';
+    const CENTER_SVG = '<svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><rect x="1.5" y="2.5" width="11" height="9"/><path d="M7 5v4M5 7h4"/></svg>';
+    const anchorBtn = el("button", "align-anchor-btn"); anchorBtn.type = "button"; anchorBtn.innerHTML = ANCHOR_SVG;
+    anchorBtn.title = "Anchor: the point Size and Rotate act around"; anchorBtn.setAttribute("aria-label", anchorBtn.title); anchorBtn.setAttribute("aria-expanded", "false");
+    anchorWrap.appendChild(anchorBtn);
+    const anchorPop = el("div", "align-anchor-pop hidden");
+    const anchorItem = (svg, name) => { const b = el("button", "align-fly-item align-anchor-item"); b.type = "button"; b.innerHTML = svg; b.appendChild(el("span", "align-fly-name", name)); anchorPop.appendChild(b); return b; };
+    const anchorHome = anchorItem(CENTER_SVG, "Canvas center");
     anchorHome.addEventListener("click", () => {
       const fr = sizes[item.file] ? usefulRect() : null; if (!fr) return;
       const f = anchorFracAt(fr.x + fr.w / 2, fr.y + fr.h / 2);
       a.ax = f.x; a.ay = f.y; anchorShow(); layout(); save();
     });
-    anchorWrap.appendChild(anchorHome);
+    const anchorMid = anchorItem(ANCHOR_SVG, "Photo center");
+    anchorMid.addEventListener("click", () => { a.ax = 0.5; a.ay = 0.5; anchorShow(); layout(); save(); });
+    { const row = el("div", "align-anchor-row"); row.append(el("span", "align-anchor-lab", "Photo"), anchorGrid); anchorPop.appendChild(row); }
+    self.appendChild(anchorPop);
+    const anchorPopOutside = (e) => { if (!anchorPop.contains(e.target) && !anchorBtn.contains(e.target)) anchorPopSet(false); };
+    const anchorPopKey = (e) => { if (e.key === "Escape") { e.preventDefault(); e.stopImmediatePropagation(); anchorPopSet(false); } };
+    const anchorPopSet = (on) => {
+      anchorPop.classList.toggle("hidden", !on); anchorBtn.classList.toggle("on", on); anchorBtn.setAttribute("aria-expanded", on ? "true" : "false");
+      document.removeEventListener("pointerdown", anchorPopOutside, true); window.removeEventListener("keydown", anchorPopKey, true);
+      if (on) { document.addEventListener("pointerdown", anchorPopOutside, true); window.addEventListener("keydown", anchorPopKey, true); }  // (na janela: antes dos Esc do resto do app)
+    };
+    anchorBtn.addEventListener("click", () => anchorPopSet(anchorPop.classList.contains("hidden")));
     // ("Anchor", a grade, o botão e o número da foto andam juntos: em painel estreito descem juntos para a linha de baixo)
     { const h3 = self.querySelector("h3"), curTag = h3.querySelector(".align-cur"), right = el("span", "align-title-right");
       h3.insertBefore(right, curTag); right.append(anchorWrap, curTag); }
@@ -7064,6 +7080,7 @@
     const anchorShow = () => {
       const f = sizes[item.file] ? anchorFrac() : { x: 0.5, y: 0.5 };
       [...anchorGrid.children].forEach((d) => d.classList.toggle("on", Math.abs(+d.dataset.x - f.x) < 0.004 && Math.abs(+d.dataset.y - f.y) < 0.004));
+      anchorMid.classList.toggle("on", Math.abs(f.x - 0.5) < 0.004 && Math.abs(f.y - 0.5) < 0.004);
     };
     anchorMark.addEventListener("pointerdown", (e) => {
       // (com a barra de espaço apertada o gesto é da vista: a âncora não se mexe; pedido do dono, 2026-11-26)
@@ -7112,7 +7129,6 @@
         if (note) { note.textContent = on ? "Rig " + String(Number(show[key]) === 0 ? show[key].replace("-", "") : show[key]) : ""; note.classList.toggle("hidden", !on); }
       });
       rigTag.classList.toggle("hidden", !any);
-      self.querySelector("h3").classList.toggle("is-edited", any);
     };
     const sync = () => { fields.dx.value = a.dx.toFixed(0); fields.dy.value = a.dy.toFixed(0); fields.scale.value = (a.scale * 100).toFixed(1); fields.rot.value = a.rot.toFixed(2); markPosDots(); rigNotes(); anchorShow(); };
     rigNotes();
@@ -7209,12 +7225,12 @@
         const where = anchorWhere(), tagEl = anchorMark.querySelector(".align-anchor-tag"), text = "Anchor" + (where ? " · " + where : "");
         if (tagEl.textContent !== text) tagEl.textContent = text;
         anchorMark.classList.toggle("at-point", !!where);
-        // (no painel: o botão do centro do canvas fica aceso quando a âncora está lá; pedido do dono, 2026-11-26)
+        // (na caixa da âncora: "Canvas center" fica aceso quando a âncora está lá; pedido do dono, 2026-11-26)
         // (a cruz do centro do canvas some, só na foto, enquanto a âncora está em cima dela: as duas nem sempre caíam
         // no mesmo pixel; o botão da cruz na barra continua como está; ideia do dono, 2026-11-26)
         cross.classList.toggle("under-anchor", where === "canvas center" && !playing);
         anchorHome.classList.toggle("on", where === "canvas center"); anchorHome.setAttribute("aria-pressed", where === "canvas center" ? "true" : "false");
-        anchorHome.title = where === "canvas center" ? "The anchor is on the center of the canvas" : "Put the anchor back on the center of the canvas"; }
+        }
       // Proporção de um tamanho: a mais próxima das quatro; "~" quando não é exata
       // (em pé, 3:2 é 2:3: o mesmo nome dos botões do Aspect ratio)
       const rn = (w, h) => { const n = ratioName(w, h); const exact = Math.abs(Math.max(w, h) / Math.min(w, h) - RATIOS[n]) < 0.01; const shown = h > w ? RATIO_TURNED[n] || n : n; return exact ? shown : "~" + shown; };

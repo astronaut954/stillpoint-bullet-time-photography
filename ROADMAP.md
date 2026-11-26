@@ -2044,6 +2044,11 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      PERGUNTA EM ABERTO para o botão de edição global (G2): quando a mudança cabe em algumas fotos e noutra
      descobriria o canvas: ninguém muda / todas vão até onde a mais apertada deixa / cada uma vai até onde dá. A
      mudança é aplicada às outras fotos como a mesma diferença, não o mesmo valor (proposta do agente).
+     **ESCOLHA DO DONO (2026-11-26, 20:45): A1, com o layout melhorado no estilo do A3.** FEITO, AGUARDANDO TESTE
+     (sem protótipo novo: feito direto, captura enviada ao dono): botão `align-anchor-btn` no título; caixa
+     `align-anchor-pop` embaixo dele com "Canvas center", "Photo center" e a linha "Photo" com a grade; etiqueta
+     "Edited" com moldura de volta (T3 desfeito). A caixa continua aberta depois de escolher (escolha do agente,
+     a confirmar); fecha ao clicar fora, no botão ou com Esc.
      FALTA: botão de edição global (G2) e ferramenta do canvas (C1).
      3. IDEIA PARA DEPOIS (só anotar): a feature de label passar a aceitar várias labels, não só uma.
      **PASSAGEM PARA UM CHAT NOVO (2026-11-26):** o dono pediu um prompt de continuação porque as respostas

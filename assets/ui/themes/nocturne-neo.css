@@ -2598,19 +2598,26 @@ body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform:
 .align-anchor-mark .ank-body { fill: rgba(0, 0, 0, .45); }
 .align-anchor-mark .ank-core { fill: var(--noct-primary); }
 .align-anchor-tag { position: absolute; left: 20px; top: -9px; padding: 1px 6px; background: var(--noct-primary); border: 1px solid var(--noct-primary); color: var(--noct-on-primary); font: 700 9px var(--noct-font-mono); letter-spacing: .14em; text-transform: uppercase; white-space: nowrap; pointer-events: none; display: none; }
-.align-anchor-home { width: 22px; height: 22px; box-sizing: border-box; padding: 0; margin: 0 0 0 4px; display: grid; place-items: center; background: transparent; border: 1px solid var(--noct-border-strong); color: var(--noct-primary); cursor: pointer; border-radius: 0; }
-.align-anchor-home:hover { border-color: var(--noct-primary); }
 .align-stage.playing .align-anchor-mark { display: none; }
 /* (só Select e Direct select pegam a âncora; com as outras ferramentas ela aparece, mas o mouse passa por ela) */
 .align-stage:not([data-tool="pointer"]):not([data-tool="handles"]) .align-anchor-mark { pointer-events: none; }
 .align-anchor-mark:hover .ank-line.ank-body, .align-anchor-mark.dragging .ank-line.ank-body { fill: var(--noct-primary); }
 .align-anchor-mark:hover .ank-core, .align-anchor-mark.dragging .ank-core { fill: #000; }
 .align-anchor-mark:hover .align-anchor-tag, .align-anchor-mark.dragging .align-anchor-tag { display: block; }
-.align-anchor-home.on { background: var(--noct-primary); border-color: var(--noct-primary); color: var(--noct-on-primary); }
-/* Título do This photo (protótipo T3 aprovado, 2026-11-26): uma linha; com a foto mexida, "This photo · edited" em âmbar */
+/* Título do This photo: uma linha ("This photo", a etiqueta "Edited", o botão da âncora e o número da foto) */
 .align-block h3:has(.align-anchor) { gap: 0; white-space: nowrap; justify-content: flex-start; }
-.align-block h3.is-edited { color: var(--noct-pending); }
-.align-block h3 .align-edited-tag { border: 0; padding: 0; margin: 0; font: inherit; letter-spacing: inherit; color: inherit; white-space: pre; }
 .align-block h3:has(.align-anchor) .align-anchor { flex: 0 0 auto; margin: 0; }
 .align-title-right { display: inline-flex; align-items: center; gap: 12px; margin-left: auto; flex: 0 0 auto; }
 .align-cross.under-anchor { visibility: hidden; }
+/* Âncora atrás de um ícone (A1 com o conteúdo do A3, 2026-11-26) */
+.align-block:has(.align-anchor-pop) { position: relative; }
+.align-anchor-btn { width: 22px; height: 22px; box-sizing: border-box; padding: 0; margin: 0; display: grid; place-items: center; background: transparent; border: 1px solid var(--noct-border-strong); color: var(--noct-primary); cursor: pointer; border-radius: 0; }
+.align-anchor-btn:hover { border-color: var(--noct-primary); }
+.align-anchor-btn.on { background: var(--noct-primary); border-color: var(--noct-primary); color: var(--noct-on-primary); }
+.align-anchor-pop { position: absolute; right: 12px; top: 40px; z-index: 9; display: grid; gap: 4px; padding: 6px; min-width: 200px; background: rgba(0, 12, 4, .97); border: 1px solid var(--noct-border-strong); box-shadow: 0 12px 32px rgba(0, 0, 0, .55); }
+.align-anchor-pop.hidden { display: none; }
+.align-anchor-item { grid-template-columns: 22px 1fr; width: 100%; text-align: left; margin: 0; border-radius: 0; cursor: pointer; }
+.align-anchor-row { display: flex; align-items: center; gap: 14px; padding: 9px 10px; border: 1px solid var(--noct-border-strong); }
+.align-anchor-row .align-anchor-lab { font: 700 10px var(--noct-font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--noct-text-muted); }
+.align-anchor-pop .align-anchor-grid { grid-template-columns: repeat(3, 14px); gap: 4px; }
+.align-anchor-pop .align-anchor-dot { width: 14px; height: 14px; }
