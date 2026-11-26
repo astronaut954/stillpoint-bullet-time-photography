@@ -2605,15 +2605,15 @@ Vale no **Align photos** do Export e no passo **3 Save** do **Align cameras**.
 
 Precisa de uma sessão fotografada com as câmeras alinhadas (**Align cameras** salvo antes do disparo).
 
-- [ ] **Export sessions** › aba **Framing** › **Align photos**, com **Rig · …** em **Alignment** (painel da direita):
+- [x] **Export sessions** › aba **Framing** › **Align photos**, com **Rig · …** em **Alignment** (painel da direita):
       mudar **Size** e **Rotate** de duas fotos. **Reset all** (painel da direita, ao lado de **Fit to canvas** e
       **Reset photo**): todas voltam aos valores do rig, não a zero (Size diferente de 100% nas câmeras alinhadas), e
       **Back to automatic** fica apagado.
-- [ ] Mudar duas fotos de novo; **Reset photo** numa delas: só ela volta ao valor do rig, a outra continua mexida.
-- [ ] **⌘Z** depois de cada um: o ajuste volta de uma vez.
-- [ ] Foto espelhada (**Flip**): **Reset photo** tira o espelhamento também.
-- [ ] Com **None** em **Alignment**: **Reset photo** e **Reset all** zeram, como antes.
-- [ ] Passo **3 Save** do **Align cameras**: **Reset photo** e **Reset all** continuam voltando aos valores da haste.
+- [x] Mudar duas fotos de novo; **Reset photo** numa delas: só ela volta ao valor do rig, a outra continua mexida.
+- [x] **⌘Z** depois de cada um: o ajuste volta de uma vez.
+- [x] Foto espelhada (**Flip**): **Reset photo** tira o espelhamento também.
+- [x] Com **None** em **Alignment**: **Reset photo** e **Reset all** zeram, como antes.
+- [x] Passo **3 Save** do **Align cameras**: **Reset photo** e **Reset all** continuam voltando aos valores da haste.
 
 ## Resultado
 

@@ -1937,10 +1937,11 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      1. DEFEITO: no Align photos do Export, com "Rig · …" escolhido em Alignment, "Reset all" zera tudo; tem de
         voltar aos valores do rig (como já faz no passo 3 do Align cameras, onde volta aos valores da haste).
         Conferir "Reset photo" junto.
-        FEITO, AGUARDANDO TESTE (chat novo, 2026-11-26; `docs/teste-manual.md`, seção 74): com "Rig" escolhido, os
+        FEITO (chat novo, 2026-11-26; `docs/teste-manual.md`, seção 74): com "Rig" escolhido, os
         dois botões voltam ao alinhamento do rig (`resetTo` em app.js chama `rigApply`); o espelhamento sai junto;
         com "None" continuam zerando. Teste automático do cenário do Align cameras: 100 de 100 (três verificações
         novas). Rodada completa não refeita neste envio.
+        Teste do dono (2026-11-26, 17:11): seção 74 aprovada ("tudo certo com os testes").
      2. PROTÓTIPOS (antes de implementar): no Align photos, um indicativo visual de que o alinhamento já não é o
         original do rig, e a indicação, nas miniaturas, de quais fotos estão diferentes.
      3. IDEIA PARA DEPOIS (só anotar): a feature de label passar a aceitar várias labels, não só uma.
