@@ -2037,6 +2037,13 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      Teste do dono (2026-11-26, 20:15): seção 76 e retornos aprovados ("tudo certo com os testes"). **ESCOLHA: T3**
      — FEITO, AGUARDANDO TESTE: "This photo · edited" em âmbar no título, sem moldura; sai a palavra "Anchor"; uma
      linha só. A etiqueta com moldura "Edited" do protótipo C deixa de existir no painel (na miniatura continua).
+     **PEDIDO DO DONO (2026-11-26, 20:29): voltar à etiqueta "Edited" com moldura, e a âncora atrás de um ícone de
+     âncora** (clicar mostra as opções de hoje). O T3 fica desfeito quando o layout novo entrar. PROTÓTIPOS:
+     https://claude.ai/artifact/75hAZWYj3gHuNWaFZ352xd (A1 caixa embaixo do ícone; A2 linha que abre dentro do
+     painel; A3 lista ao lado, por cima da foto, com "Canvas center", "Photo center" e a grade). AGUARDA A ESCOLHA.
+     PERGUNTA EM ABERTO para o botão de edição global (G2): quando a mudança cabe em algumas fotos e noutra
+     descobriria o canvas: ninguém muda / todas vão até onde a mais apertada deixa / cada uma vai até onde dá. A
+     mudança é aplicada às outras fotos como a mesma diferença, não o mesmo valor (proposta do agente).
      FALTA: botão de edição global (G2) e ferramenta do canvas (C1).
      3. IDEIA PARA DEPOIS (só anotar): a feature de label passar a aceitar várias labels, não só uma.
      **PASSAGEM PARA UM CHAT NOVO (2026-11-26):** o dono pediu um prompt de continuação porque as respostas
