@@ -2659,7 +2659,7 @@ Decisão do dono (2026-11-26, 17:54), a conferir:
 ## 76. Âncora da foto no Align photos (2026-11-26, câmeras simuladas servem)
 
 - [ ] **Export sessions** › aba **Framing** › **Align photos**: no título do painel **This photo** (à direita) há a
-      palavra "Anchor" e uma grade de 9 quadrados; na foto grande há um losango com a etiqueta "Anchor", no centro
+      palavra "Anchor" e uma grade de 9 quadrados; na foto grande há o ícone da âncora (um quadrado com quatro traços), no centro
       do canvas.
 - [ ] Sem mexer na âncora, mudar **Size** e **Rotate**: a foto cresce e gira em volta do centro do canvas (o losango
       não sai do lugar). Numa foto fora do centro, **Move X** e **Move Y** mudam junto.
@@ -2681,12 +2681,21 @@ Retornos do dono (2026-11-26, 19:07), a conferir:
 
 - [ ] Âncora num canto da foto e giro pela alça de cima (ou pela ferramenta **Rotate**): a foto gira aos poucos,
       acompanhando o mouse, sem saltos; o losango não sai do lugar.
-- [ ] Arrastar a âncora com **Ctrl** apertado: perto do centro do canvas ela prende ali e a etiqueta diz
+- [ ] Arrastar a âncora com **⌘** apertado (no Windows, **Ctrl**): perto do centro do canvas ela prende ali e a etiqueta diz
       "Anchor · canvas center"; perto de um dos 9 pontos da foto prende nele ("Anchor · photo center",
       "Anchor · photo top left"...). Com os dois centros próximos, vale o do canvas.
 - [ ] Só as ferramentas **Select** e **Direct select** pegam a âncora; com **Move**, **Rotate**, **Resize photo**,
       **Hand** e **Zoom** o mouse passa por ela.
 - [ ] Mouse em cima da âncora: ela fica preenchida e a etiqueta fica verde cheia.
+
+Escolhas e retornos do dono (2026-11-26, 19:20), a conferir:
+
+- [ ] O ícone da âncora é um quadrado com quatro traços (I2), centrado no ponto; em repouso não tem etiqueta; com o
+      mouse em cima ou arrastando fica preenchido e a etiqueta aparece.
+- [ ] No título do **This photo**, depois da grade, há um botão quadrado (legenda "Put the anchor back on the center
+      of the canvas"): clicar leva a âncora ao centro do canvas.
+- [ ] Com a **barra de espaço** apertada, arrastar em cima da âncora desloca a vista; a âncora não se mexe.
+- [ ] A tecla que prende a âncora nos atalhos é **⌘** no Mac e **Ctrl** no Windows (a mesma do After Effects).
 
 ## Resultado
 

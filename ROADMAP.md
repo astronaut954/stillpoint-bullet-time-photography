@@ -2006,6 +2006,16 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      NÃO VERIFICADO pelo agente: o giro pela alça de cima (fica fora da área visível na tela de teste); verificado
      pela ferramenta Rotate, que usa a mesma conta. A REGRA "a foto sempre cobre o canvas" continua valendo com a
      âncora fora do centro: o giro pode ser recusado (borda laranja) ou ampliar a foto.
+     **ESCOLHAS DO DONO (2026-11-26, 19:20): I2 e R1.** FEITO, AGUARDANDO TESTE: ícone I2 (etiqueta só com o mouse
+     em cima ou arrastando); botão R1 (`align-anchor-home`); com a barra de espaço apertada a âncora não se mexe;
+     a tecla de prender é ⌘ no Mac e Ctrl no Windows, como no After Effects (conferido na comunidade da Adobe: com
+     a ferramenta Pan Behind, segurar Cmd/Ctrl prende a âncora nas bordas e no centro).
+     GRAVAÇÃO DAS 19:19 (âncora no canto de cima à esquerda, giro pela alça): continua travando e saltando. CAUSA
+     (reproduzida pelo agente): é a regra "a foto sempre cobre o canvas" (2026-11-03). Com a âncora no centro, girar
+     pede pouca ampliação; com a âncora num canto, cada 0,5° pediu +1,8% de tamanho no teste do agente, e num dos
+     sentidos nenhuma ampliação resolve (as duas bordas que passam pela âncora não se afastam ao ampliar), então o
+     passo é recusado (borda laranja) e a foto salta quando o mouse chega a um ângulo possível. NÃO É DEFEITO DE
+     CONTA: É DECISÃO DO DONO, PENDENTE: o que fazer quando girar em volta da âncora descobriria o canvas.
      FALTA: botão de edição global (G2) e ferramenta do canvas (C1).
      3. IDEIA PARA DEPOIS (só anotar): a feature de label passar a aceitar várias labels, não só uma.
      **PASSAGEM PARA UM CHAT NOVO (2026-11-26):** o dono pediu um prompt de continuação porque as respostas

@@ -7006,10 +7006,23 @@
       anchorGrid.appendChild(d);
     }
     anchorWrap.appendChild(anchorGrid);
+    // Botão de voltar a âncora ao centro do canvas (protótipo R1 aprovado, 2026-11-26)
+    const anchorHome = el("button", "align-anchor-home"); anchorHome.type = "button";
+    anchorHome.innerHTML = '<svg viewBox="0 0 14 14" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><rect x="1.5" y="2.5" width="11" height="9"/><path d="M7 5v4M5 7h4"/></svg>';
+    anchorHome.title = "Put the anchor back on the center of the canvas"; anchorHome.setAttribute("aria-label", anchorHome.title);
+    anchorHome.addEventListener("click", () => {
+      const fr = sizes[item.file] ? usefulRect() : null; if (!fr) return;
+      const f = anchorFracAt(fr.x + fr.w / 2, fr.y + fr.h / 2);
+      a.ax = f.x; a.ay = f.y; anchorShow(); layout(); save();
+    });
+    anchorWrap.appendChild(anchorHome);
     self.querySelector("h3").insertBefore(anchorWrap, self.querySelector("h3 .align-cur"));
     const anchorMark = el("div", "align-anchor-mark");
-    anchorMark.innerHTML = '<span class="align-anchor-diamond"></span><span class="align-anchor-core"></span><span class="align-anchor-tag">Anchor</span>';
-    anchorMark.title = "Anchor: Size and Rotate act around this point of the photo. Drag it anywhere on the photo.";
+    // (ícone I2 aprovado, 2026-11-26: quadrado com quatro traços, contorno preto por baixo; a etiqueta só aparece
+    // com o mouse em cima ou arrastando)
+    { const shape = (cls) => '<rect class="' + cls + ' ank-body" x="-5.5" y="-5.5" width="11" height="11"/><path class="' + cls + '" d="M-12 0h6.5M12 0h-6.5M0 -12v6.5M0 12v-6.5"/>';
+      anchorMark.innerHTML = '<svg viewBox="-14 -14 28 28" width="28" height="28" aria-hidden="true">' + shape("ank-out") + shape("ank-line") + '<rect class="ank-core" x="-1.5" y="-1.5" width="3" height="3"/></svg><span class="align-anchor-tag">Anchor</span>'; }
+    anchorMark.title = "Anchor: Size and Rotate act around this point of the photo. Drag it anywhere on the photo; hold " + (navigator.platform.indexOf("Mac") >= 0 ? "⌘" : "Ctrl") + " to snap to the center of the canvas and to the 9 points of the photo.";
     stage.appendChild(anchorMark);
     // O ponto da foto (frações) que está num ponto do canvas
     const anchorFracAt = (wx0, wy0) => {
@@ -7030,7 +7043,8 @@
       [...anchorGrid.children].forEach((d) => d.classList.toggle("on", Math.abs(+d.dataset.x - f.x) < 0.004 && Math.abs(+d.dataset.y - f.y) < 0.004));
     };
     anchorMark.addEventListener("pointerdown", (e) => {
-      if (e.button !== 0 || !sizes[item.file]) return;
+      // (com a barra de espaço apertada o gesto é da vista: a âncora não se mexe; pedido do dono, 2026-11-26)
+      if (e.button !== 0 || !sizes[item.file] || exp.spaceDown) return;
       e.preventDefault(); e.stopPropagation();
       anchorMark.setPointerCapture(e.pointerId);
       const sz = sizes[item.file];
@@ -7039,7 +7053,8 @@
         let mx = (ev.clientX - r.left - cx) / scaleK, my = (ev.clientY - r.top - cy) / scaleK;  // (o mouse no canvas)
         // Ctrl apertado: prende nos atalhos (pedido do dono, 2026-11-26): o centro do canvas, que tem prioridade, e os
         // 9 pontos da foto
-        if (ev.ctrlKey) {
+        // (a mesma tecla do After Effects: ⌘ no Mac, Ctrl no Windows)
+        if (navigator.platform.indexOf("Mac") >= 0 ? ev.metaKey : ev.ctrlKey) {
           const near = 14 / scaleK, fr = usefulRect();
           const cc = fr ? { x: fr.x + fr.w / 2, y: fr.y + fr.h / 2 } : null;
           if (cc && Math.hypot(mx - cc.x, my - cc.y) <= near) { mx = cc.x; my = cc.y; }
