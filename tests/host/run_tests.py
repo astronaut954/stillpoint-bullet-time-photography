@@ -1964,6 +1964,29 @@ def scenario_align_cameras(t, name, photos):
         keeps = t.js("() => { const e = document.getElementById('alignKeeps'); return e ? [e.className, e.textContent] : null; }")
         check(t, "align: step 3 says how much of each photo the alignment keeps (amber below 80%)",
               bool(keeps) and keeps[1].startswith("Keeps ") and keeps[1].endswith("% of each photo") and ("warn" in keeps[0]) == (int(keeps[1].split("Keeps ")[1].split("%")[0]) < 80), keeps)
+        # Move, além do limite: a foto (girada) desliza encostada na borda acompanhando o mouse, sem travar num canto
+        # e sem saltar; ao voltar para dentro, segue o mouse de novo (gravação do dono, 2026-11-26)
+        t.page.keyboard.press("m"); time.sleep(0.2)
+        sbm = t.page.locator("#csAlignMain .align-stage").bounding_box()
+        mx0, my0 = sbm["x"] + sbm["width"] / 2, sbm["y"] + sbm["height"] / 2
+        pos = lambda: [float(x) for x in s3()["fields"][:2]]
+        p0 = pos(); rot0 = float(s3()["fields"][3])
+        t.page.mouse.move(mx0, my0); t.page.mouse.down(); t.page.mouse.move(mx0 + 60, my0 + 2); time.sleep(0.15)
+        track = []
+        for dy in (0, 12, 24, 36, 48):
+            t.page.mouse.move(mx0 + 700, my0 + dy); time.sleep(0.15); track.append(pos())
+        t.page.mouse.move(mx0 + 700, my0 + 400); time.sleep(0.15); corner = pos()
+        t.page.mouse.move(mx0 + 700, my0 + 398); time.sleep(0.15); corner2 = pos()
+        t.page.mouse.move(mx0 + 6, my0 + 4); time.sleep(0.15); near = pos()
+        t.page.mouse.move(mx0, my0); time.sleep(0.1); t.page.mouse.up(); time.sleep(0.4)
+        back0 = pos()
+        steps = [round(track[i + 1][1] - track[i][1], 1) for i in range(4)]
+        check(t, "align, Move past the limit: the rotated photo slides along the edge following the mouse (even steps, no sticking)",
+              abs(rot0) > 0.2 and all(x > 0 for x in steps) and max(steps) - min(steps) <= 2 and abs(track[-1][0] - track[0][0]) <= 6, (rot0, p0, track, steps))
+        check(t, "align, Move past the limit: it does not jump at the corner, and back inside it follows the mouse again and returns to where it started",
+              abs(corner[0] - corner2[0]) <= 1 and abs(corner[1] - corner2[1]) <= 1 and abs(near[0] - p0[0]) < 40 and abs(near[1] - p0[1]) < 40 and abs(back0[0] - p0[0]) <= 1 and abs(back0[1] - p0[1]) <= 1, (p0, corner, corner2, near, back0))
+        t.page.keyboard.press("a"); time.sleep(0.2)
+        t.js("() => { const b = document.getElementById('alignBackStick'); if (b && !b.disabled) b.click(); }"); time.sleep(0.5)
         # Tocar a sequência: na própria tela, sem as referências por cima e sem as alças; ‹ pausa ›, Speed, Reverse loop
         bar_idle = t.js("() => [Math.round(document.getElementById('alignPlayBar').getBoundingClientRect().width), document.getElementById('alignPlayStop').disabled]")
         geo_idle = t.js("() => { const r = (e) => { const b = e.getBoundingClientRect(); return [Math.round(b.left), Math.round(b.top), Math.round(b.width), Math.round(b.height)]; }; const m = document.getElementById('csAlignMain'); return { top: r(m.querySelector('.rig-top')), stage: r(m.querySelector('.align-stage')), panel: r(m.querySelector('.align-panel')), strip: r(m.querySelector('.export-strip')), back: !!document.getElementById('alignBackStick'), keeps: r(document.getElementById('alignKeeps')) }; }")
@@ -2748,7 +2771,7 @@ def scenario_align_uneven(t, name, photos):
             time.sleep(0.25)
         ok = t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item.ready, #csAlignMain .ma-item.needs').length === 4 && !/Finding/.test(document.querySelector('#csAlignMain').textContent)"), 60)
         time.sleep(0.5)
-        mm = t.js("() => { const w = document.getElementById('csAlignUneven'); return { text: w ? w.textContent : '', mis: w ? w.dataset.mismatch || '' : '', inst: [...document.querySelectorAll('#csAlignInst .inst')].map((i) => i.dataset.k + ':' + i.querySelector('.inst-v').textContent) }; }")
+        mm = t.js("() => { const w = document.getElementById('csAlignUneven'); return { text: w ? w.textContent + ' | ' + w.title : '', mis: w ? w.dataset.mismatch || '' : '', inst: [...document.querySelectorAll('#csAlignInst .inst')].map((i) => i.dataset.k + ':' + i.querySelector('.inst-v').textContent) }; }")
         check(t, "align, your marks: with 'Equal distances' chosen and marks that are not, an amber note says so (and the height is still estimated: the app does not switch by itself)",
               ok and mm["mis"] == "1" and "do not look evenly spaced" in mm["text"] and "choose Not equal" in mm["text"] and not any("Not estimated" in x for x in mm["inst"]), mm)
         # Volta ao passo 1 e escolhe "Not equal": as mesmas fotos, a outra conta
@@ -2761,9 +2784,9 @@ def scenario_align_uneven(t, name, photos):
         # (as fotos novas: as marcas são achadas sozinhas, pela foto de referência de antes)
         ok = t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item.ready, #csAlignMain .ma-item.needs').length === 4 && !/Finding/.test(document.querySelector('#csAlignMain').textContent)"), 60)
         time.sleep(0.5)
-        d = t.js("() => { const w = document.getElementById('csAlignUneven'); return { text: w ? w.textContent : '', first: w ? w === document.getElementById('csAlignMain').firstElementChild : false, found: document.querySelectorAll('#csAlignMain .ma-item .cs-tag').length }; }")
-        check(t, "align, uneven marks: an amber note on top of step 2 says what the app does about it",
-              ok and d["first"] and "Marks not at equal distances" in d["text"] and "matched by the length of the pole" in d["text"] and "height of each camera is not estimated" in d["text"] and "use three marks at equal distances" in d["text"], d)
+        d = t.js("() => { const w = document.getElementById('csAlignUneven'); return { text: w ? w.textContent + ' | ' + w.title : '', label: w ? w.textContent : '', first: w ? !!w.previousElementSibling && w.previousElementSibling.classList.contains('al-hint') && w.tagName === 'SPAN' : false, found: document.querySelectorAll('#csAlignMain .ma-item .cs-tag').length }; }")
+        check(t, "align, uneven marks: a short amber label under the hint of the points in step 2; the whole explanation shows on hover",
+              ok and d["first"] and d["label"] == "Marks not at equal distances" and "Marks not at equal distances" in d["text"] and "matched by the length of the pole" in d["text"] and "height of each camera is not estimated" in d["text"] and "use three marks at equal distances" in d["text"], d)
         check(t, "align, uneven marks: the Height instrument says 'Not estimated'", "Not estimated" in t.js("() => (document.getElementById('csAlignInst') || {}).textContent || ''"), t.js("() => document.querySelector('#csAlignMain .ma-view') ? document.querySelector('#csAlignMain .ma-view').textContent.slice(0, 400) : document.getElementById('csAlignMain').textContent.slice(-500)"))
         lines = t.js("() => document.querySelector('#csAlignMain .in-list') ? document.querySelector('#csAlignMain .in-list').textContent : document.querySelector('#csAlignMain').textContent")
         check(t, "align, uneven marks: no instruction about the height of the camera", "igher than" not in lines and "ower than" not in lines, lines[-300:])
@@ -2771,8 +2794,8 @@ def scenario_align_uneven(t, name, photos):
         check(t, "align, uneven marks: the note does not block 'Review alignment'", can)
         t.button("Review alignment")
         t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .export-strip li.frame').length") == 4, 10)
-        d = t.js("() => { const w = document.getElementById('csAlignUneven'), sv = document.querySelector('#csAlignMain .rig-outer'), foot = [...document.querySelectorAll('#csAlign button')].find((x) => x.textContent.trim() === 'Save alignment'); return { text: w ? w.textContent : '', after: !!w && !!(sv.compareDocumentPosition(w) & 4), save: !!foot && !foot.disabled, fits: w ? w.getBoundingClientRect().bottom <= document.getElementById('csAlignMain').getBoundingClientRect().bottom + 1 : false }; }")
-        check(t, "align, uneven marks: the same note before saving, under the photos, and 'Save alignment' still works", "Marks not at equal distances" in d["text"] and "use three marks" not in d["text"] and d["after"] and d["save"] and d["fits"], d)
+        d = t.js("() => { const w = document.getElementById('csAlignUneven'), sv = document.querySelector('#csAlignMain .rig-outer'), foot = [...document.querySelectorAll('#csAlign button')].find((x) => x.textContent.trim() === 'Save alignment'); return { text: w ? w.textContent + ' | ' + w.title : '', label: w ? w.textContent : '', after: !!w && !!w.closest('.rig-top') && w.nextElementSibling && w.nextElementSibling.id === 'alignKeeps', save: !!foot && !foot.disabled }; }")
+        check(t, "align, uneven marks: the same label in step 3, in the top row next to Keeps, and 'Save alignment' still works", d["label"] == "Marks not at equal distances" and "matched by the length of the pole" in d["text"] and "use three marks" not in d["text"] and d["after"] and d["save"], d)
         check(t, "align uneven: no page error", len(t.errors) == errors_before, t.errors[errors_before:])
     finally:
         t.js("() => { const c = [...document.querySelectorAll('#csAlign button')].find((b) => b.textContent.trim() === 'Cancel'); if (c && !document.getElementById('csAlign').classList.contains('hidden')) c.click(); }")

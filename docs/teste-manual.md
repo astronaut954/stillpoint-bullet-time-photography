@@ -2505,6 +2505,11 @@ Em **Export sessions** › sessão com mais de uma foto › **Align photos**.
 - [ ] A barra de ferramentas (esquerda) e a de tocar (em cima, à direita) ficam sempre no lugar, apagadas, sem
       puxador; com o mouse em cima delas, acendem; afastando, apagam de novo. O **Stop** está sempre
       na barra de tocar, apagado até tocar.
+- [ ] Ferramenta **Move the photo** (M): arrastar a foto até o limite e continuar com o mouse para fora da foto
+      grande: a foto desliza encostada na borda acompanhando o mouse, sem travar e sem saltar; voltando o mouse, ela
+      volta a seguir. Conferir também no **Align photos** do Export.
+- [ ] Com **Not equal** no passo 1: no passo 2, etiqueta âmbar "Marks not at equal distances" embaixo da dica dos
+      pontos; no passo 3, a mesma etiqueta na linha de cima, ao lado do **Keeps**; a explicação aparece ao parar o mouse.
 - [ ] Entrar e sair do modo de tocar: nada muda de lugar nem de altura, e **Back to the stick values** continua lá.
 - [ ] Janela com pouca altura: a barra de ferramentas da esquerda se reorganiza em mais colunas e nenhum botão some
       (conferir também no **Align photos** do Export). Janela estreita: os controles de tocar quebram de linha.

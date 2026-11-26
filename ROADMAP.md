@@ -1788,6 +1788,16 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      Correção do dono (2026-11-26): esquecer a metade para fora; as barras ficam SEMPRE na posição normal, só
      com opacidade menor (30%), e acendem com o mouse na área delas. FEITO, AGUARDANDO TESTE. Como a barra já
      está à vista no lugar, o que a acende passou a ser só a área dela (antes, a borda inteira também acendia).
+     Teste automático completo desse envio: 570 de 570. Retornos do dono (2026-11-26, gravação e captura), FEITOS,
+     AGUARDANDO TESTE: (f) a ferramenta Move "bugava" ao levar o mouse para fora da área e ao encostar nos
+     limites. Causa: além do limite, a foto era presa um eixo de cada vez; com a foto girada o limite é inclinado,
+     e ela travava num ponto e saltava quando o mouse voltava. Agora vai para o ponto permitido mais perto de
+     onde o mouse pede (no sistema da própria foto as posições permitidas formam um retângulo; prende-se ali) e
+     desliza encostada na borda. Vale para o Align photos do Export também. (g) O aviso das marcas a distâncias
+     desiguais virou uma etiqueta âmbar curta ("Marks not at equal distances", ou "Marks do not look evenly
+     spaced" quando a resposta do passo 1 não combina com as fotos), com a explicação inteira ao parar o mouse:
+     no passo 2 fica embaixo da dica "Drag a point to put it exactly on its mark..."; no passo 3, na linha de
+     cima, ao lado do Keeps.
      Pergunta do dono: alinhar sem as marcas, por um objeto ou pessoa da cena. É a parte 7 (From this scene), já
      prevista, a fazer antes do rig reutilizável.
      **Decisões do dono no meio dos testes (2026-11-24), a fazer DEPOIS dos roteiros:** (i) arrastar os pontos

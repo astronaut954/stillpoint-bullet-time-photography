@@ -3309,14 +3309,17 @@
   function alUnevenNote(full) {
     const pct = alMiddlePct();
     if (!alUneven() && pct === null) return null;
-    const w = document.createElement("div");
-    w.className = "al-warn al-uneven";
+    // Uma etiqueta âmbar curta; a explicação inteira fica ao parar o mouse em cima (pedido do dono, 2026-11-26: o
+    // aviso em faixa ocupava espaço demais). No passo 2 fica embaixo da dica dos pontos; no passo 3, ao lado do Keeps.
+    const w = document.createElement("span");
+    w.className = "al-chip al-uneven";
     w.id = "csAlignUneven";
-    // Disse "Not equal": a faixa lembra o que isso muda. Disse "Equal distances" mas as fotos mostram a marca do meio
-    // longe do meio: avisa que a resposta não combina com as fotos, sem trocar a conta (o programa não adivinha mais).
-    w.innerHTML = alUneven()
-      ? "<b>Marks not at equal distances</b> (your choice in step 1). The photos are matched by the length of the pole each camera sees, and the height of each camera is not estimated." + (full ? " For the complete alignment, use three marks at equal distances." : "")
-      : "<b>These marks do not look evenly spaced.</b> The middle one is at " + pct + "% of the way, and you chose Equal distances in step 1. If they are not at the same distance, go back to step 1 and choose Not equal: otherwise the photos come out in different sizes.";
+    // Disse "Not equal": a etiqueta lembra o que isso muda. Disse "Equal distances" mas as fotos mostram a marca do
+    // meio longe do meio: avisa que a resposta não combina com as fotos, sem trocar a conta (o programa não adivinha).
+    w.textContent = alUneven() ? "Marks not at equal distances" : "Marks do not look evenly spaced";
+    w.title = alUneven()
+      ? "Marks not at equal distances (your choice in step 1). The photos are matched by the length of the pole each camera sees, and the height of each camera is not estimated." + (full ? " For the complete alignment, use three marks at equal distances." : "")
+      : "These marks do not look evenly spaced. The middle one is at " + pct + "% of the way, and you chose Equal distances in step 1. If they are not at the same distance, go back to step 1 and choose Not equal: otherwise the photos come out in different sizes.";
     if (!alUneven()) w.dataset.mismatch = "1";
     return w;
   }
@@ -4006,7 +4009,7 @@
     w.appendChild(view);
     main.appendChild(w);
     const uneven = marked ? alUnevenNote(true) : null;
-    if (uneven) main.insertBefore(uneven, main.firstChild);
+    if (uneven) { const hint = main.querySelector(".al-hint"); if (hint) hint.after(uneven); else main.insertBefore(uneven, main.firstChild); }
     if (al.busy || al.firing) alWait(main);
     requestAnimationFrame(() => alPlaceLines(main));
     const livePhotos = alLive();
@@ -4123,6 +4126,8 @@
   // Linha de cima: só a volta aos valores da haste (o Keeps entra antes, pelo editor). Fica igual tocando ou não:
   // nada muda de lugar ao entrar e sair do modo de tocar (pedido do dono, 2026-11-25)
   function alEditTop(ed, box) {
+    const uneven = alUnevenNote(false);
+    if (uneven) box.insertBefore(uneven, box.firstChild);  // (a etiqueta das marcas, junto do Keeps)
     const back = button("Back to the stick values", () => {
       ed.items.forEach((it) => { ed.st.align.byFile[it.file] = Object.assign({}, ed.stick[it.file]); });
       alEditChanged(ed); alRender();
@@ -4179,8 +4184,6 @@
       alignScreen(ed.session, ed.items, ed.st, outer, rows, top, alRender);
     }
     // Avisos embaixo do editor: marcas a distâncias desiguais e câmera não conectada (o que acontece ao salvar)
-    const uneven = alUnevenNote(false);
-    if (uneven) main.appendChild(uneven);
     if (gone.length) {
       const one = gone.length === 1;
       main.insertAdjacentHTML("beforeend", '<div class="al-warn" id="csAlignGone"><b>' + (one ? "1 camera of the rig is not connected: " : gone.length + " cameras of the rig are not connected: ") +
@@ -6455,17 +6458,26 @@
         return moved;
       }
       if ((cand.dx !== a.dx || cand.dy !== a.dy) && cand.scale === a.scale && cand.rot === a.rot) {
-        // Mover além do limite: cada eixo vai até onde ainda cobre a área útil (a foto encosta na borda, sem parar
-        // antes) e o outro eixo continua livre
+        // Mover além do limite: a foto vai para o ponto permitido mais perto de onde o mouse pede. No sistema da
+        // própria foto (desfeito o giro), as posições que cobrem a área útil formam um retângulo; prender ali cada
+        // coordenada dá esse ponto. Com isso a foto desliza encostada na borda, mesmo girada, sem travar num canto
+        // e sem saltar quando o mouse volta (antes era um eixo de cada vez, que com a foto girada travava e saltava:
+        // gravação do dono, 2026-11-26)
         const before = { dx: a.dx, dy: a.dy };
-        ["dx", "dy"].forEach((axis) => {
-          if (cand[axis] === a[axis]) return;
-          const t = Object.assign({}, a, { [axis]: cand[axis] });
-          if (covers(t)) { a[axis] = cand[axis]; return; }
-          let lo = a[axis], hi = cand[axis];
-          for (let i = 0; i < 18; i++) { const mid = (lo + hi) / 2; t[axis] = mid; if (covers(t)) lo = mid; else hi = mid; }
-          a[axis] = lo;
-        });
+        const sz = sizes[item.file];
+        if (sz && lockRect) {
+          const rad = a.rot * Math.PI / 180, cs = Math.cos(rad), sn = Math.sin(rad), r = lockRect;
+          let x0 = -1e18, x1 = 1e18, y0 = -1e18, y1 = 1e18;
+          [[r.x, r.y], [r.x + r.w, r.y], [r.x, r.y + r.h], [r.x + r.w, r.y + r.h]].forEach(([px, py]) => {
+            const qx = px * cs + py * sn, qy = -px * sn + py * cs;
+            x0 = Math.max(x0, qx - a.scale * sz.w / 2); x1 = Math.min(x1, qx + a.scale * sz.w / 2);
+            y0 = Math.max(y0, qy - a.scale * sz.h / 2); y1 = Math.min(y1, qy + a.scale * sz.h / 2);
+          });
+          if (x0 <= x1 && y0 <= y1) {
+            const vx = Math.max(x0, Math.min(x1, cand.dx * cs + cand.dy * sn)), vy = Math.max(y0, Math.min(y1, -cand.dx * sn + cand.dy * cs));
+            a.dx = vx * cs - vy * sn; a.dy = vx * sn + vy * cs;
+          }
+        }
         stage.classList.add("locked"); clearTimeout(lockFlash); lockFlash = setTimeout(() => stage.classList.remove("locked"), 300);
         return a.dx !== before.dx || a.dy !== before.dy;
       }
