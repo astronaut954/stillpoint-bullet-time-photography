@@ -3240,9 +3240,31 @@ def scenario_align_tools(t, name, photos):
         # Sair do Align photos e entrar de novo: a ferramenta volta a ser a Direct select
         pick(".align-tool[data-tool=rotate]")
         t.button("Done aligning"); time.sleep(0.8)
+        # Na aba Framing, a mão de arrastar só aparece quando arrastar faz algo (dono, 2026-11-26): foto com alinhamento
+        # próprio se move no Align photos, então o cursor é o normal
+        fr = t.js("() => { const b = document.querySelector('.crop-box'); return b ? { cursor: getComputedStyle(b).cursor, tag: (b.querySelector('.crop-tag') || {}).textContent || '' } : {}; }")
+        check(t, "framing: the drag hand shows only when dragging does something (aligned photo: normal cursor; free photo: hand)",
+              (fr.get("cursor") == "default") == ("Drag the photo" not in fr.get("tag", "")) and fr.get("cursor") in ("default", "grab"), fr)
         t.button("Align photos"); time.sleep(0.8)
         t.wait(lambda: t.js("() => !!document.querySelector('.align-stage .align-tools') && !document.querySelector('.align-stage .align-wait')"), 20)
         check(t, "align tools: leaving Align photos and coming back picks Direct select again", t.js("() => document.querySelector('.align-stage').dataset.tool") == "handles")
+        # O tocador do Align cameras também no Align photos do Export (pedido do dono, 2026-11-26)
+        pb = t.js("() => { const b = document.getElementById('alignPlayBar'); return b ? { text: b.textContent, ids: [...b.querySelectorAll('button')].map((x) => x.id + (x.disabled ? '-' : '')).filter(Boolean), inStage: !!b.closest('.align-stage') } : {}; }")
+        check(t, "export align: the play bar is over the big photo (‹ ▶ › Speed, Reverse loop, Stop off)", pb.get("inStage") and "Speed" in pb.get("text", "") and "Reverse loop" in pb.get("text", "") and pb.get("ids") == ["alignPlay", "alignPlayStop-"], pb)
+        w0 = t.js("() => document.querySelector('.align-where').textContent")
+        t.js("() => document.getElementById('alignPlay').click()"); time.sleep(0.5)
+        p1 = t.js("() => ({ where: document.querySelector('.align-where').textContent, stage: document.querySelector('.align-stage').className, stop: document.getElementById('alignPlayStop').disabled })")
+        time.sleep(1.2)
+        p2 = t.js("() => document.querySelector('.align-where').textContent")
+        check(t, "export align: Play shows the sequence in place (clean stage, photos changing, Stop on)", p1["where"].endswith("· playing") and p1["where"].startswith("Photo ") and "playing" in p1["stage"] and "clean" in p1["stage"] and not p1["stop"] and p2 != p1["where"], (p1, p2))
+        t.js("() => document.getElementById('alignPlayStop').click()"); time.sleep(0.6)
+        p3 = t.js("() => ({ where: document.querySelector('.align-where').textContent, stage: document.querySelector('.align-stage').className, tools: !!document.querySelector('.align-stage .align-tools') })")
+        check(t, "export align: Stop goes back to adjusting, on the photo that was showing", "other photos" in p3["where"] and "playing" not in p3["stage"] and p3["tools"], (w0, p3))
+        t.js("() => document.getElementById('alignPlay').click()"); time.sleep(0.4)
+        t.button("Done aligning"); time.sleep(0.8)
+        t.button("Align photos"); time.sleep(0.8)
+        t.wait(lambda: t.js("() => !!document.querySelector('.align-stage .align-tools') && !document.querySelector('.align-stage .align-wait')"), 20)
+        check(t, "export align: leaving while it plays stops it (coming back, it is not playing)", t.js("() => !document.querySelector('.align-stage').classList.contains('playing') && document.getElementById('alignPlayStop').disabled"))
         check(t, "align tools: no page error", len(t.errors) == errors_before, t.errors[errors_before:])
     finally:
         t.js("() => { try { localStorage.removeItem('stillpoint.alignPrefs'); } catch (e) {} }")

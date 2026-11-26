@@ -2549,6 +2549,18 @@ Com `STILLPOINT_FAKE_CAMERAS=8 STILLPOINT_FAKE_PHOTOS=pole` a câmera 02 fotogra
 - [ ] Qualquer elemento em que o cursor vira **?** (etiquetas **Mixed ratios**, **Edited**, fotos na Trash, alerta nas
       miniaturas, etiqueta das marcas no Align cameras) mostra a explicação na mesma caixa do **?** das opções, à direita.
 
+## 69. Tocar a sequência no Align photos do Export e cursor da prévia do Framing (2026-11-26, câmeras simuladas servem)
+
+- [ ] **Export sessions** › aba **Framing** › **Align photos**: sobre a foto grande, no alto, a mesma barra do Align
+      cameras (‹ ▶ › **Speed** − 1.0x + **Reverse loop** e **Stop** apagado), apagada até o mouse chegar perto.
+- [ ] Clicar ▶: a sequência toca ali mesmo, sem as fotos de referência por cima nem as alças; em cima aparece
+      "Photo NN of NN · playing" e **Stop** acende. ‹ › pausam e trocam de foto; **Speed** e **Reverse loop** funcionam.
+- [ ] **Stop** (ou clicar e arrastar na foto): volta ao ajuste, na foto que estava passando.
+- [ ] Tocando, clicar **Done aligning** e voltar com **Align photos**: não está mais tocando.
+- [ ] Aba **Framing**, sessão alinhada (etiqueta "This photo is aligned: move it in Align photos"): o cursor sobre a
+      prévia é o normal, não a mão de arrastar. Em sessão sem alinhamento e com proporção escolhida ("Drag the photo
+      to choose the part that stays"), a mão continua.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |

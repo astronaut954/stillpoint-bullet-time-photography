@@ -1867,6 +1867,15 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      **FALTA (segunda parte: resolução, decisão D):** linha Resolution no bloco "New sessions" e no Export ›
      Framing, etiqueta de ampliação acima de 25%, cena igualada com qualquer alinhamento, canvas pela câmera de
      maior resolução; mexe em `commonFrame` (app.js) e em `Export::ComputeCommonFrame` (programa).
+     Teste do dono (2026-11-26): seção 68 aprovada ("os testes deu tudo certo").
+     **Pedidos do dono (2026-11-26), feitos (seção 69):** o tocador do Align cameras também no Align photos do
+     Export (mesma barra, mesmo comportamento; estado em `exp.play`, funções `expPlay`/`expPlayOff`); a mão de
+     arrastar da prévia do Framing só quando arrastar faz algo (classe `no-drag` na `.crop-box`).
+     Regra de trabalho reforçada: comandos sempre em caixa de código, para copiar com um clique.
+     **IDEIA DO DONO, A DECIDIR (2026-11-26): mudar o tamanho de todas as fotos ao mesmo tempo** (um zoom na
+     sequência inteira), como uma ferramenta "Resize all photos". Alternativas levantadas pelo agente: (Z1)
+     ferramenta na barra, como o dono descreveu; (Z2) um valor "Zoom" da sequência no painel, com − e +; (Z3) o
+     quadro (canvas) é que diminui, sem ampliar foto nenhuma. Nada decidido nem feito.
      **A DECIDIR:** onde mais o S4 vale: no Export (sessão com formas diferentes: "As shot" apagado?) e na janela
      "Mixed ratios" das sessões sem rig alinhado (tirar "Keep as shot"?); as sessões já feitas não mudam
      (registro de 2026-11-24).

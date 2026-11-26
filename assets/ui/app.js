@@ -4081,7 +4081,8 @@
       items.push({ group: pad(p.order) + "_" + p.camera, order: p.order, file: p.file, previewable: true, session: al.session, files: [{ camera: p.camera, file: p.file, order: p.order }], title: p.camera, subtitle: "" });
     });
     const session = { name: al.session, photos: [], rigDraft: { savedAt: "draft", cameras: photos.map((p) => { const n = al.solved[p.camera], d = al.data[p.camera]; return { camera: p.camera, dx: n.dx, dy: n.dy, rot: n.rot, scale: n.scale, width: d.w, height: d.h }; }) } };
-    const ed = al.edit = { sig, session, items, st, sizes, ready: false, failed: false, playing: false, paused: false, speed: PLAY_SPEEDS.indexOf(1), reverse: true, pos: 0, stick: {}, snap: "", timer: 0 };
+    const ed = al.edit = { sig, session, items, st, sizes, ready: false, failed: false, playing: false, paused: false, speed: PLAY_SPEEDS.indexOf(1), reverse: true, pos: 0, stick: {}, snap: "", timer: 0, unit: "camera" };
+    ed.alive = () => al.edit === ed; ed.render = () => alRender();
     // A proporção das sessões novas (decisão do dono, 2026-11-26, alternativa B): começa na que foi salva com o
     // alinhamento anterior; com as câmeras em formas diferentes, "As shot" não vale (S4) e a pessoa tem de escolher
     {
@@ -4185,7 +4186,7 @@
   function alPlayOrder(ed) { return cycleOrder(ed.items.length, ed.reverse); }
   function alPlayTick(ed) {
     clearTimeout(ed.timer); ed.timer = 0;
-    if (al.edit !== ed || !ed.playing || ed.paused || !ed.view || ed.items.length < 2) return;
+    if (!ed.alive() || !ed.playing || ed.paused || !ed.view || ed.items.length < 2) return;
     ed.timer = setTimeout(() => { const o = alPlayOrder(ed); ed.pos = (ed.pos + 1) % o.length; ed.view.show(o[ed.pos]); alPlayTick(ed); }, 220 / PLAY_SPEEDS[ed.speed]);
   }
   function alPlayStep(ed, d) {
@@ -4198,7 +4199,23 @@
     clearTimeout(ed.timer); ed.timer = 0;
     if (ed.view) exp.photo = ed.view.at();
     ed.playing = false; ed.view = null; ed.paint = null;
-    alRender();
+    ed.render();
+  }
+  // O mesmo tocador no Align photos do Export (pedido do dono, 2026-11-26): o estado fica em exp.play, por sessão
+  function expPlayOff() { if (exp.play) { clearTimeout(exp.play.timer); exp.play = null; } }
+  function expPlay(session, items, rerender) {
+    let ed = exp.play;
+    if (!ed || ed.name !== session.name) { expPlayOff(); ed = exp.play = { name: session.name, playing: false, paused: false, speed: PLAY_SPEEDS.indexOf(1), reverse: true, pos: 0, timer: 0, view: null, paint: null, unit: "photo" }; }
+    clearTimeout(ed.timer); ed.timer = 0; ed.view = null;
+    ed.items = items; ed.render = rerender;
+    ed.alive = () => exp.play === ed && !!exp.aligning && !$("exportOverlay").classList.contains("hidden");
+    return {
+      playing: () => ed.playing,
+      attach: (view) => { ed.view = view; const o = alPlayOrder(ed); ed.pos = Math.min(ed.pos, o.length - 1); view.show(o[ed.pos]); alPlayTick(ed); },
+      playStep: (d) => alPlayStep(ed, d),
+      playStop: () => alPlayStop(ed),
+      transport: (bar) => alEditTransport(ed, bar),
+    };
   }
   // Linha de cima: só a volta aos valores da haste (o Keeps entra antes, pelo editor). Fica igual tocando ou não:
   // nada muda de lugar ao entrar e sair do modo de tocar (pedido do dono, 2026-11-25)
@@ -4225,10 +4242,10 @@
   // Os controles de tocar, sobre a foto: ‹ ▶ › Speed − 1.0x + Reverse loop; tocando, o ▶ vira pausa e entra o Stop.
   // Parado, ‹ › trocam de câmera.
   function alEditTransport(ed, bar) {
-    const start = () => { ed.playing = true; ed.paused = false; ed.pos = Math.max(0, Math.min(ed.items.length - 1, exp.photo || 0)); alRender(); };
-    const prev = button("", () => { if (ed.playing) alPlayStep(ed, -1); else if (exp.keyNav) exp.keyNav(-1); }, { icon: "left", title: ed.playing ? "Previous photo" : "Previous camera" });
+    const start = () => { ed.playing = true; ed.paused = false; ed.pos = Math.max(0, Math.min(ed.items.length - 1, exp.photo || 0)); ed.render(); };
+    const prev = button("", () => { if (ed.playing) alPlayStep(ed, -1); else if (exp.keyNav) exp.keyNav(-1); }, { icon: "left", title: ed.playing || ed.unit === "photo" ? "Previous photo" : "Previous camera" });
     const play = button("", () => { if (!ed.playing) { start(); return; } ed.paused = !ed.paused; ed.paint(); alPlayTick(ed); }, { icon: "play", title: "Play the sequence" });
-    const next = button("", () => { if (ed.playing) alPlayStep(ed, 1); else if (exp.keyNav) exp.keyNav(1); }, { icon: "right", title: ed.playing ? "Next photo" : "Next camera" });
+    const next = button("", () => { if (ed.playing) alPlayStep(ed, 1); else if (exp.keyNav) exp.keyNav(1); }, { icon: "right", title: ed.playing || ed.unit === "photo" ? "Next photo" : "Next camera" });
     play.id = ed.playing ? "alignPlayPause" : "alignPlay";
     const speedVal = el("span", "play-speed", "");
     const slower = button("", () => { ed.speed = Math.max(0, ed.speed - 1); ed.paint(); alPlayTick(ed); }, { icon: "minus", title: "Slower" });
@@ -4237,7 +4254,7 @@
     rev.title = "Play back and forth (1, 2, 3, 2, 1...)";
     ed.paint = () => {
       const pausedIcon = !ed.playing || ed.paused;
-      play.innerHTML = icon(pausedIcon ? "play" : "pause"); play.title = !ed.playing ? "Play the sequence, as the photos will be after the alignment" : ed.paused ? "Play" : "Pause";
+      play.innerHTML = icon(pausedIcon ? "play" : "pause"); play.title = !ed.playing ? (ed.unit === "photo" ? "Play the sequence, as it is aligned now" : "Play the sequence, as the photos will be after the alignment") : ed.paused ? "Play" : "Pause";
       speedVal.textContent = PLAY_SPEEDS[ed.speed].toFixed(2).replace(/0$/, "") + "x";
       slower.disabled = ed.speed === 0; faster.disabled = ed.speed === PLAY_SPEEDS.length - 1;
     };
@@ -5691,7 +5708,7 @@
   // Prévia do recorte (seção Framing): a foto escolhida apagada fora do quadro, o quadro aceso e arrastável.
   // onPick(i): trocar de foto; a instrução dos gestos fica na etiqueta de baixo.
   function cropStage(session, items, st, targetRatio, onChange, locked) {
-    const box = el("div", "crop-box crop-stage");
+    const box = el("div", "crop-box crop-stage no-drag");
     const img = document.createElement("img"); img.alt = "";
     const frame = el("div", "crop-frame");
     const tag = el("span", "crop-tag");
@@ -5725,11 +5742,13 @@
         const touched = !alignIsIdentity(alignOf(st, item.file)) && sessionAligned(session, st);
         slack = touched ? null : { x: (sz.w * al.scale - canvas.w) * K, y: (sz.h * al.scale - canvas.h) * K };
         const free = slack && (slack.x > 1 || slack.y > 1);
+        box.classList.toggle("no-drag", !free || !!locked);  // (a mão de arrastar só quando arrastar faz algo: dono, 2026-11-26)
         label(locked ? "original · the framing is locked · ← → other photos" : free ? "Drag the photo to choose the part that stays · ← → other photos" : touched ? "This photo is aligned: move it in Align photos · ← → other photos" : "Nothing to cut: the photo fills the frame · ← → other photos");
         return;
       }
       // Sem proporção ("As shot") ou antes de saber os tamanhos: a foto inteira, sem quadro
       slack = null;
+      box.classList.add("no-drag");
       const s = Math.min(bw / nat.w, bh / nat.h);
       const iw = nat.w * s, ih = nat.h * s;
       img.style.width = iw + "px"; img.style.height = ih + "px"; img.style.left = (bw - iw) / 2 + "px"; img.style.top = (bh - ih) / 2 + "px";
@@ -6271,7 +6290,8 @@
     // Passo 3 do Align cameras, "Play the sequence": toca aqui mesmo, sem trocar de tela. Enquanto toca, saem as
     // fotos de referência por cima e some o que o guia "Handles and what is outside the canvas" esconde
     // (pedido do dono, 2026-11-25)
-    const playing = !!(rigStep && rigStep.playing());
+    const pl = rigStep || expPlay(session, items, rerender);  // (o tocador: o do passo 3 ou o do Export)
+    const playing = !!pl.playing();
     const photoUrl = (file, size) => (rigStep ? rigStep.photo(file, size) : sessionPhotoOriginal(session.name, file, size));
     const goPhoto = rigStep ? rerender : photoRerender;
     const REF_COLORS = { prev: "#4da3ff", next: "#ff8a3d" };
@@ -6806,7 +6826,7 @@
       playAt = k;
       Object.keys(layerOf).forEach((j) => { layerOf[j].style.visibility = +j === k ? "visible" : "hidden"; });
       [...strip.children].filter((x) => !x.classList.contains("gone")).forEach((li, j) => li.classList.toggle("selected", j === k));
-      where.textContent = "Camera " + pad(items[k].order || k + 1) + " of " + pad(n) + " · playing";
+      where.textContent = (rigStep ? "Camera " : "Photo ") + pad(items[k].order || k + 1) + " of " + pad(n) + " · playing";
       tagText = "Photo " + pad(items[k].order || k + 1) + " of " + pad(n) + " · as it will be after the alignment";
       tag.textContent = tagText + (Math.abs(view.zoom - 1) > 0.001 ? " · zoom " + Math.round(view.zoom * 100) + "%" : "");
     };
@@ -6871,7 +6891,7 @@
       const frame0 = commonFrame(items, sizes, st);
       if (frame0) Object.assign(a, effectiveAlign(sizes[item.file], a, frame0, st));  // o que vale para esta foto (só grava quando a pessoa mexer)
       sync(); layout(); markPosDots();
-      if (playing) rigStep.attach({ show: showFrame, at: () => playAt });
+      if (playing) pl.attach({ show: showFrame, at: () => playAt });
     });
     if (window.ResizeObserver) new ResizeObserver(() => { layout(); fitTools(); }).observe(stage);
     fitTools();
@@ -6915,7 +6935,7 @@
       // Tocando a sequência: clicar ou arrastar na foto grande sai do modo de tocar, e o mesmo gesto, se a pessoa
       // segurar e arrastar, já desloca a vista (pedidos do dono, 2026-11-25). A tela é refeita ao parar, então quem
       // continua o gesto é o editor novo (exp.alignStartPan).
-      if (playing) { const ev = { pointerId: e.pointerId, clientX: e.clientX, clientY: e.clientY }; rigStep.playStop(); if (exp.alignStartPan) exp.alignStartPan(ev); return; }
+      if (playing) { const ev = { pointerId: e.pointerId, clientX: e.clientX, clientY: e.clientY }; pl.playStop(); if (exp.alignStartPan) exp.alignStartPan(ev); return; }
       const toolNow = alignPrefs.tool || "handles";
       stage.setPointerCapture(e.pointerId);
       // Zoom: um clique aproxima (com Alt, afasta); segurar e arrastar para a direita aproxima, para a esquerda afasta
@@ -7007,8 +7027,8 @@
     // tela cheia da janela principal (forma Y4, escolha do dono em 2026-11-25)
     // Ela se comporta como a barra de ferramentas, só que em cima: fica no lugar, apagada, e acende com o mouse na
     // área dela; em foto grande estreita, os controles quebram de linha (pedidos do dono, 2026-11-25)
-    if (rigStep) {
-      const bar = el("div", "align-play"); bar.id = "alignPlayBar"; rigStep.transport(bar);
+    {
+      const bar = el("div", "align-play"); bar.id = "alignPlayBar"; pl.transport(bar);
       stage.append(bar);
       const playNear = (near) => { alignScreen.playNear = near; stage.classList.toggle("play-near", near); };
       if (alignScreen.playNear) stage.classList.add("play-near");
@@ -7020,7 +7040,7 @@
       stage.addEventListener("pointerleave", () => playNear(false));
     }
     // Tocando: as setas trocam de foto (pausando) e as teclas das ferramentas e de mover não valem
-    if (playing) { exp.keyMove = null; exp.alignToolKey = null; exp.keyNav = (d) => rigStep.playStep(d); }
+    if (playing) { exp.keyMove = null; exp.alignToolKey = null; exp.keyNav = (d) => pl.playStep(d); }
   }
 
   function lentSizeRow(l, box, rerender, label) {
@@ -7196,6 +7216,7 @@
     }
     if (exp.aligning && needsRatio(session, st)) exp.aligning = false;  // sessão misturada sem proporção não alinha (ex.: depois de um ⌘Z)
     if (exp.aligning) { exp.keyNav = null; alignScreen(session, items, st, outer, rows, top, rerender); return; }
+    expPlayOff();  // (fora do Align photos, o tocador dele para)
 
     // Monta a prévia (só a da seção em foco entra na tela) e as configurações de uma saída
     exp.keyNav = null;

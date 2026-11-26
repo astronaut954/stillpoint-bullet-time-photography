@@ -1803,6 +1803,7 @@ body.align-drag, body.align-drag * { cursor: var(--drag-cursor, default) !import
 .crop-box { position: relative; width: 100%; background: var(--noct-surface-inner); border: 1px solid var(--noct-border); overflow: hidden; cursor: grab; user-select: none; -webkit-user-select: none; touch-action: none; }
 .exp-sec-framing .exp-sec-head { padding-left: 12px; }
 .crop-box:active { cursor: grabbing; }
+.crop-box.no-drag, .crop-box.no-drag:active { cursor: default; }  /* nada para arrastar (foto alinhada, As shot, travada, sem folga) */
 /* A foto inteira fica apagada e o quadro do recorte aceso: o escurecimento é a sombra do quadro, fora dele */
 .crop-box img { position: absolute; display: block; pointer-events: none; }
 .crop-frame { position: absolute; box-sizing: border-box; border: 1px solid var(--noct-primary); box-shadow: 0 0 0 999px rgba(0, 0, 0, .6); pointer-events: none; }
