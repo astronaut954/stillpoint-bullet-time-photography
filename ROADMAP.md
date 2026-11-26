@@ -1944,6 +1944,11 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
         Teste do dono (2026-11-26, 17:11): seção 74 aprovada ("tudo certo com os testes").
      2. PROTÓTIPOS (antes de implementar): no Align photos, um indicativo visual de que o alinhamento já não é o
         original do rig, e a indicação, nas miniaturas, de quais fotos estão diferentes.
+        PROTÓTIPOS PUBLICADOS (2026-11-26): https://claude.ai/artifact/BLJb4U5JPNoLdTnvYWmwCV (A etiqueta "2 photos
+        edited" ao lado do Alignment + barra âmbar na lateral da miniatura; B o seletor diz "· edited" + quadrado
+        âmbar na etiqueta do número; C caixas mudadas em âmbar no This photo, com o valor do rig ao lado + "Edited"
+        embaixo da miniatura). Dá para combinar indicativo de uma com miniatura de outra. Observação levada ao dono:
+        o âmbar já é o aviso de proporção nessa tela. AGUARDA A ESCOLHA DO DONO.
      3. IDEIA PARA DEPOIS (só anotar): a feature de label passar a aceitar várias labels, não só uma.
      **PASSAGEM PARA UM CHAT NOVO (2026-11-26):** o dono pediu um prompt de continuação porque as respostas
      estavam demorando demais. Ordem combinada do que falta, do mais próximo ao mais distante: (a) item 1 acima;
