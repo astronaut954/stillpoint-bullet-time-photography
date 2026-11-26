@@ -2569,6 +2569,19 @@ Com `STILLPOINT_FAKE_CAMERAS=8 STILLPOINT_FAKE_PHOTOS=pole` a câmera 02 fotogra
 - [ ] Clicar em outra sessão da lista enquanto ela ainda carrega: a prévia dessa sessão aparece logo.
 - [ ] Na janela principal, trocar de sessão na lista **Sessions**: as miniaturas da sessão escolhida aparecem primeiro.
 
+## 71. Grupo de ferramentas Select / Direct select (2026-11-26, câmeras simuladas servem)
+
+Vale no **Align photos** do Export e no passo **3 Save** do **Align cameras**.
+
+- [ ] A barra de ferramentas tem seis botões; o primeiro é **Select** (seta cheia), já escolhido ao entrar, com um
+      triângulo no canto de baixo à direita.
+- [ ] Clicar com o botão direito nele: abre ao lado a lista **Select** (V) e **Direct select** (A), com a atual acesa.
+      Clicar **Direct select**: a lista fecha, o botão passa a mostrar a seta vazada e a ferramenta troca.
+- [ ] Segurar o botão esquerdo no mesmo botão (um instante): a lista abre; arrastar até **Select** e soltar escolhe.
+- [ ] Com a lista aberta, **Esc** ou clicar fora fecha só a lista.
+- [ ] As letras **V** e **A** continuam trocando de ferramenta e o botão acompanha.
+- [ ] Sair e entrar de novo no Align photos: volta para **Select**.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |

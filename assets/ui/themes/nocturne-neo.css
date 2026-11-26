@@ -1666,6 +1666,17 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .align-tool, .align-guide { width: 36px; height: 36px; box-sizing: border-box; display: grid; place-items: center; padding: 0; background: transparent; color: var(--noct-primary); cursor: pointer; border-radius: 0; }
 .align-tool { border: 1px solid var(--noct-border-strong); }
 .align-tool:hover { border-color: var(--noct-primary); }
+/* Grupo de ferramentas (como no Illustrator): triângulo no canto de baixo à direita e lista ao segurar ou com o botão direito */
+.align-tool { position: relative; }
+.align-tool.has-more::after { content: ""; position: absolute; right: 3px; bottom: 3px; border-style: solid; border-width: 0 0 5px 5px; border-color: transparent transparent currentColor transparent; }
+.align-flyout { position: absolute; z-index: 8; display: grid; gap: 4px; padding: 6px; background: rgba(0, 12, 4, .96); border: 1px solid var(--noct-border-strong); box-shadow: 0 12px 32px rgba(0, 0, 0, .55); }
+.align-fly-item { display: grid; grid-template-columns: 22px 1fr auto; align-items: center; gap: 10px; min-width: 190px; height: 36px; padding: 0 10px 0 8px; background: transparent; border: 1px solid var(--noct-border-strong); color: var(--noct-primary); font: 500 12px var(--noct-font-mono); letter-spacing: .06em; text-align: left; cursor: pointer; border-radius: 0; }
+.align-fly-item svg { stroke-width: 1.1; }
+.align-fly-item:hover { border-color: var(--noct-primary); }
+.align-fly-item.on { background: var(--noct-primary); border-color: var(--noct-primary); color: var(--noct-on-primary); }
+.align-fly-item[data-tool="pointer"] svg path { fill: currentColor; stroke: none; }
+.align-fly-key { opacity: .7; }
+.align-stage.playing .align-flyout { display: none; }
 .align-tool.on { background: var(--noct-primary); border-color: var(--noct-primary); color: var(--noct-on-primary); }
 .align-tools-sep { grid-column: 1 / -1; height: 1px; background: var(--noct-border-strong); margin: 5px 0 3px; }
 .align-guide { position: relative; border: 0; padding-left: 3px; color: var(--noct-text-dim); }

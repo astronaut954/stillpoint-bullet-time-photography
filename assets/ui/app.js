@@ -4118,7 +4118,7 @@
       mixed: () => alRatioInfo().mixed,
       ratio: (ratio, orient) => alEditRatio(ed, ratio, orient),
     };
-    exp.photo = 0; exp.alignView = null; alignPrefs.tool = "handles";
+    exp.photo = 0; exp.alignView = null; alignPrefs.tool = "pointer";
     rigApply(session, st, true).then(() => {
       if (al.edit !== ed) return;
       items.forEach((it) => { if (st.align.byFile[it.file]) ed.stick[it.file] = Object.assign({}, st.align.byFile[it.file]); });
@@ -6391,7 +6391,39 @@
       ["handles", "toolPointer", "Direct select: resize by the corners and rotate by the top handle; dragging anywhere else does nothing (A)", "a"], ["move", "toolMove", "Move the photo (M)", "m"],
       ["rotate", "toolRotate", "Rotate the photo (R)", "r"], ["scale", "toolScale", "Resize the photo (S)", "s"], ["pan", "toolPan", "Move the view: the photo stays where it is (H)", "h"],
       ["zoom", "toolZoom", "Zoom the view: click to zoom in, " + (navigator.platform.indexOf("Mac") >= 0 ? "⌥" : "Alt") + " + click to zoom out (Z)", "z"]];
-    if (!TOOLS.some((t) => t[0] === alignPrefs.tool)) alignPrefs.tool = "handles";
+    if (!TOOLS.some((t) => t[0] === alignPrefs.tool)) alignPrefs.tool = "pointer";
+    // Grupos, como no Illustrator (decisão do dono, 2026-11-26): um botão por grupo, mostrando a última ferramenta
+    // usada dele; com mais de uma, um triângulo no canto de baixo à direita, e segurar o botão esquerdo ou clicar
+    // com o direito abre a lista. As ferramentas novas de tamanho (canvas, todas as fotos) entram no grupo do Resize.
+    const TOOL_GROUPS = [["pointer", "handles"], ["move"], ["rotate"], ["scale"], ["pan"], ["zoom"]];
+    const TOOL_NAMES = { pointer: "Select", handles: "Direct select", move: "Move", rotate: "Rotate", scale: "Resize photo", pan: "Hand", zoom: "Zoom" };
+    if (!alignPrefs.groupTool) alignPrefs.groupTool = {};
+    const groupOf = (key) => TOOL_GROUPS.findIndex((g) => g.includes(key));
+    const shownIn = (gi) => { const g = TOOL_GROUPS[gi]; return g.includes(alignPrefs.tool) ? alignPrefs.tool : g.includes(alignPrefs.groupTool[gi]) ? alignPrefs.groupTool[gi] : g[0]; };
+    const pickTool = (key) => { alignPrefs.tool = key; alignPrefs.groupTool[groupOf(key)] = key; saveAlignPrefs(); closeFly(); paintTools(); };
+    let fly = null;
+    const closeFly = () => { if (fly) { fly.remove(); fly = null; document.removeEventListener("pointerdown", flyOutside, true); window.removeEventListener("keydown", flyKey, true); } };
+    const flyOutside = (e) => { if (fly && !fly.contains(e.target)) closeFly(); };
+    const flyKey = (e) => { if (e.key === "Escape") { e.preventDefault(); e.stopImmediatePropagation(); closeFly(); } };
+    const openFly = (gi, btn) => {
+      closeFly();
+      fly = el("div", "align-flyout"); fly.id = "alignFlyout";
+      TOOL_GROUPS[gi].forEach((key) => {
+        const t = TOOLS.find((x) => x[0] === key);
+        const b = el("button", "align-fly-item" + (alignPrefs.tool === key ? " on" : ""));
+        b.type = "button"; b.dataset.tool = key;
+        b.innerHTML = icon(t[1], 18);
+        b.append(el("span", "align-fly-name", TOOL_NAMES[key]), el("span", "align-fly-key", t[3].toUpperCase()));
+        b.addEventListener("click", () => pickTool(key));
+        b.addEventListener("pointerup", (e) => { if (fly && fly.dataset.held) pickTool(key); });  // (segurar, arrastar até o item e soltar)
+        fly.appendChild(b);
+      });
+      stage.appendChild(fly);
+      const sr = stage.getBoundingClientRect(), r = btn.getBoundingClientRect();
+      fly.style.left = Math.round(r.right - sr.left + 8) + "px";
+      fly.style.top = Math.round(Math.max(6, Math.min(r.top - sr.top, stage.clientHeight - fly.offsetHeight - 6))) + "px";
+      setTimeout(() => { document.addEventListener("pointerdown", flyOutside, true); window.addEventListener("keydown", flyKey, true); }, 0);  // (na janela: antes dos Esc do resto do app)
+    };
     const cross = el("div", "align-cross");
     ratio.appendChild(cross);
     const tools = el("div", "align-tools");
@@ -6399,7 +6431,12 @@
     const toolBtns = {};
     const paintTools = (first) => {
       stage.dataset.tool = alignPrefs.tool;
-      TOOLS.forEach(([key]) => { toolBtns[key].classList.toggle("on", alignPrefs.tool === key); toolBtns[key].setAttribute("aria-pressed", alignPrefs.tool === key ? "true" : "false"); });
+      TOOL_GROUPS.forEach((g, gi) => {
+        const b = toolBtns[gi], key = shownIn(gi), t = TOOLS.find((x) => x[0] === key);
+        if (b.dataset.tool !== key) { b.dataset.tool = key; b.innerHTML = icon(t[1], 18); }
+        b.title = t[2] + (g.length > 1 ? ". Hold or right-click for " + g.filter((k) => k !== key).map((k) => TOOL_NAMES[k]).join(", ") : "");
+        b.classList.toggle("on", alignPrefs.tool === key); b.setAttribute("aria-pressed", alignPrefs.tool === key ? "true" : "false");
+      });
       cross.classList.toggle("hidden", alignPrefs.cross === false);
       stage.classList.toggle("clean", alignPrefs.edges === false);
       guideBtns.cross.classList.toggle("on", alignPrefs.cross !== false);
@@ -6408,11 +6445,24 @@
       guideBtns.edges.title = "Handles and what is outside the canvas: " + (alignPrefs.edges !== false ? "on" : "off");
       if (!first && exp.alignLayout) exp.alignLayout();
     };
-    TOOLS.forEach(([key, ic, title]) => {
-      const b = el("button", "align-tool");
-      b.type = "button"; b.dataset.tool = key; b.title = title; b.innerHTML = icon(ic, 18);
-      b.addEventListener("click", () => { alignPrefs.tool = key; saveAlignPrefs(); paintTools(); });
-      toolBtns[key] = b; tools.appendChild(b);
+    TOOL_GROUPS.forEach((g, gi) => {
+      const b = el("button", "align-tool" + (g.length > 1 ? " has-more" : ""));
+      b.type = "button"; b.dataset.group = g.join(" ");
+      let hold = 0, opened = false;
+      b.addEventListener("click", () => { if (opened) { opened = false; return; } pickTool(shownIn(gi)); });
+      if (g.length > 1) {
+        // Segurar o botão esquerdo abre a lista (solta em cima de um item para escolher); o botão direito também abre
+        b.addEventListener("pointerdown", (e) => {
+          if (e.button !== 0) return;
+          opened = false;
+          hold = setTimeout(() => { opened = true; openFly(gi, b); if (fly) fly.dataset.held = "1"; try { b.releasePointerCapture(e.pointerId); } catch (x) {} }, 350);
+        });
+        const cancel = () => { clearTimeout(hold); if (fly) setTimeout(() => { if (fly) delete fly.dataset.held; }, 0); };
+        b.addEventListener("pointerup", cancel); b.addEventListener("pointerleave", () => clearTimeout(hold));
+        document.addEventListener("pointerup", function up() { if (!b.isConnected) { document.removeEventListener("pointerup", up); return; } cancel(); });
+        b.addEventListener("contextmenu", (e) => { e.preventDefault(); clearTimeout(hold); openFly(gi, b); });
+      }
+      toolBtns[gi] = b; tools.appendChild(b);
     });
     tools.appendChild(el("span", "align-tools-sep"));
     const guideBtns = {};
@@ -6446,7 +6496,7 @@
       for (let cols = 1; cols <= 5; cols += 1) { tools.style.setProperty("--cols", cols); if (tools.offsetHeight <= avail) break; }
     };
     paintTools(true);
-    exp.alignToolKey = (letter) => { const t = TOOLS.find((x) => x[3] === letter); if (!t) return false; alignPrefs.tool = t[0]; saveAlignPrefs(); paintTools(); return true; };
+    exp.alignToolKey = (letter) => { const t = TOOLS.find((x) => x[3] === letter); if (!t) return false; pickTool(t[0]); return true; };
     // Fileira de miniaturas, com um ponto da cor da referência
     const stripScroll = el("div", "export-strip-scroll");
     const strip = el("ul", "export-strip");
@@ -6942,7 +6992,7 @@
     // Enquanto o botão está apertado o cursor é o mesmo na tela toda, não só em cima da foto grande
     const holdCursor = (value) => { document.body.style.setProperty("--drag-cursor", value || getComputedStyle(stage).cursor); document.body.classList.add("align-drag"); };
     stage.addEventListener("pointerdown", (e) => {
-      if (e.button !== 0 || e.target.closest("button") || e.target.closest(".align-tools, .align-play") || !sizes[item.file]) return;
+      if (e.button !== 0 || e.target.closest("button") || e.target.closest(".align-tools, .align-play, .align-flyout") || !sizes[item.file]) return;
       e.preventDefault();
       // Tocando a sequência: clicar ou arrastar na foto grande sai do modo de tocar, e o mesmo gesto, se a pessoa
       // segurar e arrastar, já desloca a vista (pedidos do dono, 2026-11-25). A tela é refeita ao parar, então quem
@@ -7221,7 +7271,7 @@
     if (exp.aligningShown !== !!exp.aligning) {
       exp.aligningShown = !!exp.aligning;
       exp.alignView = { zoom: 1, px: 0, py: 0 };  // cada entrada começa sem zoom
-      alignPrefs.tool = "handles";  // e com a ferramenta Direct select (decisão do dono, 2026-11-24); as guias continuam guardadas
+      alignPrefs.tool = "pointer";  // e com a ferramenta Select (decisão do dono, 2026-11-26; antes era a Direct select); as guias continuam guardadas
       if (exp.aligning) { const sx = sessions.find((x) => x.name === exp.active); if (sx) rigDiag(sx, settingsFor(sx.name)); }
       outer.classList.remove("layout-change"); void outer.offsetWidth; outer.classList.add("layout-change");
       setTimeout(() => outer.classList.remove("layout-change"), 400);

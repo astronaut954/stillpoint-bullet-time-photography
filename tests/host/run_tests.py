@@ -3083,7 +3083,29 @@ def scenario_align_tools(t, name, photos):
         time.sleep(0.5)
         d = st()
         check(t, "align tools: with the mouse in its area the bar lights up", d["near"] and d["barIn"] and d["barOp"] == "1", d)
-        check(t, "align tools: seven tools, Direct select chosen from the start", d["tools"] == ["pointer", "handles*", "move", "rotate", "scale", "pan", "zoom"] and d["tool"] == "handles", d["tools"])
+        check(t, "align tools: six buttons (Select and Direct select share one), Select chosen from the start", d["tools"] == ["pointer*", "move", "rotate", "scale", "pan", "zoom"] and d["tool"] == "pointer", d["tools"])
+        # Grupo de ferramentas, como no Illustrator (decisão do dono, 2026-11-26): triângulo no canto, lista com o botão
+        # direito ou segurando o esquerdo
+        grp = t.js("() => { const b = document.querySelector('.align-tool[data-group]'); return { group: b.dataset.group, more: b.classList.contains('has-more'), mark: getComputedStyle(b, '::after').borderBottomWidth, others: [...document.querySelectorAll('.align-tool.has-more')].length }; }")
+        check(t, "tool groups: the Select button holds Select and Direct select and shows the corner mark; the others hold one tool", grp["group"] == "pointer handles" and grp["more"] and grp["mark"] == "5px" and grp["others"] == 1, grp)
+        t.page.click(".align-tool[data-group='pointer handles']", button="right"); time.sleep(0.3)
+        fl = t.js("() => { const f = document.getElementById('alignFlyout'); return f ? [...f.querySelectorAll('.align-fly-item')].map((x) => x.textContent + (x.classList.contains('on') ? '*' : '')) : null; }")
+        check(t, "tool groups: right-click opens the list with the tools of the group (name and letter), the current one lit", fl == ["SelectV*", "Direct selectA"], fl)
+        t.page.click("#alignFlyout .align-fly-item[data-tool=handles]"); time.sleep(0.3)
+        g2 = t.js("() => ({ tool: document.querySelector('.align-stage').dataset.tool, shown: document.querySelector('.align-tool[data-group]').dataset.tool, open: !!document.getElementById('alignFlyout') })")
+        check(t, "tool groups: choosing in the list picks the tool, shows it on the button and closes the list", g2 == {"tool": "handles", "shown": "handles", "open": False}, g2)
+        bb = t.page.locator(".align-tool[data-group='pointer handles']").bounding_box()
+        t.page.mouse.move(bb["x"] + 10, bb["y"] + 10); t.page.mouse.down(); time.sleep(0.6)
+        held = t.js("() => !!document.getElementById('alignFlyout')")
+        ib = t.page.locator("#alignFlyout .align-fly-item[data-tool=pointer]").bounding_box() if held else None
+        if ib: t.page.mouse.move(ib["x"] + 30, ib["y"] + 10, steps=4)
+        t.page.mouse.up(); time.sleep(0.3)
+        g3 = t.js("() => ({ tool: document.querySelector('.align-stage').dataset.tool, open: !!document.getElementById('alignFlyout') })")
+        check(t, "tool groups: holding the left button opens the list; releasing over a tool picks it", held and g3 == {"tool": "pointer", "open": False}, (held, g3))
+        t.page.click(".align-tool[data-group='pointer handles']", button="right"); time.sleep(0.2)
+        t.page.keyboard.press("Escape"); time.sleep(0.2)
+        check(t, "tool groups: Esc closes the list and nothing else", t.js("() => !document.getElementById('alignFlyout') && !!document.querySelector('.align-stage .align-tools')"))
+        t.page.mouse.move(box["x"] + 30, box["y"] + 60); time.sleep(0.3)
         t.shot("align-tools-bar")
         cx, cy = box["x"] + box["width"] * 0.6, box["y"] + box["height"] * 0.5
         def drag(dx, dy):
@@ -3111,7 +3133,7 @@ def scenario_align_tools(t, name, photos):
         pick(".align-guide[data-guide=cross]")
         pick(".align-guide[data-guide=edges]")
         d = st()
-        check(t, "align tools: the two guides switch off on their own: no cross, no handles, nothing outside the canvas", not d["cross"] and d["clean"] and d["handle"] == "none" and d["clip"].startswith("inset(") and d["guides"] == ["cross", "edges"] and d["tools"][5] == "pan*", d)
+        check(t, "align tools: the two guides switch off on their own: no cross, no handles, nothing outside the canvas", not d["cross"] and d["clean"] and d["handle"] == "none" and d["clip"].startswith("inset(") and d["guides"] == ["cross", "edges"] and d["tools"][4] == "pan*", d)
         t.page.mouse.move(box["x"] + box["width"] * 0.7, box["y"] + box["height"] * 0.5)
         time.sleep(1.2)
         t.shot("align-tools-clean")
@@ -3241,7 +3263,7 @@ def scenario_align_tools(t, name, photos):
         field(3, ""); field(2, ""); field(0, "")
         v = vals()
         check(t, "align tools: an emptied box goes back to 0 (Size: 100, or the smallest that still covers)", float(v[3]) == 0 and float(v[0]) == 0 and 99.9 <= float(v[2]) < 130, v)
-        # Sair do Align photos e entrar de novo: a ferramenta volta a ser a Direct select
+        # Sair do Align photos e entrar de novo: a ferramenta volta a ser a Select
         pick(".align-tool[data-tool=rotate]")
         t.button("Done aligning"); time.sleep(0.8)
         # Na aba Framing, a mão de arrastar só aparece quando arrastar faz algo (dono, 2026-11-26): foto com alinhamento
@@ -3251,7 +3273,7 @@ def scenario_align_tools(t, name, photos):
               (fr.get("cursor") == "default") == ("Drag the photo" not in fr.get("tag", "")) and fr.get("cursor") in ("default", "grab"), fr)
         t.button("Align photos"); time.sleep(0.8)
         t.wait(lambda: t.js("() => !!document.querySelector('.align-stage .align-tools') && !document.querySelector('.align-stage .align-wait')"), 20)
-        check(t, "align tools: leaving Align photos and coming back picks Direct select again", t.js("() => document.querySelector('.align-stage').dataset.tool") == "handles")
+        check(t, "align tools: leaving Align photos and coming back picks Select again", t.js("() => document.querySelector('.align-stage').dataset.tool") == "pointer")
         # O tocador do Align cameras também no Align photos do Export (pedido do dono, 2026-11-26)
         pb = t.js("() => { const b = document.getElementById('alignPlayBar'); return b ? { text: b.textContent, ids: [...b.querySelectorAll('button')].map((x) => x.id + (x.disabled ? '-' : '')).filter(Boolean), inStage: !!b.closest('.align-stage') } : {}; }")
         check(t, "export align: the play bar is over the big photo (‹ ▶ › Speed, Reverse loop, Stop off)", pb.get("inStage") and "Speed" in pb.get("text", "") and "Reverse loop" in pb.get("text", "") and pb.get("ids") == ["alignPlay", "alignPlayStop-"], pb)

@@ -1885,6 +1885,20 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      por ordem de chegada, e a lista de sessões entrava na frente da sessão aberta. Feito: `PhotoPixelSize` lê só
      o cabeçalho do JPEG (RAW e TIFF seguem pelo caminho completo); `PreviewThread::Hurry` e `photoHurry(sessão)`
      passam os pedidos da sessão que está na tela para a frente. Não medido em máquina do dono: a confirmar.
+     Teste do dono (2026-11-26): seção 70 aprovada.
+     **DECISÕES DO DONO (2026-11-26): C3** — as duas ferramentas novas: tamanho e posição do CANVAS, e tamanho e
+     posição de TODAS AS FOTOS juntas; ficam agrupadas com a "Resize photo". **Grupos de ferramentas como no
+     Illustrator:** Select e Direct select no mesmo botão, triângulo no canto de baixo à direita, lista ao
+     segurar o botão esquerdo ou com o botão direito. **Ferramenta padrão: Select** (antes Direct select).
+     FEITO (seção 71): grupos (`TOOL_GROUPS`, lista `#alignFlyout`), Select/Direct select agrupadas, Select padrão.
+     FALTA: as duas ferramentas novas no grupo do Resize. Definição proposta pelo agente, a confirmar: a do canvas
+     não amplia foto nenhuma (a saída fica com menos pixels quando o canvas diminui; não cresce além da área que
+     todas as fotos cobrem) e exige um valor novo guardado na sessão e no alinhamento do rig; a de todas as fotos
+     mantém o canvas e amplia as fotos (entra no aviso de ampliação acima de 25%).
+     **Janela estreita no passo 3 (pedido do dono, 2026-11-26):** protótipos da linha de cima em
+     https://claude.ai/artifact/5W9SVCVmnx6SnGE11VeGjH (K1 duas linhas; K2 uma linha com textos curtos; K3 avisos
+     juntos numa etiqueta com contagem). AGUARDA A ESCOLHA DO DONO. Visto na captura: o passo 2 também corta a
+     coluna da direita em 1000 px de largura (a tratar junto).
      **A DECIDIR:** onde mais o S4 vale: no Export (sessão com formas diferentes: "As shot" apagado?) e na janela
      "Mixed ratios" das sessões sem rig alinhado (tirar "Keep as shot"?); as sessões já feitas não mudam
      (registro de 2026-11-24).
