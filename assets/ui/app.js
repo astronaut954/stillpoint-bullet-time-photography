@@ -6295,8 +6295,8 @@
       b.addEventListener("click", () => { alignPrefs[key] = alignPrefs[key] === false; saveAlignPrefs(); paintTools(); });
       guideBtns[key] = b; tools.appendChild(b);
     });
-    // Escondida, a barra fica pela metade para fora da borda e apagada; com o mouse na área dela, vem inteira e
-    // acende (forma G4 com metade para fora, escolha do dono em 2026-11-25; antes havia um puxador com seta)
+    // A barra fica sempre no lugar, apagada; com o mouse na área dela, acende (forma G4, escolha do dono em
+    // 2026-11-26, depois de experimentar a metade para fora; antes havia um puxador com seta)
     stage.append(tools);
     // Perto da borda esquerda (ou em cima da barra) ela aparece; longe, some depois de um instante
     // A barra aparece com o mouse na borda esquerda (ou no puxador) e começa a sumir assim que ele sai da área dela
@@ -6308,7 +6308,7 @@
       const r = stage.getBoundingClientRect(); const x = e.clientX - r.left, y = e.clientY - r.top;
       const top = tools.offsetTop - tools.offsetHeight / 2;  // (a barra fica centrada na altura: top 50% e meia altura para cima)
       const inBar = x < tools.offsetLeft + tools.offsetWidth + TOOLS_PAD && y > top - TOOLS_PAD && y < top + tools.offsetHeight + TOOLS_PAD;
-      toolsNear(inBar || x < 14);
+      toolsNear(inBar);
     });
     stage.addEventListener("pointerleave", () => toolsNear(false));
     // Foto grande baixa (janela com pouca altura): a barra se reorganiza em mais colunas em vez de perder botões
@@ -6883,8 +6883,8 @@
     };
     // Passo 3 do Align cameras: os controles de tocar ficam sobre a foto grande, no canto de cima à direita, como na
     // tela cheia da janela principal (forma Y4, escolha do dono em 2026-11-25)
-    // Ela se comporta como a barra de ferramentas, só que em cima: escondida, fica pela metade para fora da borda de
-    // cima e apagada; com o mouse na área dela, desce inteira; em foto grande estreita, os controles quebram de linha (pedidos do dono, 2026-11-25)
+    // Ela se comporta como a barra de ferramentas, só que em cima: fica no lugar, apagada, e acende com o mouse na
+    // área dela; em foto grande estreita, os controles quebram de linha (pedidos do dono, 2026-11-25)
     if (rigStep) {
       const bar = el("div", "align-play"); bar.id = "alignPlayBar"; rigStep.transport(bar);
       stage.append(bar);
@@ -6893,7 +6893,7 @@
       stage.addEventListener("pointermove", (e) => {
         const r = stage.getBoundingClientRect(); const x = e.clientX - r.left, y = e.clientY - r.top;
         const inBar = y < bar.offsetTop + bar.offsetHeight + TOOLS_PAD && x > bar.offsetLeft - TOOLS_PAD && x < bar.offsetLeft + bar.offsetWidth + TOOLS_PAD;
-        playNear(inBar || y < 14);
+        playNear(inBar);
       });
       stage.addEventListener("pointerleave", () => playNear(false));
     }

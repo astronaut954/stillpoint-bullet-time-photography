@@ -1659,8 +1659,8 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .align-stage.dragging { cursor: move; }  /* movendo a foto: as quatro setas, não a mão (pedido do dono, 2026-11-24) */
 /* Barra de ferramentas dentro da foto grande do Align photos: some para a esquerda e volta com o mouse perto da borda;
    escondida, fica o puxador com a seta. Ferramenta escolhida = cheia; guia ligada = faixa acesa ao lado (forma C3). */
-.align-tools { position: absolute; left: 10px; top: 50%; z-index: 6; display: grid; grid-template-columns: repeat(var(--cols, 1), 36px); gap: 4px; padding: 6px; background: rgba(0, 12, 4, .86); border: 1px solid var(--noct-border-strong); transform: translate(calc(-50% - 10px), -50%); opacity: .3; transition: transform .5s ease, opacity .5s ease; }
-.align-stage.tools-near .align-tools { transform: translate(0, -50%); opacity: 1; transition-duration: .16s; }
+.align-tools { position: absolute; left: 10px; top: 50%; z-index: 6; display: grid; grid-template-columns: repeat(var(--cols, 1), 36px); gap: 4px; padding: 6px; background: rgba(0, 12, 4, .86); border: 1px solid var(--noct-border-strong); transform: translate(0, -50%); opacity: .3; transition: opacity .5s ease; }
+.align-stage.tools-near .align-tools { opacity: 1; transition-duration: .16s; }
 .align-tools svg { stroke-width: 1.1; }
 .align-tool, .align-guide { width: 36px; height: 36px; box-sizing: border-box; display: grid; place-items: center; padding: 0; background: transparent; color: var(--noct-primary); cursor: pointer; border-radius: 0; }
 .align-tool { border: 1px solid var(--noct-border-strong); }
@@ -2524,8 +2524,8 @@ body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform:
 .align-stage.playing .align-tools, .align-stage.playing .align-box { display: none !important; }
 .align-stage.playing, .align-stage.playing * { cursor: grab; }
 .align-panel.playing { opacity: .4; pointer-events: none; }
-.align-play { position: absolute; right: 10px; top: 10px; z-index: 6; box-sizing: border-box; max-width: calc(100% - 20px); display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px 10px; padding: 6px 10px; background: rgba(0, 12, 4, .86); border: 1px solid var(--noct-border-strong); white-space: nowrap; transform: translateY(calc(-50% - 10px)); opacity: .3; transition: transform .5s ease, opacity .5s ease; }
-.align-stage.play-near .align-play { transform: none; opacity: 1; transition-duration: .16s; }
+.align-play { position: absolute; right: 10px; top: 10px; z-index: 6; box-sizing: border-box; max-width: calc(100% - 20px); display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px 10px; padding: 6px 10px; background: rgba(0, 12, 4, .86); border: 1px solid var(--noct-border-strong); white-space: nowrap; opacity: .3; transition: opacity .5s ease; }
+.align-stage.play-near .align-play { opacity: 1; transition-duration: .16s; }
 .align-stage .align-play, .align-stage .align-play * { cursor: default; }
 .align-stage .align-play button, .align-stage .align-play label, .align-stage .align-play label * { cursor: pointer; }
 .rig-play-ctl { display: inline-flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px; }

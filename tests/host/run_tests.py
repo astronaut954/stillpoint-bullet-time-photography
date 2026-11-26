@@ -1951,10 +1951,10 @@ def scenario_align_cameras(t, name, photos):
         sb0 = t.page.locator("#csAlignMain .align-stage").bounding_box()
         t.page.mouse.move(sb0["x"] + sb0["width"] / 2, sb0["y"] + sb0["height"] / 2); time.sleep(0.8)
         hid = t.js("() => { const b = document.getElementById('alignPlayBar'), s = document.querySelector('#csAlignMain .align-stage').getBoundingClientRect(), r = b.getBoundingClientRect(); return [getComputedStyle(b).opacity, Math.round(s.top - r.top), Math.round(r.height / 2), Math.round(r.bottom - s.top)]; }")
-        check(t, "align, step 3: away from it, the play bar sits dim and half out of the top edge of the big photo (no grip)", hid[0] == "0.3" and abs(hid[1] - hid[2]) <= 2 and hid[3] > 8 and not t.js("() => !!document.querySelector('.align-play-grip, .align-tools-grip')"), hid)
+        check(t, "align, step 3: away from it, the play bar sits dim in its place at the top right of the big photo (no grip)", hid[0] == "0.3" and -14 <= hid[1] <= 0 and not t.js("() => !!document.querySelector('.align-play-grip, .align-tools-grip')"), hid)
         t.page.mouse.move(sb0["x"] + sb0["width"] / 2, sb0["y"] + 6); time.sleep(0.5)
         d3 = s3()
-        check(t, "align, step 3: with the mouse near the top edge the play bar comes down", t.js("() => getComputedStyle(document.getElementById('alignPlayBar')).opacity") == "1" and t.js("() => document.querySelector('#csAlignMain .align-stage').classList.contains('play-near')"))
+        check(t, "align, step 3: with the mouse over it the play bar lights up", t.js("() => getComputedStyle(document.getElementById('alignPlayBar')).opacity") == "1" and t.js("() => document.querySelector('#csAlignMain .align-stage').classList.contains('play-near')"))
         check(t, "align: step 3 is the Align photos editor on the four photos (big photo, tools, Move/Size/Rotate, thumbnails), opening with the values from the stick",
               d3["on"] and d3["thumbs"] == 4 and d3["where"].startswith("Camera 01 of 04") and len(d3["fields"]) == 4 and d3["tools"] and "Adjust any photo by hand and play the sequence" in d3["sub"], d3)
         check(t, "align: step 3 has no Flip and no Aspect ratio (the camera alignment does not keep them), 'Play the sequence' and 'Back to the stick values' (off: nothing adjusted)",
@@ -2972,13 +2972,13 @@ def scenario_align_tools(t, name, photos):
         st = lambda: t.js("() => { const s = document.querySelector('.align-stage'), b = s.querySelector('.align-tools').getBoundingClientRect(), r = s.getBoundingClientRect(), c = s.querySelector('.align-cross'), f = s.querySelector('.align-ratio').getBoundingClientRect(), cb = c.getBoundingClientRect(); return { near: s.classList.contains('tools-near'), barIn: b.left >= r.left && b.right <= r.right && b.top >= r.top, barOp: getComputedStyle(s.querySelector('.align-tools')).opacity, half: [Math.round(r.left - b.left), Math.round(b.width / 2)], tool: s.dataset.tool, tools: [...s.querySelectorAll('.align-tool')].map((x) => x.dataset.tool + (x.classList.contains('on') ? '*' : '')), guides: [...s.querySelectorAll('.align-guide')].map((x) => x.dataset.guide + (x.classList.contains('on') ? '*' : '')), cross: !c.classList.contains('hidden'), crossAt: [Math.round(cb.left - (f.left + f.width / 2)), Math.round(cb.top - (f.top + f.height / 2))], clean: s.classList.contains('clean'), clip: s.querySelector('.align-layers').style.clipPath, handle: getComputedStyle(s.querySelector('.align-handle')).display }; }")
         vals = lambda: t.js("() => [...document.querySelectorAll('.align-panel .align-ctl input')].map((i) => i.value)")
         d = st()
-        check(t, "align tools: away from the left edge the bar sits dim and half out of the edge (no grip)", not d["near"] and d["barOp"] == "0.3" and abs(d["half"][0] - d["half"][1]) <= 2, d)
+        check(t, "align tools: away from it the bar sits dim in its place, inside the big photo (no grip)", not d["near"] and d["barOp"] == "0.3" and d["barIn"], d)
         check(t, "align tools: the cross in the middle of the canvas is on from the start, with the handles", d["cross"] and abs(d["crossAt"][0]) <= 1 and abs(d["crossAt"][1]) <= 1 and not d["clean"] and d["handle"] != "none" and d["guides"] == ["cross*", "edges*"], d)
         box = t.page.locator(".align-stage").bounding_box()
         t.page.mouse.move(box["x"] + 30, box["y"] + 60)
         time.sleep(0.5)
         d = st()
-        check(t, "align tools: with the mouse in its area the bar comes in whole, inside the big photo, and lights up", d["near"] and d["barIn"] and d["barOp"] == "1", d)
+        check(t, "align tools: with the mouse in its area the bar lights up", d["near"] and d["barIn"] and d["barOp"] == "1", d)
         check(t, "align tools: seven tools, Direct select chosen from the start", d["tools"] == ["pointer", "handles*", "move", "rotate", "scale", "pan", "zoom"] and d["tool"] == "handles", d["tools"])
         t.shot("align-tools-bar")
         cx, cy = box["x"] + box["width"] * 0.6, box["y"] + box["height"] * 0.5

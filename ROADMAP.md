@@ -1785,6 +1785,9 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      FEITO, AGUARDANDO TESTE: os puxadores saíram; escondida, cada barra fica apagada (30%) e pela metade para
      fora da borda dela (ferramentas: esquerda; tocar: em cima); com o mouse na área da barra ela vem inteira e
      acende. Vale também no Align photos do Export.
+     Correção do dono (2026-11-26): esquecer a metade para fora; as barras ficam SEMPRE na posição normal, só
+     com opacidade menor (30%), e acendem com o mouse na área delas. FEITO, AGUARDANDO TESTE. Como a barra já
+     está à vista no lugar, o que a acende passou a ser só a área dela (antes, a borda inteira também acendia).
      Pergunta do dono: alinhar sem as marcas, por um objeto ou pessoa da cena. É a parte 7 (From this scene), já
      prevista, a fazer antes do rig reutilizável.
      **Decisões do dono no meio dos testes (2026-11-24), a fazer DEPOIS dos roteiros:** (i) arrastar os pontos
