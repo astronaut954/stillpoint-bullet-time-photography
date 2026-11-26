@@ -1798,6 +1798,11 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      spaced" quando a resposta do passo 1 não combina com as fotos), com a explicação inteira ao parar o mouse:
      no passo 2 fica embaixo da dica "Drag a point to put it exactly on its mark..."; no passo 3, na linha de
      cima, ao lado do Keeps.
+     Retornos do dono (2026-11-26), FEITOS, AGUARDANDO TESTE: (h) Cancel no Mark and aim (e no Save) com trabalho
+     feito pergunta antes de sair: "Leave without saving?" com "Keep aligning" e "Leave without saving"; sem
+     nenhuma marca ainda, sai direto. (i) Move: depois de encostar no limite, a foto só voltava a andar quando o
+     mouse refazia o caminho até o ponto em que ela tinha parado; agora o gesto recomeça a contar dali, e ela
+     volta junto com o mouse na hora.
      Pergunta do dono: alinhar sem as marcas, por um objeto ou pessoa da cena. É a parte 7 (From this scene), já
      prevista, a fazer antes do rig reutilizável.
      **Decisões do dono no meio dos testes (2026-11-24), a fazer DEPOIS dos roteiros:** (i) arrastar os pontos

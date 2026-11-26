@@ -2508,6 +2508,10 @@ Em **Export sessions** › sessão com mais de uma foto › **Align photos**.
 - [ ] Ferramenta **Move the photo** (M): arrastar a foto até o limite e continuar com o mouse para fora da foto
       grande: a foto desliza encostada na borda acompanhando o mouse, sem travar e sem saltar; voltando o mouse, ela
       volta a seguir. Conferir também no **Align photos** do Export.
+- [ ] **Move the photo**: depois de encostar no limite e continuar com o mouse, voltar o mouse um pouco: a foto já
+      volta junto, sem ser preciso refazer o caminho.
+- [ ] Com marcas feitas, **Cancel** no passo 2 ou 3: janela "Leave without saving?"; **Keep aligning** fica na tela;
+      **Leave without saving** sai. No passo 2 logo depois do **Fire**, sem nenhuma marca, **Cancel** sai direto.
 - [ ] Com **Not equal** no passo 1: no passo 2, etiqueta âmbar "Marks not at equal distances" embaixo da dica dos
       pontos; no passo 3, a mesma etiqueta na linha de cima, ao lado do **Keeps**; a explicação aparece ao parar o mouse.
 - [ ] Entrar e sair do modo de tocar: nada muda de lugar nem de altura, e **Back to the stick values** continua lá.

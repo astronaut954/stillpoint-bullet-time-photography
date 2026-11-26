@@ -2885,6 +2885,15 @@
     ["uneven", "Not equal", "The photos are matched by the length of the pole. The height is not estimated."]];
   const alMarksPole = (even) => '<svg viewBox="0 0 40 70" aria-hidden="true"><path d="M20 4v62" stroke="#cfd8cf" stroke-width="3"/><path d="M10 66h20" stroke="#cfd8cf" stroke-width="2"/>' +
     [12, even ? 34 : 27, 56].map((y) => '<rect x="14" y="' + (y - 3) + '" width="12" height="6" fill="#ff7a00"/>').join("") + "</svg>";
+  // Cancel com trabalho feito (marcas clicadas ou achadas, ajustes do passo 3): pergunta antes de sair e perder
+  // (pedido do dono, 2026-11-26). Sem nada feito ainda, sai direto.
+  function alCancel() {
+    const work = al.step >= 2 && al.photos.some((p) => (al.data[p.camera] || {}).tried);
+    if (!work) { alClose(); return; }
+    dialog("Leave without saving?",
+      "The marks and the adjustments made here are not saved yet. If you leave now they are lost, and the alignment the project had stays as it was.",
+      [{ label: "Keep aligning" }, { label: "Leave without saving", primary: true, onClick: () => alClose() }]);
+  }
   function alClose() {
     if (!al.open) return;
     if (al.firing && csTest.capturing && !csTest.cancelling) csTakeTest();  // cancela as fotos em andamento
@@ -4020,7 +4029,7 @@
     const goneN = alGoneAll().length;
     alFoot((marked ? need + " of " + livePhotos.length + " cameras need a change" : "") + (goneN ? (marked ? " · " : "") + goneN + " not connected" : ""),
       [["← Back", "btn-secondary", () => { al.step = 1; alRender(); }],
-       ["Cancel", "btn-secondary", alClose],
+       ["Cancel", "btn-secondary", alCancel],
        ["Fire again", "btn-secondary", alFire, { disabled: al.busy || busy || csTest.capturing || !alConnected().length }],
        ["Review alignment", "btn-primary", () => { al.step = 3; alRender(); }, { disabled: !allMarked || al.busy || moved, title: !allMarked ? "Every photo needs its three marks first" : moved ? "The cameras moved since these photos. Fire again first." : "" }]]);
     if (al.firing) { const n = $("csAlignNote"); if (n) n.textContent = "Taking a photo with each camera"; }
@@ -4190,7 +4199,7 @@
         gone.map((g) => "Camera " + alNum(g)).join(", ") + ".</b> If you save now " + (one ? "it gets" : "they get") + " no alignment, and the one " + (one ? "it" : "they") + " had is erased: " + (one ? "its" : "their") +
         " photos go into the next sessions without correction until you align again. To include " + (one ? "it" : "them") + ", plug " + (one ? "it" : "them") + " back, go back and fire again.</div>");
     }
-    alFoot("", [["← Back", "btn-secondary", () => { al.step = 2; alRender(); }], ["Cancel", "btn-secondary", alClose],
+    alFoot("", [["← Back", "btn-secondary", () => { al.step = 2; alRender(); }], ["Cancel", "btn-secondary", alCancel],
       [!gone.length ? "Save alignment" : gone.length === 1 ? "Save without it" : "Save without them", "btn-primary", alSave, { disabled: !alLive().some((p) => al.solved[p.camera]) }]]);
     alFootWarn();
     if (ed.ready) alEditFootNote(ed);
@@ -6853,7 +6862,13 @@
         return;
       }
       const c = centerOnScreen();
-      if (drag.kind === "move") tryApply((cand) => { cand.dx = drag.dx + (e.clientX - drag.x) / scaleK; cand.dy = drag.dy + (e.clientY - drag.y) / scaleK; });
+      if (drag.kind === "move") {
+        const tx = drag.dx + (e.clientX - drag.x) / scaleK, ty = drag.dy + (e.clientY - drag.y) / scaleK;
+        tryApply((cand) => { cand.dx = tx; cand.dy = ty; });
+        // Encostou no limite: o gesto passa a contar a partir daqui. Voltando o mouse, a foto já volta junto, sem a
+        // pessoa ter de refazer o caminho até o ponto em que ela parou (pedido do dono, 2026-11-26)
+        if (Math.abs(a.dx - tx) > 1e-6 || Math.abs(a.dy - ty) > 1e-6) { drag.x = e.clientX; drag.y = e.clientY; drag.dx = a.dx; drag.dy = a.dy; }
+      }
       else if (drag.kind === "scale") tryApply((cand) => { cand.scale = Math.max(0.05, Math.min(20, drag.scale * Math.max(1, Math.hypot(e.clientX - c.x, e.clientY - c.y)) / drag.dist)); });
       else { const ang = Math.atan2(e.clientY - c.y, e.clientX - c.x); let d = (ang - drag.angle) * 180 / Math.PI; if (e.shiftKey) d = Math.round(d / 15) * 15; tryApply((cand) => { cand.rot = Math.round((drag.rot + d) * 100) / 100; }); }
       sync(); layout();

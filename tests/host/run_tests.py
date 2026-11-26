@@ -218,6 +218,13 @@ class T:
         if not ok:
             raise RuntimeError("button not found: " + text)
         time.sleep(0.4)
+        if text == "Cancel":
+            self.leave_align()
+
+    def leave_align(self):
+        """Cancel no Align cameras com trabalho feito pergunta antes de sair: confirma."""
+        if self.js("() => { const b = [...document.querySelectorAll('#dialogOverlay button')].find((x) => x.textContent.trim() === 'Leave without saving' && x.offsetParent); if (!b) return false; b.click(); return true; }"):
+            time.sleep(0.4)
 
     def undo(self):
         self.page.keyboard.press("Control+z")
@@ -1977,16 +1984,23 @@ def scenario_align_cameras(t, name, photos):
             t.page.mouse.move(mx0 + 700, my0 + dy); time.sleep(0.15); track.append(pos())
         t.page.mouse.move(mx0 + 700, my0 + 400); time.sleep(0.15); corner = pos()
         t.page.mouse.move(mx0 + 700, my0 + 398); time.sleep(0.15); corner2 = pos()
-        t.page.mouse.move(mx0 + 6, my0 + 4); time.sleep(0.15); near = pos()
-        t.page.mouse.move(mx0, my0); time.sleep(0.1); t.page.mouse.up(); time.sleep(0.4)
-        back0 = pos()
+        # Voltando o mouse só um pouco, a foto já volta junto (não é preciso refazer o caminho até o ponto de partida)
+        t.page.mouse.move(mx0 + 700 - 30, my0 + 398 - 20); time.sleep(0.15); back1 = pos()
+        t.page.mouse.move(mx0 + 700 - 60, my0 + 398 - 40); time.sleep(0.15); back2 = pos()
+        t.page.mouse.up(); time.sleep(0.4)
         steps = [round(track[i + 1][1] - track[i][1], 1) for i in range(4)]
         check(t, "align, Move past the limit: the rotated photo slides along the edge following the mouse (even steps, no sticking)",
               abs(rot0) > 0.2 and all(x > 0 for x in steps) and max(steps) - min(steps) <= 2 and abs(track[-1][0] - track[0][0]) <= 6, (rot0, p0, track, steps))
-        check(t, "align, Move past the limit: it does not jump at the corner, and back inside it follows the mouse again and returns to where it started",
-              abs(corner[0] - corner2[0]) <= 1 and abs(corner[1] - corner2[1]) <= 1 and abs(near[0] - p0[0]) < 40 and abs(near[1] - p0[1]) < 40 and abs(back0[0] - p0[0]) <= 1 and abs(back0[1] - p0[1]) <= 1, (p0, corner, corner2, near, back0))
+        check(t, "align, Move past the limit: it does not jump at the corner, and coming back the photo moves back at once, with the mouse (no need to go all the way back)",
+              abs(corner[0] - corner2[0]) <= 8 and abs(corner[1] - corner2[1]) <= 8 and back1[0] < corner2[0] - 5 and back1[1] < corner2[1] - 3 and back2[0] < back1[0] - 5 and back2[1] < back1[1] - 3, (p0, corner, corner2, back1, back2))
         t.page.keyboard.press("a"); time.sleep(0.2)
         t.js("() => { const b = document.getElementById('alignBackStick'); if (b && !b.disabled) b.click(); }"); time.sleep(0.5)
+        # Cancel com trabalho feito pergunta antes: "Keep aligning" fica; (o "Leave without saving" é conferido adiante)
+        t.js("() => [...document.querySelectorAll('#csAlignFoot button')].find((b) => b.textContent.trim() === 'Cancel').click()"); time.sleep(0.5)
+        ask = t.js("() => { const o = document.getElementById('dialogOverlay'); return [!o.classList.contains('hidden'), o.textContent.includes('Leave without saving?'), [...o.querySelectorAll('button')].map((b) => b.textContent.trim())]; }")
+        check(t, "align: Cancel with marks and adjustments made asks before leaving ('Keep aligning' / 'Leave without saving')", ask[0] and ask[1] and ask[2] == ["Keep aligning", "Leave without saving"], ask)
+        t.js("() => [...document.querySelectorAll('#dialogOverlay button')].find((b) => b.textContent.trim() === 'Keep aligning').click()"); time.sleep(0.4)
+        check(t, "align: 'Keep aligning' stays in the window, with everything as it was", t.js("() => !document.getElementById('csAlign').classList.contains('hidden') && document.getElementById('csAlignStep3').classList.contains('on')") and len(s3()["fields"]) == 4)
         # Tocar a sequência: na própria tela, sem as referências por cima e sem as alças; ‹ pausa ›, Speed, Reverse loop
         bar_idle = t.js("() => [Math.round(document.getElementById('alignPlayBar').getBoundingClientRect().width), document.getElementById('alignPlayStop').disabled]")
         geo_idle = t.js("() => { const r = (e) => { const b = e.getBoundingClientRect(); return [Math.round(b.left), Math.round(b.top), Math.round(b.width), Math.round(b.height)]; }; const m = document.getElementById('csAlignMain'); return { top: r(m.querySelector('.rig-top')), stage: r(m.querySelector('.align-stage')), panel: r(m.querySelector('.align-panel')), strip: r(m.querySelector('.export-strip')), back: !!document.getElementById('alignBackStick'), keeps: r(document.getElementById('alignKeeps')) }; }")
@@ -2729,6 +2743,7 @@ def scenario_align_gone(t, name, photos):
         if gone:
             t.js("(n) => window.fakeUnplug(n, '0')", gone)
         t.js("() => { const c = [...document.querySelectorAll('#csAlign button')].find((b) => b.textContent.trim() === 'Cancel'); if (c && !document.getElementById('csAlign').classList.contains('hidden')) c.click(); }")
+        time.sleep(0.3); t.leave_align()
         t.env.pop("STILLPOINT_FAKE_FIXED", None)
         t.restart_app()
 
@@ -2799,6 +2814,7 @@ def scenario_align_uneven(t, name, photos):
         check(t, "align uneven: no page error", len(t.errors) == errors_before, t.errors[errors_before:])
     finally:
         t.js("() => { const c = [...document.querySelectorAll('#csAlign button')].find((b) => b.textContent.trim() === 'Cancel'); if (c && !document.getElementById('csAlign').classList.contains('hidden')) c.click(); }")
+        time.sleep(0.3); t.leave_align()
         t.js("() => window.alignMarks && window.alignMarks('even')")  # (fica guardado com o projeto: os outros cenários contam com 'even')
         t.env.pop("STILLPOINT_FAKE_FIXED", None)
         t.restart_app()
