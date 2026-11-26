@@ -1973,6 +1973,13 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
         limpa tudo antes do `rigApply`). Teste automático do cenário do Align cameras: 104 de 104 (duas
         verificações novas); rodada completa não refeita.
         Teste do dono (2026-11-26, 17:59): aprovado. Item 2 dos pedidos novos ENCERRADO.
+     **PROTÓTIPOS DA ÂNCORA, DA EDIÇÃO GLOBAL E DO CANVAS (2026-11-26):**
+     https://claude.ai/artifact/TQzpBY9ujNNRj9uT8tTF6H — âncora: AN1 linha "Anchor" com a grade no This photo
+     (entre Rotate e Flip, com a posição em texto), AN2 grade no título do painel; edição global (ligada, laranja;
+     painel vira "All photos · 01–04", miniaturas com contorno laranja): G1 botão largo no topo do This photo, G2
+     botão na barra de ferramentas, G3 botão na linha de cima antes de Alignment; canvas ("Resize canvas", tecla C
+     sugerida, oito alças): C1 o bloco "Canvas" entra no lugar do This photo, C2 aparece acima dele. Textos e a
+     tecla são sugestão do agente. AGUARDA A ESCOLHA DO DONO (uma por assunto).
      3. IDEIA PARA DEPOIS (só anotar): a feature de label passar a aceitar várias labels, não só uma.
      **PASSAGEM PARA UM CHAT NOVO (2026-11-26):** o dono pediu um prompt de continuação porque as respostas
      estavam demorando demais. Ordem combinada do que falta, do mais próximo ao mais distante: (a) item 1 acima;
