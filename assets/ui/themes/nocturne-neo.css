@@ -2591,7 +2591,12 @@ body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform:
 .align-anchor-dot.on { background: var(--noct-primary); border-color: var(--noct-primary); }
 .align-anchor-mark { position: absolute; width: 0; height: 0; z-index: 7; cursor: move; }
 .align-anchor-mark::before { content: ""; position: absolute; left: -12px; top: -12px; width: 24px; height: 24px; }  /* (área de pegar) */
-.align-anchor-diamond { position: absolute; left: -8px; top: -8px; width: 14px; height: 14px; border: 2px solid var(--noct-primary); background: rgba(0, 0, 0, .55); transform: rotate(45deg); box-shadow: 0 0 0 1px #000; }
+.align-anchor-diamond { position: absolute; left: -9px; top: -9px; width: 14px; height: 14px; border: 2px solid var(--noct-primary); background: rgba(0, 0, 0, .55); transform: rotate(45deg); box-shadow: 0 0 0 1px #000; }
 .align-anchor-core { position: absolute; left: -2px; top: -2px; width: 4px; height: 4px; background: var(--noct-primary); }
 .align-anchor-tag { position: absolute; left: 16px; top: -9px; padding: 1px 6px; background: rgba(0, 0, 0, .82); border: 1px solid var(--noct-primary); color: var(--noct-primary); font: 700 9px var(--noct-font-mono); letter-spacing: .14em; text-transform: uppercase; white-space: nowrap; pointer-events: none; }
 .align-stage.playing .align-anchor-mark { display: none; }
+/* (só Select e Direct select pegam a âncora; com as outras ferramentas ela aparece, mas o mouse passa por ela) */
+.align-stage:not([data-tool="pointer"]):not([data-tool="handles"]) .align-anchor-mark { pointer-events: none; }
+.align-anchor-mark:hover .align-anchor-diamond, .align-anchor-mark.dragging .align-anchor-diamond { background: var(--noct-primary); }
+.align-anchor-mark:hover .align-anchor-core, .align-anchor-mark.dragging .align-anchor-core { background: #000; }
+.align-anchor-mark:hover .align-anchor-tag, .align-anchor-mark.dragging .align-anchor-tag { background: var(--noct-primary); color: var(--noct-on-primary); }

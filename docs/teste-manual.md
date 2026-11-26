@@ -2677,6 +2677,17 @@ Decisão do dono (2026-11-26, 17:54), a conferir:
 - [ ] Passo **3 Save** do **Align cameras**: o losango começa na marca do meio da haste; a grade e o arraste
       funcionam igual.
 
+Retornos do dono (2026-11-26, 19:07), a conferir:
+
+- [ ] Âncora num canto da foto e giro pela alça de cima (ou pela ferramenta **Rotate**): a foto gira aos poucos,
+      acompanhando o mouse, sem saltos; o losango não sai do lugar.
+- [ ] Arrastar a âncora com **Ctrl** apertado: perto do centro do canvas ela prende ali e a etiqueta diz
+      "Anchor · canvas center"; perto de um dos 9 pontos da foto prende nele ("Anchor · photo center",
+      "Anchor · photo top left"...). Com os dois centros próximos, vale o do canvas.
+- [ ] Só as ferramentas **Select** e **Direct select** pegam a âncora; com **Move**, **Rotate**, **Resize photo**,
+      **Hand** e **Zoom** o mouse passa por ela.
+- [ ] Mouse em cima da âncora: ela fica preenchida e a etiqueta fica verde cheia.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |

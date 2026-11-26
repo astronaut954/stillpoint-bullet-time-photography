@@ -1993,6 +1993,19 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      fora do centro, mudar Size passa a mudar Move X e Move Y (antes o tamanho mudava em volta do centro da foto).
      Testes automáticos: Align cameras 107 de 107 (três verificações novas; o teste de mover passou a começar fora
      do losango), Flip 64 de 64, desfazer do Align photos conferido; rodada completa não refeita.
+     Retornos do dono (2026-11-26, 19:07, com gravação), FEITOS, AGUARDANDO TESTE: (a) giro e tamanho pelo mouse
+     com a âncora longe do centro davam saltos: o gesto era medido a partir da âncora (com ela perto da alça, um
+     movimento pequeno virava um giro enorme); agora é medido a partir do centro da foto no começo do gesto e
+     aplicado em volta da âncora; (b) Ctrl ao arrastar a âncora prende no centro do canvas (prioridade) e nos 9
+     pontos da foto, e a etiqueta diz onde ela está ("Anchor · canvas center", "Anchor · photo center"...);
+     (c) só Select e Direct select pegam a âncora; (d) realce com o mouse em cima; (e) losango centrado (estava
+     1 px fora). PROTÓTIPOS do ícone (I1 mira, I2 quadrado com traços, I3 círculo com ponto, I4 losango) e do botão
+     de voltar ao centro do canvas (R1 ícone ao lado da grade, R2 "Center anchor" na fileira de botões):
+     https://claude.ai/artifact/X99Kpzr2DuTvFpJTrVzaFz — AGUARDA A ESCOLHA DO DONO. Nos protótipos a etiqueta só
+     aparece com o mouse em cima (sugestão do agente; hoje aparece sempre).
+     NÃO VERIFICADO pelo agente: o giro pela alça de cima (fica fora da área visível na tela de teste); verificado
+     pela ferramenta Rotate, que usa a mesma conta. A REGRA "a foto sempre cobre o canvas" continua valendo com a
+     âncora fora do centro: o giro pode ser recusado (borda laranja) ou ampliar a foto.
      FALTA: botão de edição global (G2) e ferramenta do canvas (C1).
      3. IDEIA PARA DEPOIS (só anotar): a feature de label passar a aceitar várias labels, não só uma.
      **PASSAGEM PARA UM CHAT NOVO (2026-11-26):** o dono pediu um prompt de continuação porque as respostas

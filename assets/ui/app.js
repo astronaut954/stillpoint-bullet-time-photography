@@ -7011,6 +7011,20 @@
     anchorMark.innerHTML = '<span class="align-anchor-diamond"></span><span class="align-anchor-core"></span><span class="align-anchor-tag">Anchor</span>';
     anchorMark.title = "Anchor: Size and Rotate act around this point of the photo. Drag it anywhere on the photo.";
     stage.appendChild(anchorMark);
+    // O ponto da foto (frações) que está num ponto do canvas
+    const anchorFracAt = (wx0, wy0) => {
+      const sz = sizes[item.file], rad = a.rot * Math.PI / 180, cs = Math.cos(rad), sn = Math.sin(rad), wx = (wx0 - a.dx) / a.scale, wy = (wy0 - a.dy) / a.scale;
+      const snap = (v) => (Math.abs(v) < 1e-6 ? 0 : Math.abs(v - 0.5) < 1e-6 ? 0.5 : Math.abs(v - 1) < 1e-6 ? 1 : v);
+      return { x: snap(Math.max(0, Math.min(1, (wx * cs + wy * sn) / sz.w + 0.5))), y: snap(Math.max(0, Math.min(1, (-wx * sn + wy * cs) / sz.h + 0.5))) };
+    };
+    // Onde a âncora está, em palavras: "canvas center" (tem prioridade), um dos 9 pontos da foto, ou nada
+    const anchorWhere = () => {
+      if (!sizes[item.file]) return "";
+      const f = anchorFrac(), at = anchorAt(a, f), fr = usefulRect();
+      if (fr && Math.hypot(at.x - (fr.x + fr.w / 2), at.y - (fr.y + fr.h / 2)) < 0.75) return "canvas center";
+      const i = [0, 0.5, 1].findIndex((v) => Math.abs(v - f.x) < 0.004), j = [0, 0.5, 1].findIndex((v) => Math.abs(v - f.y) < 0.004);
+      return i >= 0 && j >= 0 ? "photo " + ANCHOR_NAMES[j * 3 + i].toLowerCase() : "";
+    };
     const anchorShow = () => {
       const f = sizes[item.file] ? anchorFrac() : { x: 0.5, y: 0.5 };
       [...anchorGrid.children].forEach((d) => d.classList.toggle("on", Math.abs(+d.dataset.x - f.x) < 0.004 && Math.abs(+d.dataset.y - f.y) < 0.004));
@@ -7021,9 +7035,22 @@
       anchorMark.setPointerCapture(e.pointerId);
       const sz = sizes[item.file];
       const move = (ev) => {
-        const r = stage.getBoundingClientRect(), rad = a.rot * Math.PI / 180, cs = Math.cos(rad), sn = Math.sin(rad);
-        const wx = ((ev.clientX - r.left - cx) / scaleK - a.dx) / a.scale, wy = ((ev.clientY - r.top - cy) / scaleK - a.dy) / a.scale;
-        a.ax = Math.max(0, Math.min(1, (wx * cs + wy * sn) / sz.w + 0.5)); a.ay = Math.max(0, Math.min(1, (-wx * sn + wy * cs) / sz.h + 0.5));
+        const r = stage.getBoundingClientRect();
+        let mx = (ev.clientX - r.left - cx) / scaleK, my = (ev.clientY - r.top - cy) / scaleK;  // (o mouse no canvas)
+        // Ctrl apertado: prende nos atalhos (pedido do dono, 2026-11-26): o centro do canvas, que tem prioridade, e os
+        // 9 pontos da foto
+        if (ev.ctrlKey) {
+          const near = 14 / scaleK, fr = usefulRect();
+          const cc = fr ? { x: fr.x + fr.w / 2, y: fr.y + fr.h / 2 } : null;
+          if (cc && Math.hypot(mx - cc.x, my - cc.y) <= near) { mx = cc.x; my = cc.y; }
+          else {
+            let best = null;
+            for (let i = 0; i < 9; i++) { const q = anchorAt(a, { x: (i % 3) / 2, y: Math.floor(i / 3) / 2 }), d = Math.hypot(mx - q.x, my - q.y); if (d <= near && (!best || d < best.d)) best = { d, q }; }
+            if (best) { mx = best.q.x; my = best.q.y; }
+          }
+        }
+        const f = anchorFracAt(mx, my);
+        a.ax = f.x; a.ay = f.y;
         anchorShow(); layout();
       };
       const end = () => { anchorMark.removeEventListener("pointermove", move); anchorMark.removeEventListener("pointerup", end); anchorMark.removeEventListener("pointercancel", end); anchorMark.classList.remove("dragging"); save(); };
@@ -7139,7 +7166,10 @@
           // alças com o mesmo tamanho na tela, seja qual for o zoom da foto
           const inv = 1 / al.scale; [...box.children].forEach((hd) => { hd.style.setProperty("--inv", inv); }); }
       });
-      { const at = anchorAt(a, anchorFrac()); anchorMark.style.left = (cx + at.x * scaleK) + "px"; anchorMark.style.top = (cy + at.y * scaleK) + "px"; anchorMark.style.display = playing ? "none" : ""; }
+      { const at = anchorAt(a, anchorFrac()); anchorMark.style.left = (cx + at.x * scaleK) + "px"; anchorMark.style.top = (cy + at.y * scaleK) + "px"; anchorMark.style.display = playing ? "none" : "";
+        const where = anchorWhere(), tagEl = anchorMark.querySelector(".align-anchor-tag"), text = "Anchor" + (where ? " · " + where : "");
+        if (tagEl.textContent !== text) tagEl.textContent = text;
+        anchorMark.classList.toggle("at-point", !!where); }
       // Proporção de um tamanho: a mais próxima das quatro; "~" quando não é exata
       // (em pé, 3:2 é 2:3: o mesmo nome dos botões do Aspect ratio)
       const rn = (w, h) => { const n = ratioName(w, h); const exact = Math.abs(Math.max(w, h) / Math.min(w, h) - RATIOS[n]) < 0.01; const shown = h > w ? RATIO_TURNED[n] || n : n; return exact ? shown : "~" + shown; };
@@ -7177,11 +7207,10 @@
     // Gestos na prévia: mover (arrastar a prévia ou o meio da caixa), redimensionar (cantos da caixa ou a roda),
     // girar (alça de cima ou ⌥ + roda). Todos presos à área útil (lockStart/tryApply).
     let drag = null;
-    // (o ponto em volta do qual os gestos de tamanho e giro medem: a âncora da foto)
-    const centerOnScreen = () => { const r = stage.getBoundingClientRect(), at = anchorAt(a, anchorFrac()); return { x: r.left + cx + at.x * scaleK, y: r.top + cy + at.y * scaleK }; };
+    const centerOnScreen = () => { const r = stage.getBoundingClientRect(); return { x: r.left + cx + a.dx * scaleK, y: r.top + cy + a.dy * scaleK }; };
     // O mouse está em cima da foto que está sendo alinhada? (conta o giro e o tamanho dela)
     const overPhoto = (e) => {
-      const sr = stage.getBoundingClientRect(), c = { x: sr.left + cx + a.dx * scaleK, y: sr.top + cy + a.dy * scaleK }; const t = -(a.rot || 0) * Math.PI / 180;  // (o centro da foto, não a âncora)
+      const c = centerOnScreen(); const t = -(a.rot || 0) * Math.PI / 180;
       const dx = e.clientX - c.x, dy = e.clientY - c.y;
       const x = dx * Math.cos(t) - dy * Math.sin(t), y = dx * Math.sin(t) + dy * Math.cos(t);
       return Math.abs(x) <= box.offsetWidth * a.scale / 2 && Math.abs(y) <= box.offsetHeight * a.scale / 2;
@@ -7221,9 +7250,12 @@
       const c = centerOnScreen();
       const byHandle = toolNow === "pointer" || toolNow === "handles";
       if (toolNow === "rotate" || (byHandle && e.target === rotHandle)) {
-        drag = { kind: "rot", rot: a.rot, angle: Math.atan2(e.clientY - c.y, e.clientX - c.x) }; stage.classList.add("rotating");
+        // (o gesto é medido a partir do centro da foto como estava no começo, e o giro é aplicado em volta da âncora:
+        // medido a partir da âncora, com ela perto da alça, um movimento pequeno do mouse virava um giro enorme;
+        // gravação do dono, 2026-11-26)
+        drag = { kind: "rot", rot: a.rot, c, angle: Math.atan2(e.clientY - c.y, e.clientX - c.x) }; stage.classList.add("rotating");
       } else if (toolNow === "scale" || (byHandle && e.target.classList.contains("align-handle"))) {
-        drag = { kind: "scale", scale: a.scale, dist: Math.max(1, Math.hypot(e.clientX - c.x, e.clientY - c.y)) }; stage.classList.add("resizing");
+        drag = { kind: "scale", scale: a.scale, c, dist: Math.max(1, Math.hypot(e.clientX - c.x, e.clientY - c.y)) }; stage.classList.add("resizing");
         // (o cursor fica o mesmo enquanto o botão está apertado, esteja o mouse em cima do que estiver)
         stage.dataset.resize = e.target.classList.contains("align-handle-tr") || e.target.classList.contains("align-handle-bl") ? "nesw" : "nwse";
       } else {
@@ -7247,7 +7279,7 @@
         zoomTo(drag.at, drag.zoom * Math.exp((e.clientX - drag.x) * 0.008));
         return;
       }
-      const c = centerOnScreen();
+      const c = drag.c || centerOnScreen();
       if (drag.kind === "move") {
         const tx = drag.dx + (e.clientX - drag.x) / scaleK, ty = drag.dy + (e.clientY - drag.y) / scaleK;
         tryApply((cand) => { cand.dx = tx; cand.dy = ty; });
