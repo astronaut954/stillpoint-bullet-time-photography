@@ -2502,8 +2502,9 @@ Em **Export sessions** › sessão com mais de uma foto › **Align photos**.
       **‹** **›** trocam de câmera. **▶** toca na própria tela: somem as fotos de referência por cima, as alças, a barra
       de ferramentas e o que está fora do canvas; o painel da direita fica apagado; o **▶** vira pausa e aparece **Stop**.
 - [ ] Tocando, um clique na foto grande para de tocar. Clicar, segurar e arrastar para de tocar e já desloca a vista.
-- [ ] A barra de tocar fica escondida em cima, com um puxador na borda de cima da foto grande; desce com o mouse
-      perto da borda de cima e some quando ele se afasta (como a barra de ferramentas da esquerda).
+- [ ] Escondidas, a barra de ferramentas (esquerda) e a de tocar (em cima) ficam apagadas e pela metade para fora da
+      borda, sem puxador; com o mouse na área delas, vêm inteiras e acendem; afastando, voltam. O **Stop** está sempre
+      na barra de tocar, apagado até tocar.
 - [ ] Entrar e sair do modo de tocar: nada muda de lugar nem de altura, e **Back to the stick values** continua lá.
 - [ ] Janela com pouca altura: a barra de ferramentas da esquerda se reorganiza em mais colunas e nenhum botão some
       (conferir também no **Align photos** do Export). Janela estreita: os controles de tocar quebram de linha.

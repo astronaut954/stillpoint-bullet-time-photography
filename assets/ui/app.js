@@ -6295,10 +6295,9 @@
       b.addEventListener("click", () => { alignPrefs[key] = alignPrefs[key] === false; saveAlignPrefs(); paintTools(); });
       guideBtns[key] = b; tools.appendChild(b);
     });
-    const grip = el("div", "align-tools-grip");
-    grip.innerHTML = icon("grip", 12);
-    grip.title = "Tools";
-    stage.append(tools, grip);
+    // Escondida, a barra fica pela metade para fora da borda e apagada; com o mouse na área dela, vem inteira e
+    // acende (forma G4 com metade para fora, escolha do dono em 2026-11-25; antes havia um puxador com seta)
+    stage.append(tools);
     // Perto da borda esquerda (ou em cima da barra) ela aparece; longe, some depois de um instante
     // A barra aparece com o mouse na borda esquerda (ou no puxador) e começa a sumir assim que ele sai da área dela
     // (pedido do dono, 2026-11-24: sem espera; o sumiço é que é mais lento, no CSS)
@@ -6312,7 +6311,6 @@
       toolsNear(inBar || x < 14);
     });
     stage.addEventListener("pointerleave", () => toolsNear(false));
-    grip.addEventListener("pointerenter", () => toolsNear(true));
     // Foto grande baixa (janela com pouca altura): a barra se reorganiza em mais colunas em vez de perder botões
     // (pedido do dono, 2026-11-25)
     const fitTools = () => {
@@ -6796,7 +6794,7 @@
     // Enquanto o botão está apertado o cursor é o mesmo na tela toda, não só em cima da foto grande
     const holdCursor = (value) => { document.body.style.setProperty("--drag-cursor", value || getComputedStyle(stage).cursor); document.body.classList.add("align-drag"); };
     stage.addEventListener("pointerdown", (e) => {
-      if (e.button !== 0 || e.target.closest("button") || e.target.closest(".align-tools, .align-tools-grip, .align-play, .align-play-grip") || !sizes[item.file]) return;
+      if (e.button !== 0 || e.target.closest("button") || e.target.closest(".align-tools, .align-play") || !sizes[item.file]) return;
       e.preventDefault();
       // Tocando a sequência: clicar ou arrastar na foto grande sai do modo de tocar, e o mesmo gesto, se a pessoa
       // segurar e arrastar, já desloca a vista (pedidos do dono, 2026-11-25). A tela é refeita ao parar, então quem
@@ -6885,24 +6883,19 @@
     };
     // Passo 3 do Align cameras: os controles de tocar ficam sobre a foto grande, no canto de cima à direita, como na
     // tela cheia da janela principal (forma Y4, escolha do dono em 2026-11-25)
-    // Ela se comporta como a barra de ferramentas, só que em cima: some para cima e volta com o mouse perto da borda
-    // de cima (ou no puxador); em foto grande estreita, os controles quebram de linha (pedidos do dono, 2026-11-25)
+    // Ela se comporta como a barra de ferramentas, só que em cima: escondida, fica pela metade para fora da borda de
+    // cima e apagada; com o mouse na área dela, desce inteira; em foto grande estreita, os controles quebram de linha (pedidos do dono, 2026-11-25)
     if (rigStep) {
       const bar = el("div", "align-play"); bar.id = "alignPlayBar"; rigStep.transport(bar);
-      const pgrip = el("div", "align-play-grip"); pgrip.innerHTML = icon("grip", 12); pgrip.title = "Play the sequence";
-      stage.append(bar, pgrip);
+      stage.append(bar);
       const playNear = (near) => { alignScreen.playNear = near; stage.classList.toggle("play-near", near); };
       if (alignScreen.playNear) stage.classList.add("play-near");
-      const placeGrip = () => { pgrip.style.right = Math.max(0, 10 + bar.offsetWidth / 2 - 34) + "px"; };
       stage.addEventListener("pointermove", (e) => {
         const r = stage.getBoundingClientRect(); const x = e.clientX - r.left, y = e.clientY - r.top;
         const inBar = y < bar.offsetTop + bar.offsetHeight + TOOLS_PAD && x > bar.offsetLeft - TOOLS_PAD && x < bar.offsetLeft + bar.offsetWidth + TOOLS_PAD;
         playNear(inBar || y < 14);
       });
       stage.addEventListener("pointerleave", () => playNear(false));
-      pgrip.addEventListener("pointerenter", () => playNear(true));
-      placeGrip();
-      if (window.ResizeObserver) new ResizeObserver(placeGrip).observe(stage);
     }
     // Tocando: as setas trocam de foto (pausando) e as teclas das ferramentas e de mover não valem
     if (playing) { exp.keyMove = null; exp.alignToolKey = null; exp.keyNav = (d) => rigStep.playStep(d); }

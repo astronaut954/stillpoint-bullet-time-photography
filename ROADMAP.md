@@ -1781,8 +1781,10 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      Teste automático completo desse envio: 570 de 570. Novos retornos do dono: (d) o Stop aparecia só ao tocar
      e mudava o tamanho da barra: FEITO, fica sempre na barra, apagado até tocar (AGUARDANDO TESTE); (e) o dono
      não gostou dos dois puxadores com seta que marcam as barras escondidas: alternativas G1 a G5 em
-     https://claude.ai/artifact/LJfjkVyZoGmfbKdCMG6Pm4 (aguardando escolha; vale também para o Align photos do
-     Export, que tem o puxador da barra de ferramentas).
+     https://claude.ai/artifact/LJfjkVyZoGmfbKdCMG6Pm4. Escolha do dono: G4, com as barras pela metade para fora.
+     FEITO, AGUARDANDO TESTE: os puxadores saíram; escondida, cada barra fica apagada (30%) e pela metade para
+     fora da borda dela (ferramentas: esquerda; tocar: em cima); com o mouse na área da barra ela vem inteira e
+     acende. Vale também no Align photos do Export.
      Pergunta do dono: alinhar sem as marcas, por um objeto ou pessoa da cena. É a parte 7 (From this scene), já
      prevista, a fazer antes do rig reutilizável.
      **Decisões do dono no meio dos testes (2026-11-24), a fazer DEPOIS dos roteiros:** (i) arrastar os pontos
