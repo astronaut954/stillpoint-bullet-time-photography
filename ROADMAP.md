@@ -1764,7 +1764,13 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      Teste do dono (2026-11-25): os dois ok. Novos retornos: (1) clicar ou arrastar na foto grande enquanto toca
      tem de sair do modo de tocar: FEITO, com teste (AGUARDANDO TESTE do dono); (2) o lugar do Play the sequence
      "parece deslocado do restante da lógica do layout": protótipos Y1 a Y4 em
-     https://claude.ai/artifact/1fotVQhStGmWhxoKjFpNHU (aguardando escolha).
+     https://claude.ai/artifact/1fotVQhStGmWhxoKjFpNHU. Escolha do dono: Y4. FEITO, AGUARDANDO TESTE: os controles
+     (‹ ▶ › Speed − 1.0x + Reverse loop; tocando, pausa e Stop) ficam sobre a foto grande, no canto de cima à
+     direita, sempre à vista; parado, ‹ › trocam de câmera; a linha de cima fica só com a câmera, o Keeps e o
+     Back to the stick values. (3) Retorno do dono: clicar, segurar e arrastar enquanto toca tem de parar de tocar
+     E já deslocar a vista no mesmo gesto (antes só parava): FEITO, com teste (`exp.alignStartPan`: a tela é
+     refeita ao parar e o editor novo continua o gesto). (4) O ajuste do `CMakeLists.txt` que escolhia o SDK da
+     versão do sistema foi RETIRADO a pedido do dono (não havia motivo comprovado para existir).
      Pergunta do dono: alinhar sem as marcas, por um objeto ou pessoa da cena. É a parte 7 (From this scene), já
      prevista, a fazer antes do rig reutilizável.
      **Decisões do dono no meio dos testes (2026-11-24), a fazer DEPOIS dos roteiros:** (i) arrastar os pontos

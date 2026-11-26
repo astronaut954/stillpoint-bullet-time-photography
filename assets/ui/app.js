@@ -4034,7 +4034,7 @@
     if (!al.editOn) return;
     al.editOn = false;
     if (al.edit) { clearTimeout(al.edit.timer); al.edit.timer = 0; }
-    exp.keyNav = null; exp.keyMove = null; exp.alignToolKey = null; exp.alignAlt = null; exp.alignQuiet = null; exp.alignLayout = null; exp.alignView = null;
+    exp.keyNav = null; exp.keyMove = null; exp.alignToolKey = null; exp.alignAlt = null; exp.alignQuiet = null; exp.alignLayout = null; exp.alignView = null; exp.alignStartPan = null;
     $("csAlignMain").classList.remove("space-pan", "rig-edit");
   }
   const alEditTouched = (ed, f) => { const a = ed.st.align.byFile[f], s0 = ed.stick[f]; return !!a && !!s0 && rigEntryText(a) !== rigEntryText(s0); };
@@ -4059,6 +4059,7 @@
       stickOf: (f) => Object.assign({}, ed.stick[f]),
       touched: (f) => alEditTouched(ed, f),
       top: (box) => alEditTop(ed, box),
+      transport: (bar) => alEditTransport(ed, bar),
       gone: () => alGoneAll(),
       playing: () => ed.playing,
       // (o editor terminou de montar as camadas: mostra a foto da vez e segue tocando)
@@ -4119,40 +4120,45 @@
     ed.playing = false; ed.view = null; ed.paint = null;
     alRender();
   }
+  // Linha de cima: só a volta aos valores da haste (o Keeps entra antes, pelo editor)
   function alEditTop(ed, box) {
-    if (ed.playing) {
-      const prev = button("", () => alPlayStep(ed, -1), { icon: "left", title: "Previous photo" });
-      const pause = button("", () => { ed.paused = !ed.paused; ed.paint(); alPlayTick(ed); }, { icon: "pause", title: "Pause" });
-      const next = button("", () => alPlayStep(ed, 1), { icon: "right", title: "Next photo" });
-      pause.id = "alignPlayPause";
-      const speedVal = el("span", "play-speed", "");
-      const slower = button("", () => { ed.speed = Math.max(0, ed.speed - 1); ed.paint(); alPlayTick(ed); }, { icon: "minus", title: "Slower" });
-      const faster = button("", () => { ed.speed = Math.min(PLAY_SPEEDS.length - 1, ed.speed + 1); ed.paint(); alPlayTick(ed); }, { icon: "plus", title: "Faster" });
-      const rev = checkOption("Reverse loop", ed.reverse, (v) => { const k = ed.view ? ed.view.at() : 0; ed.reverse = v; ed.pos = k; alPlayTick(ed); });
-      rev.title = "Play back and forth (1, 2, 3, 2, 1...)";
-      ed.paint = () => {
-        pause.innerHTML = icon(ed.paused ? "play" : "pause"); pause.title = ed.paused ? "Play" : "Pause";
-        speedVal.textContent = PLAY_SPEEDS[ed.speed].toFixed(2).replace(/0$/, "") + "x";
-        slower.disabled = ed.speed === 0; faster.disabled = ed.speed === PLAY_SPEEDS.length - 1;
-      };
-      const stop = button("Stop", () => alPlayStop(ed), { kind: "btn-primary", title: "Stop playing and go back to adjusting, on the photo that is showing" });
-      stop.id = "alignPlayStop";
-      const ctl = el("span", "rig-play-ctl");
-      ctl.append(prev, pause, next, el("span", "align-auto-label", "Speed"), slower, speedVal, faster, rev);
-      box.append(ctl, stop);
-      ed.paint();
-      return;
-    }
-    const play = button("Play the sequence", () => { ed.playing = true; ed.paused = false; ed.pos = Math.max(0, Math.min(ed.items.length - 1, exp.photo || 0)); alRender(); },
-      { kind: "btn-primary", icon: "play", title: "Play the photos here, as they will be after the alignment" });
-    play.id = "alignPlay";
+    if (ed.playing) return;
     const back = button("Back to the stick values", () => {
       ed.items.forEach((it) => { ed.st.align.byFile[it.file] = Object.assign({}, ed.stick[it.file]); });
       alEditChanged(ed); alRender();
     }, { kind: "btn-link", title: "Drops the adjustments made by hand and goes back to the values worked out from the stick" });
     back.id = "alignBackStick";
     back.disabled = !alEditHand(ed);
-    box.append(play, back);
+    box.append(back);
+  }
+  // Os controles de tocar, sobre a foto: ‹ ▶ › Speed − 1.0x + Reverse loop; tocando, o ▶ vira pausa e entra o Stop.
+  // Parado, ‹ › trocam de câmera.
+  function alEditTransport(ed, bar) {
+    const start = () => { ed.playing = true; ed.paused = false; ed.pos = Math.max(0, Math.min(ed.items.length - 1, exp.photo || 0)); alRender(); };
+    const prev = button("", () => { if (ed.playing) alPlayStep(ed, -1); else if (exp.keyNav) exp.keyNav(-1); }, { icon: "left", title: ed.playing ? "Previous photo" : "Previous camera" });
+    const play = button("", () => { if (!ed.playing) { start(); return; } ed.paused = !ed.paused; ed.paint(); alPlayTick(ed); }, { icon: "play", title: "Play the sequence" });
+    const next = button("", () => { if (ed.playing) alPlayStep(ed, 1); else if (exp.keyNav) exp.keyNav(1); }, { icon: "right", title: ed.playing ? "Next photo" : "Next camera" });
+    play.id = ed.playing ? "alignPlayPause" : "alignPlay";
+    const speedVal = el("span", "play-speed", "");
+    const slower = button("", () => { ed.speed = Math.max(0, ed.speed - 1); ed.paint(); alPlayTick(ed); }, { icon: "minus", title: "Slower" });
+    const faster = button("", () => { ed.speed = Math.min(PLAY_SPEEDS.length - 1, ed.speed + 1); ed.paint(); alPlayTick(ed); }, { icon: "plus", title: "Faster" });
+    const rev = checkOption("Reverse loop", ed.reverse, (v) => { const k = ed.view ? ed.view.at() : 0; ed.reverse = v; if (ed.playing) { ed.pos = k; alPlayTick(ed); } });
+    rev.title = "Play back and forth (1, 2, 3, 2, 1...)";
+    ed.paint = () => {
+      const pausedIcon = !ed.playing || ed.paused;
+      play.innerHTML = icon(pausedIcon ? "play" : "pause"); play.title = !ed.playing ? "Play the sequence, as the photos will be after the alignment" : ed.paused ? "Play" : "Pause";
+      speedVal.textContent = PLAY_SPEEDS[ed.speed].toFixed(2).replace(/0$/, "") + "x";
+      slower.disabled = ed.speed === 0; faster.disabled = ed.speed === PLAY_SPEEDS.length - 1;
+    };
+    const ctl = el("span", "rig-play-ctl");
+    ctl.append(prev, play, next, el("span", "align-auto-label", "Speed"), slower, speedVal, faster, rev);
+    bar.appendChild(ctl);
+    if (ed.playing) {
+      const stop = button("Stop", () => alPlayStop(ed), { kind: "btn-secondary btn-small", title: "Stop playing and go back to adjusting, on the photo that is showing" });
+      stop.id = "alignPlayStop";
+      bar.appendChild(stop);
+    }
+    ed.paint();
   }
   function alRenderSave() {
     alHead("Align cameras · save", "This is what the app will do to the photos of every new session. Adjust any photo by hand and play the sequence to check. Nothing changes on the cameras.", 3);
@@ -6782,10 +6788,12 @@
     // Enquanto o botão está apertado o cursor é o mesmo na tela toda, não só em cima da foto grande
     const holdCursor = (value) => { document.body.style.setProperty("--drag-cursor", value || getComputedStyle(stage).cursor); document.body.classList.add("align-drag"); };
     stage.addEventListener("pointerdown", (e) => {
-      if (e.button !== 0 || e.target.closest("button") || e.target.closest(".align-tools, .align-tools-grip") || !sizes[item.file]) return;
+      if (e.button !== 0 || e.target.closest("button") || e.target.closest(".align-tools, .align-tools-grip, .align-play") || !sizes[item.file]) return;
       e.preventDefault();
-      // Tocando a sequência: clicar ou arrastar na foto grande sai do modo de tocar (pedido do dono, 2026-11-25)
-      if (playing) { rigStep.playStop(); return; }
+      // Tocando a sequência: clicar ou arrastar na foto grande sai do modo de tocar, e o mesmo gesto, se a pessoa
+      // segurar e arrastar, já desloca a vista (pedidos do dono, 2026-11-25). A tela é refeita ao parar, então quem
+      // continua o gesto é o editor novo (exp.alignStartPan).
+      if (playing) { const ev = { pointerId: e.pointerId, clientX: e.clientX, clientY: e.clientY }; rigStep.playStop(); if (exp.alignStartPan) exp.alignStartPan(ev); return; }
       const toolNow = alignPrefs.tool || "handles";
       stage.setPointerCapture(e.pointerId);
       // Zoom: um clique aproxima (com Alt, afasta); segurar e arrastar para a direita aproxima, para a esquerda afasta
@@ -6862,6 +6870,14 @@
       zoomAt(e, Math.exp(-d * 0.004));
     }, { passive: false });
     exp.keyMove = (ddx, ddy, big) => { const step = big ? 10 : 1; stepOnce((cand) => { cand.dx += ddx * step; cand.dy += ddy * step; }); };
+    exp.alignStartPan = (ev) => {
+      try { stage.setPointerCapture(ev.pointerId); } catch (_) { /* (o botão já foi solto) */ }
+      document.body.classList.add("photo-drag");
+      drag = { kind: "pan", x: ev.clientX, y: ev.clientY, px: view.px, py: view.py }; stage.classList.add("panning"); holdCursor("grabbing");
+    };
+    // Passo 3 do Align cameras: os controles de tocar ficam sobre a foto grande, no canto de cima à direita, como na
+    // tela cheia da janela principal (forma Y4, escolha do dono em 2026-11-25)
+    if (rigStep) { const bar = el("div", "align-play"); bar.id = "alignPlayBar"; rigStep.transport(bar); stage.appendChild(bar); }
     // Tocando: as setas trocam de foto (pausando) e as teclas das ferramentas e de mover não valem
     if (playing) { exp.keyMove = null; exp.alignToolKey = null; exp.keyNav = (d) => rigStep.playStep(d); }
   }

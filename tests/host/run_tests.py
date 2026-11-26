@@ -1946,12 +1946,14 @@ def scenario_align_cameras(t, name, photos):
         check(t, "align: the clicks go to the center of the marks (within 4 px)", err < 4, err)
         t.button("Review alignment")
         t.wait(lambda: t.js("() => !!document.querySelector('#csAlignMain .align-stage') && !document.querySelector('#csAlignMain .align-wait') && /Keeps/.test(document.getElementById('alignKeeps').textContent)"), 15)
-        s3 = lambda: t.js("() => { const f = [...document.querySelectorAll('#csAlignMain .align-num')].map((i) => i.value); return { on: document.getElementById('csAlignStep3').classList.contains('on'), thumbs: document.querySelectorAll('#csAlignMain .export-strip li.frame:not(.gone)').length, where: (document.querySelector('#csAlignMain .align-where') || {}).textContent || '', fields: f, tools: !!document.getElementById('alignTools'), flip: !!document.querySelector('#csAlignMain .flip-row'), ratio: /Aspect ratio/.test(document.getElementById('csAlignMain').textContent), note: document.getElementById('csAlignNote').textContent, back: document.getElementById('alignBackStick').disabled, play: document.getElementById('alignPlay').textContent.trim(), sub: document.getElementById('csAlignSub').textContent }; }")
+        s3 = lambda: t.js("() => { const f = [...document.querySelectorAll('#csAlignMain .align-num')].map((i) => i.value); return { on: document.getElementById('csAlignStep3').classList.contains('on'), thumbs: document.querySelectorAll('#csAlignMain .export-strip li.frame:not(.gone)').length, where: (document.querySelector('#csAlignMain .align-where') || {}).textContent || '', fields: f, tools: !!document.getElementById('alignTools'), flip: !!document.querySelector('#csAlignMain .flip-row'), ratio: /Aspect ratio/.test(document.getElementById('csAlignMain').textContent), note: document.getElementById('csAlignNote').textContent, back: document.getElementById('alignBackStick').disabled, play: (document.getElementById('alignPlay') || {}).title || '', bar: (() => { const b = document.getElementById('alignPlayBar'), s = document.querySelector('#csAlignMain .align-stage').getBoundingClientRect(), r = b.getBoundingClientRect(); return [b.parentNode.classList.contains('align-stage'), Math.round(s.right - r.right), Math.round(r.top - s.top), b.textContent.includes('Speed') && b.textContent.includes('Reverse loop')]; })(), topRow: document.querySelector('#csAlignMain .rig-top').textContent, sub: document.getElementById('csAlignSub').textContent }; }")
         d3 = s3()
         check(t, "align: step 3 is the Align photos editor on the four photos (big photo, tools, Move/Size/Rotate, thumbnails), opening with the values from the stick",
               d3["on"] and d3["thumbs"] == 4 and d3["where"].startswith("Camera 01 of 04") and len(d3["fields"]) == 4 and d3["tools"] and "Adjust any photo by hand and play the sequence" in d3["sub"], d3)
         check(t, "align: step 3 has no Flip and no Aspect ratio (the camera alignment does not keep them), 'Play the sequence' and 'Back to the stick values' (off: nothing adjusted)",
-              not d3["flip"] and not d3["ratio"] and d3["play"] == "Play the sequence" and d3["back"] and d3["note"] == "Values from the stick · 0 photos adjusted by hand", d3)
+              not d3["flip"] and not d3["ratio"] and d3["play"].startswith("Play the sequence") and d3["back"] and d3["note"] == "Values from the stick · 0 photos adjusted by hand", d3)
+        check(t, "align: step 3 has the play controls over the big photo, at the top right (‹ ▶ › Speed, Reverse loop), and the top row keeps only the camera, Keeps and Back to the stick values",
+              d3["bar"][0] and 0 <= d3["bar"][1] <= 14 and 0 <= d3["bar"][2] <= 14 and d3["bar"][3] and "Play" not in d3["topRow"] and "Speed" not in d3["topRow"] and "Back to the stick values" in d3["topRow"], (d3["bar"], d3["topRow"]))
         keeps = t.js("() => { const e = document.getElementById('alignKeeps'); return e ? [e.className, e.textContent] : null; }")
         check(t, "align: step 3 says how much of each photo the alignment keeps (amber below 80%)",
               bool(keeps) and keeps[1].startswith("Keeps ") and keeps[1].endswith("% of each photo") and ("warn" in keeps[0]) == (int(keeps[1].split("Keeps ")[1].split("%")[0]) < 80), keeps)
@@ -1964,7 +1966,7 @@ def scenario_align_cameras(t, name, photos):
               d["stage"] and d["layers"] == 4 and d["vis"] == 1 and d["refs"] == 0 and "as it will be after the alignment" in d["tag"] and "playing" in d["where"], d)
         check(t, "align, play the sequence: while it plays the handles, the tool bar and what is outside the canvas are hidden, and the panel on the right waits",
               d["box"] == "none" and d["tools"] == "none" and d["clip"] == "inset" and d["panel"], d)
-        check(t, "align, play the sequence: the controls come in the top row (Speed, Reverse loop, Stop in place of Play)", "Speed" in d["ctl"] and "Reverse loop" in d["ctl"] and "1.0x" in d["ctl"] and d["stop"] and not d["play"], d)
+        check(t, "align, play the sequence: in the same bar over the photo the play button becomes pause and Stop comes in", "Speed" in d["ctl"] and "Reverse loop" in d["ctl"] and "1.0x" in d["ctl"] and d["stop"] and not d["play"], d)
         tag0 = d["tag"]
         moved = t.wait(lambda: pl()["tag"] != tag0, 3)
         t.js("() => document.getElementById('alignPlayPause').click()"); time.sleep(0.2)
@@ -1986,6 +1988,19 @@ def scenario_align_cameras(t, name, photos):
         sb = t.page.locator("#csAlignMain .align-stage").bounding_box()
         t.page.mouse.click(sb["x"] + sb["width"] / 2, sb["y"] + sb["height"] / 2); time.sleep(0.7)
         check(t, "align, play the sequence: a click on the big photo while it plays leaves the play mode", pl()["play"] and not t.js("() => !!document.querySelector('#csAlignMain .align-stage.playing')"), pl()["where"])
+        # Clicar, segurar e arrastar enquanto toca: sai do modo de tocar e o mesmo gesto já desloca a vista
+        t.wait(lambda: t.js("() => !document.querySelector('#csAlignMain .align-wait')"), 10)
+        t.js("() => document.getElementById('alignPlay').click()")
+        t.wait(lambda: t.js("() => !!document.querySelector('#csAlignMain .align-stage.playing') && [...document.querySelectorAll('#csAlignMain .align-layer')].some((l) => l.style.visibility === 'visible')"), 10); time.sleep(0.4)
+        cx0 = lambda: t.js("() => { const r = document.querySelector('#csAlignMain .align-ratio, #csAlignMain .crop-ratio'); return r ? Math.round(r.getBoundingClientRect().left) : null; }")
+        x0 = cx0()
+        px, py = sb["x"] + sb["width"] / 2, sb["y"] + sb["height"] * 0.7
+        t.page.mouse.move(px, py); t.page.mouse.down(); t.page.mouse.move(px + 20, py + 4); t.page.mouse.move(px + 60, py + 8); time.sleep(0.3)
+        mid = [t.js("() => !!document.querySelector('#csAlignMain .align-stage.playing')"), cx0(), t.js("() => getComputedStyle(document.querySelector('#csAlignMain .align-stage')).cursor")]
+        t.page.mouse.up(); time.sleep(0.4)
+        check(t, "align, play the sequence: press, hold and drag on the big photo while it plays stops the play and the same gesture pans the view (closed hand)",
+              x0 is not None and mid[0] is False and mid[1] is not None and 50 <= mid[1] - x0 <= 70 and mid[2] == "grabbing" and pl()["play"], (x0, mid))
+        t.page.keyboard.press("Control+0"); time.sleep(0.3)
         t.js("() => document.querySelectorAll('#csAlignMain .export-strip li.frame')[0].click()"); time.sleep(0.6)
         # Ajuste na mão: Rotate + na câmera 01; o rodapé conta, Ctrl+Z desfaz, "Back to the stick values" também
         t.wait(lambda: t.js("() => !document.querySelector('#csAlignMain .align-wait')"), 10)
