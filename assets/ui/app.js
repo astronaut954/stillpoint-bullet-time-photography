@@ -521,6 +521,15 @@
     return photoCache[key];
   }
   const sessionPhoto = (s, f, size) => photo(window.getPhoto, "sessions", s, f, size);
+  // A sessão que está na tela: as fotos e as medidas dela passam na frente das outras na fila do programa (a prévia
+  // do Export esperava a lista inteira de sessões carregar: gravação do dono, 2026-11-26)
+  let hurriedSession = null;
+  function photoHurry(name) {
+    name = name || "";
+    if (name === hurriedSession || typeof window.photoHurry !== "function") return;
+    hurriedSession = name;
+    try { window.photoHurry(name); } catch (e) {}
+  }
   // Sempre a original, mesmo com as editadas ligadas: o Framing e o Align photos do Export são escolhidos em cima dela
   const sessionPhotoOriginal = (s, f, size) => photo((a, b, c) => window.getPhoto(a, f, c, "original"), "sessions", s, f + "|original", size);
   const orderPhoto = (s, f, size) => photo(window.getOrderPhoto, "order", s, f, size);
@@ -2282,6 +2291,7 @@
     stopPlay();
     if (editing.on) setEditing(false);
     currentSession = session;
+    if ($("exportOverlay").classList.contains("hidden")) photoHurry(session && session.name);
     renderSessionList();
     ui.viewerEmpty.classList.toggle("hidden", !!session);
     ui.sessionGallery.classList.toggle("hidden", !session);
@@ -4825,6 +4835,7 @@
     stopPreview();
     $("exportOverlay").classList.add("hidden");
     exp.project = false;
+    photoHurry(currentSession && currentSession.name);
     // As mudanças da janela só valem com ela aberta: saem do desfazer ao fechar
     history.undo = history.undo.filter((a) => !a.exportWin);
     history.redo = history.redo.filter((a) => !a.exportWin);
@@ -4950,6 +4961,7 @@
     // Reaberto sem nenhuma sessão marcada: volta ao passo 1; no passo 2 a sessão aberta é uma das marcadas
     if (exp.step > 1 && exportStepProblem(1)) exp.step = 1;
     if ((exp.step === 2 || exp.step === 3) && !exp.selected.has(exp.active)) { const f = chosenSessions()[0]; if (f) exp.active = f.name; }
+    photoHurry(exp.active);  // (antes dos pedidos da lista: a sessão aberta primeiro)
     $("exportTitle").textContent = "Export sessions";
     $("exportSub").textContent = EXPORT_SUBS[exp.step];
     renderExportSteps();

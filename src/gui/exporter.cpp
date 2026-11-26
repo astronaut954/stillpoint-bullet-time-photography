@@ -882,10 +882,7 @@ namespace Export
     }
     bool PhotoSize(const fs::path& photo, int& width, int& height)
     {
-        RgbFrame frame;
-        if (!LoadPhotoRgb(photo, frame)) return false;
-        width = frame.width; height = frame.height;
-        return true;
+        return PhotoPixelSize(photo, width, height);
     }
 
     // ---- Alinhamento (pedaço 2 do Framing) ----

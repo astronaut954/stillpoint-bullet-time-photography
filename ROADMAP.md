@@ -1876,6 +1876,15 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      sequência inteira), como uma ferramenta "Resize all photos". Alternativas levantadas pelo agente: (Z1)
      ferramenta na barra, como o dono descreveu; (Z2) um valor "Zoom" da sequência no painel, com − e +; (Z3) o
      quadro (canvas) é que diminui, sem ampliar foto nenhuma. Nada decidido nem feito.
+     Teste do dono (2026-11-26): seção 69 aprovada. O dono reviu a ideia do zoom: faz mais sentido uma
+     ferramenta de mudar o tamanho e a posição do CANVAS, ou isso junto com mudar o tamanho e a posição de todas
+     as fotos. Continua a decidir (protótipos a fazer).
+     **Abertura lenta do Export (gravação do dono, 2026-11-26; seção 70):** com 34 sessões a prévia ficava preta
+     ~15 s. Causas achadas no código: (1) a medida de cada foto (`photoSize`) decodificava a foto inteira só para
+     saber largura e altura, e o Export mede todas as fotos de todas as sessões; (2) a fila das prévias é uma só,
+     por ordem de chegada, e a lista de sessões entrava na frente da sessão aberta. Feito: `PhotoPixelSize` lê só
+     o cabeçalho do JPEG (RAW e TIFF seguem pelo caminho completo); `PreviewThread::Hurry` e `photoHurry(sessão)`
+     passam os pedidos da sessão que está na tela para a frente. Não medido em máquina do dono: a confirmar.
      **A DECIDIR:** onde mais o S4 vale: no Export (sessão com formas diferentes: "As shot" apagado?) e na janela
      "Mixed ratios" das sessões sem rig alinhado (tirar "Keep as shot"?); as sessões já feitas não mudam
      (registro de 2026-11-24).

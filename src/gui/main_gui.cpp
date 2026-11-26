@@ -311,13 +311,32 @@ namespace
             ready.notify_one();
             worker.join();
         }
-        void Post(std::function<void()> task)
+        // tag: de que sessão é o pedido (vazio: nenhuma). Hurry(tag) passa os pedidos dessa sessão para a frente.
+        void Post(std::function<void()> task, std::string tag = std::string())
         {
             {
                 std::lock_guard<std::mutex> lock(mutex);
-                tasks.push_back(std::move(task));
+                // (pedido novo da sessão que tem pressa entra logo atrás dos outros dela, na frente do resto)
+                if (!tag.empty() && tag == hurried)
+                {
+                    auto at = tasks.begin();
+                    while (at != tasks.end() && at->second == tag) ++at;
+                    tasks.insert(at, { std::move(task), std::move(tag) });
+                }
+                else
+                    tasks.push_back({ std::move(task), std::move(tag) });
             }
             ready.notify_one();
+        }
+        // A sessão que a pessoa está vendo: os pedidos dela (os que já esperam e os próximos) passam na frente dos
+        // das outras, sem mudar a ordem entre eles (gravação do dono, 2026-11-26: a prévia do Export esperava a
+        // lista inteira de sessões carregar)
+        void Hurry(const std::string& tag)
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            hurried = tag;
+            if (tag.empty()) return;
+            std::stable_partition(tasks.begin(), tasks.end(), [&](const auto& t) { return t.second == tag; });
         }
 
     private:
@@ -331,7 +350,7 @@ namespace
                     ready.wait(lock, [this] { return stopping || !tasks.empty(); });
                     if (stopping)
                         break;
-                    task = std::move(tasks.front());
+                    task = std::move(tasks.front().first);
                     tasks.pop_front();
                 }
                 task();
@@ -340,7 +359,8 @@ namespace
 
         std::mutex mutex;
         std::condition_variable ready;
-        std::deque<std::function<void()>> tasks;
+        std::deque<std::pair<std::function<void()>, std::string>> tasks;
+        std::string hurried;
         bool stopping = false;
         std::thread worker;
     };
@@ -4172,7 +4192,7 @@ namespace
                         }
                     }
                     window.resolve(id, 0, Json("size").Add("width", w).Add("height", h).Str());
-                });
+                }, session);
             }, nullptr);
         }
         // projectExportDefaults(json): guarda as últimas configurações de export do Project
@@ -4459,11 +4479,18 @@ namespace
                 {
                     const std::string jpeg = from->Preview(session, file, size, original);
                     to->resolve(id, 0, jpeg.empty() ? "null" : JsonString("data:image/jpeg;base64," + Base64Encode(jpeg)));
-                });
+                }, session);
             }, nullptr);
         };
         bindPhotos(window, "getPhoto", store);
         bindPhotos(window, "getOrderPhoto", orderStore);
+        // photoHurry(sessão): as fotos e medidas dessa sessão passam na frente das outras na fila das prévias
+        window.bind("photoHurry", [&](const std::string& request) -> std::string
+        {
+            const auto args = ParseStringArgs(request);
+            previews.Hurry(args.empty() ? std::string() : args[0]);
+            return "true";
+        });
 
         // ---------------------------------------------------------------
         // Janelas Live (assets/ui/live.html): palco do disparo numa janela separada,

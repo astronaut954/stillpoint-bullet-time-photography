@@ -738,6 +738,31 @@ bool WritePoleTestPhoto(const fs::path& file, int cameraNumber, int cameraCount,
 bool IsRawPhoto(const std::string& file) { return IsRaw(file); }
 bool IsJpegPhoto(const std::string& file) { return IsJpeg(file); }
 
+// Largura e altura como LoadPhotoRgb devolveria, sem decodificar os pixels quando dá (JPEG: só o cabeçalho e a
+// orientação do EXIF). Abrir o Export com dezenas de sessões media cada foto decodificando-a inteira, e a prévia
+// ficava preta por muitos segundos (gravação do dono, 2026-11-26). RAW e TIFF continuam pelo caminho completo.
+bool PhotoPixelSize(const fs::path& file, int& width, int& height)
+{
+    const std::string name = file.filename().string();
+    if (!IsRaw(name) && !IsTiff(name))
+    {
+        const std::string original = ReadFile(file);
+        int w = 0, h = 0, channels = 0;
+        if (!original.empty() && stbi_info_from_memory(reinterpret_cast<const stbi_uc*>(original.data()), static_cast<int>(original.size()), &w, &h, &channels) && w > 0 && h > 0)
+        {
+            const int orientation = ReadExifOrientation(original);
+            const bool turned = orientation == 6 || orientation == 8;
+            width = turned ? h : w;
+            height = turned ? w : h;
+            return true;
+        }
+    }
+    RgbFrame frame;
+    if (!LoadPhotoRgb(file, frame)) return false;
+    width = frame.width; height = frame.height;
+    return true;
+}
+
 bool LoadPhotoRgb(const fs::path& file, RgbFrame& out, std::string* jpegBytes)
 {
     const std::string name = file.filename().string();

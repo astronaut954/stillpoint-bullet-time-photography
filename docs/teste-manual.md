@@ -2561,6 +2561,14 @@ Com `STILLPOINT_FAKE_CAMERAS=8 STILLPOINT_FAKE_PHOTOS=pole` a câmera 02 fotogra
       prévia é o normal, não a mão de arrastar. Em sessão sem alinhamento e com proporção escolhida ("Drag the photo
       to choose the part that stays"), a mão continua.
 
+## 70. Abrir o Export com muitas sessões (2026-11-26, câmeras simuladas servem)
+
+- [ ] Com um projeto de dezenas de sessões, clicar **Export sessions**: a prévia grande e a fileira de miniaturas da
+      sessão aberta aparecem logo, sem esperar a lista de sessões da esquerda terminar de carregar (antes ficavam
+      pretas por vários segundos).
+- [ ] Clicar em outra sessão da lista enquanto ela ainda carrega: a prévia dessa sessão aparece logo.
+- [ ] Na janela principal, trocar de sessão na lista **Sessions**: as miniaturas da sessão escolhida aparecem primeiro.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |
