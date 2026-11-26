@@ -7011,12 +7011,13 @@
     panel.addEventListener("scroll", () => { alignScreen.panelScroll = panel.scrollTop; });
     if (keepPanel) { panel.scrollTop = keepPanel; requestAnimationFrame(() => { panel.scrollTop = keepPanel; }); }
 
-    const rigTag = el("span", "align-edited-tag hidden", "Edited");
+    // (protótipo T3 aprovado, 2026-11-26: "· edited" escrito no próprio título, em âmbar, sem moldura; tudo numa linha)
+    const rigTag = el("span", "align-edited-tag hidden", " · edited");
     self.querySelector("h3").insertBefore(rigTag, self.querySelector("h3 .align-cur"));
     // Âncora (protótipo AN2 aprovado, 2026-11-26): a grade de 9 pontos da foto no título do painel, como atalho, e o
     // losango "Anchor" na foto, que se arrasta para qualquer ponto dela
     const anchorWrap = el("span", "align-anchor");
-    anchorWrap.appendChild(el("span", "align-anchor-lab", "Anchor"));
+    // (sem a palavra "Anchor": saiu com o protótipo T3; a explicação fica na legenda de cada quadrado)
     const anchorGrid = el("span", "align-anchor-grid");
     const ANCHOR_NAMES = ["Top left", "Top", "Top right", "Left", "Center", "Right", "Bottom left", "Bottom", "Bottom right"];
     for (let i = 0; i < 9; i++) {
@@ -7111,6 +7112,7 @@
         if (note) { note.textContent = on ? "Rig " + String(Number(show[key]) === 0 ? show[key].replace("-", "") : show[key]) : ""; note.classList.toggle("hidden", !on); }
       });
       rigTag.classList.toggle("hidden", !any);
+      self.querySelector("h3").classList.toggle("is-edited", any);
     };
     const sync = () => { fields.dx.value = a.dx.toFixed(0); fields.dy.value = a.dy.toFixed(0); fields.scale.value = (a.scale * 100).toFixed(1); fields.rot.value = a.rot.toFixed(2); markPosDots(); rigNotes(); anchorShow(); };
     rigNotes();

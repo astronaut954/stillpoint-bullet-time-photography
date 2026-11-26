@@ -2033,7 +2033,10 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      dono, FEITA: a cruz do centro do canvas some da foto enquanto a âncora está em cima dela (`under-anchor`).
      (c) O dono não gostou do título em duas linhas: PROTÓTIPOS em https://claude.ai/artifact/B85J2XBGpDSEwav27KJ8oA
      (T1 sem a palavra "Anchor"; T2 o número da foto vira a marca de editada; T3 "This photo · edited" no próprio
-     título). AGUARDA A ESCOLHA DO DONO.
+     título).
+     Teste do dono (2026-11-26, 20:15): seção 76 e retornos aprovados ("tudo certo com os testes"). **ESCOLHA: T3**
+     — FEITO, AGUARDANDO TESTE: "This photo · edited" em âmbar no título, sem moldura; sai a palavra "Anchor"; uma
+     linha só. A etiqueta com moldura "Edited" do protótipo C deixa de existir no painel (na miniatura continua).
      FALTA: botão de edição global (G2) e ferramenta do canvas (C1).
      3. IDEIA PARA DEPOIS (só anotar): a feature de label passar a aceitar várias labels, não só uma.
      **PASSAGEM PARA UM CHAT NOVO (2026-11-26):** o dono pediu um prompt de continuação porque as respostas

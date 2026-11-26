@@ -2658,60 +2658,66 @@ Decisão do dono (2026-11-26, 17:54), a conferir:
 
 ## 76. Âncora da foto no Align photos (2026-11-26, câmeras simuladas servem)
 
-- [ ] **Export sessions** › aba **Framing** › **Align photos**: no título do painel **This photo** (à direita) há a
+- [x] **Export sessions** › aba **Framing** › **Align photos**: no título do painel **This photo** (à direita) há a
       palavra "Anchor" e uma grade de 9 quadrados; na foto grande há o ícone da âncora (um quadrado com quatro traços), no centro
       do canvas.
-- [ ] Sem mexer na âncora, mudar **Size** e **Rotate**: a foto cresce e gira em volta do centro do canvas (o losango
+- [x] Sem mexer na âncora, mudar **Size** e **Rotate**: a foto cresce e gira em volta do centro do canvas (o losango
       não sai do lugar). Numa foto fora do centro, **Move X** e **Move Y** mudam junto.
-- [ ] Clicar um quadrado da grade (por exemplo o de cima à esquerda): o losango vai para esse ponto DA FOTO e o
+- [x] Clicar um quadrado da grade (por exemplo o de cima à esquerda): o losango vai para esse ponto DA FOTO e o
       quadrado acende. Mudar **Size** e **Rotate** pelos botões **−** e **+**, digitando o número, pelas alças da
       foto e pelas ferramentas **Resize photo** e **Rotate**: a foto muda em volta desse ponto.
-- [ ] Arrastar o losango para outro ponto da foto: nenhum quadrado fica aceso; **Size** e **Rotate** agem em volta
+- [x] Arrastar o losango para outro ponto da foto: nenhum quadrado fica aceso; **Size** e **Rotate** agem em volta
       do ponto novo.
-- [ ] Mover a foto (ferramenta **Move**): o losango anda junto com ela (a âncora é presa à foto).
-- [ ] Trocar de foto e voltar: a âncora de cada foto continua onde foi posta. Fechar e abrir o programa: continua
+- [x] Mover a foto (ferramenta **Move**): o losango anda junto com ela (a âncora é presa à foto).
+- [x] Trocar de foto e voltar: a âncora de cada foto continua onde foi posta. Fechar e abrir o programa: continua
       (numa foto que já tem ajuste ou alinhamento do rig).
-- [ ] **⌘Z** depois de mudar a âncora: volta à anterior.
-- [ ] **Reset photo**, **Reset all** e **Back to automatic**: a âncora volta à de partida.
-- [ ] Tocando a sequência (botão de tocar em cima da foto): o losango some.
-- [ ] Passo **3 Save** do **Align cameras**: o losango começa na marca do meio da haste; a grade e o arraste
+- [x] **⌘Z** depois de mudar a âncora: volta à anterior.
+- [x] **Reset photo**, **Reset all** e **Back to automatic**: a âncora volta à de partida.
+- [x] Tocando a sequência (botão de tocar em cima da foto): o losango some.
+- [x] Passo **3 Save** do **Align cameras**: o losango começa na marca do meio da haste; a grade e o arraste
       funcionam igual.
 
 Retornos do dono (2026-11-26, 19:07), a conferir:
 
-- [ ] Âncora num canto da foto e giro pela alça de cima (ou pela ferramenta **Rotate**): a foto gira aos poucos,
+- [x] Âncora num canto da foto e giro pela alça de cima (ou pela ferramenta **Rotate**): a foto gira aos poucos,
       acompanhando o mouse, sem saltos; o losango não sai do lugar.
-- [ ] Arrastar a âncora com **⌘** apertado (no Windows, **Ctrl**): perto do centro do canvas ela prende ali e a etiqueta diz
+- [x] Arrastar a âncora com **⌘** apertado (no Windows, **Ctrl**): perto do centro do canvas ela prende ali e a etiqueta diz
       "Anchor · canvas center"; perto de um dos 9 pontos da foto prende nele ("Anchor · photo center",
       "Anchor · photo top left"...). Com os dois centros próximos, vale o do canvas.
-- [ ] Só as ferramentas **Select** e **Direct select** pegam a âncora; com **Move**, **Rotate**, **Resize photo**,
+- [x] Só as ferramentas **Select** e **Direct select** pegam a âncora; com **Move**, **Rotate**, **Resize photo**,
       **Hand** e **Zoom** o mouse passa por ela.
-- [ ] Mouse em cima da âncora: ela fica preenchida e a etiqueta fica verde cheia.
+- [x] Mouse em cima da âncora: ela fica preenchida e a etiqueta fica verde cheia.
 
 Escolhas e retornos do dono (2026-11-26, 19:20), a conferir:
 
-- [ ] O ícone da âncora é um quadrado com quatro traços (I2), centrado no ponto; em repouso não tem etiqueta; com o
+- [x] O ícone da âncora é um quadrado com quatro traços (I2), centrado no ponto; em repouso não tem etiqueta; com o
       mouse em cima ou arrastando fica preenchido e a etiqueta aparece.
-- [ ] No título do **This photo**, depois da grade, há um botão quadrado (legenda "Put the anchor back on the center
+- [x] No título do **This photo**, depois da grade, há um botão quadrado (legenda "Put the anchor back on the center
       of the canvas"): clicar leva a âncora ao centro do canvas.
-- [ ] Com a **barra de espaço** apertada, arrastar em cima da âncora desloca a vista; a âncora não se mexe.
-- [ ] A tecla que prende a âncora nos atalhos é **⌘** no Mac e **Ctrl** no Windows (a mesma do After Effects).
+- [x] Com a **barra de espaço** apertada, arrastar em cima da âncora desloca a vista; a âncora não se mexe.
+- [x] A tecla que prende a âncora nos atalhos é **⌘** no Mac e **Ctrl** no Windows (a mesma do After Effects).
 
 Retornos do dono (2026-11-26, 19:45), a conferir:
 
-- [ ] Com a âncora no centro do canvas, o ícone dela cai exatamente em cima da cruz do centro do canvas (estava
+- [x] Com a âncora no centro do canvas, o ícone dela cai exatamente em cima da cruz do centro do canvas (estava
       meio pixel fora), e o botão quadrado depois da grade "Anchor" fica aceso (verde cheio); fora do centro, apagado.
-- [ ] Painel estreito, foto mexida: a etiqueta "Edited" fica ao lado de "This photo" e não encosta em "Anchor";
+- [x] Painel estreito, foto mexida: a etiqueta "Edited" fica ao lado de "This photo" e não encosta em "Anchor";
       sem lugar numa linha, "Anchor", a grade, o botão e o número da foto descem juntos para a linha de baixo.
-- [ ] Âncora num canto, giro pela alça até o limite: a foto vai até o maior giro possível e para ali (borda
+- [x] Âncora num canto, giro pela alça até o limite: a foto vai até o maior giro possível e para ali (borda
       laranja), sem ficar presa antes; voltando o mouse, volta junto.
 
 Retornos do dono (2026-11-26, 19:58), a conferir:
 
-- [ ] Âncora num canto, giro pela alça até o limite e além: a foto para no limite sem crescer de repente (antes
+- [x] Âncora num canto, giro pela alça até o limite e além: a foto para no limite sem crescer de repente (antes
       pulava para 200% ou 300% de tamanho bem no limite).
-- [ ] Com a âncora no centro do canvas, a cruz do centro do canvas some da foto (o botão da cruz, na barra de
+- [x] Com a âncora no centro do canvas, a cruz do centro do canvas some da foto (o botão da cruz, na barra de
       ferramentas, continua aceso); tirando a âncora do centro, ou tocando a sequência, a cruz volta.
+
+Escolha do dono (2026-11-26, 20:15): título T3, a conferir:
+
+- [ ] Título do painel **This photo** numa linha só: "This photo", a grade de 9 quadrados, o botão quadrado e o
+      número da foto (sem a palavra "Anchor"). Com a foto mexida, o título vira "This photo · edited", em âmbar, sem
+      moldura; com a foto igual ao rig, volta a "This photo" em verde.
 
 ## Resultado
 

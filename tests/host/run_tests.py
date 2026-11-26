@@ -2290,7 +2290,7 @@ def scenario_align_cameras(t, name, photos):
               notes: [...ex.querySelectorAll('.align-rig:not(.hidden)')].map((e) => e.closest('.align-ctl').querySelector('.align-lab').textContent + ':' + e.textContent),
               boxes: [...ex.querySelectorAll('.align-num.rig-edited')].length }; }""")
         m1 = marks()
-        check(t, "Align photos: an edited photo is marked (selector '· edited' in amber, square and 'Edited' on its thumbnail, 'Edited' tag and the rig value next to Size; with the anchor off the photo centre, Move changes too)",
+        check(t, "Align photos: an edited photo is marked (selector '· edited' in amber, square and 'Edited' on its thumbnail, 'This photo · edited' in the panel title and the rig value next to Size; with the anchor off the photo centre, Move changes too)",
               m1["sel"].endswith(" · edited") and m1["amber"] and m1["thumbs"].count("dw") == 1 and m1["tag"] and any(re.match(r"Size:Rig \d+\.\d$", n) for n in m1["notes"]) and m1["boxes"] == len(m1["notes"]), m1)
         t.button("Back to automatic")
         check(t, "Align photos: 'Back to automatic' returns to the alignment of the rig", t.wait(lambda: saved() == auto_text and back_off() is True, 8), saved())

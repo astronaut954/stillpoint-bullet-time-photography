@@ -2607,9 +2607,10 @@ body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform:
 .align-anchor-mark:hover .ank-core, .align-anchor-mark.dragging .ank-core { fill: #000; }
 .align-anchor-mark:hover .align-anchor-tag, .align-anchor-mark.dragging .align-anchor-tag { display: block; }
 .align-anchor-home.on { background: var(--noct-primary); border-color: var(--noct-primary); color: var(--noct-on-primary); }
-/* Título do This photo em painel estreito: nada encosta em nada; sem lugar, "Anchor" e a grade descem para a linha de baixo */
-.align-block h3:has(.align-anchor) { flex-wrap: wrap; gap: 6px 10px; white-space: nowrap; justify-content: flex-start; }
-.align-block h3:has(.align-anchor) .align-edited-tag { margin-left: 0; flex: 0 0 auto; }
+/* Título do This photo (protótipo T3 aprovado, 2026-11-26): uma linha; com a foto mexida, "This photo · edited" em âmbar */
+.align-block h3:has(.align-anchor) { gap: 0; white-space: nowrap; justify-content: flex-start; }
+.align-block h3.is-edited { color: var(--noct-pending); }
+.align-block h3 .align-edited-tag { border: 0; padding: 0; margin: 0; font: inherit; letter-spacing: inherit; color: inherit; white-space: pre; }
 .align-block h3:has(.align-anchor) .align-anchor { flex: 0 0 auto; margin: 0; }
 .align-title-right { display: inline-flex; align-items: center; gap: 12px; margin-left: auto; flex: 0 0 auto; }
 .align-cross.under-anchor { visibility: hidden; }
