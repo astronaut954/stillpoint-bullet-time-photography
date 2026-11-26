@@ -6785,6 +6785,16 @@
         stage.classList.add("locked"); clearTimeout(lockFlash); lockFlash = setTimeout(() => stage.classList.remove("locked"), 300);
         return a.dx !== before.dx || a.dy !== before.dy;
       }
+      // Girar além do limite: vai até o maior giro que ainda dá (como o tamanho e o mover), em vez de ficar parado
+      // onde estava e só andar quando o mouse volta a um ângulo possível (gravação do dono, 2026-11-26)
+      if (cand.rot !== a.rot && cand.dx === a.dx && cand.dy === a.dy) {
+        const at = (t) => { const c = Object.assign({}, cand, { rot: Math.round((a.rot + (cand.rot - a.rot) * t) * 1000) / 1000 }); const need = minCoverScale(c, c.base || c.scale); if (need == null) return null; c.scale = need; return c; };
+        let lo = 0, hi = 1, best = null;
+        for (let i = 0; i < 14; i++) { const mid = (lo + hi) / 2, c = at(mid); if (c) { lo = mid; best = c; } else hi = mid; }
+        stage.classList.add("locked"); clearTimeout(lockFlash); lockFlash = setTimeout(() => stage.classList.remove("locked"), 300);
+        if (best && Math.abs(best.rot - a.rot) >= 0.005) { Object.assign(a, pin(best)); return true; }
+        return false;
+      }
       stage.classList.add("locked"); clearTimeout(lockFlash); lockFlash = setTimeout(() => stage.classList.remove("locked"), 300);
       return false;
     };
@@ -7016,7 +7026,9 @@
       a.ax = f.x; a.ay = f.y; anchorShow(); layout(); save();
     });
     anchorWrap.appendChild(anchorHome);
-    self.querySelector("h3").insertBefore(anchorWrap, self.querySelector("h3 .align-cur"));
+    // ("Anchor", a grade, o botão e o número da foto andam juntos: em painel estreito descem juntos para a linha de baixo)
+    { const h3 = self.querySelector("h3"), curTag = h3.querySelector(".align-cur"), right = el("span", "align-title-right");
+      h3.insertBefore(right, curTag); right.append(anchorWrap, curTag); }
     const anchorMark = el("div", "align-anchor-mark");
     // (ícone I2 aprovado, 2026-11-26: quadrado com quatro traços, contorno preto por baixo; a etiqueta só aparece
     // com o mouse em cima ou arrastando)
@@ -7184,7 +7196,10 @@
       { const at = anchorAt(a, anchorFrac()); anchorMark.style.left = (cx + at.x * scaleK) + "px"; anchorMark.style.top = (cy + at.y * scaleK) + "px"; anchorMark.style.display = playing ? "none" : "";
         const where = anchorWhere(), tagEl = anchorMark.querySelector(".align-anchor-tag"), text = "Anchor" + (where ? " · " + where : "");
         if (tagEl.textContent !== text) tagEl.textContent = text;
-        anchorMark.classList.toggle("at-point", !!where); }
+        anchorMark.classList.toggle("at-point", !!where);
+        // (no painel: o botão do centro do canvas fica aceso quando a âncora está lá; pedido do dono, 2026-11-26)
+        anchorHome.classList.toggle("on", where === "canvas center"); anchorHome.setAttribute("aria-pressed", where === "canvas center" ? "true" : "false");
+        anchorHome.title = where === "canvas center" ? "The anchor is on the center of the canvas" : "Put the anchor back on the center of the canvas"; }
       // Proporção de um tamanho: a mais próxima das quatro; "~" quando não é exata
       // (em pé, 3:2 é 2:3: o mesmo nome dos botões do Aspect ratio)
       const rn = (w, h) => { const n = ratioName(w, h); const exact = Math.abs(Math.max(w, h) / Math.min(w, h) - RATIOS[n]) < 0.01; const shown = h > w ? RATIO_TURNED[n] || n : n; return exact ? shown : "~" + shown; };

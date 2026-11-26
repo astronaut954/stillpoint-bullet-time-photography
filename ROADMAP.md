@@ -2016,6 +2016,13 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      sentidos nenhuma ampliação resolve (as duas bordas que passam pela âncora não se afastam ao ampliar), então o
      passo é recusado (borda laranja) e a foto salta quando o mouse chega a um ângulo possível. NÃO É DEFEITO DE
      CONTA: É DECISÃO DO DONO, PENDENTE: o que fazer quando girar em volta da âncora descobriria o canvas.
+     **DECISÃO DO DONO (2026-11-26, 19:45): fica como está** (a âncora não sai do lugar; amplia o necessário; recusa
+     quando não há ampliação que resolva). Retornos, FEITOS, AGUARDANDO TESTE: (a) no limite o giro ficava preso
+     antes da hora: agora vai até o maior giro possível (procura entre o giro atual e o pedido, no `tryApply`);
+     (b) a âncora não caía em cima da cruz do centro do canvas (meio pixel): corrigido; (c) o botão R1 fica aceso
+     quando a âncora está no centro do canvas (jeito escolhido pelo agente de "indicar no painel": a confirmar);
+     (d) "Edited" invadia "Anchor" em painel estreito: o título quebra em duas linhas, com "Anchor", a grade, o
+     botão e o número da foto juntos na de baixo.
      FALTA: botão de edição global (G2) e ferramenta do canvas (C1).
      3. IDEIA PARA DEPOIS (só anotar): a feature de label passar a aceitar várias labels, não só uma.
      **PASSAGEM PARA UM CHAT NOVO (2026-11-26):** o dono pediu um prompt de continuação porque as respostas

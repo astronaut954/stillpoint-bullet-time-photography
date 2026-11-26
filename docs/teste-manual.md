@@ -2697,6 +2697,15 @@ Escolhas e retornos do dono (2026-11-26, 19:20), a conferir:
 - [ ] Com a **barra de espaço** apertada, arrastar em cima da âncora desloca a vista; a âncora não se mexe.
 - [ ] A tecla que prende a âncora nos atalhos é **⌘** no Mac e **Ctrl** no Windows (a mesma do After Effects).
 
+Retornos do dono (2026-11-26, 19:45), a conferir:
+
+- [ ] Com a âncora no centro do canvas, o ícone dela cai exatamente em cima da cruz do centro do canvas (estava
+      meio pixel fora), e o botão quadrado depois da grade "Anchor" fica aceso (verde cheio); fora do centro, apagado.
+- [ ] Painel estreito, foto mexida: a etiqueta "Edited" fica ao lado de "This photo" e não encosta em "Anchor";
+      sem lugar numa linha, "Anchor", a grade, o botão e o número da foto descem juntos para a linha de baixo.
+- [ ] Âncora num canto, giro pela alça até o limite: a foto vai até o maior giro possível e para ali (borda
+      laranja), sem ficar presa antes; voltando o mouse, volta junto.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |
