@@ -2615,6 +2615,24 @@ Precisa de uma sessão fotografada com as câmeras alinhadas (**Align cameras** 
 - [x] Com **None** em **Alignment**: **Reset photo** e **Reset all** zeram, como antes.
 - [x] Passo **3 Save** do **Align cameras**: **Reset photo** e **Reset all** continuam voltando aos valores da haste.
 
+## 75. Alinhamento diferente do rig: marcas no Align photos (2026-11-26, câmeras simuladas servem)
+
+Precisa de uma sessão fotografada com as câmeras alinhadas, com **Rig · …** em **Alignment**.
+
+- [ ] **Export sessions** › aba **Framing** › **Align photos**, sem mexer em nada: o seletor **Alignment** (no alto, à
+      direita) diz só "Rig · data" em verde; nenhuma miniatura tem marca; o painel **This photo** não tem etiqueta.
+- [ ] Mudar **Size** de uma foto: o seletor passa a "Rig · data · edited", em âmbar; a miniatura dessa foto ganha um
+      quadrado ao lado do número e a palavra "Edited" embaixo; no painel **This photo** aparece a etiqueta "Edited" ao
+      lado do título, a caixa de **Size** fica âmbar e, à direita dela, "Rig" com o valor do rig.
+- [ ] Mudar também **Rotate**, **Move X** e **Move Y**: cada caixa mudada fica âmbar com o valor do rig ao lado.
+- [ ] Ir para uma foto não mexida (clique na miniatura): o painel **This photo** fica sem etiqueta e sem âmbar; o
+      seletor continua "· edited".
+- [ ] **Reset photo** na foto mexida: as marcas dela somem. **Reset all** ou **Back to automatic**: todas somem e o
+      seletor volta ao verde.
+- [ ] **⌘Z**: as marcas voltam junto com o ajuste.
+- [ ] Com **None** em **Alignment**, e no passo **3 Save** do **Align cameras**: nenhuma dessas marcas aparece.
+- [ ] A fileira de miniaturas ficou um pouco mais alta (lugar para a palavra "Edited"); a foto grande não é cortada.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |

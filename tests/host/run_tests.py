@@ -2281,8 +2281,22 @@ def scenario_align_cameras(t, name, photos):
         b.click(modifiers=["Shift"])
         time.sleep(0.8)
         check(t, "Align photos: an adjustment on top turns 'Back to automatic' on", saved() != auto_text and back_off() is False)
+        # Alinhamento diferente do rig (protótipos B e C, 2026-11-26): o seletor diz "· edited", a miniatura mexida tem
+        # o quadrado e "Edited", e o This photo mostra a etiqueta e o valor do rig ao lado da caixa mudada
+        marks = lambda: t.js("""() => { const s = document.getElementById('alignModeSel'), ex = document.getElementById('exportSettings');
+            return { sel: s.options[0].textContent, amber: s.classList.contains('edited'),
+              thumbs: [...ex.querySelectorAll('.export-strip > li')].map((l) => (l.querySelector('.frame-edit-dot') ? 'd' : '-') + (l.querySelector('.frame-edited') ? 'w' : '-')).join(' '),
+              tag: [...ex.querySelectorAll('.align-edited-tag')].some((e) => !e.classList.contains('hidden') && e.offsetParent),
+              notes: [...ex.querySelectorAll('.align-rig:not(.hidden)')].map((e) => e.closest('.align-ctl').querySelector('.align-lab').textContent + ':' + e.textContent),
+              boxes: [...ex.querySelectorAll('.align-num.rig-edited')].length }; }""")
+        m1 = marks()
+        check(t, "Align photos: an edited photo is marked (selector '· edited' in amber, square and 'Edited' on its thumbnail, 'Edited' tag and the rig value next to Size)",
+              m1["sel"].endswith(" · edited") and m1["amber"] and m1["thumbs"].count("dw") == 1 and m1["tag"] and len(m1["notes"]) == 1 and re.match(r"Size:Rig \d+\.\d$", m1["notes"][0]) and m1["boxes"] == 1, m1)
         t.button("Back to automatic")
         check(t, "Align photos: 'Back to automatic' returns to the alignment of the rig", t.wait(lambda: saved() == auto_text and back_off() is True, 8), saved())
+        time.sleep(0.6)
+        m2 = marks()
+        check(t, "Align photos: back on the alignment of the rig, the marks are gone", m2["sel"].startswith("Rig · ") and "edited" not in m2["sel"] and not m2["amber"] and "d" not in m2["thumbs"] and "w" not in m2["thumbs"] and not m2["tag"] and not m2["notes"] and m2["boxes"] == 0, m2)
         # "Reset all" e "Reset photo", com Rig escolhido, voltam ao alinhamento do rig (antes zeravam tudo: defeito
         # apontado pelo dono em 2026-11-26)
         reset = lambda name: t.js("(n) => [...document.querySelectorAll('#exportSettings .align-resets button')].find(b => b.textContent.trim() === n).click()", name)

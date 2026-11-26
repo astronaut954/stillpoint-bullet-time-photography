@@ -1948,7 +1948,14 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
         edited" ao lado do Alignment + barra âmbar na lateral da miniatura; B o seletor diz "· edited" + quadrado
         âmbar na etiqueta do número; C caixas mudadas em âmbar no This photo, com o valor do rig ao lado + "Edited"
         embaixo da miniatura). Dá para combinar indicativo de uma com miniatura de outra. Observação levada ao dono:
-        o âmbar já é o aviso de proporção nessa tela. AGUARDA A ESCOLHA DO DONO.
+        o âmbar já é o aviso de proporção nessa tela.
+        **ESCOLHA DO DONO (2026-11-26, 17:19): B e C, tudo das duas** (seletor "· edited" + painel This photo com
+        o valor do rig; na miniatura, o quadrado no número + "Edited" embaixo). FEITO, AGUARDANDO TESTE (seção 75):
+        `exp.rigMarks` (miniaturas e seletor, refeito no `alignSave`) e `rigNotes` (painel), só com "Rig" escolhido;
+        a fileira de miniaturas ficou 13 px mais alta nesse modo. O espelhamento (Flip) não conta como "edited", do
+        mesmo jeito que não acende o "Back to automatic": A CONFIRMAR com o dono. Testes automáticos: cenários do
+        Align cameras (102 de 102), Flip (64 de 64) e desfazer do Align photos (20 de 20); rodada completa não
+        refeita.
      3. IDEIA PARA DEPOIS (só anotar): a feature de label passar a aceitar várias labels, não só uma.
      **PASSAGEM PARA UM CHAT NOVO (2026-11-26):** o dono pediu um prompt de continuação porque as respostas
      estavam demorando demais. Ordem combinada do que falta, do mais próximo ao mais distante: (a) item 1 acima;

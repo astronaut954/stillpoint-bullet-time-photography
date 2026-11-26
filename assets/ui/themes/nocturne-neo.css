@@ -2562,3 +2562,19 @@ body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform:
 .al-chip { display: inline-block; box-sizing: border-box; font: 500 11px var(--noct-font-mono); letter-spacing: .06em; color: var(--noct-pending, #f0a020); border: 1px solid currentColor; padding: 3px 7px; cursor: help; }
 .align-auto .al-chip { margin-right: 8px; white-space: nowrap; }
 .al-hint + .al-chip { margin-top: 8px; }
+
+/* Align photos do Export: alinhamento diferente do rig (decisão do dono, 2026-11-26: protótipos B e C juntos).
+   O seletor Alignment diz "· edited" em âmbar; a miniatura mexida tem um quadrado ao lado do número e "Edited"
+   embaixo; no This photo, a etiqueta "Edited" e as caixas mudadas em âmbar, com o valor do rig ao lado. */
+#alignModeSel.edited { border-color: var(--noct-pending); color: var(--noct-pending); width: auto; min-width: 300px; }
+.export-strip-scroll.rig-marks { height: 80px; }
+.export-strip .frame { position: relative; }
+.frame-edit-dot { display: inline-block; width: 6px; height: 6px; margin-left: 5px; vertical-align: middle; position: relative; top: -1px; background: var(--noct-pending); border-radius: 0; }
+.frame.selected .frame-edit-dot { background: var(--noct-on-primary); }
+.export-strip .frame.rig-edited { overflow: visible; }
+.frame-edited { position: absolute; left: 0; right: 0; top: 100%; margin-top: 3px; text-align: center; color: var(--noct-pending); font-size: 9px; letter-spacing: .14em; text-transform: uppercase; line-height: 1.2; pointer-events: none; }
+.align-edited-tag { border: 1px solid var(--noct-pending); color: var(--noct-pending); padding: 1px 6px; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; margin-left: 10px; }
+.align-edited-tag.hidden, .align-rig.hidden { display: none; }
+.align-ctl:has(.align-rig) { grid-template-columns: 62px 30px 72px 30px auto; }
+.align-ctl .align-num.rig-edited { color: var(--noct-pending); border-color: var(--noct-pending); }
+.align-rig { color: var(--noct-pending); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; white-space: nowrap; margin-left: 4px; }

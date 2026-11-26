@@ -5986,6 +5986,8 @@
     // (Align photos aberto: "Back to automatic" acende quando há ajuste da pessoa por cima do alinhamento do rig)
     const back = $("alignBackAuto");
     if (back && typeof rigTouched === "function") back.disabled = !rigTouched(st);
+    if (!$("exportSettings").classList.contains("aligning")) exp.rigMarks = null;
+    if (typeof exp.rigMarks === "function") exp.rigMarks();
     if (typeof alignKeepsShow === "function") alignKeepsShow(session, st);
   }
   function alignOf(st, file) { return st.align.byFile[file] || ALIGN_ID(); }  // só lê: uma foto sem ajuste não ganha entrada
@@ -6553,6 +6555,7 @@
       const li = el("li", "frame" + (k === cur ? " selected" : ""));
       li.innerHTML = '<div class="frame-img"><img alt=""><span class="frame-badge"></span></div>';
       li.querySelector(".frame-badge").textContent = pad(it.order || k + 1);
+      li.dataset.file = it.file;
       ["prev", "next"].forEach((key) => { if (alignPrefs[key] && refIndex[key] === k && k !== cur) { const dot = el("span", "align-refdot"); dot.style.background = REF_COLORS[key]; li.appendChild(dot); } });
       if (rigStep ? rigStep.touched(it.file) : !alignBlank(st.align.byFile[it.file])) li.classList.add("aligned");
       // Espelhada: a miniatura aparece espelhada, com a marca do sentido no canto (protótipo aprovado, 2026-11-11)
@@ -6572,6 +6575,33 @@
       li.addEventListener("click", () => { exp.photo = k; goPhoto(); });
       strip.appendChild(li);
     });
+    // Alinhamento diferente do rig (decisão do dono, 2026-11-26: protótipos B e C juntos): com "Rig" escolhido, o
+    // seletor diz "· edited" e fica âmbar; a miniatura de cada foto mexida ganha um quadrado ao lado do número e a
+    // palavra "Edited" embaixo. Refeito a cada mudança guardada (alignSave).
+    const rigMode = !rigStep && !!rigOf(session) && alignModeOf(session, st) === "rig";
+    const rigEdited = (file, cur) => { const auto = st.align.auto; return rigMode && !!auto && file in auto && rigEntryText(cur || st.align.byFile[file]) !== auto[file]; };
+    stripScroll.classList.toggle("rig-marks", rigMode);
+    exp.rigMarks = () => {
+      let any = false;
+      [...strip.children].forEach((li) => {
+        const on = rigEdited(li.dataset.file);
+        any = any || on;
+        li.classList.toggle("rig-edited", on);
+        const badge = li.querySelector(".frame-badge");
+        let dot = badge && badge.querySelector(".frame-edit-dot"), word = li.querySelector(".frame-edited");
+        if (on && badge && !dot) badge.appendChild(el("i", "frame-edit-dot"));
+        if (!on && dot) dot.remove();
+        if (on && !word) li.appendChild(el("span", "frame-edited", "Edited"));
+        if (!on && word) word.remove();
+      });
+      const sel = $("alignModeSel");
+      if (sel && sel.options[0] && sel.options[0].value === "rig") {
+        if (!sel.dataset.base) sel.dataset.base = sel.options[0].textContent;
+        sel.options[0].textContent = sel.dataset.base + (any ? " · edited" : "");
+        sel.classList.toggle("edited", any && sel.value === "rig");
+      }
+    };
+    exp.rigMarks();
     // Passo 3 do Align cameras: a câmera não conectada aparece na fileira, no lugar dela, sem foto e sem alinhamento
     if (rigStep) rigStep.gone().forEach((g) => {
       const li = el("li", "frame gone");
@@ -6901,7 +6931,27 @@
     panel.addEventListener("scroll", () => { alignScreen.panelScroll = panel.scrollTop; });
     if (keepPanel) { panel.scrollTop = keepPanel; requestAnimationFrame(() => { panel.scrollTop = keepPanel; }); }
 
-    const sync = () => { fields.dx.value = a.dx.toFixed(0); fields.dy.value = a.dy.toFixed(0); fields.scale.value = (a.scale * 100).toFixed(1); fields.rot.value = a.rot.toFixed(2); markPosDots(); };
+    const rigTag = el("span", "align-edited-tag hidden", "Edited");
+    self.querySelector("h3").insertBefore(rigTag, self.querySelector("h3 .align-cur"));
+    const rigNotes = () => {
+      const txt = rigMode && st.align.auto ? st.align.auto[item.file] : "";
+      const v = txt ? txt.split(",").map(Number) : null, now = rigEntryText(a).split(",");
+      const show = { dx: v && v[0].toFixed(0), dy: v && v[1].toFixed(0), scale: v && (v[2] * 100).toFixed(1), rot: v && v[3].toFixed(2) };
+      let any = false;
+      ["dx", "dy", "scale", "rot"].forEach((key, i) => {
+        const inp = fields[key], row = inp && inp.closest(".align-ctl");
+        if (!row) return;
+        const on = !!v && now[i] !== txt.split(",")[i];
+        any = any || on;
+        inp.classList.toggle("rig-edited", on);
+        let note = row.querySelector(".align-rig");
+        if (on && !note) { note = el("span", "align-rig"); row.appendChild(note); }
+        if (note) { note.textContent = on ? "Rig " + show[key] : ""; note.classList.toggle("hidden", !on); }
+      });
+      rigTag.classList.toggle("hidden", !any);
+    };
+    const sync = () => { fields.dx.value = a.dx.toFixed(0); fields.dy.value = a.dy.toFixed(0); fields.scale.value = (a.scale * 100).toFixed(1); fields.rot.value = a.rot.toFixed(2); markPosDots(); rigNotes(); };
+    rigNotes();
     let saveTimer = 0;
     // Fim de uma mudança: vai para a sessão, para session.json (logo em seguida) e vira um passo do desfazer
     const save = () => {
