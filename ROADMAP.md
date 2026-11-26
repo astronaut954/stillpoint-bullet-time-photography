@@ -1823,7 +1823,18 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      diferentes, igualar pela largura (a câmera em 16:9 corta em cima e embaixo): A CONFIRMAR. PRÓXIMO PASSO:
      protótipos de onde ficam o ajuste e o aviso, antes de implementar. PROTÓTIPOS PUBLICADOS (2026-11-26):
      https://claude.ai/artifact/Rxq7z8QCHXw2j9dmHpd7v4 (R1 linha Resolution em Export › Framing + caixa âmbar;
-     R2 a mesma linha com etiqueta âmbar; R3 ajuste em Settings › Export, por projeto). AGUARDA A ESCOLHA DO DONO.
+     R2 a mesma linha com etiqueta âmbar; R3 ajuste em Settings › Export, por projeto).
+     **DECISÕES DO DONO (2026-11-26, depois dos protótipos R):** (B) a proporção (As shot, 3:2, 4:3, 16:9, 1:1,
+     deitado e em pé) e a resolução são escolhidas no passo 3 do Align cameras, salvas junto com o alinhamento, e
+     viram o padrão das sessões novas; o Export continua deixando trocar por sessão. (M1) com o rig alinhado, a
+     janela "Mixed ratios" NÃO abre depois do disparo (a etiqueta na lista e a linha âmbar continuam); o aviso de
+     formas diferentes passa para o passo 3 (etiqueta âmbar ao lado do Keeps). Sem rig alinhado, tudo como hoje.
+     O dono quer simular esse cenário depois de implementado, para confirmar o M1. Verificado no código: não há
+     conflito entre Aspect ratio e o alinhamento das câmeras (a receita não depende de proporção; o Export refaz
+     a conta a cada troca); o 16:9 visto no passo 3 vem da câmera simulada 02, que fotografa sempre em 16:9.
+     PROTÓTIPOS DE ONDE FICAM NO PASSO 3: https://claude.ai/artifact/77mFoJ4gYJzQYbVz2sDTGX (A1 bloco "New
+     sessions" no painel da direita; A2 barra acima da foto; E como chega ao Export). AGUARDA A ESCOLHA DO DONO.
+     Ainda a confirmar: igualar pela largura com proporções diferentes.
      Pergunta do dono: alinhar sem as marcas, por um objeto ou pessoa da cena. É a parte 7 (From this scene), já
      prevista, a fazer antes do rig reutilizável.
      **Decisões do dono no meio dos testes (2026-11-24), a fazer DEPOIS dos roteiros:** (i) arrastar os pontos
