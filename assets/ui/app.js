@@ -4153,11 +4153,11 @@
     const ctl = el("span", "rig-play-ctl");
     ctl.append(prev, play, next, el("span", "align-auto-label", "Speed"), slower, speedVal, faster, rev);
     bar.appendChild(ctl);
-    if (ed.playing) {
-      const stop = button("Stop", () => alPlayStop(ed), { kind: "btn-secondary btn-small", title: "Stop playing and go back to adjusting, on the photo that is showing" });
-      stop.id = "alignPlayStop";
-      bar.appendChild(stop);
-    }
+    // O Stop está sempre na barra, apagado até começar a tocar: a barra não muda de tamanho (pedido do dono, 2026-11-25)
+    const stop = button("Stop", () => { if (ed.playing) alPlayStop(ed); }, { kind: "btn-secondary btn-small", title: "Stop playing and go back to adjusting, on the photo that is showing" });
+    stop.id = "alignPlayStop";
+    stop.disabled = !ed.playing;
+    bar.appendChild(stop);
     ed.paint();
   }
   function alRenderSave() {
