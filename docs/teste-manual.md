@@ -2590,6 +2590,17 @@ Vale no **Align photos** do Export e no passo **3 Save** do **Align cameras**.
 - [ ] Com o mouse em **2 warnings**: abre a lista com cada aviso e a explicação. Tirando o mouse, fecha.
 - [ ] Alargar a janela de novo: as etiquetas e o texto inteiro do Keeps voltam.
 
+## 73. Caixas de número do This photo e Position (2026-11-26, câmeras simuladas servem)
+
+- [ ] **Export sessions** › **Align photos**: clicar na caixa de **Size** (o número fica selecionado) e apertar uma
+      letra: nada muda, o número continua lá. Apertar um algarismo: substitui o número, como antes.
+- [ ] Com um número digitado e ainda não confirmado, **Esc**: o número antigo volta e a tela continua no Align photos
+      (antes o Esc também saía para a aba Framing). Fora da caixa, **Esc** continua voltando ao Framing.
+- [ ] O mesmo no passo **3 Save** do **Align cameras**: **Esc** na caixa não abre "Leave without saving?".
+- [ ] No painel do Align photos não existe mais a linha **Position** (embaixo de **Aspect ratio**).
+- [ ] Aba **Framing**: **Position** aparece só em sessão sem alinhamento próprio das fotos e com proporção escolhida;
+      em sessão alinhada (etiqueta "… · Aligned") a linha não aparece.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |

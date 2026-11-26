@@ -5890,7 +5890,8 @@
     { const rig = rigOf(session); if (!locked && rig && (rig.ratio === "asshot" || RATIOS[rig.ratio])) { const n = el("div", "export-note", "Aspect ratio starts from Align cameras. Changing it here applies to this session only."); n.id = "exportRigNote"; box.appendChild(n); } }
     addTip(box, "The shape every export gets: converted photos, the sequence and the lenticular print (Fill) are cut to it; the originals are never cropped. " +
       "One crop for the whole session, and every converted photo comes out with the same pixel size (the smallest camera's).", "Aspect ratio");
-    if (st.crop.ratio !== "asshot") {
+    // Position: só para sessão sem alinhamento próprio das fotos (com ele, cada foto se move no Align photos)
+    if (st.crop.ratio !== "asshot" && !sessionAligned(session, st)) {
       const pos = row("Position");
       const dots = el("div", "crop-dots");
       const names = ["Top left", "Top", "Top right", "Left", "Center", "Right", "Bottom left", "Bottom", "Bottom right"];
@@ -6754,6 +6755,16 @@
       // de menos no começo (pedido do dono, 2026-11-24)
       const clean = (t) => { let neg = /^\s*[-−]/.test(t), seen = false; const d = t.replace(/[^0-9.,]/g, "").replace(/[.,]/g, (m) => (seen ? "" : ((seen = true), m))); return (neg ? "-" : "") + d; };
       inp.addEventListener("input", () => { const c = clean(inp.value); if (c !== inp.value) { const pos = Math.max(0, inp.selectionStart - (inp.value.length - c.length)); inp.value = c; try { inp.setSelectionRange(pos, pos); } catch (e) {} } });
+      // Um caractere que não entra é barrado ANTES de mexer na caixa: com o número selecionado, a tecla apagava a
+      // seleção e só depois o caractere era tirado, deixando a caixa vazia (gravação do dono, 2026-11-26)
+      inp.addEventListener("beforeinput", (e) => {
+        if (!/^insert/.test(e.inputType || "")) return;
+        const data = e.data != null ? e.data : e.dataTransfer ? e.dataTransfer.getData("text/plain") : "";
+        if (!data) return;
+        const a = inp.selectionStart == null ? inp.value.length : inp.selectionStart, z = inp.selectionEnd == null ? a : inp.selectionEnd;
+        const next = inp.value.slice(0, a) + data + inp.value.slice(z);
+        if (clean(next) !== next) e.preventDefault();
+      });
       const typed = () => {
         const t = inp.value.trim().replace(",", ".");
         const v = t === "" || t === "-" || t === "." || t === "-." ? neutral || 0 : parseFloat(t);
@@ -6869,17 +6880,8 @@
       { const keep = keepShown(session.name, st); if (keep != null) r.appendChild(el("span", "export-keep", "keeps " + keep + "%")); }
       arRows.appendChild(r);
       addTip(arRows, "The shape every export gets, for the whole session; the crop frame stays where the Framing tab put it.", "Aspect ratio");
-      const pos = row("Position");
-      const dots = el("div", "crop-dots");
-      const names = ["Top left", "Top", "Top right", "Left", "Center", "Right", "Bottom left", "Bottom", "Bottom right"];
-      [0, 0.5, 1].forEach((y, yi) => [0, 0.5, 1].forEach((x, xi) => {
-        const d = el("button", "crop-dot"); d.type = "button"; d.title = names[yi * 3 + xi]; d.dataset.x = x; d.dataset.y = y;
-        d.addEventListener("click", () => placePhoto(x, y));
-        dots.appendChild(d);
-      }));
-      pos.appendChild(dots);
-      posDots = dots;
-      arRows.appendChild(pos);
+      // (o "Position" saiu daqui: decisão do dono, 2026-11-26. No lugar dele entra a âncora de cada foto; ele continua
+      // só na aba Framing, para sessão sem alinhamento próprio)
     }
     ar.appendChild(arRows);
     wrap.appendChild(panel);
@@ -11619,6 +11621,8 @@
     if (open !== "promptOverlay" && open !== "dialogOverlay" && ["settingsOverlay", "aboutOverlay"].some((id) => !$(id).classList.contains("hidden"))) return false;
     if (e.key === "Escape") {
       if (open === "promptOverlay") return false;  // o campo já trata Enter/Esc
+      // Numa caixa de número do alinhamento, o Esc só desiste do que foi digitado (a caixa trata); a tela continua
+      if (e.target && e.target.classList && e.target.classList.contains("align-num")) return false;
       e.overlayHandled = true;
       e.preventDefault(); e.stopImmediatePropagation();
       // Dentro de "Align photos", o Esc volta ao Framing, como "Done aligning" (decisão do dono, 2026-11-04)

@@ -1907,6 +1907,26 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      não faz sentido ali) **e dá lugar a uma ÂNCORA por foto**, salva conforme a pessoa ajusta, valendo para o
      tamanho e o giro. A definir com protótipo: como a âncora é posta (grade de 9 pontos, ponto livre arrastado
      na foto, ou os dois) e se o "Position" da aba Framing (sessão sem alinhamento) continua.
+     Teste do dono (2026-11-26): seção 72 aprovada.
+     **DECISÕES DO DONO (2026-11-26, tarde):**
+     - Âncora: **N2** (ponto livre arrastado na foto, com a grade de 9 pontos como atalho); vale para Size e
+       Rotate (não para Move nem Flip); alças, ferramentas, botões − + e números digitados obedecem a ela; começa
+       na marca do meio da haste no Align cameras e no centro do canvas no Export; uma por foto, salva.
+     - **No lugar da ferramenta "todas as fotos": um botão de EDIÇÃO GLOBAL**, desligado por padrão; ligado
+       (LARANJA, para chamar a atenção), qualquer mudança feita numa foto vale para todas. Ligado, a âncora é uma
+       só, global, e NÃO sobrescreve as âncoras individuais: ao desligar, volta a aparecer a de cada foto.
+     - A ferramenta do canvas continua (grupo do Resize photo), com a trava: o canvas não passa das fotos.
+     - "Position" só onde não há alinhamento próprio das fotos. FEITO (seção 73): saiu do painel do Align photos;
+       na aba Framing aparece só em sessão sem alinhamento próprio.
+     - Caixas de número: uma tecla que não entra apagava o número selecionado (gravação). FEITO: barrada antes
+       (`beforeinput`). Achado junto: Esc dentro da caixa também saía do Align photos; agora só desiste do que foi
+       digitado. A CONFIRMAR: o dono disse que as caixas "não deveriam poder selecionar"; hoje o clique seleciona
+       o número inteiro (pedido dele em 2026-11-24, para digitar por cima).
+     - Sobre a mão de arrastar da prévia do Framing: o dono disse que pediu para tirar porque não arrastava "por
+       um bug". Verificado no código: em foto com alinhamento próprio o arraste é desligado de propósito (etiqueta
+       "This photo is aligned: move it in Align photos"). A CONFIRMAR com ele se há um caso que deveria arrastar.
+     FALTA: protótipos, em cima da tela real, de onde ficam a âncora, o botão de edição global e a ferramenta do
+     canvas, antes de implementar.
      **A DECIDIR:** onde mais o S4 vale: no Export (sessão com formas diferentes: "As shot" apagado?) e na janela
      "Mixed ratios" das sessões sem rig alinhado (tirar "Keep as shot"?); as sessões já feitas não mudam
      (registro de 2026-11-24).
