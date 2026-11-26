@@ -2194,6 +2194,10 @@ def scenario_align_cameras(t, name, photos):
         files = sorted(f for f in os.listdir(o) if f.lower().endswith(".jpg"))
         marks = {f: _mark_centers(os.path.join(o, f)) for f in files}
         sizes = {f: Image.open(os.path.join(o, f)).size for f in files}
+        # A medida das fotos vem do cabeçalho do arquivo (sem decodificar): tem de dar o tamanho real de cada uma
+        got = t.js("(a) => Promise.all(a[1].map((f) => window.photoSize(a[0], f).then((r) => [f, r.width, r.height])))", [s, files])
+        check(t, "photo sizes: read from the file header, they match the real size of every photo", all(sizes[f] == (w, h) for f, w, h in got) and len(got) == len(files), got)
+        check(t, "photo queue: the session on screen can be put first (photoHurry)", t.js("(n) => typeof window.photoHurry === 'function' && window.photoHurry(n).then((r) => r === true)", s))
         def parse(text):
             out = {}
             for item in (text or "").split(";"):
