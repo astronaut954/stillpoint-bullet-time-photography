@@ -2283,6 +2283,20 @@ def scenario_align_cameras(t, name, photos):
         check(t, "Align photos: an adjustment on top turns 'Back to automatic' on", saved() != auto_text and back_off() is False)
         t.button("Back to automatic")
         check(t, "Align photos: 'Back to automatic' returns to the alignment of the rig", t.wait(lambda: saved() == auto_text and back_off() is True, 8), saved())
+        # "Reset all" e "Reset photo", com Rig escolhido, voltam ao alinhamento do rig (antes zeravam tudo: defeito
+        # apontado pelo dono em 2026-11-26)
+        reset = lambda name: t.js("(n) => [...document.querySelectorAll('#exportSettings .align-resets button')].find(b => b.textContent.trim() === n).click()", name)
+        for name in ("Reset all", "Reset photo"):
+            b.click(modifiers=["Shift"])
+            time.sleep(0.8)
+            changed = saved() != auto_text
+            reset(name)
+            check(t, "Align photos: with 'Rig', '%s' returns to the alignment of the rig (not to zero)" % name,
+                  changed and t.wait(lambda: saved() == auto_text and back_off() is True, 8), saved())
+        t.undo()
+        check(t, "Align photos: undo of 'Reset photo' brings the adjustment back in one step", t.wait(lambda: saved() != auto_text and len(parse(saved())) == 4, 8), saved())
+        t.button("Back to automatic")
+        t.wait(lambda: saved() == auto_text, 8)
         t.js("() => { const e = document.getElementById('alignModeSel'); e.value = 'none'; e.dispatchEvent(new Event('change', { bubbles: true })); }")
         check(t, "Align photos: 'None' removes the alignment (photos as they came out)", t.wait(lambda: saved() == "" and (t.session(s) or {}).get("alignMode") == "none", 8), saved())
         time.sleep(1.5)

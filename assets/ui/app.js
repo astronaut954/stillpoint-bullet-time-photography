@@ -6845,10 +6845,22 @@
       sync(); layout(); save();
     }, { kind: "btn-secondary", title: "Centre this photo and make it the smallest size that still covers the canvas (the rotation stays)" }));
     // (no passo 3 do Align cameras, "reset" é voltar ao valor da haste: sem valor nenhum a câmera ficaria sem alinhamento)
-    resets.appendChild(button("Reset photo", () => { clearTimeout(saveTimer); clearTimeout(saveSoonTimer); if (rigStep) st.align.byFile[item.file] = rigStep.stickOf(item.file); else delete st.align.byFile[item.file]; alignSave(session, st); expTrack(); rerender(); },
-      { kind: "btn-secondary", title: rigStep ? "This photo goes back to the values from the stick" : "" }));
-    resets.appendChild(button("Reset all", () => { clearTimeout(saveTimer); clearTimeout(saveSoonTimer); if (rigStep) items.forEach((it) => { st.align.byFile[it.file] = rigStep.stickOf(it.file); }); else st.align.byFile = {}; alignSave(session, st); expTrack(); rerender(); },
-      { kind: "btn-secondary", title: rigStep ? "Every photo goes back to the values from the stick" : "" }));
+    // No Export, com "Rig" escolhido em Alignment, "reset" é voltar ao alinhamento do rig (defeito apontado pelo dono,
+    // 2026-11-26: zerava tudo). O espelhamento sai junto, como no reset sem rig.
+    const rigOn = () => !rigStep && !!rigOf(session) && alignModeOf(session, st) === "rig";
+    const resetTo = (all) => {
+      clearTimeout(saveTimer); clearTimeout(saveSoonTimer);
+      if (rigStep) (all ? items : [item]).forEach((it) => { st.align.byFile[it.file] = rigStep.stickOf(it.file); });
+      else if (all) st.align.byFile = {};
+      else if (rigOn()) st.align.byFile[item.file] = ALIGN_ID();  // (fica no lugar na lista; o rigApply troca pelo valor do rig)
+      else delete st.align.byFile[item.file];
+      if (rigOn()) { rigApply(session, st, all).then((changed) => { if (!changed) alignSave(session, st); expTrack(); rerender(); }); return; }
+      alignSave(session, st); expTrack(); rerender();
+    };
+    resets.appendChild(button("Reset photo", () => resetTo(false),
+      { kind: "btn-secondary", title: rigStep ? "This photo goes back to the values from the stick" : rigOn() ? "This photo goes back to the alignment of the rig" : "" }));
+    resets.appendChild(button("Reset all", () => resetTo(true),
+      { kind: "btn-secondary", title: rigStep ? "Every photo goes back to the values from the stick" : rigOn() ? "Every photo goes back to the alignment of the rig" : "" }));
     self.appendChild(resets);
     const cf = el("div", "align-cf", "Measuring the photos…");  // o quadro comum numa linha, aqui mesmo
     self.appendChild(cf);
