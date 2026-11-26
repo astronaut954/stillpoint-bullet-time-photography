@@ -2869,9 +2869,9 @@ def scenario_align_uneven(t, name, photos):
         t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .export-strip li.frame').length") == 4, 10)
         d = t.js("() => { const w = document.getElementById('csAlignUneven'), sv = document.querySelector('#csAlignMain .rig-outer'), foot = [...document.querySelectorAll('#csAlign button')].find((x) => x.textContent.trim() === 'Save alignment'); return { text: w ? w.textContent + ' | ' + (w.dataset.itip || '') : '', label: w ? w.textContent : '', after: !!w && !!w.closest('.rig-top') && w.nextElementSibling && w.nextElementSibling.id === 'alignKeeps', save: !!foot && !foot.disabled }; }")
         check(t, "align, uneven marks: the same label in step 3, in the top row next to Keeps, and 'Save alignment' still works", d["label"] == "Marks not at equal distances" and "matched by the length of the pole" in d["text"] and "use three marks" not in d["text"] and d["after"] and d["save"], d)
-        # (aqui as câmeras fotografaram todas na mesma forma: "As shot" vale e nada espera uma escolha)
+        # (o projeto já tem um alinhamento salvo em 3:2, do cenário anterior: o passo 3 começa nessa proporção)
         ru = rig_state(t)
-        check(t, "align, step 3: with every camera in the same shape, As shot is the choice and no Mixed ratios label shows", ru["seg"].startswith("As shot* ") and ru["mixed"] == "", ru)
+        check(t, "align, step 3: a new alignment starts from the ratio saved with the previous one", ru["seg"] == "As shot- 3:2* 4:3 16:9 1:1" and ru["save"] == "Save alignment" and "cropped to 3:2" in ru["mixed"], ru)
         check(t, "align uneven: no page error", len(t.errors) == errors_before, t.errors[errors_before:])
     finally:
         t.js("() => { const c = [...document.querySelectorAll('#csAlign button')].find((b) => b.textContent.trim() === 'Cancel'); if (c && !document.getElementById('csAlign').classList.contains('hidden')) c.click(); }")
