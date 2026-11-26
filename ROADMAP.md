@@ -1771,6 +1771,13 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      E já deslocar a vista no mesmo gesto (antes só parava): FEITO, com teste (`exp.alignStartPan`: a tela é
      refeita ao parar e o editor novo continua o gesto). (4) O ajuste do `CMakeLists.txt` que escolhia o SDK da
      versão do sistema foi RETIRADO a pedido do dono (não havia motivo comprovado para existir).
+     Retornos do dono sobre a Y4 (2026-11-25, gravação e captura), FEITOS, AGUARDANDO TESTE: (a) ao entrar e sair
+     do modo de tocar mudavam a altura e a posição das coisas e sumia o Back to the stick values: a linha de cima
+     agora é igual nos dois estados (teste automático compara as posições); (b) em janela com pouca altura os
+     botões da barra de ferramentas sumiam: a barra passa a se reorganizar em mais colunas para caber na foto
+     grande (vale também no Align photos do Export), e a barra de tocar quebra de linha em foto estreita; (c) a
+     barra de tocar passa a se comportar como a de ferramentas, só que em cima: escondida, com um puxador na
+     borda de cima, e desce com o mouse perto da borda de cima ou em cima dela.
      Pergunta do dono: alinhar sem as marcas, por um objeto ou pessoa da cena. É a parte 7 (From this scene), já
      prevista, a fazer antes do rig reutilizável.
      **Decisões do dono no meio dos testes (2026-11-24), a fazer DEPOIS dos roteiros:** (i) arrastar os pontos

@@ -4120,9 +4120,9 @@
     ed.playing = false; ed.view = null; ed.paint = null;
     alRender();
   }
-  // Linha de cima: só a volta aos valores da haste (o Keeps entra antes, pelo editor)
+  // Linha de cima: só a volta aos valores da haste (o Keeps entra antes, pelo editor). Fica igual tocando ou não:
+  // nada muda de lugar ao entrar e sair do modo de tocar (pedido do dono, 2026-11-25)
   function alEditTop(ed, box) {
-    if (ed.playing) return;
     const back = button("Back to the stick values", () => {
       ed.items.forEach((it) => { ed.st.align.byFile[it.file] = Object.assign({}, ed.stick[it.file]); });
       alEditChanged(ed); alRender();
@@ -6313,6 +6313,13 @@
     });
     stage.addEventListener("pointerleave", () => toolsNear(false));
     grip.addEventListener("pointerenter", () => toolsNear(true));
+    // Foto grande baixa (janela com pouca altura): a barra se reorganiza em mais colunas em vez de perder botões
+    // (pedido do dono, 2026-11-25)
+    const fitTools = () => {
+      const avail = stage.clientHeight - 20;
+      if (avail <= 0) return;
+      for (let cols = 1; cols <= 5; cols += 1) { tools.style.setProperty("--cols", cols); if (tools.offsetHeight <= avail) break; }
+    };
     paintTools(true);
     exp.alignToolKey = (letter) => { const t = TOOLS.find((x) => x[3] === letter); if (!t) return false; alignPrefs.tool = t[0]; saveAlignPrefs(); paintTools(); return true; };
     // Fileira de miniaturas, com um ponto da cor da referência
@@ -6752,7 +6759,8 @@
       sync(); layout(); markPosDots();
       if (playing) rigStep.attach({ show: showFrame, at: () => playAt });
     });
-    if (window.ResizeObserver) new ResizeObserver(layout).observe(stage);
+    if (window.ResizeObserver) new ResizeObserver(() => { layout(); fitTools(); }).observe(stage);
+    fitTools();
 
     // Etiquetas da prévia (o tamanho do canvas e a instrução embaixo): somem enquanto o mouse se mexe sobre a prévia ou
     // o espaço está seguro, e voltam 2 s depois de parar
@@ -6788,7 +6796,7 @@
     // Enquanto o botão está apertado o cursor é o mesmo na tela toda, não só em cima da foto grande
     const holdCursor = (value) => { document.body.style.setProperty("--drag-cursor", value || getComputedStyle(stage).cursor); document.body.classList.add("align-drag"); };
     stage.addEventListener("pointerdown", (e) => {
-      if (e.button !== 0 || e.target.closest("button") || e.target.closest(".align-tools, .align-tools-grip, .align-play") || !sizes[item.file]) return;
+      if (e.button !== 0 || e.target.closest("button") || e.target.closest(".align-tools, .align-tools-grip, .align-play, .align-play-grip") || !sizes[item.file]) return;
       e.preventDefault();
       // Tocando a sequência: clicar ou arrastar na foto grande sai do modo de tocar, e o mesmo gesto, se a pessoa
       // segurar e arrastar, já desloca a vista (pedidos do dono, 2026-11-25). A tela é refeita ao parar, então quem
@@ -6877,7 +6885,25 @@
     };
     // Passo 3 do Align cameras: os controles de tocar ficam sobre a foto grande, no canto de cima à direita, como na
     // tela cheia da janela principal (forma Y4, escolha do dono em 2026-11-25)
-    if (rigStep) { const bar = el("div", "align-play"); bar.id = "alignPlayBar"; rigStep.transport(bar); stage.appendChild(bar); }
+    // Ela se comporta como a barra de ferramentas, só que em cima: some para cima e volta com o mouse perto da borda
+    // de cima (ou no puxador); em foto grande estreita, os controles quebram de linha (pedidos do dono, 2026-11-25)
+    if (rigStep) {
+      const bar = el("div", "align-play"); bar.id = "alignPlayBar"; rigStep.transport(bar);
+      const pgrip = el("div", "align-play-grip"); pgrip.innerHTML = icon("grip", 12); pgrip.title = "Play the sequence";
+      stage.append(bar, pgrip);
+      const playNear = (near) => { alignScreen.playNear = near; stage.classList.toggle("play-near", near); };
+      if (alignScreen.playNear) stage.classList.add("play-near");
+      const placeGrip = () => { pgrip.style.right = Math.max(0, 10 + bar.offsetWidth / 2 - 34) + "px"; };
+      stage.addEventListener("pointermove", (e) => {
+        const r = stage.getBoundingClientRect(); const x = e.clientX - r.left, y = e.clientY - r.top;
+        const inBar = y < bar.offsetTop + bar.offsetHeight + TOOLS_PAD && x > bar.offsetLeft - TOOLS_PAD && x < bar.offsetLeft + bar.offsetWidth + TOOLS_PAD;
+        playNear(inBar || y < 14);
+      });
+      stage.addEventListener("pointerleave", () => playNear(false));
+      pgrip.addEventListener("pointerenter", () => playNear(true));
+      placeGrip();
+      if (window.ResizeObserver) new ResizeObserver(placeGrip).observe(stage);
+    }
     // Tocando: as setas trocam de foto (pausando) e as teclas das ferramentas e de mover não valem
     if (playing) { exp.keyMove = null; exp.alignToolKey = null; exp.keyNav = (d) => rigStep.playStep(d); }
   }

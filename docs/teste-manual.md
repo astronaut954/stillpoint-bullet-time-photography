@@ -2502,6 +2502,11 @@ Em **Export sessions** › sessão com mais de uma foto › **Align photos**.
       **‹** **›** trocam de câmera. **▶** toca na própria tela: somem as fotos de referência por cima, as alças, a barra
       de ferramentas e o que está fora do canvas; o painel da direita fica apagado; o **▶** vira pausa e aparece **Stop**.
 - [ ] Tocando, um clique na foto grande para de tocar. Clicar, segurar e arrastar para de tocar e já desloca a vista.
+- [ ] A barra de tocar fica escondida em cima, com um puxador na borda de cima da foto grande; desce com o mouse
+      perto da borda de cima e some quando ele se afasta (como a barra de ferramentas da esquerda).
+- [ ] Entrar e sair do modo de tocar: nada muda de lugar nem de altura, e **Back to the stick values** continua lá.
+- [ ] Janela com pouca altura: a barra de ferramentas da esquerda se reorganiza em mais colunas e nenhum botão some
+      (conferir também no **Align photos** do Export). Janela estreita: os controles de tocar quebram de linha.
 - [ ] Ajustar a câmera 01, ir para outra câmera e **⌘Z**: o programa volta para a câmera 01 e desfaz o ajuste.
 - [ ] **Back to the stick values**: todas as fotos voltam aos valores da haste e o rodapé volta a "0 photos".
 - [ ] Ajustar uma foto e **Save alignment**: o **Activity** diz "(N cameras, 1 adjusted by hand)". Fotografar uma sessão

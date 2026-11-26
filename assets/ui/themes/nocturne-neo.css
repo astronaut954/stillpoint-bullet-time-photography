@@ -1659,14 +1659,14 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .align-stage.dragging { cursor: move; }  /* movendo a foto: as quatro setas, não a mão (pedido do dono, 2026-11-24) */
 /* Barra de ferramentas dentro da foto grande do Align photos: some para a esquerda e volta com o mouse perto da borda;
    escondida, fica o puxador com a seta. Ferramenta escolhida = cheia; guia ligada = faixa acesa ao lado (forma C3). */
-.align-tools { position: absolute; left: 10px; top: 50%; z-index: 6; display: flex; flex-direction: column; gap: 4px; padding: 6px; background: rgba(0, 12, 4, .86); border: 1px solid var(--noct-border-strong); transform: translate(calc(-100% - 12px), -50%); opacity: 0; transition: transform .5s ease, opacity .5s ease; }
+.align-tools { position: absolute; left: 10px; top: 50%; z-index: 6; display: grid; grid-template-columns: repeat(var(--cols, 1), 36px); gap: 4px; padding: 6px; background: rgba(0, 12, 4, .86); border: 1px solid var(--noct-border-strong); transform: translate(calc(-100% - 12px), -50%); opacity: 0; transition: transform .5s ease, opacity .5s ease; }
 .align-stage.tools-near .align-tools { transform: translate(0, -50%); opacity: 1; transition-duration: .16s; }
 .align-tools svg, .align-tools-grip svg { stroke-width: 1.1; }
 .align-tool, .align-guide { width: 36px; height: 36px; box-sizing: border-box; display: grid; place-items: center; padding: 0; background: transparent; color: var(--noct-primary); cursor: pointer; border-radius: 0; }
 .align-tool { border: 1px solid var(--noct-border-strong); }
 .align-tool:hover { border-color: var(--noct-primary); }
 .align-tool.on { background: var(--noct-primary); border-color: var(--noct-primary); color: var(--noct-on-primary); }
-.align-tools-sep { height: 1px; background: var(--noct-border-strong); margin: 5px 0 3px; }
+.align-tools-sep { grid-column: 1 / -1; height: 1px; background: var(--noct-border-strong); margin: 5px 0 3px; }
 .align-guide { position: relative; border: 0; padding-left: 3px; color: var(--noct-text-dim); }
 .align-guide::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--noct-border-strong); }
 .align-guide.on { color: var(--noct-primary); background: rgba(var(--noct-primary-rgb), .12); }
@@ -2526,10 +2526,15 @@ body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform:
 .align-stage.playing .align-tools, .align-stage.playing .align-tools-grip, .align-stage.playing .align-box { display: none !important; }
 .align-stage.playing, .align-stage.playing * { cursor: grab; }
 .align-panel.playing { opacity: .4; pointer-events: none; }
-.align-play { position: absolute; right: 10px; top: 10px; z-index: 6; display: flex; align-items: center; gap: 10px; padding: 6px 10px; background: rgba(0, 12, 4, .86); border: 1px solid var(--noct-border-strong); white-space: nowrap; }
+.align-play { position: absolute; right: 10px; top: 10px; z-index: 6; box-sizing: border-box; max-width: calc(100% - 20px); display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px 10px; padding: 6px 10px; background: rgba(0, 12, 4, .86); border: 1px solid var(--noct-border-strong); white-space: nowrap; transform: translateY(calc(-100% - 12px)); opacity: 0; transition: transform .5s ease, opacity .5s ease; }
+.align-stage.play-near .align-play { transform: none; opacity: 1; transition-duration: .16s; }
+.align-play-grip { position: absolute; top: 0; right: 10px; width: 68px; height: 12px; z-index: 6; box-sizing: border-box; display: grid; place-items: center; background: rgba(0, 12, 4, .9); border: 1px solid var(--noct-border-strong); border-top: 0; color: var(--noct-primary); box-shadow: 0 0 14px rgba(var(--noct-primary-rgb), .55), 0 0 3px rgba(var(--noct-primary-rgb), .7); transition: opacity .5s ease; cursor: pointer; }
+.align-play-grip svg { transform: rotate(90deg); stroke-width: 1.1; }
+.align-stage.play-near .align-play-grip { opacity: 0; pointer-events: none; transition-duration: .16s; }
 .align-stage .align-play, .align-stage .align-play * { cursor: default; }
 .align-stage .align-play button, .align-stage .align-play label, .align-stage .align-play label * { cursor: pointer; }
-.rig-play-ctl { display: inline-flex; align-items: center; gap: 6px; }
+.align-stage.playing .align-play-grip, .align-stage.playing .align-play-grip * { cursor: pointer; }
+.rig-play-ctl { display: inline-flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px; }
 .rig-play-ctl .log-option { margin-left: 8px; }
 .rig-play-ctl .play-speed { min-width: 44px; text-align: center; font: 600 12px var(--noct-font-mono); }
 #csAlignNote.rig-note { font: 500 11px var(--noct-font-mono); letter-spacing: .12em; text-transform: uppercase; }

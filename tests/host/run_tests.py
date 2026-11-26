@@ -1947,7 +1947,14 @@ def scenario_align_cameras(t, name, photos):
         t.button("Review alignment")
         t.wait(lambda: t.js("() => !!document.querySelector('#csAlignMain .align-stage') && !document.querySelector('#csAlignMain .align-wait') && /Keeps/.test(document.getElementById('alignKeeps').textContent)"), 15)
         s3 = lambda: t.js("() => { const f = [...document.querySelectorAll('#csAlignMain .align-num')].map((i) => i.value); return { on: document.getElementById('csAlignStep3').classList.contains('on'), thumbs: document.querySelectorAll('#csAlignMain .export-strip li.frame:not(.gone)').length, where: (document.querySelector('#csAlignMain .align-where') || {}).textContent || '', fields: f, tools: !!document.getElementById('alignTools'), flip: !!document.querySelector('#csAlignMain .flip-row'), ratio: /Aspect ratio/.test(document.getElementById('csAlignMain').textContent), note: document.getElementById('csAlignNote').textContent, back: document.getElementById('alignBackStick').disabled, play: (document.getElementById('alignPlay') || {}).title || '', bar: (() => { const b = document.getElementById('alignPlayBar'), s = document.querySelector('#csAlignMain .align-stage').getBoundingClientRect(), r = b.getBoundingClientRect(); return [b.parentNode.classList.contains('align-stage'), Math.round(s.right - r.right), Math.round(r.top - s.top), b.textContent.includes('Speed') && b.textContent.includes('Reverse loop')]; })(), topRow: document.querySelector('#csAlignMain .rig-top').textContent, sub: document.getElementById('csAlignSub').textContent }; }")
+        # (a barra de tocar fica escondida em cima e aparece com o mouse perto da borda de cima da foto grande)
+        sb0 = t.page.locator("#csAlignMain .align-stage").bounding_box()
+        t.page.mouse.move(sb0["x"] + sb0["width"] / 2, sb0["y"] + sb0["height"] / 2); time.sleep(0.8)
+        hid = t.js("() => { const b = document.getElementById('alignPlayBar'), g = document.querySelector('#csAlignMain .align-play-grip'), s = document.querySelector('#csAlignMain .align-stage').getBoundingClientRect(), r = g.getBoundingClientRect(); return [getComputedStyle(b).opacity, getComputedStyle(g).opacity, Math.round(r.top - s.top), b.getBoundingClientRect().bottom <= s.top + 1]; }")
+        check(t, "align, step 3: the play bar is hidden above the big photo, with a grip at the top edge (like the tool bar on the left)", hid[:2] == ["0", "1"] and hid[2] in (0, 1) and hid[3], hid)
+        t.page.mouse.move(sb0["x"] + sb0["width"] / 2, sb0["y"] + 6); time.sleep(0.5)
         d3 = s3()
+        check(t, "align, step 3: with the mouse near the top edge the play bar comes down", t.js("() => getComputedStyle(document.getElementById('alignPlayBar')).opacity") == "1" and t.js("() => document.querySelector('#csAlignMain .align-stage').classList.contains('play-near')"))
         check(t, "align: step 3 is the Align photos editor on the four photos (big photo, tools, Move/Size/Rotate, thumbnails), opening with the values from the stick",
               d3["on"] and d3["thumbs"] == 4 and d3["where"].startswith("Camera 01 of 04") and len(d3["fields"]) == 4 and d3["tools"] and "Adjust any photo by hand and play the sequence" in d3["sub"], d3)
         check(t, "align: step 3 has no Flip and no Aspect ratio (the camera alignment does not keep them), 'Play the sequence' and 'Back to the stick values' (off: nothing adjusted)",
@@ -1958,10 +1965,13 @@ def scenario_align_cameras(t, name, photos):
         check(t, "align: step 3 says how much of each photo the alignment keeps (amber below 80%)",
               bool(keeps) and keeps[1].startswith("Keeps ") and keeps[1].endswith("% of each photo") and ("warn" in keeps[0]) == (int(keeps[1].split("Keeps ")[1].split("%")[0]) < 80), keeps)
         # Tocar a sequência: na própria tela, sem as referências por cima e sem as alças; ‹ pausa ›, Speed, Reverse loop
+        geo_idle = t.js("() => { const r = (e) => { const b = e.getBoundingClientRect(); return [Math.round(b.left), Math.round(b.top), Math.round(b.width), Math.round(b.height)]; }; const m = document.getElementById('csAlignMain'); return { top: r(m.querySelector('.rig-top')), stage: r(m.querySelector('.align-stage')), panel: r(m.querySelector('.align-panel')), strip: r(m.querySelector('.export-strip')), back: !!document.getElementById('alignBackStick'), keeps: r(document.getElementById('alignKeeps')) }; }")
         t.js("() => document.getElementById('alignPlay').click()")
         t.wait(lambda: t.js("() => !!document.querySelector('#csAlignMain .align-stage.playing') && [...document.querySelectorAll('#csAlignMain .align-layer')].some((l) => l.style.visibility === 'visible')"), 10)
         pl = lambda: t.js("() => { const st = document.querySelector('#csAlignMain .align-stage'), ls = [...document.querySelectorAll('#csAlignMain .align-layer')]; return { stage: !!st, layers: ls.length, vis: ls.filter((l) => l.style.visibility === 'visible').length, refs: document.querySelectorAll('#csAlignMain .align-layer.align-ref').length, box: getComputedStyle(document.querySelector('#csAlignMain .align-box')).display, tools: getComputedStyle(document.getElementById('alignTools')).display, clip: document.querySelector('#csAlignMain .align-layers').style.clipPath.slice(0, 5), tag: document.querySelector('#csAlignMain .align-stage .crop-tag').textContent, where: document.querySelector('#csAlignMain .align-where').textContent, ctl: (document.querySelector('#csAlignMain .rig-play-ctl') || {}).textContent || '', stop: !!document.getElementById('alignPlayStop'), play: !!document.getElementById('alignPlay'), panel: document.querySelector('#csAlignMain .align-panel').classList.contains('playing'), sel: [...document.querySelectorAll('#csAlignMain .export-strip li.frame')].findIndex((l) => l.classList.contains('selected')) }; }")
         d = pl()
+        geo = lambda: t.js("() => { const r = (e) => { const b = e.getBoundingClientRect(); return [Math.round(b.left), Math.round(b.top), Math.round(b.width), Math.round(b.height)]; }; const m = document.getElementById('csAlignMain'); return { top: r(m.querySelector('.rig-top')), stage: r(m.querySelector('.align-stage')), panel: r(m.querySelector('.align-panel')), strip: r(m.querySelector('.export-strip')), back: !!document.getElementById('alignBackStick'), keeps: r(document.getElementById('alignKeeps')) }; }")
+        check(t, "align, play the sequence: nothing changes place or height on entering the play mode, and 'Back to the stick values' stays", geo() == geo_idle and geo()["back"], (geo_idle, geo()))
         check(t, "align, play the sequence: it plays in the same screen (the editor stays), one photo at a time, with no reference photos over it",
               d["stage"] and d["layers"] == 4 and d["vis"] == 1 and d["refs"] == 0 and "as it will be after the alignment" in d["tag"] and "playing" in d["where"], d)
         check(t, "align, play the sequence: while it plays the handles, the tool bar and what is outside the canvas are hidden, and the panel on the right waits",
@@ -1982,6 +1992,21 @@ def scenario_align_cameras(t, name, photos):
         d4b = pl()
         check(t, "align, play the sequence: Stop goes back to adjusting on the photo that was showing (handles, tools and references back)",
               d4b["play"] and not d4b["stop"] and d4b["box"] != "none" and d4b["tools"] != "none" and not d4b["panel"] and d4b["where"].startswith("Camera %02d of 04" % (shown + 1)), (shown, d4b))
+        # Janela com pouca altura: a barra de ferramentas se reorganiza em colunas e cabe inteira na foto grande; a
+        # barra de tocar quebra de linha quando a foto grande é estreita
+        vp = t.page.viewport_size
+        t.page.set_viewport_size({"width": vp["width"], "height": 600}); time.sleep(0.8)
+        t.page.mouse.move(sb0["x"] + 4, t.page.locator("#csAlignMain .align-stage").bounding_box()["y"] + 60); time.sleep(0.5)
+        fit = t.js("() => { const s = document.querySelector('#csAlignMain .align-stage').getBoundingClientRect(), tb = document.getElementById('alignTools'), bs = [...tb.querySelectorAll('button')].map((b) => b.getBoundingClientRect()); return { stage: Math.round(s.height), cols: getComputedStyle(tb).getPropertyValue('--cols').trim(), n: bs.length, inside: bs.every((b) => b.top >= s.top - 0.5 && b.bottom <= s.bottom + 0.5 && b.left >= s.left - 0.5), near: document.querySelector('#csAlignMain .align-stage').classList.contains('tools-near') }; }")
+        check(t, "align tools, short window: the tool bar reorganises into more columns and every button stays inside the big photo", fit["near"] and fit["n"] >= 9 and fit["inside"] and int(fit["cols"] or 1) >= 2, fit)
+        t.shot("align-step3-short")
+        t.page.set_viewport_size({"width": 900, "height": vp["height"]}); time.sleep(0.8)
+        sbn = t.page.locator("#csAlignMain .align-stage").bounding_box()
+        t.page.mouse.move(sbn["x"] + sbn["width"] / 2, sbn["y"] + 5); time.sleep(0.5)
+        fitp = t.js("() => { const s = document.querySelector('#csAlignMain .align-stage').getBoundingClientRect(), b = document.getElementById('alignPlayBar').getBoundingClientRect(); return [Math.round(s.width), b.left >= s.left - 0.5 && b.right <= s.right + 0.5, Math.round(b.height)]; }")
+        check(t, "align, play bar, narrow window: the controls wrap and stay inside the big photo", fitp[1], fitp)
+        t.shot("align-step3-narrow")
+        t.page.set_viewport_size(vp); time.sleep(0.8)
         # Clicar na foto grande enquanto toca sai do modo de tocar
         t.js("() => document.getElementById('alignPlay').click()")
         t.wait(lambda: t.js("() => !!document.querySelector('#csAlignMain .align-stage.playing')"), 10); time.sleep(0.4)
