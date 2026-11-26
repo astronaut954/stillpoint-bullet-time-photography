@@ -1979,7 +1979,21 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      painel vira "All photos · 01–04", miniaturas com contorno laranja): G1 botão largo no topo do This photo, G2
      botão na barra de ferramentas, G3 botão na linha de cima antes de Alignment; canvas ("Resize canvas", tecla C
      sugerida, oito alças): C1 o bloco "Canvas" entra no lugar do This photo, C2 aparece acima dele. Textos e a
-     tecla são sugestão do agente. AGUARDA A ESCOLHA DO DONO (uma por assunto).
+     tecla são sugestão do agente.
+     **ESCOLHAS DO DONO (2026-11-26, 18:20): AN2, G2 e C1.** Âncora: **presa à foto** (a grade são os 9 pontos da
+     foto); **na edição global, presa ao canvas.**
+     ÂNCORA FEITA, AGUARDANDO TESTE (seção 76): guardada com a foto como 7º e 8º números do texto do alinhamento
+     (frações da foto; o programa lê só os seis primeiros, então a exportação não muda); sem âncora posta vale a de
+     partida (Export: o ponto da foto que está no centro do canvas; Align cameras: a marca do meio da haste);
+     `pin` dentro do `tryApply` mantém a âncora no lugar quando o tamanho ou o giro mudam (botões, números, alças,
+     ferramentas, ⌥ + roda). Reset photo, Reset all e Back to automatic tiram a âncora posta. LIMITES, A DECIDIR:
+     (1) no Align cameras a âncora posta não é gravada com o alinhamento do rig (recomeça na marca do meio);
+     (2) numa foto sem ajuste nenhum (sessão sem alinhamento) a âncora posta não é gravada até a foto ser mexida;
+     (3) mudar a âncora não conta como "edited". CONSEQUÊNCIA da âncora de partida no centro do canvas: numa foto
+     fora do centro, mudar Size passa a mudar Move X e Move Y (antes o tamanho mudava em volta do centro da foto).
+     Testes automáticos: Align cameras 107 de 107 (três verificações novas; o teste de mover passou a começar fora
+     do losango), Flip 64 de 64, desfazer do Align photos conferido; rodada completa não refeita.
+     FALTA: botão de edição global (G2) e ferramenta do canvas (C1).
      3. IDEIA PARA DEPOIS (só anotar): a feature de label passar a aceitar várias labels, não só uma.
      **PASSAGEM PARA UM CHAT NOVO (2026-11-26):** o dono pediu um prompt de continuação porque as respostas
      estavam demorando demais. Ordem combinada do que falta, do mais próximo ao mais distante: (a) item 1 acima;

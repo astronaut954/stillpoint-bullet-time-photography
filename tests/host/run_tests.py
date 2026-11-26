@@ -1990,7 +1990,7 @@ def scenario_align_cameras(t, name, photos):
         # e sem saltar; ao voltar para dentro, segue o mouse de novo (gravação do dono, 2026-11-26)
         t.page.keyboard.press("m"); time.sleep(0.2)
         sbm = t.page.locator("#csAlignMain .align-stage").bounding_box()
-        mx0, my0 = sbm["x"] + sbm["width"] / 2, sbm["y"] + sbm["height"] / 2
+        mx0, my0 = sbm["x"] + sbm["width"] / 2 - 70, sbm["y"] + sbm["height"] / 2 - 50  # (fora do losango da âncora, que fica na marca do meio)
         pos = lambda: [float(x) for x in s3()["fields"][:2]]
         p0 = pos(); rot0 = float(s3()["fields"][3])
         t.page.mouse.move(mx0, my0); t.page.mouse.down(); t.page.mouse.move(mx0 + 60, my0 + 2); time.sleep(0.15)
@@ -2290,8 +2290,8 @@ def scenario_align_cameras(t, name, photos):
               notes: [...ex.querySelectorAll('.align-rig:not(.hidden)')].map((e) => e.closest('.align-ctl').querySelector('.align-lab').textContent + ':' + e.textContent),
               boxes: [...ex.querySelectorAll('.align-num.rig-edited')].length }; }""")
         m1 = marks()
-        check(t, "Align photos: an edited photo is marked (selector '· edited' in amber, square and 'Edited' on its thumbnail, 'Edited' tag and the rig value next to Size)",
-              m1["sel"].endswith(" · edited") and m1["amber"] and m1["thumbs"].count("dw") == 1 and m1["tag"] and len(m1["notes"]) == 1 and re.match(r"Size:Rig \d+\.\d$", m1["notes"][0]) and m1["boxes"] == 1, m1)
+        check(t, "Align photos: an edited photo is marked (selector '· edited' in amber, square and 'Edited' on its thumbnail, 'Edited' tag and the rig value next to Size; with the anchor off the photo centre, Move changes too)",
+              m1["sel"].endswith(" · edited") and m1["amber"] and m1["thumbs"].count("dw") == 1 and m1["tag"] and any(re.match(r"Size:Rig \d+\.\d$", n) for n in m1["notes"]) and m1["boxes"] == len(m1["notes"]), m1)
         t.button("Back to automatic")
         check(t, "Align photos: 'Back to automatic' returns to the alignment of the rig", t.wait(lambda: saved() == auto_text and back_off() is True, 8), saved())
         time.sleep(0.6)
@@ -2311,6 +2311,29 @@ def scenario_align_cameras(t, name, photos):
         check(t, "Align photos: undo of 'Reset photo' brings the adjustment back in one step", t.wait(lambda: saved() != auto_text and len(parse(saved())) == 4, 8), saved())
         t.button("Back to automatic")
         t.wait(lambda: saved() == auto_text, 8)
+        # Âncora (AN2): a grade no título, o losango na foto, e Size e Rotate em volta dela (o ponto não sai do lugar)
+        amark = lambda: t.js("() => { const m = document.querySelector('#exportSettings .align-anchor-mark').getBoundingClientRect(); return [Math.round(m.left), Math.round(m.top)]; }")
+        agrid = lambda: t.js("() => [...document.querySelectorAll('#exportSettings .align-anchor-dot')].map((d) => (d.classList.contains('on') ? 'X' : '.')).join('')")
+        fvals = lambda: t.js("() => [...document.querySelectorAll('#exportSettings .align-ctl .align-num')].map((i) => parseFloat(i.value))")
+        time.sleep(0.6)
+        t.page.click("#exportSettings .align-anchor-dot:nth-child(5)")
+        time.sleep(0.6)
+        a0, v0 = amark(), fvals()
+        check(t, "anchor: the grid in the title of This photo puts the anchor on a point of the photo (centre) and lights that square", agrid() == "....X...." and len(parse(saved())) == 4 and ",0.5000,0.5000" in saved(), (agrid(), saved()))
+        t.page.mouse.move(a0[0], a0[1]); t.page.mouse.down(); t.page.mouse.move(a0[0] - 160, a0[1] - 120, steps=4); t.page.mouse.up()
+        time.sleep(0.6)
+        a1 = amark()
+        check(t, "anchor: dragging the mark on the photo moves the anchor freely (no square lit), and the photo stays", abs(a1[0] - (a0[0] - 160)) <= 2 and abs(a1[1] - (a0[1] - 120)) <= 2 and agrid() == "........." and fvals() == v0, (a0, a1, agrid(), fvals(), v0))
+        b.click(modifiers=["Shift"])
+        time.sleep(0.6)
+        t.page.locator('#exportSettings .align-ctl', has_text="Rotate").locator("button").nth(1).click(modifiers=["Shift"])
+        time.sleep(0.6)
+        a2, v2 = amark(), fvals()
+        check(t, "anchor: Size and Rotate act around it (the anchor stays where it was on the screen; Move X and Move Y follow)",
+              abs(a2[0] - a1[0]) <= 1 and abs(a2[1] - a1[1]) <= 1 and v2[2] != v0[2] and v2[3] != v0[3] and (v2[0] != v0[0] or v2[1] != v0[1]), (a1, a2, v0, v2))
+        t.button("Back to automatic")
+        t.wait(lambda: saved() == auto_text, 8)
+        time.sleep(0.6)
         # Espelhada conta como mexida: ganha as marcas, acende o "Back to automatic", e ele tira o espelhamento
         time.sleep(0.6)
         t.page.click("#exportSettings .flip-btn[data-flip=h]")

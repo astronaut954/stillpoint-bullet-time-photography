@@ -2656,6 +2656,27 @@ Decisão do dono (2026-11-26, 17:54), a conferir:
       espelhamento e as marcas somem. **⌘Z** traz o espelhamento de volta.
 - [x] Com fotos mexidas e espelhadas, **Back to automatic** volta tudo ao rig, sem espelhamento.
 
+## 76. Âncora da foto no Align photos (2026-11-26, câmeras simuladas servem)
+
+- [ ] **Export sessions** › aba **Framing** › **Align photos**: no título do painel **This photo** (à direita) há a
+      palavra "Anchor" e uma grade de 9 quadrados; na foto grande há um losango com a etiqueta "Anchor", no centro
+      do canvas.
+- [ ] Sem mexer na âncora, mudar **Size** e **Rotate**: a foto cresce e gira em volta do centro do canvas (o losango
+      não sai do lugar). Numa foto fora do centro, **Move X** e **Move Y** mudam junto.
+- [ ] Clicar um quadrado da grade (por exemplo o de cima à esquerda): o losango vai para esse ponto DA FOTO e o
+      quadrado acende. Mudar **Size** e **Rotate** pelos botões **−** e **+**, digitando o número, pelas alças da
+      foto e pelas ferramentas **Resize photo** e **Rotate**: a foto muda em volta desse ponto.
+- [ ] Arrastar o losango para outro ponto da foto: nenhum quadrado fica aceso; **Size** e **Rotate** agem em volta
+      do ponto novo.
+- [ ] Mover a foto (ferramenta **Move**): o losango anda junto com ela (a âncora é presa à foto).
+- [ ] Trocar de foto e voltar: a âncora de cada foto continua onde foi posta. Fechar e abrir o programa: continua
+      (numa foto que já tem ajuste ou alinhamento do rig).
+- [ ] **⌘Z** depois de mudar a âncora: volta à anterior.
+- [ ] **Reset photo**, **Reset all** e **Back to automatic**: a âncora volta à de partida.
+- [ ] Tocando a sequência (botão de tocar em cima da foto): o losango some.
+- [ ] Passo **3 Save** do **Align cameras**: o losango começa na marca do meio da haste; a grade e o arraste
+      funcionam igual.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |

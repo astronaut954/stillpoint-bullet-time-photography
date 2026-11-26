@@ -4106,6 +4106,7 @@
       photo: (file, size) => orderPhoto(al.session, file, size),
       changed: () => alEditChanged(ed),
       stickOf: (f) => Object.assign({}, ed.stick[f]),
+      anchorOf: (f) => { const ph = photos.find((x) => x.file === f), d = ph && al.data[ph.camera], m = d && d.marks && d.marks[1]; return m ? { x: m[0], y: m[1] } : null; },
       touched: (f) => alEditTouched(ed, f),
       top: (box) => alEditTop(ed, box),
       transport: (bar) => alEditTransport(ed, bar),
@@ -5937,6 +5938,10 @@
   // posição: uma foto só espelhada continua seguindo a posição do recorte (alignIsIdentity não olha o flip).
   const ALIGN_ID = () => ({ dx: 0, dy: 0, scale: 1, rot: 0, base: 1, flip: 0 });
   function alignFlip(a) { return (a && a.flip) | 0; }
+  // Âncora da foto (decisão do dono, 2026-11-26: N2, presa à foto): o ponto em volta do qual Size e Rotate agem,
+  // em frações da foto (0 a 1). Sem âncora posta, vale a de partida: o centro do canvas no Export, a marca do meio
+  // da haste no Align cameras.
+  function alignAnchored(a) { return !!a && a.ax >= 0 && a.ax <= 1 && a.ay >= 0 && a.ay <= 1; }
   function alignBlank(a) { return alignIsIdentity(a) && !alignFlip(a); }  // nem ajuste nem espelhamento: não é guardada
   function flipCss(flip) { return flip ? " scale(" + (flip & 1 ? -1 : 1) + ", " + (flip & 2 ? -1 : 1) + ")" : ""; }
   function alignIsIdentity(a) { return !a || (Math.abs(a.dx) < 1e-6 && Math.abs(a.dy) < 1e-6 && Math.abs(a.scale - 1) < 1e-9 && Math.abs(a.rot) < 1e-9); }
@@ -5967,13 +5972,15 @@
     host.split(";").forEach((item) => {
       const colon = item.lastIndexOf(":");
       if (colon <= 0) return;
-      const [dx, dy, scale, rot, base, flip] = item.slice(colon + 1).split(",").map(Number);
-      st.align.byFile[item.slice(0, colon)] = { dx: dx || 0, dy: dy || 0, scale: scale > 0 ? scale : 1, rot: rot || 0, base: base > 0 ? base : (scale > 0 ? scale : 1), flip: (flip | 0) & 3 };
+      const [dx, dy, scale, rot, base, flip, ax, ay] = item.slice(colon + 1).split(",").map(Number);
+      const one = { dx: dx || 0, dy: dy || 0, scale: scale > 0 ? scale : 1, rot: rot || 0, base: base > 0 ? base : (scale > 0 ? scale : 1), flip: (flip | 0) & 3 };
+      if (ax >= 0 && ax <= 1 && ay >= 0 && ay <= 1) { one.ax = ax; one.ay = ay; }  // âncora da foto (frações da foto)
+      st.align.byFile[item.slice(0, colon)] = one;
     });
   }
   function alignText(st) {
     return Object.keys(st.align.byFile).filter((f) => !alignBlank(st.align.byFile[f]))
-      .map((f) => { const a = st.align.byFile[f]; return f + ":" + a.dx.toFixed(2) + "," + a.dy.toFixed(2) + "," + a.scale.toFixed(5) + "," + a.rot.toFixed(3) + "," + (a.base || a.scale).toFixed(5) + (alignFlip(a) ? "," + alignFlip(a) : ""); }).join(";");
+      .map((f) => { const a = st.align.byFile[f]; return f + ":" + a.dx.toFixed(2) + "," + a.dy.toFixed(2) + "," + a.scale.toFixed(5) + "," + a.rot.toFixed(3) + "," + (a.base || a.scale).toFixed(5) + (alignFlip(a) || alignAnchored(a) ? "," + alignFlip(a) : "") + (alignAnchored(a) ? "," + a.ax.toFixed(4) + "," + a.ay.toFixed(4) : ""); }).join(";");
   }
   const alignSent = {};  // por sessão: os últimos textos de alinhamento que esta janela mandou gravar
   function alignSave(session, st) {
@@ -6174,7 +6181,7 @@
       Object.keys(auto).forEach((f) => {
         const cur = st.align.byFile[f];
         if (!all && cur && !alignIsIdentity(cur) && rigEntryText(cur) !== old[f] && rigEntryText(cur) !== rigEntryText(auto[f])) return;  // ajuste da pessoa: fica
-        const next = Object.assign({}, auto[f], { flip: alignFlip(cur) });
+        const next = Object.assign({}, auto[f], { flip: alignFlip(cur) }, alignAnchored(cur) ? { ax: cur.ax, ay: cur.ay } : {});
         if (!cur || rigEntryText(cur) !== rigEntryText(next)) changed = true;
         st.align.byFile[f] = next;
       });
@@ -6698,10 +6705,10 @@
     const lockStart = () => { lockRect = usefulRect(); };
     // O menor tamanho (a partir de from) com que a foto cobre a área útil nessa posição e giro; null se nem 4× basta
     const minCoverScale = (cand, from) => {
-      if (covers(Object.assign({}, cand, { scale: from }))) return from;
+      if (covers(pin(Object.assign({}, cand, { scale: from })))) return from;
       let lo = from, hi = Math.min(20, from * 4);
-      if (!covers(Object.assign({}, cand, { scale: hi }))) return null;
-      for (let i = 0; i < 24; i++) { const mid = (lo + hi) / 2; if (covers(Object.assign({}, cand, { scale: mid }))) hi = mid; else lo = mid; }
+      if (!covers(pin(Object.assign({}, cand, { scale: hi })))) return null;
+      for (let i = 0; i < 24; i++) { const mid = (lo + hi) / 2; if (covers(pin(Object.assign({}, cand, { scale: mid })))) hi = mid; else lo = mid; }
       return hi;
     };
     const covers = (cand) => {
@@ -6710,22 +6717,47 @@
       return photoCovers(sz.w, sz.h, cand, lockRect);
     };
     // Tenta aplicar uma mudança; se descobrir a área útil, mantém o que havia (nos movimentos, tenta cada eixo)
+    // A âncora em uso, em px da foto a partir do centro dela; null = o centro da foto (nada a corrigir)
+    const anchorFrac = () => {
+      if (alignAnchored(a)) return { x: a.ax, y: a.ay };
+      const sz = sizes[item.file]; if (!sz) return { x: 0.5, y: 0.5 };
+      const first = rigStep && rigStep.anchorOf ? rigStep.anchorOf(item.file) : null;
+      if (first) return first;
+      // (Export: o ponto da foto que está no centro do canvas)
+      const fr = usefulRect(); if (!fr) return { x: 0.5, y: 0.5 };
+      const rad = a.rot * Math.PI / 180, cs = Math.cos(rad), sn = Math.sin(rad);
+      const wx = (fr.x + fr.w / 2 - a.dx) / a.scale, wy = (fr.y + fr.h / 2 - a.dy) / a.scale;
+      return { x: Math.max(0, Math.min(1, (wx * cs + wy * sn) / sz.w + 0.5)), y: Math.max(0, Math.min(1, (-wx * sn + wy * cs) / sz.h + 0.5)) };
+    };
+    // Onde um ponto da foto (frações) fica no canvas com o alinhamento c
+    const anchorAt = (c, f) => {
+      const sz = sizes[item.file], px = (f.x - 0.5) * sz.w, py = (f.y - 0.5) * sz.h, rad = c.rot * Math.PI / 180, cs = Math.cos(rad), sn = Math.sin(rad);
+      return { x: c.dx + c.scale * (px * cs - py * sn), y: c.dy + c.scale * (px * sn + py * cs) };
+    };
+    // O candidato com a âncora no mesmo lugar do canvas em que está agora (só quando o tamanho ou o giro mudam)
+    let pinAt = null;  // (a âncora de partida do gesto: calculada uma vez por tentativa)
+    const pin = (cand) => {
+      if (!sizes[item.file] || (cand.scale === a.scale && cand.rot === a.rot)) return cand;
+      const f = pinAt || anchorFrac(), was = anchorAt(a, f), now = anchorAt(Object.assign({}, cand, { dx: a.dx, dy: a.dy }), f);
+      return Object.assign({}, cand, { dx: cand.dx + was.x - now.x, dy: cand.dy + was.y - now.y });
+    };
     const tryApply = (change) => {
       const cand = Object.assign({}, a); change(cand);
+      pinAt = anchorFrac();
       if (cand.scale !== a.scale) cand.base = cand.scale;  // tamanho mexido pela pessoa: vira o novo base
       // Girar (ou mover com giro): o tamanho em uso é o base, ou o mínimo acima dele que ainda cobre a área (como o
       // Lightroom); ao desfazer o giro ele volta ao base
       if (cand.rot !== a.rot || (cand.scale === a.scale && (cand.dx !== a.dx || cand.dy !== a.dy))) {
         const need = minCoverScale(cand, cand.base || cand.scale);
-        if (need != null && cand.rot !== a.rot) { cand.scale = need; Object.assign(a, cand); return true; }
+        if (need != null && cand.rot !== a.rot) { cand.scale = need; Object.assign(a, pin(cand)); return true; }
       }
-      if (covers(cand)) { Object.assign(a, cand); return true; }
+      if (covers(pin(cand))) { Object.assign(a, pin(cand)); return true; }
       if (cand.scale < a.scale && cand.rot === a.rot && cand.dx === a.dx && cand.dy === a.dy && covers(a)) {
         // Diminuir além do limite: vai até o menor tamanho que ainda cobre a área útil (sem parar antes)
         let lo = cand.scale, hi = a.scale; const t = Object.assign({}, cand);
-        for (let i = 0; i < 22; i++) { const mid = (lo + hi) / 2; t.scale = mid; if (covers(t)) hi = mid; else lo = mid; }
+        for (let i = 0; i < 22; i++) { const mid = (lo + hi) / 2; t.scale = mid; if (covers(pin(t))) hi = mid; else lo = mid; }
         const moved = hi < a.scale - 1e-6;
-        t.scale = hi; t.base = hi; Object.assign(a, t);
+        t.scale = hi; t.base = hi; Object.assign(a, pin(t));
         stage.classList.add("locked"); clearTimeout(lockFlash); lockFlash = setTimeout(() => stage.classList.remove("locked"), 300);
         return moved;
       }
@@ -6961,6 +6993,43 @@
 
     const rigTag = el("span", "align-edited-tag hidden", "Edited");
     self.querySelector("h3").insertBefore(rigTag, self.querySelector("h3 .align-cur"));
+    // Âncora (protótipo AN2 aprovado, 2026-11-26): a grade de 9 pontos da foto no título do painel, como atalho, e o
+    // losango "Anchor" na foto, que se arrasta para qualquer ponto dela
+    const anchorWrap = el("span", "align-anchor");
+    anchorWrap.appendChild(el("span", "align-anchor-lab", "Anchor"));
+    const anchorGrid = el("span", "align-anchor-grid");
+    const ANCHOR_NAMES = ["Top left", "Top", "Top right", "Left", "Center", "Right", "Bottom left", "Bottom", "Bottom right"];
+    for (let i = 0; i < 9; i++) {
+      const d = el("button", "align-anchor-dot"); d.type = "button"; d.dataset.x = (i % 3) / 2; d.dataset.y = Math.floor(i / 3) / 2;
+      d.title = "Anchor for Size and Rotate: " + ANCHOR_NAMES[i].toLowerCase() + " of the photo"; d.setAttribute("aria-label", d.title);
+      d.addEventListener("click", () => { a.ax = +d.dataset.x; a.ay = +d.dataset.y; anchorShow(); layout(); save(); });
+      anchorGrid.appendChild(d);
+    }
+    anchorWrap.appendChild(anchorGrid);
+    self.querySelector("h3").insertBefore(anchorWrap, self.querySelector("h3 .align-cur"));
+    const anchorMark = el("div", "align-anchor-mark");
+    anchorMark.innerHTML = '<span class="align-anchor-diamond"></span><span class="align-anchor-core"></span><span class="align-anchor-tag">Anchor</span>';
+    anchorMark.title = "Anchor: Size and Rotate act around this point of the photo. Drag it anywhere on the photo.";
+    stage.appendChild(anchorMark);
+    const anchorShow = () => {
+      const f = sizes[item.file] ? anchorFrac() : { x: 0.5, y: 0.5 };
+      [...anchorGrid.children].forEach((d) => d.classList.toggle("on", Math.abs(+d.dataset.x - f.x) < 0.004 && Math.abs(+d.dataset.y - f.y) < 0.004));
+    };
+    anchorMark.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0 || !sizes[item.file]) return;
+      e.preventDefault(); e.stopPropagation();
+      anchorMark.setPointerCapture(e.pointerId);
+      const sz = sizes[item.file];
+      const move = (ev) => {
+        const r = stage.getBoundingClientRect(), rad = a.rot * Math.PI / 180, cs = Math.cos(rad), sn = Math.sin(rad);
+        const wx = ((ev.clientX - r.left - cx) / scaleK - a.dx) / a.scale, wy = ((ev.clientY - r.top - cy) / scaleK - a.dy) / a.scale;
+        a.ax = Math.max(0, Math.min(1, (wx * cs + wy * sn) / sz.w + 0.5)); a.ay = Math.max(0, Math.min(1, (-wx * sn + wy * cs) / sz.h + 0.5));
+        anchorShow(); layout();
+      };
+      const end = () => { anchorMark.removeEventListener("pointermove", move); anchorMark.removeEventListener("pointerup", end); anchorMark.removeEventListener("pointercancel", end); anchorMark.classList.remove("dragging"); save(); };
+      anchorMark.classList.add("dragging");
+      anchorMark.addEventListener("pointermove", move); anchorMark.addEventListener("pointerup", end); anchorMark.addEventListener("pointercancel", end);
+    });
     const rigNotes = () => {
       const txt = rigMode && st.align.auto ? st.align.auto[item.file] : "";
       const v = txt ? txt.split(",").map(Number) : null;
@@ -6979,7 +7048,7 @@
       });
       rigTag.classList.toggle("hidden", !any);
     };
-    const sync = () => { fields.dx.value = a.dx.toFixed(0); fields.dy.value = a.dy.toFixed(0); fields.scale.value = (a.scale * 100).toFixed(1); fields.rot.value = a.rot.toFixed(2); markPosDots(); rigNotes(); };
+    const sync = () => { fields.dx.value = a.dx.toFixed(0); fields.dy.value = a.dy.toFixed(0); fields.scale.value = (a.scale * 100).toFixed(1); fields.rot.value = a.rot.toFixed(2); markPosDots(); rigNotes(); anchorShow(); };
     rigNotes();
     let saveTimer = 0;
     // Fim de uma mudança: vai para a sessão, para session.json (logo em seguida) e vira um passo do desfazer
@@ -7070,6 +7139,7 @@
           // alças com o mesmo tamanho na tela, seja qual for o zoom da foto
           const inv = 1 / al.scale; [...box.children].forEach((hd) => { hd.style.setProperty("--inv", inv); }); }
       });
+      { const at = anchorAt(a, anchorFrac()); anchorMark.style.left = (cx + at.x * scaleK) + "px"; anchorMark.style.top = (cy + at.y * scaleK) + "px"; anchorMark.style.display = playing ? "none" : ""; }
       // Proporção de um tamanho: a mais próxima das quatro; "~" quando não é exata
       // (em pé, 3:2 é 2:3: o mesmo nome dos botões do Aspect ratio)
       const rn = (w, h) => { const n = ratioName(w, h); const exact = Math.abs(Math.max(w, h) / Math.min(w, h) - RATIOS[n]) < 0.01; const shown = h > w ? RATIO_TURNED[n] || n : n; return exact ? shown : "~" + shown; };
@@ -7107,10 +7177,11 @@
     // Gestos na prévia: mover (arrastar a prévia ou o meio da caixa), redimensionar (cantos da caixa ou a roda),
     // girar (alça de cima ou ⌥ + roda). Todos presos à área útil (lockStart/tryApply).
     let drag = null;
-    const centerOnScreen = () => { const r = stage.getBoundingClientRect(); return { x: r.left + cx + a.dx * scaleK, y: r.top + cy + a.dy * scaleK }; };
+    // (o ponto em volta do qual os gestos de tamanho e giro medem: a âncora da foto)
+    const centerOnScreen = () => { const r = stage.getBoundingClientRect(), at = anchorAt(a, anchorFrac()); return { x: r.left + cx + at.x * scaleK, y: r.top + cy + at.y * scaleK }; };
     // O mouse está em cima da foto que está sendo alinhada? (conta o giro e o tamanho dela)
     const overPhoto = (e) => {
-      const c = centerOnScreen(); const t = -(a.rot || 0) * Math.PI / 180;
+      const sr = stage.getBoundingClientRect(), c = { x: sr.left + cx + a.dx * scaleK, y: sr.top + cy + a.dy * scaleK }; const t = -(a.rot || 0) * Math.PI / 180;  // (o centro da foto, não a âncora)
       const dx = e.clientX - c.x, dy = e.clientY - c.y;
       const x = dx * Math.cos(t) - dy * Math.sin(t), y = dx * Math.sin(t) + dy * Math.cos(t);
       return Math.abs(x) <= box.offsetWidth * a.scale / 2 && Math.abs(y) <= box.offsetHeight * a.scale / 2;
