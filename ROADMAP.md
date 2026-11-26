@@ -1807,6 +1807,21 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      "Leave without saving" o de contorno; Esc (ou clicar fora) com o Align cameras aberto faz a mesma pergunta;
      Esc na pergunta é o "Keep aligning" (as ações de `dialog()` ganharam `cancel: true` para dizer qual botão o
      Esc aciona quando não há um "Cancel").
+     Teste do dono (Mac, 8 simuladas, 2026-11-26): passo 3 inteiro ok ("tudo certo, tá funcionando"). Teste
+     automático completo: 575 de 575 (`d1c8e52`).
+   - **DECISÃO DO DONO (2026-11-26): resolução da sequência em rig misto (alternativa D).** O princípio do
+     programa é a versatilidade: misturar câmeras (3 SL3, uma T7, uma Sony...) não pode custar a qualidade das
+     boas. Duas coisas separadas: (1) igualar a cena (o assunto do mesmo tamanho em todas as fotos) é
+     obrigatório, com qualquer alinhamento, inclusive None (hoje, com None, das câmeras de mais pixels só sobra
+     o miolo: defeito); (2) a resolução final é uma escolha: um ajuste único, "pela câmera de maior resolução"
+     (PADRÃO; as fotos das mais fracas são ampliadas) ou "pela de menor" (nitidez uniforme). O programa avisa
+     quando alguma câmera é ampliada mais de 25% na largura, dizendo qual e quanto. Vale igual para None e para o
+     alinhamento das câmeras. ISSO REVÊ a regra de 2026-11-03 "nenhuma foto é ampliada" (o canvas deixa de ser
+     limitado pela câmera mais fraca quando o ajuste é "maior"). Descartadas: nivelar sempre por baixo (uma
+     câmera fraca rebaixa o rig), cortar pixels das maiores (muda o enquadramento) e depender só de gravar menor
+     na câmera (os tamanhos M/S não coincidem entre modelos; fica como complemento possível). Com proporções
+     diferentes, igualar pela largura (a câmera em 16:9 corta em cima e embaixo): A CONFIRMAR. PRÓXIMO PASSO:
+     protótipos de onde ficam o ajuste e o aviso, antes de implementar.
      Pergunta do dono: alinhar sem as marcas, por um objeto ou pessoa da cena. É a parte 7 (From this scene), já
      prevista, a fazer antes do rig reutilizável.
      **Decisões do dono no meio dos testes (2026-11-24), a fazer DEPOIS dos roteiros:** (i) arrastar os pontos
