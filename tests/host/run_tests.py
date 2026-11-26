@@ -2001,6 +2001,12 @@ def scenario_align_cameras(t, name, photos):
         check(t, "align: Cancel with marks and adjustments made asks before leaving ('Keep aligning' in green / 'Leave without saving')", ask[0] and ask[1] and ask[2] == ["Keep aligning*", "Leave without saving"], ask)
         t.js("() => [...document.querySelectorAll('#dialogOverlay button')].find((b) => b.textContent.trim() === 'Keep aligning').click()"); time.sleep(0.4)
         check(t, "align: 'Keep aligning' stays in the window, with everything as it was", t.js("() => !document.getElementById('csAlign').classList.contains('hidden') && document.getElementById('csAlignStep3').classList.contains('on')") and len(s3()["fields"]) == 4)
+        # Esc na janela faz a mesma pergunta; Esc na pergunta é o "Keep aligning"
+        t.page.keyboard.press("Escape"); time.sleep(0.5)
+        e1 = t.js("() => !document.getElementById('dialogOverlay').classList.contains('hidden') && document.getElementById('dialogOverlay').textContent.includes('Leave without saving?')")
+        t.page.keyboard.press("Escape"); time.sleep(0.5)
+        e2 = t.js("() => document.getElementById('dialogOverlay').classList.contains('hidden') && !document.getElementById('csAlign').classList.contains('hidden') && document.getElementById('csAlignStep3').classList.contains('on')")
+        check(t, "align: Esc asks the same question, and Esc on the question is 'Keep aligning' (nothing is lost)", e1 and e2 and len(s3()["fields"]) == 4, (e1, e2))
         # Tocar a sequência: na própria tela, sem as referências por cima e sem as alças; ‹ pausa ›, Speed, Reverse loop
         bar_idle = t.js("() => [Math.round(document.getElementById('alignPlayBar').getBoundingClientRect().width), document.getElementById('alignPlayStop').disabled]")
         geo_idle = t.js("() => { const r = (e) => { const b = e.getBoundingClientRect(); return [Math.round(b.left), Math.round(b.top), Math.round(b.width), Math.round(b.height)]; }; const m = document.getElementById('csAlignMain'); return { top: r(m.querySelector('.rig-top')), stage: r(m.querySelector('.align-stage')), panel: r(m.querySelector('.align-panel')), strip: r(m.querySelector('.export-strip')), back: !!document.getElementById('alignBackStick'), keeps: r(document.getElementById('alignKeeps')) }; }")

@@ -1803,6 +1803,10 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      nenhuma marca ainda, sai direto. (i) Move: depois de encostar no limite, a foto só voltava a andar quando o
      mouse refazia o caminho até o ponto em que ela tinha parado; agora o gesto recomeça a contar dali, e ela
      volta junto com o mouse na hora.
+     Ajustes do dono no aviso de sair (2026-11-26), FEITOS, AGUARDANDO TESTE: "Keep aligning" é o botão verde e
+     "Leave without saving" o de contorno; Esc (ou clicar fora) com o Align cameras aberto faz a mesma pergunta;
+     Esc na pergunta é o "Keep aligning" (as ações de `dialog()` ganharam `cancel: true` para dizer qual botão o
+     Esc aciona quando não há um "Cancel").
      Pergunta do dono: alinhar sem as marcas, por um objeto ou pessoa da cena. É a parte 7 (From this scene), já
      prevista, a fazer antes do rig reutilizável.
      **Decisões do dono no meio dos testes (2026-11-24), a fazer DEPOIS dos roteiros:** (i) arrastar os pontos

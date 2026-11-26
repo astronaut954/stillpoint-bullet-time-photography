@@ -474,6 +474,7 @@
       const b = document.createElement("button");
       b.className = "btn " + (a.danger ? "btn-danger" : a.primary ? "btn-primary" : a.link ? "btn-link" : "btn-secondary") + (a.left ? " btn-left" : "");
       b.textContent = a.label;
+      if (a.cancel) b.dataset.cancel = "1";  // (o botão que o Esc e o clique fora acionam, quando não é o "Cancel")
       b.addEventListener("click", () => { if (!a.keep) ui.dialogOverlay.classList.add("hidden"); a.onClick && a.onClick(); });
       ui.dialogActions.appendChild(b);
     });
@@ -2892,7 +2893,7 @@
     if (!work) { alClose(); return; }
     dialog("Leave without saving?",
       "The marks and the adjustments made here are not saved yet. If you leave now they are lost, and the alignment the project had stays as it was.",
-      [{ label: "Keep aligning", primary: true }, { label: "Leave without saving", onClick: () => alClose() }]);  // (o verde é o que não perde nada: pedido do dono, 2026-11-26)
+      [{ label: "Keep aligning", primary: true, cancel: true }, { label: "Leave without saving", onClick: () => alClose() }]);  // (o verde é o que não perde nada: pedido do dono, 2026-11-26)
   }
   function alClose() {
     if (!al.open) return;
@@ -11249,6 +11250,9 @@
     Object.keys(photoCache).filter((k) => k.startsWith("order/")).forEach((k) => delete photoCache[k]);
   }
   function closeCamSettings() {
+    // Com o Align cameras aberto, Esc (ou clicar fora) é o Cancel dele: com trabalho feito, pergunta antes de sair
+    // (pedido do dono, 2026-11-26)
+    if (al.open && $("dialogOverlay").classList.contains("hidden")) { alCancel(); return; }
     // No meio do Match automatically (foto de teste ou revisão): pergunta antes de fechar
     if (!$("csMatch").classList.contains("hidden") && (matchWin.step === 2 || matchWin.step === 3) && $("dialogOverlay").classList.contains("hidden")) { csMatchLeave(closeCamSettingsNow); return; }
     closeCamSettingsNow();
@@ -11360,7 +11364,7 @@
   // principal (ex.: "Fix timing" ao lado de "Shoot anyway"); com um botão só, ele mesmo.
   function dialogCancelButton() {
     const buttons = [...ui.dialogActions.children];
-    return buttons.find((x) => x.textContent === "Cancel") || buttons.find((x) => !x.classList.contains("btn-primary") && !x.classList.contains("btn-danger")) || (buttons.length === 1 ? buttons[0] : null);
+    return buttons.find((x) => x.dataset.cancel === "1") || buttons.find((x) => x.textContent === "Cancel") || buttons.find((x) => !x.classList.contains("btn-primary") && !x.classList.contains("btn-danger")) || (buttons.length === 1 ? buttons[0] : null);
   }
   const OVERLAY_CANCEL = {
     promptOverlay: () => $("promptCancel").click(),
