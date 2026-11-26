@@ -1821,7 +1821,9 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      câmera fraca rebaixa o rig), cortar pixels das maiores (muda o enquadramento) e depender só de gravar menor
      na câmera (os tamanhos M/S não coincidem entre modelos; fica como complemento possível). Com proporções
      diferentes, igualar pela largura (a câmera em 16:9 corta em cima e embaixo): A CONFIRMAR. PRÓXIMO PASSO:
-     protótipos de onde ficam o ajuste e o aviso, antes de implementar.
+     protótipos de onde ficam o ajuste e o aviso, antes de implementar. PROTÓTIPOS PUBLICADOS (2026-11-26):
+     https://claude.ai/artifact/Rxq7z8QCHXw2j9dmHpd7v4 (R1 linha Resolution em Export › Framing + caixa âmbar;
+     R2 a mesma linha com etiqueta âmbar; R3 ajuste em Settings › Export, por projeto). AGUARDA A ESCOLHA DO DONO.
      Pergunta do dono: alinhar sem as marcas, por um objeto ou pessoa da cena. É a parte 7 (From this scene), já
      prevista, a fazer antes do rig reutilizável.
      **Decisões do dono no meio dos testes (2026-11-24), a fazer DEPOIS dos roteiros:** (i) arrastar os pontos
