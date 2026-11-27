@@ -710,9 +710,10 @@ std::string EncodeJpeg(const RgbFrame& frame, int quality)
     return jpeg;
 }
 
-bool WritePoleTestPhoto(const fs::path& file, int cameraNumber, int cameraCount, double ratio, double focalMm, double fixed)
+bool WritePoleTestPhoto(const fs::path& file, int cameraNumber, int cameraCount, double ratio, double focalMm, double fixed, int width)
 {
-    const int w = 1800, h = std::max(200, static_cast<int>(std::lround(1800.0 / std::max(0.5, ratio))));
+    // (width: a mesma cena com menos pixels, para testar câmeras de resoluções diferentes; STILLPOINT_FAKE_SMALL)
+    const int w = std::max(200, width), h = std::max(200, static_cast<int>(std::lround(w / std::max(0.5, ratio))));
     const RgbFrame f = FakeScene::Render(FakeScene::RigCamera(cameraNumber, cameraCount, w, h, fixed), true);
     std::string jpeg;
     stbi_write_jpg_to_func(AppendToString, &jpeg, w, h, 3, f.pixels.data(), 92);

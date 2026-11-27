@@ -959,16 +959,38 @@ namespace Export
             return hi;
         }
     }
+    double SensorRef(double w, double h) { return std::max(std::max(w, h), 1.5 * std::min(w, h)); }
+    bool UnevenSizes(const std::vector<std::pair<int, int>>& sizes)
+    {
+        double hi = 0, lo = 1e18;
+        for (const auto& sz : sizes)
+        {
+            if (sz.first <= 0 || sz.second <= 0) continue;
+            const double r = SensorRef(sz.first, sz.second);
+            hi = std::max(hi, r); lo = std::min(lo, r);
+        }
+        return hi > 0 && hi - lo > 0.5;
+    }
     bool ComputeCommonFrame(Framing& framing, const std::vector<std::pair<int, int>>& sizes)
     {
         if (framing.align.empty() || sizes.size() != framing.align.size()) { framing.align.clear(); return false; }
-        // A interseção das fotos como saíram da câmera (centradas) e, com proporção escolhida, o maior retângulo
-        // nessa proporção que cabe nela: nenhuma foto é ampliada (decisão do dono, 2026-11-03: ampliar mudaria o
-        // tamanho do objeto fotografado entre as câmeras)
+        // A medida comum da cena (decisão D do dono, 2026-11-26): a da câmera de maior resolução, ou a da menor
+        double refHi = 0, refLo = 1e18;
+        for (const auto& sz : sizes)
+        {
+            if (sz.first <= 0 || sz.second <= 0) continue;
+            const double r = SensorRef(sz.first, sz.second);
+            refHi = std::max(refHi, r); refLo = std::min(refLo, r);
+        }
+        const double ref = refHi > 0 ? (framing.lowRes ? refLo : refHi) : 0;
+        // A interseção das fotos com a cena igualada (centradas) e, com proporção escolhida, o maior retângulo
+        // nessa proporção que cabe nela
         double left = -1e18, top = -1e18, right = 1e18, bottom = 1e18;
         for (const auto& sz : sizes)
         {
-            const double iw = sz.first, ih = sz.second;
+            if (sz.first <= 0 || sz.second <= 0) continue;
+            const double eq = ref / SensorRef(sz.first, sz.second);
+            const double iw = sz.first * eq, ih = sz.second * eq;
             left = std::max(left, -iw / 2); right = std::min(right, iw / 2);
             top = std::max(top, -ih / 2); bottom = std::min(bottom, ih / 2);
         }
@@ -1004,9 +1026,11 @@ namespace Export
             {
                 // Sem ajuste da pessoa: o menor tamanho que cobre o canvas, centrada, e a posição do recorte (posX/posY)
                 // reparte a folga que sobra
+                // (entra no tamanho que iguala a cena; é o "100%" dela)
+                const double eq = ref > 0 ? ref / SensorRef(w, h) : 1.0;
                 a.dx = 0; a.dy = 0; a.rot = 0;
-                const double need = MinCover(w, h, a, 1.0, framing);
-                a.base = 1.0; a.scale = need > 0 ? need : 1.0;
+                const double need = MinCover(w, h, a, eq, framing);
+                a.base = eq; a.scale = need > 0 ? need : eq;
                 a.dx = (0.5 - std::clamp(framing.posX, 0.0, 1.0)) * (w * a.scale - cw);
                 a.dy = (0.5 - std::clamp(framing.posY, 0.0, 1.0)) * (h * a.scale - ch);
                 a.noop = !custom && !a.Flipped() && std::abs(a.scale - 1.0) < 1e-9 && std::abs(w - cw) < 0.5 && std::abs(h - ch) < 0.5;

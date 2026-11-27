@@ -78,11 +78,21 @@ namespace Export
         // de 1: nenhuma foto é ampliada, a saída fica com menos pixels); canvasCx/Cy = o centro dele, em pixels, a
         // partir do centro do canvas calculado. Vem no texto do alinhamento, na entrada "@canvas" (TakeCanvas).
         double canvasCx = 0, canvasCy = 0, canvasK = 0;
+        // Resolução em rig com câmeras diferentes (decisão D do dono, 2026-11-26): a cena é sempre igualada
+        // (SensorRef) e o canvas sai pela câmera de maior resolução (padrão; as menores são ampliadas) ou, com
+        // lowRes, pela de menor. Vem no quarto campo do recorte da sessão ("3:2|0.5|0.5|low").
+        bool lowRes = false;
         bool CustomCanvas() const { return canvasK > 0 && (canvasK < 1 - 1e-9 || std::abs(canvasCx) > 1e-6 || std::abs(canvasCy) > 1e-6); }
     };
     // Lê a entrada "@canvas:cx,cy,k" do alinhamento da sessão (ParseAlign a entrega como uma foto com esse nome)
     void TakeCanvas(Framing& framing, const std::map<std::string, Align>& aligns);
     double RatioValue(const std::string& ratio);  // "3:2" -> 1.5; 0 se não for uma das quatro
+    // A medida que iguala a cena entre câmeras: o lado maior que o sensor inteiro teria em 3:2 (16:9 gravado na
+    // câmera corta em cima e embaixo, 4:3 e 1:1 cortam nos lados: a medida não muda com o corte). Regra escolhida
+    // pelo dono em 2026-11-27; supõe sensor 3:2.
+    double SensorRef(double w, double h);
+    // As fotos têm resoluções diferentes (SensorRef com mais de meio pixel de diferença)?
+    bool UnevenSizes(const std::vector<std::pair<int, int>>& sizes);
     // Recorta a foto no lugar (não faz nada se já estiver na proporção, ou sem proporção)
     void ApplyFraming(RgbFrame& frame, const Framing& framing);
     // O canvas (quadro comum), centrado em 0,0: a interseção das fotos como saíram da câmera e, com proporção

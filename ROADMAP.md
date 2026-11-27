@@ -1867,6 +1867,25 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      **FALTA (segunda parte: resolução, decisão D):** linha Resolution no bloco "New sessions" e no Export ›
      Framing, etiqueta de ampliação acima de 25%, cena igualada com qualquer alinhamento, canvas pela câmera de
      maior resolução; mexe em `commonFrame` (app.js) e em `Export::ComputeCommonFrame` (programa).
+     **DECISÃO DO DONO (2026-11-27): a cena é igualada pelo sensor inteiro**, não pela largura: a medida de cada
+     foto é "o lado maior que o sensor inteiro teria em 3:2" (`sensorRef` na tela, `Export::SensorRef` no programa),
+     porque 16:9 gravado na câmera corta em cima e embaixo, mas 4:3 e 1:1 cortam nos lados (igualar pela largura
+     ampliaria essas fotos sem necessidade). Limite explicado ao dono: supõe sensor 3:2; uma câmera de sensor 4:3
+     é igualada pela altura, e a mesma câmera de sensor 4:3 gravando em 16:9 sai com cerca de 12% de diferença
+     (corrige-se com o rig ou com o tamanho da foto no Align photos).
+     **FEITA A CONTA (2026-11-27, sem tela ainda):** `commonFrame` e `ComputeCommonFrame` igualam a cena e tiram o
+     canvas pela câmera de maior resolução (padrão) ou pela de menor (`st.crop.res` = "low"; quarto campo do
+     recorte da sessão, "3:2|0.500|0.500|low"; campo 31 do pedido de exportação; `Framing::lowRes`). A foto não
+     mexida entra no tamanho que iguala a cena, e esse tamanho é o "100%" dela (`base`). Com "As shot", sem
+     alinhamento e com todas as fotos na mesma forma, resoluções diferentes já ligam o canvas (`unevenSizes`,
+     `Export::UnevenSizes`). Com todas as fotos do mesmo tamanho nada muda. Sessões antigas com câmeras de
+     resoluções diferentes passam a sair pela maior (consequência do padrão escolhido). Para testar sem câmeras:
+     `STILLPOINT_FAKE_SMALL=<n>` (a câmera simulada n fotografa a mesma cena com 1200 px de largura).
+     Verificado pelo agente: contas do programa (ExporterMathTest) e a prévia do Framing com a câmera 04 menor.
+     NÃO verificado ainda: a exportação de ponta a ponta com resoluções diferentes (entra no cenário automático
+     junto com a tela). FALTA: protótipo da linha Resolution em cima da tela atual (as imagens de A1 e E não estão
+     mais no ambiente do agente e o painel mudou), a tela, a etiqueta de ampliação acima de 25%, gravar a escolha
+     no stillpoint-rig.json para as sessões novas, cenário automático e roteiro de teste.
      Teste do dono (2026-11-26): seção 68 aprovada ("os testes deu tudo certo").
      **Pedidos do dono (2026-11-26), feitos (seção 69):** o tocador do Align cameras também no Align photos do
      Export (mesma barra, mesmo comportamento; estado em `exp.play`, funções `expPlay`/`expPlayOff`); a mão de

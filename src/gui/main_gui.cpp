@@ -1263,6 +1263,10 @@ namespace
                     fakeFix[n] = 1.0;
         // STILLPOINT_FAKE_FOCAL=35 ou 35,35,50,35: a distância focal (mm) que as fotos da haste dizem ter, uma para todas
         // ou uma por câmera simulada (para testar o aviso de zoom mudado; etapa 21, parte 5)
+        // STILLPOINT_FAKE_SMALL=<n> (com STILLPOINT_FAKE_PHOTOS=pole): a câmera simulada n fotografa a mesma cena com
+        // menos pixels (1200 de largura em vez de 1800), para testar a resolução em rig com câmeras diferentes
+        int fakeSmall = 0;
+        if (const char* smallEnv = std::getenv("STILLPOINT_FAKE_SMALL")) fakeSmall = std::atoi(smallEnv);
         std::vector<double> fakeFocal;
         if (const char* text = std::getenv("STILLPOINT_FAKE_FOCAL"); text && *text)
         {
@@ -1974,7 +1978,8 @@ namespace
                     else if (fakePole)
                         WritePoleTestPhoto(dir / (base + ".jpg"), std::max(1, fakeIndex), fakeCount, ratio,
                             fakeFocal.empty() ? 0 : fakeFocal[std::min(fakeFocal.size() - 1, static_cast<size_t>(std::max(1, fakeIndex) - 1))],
-                            [&] { std::lock_guard<std::mutex> lock(fakeFixMutex); const auto it = fakeFix.find(std::max(1, fakeIndex)); return it == fakeFix.end() ? 0.0 : it->second; }());
+                            [&] { std::lock_guard<std::mutex> lock(fakeFixMutex); const auto it = fakeFix.find(std::max(1, fakeIndex)); return it == fakeFix.end() ? 0.0 : it->second; }(),
+                            fakeSmall > 0 && std::max(1, fakeIndex) == fakeSmall ? 1200 : 1800);
                     else
                         WriteTestPhoto(dir / (base + ".jpg"), number, static_cast<int>(i) + 1, ratio);
                     ++done;
@@ -3137,16 +3142,18 @@ namespace
                                 const auto dir = store.SessionDir(session);
                                 std::string ratio = "asshot";
                                 double posX = 0.5, posY = 0.5;
+                                bool lowRes = false;
                                 {
                                     std::stringstream parts(cur->crop);
-                                    std::string a, b, c;
-                                    std::getline(parts, a, '|'); std::getline(parts, b, '|'); std::getline(parts, c, '|');
+                                    std::string a, b, c, d;
+                                    std::getline(parts, a, '|'); std::getline(parts, b, '|'); std::getline(parts, c, '|'); std::getline(parts, d, '|');
                                     if (!a.empty()) ratio = a;
+                                    lowRes = d == "low";
                                     try { if (!b.empty()) posX = std::stod(b); if (!c.empty()) posY = std::stod(c); } catch (...) {}
                                 }
                                 Export::Framing framing;
                                 framing.ratio = Export::RatioValue(ratio) > 0 ? ratio : std::string();
-                                framing.posX = posX; framing.posY = posY;
+                                framing.posX = posX; framing.posY = posY; framing.lowRes = lowRes;
                                 std::map<std::string, std::string> perGroup;
                                 for (const auto& photo : cur->photos)
                                 {
@@ -3665,11 +3672,13 @@ namespace
             {
                 std::string ratio = "asshot";
                 double posX = 0.5, posY = 0.5;
+                bool lowRes = false;
                 {
                     std::stringstream parts(session->crop);
-                    std::string a, b, c;
-                    std::getline(parts, a, '|'); std::getline(parts, b, '|'); std::getline(parts, c, '|');
+                    std::string a, b, c, d;
+                    std::getline(parts, a, '|'); std::getline(parts, b, '|'); std::getline(parts, c, '|'); std::getline(parts, d, '|');
                     if (!a.empty()) ratio = a;
+                    lowRes = d == "low";
                     try { if (!b.empty()) posX = std::stod(b); if (!c.empty()) posY = std::stod(c); } catch (...) {}
                 }
                 r.framing = ratio.substr(0, ratio.find('/'));  // (sem a orientação; com o canvas calculado vira o nome que a pessoa vê)
@@ -3700,7 +3709,7 @@ namespace
                 {
                     Export::Framing framing;
                     framing.ratio = target > 0 ? ratio : std::string();
-                    framing.posX = posX; framing.posY = posY;
+                    framing.posX = posX; framing.posY = posY; framing.lowRes = lowRes;
                     // Uma foto por câmera, como na exportação (RAW + JPEG: o JPEG; é dele o alinhamento guardado)
                     std::map<std::string, std::string> perGroup;
                     for (const auto& photo : session->photos)
@@ -3728,7 +3737,7 @@ namespace
                         if (!sameShape || sz.second <= 0 ||
                             std::abs(static_cast<double>(sz.first) / sz.second - static_cast<double>(sizes[0].first) / sizes[0].second) > 0.02)
                             sameShape = false;
-                    const bool wanted = target > 0 || (sameShape && framing.Aligned());
+                    const bool wanted = target > 0 || (sameShape && (framing.Aligned() || Export::UnevenSizes(sizes)));
                     if (wanted && allSizes && Export::ComputeCommonFrame(framing, sizes))
                     {
                         byCanvas = true;
@@ -3890,13 +3899,13 @@ namespace
             {
                 double posX = 0.5, posY = 0.5;
                 std::stringstream parts(session->crop);
-                std::string a, b, c;
-                std::getline(parts, a, '|'); std::getline(parts, b, '|'); std::getline(parts, c, '|');
+                std::string a, b, c, d;
+                std::getline(parts, a, '|'); std::getline(parts, b, '|'); std::getline(parts, c, '|'); std::getline(parts, d, '|');
                 if (!a.empty()) ratio = a;
                 try { if (!b.empty()) posX = std::stod(b); if (!c.empty()) posY = std::stod(c); } catch (...) {}
                 const double target = Export::RatioValue(ratio);
                 framing.ratio = target > 0 ? ratio : std::string();
-                framing.posX = posX; framing.posY = posY;
+                framing.posX = posX; framing.posY = posY; framing.lowRes = d == "low";
                 std::map<std::string, std::string> perGroup;  // uma foto por câmera (RAW + JPEG: o JPEG)
                 for (const auto& photo : session->photos)
                 {
@@ -3924,7 +3933,7 @@ namespace
                     if (!sameShape || sz.second <= 0 ||
                         std::abs(static_cast<double>(sz.first) / sz.second - static_cast<double>(sizes[0].first) / sizes[0].second) > 0.02)
                         sameShape = false;
-                if (!framing.Active() && (!sameShape || !framing.Aligned()))
+                if (!framing.Active() && (!sameShape || !(framing.Aligned() || Export::UnevenSizes(sizes))))
                     framing.align.clear();
                 else if (!allSizes || !Export::ComputeCommonFrame(framing, sizes))
                     framing.align.clear();
@@ -6184,7 +6193,7 @@ namespace
                             if (!sameShape || sz.second <= 0 ||
                                 std::abs(static_cast<double>(sz.first) / sz.second - static_cast<double>(sizes[0].first) / sizes[0].second) > 0.02)
                                 sameShape = false;
-                        if (!framing.Active() && (!sameShape || !framing.Aligned()))
+                        if (!framing.Active() && (!sameShape || !(framing.Aligned() || Export::UnevenSizes(sizes))))
                             framing.align.clear();
                         else if (!allSizes || !Export::ComputeCommonFrame(framing, sizes))
                             framing.align.clear();
@@ -6506,6 +6515,7 @@ namespace
                         if (!at(27).empty()) job.framing.posY = std::clamp(std::stod(at(27)), 0.0, 1.0);
                     }
                     catch (...) {}
+                    job.framing.lowRes = at(31) == "low";  // 31 resolução com câmeras diferentes ("low" = pela de menor)
                     job.sameSize = at(28) == "1";
                     job.options.framing = job.framing;
                     job.lent.fit = at(29) == "fit";

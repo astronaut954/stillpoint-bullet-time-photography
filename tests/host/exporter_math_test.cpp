@@ -210,6 +210,28 @@ int main()
         Check("rig reading: color temperature only with the white balance in Kelvin; fine-tune as signed numbers", read.settings.count("kelvin") && read.settings.at("kelvin").label == "5200 K" &&
             read.settings.at("shiftab").label == "+3" && read.settings.at("shiftgm").label == "-2");
     }
+    // Resolução em rig com câmeras diferentes (decisão D): a cena é igualada e o canvas sai pela maior ou pela menor
+    {
+        Check("sensor measure: the same for the crops recorded in the camera (3:2, 16:9, 4:3, 1:1)",
+            Export::SensorRef(6000, 4000) == 6000 && Export::SensorRef(6000, 3375) == 6000 && Export::SensorRef(5328, 4000) == 6000 &&
+            Export::SensorRef(4000, 4000) == 6000 && Export::SensorRef(4000, 6000) == 6000);
+        Check("same sizes are not uneven; different resolutions are", !Export::UnevenSizes({ { 1800, 1200 }, { 1800, 1013 } }) && Export::UnevenSizes({ { 1800, 1200 }, { 1200, 800 } }));
+        Export::Framing hi; hi.align.resize(2);
+        const bool okHi = Export::ComputeCommonFrame(hi, { { 1800, 1200 }, { 1200, 800 } });
+        Check("highest camera: the canvas is the larger photo and the smaller one is enlarged to match", okHi && std::abs(hi.commonW - 1800) < 1e-6 && std::abs(hi.commonH - 1200) < 1e-6 &&
+            std::abs(hi.align[0].scale - 1.0) < 1e-6 && std::abs(hi.align[1].scale - 1.5) < 1e-6 && std::abs(hi.align[1].base - 1.5) < 1e-6 && hi.align[0].noop && !hi.align[1].noop);
+        Export::Framing lo; lo.lowRes = true; lo.align.resize(2);
+        const bool okLo = Export::ComputeCommonFrame(lo, { { 1800, 1200 }, { 1200, 800 } });
+        Check("lowest camera: the canvas is the smaller photo and the larger one is reduced to match", okLo && std::abs(lo.commonW - 1200) < 1e-6 && std::abs(lo.commonH - 800) < 1e-6 &&
+            std::abs(lo.align[1].scale - 1.0) < 1e-6 && std::abs(lo.align[0].scale - 1200.0 / 1800.0) < 1e-6 && lo.align[1].noop && !lo.align[0].noop);
+        Export::Framing same; same.align.resize(2);
+        Export::ComputeCommonFrame(same, { { 1800, 1200 }, { 1800, 1013 } });
+        Check("same resolution, different crops: nothing is resized (as before)", std::abs(same.commonW - 1800) < 1e-6 && std::abs(same.commonH - 1013) < 1e-6 &&
+            std::abs(same.align[0].scale - 1.0) < 1e-6 && std::abs(same.align[1].scale - 1.0) < 1e-6);
+        Export::Framing crop43; crop43.align.resize(2);
+        Export::ComputeCommonFrame(crop43, { { 6000, 4000 }, { 5328, 4000 } });
+        Check("a 4:3 crop of the same sensor is not enlarged (it loses the sides, not the scale)", std::abs(crop43.align[1].scale - 1.0) < 1e-6 && std::abs(crop43.commonW - 5328) < 1e-6 && std::abs(crop43.commonH - 4000) < 1e-6);
+    }
     std::printf("%d failed\n", failed);
     return failed ? 1 : 0;
 }

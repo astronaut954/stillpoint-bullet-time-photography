@@ -4602,7 +4602,7 @@
                    // sameSize sempre ligado (decisão do dono, 2026-11-03): um recorte para a sessão inteira, todas as fotos no mesmo tamanho
                    photos: { original: true, convert: false, format: "jpg", quality: "high", sameSize: true },
                    // Parte 4 da Proporção: um recorte por sessão (Converted e Sequence; Lenticular usa só a posição)
-                   crop: { ratio: "asshot", orient: "", x: 0.5, y: 0.5, loaded: false },
+                   crop: { ratio: "asshot", orient: "", res: "high", x: 0.5, y: 0.5, loaded: false },
                    // Pedaço 2 do Framing: alinhamento por foto (arquivo → { dx, dy, scale, rot }), em session.json
                    align: { byFile: {}, loaded: false },
                    seq: { formats: ["mp4"], fps: 6, loops: 3, reverse: true, height: 1080, alsoPhotos: true, quality: "high" },
@@ -5666,7 +5666,7 @@
   // texto guardado e mandado ao app ("3:2/v|0.5|0.5"); em As shot e 1:1 não muda nada e não é guardada.
   const RATIO_TURNED = { "3:2": "2:3", "4:3": "3:4", "16:9": "9:16", "1:1": "1:1" };
   function cropKey(st) { const r = st.crop.ratio || "asshot"; return r + (st.crop.orient && r !== "asshot" && r !== "1:1" ? "/" + st.crop.orient : ""); }
-  function cropText(st) { return cropKey(st) + "|" + st.crop.x.toFixed(3) + "|" + st.crop.y.toFixed(3); }
+  function cropText(st) { return cropKey(st) + "|" + st.crop.x.toFixed(3) + "|" + st.crop.y.toFixed(3) + (st.crop.res === "low" ? "|low" : ""); }
   // A orientação que vale: a escolhida, ou a das fotos da sessão
   function orientOf(name, st) { const info = ratioInfoCached(name); return st.crop.orient || (info && info.natural) || "h"; }
   // Como a proporção aparece na tela: em pé, 3:2 é 2:3
@@ -5705,10 +5705,11 @@
     if (st.rigStep) { st.crop.loaded = true; return; }  // (passo 3 do Align cameras: as fotos como saíram, sem recorte)
     if (st.crop.loaded) return;
     st.crop.loaded = true;
-    const [ratioAndOrient, x, y] = String(session.crop || (sessionCrop[session.name] ? sessionCrop[session.name] + "|0.5|0.5" : "")).split("|");
+    const [ratioAndOrient, x, y, res] = String(session.crop || (sessionCrop[session.name] ? sessionCrop[session.name] + "|0.5|0.5" : "")).split("|");
     const [ratio, orient] = String(ratioAndOrient || "").split("/");
     if (ratio === "asshot" || RATIOS[ratio]) st.crop.ratio = ratio;
     st.crop.orient = orient === "h" || orient === "v" ? orient : "";
+    st.crop.res = res === "low" ? "low" : "high";
     if (x !== undefined && !isNaN(+x)) st.crop.x = Math.max(0, Math.min(1, +x));
     if (y !== undefined && !isNaN(+y)) st.crop.y = Math.max(0, Math.min(1, +y));
   }
@@ -5779,7 +5780,7 @@
       if (!nat) return;
       const bw = box.clientWidth, bh = box.clientHeight;
       img.style.transform = ""; img.style.transformOrigin = "center center";
-      const sz = sizesAll && sizesAll[item.file], canvas = (targetRatio || sessionAligned(session, st)) && sz && commonFrame(items, sizesAll, st);
+      const sz = sizesAll && sizesAll[item.file], canvas = (targetRatio || sessionAligned(session, st) || unevenSizes(items, sizesAll)) && sz && commonFrame(items, sizesAll, st);
       if (canvas) {
         // O quadro (o canvas da exportação) fica parado, do mesmo tamanho em todas as fotos; cada foto aparece atrás
         // dele como vai sair (posição, tamanho e giro). Decisão do dono, 2026-11-04: a prévia não muda o tamanho do canvas.
@@ -6067,25 +6068,50 @@
       return Math.abs(ux) <= w / 2 + eps && Math.abs(uy) <= h / 2 + eps;
     });
   }
-  // O canvas (centro em 0,0): a interseção das fotos como saíram da câmera e, com proporção escolhida, o maior
-  // retângulo nessa proporção que cabe nela. Nenhuma foto é ampliada (decisão do dono, 2026-11-03: ampliar mudaria o
-  // tamanho do objeto fotografado entre as câmeras). Mover, redimensionar ou girar uma foto não muda o canvas (a mesma
+  // Resolução em rig com câmeras diferentes (decisão D do dono, 2026-11-26; regra do sensor inteiro, 2026-11-27).
+  // Antes de tudo a cena é igualada: cada foto é levada a uma medida comum, "o lado maior que o sensor inteiro teria
+  // em 3:2" (16:9 gravado na câmera corta em cima e embaixo, 4:3 e 1:1 cortam nos lados: a medida não muda com o corte).
+  // A medida comum é a da câmera de maior resolução ("high", o padrão: as menores são ampliadas) ou a da menor ("low").
+  // Com todas as fotos do mesmo tamanho, nada muda. A mesma conta do programa (Export::SensorRef, ComputeCommonFrame).
+  function sensorRef(sz) { const L = Math.max(sz.w, sz.h), S = Math.min(sz.w, sz.h); return Math.max(L, 1.5 * S); }
+  function sceneRef(items, sizes, st) {
+    let hi = 0, lo = 1e18;
+    items.forEach((item) => { const sz = sizes[item.file]; if (!sz) return; const r = sensorRef(sz); hi = Math.max(hi, r); lo = Math.min(lo, r); });
+    return hi > 0 ? (st && st.crop.res === "low" ? lo : hi) : 0;
+  }
+  // O tamanho com que a foto entra para a cena ficar igual à das outras (1 com todas as câmeras iguais)
+  function sceneScale(sz, frame) { const ref = frame && frame.ref; return ref > 0 ? ref / sensorRef(sz) : 1; }
+  // As fotos da sessão têm resoluções diferentes (a cena precisa ser igualada mesmo sem proporção nem alinhamento)?
+  function unevenSizes(items, sizes) {
+    let hi = 0, lo = 1e18;
+    items.forEach((item) => { const sz = sizes[item.file]; if (!sz) return; const r = sensorRef(sz); hi = Math.max(hi, r); lo = Math.min(lo, r); });
+    if (!(hi > 0 && hi - lo > 0.5)) return false;
+    // (só com todas as fotos na mesma forma, como o programa: com formas diferentes e "As shot" cada foto sai como é)
+    let first = 0, same = true;
+    items.forEach((item) => { const sz = sizes[item.file]; if (!sz) return; const r = sz.w / sz.h; if (!first) first = r; else if (Math.abs(r - first) > 0.02) same = false; });
+    return same;
+  }
+  // O canvas (centro em 0,0): a interseção das fotos com a cena igualada e, com proporção escolhida, o maior
+  // retângulo nessa proporção que cabe nela. Mover, redimensionar ou girar uma foto não muda o canvas (a mesma
   // conta do programa, Export::ComputeCommonFrame)
   function commonFrame(items, sizes, st) {
+    const ref = sceneRef(items, sizes, st);
     let left = -1e18, top = -1e18, right = 1e18, bottom = 1e18;
     items.forEach((item) => {
       const sz = sizes[item.file]; if (!sz) return;
-      left = Math.max(left, -sz.w / 2); right = Math.min(right, sz.w / 2);
-      top = Math.max(top, -sz.h / 2); bottom = Math.min(bottom, sz.h / 2);
+      const k = ref / sensorRef(sz);
+      left = Math.max(left, -sz.w * k / 2); right = Math.min(right, sz.w * k / 2);
+      top = Math.max(top, -sz.h * k / 2); bottom = Math.min(bottom, sz.h * k / 2);
     });
     let cw = right - left, ch = bottom - top;
     const r = st && st.crop.ratio !== "asshot" ? RATIOS[st.crop.ratio] : 0;
     // (a orientação escolhida manda; sem escolha, a do quadro que as fotos deixam: foto em pé fica em pé)
     if (r && cw > 0 && ch > 0) { const o = st.crop.orient, t = (o ? o === "h" : cw >= ch) ? r : 1 / r; if (cw / ch > t) cw = ch * t; else ch = cw / t; }
     if (cw < 16 || ch < 16) return null;
-    const full = { x: -cw / 2, y: -ch / 2, w: cw, h: ch };
+    const full = { x: -cw / 2, y: -ch / 2, w: cw, h: ch, ref };
     // (com canvas escolhido: o pedaço; "base" leva o calculado, para as fotos que a pessoa não mexeu)
-    return canvasSet(st) ? canvasRect(full, st.align.canvas) : full;
+    if (!canvasSet(st)) return full;
+    const cut = canvasRect(full, st.align.canvas); cut.ref = ref; return cut;
   }
   // O menor tamanho (a partir de from) com que a foto w×h, nessa posição e giro, cobre o retângulo r; 0 se nem 20× basta
   function minCoverOf(w, h, al, from, r) {
@@ -6101,9 +6127,10 @@
   function effectiveAlign(sz, al, frame, st) {
     if (alignIsIdentity(al)) {
       frame = frame.base || frame;  // (foto não mexida: fica como ficaria sem canvas escolhido; ele só corta)
-      const base = { dx: 0, dy: 0, scale: 1, rot: 0, base: 1 };
-      const need = minCoverOf(sz.w, sz.h, base, 1, frame) || 1;
-      return { dx: (0.5 - st.crop.x) * (sz.w * need - frame.w), dy: (0.5 - st.crop.y) * (sz.h * need - frame.h), scale: need, rot: 0, base: 1, flip: alignFlip(al) };
+      // (entra no tamanho que iguala a cena, sceneScale; é o "100%" dela)
+      const eq = sceneScale(sz, frame), base = { dx: 0, dy: 0, scale: eq, rot: 0, base: eq };
+      const need = minCoverOf(sz.w, sz.h, base, eq, frame) || eq;
+      return { dx: (0.5 - st.crop.x) * (sz.w * need - frame.w), dy: (0.5 - st.crop.y) * (sz.h * need - frame.h), scale: need, rot: 0, base: eq, flip: alignFlip(al) };
     }
     const need = minCoverOf(sz.w, sz.h, al, Math.max(0.05, al.base || al.scale), frame);
     return Object.assign({}, al, { scale: need ? Math.max(al.scale, need) : al.scale });
@@ -6342,7 +6369,7 @@
   function framedUrl(session, items, st, item, url, maxPx, orig) {
     const px = maxPx || 1600;
     cropLoad(session, st); alignLoad(session, st);
-    if (st.crop.ratio === "asshot" && !sessionAligned(session, st)) return Promise.resolve(url);
+    const plain = st.crop.ratio === "asshot" && !sessionAligned(session, st);  // (só há o que fazer com resoluções diferentes)
     // A editada que veio do Lightroom já vem com o recorte (ele foi junto no Edit in Lightroom Classic): não corta de novo
     const cur = sessions.find((x) => x.name === session.name) || session;
     const ph = cur.photos && cur.photos.find((x) => x.file === item.file);
@@ -6350,10 +6377,11 @@
       // (o Lightroom recebe a foto sem espelhar e a devolve assim: o espelhamento é posto aqui; decisão do dono, 2026-11-11)
       return mirroredUrl(url, flipInUse(session, st, item.file), px);
     }
-    const key = [session.name, item.file, cropKey(st), st.crop.x, st.crop.y, alignText(st), px, orig ? "o" : ""].join("|");
+    const key = [session.name, item.file, cropKey(st), st.crop.res || "", st.crop.x, st.crop.y, alignText(st), px, orig ? "o" : ""].join("|");
     if (framedCache.has(key)) return framedCache.get(key);
     const p = Promise.all(items.map((it) => photoSizeOf(session.name, it.file).then((sz) => [it.file, sz]))).then((pairs) => {
       const sizes = {}; pairs.forEach(([f, sz]) => { if (sz) sizes[f] = sz; });
+      if (plain && !unevenSizes(items, sizes)) return url;
       const sz = sizes[item.file], frame = sz && commonFrame(items, sizes, st);
       if (!frame) return url;
       return new Promise((done) => {
@@ -9023,7 +9051,9 @@
       o.lenticular ? 1 : 0, lentPitch(l), l.dpi, (l.widthCm / CM_PER_IN).toFixed(4), (l.heightCm / CM_PER_IN).toFixed(4), l.effect, l.reverse ? 1 : 0,
       l.cropMarks ? 1 : 0, l.alignMarks ? 1 : 0, l.bleedMm || 0, l.lpi,
       // Parte 4 da Proporção: 25 proporção | 26 posição x | 27 posição y | 28 same size | 29 placement | 30 faixa
-      cropKey(st), st.crop.x.toFixed(3), st.crop.y.toFixed(3), 1, l.placement || "fill", lentBand].join("|");
+      cropKey(st), st.crop.x.toFixed(3), st.crop.y.toFixed(3), 1, l.placement || "fill", lentBand,
+      // 31 resolução com câmeras diferentes: "low" = pela de menor resolução (vazio = pela de maior)
+      st.crop.res === "low" ? "low" : ""].join("|");
   }
 
   function runExport(deleteRest) {
