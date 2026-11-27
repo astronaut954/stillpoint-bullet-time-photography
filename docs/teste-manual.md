@@ -3008,16 +3008,16 @@ menos pixels: 1200 px de largura contra 1800 das outras).
       do arquivo, canto de baixo à esquerda) aparece ao mexer o mouse sobre a foto e some junto com o painel de
       tocar, 2 s depois de o mouse parar.
 
-## 83. Framing com modo teatro e tocar (2026-11-27, câmeras simuladas servem)
+## 83. Framing com modo teatro e tocar (2026-11-27, câmeras simuladas servem; refeito depois do teste do dono das 18h16)
 
-- [ ] **Export sessions** › **1 Sessions** › **Framing**: a prévia tem o botão do modo teatro no canto de cima à
-      esquerda (o **Align photos** fica ao lado dele) e um botão de tocar no canto de baixo à direita.
-- [ ] Botão de tocar: a prévia passa pelas fotos da sessão, com o quadro do recorte parado; a miniatura da foto do
-      momento fica marcada. Clicar de novo pausa. Clicar numa miniatura ou usar **← →** também para de tocar.
+- [ ] Abrir o **Export sessions**: a prévia do **Framing** já vem tocando.
+- [ ] Tocando, com uma sessão alinhada: cada foto entra já com o alinhamento dela; não aparece um instante sem o
+      ajuste (defeito visto pelo dono).
+- [ ] No canto de cima à esquerda da prévia: **Align photos** e, ao lado dele, o botão do modo teatro. No canto de
+      baixo à direita, o botão de tocar / pausar. Clicar numa miniatura ou usar **← →** para de tocar.
 - [ ] Trocar **Aspect ratio** ou **Resolution** enquanto toca: continua tocando com o enquadramento novo.
-- [ ] Modo teatro: as opções de baixo e a barra de cima somem e a prévia ocupa o espaço; as miniaturas continuam.
-      O botão do teatro e a etiqueta de baixo somem com o mouse parado e voltam ao mexer. Clicar de novo no botão
-      volta ao normal.
+- [ ] Modo teatro: as opções e a barra de cima somem, a prévia cresce e as miniaturas continuam. No canto de cima à
+      direita aparece o painel de tocar (anterior, tocar, seguinte, **Speed**, **Reverse loop**), como no **2 Edit**;
+      ele, o botão do teatro e a etiqueta de baixo somem com o mouse parado e voltam ao mexer.
 - [ ] Sair para **Align photos**, **2 Edit** ou **3 Outputs** com o teatro do Framing ligado: essas telas abrem no
-      arranjo normal delas (o teatro do Framing não passa para elas) e nada fica tocando sozinho.
-
+      arranjo normal delas e nada fica tocando sozinho.

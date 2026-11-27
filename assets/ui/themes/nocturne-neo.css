@@ -2708,3 +2708,8 @@ html.kbd-focus #sessionGallery .stage:focus-within .stage-caption { opacity: 1; 
 .framing-stage .framing-play { z-index: 2; }
 .export-settings.theater .framing-stage .crop-tag { opacity: 0; transition: opacity .3s ease; }
 .export-settings.theater .framing-stage.th-show .crop-tag { opacity: 1; }
+/* (2026-11-27, depois do teste do dono) "Align photos" à esquerda e o teatro ao lado; no teatro, o painel de tocar
+   fica em cima à direita e o botão de tocar de baixo e a etiqueta "Aligned" saem */
+.framing-stage .framing-top { position: absolute; left: 10px; top: 10px; z-index: 3; display: flex; gap: 8px; align-items: center; }
+.framing-stage .framing-top .framing-align-btn, .framing-stage .framing-top .lent-theater-btn { position: static; }
+.export-settings.theater .framing-stage .framing-play, .export-settings.theater .framing-stage .framing-aligned-tag { display: none; }

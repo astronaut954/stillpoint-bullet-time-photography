@@ -4789,6 +4789,9 @@
     exp.previewHidden = false;  // a prévia abre sempre visível; "Hide preview" vale até fechar a janela (decisão do dono, 2026-11-03)
     exp.aligning = false; exp.aligningShown = false;
     exp.theater = false;  // reabrir o Export nunca volta em modo teatro (decisão do dono, 2026-11-04)
+    // A prévia do Framing já abre tocando (pedido do dono, 2026-11-27) e fora do teatro. (stillpointQuietPreview: os
+    // testes automáticos abrem com a prévia parada, para conferirem a foto que está na tela.)
+    exp.framingPlaying = !window.stillpointQuietPreview; exp.framingTheater = false; exp.framingDir = 1;
     exp.step = 1;         // reabrir o Export volta sempre ao passo 1 · Sessions (decisão do dono, 2026-11-04)
     exp.project = Array.isArray(projectNames);
     const all = exportable();
@@ -5857,10 +5860,23 @@
     };
     // A original: a posição e o tamanho são calculados em pixels dela (a editada do Lightroom já vem recortada e
     // aparecia esticada aqui; teste do dono, 2026-11-07)
-    const load = () => { const mine = item; if (!mine) return; sessionPhotoOriginal(session.name, mine.file, 1600).then((url) => { if (!url || item !== mine) return; img.onload = () => { if (item !== mine) return; nat = { w: img.naturalWidth, h: img.naturalHeight }; layout(); }; img.src = url; }); };
+    // (shown: a foto que está na tela; item só muda junto com a imagem, senão a foto de antes aparecia um instante
+    // com o alinhamento da seguinte, ou a seguinte sem o dela: gravação do dono, 2026-11-27)
+    let wanted = item;
+    const load = () => {
+      const mine = wanted; if (!mine) return;
+      sessionPhotoOriginal(session.name, mine.file, 1600).then((url) => {
+        if (!url || wanted !== mine) return;
+        const pre = new Image();
+        const put = () => { if (wanted !== mine) return; item = mine; nat = { w: pre.naturalWidth, h: pre.naturalHeight }; img.onload = null; img.src = url; layout(); };
+        pre.onload = () => { if (pre.decode) pre.decode().then(put, put); else put(); };
+        pre.src = url;
+      });
+    };
     load();
     // Trocar de foto sem refazer a tela (para tocar a sequência na prévia do Framing; pedido do dono, 2026-11-27)
-    box.showPhoto = (k) => { const next = items[k]; if (!next || next === item) return; item = next; load(); };
+    box.showPhoto = (k) => { const next = items[k]; if (!next || next === wanted) return; wanted = next; load(); };
+    box.preload = () => items.forEach((it) => sessionPhotoOriginal(session.name, it.file, 1600));
     Promise.all(items.map((it) => photoSizeOf(session.name, it.file).then((sz) => [it.file, sz]))).then((pairs) => {
       sizesAll = {}; pairs.forEach(([f, sz]) => { if (sz) sizesAll[f] = sz; }); layout();
     });
@@ -8140,7 +8156,8 @@
             tb.classList.toggle("on", on); tb.innerHTML = icon(on ? "theaterOut" : "theaterIn");
             tb.title = on ? "Leave theater mode" : "Theater mode: larger preview, settings hidden"; tb.setAttribute("aria-label", tb.title);
           };
-          stage.insertBefore(tb, alignBtn);
+          // ("Align photos" à esquerda e o teatro ao lado: lados trocados a pedido do dono, 2026-11-27)
+          { const topLeft = el("div", "framing-top"); stage.insertBefore(topLeft, alignBtn); topLeft.append(alignBtn, tb); topLeft.addEventListener("pointerdown", (e) => e.stopPropagation()); }
           applyFT();
           theaterFade(stage);
           const nPhotos = items.length;
@@ -8148,7 +8165,8 @@
           const playBtn = button("", () => { if (exp.timer) pauseF(); else playF(); }, { icon: "play", title: "Play / pause the sequence", kind: "btn-overlay" });
           playBtn.classList.add("preview-play", "framing-play");
           playBtn.addEventListener("pointerdown", (e) => e.stopPropagation());
-          const paintPlay = () => { playBtn.innerHTML = icon(exp.timer ? "pause" : "play"); };
+          let ctrlPlayF = null;
+          const paintPlay = () => { const ic = icon(exp.timer ? "pause" : "play"); playBtn.innerHTML = ic; if (ctrlPlayF) ctrlPlayF.innerHTML = ic; };
           const tickF = () => {
             if (!stage.isConnected) { stopPreview(); return; }
             if (nPhotos < 2) return;
@@ -8161,6 +8179,27 @@
           const pauseF = () => { stopPreview(); exp.framingPlaying = false; paintPlay(); };
           exp.framingPause = pauseF;
           stage.appendChild(playBtn);
+          // No teatro: ‹ ▶ › Speed e Reverse loop sobre a foto, como no 2 Edit (pedido do dono, 2026-11-27)
+          {
+            const ctrls = el("div", "cs-review-ctrls stage-ctrls edit-ctrls");
+            ctrlPlayF = button("", () => { if (exp.timer) pauseF(); else playF(); }, { icon: "play", title: "Play the sequence" });
+            const speedLabel = el("span", "play-speed"); speedLabel.title = "Playback speed";
+            const slower = button("", () => changeSpeed(-1), { icon: "minus", title: "Slower" });
+            const faster = button("", () => changeSpeed(1), { icon: "plus", title: "Faster" });
+            const renderSpeed = () => { const v = PLAY_SPEEDS[editPlay.speed]; speedLabel.textContent = (v % 1 === 0 ? v.toFixed(1) : String(v)) + "x"; slower.disabled = editPlay.speed === 0; faster.disabled = editPlay.speed === PLAY_SPEEDS.length - 1; };
+            const changeSpeed = (d) => { editPlay.speed = Math.max(0, Math.min(PLAY_SPEEDS.length - 1, editPlay.speed + d)); renderSpeed(); if (exp.timer) playF(); };
+            renderSpeed();
+            const group = el("div", "play-group");
+            group.append(el("span", "play-group-caption", "Speed"), slower, speedLabel, faster);
+            const loop = el("label", "log-option play-option"); loop.title = "Play back and forth (1, 2, 3, 2, 1...)";
+            const loopBox = document.createElement("input"); loopBox.type = "checkbox"; loopBox.checked = editPlay.reverse;
+            loopBox.addEventListener("change", () => { editPlay.reverse = loopBox.checked; exp.framingDir = 1; });
+            loop.append(loopBox, document.createTextNode(" Reverse loop"));
+            const stepTo = (d) => { pauseF(); setPhoto((((exp.photo || 0) + d) % nPhotos + nPhotos) % nPhotos); };
+            ctrls.append(button("", () => stepTo(-1), { icon: "left", title: "Previous photo" }), ctrlPlayF, button("", () => stepTo(1), { icon: "right", title: "Next photo" }), group, loop);
+            fadeControls(stage, ctrls);
+          }
+          stage.preload();
           if (exp.framingPlaying) playF(); else paintPlay();  // (a tela é refeita a cada mudança: continua tocando)
           const stripScroll = el("div", "export-strip-scroll");
           const strip = el("ul", "export-strip fit-strip");

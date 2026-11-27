@@ -97,6 +97,8 @@ class T:
         self.lr = FakeLightroom(os.path.join(self.data, "lightroom"), self.catalog)
         self.browser = pw.chromium.launch()
         self.page = self.browser.new_page(viewport={"width": 1440, "height": 900})
+        # (a prévia do Framing abre tocando; nos testes abre parada, para a foto na tela não mudar no meio de uma conferência)
+        self.page.add_init_script("window.stillpointQuietPreview = true;")
         self.errors = []
         self.page.on("pageerror", lambda e: self.errors.append(str(e)))
         for _ in range(100):
@@ -3565,6 +3567,29 @@ def scenario_resolution(t, name, photos):
         time.sleep(1.5)
         r = row()
         check(t, "resolution: undo brings Highest camera back", bool(r) and r["on"] == ["Highest camera"] and not str(crop()).endswith("|low"), (r, crop()))
+        # Framing com tocar e modo teatro (pedido do dono, 2026-11-27): abrindo o Export, a prévia já vem tocando
+        t.close_export()
+        t.js("() => { window.stillpointQuietPreview = false; }")
+        step1()
+        sel = lambda: t.js("() => [...document.querySelectorAll('#exportSettings .export-strip > li')].findIndex((li) => li.classList.contains('selected'))")
+        seen = set()
+        for _ in range(8):
+            seen.add(sel()); time.sleep(0.2)
+        fr = t.js("() => { const st = document.querySelector('#exportSettings .framing-stage'), top = st.querySelector('.framing-top'); return { order: [...top.children].map((b) => b.classList.contains('framing-align-btn') ? 'align' : b.classList.contains('lent-theater-btn') ? 'theater' : '?'), play: !!st.querySelector('.framing-play'), panel: !!st.querySelector('.stage-ctrls') }; }")
+        check(t, "framing: opening the Export, the preview is already playing (the selected thumbnail moves)", len(seen) >= 3, sorted(seen))
+        check(t, "framing: Align photos on the left, the theater button next to it, a play button and the play panel for the theater", fr["order"] == ["align", "theater"] and fr["play"] and fr["panel"], fr)
+        t.page.click("#exportSettings .framing-stage .framing-play")
+        time.sleep(0.5)
+        a0 = sel(); time.sleep(0.8)
+        check(t, "framing: the play button pauses", sel() == a0, (a0, sel()))
+        t.page.click("#exportSettings .framing-stage .lent-theater-btn")
+        time.sleep(0.8)
+        th = t.js("() => { const o = document.getElementById('exportSettings'), st = o.querySelector('.framing-stage'); return { cls: o.classList.contains('theater'), rows: o.querySelector('.export-rows').offsetHeight, ctrls: getComputedStyle(st.querySelector('.stage-ctrls')).display, play: getComputedStyle(st.querySelector('.framing-play')).display }; }")
+        check(t, "framing: theater mode hides the options and shows the play panel instead of the play button", th["cls"] and th["rows"] == 0 and th["ctrls"] != "none" and th["play"] == "none", th)
+        t.export_edit(s)
+        time.sleep(0.8)
+        check(t, "framing: the theater of the Framing does not follow to 2 Edit", not t.js("() => document.getElementById('exportSettings').classList.contains('theater')"))
+        t.js("() => { window.stillpointQuietPreview = true; }")
         check(t, "resolution: no page errors", len(t.errors) == errors_before, t.errors[errors_before:])
     finally:
         t.close_export()

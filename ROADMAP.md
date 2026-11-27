@@ -1959,6 +1959,11 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      teatro fica no canto de cima à esquerda, o "Align photos" ao lado, o de tocar no canto de baixo à direita; a
      prévia troca de foto no lugar (`cropStage.showPhoto`), sem refazer a tela. Posições escolhidas pelo agente por
      igualdade com o 2 Edit, sem protótipo: confirmar com o dono.
+     **RETORNO DAS 18h16, feito:** a prévia do Framing abre já tocando ao abrir o Export; a foto nova só entra
+     junto com as medidas e o alinhamento dela (antes aparecia um instante sem o ajuste); no teatro há o painel de
+     tocar do 2 Edit; "Align photos" à esquerda e o teatro ao lado (lados trocados). Nos testes automáticos a
+     prévia abre parada (`window.stillpointQuietPreview`), e o cenário da resolução confere o tocar e o teatro.
+     Rodada completa antes desta última mudança: 638 passaram, 0 falharam.
      Teste do dono (2026-11-26): seção 68 aprovada ("os testes deu tudo certo").
      **Pedidos do dono (2026-11-26), feitos (seção 69):** o tocador do Align cameras também no Align photos do
      Export (mesma barra, mesmo comportamento; estado em `exp.play`, funções `expPlay`/`expPlayOff`); a mão de
