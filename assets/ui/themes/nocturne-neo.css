@@ -2675,3 +2675,11 @@ body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform:
    estiver dentro deles; voltam a apagar quando o TAB sai */
 .align-tools:has(:focus-visible), .align-play:has(:focus-visible) { opacity: 1; transition-duration: .16s; }
 html.kbd-focus .align-tools:focus-within, html.kbd-focus .align-play:focus-within { opacity: 1; transition-duration: .16s; }
+
+/* Modo teatro do Export (Edit e Outputs; pedido do dono, 2026-11-27): o botão do teatro ganha o fundo do painel de
+   tocar, e ele e a legenda da foto aparecem com o mouse e somem depois, como esse painel. Fora do teatro, nada muda. */
+.export-settings.theater .export-preview .lent-theater-btn { background: rgba(0, 0, 0, .78); }
+.export-settings.theater .export-preview .lent-theater-btn, .export-settings.theater .export-preview .stage-caption { opacity: 0; transition: opacity .3s ease; }
+.export-settings.theater .export-preview.th-show .lent-theater-btn, .export-settings.theater .export-preview.th-show .stage-caption,
+.export-settings.theater .export-preview .lent-theater-btn:hover, .export-settings.theater .export-preview .lent-theater-btn:focus-visible,
+html.kbd-focus .export-settings.theater .export-preview:focus-within .lent-theater-btn, html.kbd-focus .export-settings.theater .export-preview:focus-within .stage-caption { opacity: 1; }

@@ -1922,6 +1922,20 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      AINDA NÃO FEITO, esperando resposta do dono: botões "+" e "−" de zoom (onde ficam e o que ampliam), e com
      eles a prévia grande do Framing crescendo quando sobra espaço embaixo; ordem Sequence/Photos no passo 3
      Outputs (falta saber se "selecionado" é a aba aberta ou a saída marcada para exportar).
+     **SEGUNDO RETORNO DO DONO (2026-11-27, 16h), FEITO e aguardando teste (seção 81):** "Different" ainda
+     aparecia entre uma sessão de câmeras desiguais em Lowest camera e uma de câmeras iguais (a comparação tirava a
+     resolução só de um lado): agora a sessão em que a resolução não muda nada acompanha a primeira marcada em que
+     muda. Sequence antes de Photos no passo 3, e é a aba que abre primeiro (as saídas marcadas não mudaram).
+     Miniaturas dão a volta também no 2 Edit e no 3 Outputs › Photos. TAB: a coluna de câmeras do passo 2 é uma
+     parada só e ↑ ↓ andam entre as câmeras; no Guided aim a linha das câmeras é uma parada só e ← → trocam de
+     câmera; Enter no primeiro botão da barra de ferramentas abre a lista Select / Direct select, Esc fecha e o
+     foco fica no botão. Modo teatro (Edit e Outputs): o botão do teatro com fundo, e ele e a legenda da foto
+     aparecem e somem como o painel de tocar (`theaterFade`). Explicado ao dono: no passo 3, com câmeras de formas
+     diferentes e sem proporção salva, nenhuma proporção vem escolhida (decisão S4). FALTA deste retorno: botões
+     "+" e "−" de zoom no canto de baixo à direita das prévias do Framing, do 2 Edit e do 3 Outputs, e a prévia do
+     Framing crescendo quando sobra espaço embaixo.
+     **ANOTADO PARA DEPOIS (dono, 2026-11-27):** sistema melhor de nomes dos arquivos, que considere pastas e
+     labels; será feito junto com as várias labels.
      Teste do dono (2026-11-26): seção 68 aprovada ("os testes deu tudo certo").
      **Pedidos do dono (2026-11-26), feitos (seção 69):** o tocador do Align cameras também no Align photos do
      Export (mesma barra, mesmo comportamento; estado em `exp.play`, funções `expPlay`/`expPlayOff`); a mão de

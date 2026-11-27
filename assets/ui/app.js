@@ -3966,13 +3966,19 @@
       it.appendChild(alPhotoEl(p, false));
       it.insertAdjacentHTML("beforeend", "<div><b>Camera " + alNum(p) + "</b>" + tag + (text ? '<span class="t">' + alEsc(text) + "</span>" : "") + "</div>");
       it.addEventListener("click", () => { al.sel = p.camera; if (al.clicks && al.clicks.camera !== p.camera) al.clicks = null; alRender(); });
-      // O Tab passa pelas câmeras da lista e Enter ou espaço escolhe (como nas outras listas; pedido do dono, 2026-11-27)
-      it.tabIndex = 0; it.setAttribute("role", "button");
-      it.addEventListener("keydown", (e) => {
-        if (e.target !== it || (e.key !== "Enter" && e.key !== " ")) return;
-        e.preventDefault(); it.click();
-        const again = document.querySelector('#csAlignMain .ma-item[data-camera="' + p.camera + '"]'); if (again) again.focus();
-      });
+      // O Tab para uma vez só na coluna (na câmera escolhida) e ↑ ↓ andam entre as câmeras (pedido do dono, 2026-11-27)
+      it.tabIndex = p.camera === al.sel ? 0 : -1; it.setAttribute("role", "button");
+      // (keyAct: chamado pelo tratador de teclas da janela, focusKeys; dentro do Camera settings as teclas não chegam aqui)
+      it.keyAct = (key) => {
+        if (key !== "ArrowUp" && key !== "ArrowDown") return false;
+        const all = [...list.querySelectorAll(".ma-item:not(.gone)")], to = all[all.indexOf(it) + (key === "ArrowDown" ? 1 : -1)];
+        if (!to) return true;
+        const cam = to.dataset.camera;
+        to.click();
+        const again = document.querySelector('#csAlignMain .ma-item[data-camera="' + cam + '"]');
+        if (again) { again.focus(); again.scrollIntoView({ block: "nearest" }); }
+        return true;
+      };
       it.dataset.order = String(p.order);
       list.appendChild(it);
     });
@@ -4523,7 +4529,9 @@
   const CM_PER_IN = 2.54;
   function qualityLabel(q) { return QUALITIES.find((x) => x[0] === q)[1]; }
   // As três saídas de uma sessão (seções da janela de salvar); a chave de configuração de cada uma
-  const OUTPUTS = [["photos", "Photos", "one file per camera"], ["sequence", "Sequence", "video or animated image"],
+  // (Sequence vem antes de Photos e é a aba que abre primeiro no passo 3; pedido do dono, 2026-11-27. As saídas
+  // marcadas para exportar não mudam: Photos continua a marcada de início.)
+  const OUTPUTS = [["sequence", "Sequence", "video or animated image"], ["photos", "Photos", "one file per camera"],
                    ["lenticular", "Lenticular", "interlaced TIFF for a lens sheet"]];
   const OUTPUT_KINDS = OUTPUTS.map(([k]) => k);
   const OUTPUT_KEYS = ["outputs", "photos", "seq", "lent", "naming"];
@@ -4997,7 +5005,7 @@
     exp.step = step;
     exp.aligning = false;
     exp.editTheater = false;  // o modo teatro do Edit vale só enquanto se está nele
-    if (step === 3 && !OUTPUT_KINDS.includes(exp.mode)) exp.mode = OUTPUT_KINDS.find((k) => settingsFor(exp.active).outputs[k]) || "photos";
+    if (step === 3 && !OUTPUT_KINDS.includes(exp.mode)) exp.mode = "sequence";
     if ((step === 2 || step === 3) && !exp.selected.has(exp.active)) { const first = chosenSessions()[0]; if (first) exp.active = first.name; }
     renderExport();
   }
@@ -5688,7 +5696,16 @@
   let resRedraw = 0;
   function cropCompareText(session, st) {
     const uneven = resUneven(session, st, () => { clearTimeout(resRedraw); resRedraw = setTimeout(() => { if (!$("exportOverlay").classList.contains("hidden")) renderExport(); }, 60); });
-    return uneven === true ? cropText(st) : cropText(st).replace(/\|low$/, "");
+    if (uneven === true) return cropText(st);
+    // (a sessão em que a resolução não muda nada acompanha a primeira marcada em que muda: nunca é ela a "diferente";
+    // teste do dono, 2026-11-27)
+    let ref = "";
+    for (const o of chosenSessions()) {
+      if (o.name === session.name) continue;
+      const ost = settingsFor(o.name); cropLoad(o, ost);
+      if (resUneven(o, ost) === true) { ref = ost.crop.res === "low" ? "|low" : ""; break; }
+    }
+    return cropText(st).replace(/\|low$/, "") + ref;
   }
   function cropText(st) { return cropKey(st) + "|" + st.crop.x.toFixed(3) + "|" + st.crop.y.toFixed(3) + (st.crop.res === "low" ? "|low" : ""); }
   // A orientação que vale: a escolhida, ou a das fotos da sessão
@@ -6637,10 +6654,23 @@
     const groupOf = (key) => TOOL_GROUPS.findIndex((g) => g.includes(key));
     const shownIn = (gi) => { const g = TOOL_GROUPS[gi]; return g.includes(alignPrefs.tool) ? alignPrefs.tool : g.includes(alignPrefs.groupTool[gi]) ? alignPrefs.groupTool[gi] : g[0]; };
     const pickTool = (key) => { alignPrefs.tool = key; alignPrefs.groupTool[groupOf(key)] = key; saveAlignPrefs(); closeFly(); paintTools(); };
-    let fly = null;
-    const closeFly = () => { if (fly) { fly.remove(); fly = null; document.removeEventListener("pointerdown", flyOutside, true); window.removeEventListener("keydown", flyKey, true); } };
+    let fly = null, flyFrom = null;  // (flyFrom: o botão que abriu a lista pelo teclado; o foco volta para ele)
+    const closeFly = () => {
+      if (!fly) return;
+      const back = flyFrom && fly.contains(document.activeElement) ? flyFrom : null;
+      fly.remove(); fly = null; flyFrom = null;
+      document.removeEventListener("pointerdown", flyOutside, true); window.removeEventListener("keydown", flyKey, true);
+      if (back && back.isConnected) back.focus();  // (o Tab continua de onde estava; pedido do dono, 2026-11-27)
+    };
     const flyOutside = (e) => { if (fly && !fly.contains(e.target)) closeFly(); };
-    const flyKey = (e) => { if (e.key === "Escape") { e.preventDefault(); e.stopImmediatePropagation(); closeFly(); } };
+    const flyKey = (e) => {
+      if (e.key === "Escape") { e.preventDefault(); e.stopImmediatePropagation(); closeFly(); return; }
+      // Aberta pelo teclado: Tab e as setas andam entre as ferramentas da lista
+      if (!fly || !flyFrom || e.metaKey || e.ctrlKey || e.altKey || !["Tab", "ArrowDown", "ArrowUp"].includes(e.key)) return;
+      const list = [...fly.querySelectorAll("button")], i = list.indexOf(document.activeElement), back = e.key === "ArrowUp" || (e.key === "Tab" && e.shiftKey);
+      e.preventDefault(); e.stopImmediatePropagation();
+      (i < 0 ? list[0] : list[(i + (back ? -1 : 1) + list.length) % list.length]).focus();
+    };
     const openFly = (gi, btn) => {
       closeFly();
       fly = el("div", "align-flyout"); fly.id = "alignFlyout";
@@ -6687,6 +6717,15 @@
       let hold = 0, opened = false;
       b.addEventListener("click", () => { if (opened) { opened = false; return; } pickTool(shownIn(gi)); });
       if (g.length > 1) {
+        // Pelo teclado (pedido do dono, 2026-11-27): Enter ou espaço no botão abre a lista para escolher entre as
+        // ferramentas do grupo; Esc fecha e o foco fica no botão
+        b.keyAct = (key) => {
+          if (key !== "Enter" && key !== " ") return false;
+          openFly(gi, b); flyFrom = b;
+          document.documentElement.classList.add("kbd-focus");
+          const cur = fly && (fly.querySelector(".align-fly-item.on") || fly.querySelector("button")); if (cur) cur.focus();
+          return true;
+        };
         // Segurar o botão esquerdo abre a lista (solta em cima de um item para escolher); o botão direito também abre
         b.addEventListener("pointerdown", (e) => {
           if (e.button !== 0) return;
@@ -7978,7 +8017,7 @@
     // Passo 2 (Edit): prévia que toca, fileira e o bloco do Lightroom Classic (protótipo A, 2026-11-07)
     if (exp.step === 2) { exp.aligning = false; outer.classList.remove("aligning"); editStep(session, items, st, outer, rows, rerender); return; }
     if (exp.step === 1) exp.mode = "framing";
-    else if (!OUTPUT_KINDS.includes(exp.mode)) exp.mode = OUTPUT_KINDS.find((k) => st.outputs[k]) || "photos";
+    else if (!OUTPUT_KINDS.includes(exp.mode)) exp.mode = "sequence";
     // Barra de cima: no passo 1 o nome da sessão aberta; no 2, mesma configuração para todas (padrão) ou uma por
     // sessão; nos dois, mostrar/esconder a prévia (foto grande e miniaturas)
     const top = el("div", "export-scope");
@@ -8036,6 +8075,7 @@
         tb.classList.add("lent-theater-btn");
         tb.addEventListener("pointerdown", (e) => e.stopPropagation());
         preview.appendChild(tb);
+        theaterFade(preview);
         const applyT = () => {
           outer.classList.toggle("theater", !!exp.theater);
           outer.classList.toggle("theater-strip", !!exp.theater && kind === "photos");
@@ -8129,7 +8169,7 @@
         li.addEventListener("click", () => { exp.photo = k; showPhoto(); });
         strip.appendChild(li);
       });
-      if (focused) exp.keyNav = (d) => { const k = Math.max(0, Math.min(items.length - 1, exp.photo + d)); if (k === exp.photo) return; exp.photo = k; showPhoto(); const li = strip.children[k]; if (li) li.scrollIntoView({ block: "nearest", inline: "nearest" }); };
+      if (focused) exp.keyNav = (d) => { const n = items.length, k = ((exp.photo + d) % n + n) % n; if (k === exp.photo) return; exp.photo = k; showPhoto(); const li = strip.children[k]; if (li) li.scrollIntoView({ block: "nearest", inline: "nearest" }); };
       if (focused && !exp.previewHidden) {
         const slot = el("div", "export-strip-slot");
         slot.appendChild(stripScroll);
@@ -8278,6 +8318,7 @@
         if (exp.lentView === "interlaced") setTimeout(() => requestAnimationFrame(fitCanvas), EASE_MS + 20);
       }, { icon: "theaterIn", title: "Theater mode: larger preview, settings hidden", kind: "btn-secondary" });
       theater.classList.add("lent-theater-btn");
+      theaterFade(preview);
       theater.addEventListener("pointerdown", (e) => e.stopPropagation());
       preview.insertBefore(theater, views);  // à esquerda na tela: vem antes de Tilt / Interlaced no Tab
       const applyTheater = () => {
@@ -8764,7 +8805,7 @@
     const toggle = () => { if (exp.timer) pause(); else { editPlay.dir = 1; play(); } };
     exp.editToggle = toggle;
     const go = (k) => { pause(); show(Math.max(0, Math.min(n - 1, k))); const li = strip.children[exp.photo]; if (li) li.scrollIntoView({ block: "nearest", inline: "nearest" }); };
-    exp.keyNav = (d) => go(exp.photo + d);
+    exp.keyNav = (d) => go(((exp.photo + d) % n + n) % n);  // (dá a volta)
 
     items.forEach((item, k) => {
       const li = el("li", "frame");
@@ -8835,6 +8876,7 @@
     }, { icon: "theaterIn", title: "Theater mode: larger preview, settings hidden", kind: "btn-secondary" });
     tb.classList.add("lent-theater-btn");
     preview.appendChild(tb);
+    theaterFade(preview);
     // No teatro: ‹ ▶ › Speed e Reverse loop sobre a foto, no canto de cima à direita (somem 2 s depois de o mouse parar)
     const ctrls = el("div", "cs-review-ctrls stage-ctrls edit-ctrls");
     ctrlPlay = button("", toggle, { icon: "play", title: "Play the sequence (space)" });
@@ -10330,6 +10372,16 @@
   }
   // ---- Teclado: Tab passa por todos os controles (no Mac o WebKit só passa pelos campos de texto,
   // a não ser que a navegação por teclado esteja ligada no sistema) e fica dentro da janela aberta
+  // Teclas de um elemento com o foco (keyAct no próprio elemento: a lista de câmeras do passo 2, o botão de um grupo
+  // de ferramentas): tratadas na janela, antes dos tratadores das telas, que param as teclas dentro do Camera settings
+  window.addEventListener("keydown", function focusKeys(e) {
+    const a = document.activeElement;
+    if (!a || typeof a.keyAct !== "function" || e.target !== a || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (!$("dialogOverlay").classList.contains("hidden") || !$("promptOverlay").classList.contains("hidden")) return;
+    if (a.keyAct(e.key)) { e.preventDefault(); e.stopImmediatePropagation(); }
+  }, true);
+  // (o espaço solto num botão clicaria nele: depois de keyAct tratar o espaço, o clique não acontece)
+  window.addEventListener("keyup", (e) => { const a = document.activeElement; if (a && typeof a.keyAct === "function" && e.target === a && e.key === " " && a.classList.contains("align-tool")) e.preventDefault(); }, true);
   function focusables(scope) {
     return [...scope.querySelectorAll("a[href], button, input, select, textarea, [tabindex]")].filter((x) =>
       !x.disabled && x.tabIndex >= 0 && x.getClientRects().length > 0 && getComputedStyle(x).visibility !== "hidden" && !x.closest(".hidden"));
@@ -11747,6 +11799,18 @@
   // Controles sobre uma prévia: aparecem quando o mouse se mexe sobre ela e somem 2 s depois de parado (ou ao
   // sair); em cima deles não somem; com o foco do teclado neles, ficam (CSS :focus-within). Clicar neles não
   // chega à prévia (não arrasta a cortina nem vira a foto).
+  // No modo teatro do Export (Edit e Outputs; pedido do dono, 2026-11-27): o botão do teatro e a legenda da foto se
+  // comportam como o painel de tocar: aparecem com o mouse e somem 2 s depois de ele parar (classe th-show; o
+  // estilo só vale com o teatro ligado)
+  function theaterFade(preview) {
+    if (preview.dataset.thFade) return;
+    preview.dataset.thFade = "1";
+    let timer = 0;
+    const show = () => { preview.classList.add("th-show"); clearTimeout(timer); timer = setTimeout(() => preview.classList.remove("th-show"), 2000); };
+    preview.addEventListener("pointermove", show);
+    preview.addEventListener("pointerenter", show);
+    preview.addEventListener("pointerleave", () => { clearTimeout(timer); preview.classList.remove("th-show"); });
+  }
   function fadeControls(stage, ctrls) {
     stage.appendChild(ctrls);
     let hideTimer = 0;

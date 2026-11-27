@@ -85,7 +85,9 @@
       pad(t.order) + (t.state === "done" ? "<i> · READY</i>" : t.state === "needs" ? "<i> · CHANGE</i>" : "") + "</button>").join("");
     if (S.tabsHtml !== tabs) {
       S.tabsHtml = tabs;
+      const hadFocus = $("gaProg").contains(document.activeElement);  // (as abas são refeitas: o foco do teclado fica na câmera aberta)
       $("gaProg").innerHTML = tabs;
+      if (hadFocus) { const here = $("gaProg").querySelector("button.here"); if (here) here.focus(); }
       // (com as abas só no número, o estado aparece ao parar o mouse)
       $("gaProg").querySelectorAll("button").forEach((b) => { b.title = "Camera " + b.textContent.replace(" · ", ": ").replace("READY", "ready").replace("CHANGE", "needs a change"); });
       $("gaMini").innerHTML = (st.tabs || []).map((t) => '<span class="' + t.state + '" data-camera="' + esc(t.camera) + '" title="Camera ' + pad(t.order) + '"></span>').join("");
@@ -543,7 +545,9 @@
       document.documentElement.classList.add("kbd-focus"); showTools();
       const screens = $("gaScreens"), scope = screens && !screens.classList.contains("hidden") ? screens : document.body;
       const list = [...scope.querySelectorAll("a[href], button, input, select, textarea, [tabindex]")].filter((x) =>
-        !x.disabled && x.tabIndex >= 0 && x.getClientRects().length > 0 && getComputedStyle(x).visibility !== "hidden" && !x.closest(".hidden"));
+        !x.disabled && x.tabIndex >= 0 && x.getClientRects().length > 0 && getComputedStyle(x).visibility !== "hidden" && !x.closest(".hidden") &&
+        // (a linha das câmeras é uma parada só, na câmera aberta; ← → trocam de câmera: pedido do dono, 2026-11-27)
+        (!x.closest("#gaProg") || x.classList.contains("here")) && !x.closest("#gaMini"));
       if (!list.length) return;
       e.preventDefault();
       const i = list.indexOf(document.activeElement);
@@ -551,6 +555,14 @@
       return;
     }
     if (e.key === "Tab") { document.documentElement.classList.add("kbd-focus"); showTools(); return; }
+    // ← →: com o foco na linha das câmeras, a câmera anterior ou a seguinte
+    if ((e.key === "ArrowLeft" || e.key === "ArrowRight") && !e.metaKey && !e.ctrlKey && !e.altKey && $("gaProg").contains(document.activeElement)) {
+      const all = [...$("gaProg").querySelectorAll("button")], here = $("gaProg").querySelector("button.here") || document.activeElement;
+      const to = all[all.indexOf(here) + (e.key === "ArrowRight" ? 1 : -1)];
+      e.preventDefault();
+      if (to) { to.focus(); to.click(); const again = $("gaProg").querySelector("button.here"); if (again) again.focus(); }
+      return;
+    }
     if (e.key === "Escape") {
       e.preventDefault();
       if (!$("gaScreens").classList.contains("hidden")) $("gaScreens").classList.add("hidden");

@@ -2969,3 +2969,24 @@ menos pixels: 1200 px de largura contra 1800 das outras).
 | 2026-11-17 | Mac | etapa-21-alinhamento | — (4 câmeras simuladas, cena da haste) | sim | Seção 47 (passo Prepare com três objetos e Save bands (PDF)), aviso de corte (Save e Align photos), seção 48 inteira (Align photos com o alinhamento do rig) e References (opacidade de cada foto, ordem das camadas): aprovados pelo dono do projeto. Pendentes: aviso "Photoshop is not installed" (ele vai desinstalar o Photoshop para testar), Windows, e tudo o que depende de material real (pasta de fotos, haste, PDF impresso, RAW com câmeras) |
 | 2026-11-17 | Mac | etapa-21-alinhamento | — (câmeras simuladas, cena da haste) | sim | Seção 49: sem mudança (sem aviso), zoom mudado na câmera 03 (aviso âmbar e sessão nova sem o alinhamento dela) e uma câmera a menos: aprovados pelo dono do projeto. Não testados: uma câmera a mais e o aviso sumindo depois de alinhar de novo |
 | 2026-11-22 | Mac | etapa-21-alinhamento | — (9 câmeras simuladas, avisos de mentira) | sim | Seção 50 (Camera settings: triângulo de alerta no lugar das etiquetas de aviso, lista ao passar o mouse e ao clicar): aprovada pelo dono do projeto. Windows: pendente |
+
+## 81. Segundo retorno do dono de 2026-11-27: Different, Sequence, TAB por setas, teatro (câmeras simuladas servem)
+
+- [ ] **Different** e resolução: com uma sessão de câmeras desiguais e outra de câmeras iguais marcadas, escolher
+      **Lowest camera** na desigual: nenhuma ganha **Different**, e a caixa **Same framing for all ticked
+      sessions** continua marcada, sem o aviso "1 session is different".
+- [ ] Passo **3 Outputs**: as abas vêm na ordem **Sequence**, **Photos**, **Lenticular**, e a que abre é
+      **Sequence**. A saída marcada para exportar continua sendo **Photos**.
+- [ ] **2 Edit** e **3 Outputs** › **Photos**: **→** na última foto vai para a primeira; **←** na primeira vai para
+      a última.
+- [ ] Passo **2 Mark and aim**: o **TAB** para uma vez só na coluna das câmeras (na câmera escolhida); **↑** e **↓**
+      andam entre as câmeras.
+- [ ] **Guided aim**: o **TAB** para uma vez só na linha das câmeras; **←** e **→** trocam de câmera, com o foco
+      acompanhando.
+- [ ] Barra de ferramentas do **Align photos** / passo **3 Save**: com o **TAB** no primeiro botão, **Enter** abre
+      a lista com **Select** e **Direct select**; **↑ ↓** ou **TAB** andam nela, **Enter** escolhe; **Esc** fecha e
+      o foco fica no primeiro botão (o **TAB** seguinte vai para o segundo).
+- [ ] Modo teatro no **2 Edit** e no **3 Outputs**: o botão do teatro (canto de cima à esquerda) tem fundo escuro,
+      e ele e a legenda da foto (canto de baixo à esquerda) aparecem ao mexer o mouse e somem 2 s depois de ele
+      parar, junto com o painel de tocar. Fora do teatro, ficam sempre à vista como antes.
+
