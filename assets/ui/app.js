@@ -4490,7 +4490,10 @@
       if (e.shiftKey && target === sessionGallery && !editing.on) target.extendTo(target.index + d);
       else if (d > 0) target.next(); else target.prev();
     }
-    if (e.key === " " && !order.open && (isFullscreen() || playTimer)) { e.preventDefault(); togglePlay(); }
+    // Espaço: toca ou pausa a sequência da sessão aberta, em tela cheia ou não (pedido do dono, 2026-11-27; num botão
+    // ou numa lista com o foco, o próprio elemento responde; com uma janela aberta por cima, não toca por trás)
+    if (e.key === " " && !order.open && !e.repeat && !["BUTTON", "SELECT", "TEXTAREA", "LABEL"].includes(e.target.tagName) &&
+        (isFullscreen() || playTimer || !document.querySelector(".overlay:not(.hidden)"))) { e.preventDefault(); togglePlay(); }
     if (order.open) return;
     // Sessão: Esc sai da reordenação ou da tela cheia; F tela cheia; Delete apaga a foto
     if (e.key === "Escape") {
@@ -6851,8 +6854,7 @@
         let dot = badge && badge.querySelector(".frame-edit-dot"), word = li.querySelector(".frame-edited");
         if (on && badge && !dot) badge.appendChild(el("i", "frame-edit-dot"));
         if (!on && dot) dot.remove();
-        if (on && !word) li.appendChild(el("span", "frame-edited", "Edited"));
-        if (!on && word) word.remove();
+        if (word) word.remove();  // (a palavra "Edited" embaixo da miniatura saiu a pedido do dono, 2026-11-27: fica o ponto)
       });
       const sel = $("alignModeSel");
       if (sel && sel.options[0] && sel.options[0].value === "rig") {
@@ -8178,6 +8180,7 @@
           const playF = () => { stopPreview(); exp.framingPlaying = true; exp.framingDir = 1; if (nPhotos > 1) exp.timer = setInterval(tickF, Math.round(220 / PLAY_SPEEDS[editPlay.speed])); paintPlay(); };
           const pauseF = () => { stopPreview(); exp.framingPlaying = false; paintPlay(); };
           exp.framingPause = pauseF;
+          exp.framingToggle = () => { if (!stage.isConnected) return; if (exp.timer) pauseF(); else playF(); };
           stage.appendChild(playBtn);
           // No teatro: ‹ ▶ › Speed e Reverse loop sobre a foto, como no 2 Edit (pedido do dono, 2026-11-27)
           {
@@ -8626,6 +8629,7 @@
         show(i, ["Preview", " " + label + " · photo " + (i + 1) + " of " + items.length + " · " + s.fps + " fps"]);
       };
       const startPreview = () => { stopPreview(); exp.timer = setInterval(step, 1000 / s.fps); };
+      if (focused) exp.seqToggle = () => { if (!play.isConnected) return; if (exp.timer) stopPreview(); else startPreview(); setPlayIcon(); };
       if (focused) {
         exp.frame = -1;
         step();
@@ -9187,6 +9191,25 @@
       if (r && r.ok) { toast("Photo " + pad(item.order || 0) + " · Photoshop editing cancelled"); log("Edit in Photoshop cancelled: photo " + pad(item.order || 0) + " · " + sessionShort(session)); }
     });
   }
+  // Espaço nas outras telas com a sequência de uma sessão (pedido do dono, 2026-11-27): Export › Framing, Export ›
+  // Outputs › Sequence e Camera settings › Match automatically. Na janela, antes dos tratadores das telas. No Align
+  // photos e no passo 3 do Align cameras o espaço continua sendo "segurar e arrastar para mover a vista".
+  window.addEventListener("keydown", (e) => {
+    if (e.key !== " " || e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (!$("dialogOverlay").classList.contains("hidden") || !$("promptOverlay").classList.contains("hidden") || openMenu || selectMenu) return;
+    const t = e.target;
+    if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.tagName === "BUTTON" || t.tagName === "LABEL")) return;
+    if (t && typeof t.keyAct === "function") return;
+    if (alignEditOn()) return;
+    let fn = null;
+    if (!$("exportOverlay").classList.contains("hidden")) {
+      if (exp.step === 1 && !exp.aligning) fn = exp.framingToggle;
+      else if (exp.step === 3 && exp.mode === "sequence") fn = exp.seqToggle;
+    } else if (!$("camSettingsOverlay").classList.contains("hidden") && !$("csMatch").classList.contains("hidden") && typeof csMatchTogglePlay === "function" && document.querySelector("#csMatch .cs-review-ctrls")) fn = csMatchTogglePlay;
+    if (!fn) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    fn();
+  }, true);
   // Espaço no Export › Edit: play / pause (como na janela principal); num botão com o foco, o próprio botão responde
   document.addEventListener("keydown", (e) => {
     if (e.key !== " " || e.repeat || exp.step !== 2 || $("exportOverlay").classList.contains("hidden") || !exp.editToggle) return;

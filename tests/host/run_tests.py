@@ -2293,8 +2293,8 @@ def scenario_align_cameras(t, name, photos):
               notes: [...ex.querySelectorAll('.align-rig:not(.hidden)')].map((e) => e.closest('.align-ctl').querySelector('.align-lab').textContent + ':' + e.textContent),
               boxes: [...ex.querySelectorAll('.align-num.rig-edited')].length }; }""")
         m1 = marks()
-        check(t, "Align photos: an edited photo is marked (selector '· edited' in amber, square and 'Edited' on its thumbnail, 'Edited' tag and the rig value next to Size; with the anchor off the photo centre, Move changes too)",
-              m1["sel"].endswith(" · edited") and m1["amber"] and m1["thumbs"].count("dw") == 1 and m1["tag"] and any(re.match(r"Size:Rig \d+\.\d$", n) for n in m1["notes"]) and m1["boxes"] == len(m1["notes"]), m1)
+        check(t, "Align photos: an edited photo is marked (selector '· edited' in amber, the square on its thumbnail (no word under it), 'Edited' tag and the rig value next to Size; with the anchor off the photo centre, Move changes too)",
+              m1["sel"].endswith(" · edited") and m1["amber"] and m1["thumbs"].count("d-") == 1 and "w" not in m1["thumbs"] and m1["tag"] and any(re.match(r"Size:Rig \d+\.\d$", n) for n in m1["notes"]) and m1["boxes"] == len(m1["notes"]), m1)
         t.button("Back to automatic")
         check(t, "Align photos: 'Back to automatic' returns to the alignment of the rig", t.wait(lambda: saved() == auto_text and back_off() is True, 8), saved())
         time.sleep(0.6)
@@ -2434,7 +2434,7 @@ def scenario_align_cameras(t, name, photos):
         t.page.click("#exportSettings .flip-btn[data-flip=h]")
         time.sleep(1.0)
         m3 = marks()
-        check(t, "Align photos: a flipped photo is marked as edited and turns 'Back to automatic' on", m3["sel"].endswith(" · edited") and m3["thumbs"].count("dw") == 1 and m3["tag"] and m3["boxes"] == 0 and back_off() is False, (m3, back_off()))
+        check(t, "Align photos: a flipped photo is marked as edited and turns 'Back to automatic' on", m3["sel"].endswith(" · edited") and m3["thumbs"].count("d-") == 1 and "w" not in m3["thumbs"] and m3["tag"] and m3["boxes"] == 0 and back_off() is False, (m3, back_off()))
         t.button("Back to automatic")
         ok = t.wait(lambda: saved() == auto_text and back_off() is True, 8)
         time.sleep(0.6)
@@ -3582,6 +3582,15 @@ def scenario_resolution(t, name, photos):
         time.sleep(0.5)
         a0 = sel(); time.sleep(0.8)
         check(t, "framing: the play button pauses", sel() == a0, (a0, sel()))
+        t.js("() => document.activeElement && document.activeElement.blur()")
+        t.page.keyboard.press("Space")
+        seen2 = set()
+        for _ in range(6):
+            seen2.add(sel()); time.sleep(0.2)
+        t.page.keyboard.press("Space")
+        time.sleep(0.4)
+        a1 = sel(); time.sleep(0.7)
+        check(t, "framing: the space bar plays and pauses the sequence", len(seen2) >= 2 and sel() == a1, (sorted(seen2), a1, sel()))
         t.page.click("#exportSettings .framing-stage .lent-theater-btn")
         time.sleep(0.8)
         th = t.js("() => { const o = document.getElementById('exportSettings'), st = o.querySelector('.framing-stage'); return { cls: o.classList.contains('theater'), rows: o.querySelector('.export-rows').offsetHeight, ctrls: getComputedStyle(st.querySelector('.stage-ctrls')).display, play: getComputedStyle(st.querySelector('.framing-play')).display }; }")

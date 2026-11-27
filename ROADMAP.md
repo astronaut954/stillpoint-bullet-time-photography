@@ -1964,6 +1964,15 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      tocar do 2 Edit; "Align photos" à esquerda e o teatro ao lado (lados trocados). Nos testes automáticos a
      prévia abre parada (`window.stillpointQuietPreview`), e o cenário da resolução confere o tocar e o teatro.
      Rodada completa antes desta última mudança: 638 passaram, 0 falharam.
+     **RETORNO DAS 18h38:** seção 83 aprovada. Feito, aguardando teste (seção 84): a palavra "Edited" embaixo da
+     miniatura saiu (fica o quadrado); a barra de espaço toca e pausa em toda tela com a sequência de uma sessão:
+     janela principal fora da tela cheia (novo), Export › Framing (novo), Export › 3 Outputs › Sequence (novo),
+     Camera settings › Match automatically (novo), Export › 2 Edit (já era). NÃO mudou: Align photos e passo 3 do
+     Align cameras, onde o espaço é "segurar e arrastar para mover a vista" (pendência do dono: quer que um toque
+     curto no espaço toque a sequência ali também?). Rodada completa do commit 772a26b: 639 passaram, 4 falharam,
+     todas no cenário das marcas desiguais (a primeira por espera esgotada, as outras em cascata); repetido com o
+     cenário de que ele depende, passou inteiro (132 de 132): falha intermitente, a acompanhar junto com a do
+     Guided aim (item 6 da lista).
      Teste do dono (2026-11-26): seção 68 aprovada ("os testes deu tudo certo").
      **Pedidos do dono (2026-11-26), feitos (seção 69):** o tocador do Align cameras também no Align photos do
      Export (mesma barra, mesmo comportamento; estado em `exp.play`, funções `expPlay`/`expPlayOff`); a mão de

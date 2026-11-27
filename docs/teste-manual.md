@@ -3010,14 +3010,29 @@ menos pixels: 1200 px de largura contra 1800 das outras).
 
 ## 83. Framing com modo teatro e tocar (2026-11-27, câmeras simuladas servem; refeito depois do teste do dono das 18h16)
 
-- [ ] Abrir o **Export sessions**: a prévia do **Framing** já vem tocando.
-- [ ] Tocando, com uma sessão alinhada: cada foto entra já com o alinhamento dela; não aparece um instante sem o
+- [x] Abrir o **Export sessions**: a prévia do **Framing** já vem tocando.
+- [x] Tocando, com uma sessão alinhada: cada foto entra já com o alinhamento dela; não aparece um instante sem o
       ajuste (defeito visto pelo dono).
-- [ ] No canto de cima à esquerda da prévia: **Align photos** e, ao lado dele, o botão do modo teatro. No canto de
+- [x] No canto de cima à esquerda da prévia: **Align photos** e, ao lado dele, o botão do modo teatro. No canto de
       baixo à direita, o botão de tocar / pausar. Clicar numa miniatura ou usar **← →** para de tocar.
-- [ ] Trocar **Aspect ratio** ou **Resolution** enquanto toca: continua tocando com o enquadramento novo.
-- [ ] Modo teatro: as opções e a barra de cima somem, a prévia cresce e as miniaturas continuam. No canto de cima à
+- [x] Trocar **Aspect ratio** ou **Resolution** enquanto toca: continua tocando com o enquadramento novo.
+- [x] Modo teatro: as opções e a barra de cima somem, a prévia cresce e as miniaturas continuam. No canto de cima à
       direita aparece o painel de tocar (anterior, tocar, seguinte, **Speed**, **Reverse loop**), como no **2 Edit**;
       ele, o botão do teatro e a etiqueta de baixo somem com o mouse parado e voltam ao mexer.
-- [ ] Sair para **Align photos**, **2 Edit** ou **3 Outputs** com o teatro do Framing ligado: essas telas abrem no
+- [x] Sair para **Align photos**, **2 Edit** ou **3 Outputs** com o teatro do Framing ligado: essas telas abrem no
       arranjo normal delas e nada fica tocando sozinho.
+
+## 84. Espaço toca e pausa; sem a palavra "Edited" nas miniaturas (2026-11-27, câmeras simuladas servem)
+
+- [ ] **Align photos**: uma foto editada (com o alinhamento do rig) tem o quadrado âmbar na miniatura, sem a palavra
+      **Edited** embaixo dela.
+- [ ] Janela principal, com uma sessão aberta e fora da tela cheia: a barra de espaço toca e pausa a sequência (antes
+      só valia em tela cheia ou já tocando).
+- [ ] **Export sessions** › **Framing**: a barra de espaço pausa e volta a tocar a prévia.
+- [ ] **Export sessions** › **2 Edit**: a barra de espaço toca e pausa (já era assim).
+- [ ] **Export sessions** › **3 Outputs** › **Sequence**: a barra de espaço pausa e volta a tocar a prévia.
+- [ ] **Camera settings** › **Match automatically**, na tela que toca as fotos de antes e depois: a barra de espaço
+      toca e pausa.
+- [ ] **Align photos** e passo **3 Save** do Align cameras: a barra de espaço continua sendo segurar e arrastar para
+      mover a vista (não mudou).
+
