@@ -3957,7 +3957,7 @@
       if (!p.file) { tag = '<span class="cs-tag diff">No photo</span>'; }
       else if (d.tried && !d.found) { tag = '<span class="cs-tag diff">Marks not found</span>'; text = "Click its three marks"; }
       else if ((d.found || alMoved(p.camera)) && alAim(p.camera)) {
-        tag = fixes.length ? '<span class="cs-tag diff">' + plural(fixes.length, "change", "changes") + "</span>" : '<span class="cs-tag ok">Ready</span>';
+        tag = fixes.length ? '<span class="cs-tag diff">' + plural(fixes.length, "fix needed", "fixes needed") + "</span>" : '<span class="cs-tag ok">Ready</span>';  // (texto do dono, 2026-11-27: "changes" não dizia de quê)
         text = fixes[0] || "";
       } else if (!marked) text = "Click the three marks";
       const it = document.createElement("div");

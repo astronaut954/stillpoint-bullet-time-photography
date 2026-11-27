@@ -1950,6 +1950,8 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      values" saía cortado: fica por dentro. Explicado ao dono: "Review alignment" desligado depois do Guided aim é
      a regra de câmera mexida (`alMoved`), pede "Fire again". PROTÓTIPOS da etiqueta "X changes" (hoje não diz
      mudanças de quê): https://claude.ai/artifact/UfX2wBv5C5THoDie9Td4CU, alternativas A a D, aguardando escolha.
+     **ESCOLHA DO DONO (17h29): A, com o texto "2 fixes needed"** (feito); seção 82 aprovada ("Tudo certo com
+     os testes").
      Teste do dono (2026-11-26): seção 68 aprovada ("os testes deu tudo certo").
      **Pedidos do dono (2026-11-26), feitos (seção 69):** o tocador do Align cameras também no Align photos do
      Export (mesma barra, mesmo comportamento; estado em `exp.play`, funções `expPlay`/`expPlayOff`); a mão de

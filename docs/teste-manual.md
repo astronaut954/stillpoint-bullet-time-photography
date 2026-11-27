@@ -2884,13 +2884,13 @@ menos pixels: 1200 px de largura contra 1800 das outras).
       resolução, e o aviso "1 session is different" não aparece por isso.
 - [x] Etiqueta de ampliação com várias câmeras: curta, numa linha só (**4 cameras enlarged**), à direita da linha
       **Resolution**; o detalhe por câmera fica na caixa que abre com o mouse em cima.
-- [ ] **Align cameras**, passo **3 Save**: trocar de câmera com **← →** ou pelas miniaturas, e **⌘Z** / **⇧⌘Z**: a
+- [x] **Align cameras**, passo **3 Save**: trocar de câmera com **← →** ou pelas miniaturas, e **⌘Z** / **⇧⌘Z**: a
       linha de cima (avisos e **Keeps**) não pisca.
 - [x] Miniaturas dando a volta: no **Framing**, no **Align photos** e no passo **3 Save**, **→** na última foto vai
       para a primeira e **←** na primeira vai para a última.
 - [x] Passo **2 Mark and aim**: o **TAB** passa pelas câmeras da lista da esquerda; **Enter** ou espaço escolhe a
       câmera.
-- [ ] Janela **Guided aim**: o **TAB** passa pelas abas das câmeras, pelos botões e pelas opções de baixo, com o
+- [x] Janela **Guided aim**: o **TAB** passa pelas abas das câmeras, pelos botões e pelas opções de baixo, com o
       contorno no que está com o foco.
 - [x] Passo **3 Save** e **Align photos**: com o **TAB** dentro da barra de ferramentas ou da barra de reprodução,
       o painel fica aceso enquanto o foco estiver nele e volta a apagar quando o **TAB** sai.
@@ -2981,7 +2981,7 @@ menos pixels: 1200 px de largura contra 1800 das outras).
       a última.
 - [x] Passo **2 Mark and aim**: o **TAB** para uma vez só na coluna das câmeras (na câmera escolhida); **↑** e **↓**
       andam entre as câmeras.
-- [ ] **Guided aim**: o **TAB** para uma vez só na linha das câmeras; **←** e **→** trocam de câmera, com o foco
+- [x] **Guided aim**: o **TAB** para uma vez só na linha das câmeras; **←** e **→** trocam de câmera, com o foco
       acompanhando.
 - [x] Barra de ferramentas do **Align photos** / passo **3 Save**: com o **TAB** no primeiro botão, **Enter** abre
       a lista com **Select** e **Direct select**; **↑ ↓** ou **TAB** andam nela, **Enter** escolhe; **Esc** fecha e
@@ -2992,10 +2992,11 @@ menos pixels: 1200 px de largura contra 1800 das outras).
 
 ## 82. Terceiro retorno do dono de 2026-11-27 (17h17)
 
-- [ ] **Guided aim**: com o foco na linha das câmeras, **←** e **→** trocam de câmera uma por vez, na ordem, com o
+- [x] **Guided aim**: com o foco na linha das câmeras, **←** e **→** trocam de câmera uma por vez, na ordem, com o
       contorno do foco sempre na câmera aberta (antes o contorno ficava uma atrás e a câmera pulava).
-- [ ] Passo **3 Save**: **⌘Z** e **⇧⌘Z** até o último possível, inclusive quando a etiqueta de ampliação aparece
+- [x] Passo **3 Save**: **⌘Z** e **⇧⌘Z** até o último possível, inclusive quando a etiqueta de ampliação aparece
       ou some: a linha de cima não mostra um instante as etiquetas por extenso antes de virar **N warnings**.
-- [ ] Passo **3 Save**: com o **TAB** em **Back to the stick values**, o contorno aparece inteiro (por dentro do
+- [x] Passo **3 Save**: com o **TAB** em **Back to the stick values**, o contorno aparece inteiro (por dentro do
       botão), sem corte em cima nem à direita.
-
+- [ ] Passo **2 Mark and aim**: a etiqueta âmbar de cada câmera na lista diz **2 fixes needed** (ou **1 fix
+      needed**) em vez de "2 changes".
