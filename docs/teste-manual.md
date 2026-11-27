@@ -2831,9 +2831,15 @@ Escolha e pedidos do dono (2026-11-27, 02:17), a conferir:
 
 Retornos do dono (2026-11-27, 02:24), a conferir:
 
-- [ ] Trocar entre a fotografia e o canvas no seletor: a linha de cima, a foto grande, a fileira de miniaturas e o
+- [x] Trocar entre a fotografia e o canvas no seletor: a linha de cima, a foto grande, a fileira de miniaturas e o
       painel ficam na mesma altura e no mesmo lugar (antes tudo descia alguns pixels no modo canvas).
-- [ ] O desenho da âncora fica exatamente no meio do botão dela, no título do **This photo**.
+- [x] O desenho da âncora fica exatamente no meio do botão dela, no título do **This photo**.
+
+Pedido do dono (2026-11-27, 02:35), a conferir:
+
+- [ ] No bloco **Canvas**, ao lado do nome, há um "?"; com o mouse em cima, a caixa padrão mostra "The canvas cannot
+      go past the photos. A smaller canvas means fewer pixels in the output; no photo is enlarged." O texto solto
+      embaixo dos botões saiu.
 
 ## Resultado
 

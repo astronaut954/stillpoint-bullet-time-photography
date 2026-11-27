@@ -7315,7 +7315,8 @@
           [{ label: "Cancel", primary: true, cancel: true }, { label: "Reset canvas and photos", onClick: () => { st.align.canvas = null; lockRect = null; resetTo(true); } }]);
       }, { kind: "btn-secondary", title: "Back to the full canvas" }));
       canvasBlock.appendChild(row); }
-    canvasBlock.appendChild(el("p", "export-note align-canvas-note", "The canvas cannot go past the photos. A smaller canvas means fewer pixels in the output; no photo is enlarged."));
+    // (a explicação fica num "?" ao lado do nome, na caixa padrão; pedido do dono, 2026-11-27)
+    canvasBlock.querySelector(".align-title-name").appendChild(makeTip("The canvas cannot go past the photos. A smaller canvas means fewer pixels in the output; no photo is enlarged."));
     // Seletor "foto / canvas" à direita do título (pedido do dono, 2026-11-27: no lugar da ferramenta na barra): um
     // ícone de fotografia e um de canvas; o escolhido decide o bloco do painel e o que as alças da foto grande mexem
     const modeSegs = [];

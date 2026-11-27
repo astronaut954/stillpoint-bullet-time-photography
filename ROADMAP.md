@@ -2137,6 +2137,8 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      encolhe (medido: linha de cima, foto grande, painel e miniaturas iguais nos dois modos). CONSEQUÊNCIA: no modo
      This photo a foto grande ficou 8 px mais baixa do que era. (b) o desenho da âncora não estava no meio do botão
      (caixa de 13 px num espaço de 20): agora 14 px, com 4 px de cada lado.
+     Teste do dono (2026-11-27, 02:35): aprovado. PEDIDO: a nota do bloco Canvas vira um "?" ao lado do nome, com o
+     texto na caixa padrão — FEITO, AGUARDANDO TESTE (`makeTip`; o seletor continua no mesmo lugar).
      FALTA do item 3: ferramenta do canvas (C1).
      3. IDEIA PARA DEPOIS (só anotar): a feature de label passar a aceitar várias labels, não só uma.
      **PASSAGEM PARA UM CHAT NOVO (2026-11-26):** o dono pediu um prompt de continuação porque as respostas
