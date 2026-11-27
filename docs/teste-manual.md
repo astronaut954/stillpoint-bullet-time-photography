@@ -3000,3 +3000,5 @@ menos pixels: 1200 px de largura contra 1800 das outras).
       botão), sem corte em cima nem à direita.
 - [ ] Passo **2 Mark and aim**: a etiqueta âmbar de cada câmera na lista diz **2 fixes needed** (ou **1 fix
       needed**) em vez de "2 changes".
+- [ ] **Export sessions** › **Framing**: com a janela alta, a prévia grande cresce e ocupa o espaço que sobrava
+      embaixo das opções; com a janela baixa, ela fica na altura mínima de antes e as opções rolam.

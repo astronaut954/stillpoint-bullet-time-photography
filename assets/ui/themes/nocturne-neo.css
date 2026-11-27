@@ -2687,3 +2687,8 @@ html.kbd-focus .export-settings.theater .export-preview:focus-within .lent-theat
 /* Passo 3 do Align cameras: o contorno do TAB no "Back to the stick values" saía cortado em cima e à direita (a linha
    corta o que passa dela); o contorno fica por dentro do botão (captura do dono, 2026-11-27) */
 html.kbd-focus .rig-top :focus, html.kbd-focus .export-scope :focus { outline-offset: -2px; }
+
+/* Export › Framing (pedido do dono, 2026-11-27): a prévia grande tem 200 px de altura mínima e cresce quando sobra
+   espaço embaixo; as opções ficam com a altura delas (e rolam quando a janela é baixa, como antes) */
+.export-settings:has(> .framing-stage) > .framing-stage { flex: 1 1 200px; height: auto; min-height: 200px; }
+.export-settings:has(> .framing-stage) > .export-rows { flex: 0 1 auto; }
