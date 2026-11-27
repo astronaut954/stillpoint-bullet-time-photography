@@ -7248,6 +7248,8 @@
     self.classList.add("for-photo");
     const canvasCur = el("span", "align-cur", "");
     const canvasBlock = block("Canvas", canvasCur);
+    // (o nome ocupa a largura de "This photo": o seletor fica no mesmo lugar nos dois blocos; pedido do dono, 2026-11-27)
+    { const h3 = canvasBlock.querySelector("h3"), name = el("span", "align-title-name", h3.firstChild.textContent); h3.replaceChild(name, h3.firstChild); }
     canvasBlock.classList.add("for-canvas");
     self.after(canvasBlock);
     const canvasFull = () => { const f = usefulRect(); return f ? f.base || f : null; };
@@ -7319,7 +7321,10 @@
     const modeSegs = [];
     const modeSeg = () => {
       const seg = el("span", "align-mode-seg");
-      [["photo", icon("photo", 14), "Photo: move, resize and rotate the photo"], ["canvas", icon("toolCanvas", 14), "Canvas: make the canvas smaller. No photo is enlarged; a smaller canvas means fewer pixels in the output"]].forEach(([key, svg, title]) => {
+      // (ícones próprios, de traço fino; pedido do dono, 2026-11-27: a fotografia, e o canvas como a prancheta do
+      // Illustrator, um quadro com as linhas passando dos cantos)
+      const thin = (inner) => '<svg viewBox="0 0 16 14" width="16" height="14" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">' + inner + "</svg>";
+      [["photo", thin('<rect x="1.5" y="1.5" width="13" height="11"/><path d="M1.5 10.5l3.8-3.8 2.6 2.6 1.9-1.9 4.7 4.7"/><circle cx="10.8" cy="4.6" r="1.1"/>'), "Photo: move, resize and rotate the photo"], ["canvas", thin('<path d="M4.5 0.5v13M11.5 0.5v13M0.5 3.5h15M0.5 10.5h15"/>'), "Canvas: make the canvas smaller. No photo is enlarged; a smaller canvas means fewer pixels in the output"]].forEach(([key, svg, title]) => {
         const b = el("button", "align-mode-btn"); b.type = "button"; b.dataset.mode = key; b.innerHTML = svg; b.title = title; b.setAttribute("aria-label", title);
         b.addEventListener("click", () => { exp.alignCanvasMode = key === "canvas"; paintMode(); });
         seg.appendChild(b);
@@ -7328,6 +7333,10 @@
     };
     const paintMode = () => {
       const on = !!exp.alignCanvasMode && !rigStep;
+      // (a largura do nome "This photo", medida enquanto ele está à vista, vai para o nome "Canvas")
+      { const tn = self.querySelector("h3").firstChild, nameEl = canvasBlock.querySelector(".align-title-name");
+        if (tn && tn.nodeType === 3 && self.offsetParent) { const rg = document.createRange(); rg.selectNodeContents(tn); const w = rg.getBoundingClientRect().width; if (w > 0 && !exp.alignAll) exp.alignTitleW = w; }
+        if (nameEl && exp.alignTitleW) nameEl.style.minWidth = exp.alignTitleW + "px"; }
       stage.dataset.canvas = on ? "1" : "";
       modeSegs.forEach((seg) => { [...seg.children].forEach((b) => { const sel = (b.dataset.mode === "canvas") === on; b.classList.toggle("on", sel); b.setAttribute("aria-pressed", sel ? "true" : "false"); }); seg.classList.toggle("canvas-changed", canvasSet(st)); });
     };

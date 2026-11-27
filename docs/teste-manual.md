@@ -2822,6 +2822,13 @@ mover o canvas, a conferir:
 - [ ] **Reset canvas** com as fotos ainda cobrindo o canvas inteiro: volta direto, sem pergunta.
 - [ ] **Fit to photos**: o canvas cresce até onde as fotos ainda cobrem.
 
+Escolha e pedidos do dono (2026-11-27, 02:17), a conferir:
+
+- [ ] Com o canvas diminuído, o ícone do canvas no seletor tem um quadrado âmbar no canto de cima à direita (com
+      qualquer dos dois ícones escolhido); com o canvas inteiro, não tem.
+- [ ] Os dois ícones do seletor são de traço fino: uma fotografia e um quadro com as linhas passando dos cantos.
+- [ ] O seletor fica no mesmo lugar no bloco **This photo** e no bloco **Canvas** (não anda ao trocar).
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |

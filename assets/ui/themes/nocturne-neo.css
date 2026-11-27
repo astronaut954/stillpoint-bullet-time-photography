@@ -2650,9 +2650,12 @@ body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform:
 .align-canvas-note { margin: 0; }
 /* Seletor foto / canvas no título do painel (pedido do dono, 2026-11-27) */
 .align-mode-seg { display: inline-flex; margin-left: 10px; flex: 0 0 auto; }
-.align-mode-btn { width: 24px; height: 22px; box-sizing: border-box; padding: 0; margin: 0; display: grid; place-items: center; background: transparent; border: 1px solid var(--noct-border-strong); color: var(--noct-primary); cursor: pointer; border-radius: 0; }
+.align-mode-btn { position: relative; width: 26px; height: 22px; box-sizing: border-box; padding: 0; margin: 0; display: grid; place-items: center; background: transparent; border: 1px solid var(--noct-border-strong); color: var(--noct-primary); cursor: pointer; border-radius: 0; }
 .align-mode-btn + .align-mode-btn { margin-left: -1px; }
 .align-mode-btn:hover { border-color: var(--noct-primary); position: relative; }
 .align-mode-btn.on { background: var(--noct-primary); border-color: var(--noct-primary); color: var(--noct-on-primary); position: relative; }
 .align-block.for-canvas h3 { justify-content: flex-start; white-space: nowrap; }
 .align-block.for-canvas h3 .align-cur { margin-left: auto; }
+/* (marca M1 aprovada, 2026-11-27: quadrado âmbar no canto do ícone do canvas quando o canvas não é o inteiro) */
+.align-mode-seg.canvas-changed .align-mode-btn[data-mode="canvas"]::after { content: ""; position: absolute; right: -4px; top: -4px; width: 7px; height: 7px; background: var(--noct-pending); box-shadow: 0 0 0 1px #000; z-index: 2; }
+.align-title-name { display: inline-block; }

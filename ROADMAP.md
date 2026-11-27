@@ -2127,6 +2127,10 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      https://claude.ai/artifact/EGE2PBTLQxwrvNwUXf97M9 (M1 quadrado âmbar no canto do ícone; M2 o ícone inteiro em
      âmbar; M3 barra âmbar embaixo; M4 o tamanho em % ao lado). AGUARDA A ESCOLHA. Testes automáticos: Align cameras
      120 de 120 (verificações do canvas refeitas), ferramentas 48 de 48; rodada completa não refeita.
+     **ESCOLHA DO DONO (2026-11-27, 02:17): M1.** Pedidos junto: ícones melhores e de traço mais fino (fotografia;
+     canvas como a prancheta do Illustrator, um quadro com as linhas passando dos cantos; desenho do agente, a
+     confirmar) e o seletor no mesmo lugar nos dois blocos (o nome "Canvas" ocupa a largura de "This photo").
+     FEITO, AGUARDANDO TESTE; captura enviada ao dono.
      FALTA do item 3: ferramenta do canvas (C1).
      3. IDEIA PARA DEPOIS (só anotar): a feature de label passar a aceitar várias labels, não só uma.
      **PASSAGEM PARA UM CHAT NOVO (2026-11-26):** o dono pediu um prompt de continuação porque as respostas
