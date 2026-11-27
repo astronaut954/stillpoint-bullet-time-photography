@@ -7246,7 +7246,7 @@
     // ---- Ferramenta do canvas (decisões do dono, 2026-11-26; protótipo C1): no grupo do Resize photo; não amplia
     // foto nenhuma (o canvas só diminui e anda dentro do canvas calculado), a saída fica com menos pixels, e o canvas
     // não passa de onde todas as fotos cobrem. Com a ferramenta escolhida, o bloco "Canvas" entra no lugar do
-    // "This photo" e o canvas ganha oito alças (as da foto somem).
+    // "This photo" e o canvas ganha quatro alças, nos cantos (as da foto somem).
     self.classList.add("for-photo");
     const canvasCur = el("span", "align-cur", "");
     const canvasBlock = block("Canvas", canvasCur);
@@ -7309,8 +7309,8 @@
       canvasBlock.appendChild(row); }
     canvasBlock.appendChild(el("p", "export-note align-canvas-note", "The canvas cannot go past the photos. A smaller canvas means fewer pixels in the output; no photo is enlarged."));
     if (rigStep) canvasBlock.remove();  // (no passo 3 do Align cameras a ferramenta não existe: o canvas é o do rig)
-    // Alças do canvas (oito) e o gesto
-    [[0, 0], [0.5, 0], [1, 0], [0, 0.5], [1, 0.5], [0, 1], [0.5, 1], [1, 1]].forEach(([fx, fy]) => {
+    // Alças do canvas (só as quatro dos cantos; pedido do dono, 2026-11-27) e o gesto
+    [[0, 0], [1, 0], [0, 1], [1, 1]].forEach(([fx, fy]) => {
       const h = el("div", "align-canvas-handle"); h.dataset.fx = fx; h.dataset.fy = fy; h.style.left = fx * 100 + "%"; h.style.top = fy * 100 + "%";
       h.style.cursor = fx === 0.5 ? "ns-resize" : fy === 0.5 ? "ew-resize" : fx === fy ? "nwse-resize" : "nesw-resize";
       ratio.appendChild(h);
@@ -7324,15 +7324,15 @@
       if (!handle && !inside) return;
       let moved = false;
       const fx = handle ? +handle.dataset.fx : 0, fy = handle ? +handle.dataset.fy : 0;
-      // (pela alça: a mesma proporção, com o ponto oposto parado)
-      const O = { x: f.x + f.w * (1 - fx), y: f.y + f.h * (1 - fy) }, H0 = { x: f.x + f.w * fx, y: f.y + f.h * fy }, d0 = Math.max(1, Math.hypot(H0.x - O.x, H0.y - O.y));
+      // (pela alça: a mesma proporção, em volta do centro do canvas, que não sai do lugar; pedido do dono, 2026-11-27)
+      const O = { x: c0.cx, y: c0.cy }, H0 = { x: f.x + f.w * fx, y: f.y + f.h * fy }, d0 = Math.max(1, Math.hypot(H0.x - O.x, H0.y - O.y));
       const move = (ev) => {
         const p = world(ev);
         if (handle) {
-          // (a distância do mouse ao ponto oposto, medida na direção da alça)
+          // (a distância do mouse ao centro, medida na direção da alça)
           const proj = ((p.x - O.x) * (H0.x - O.x) + (p.y - O.y) * (H0.y - O.y)) / d0;
           const k = Math.max(0.02, Math.min(1, c0.k * Math.max(0.01, proj) / d0));
-          moved = canvasTry({ cx: O.x + (c0.cx - O.x) * (k / c0.k), cy: O.y + (c0.cy - O.y) * (k / c0.k), k }) || moved;
+          moved = canvasTry({ cx: c0.cx, cy: c0.cy, k }) || moved;
         } else {
           const now = canvasNow();
           moved = canvasTry({ cx: c0.cx + (p.x - p0.x), cy: now.cy, k: c0.k }) || moved;

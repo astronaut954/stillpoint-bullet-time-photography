@@ -2110,6 +2110,10 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      triângulo; e o cenário anterior deixava "Resize canvas" como a ferramenta lembrada do grupo). Testes
      corrigidos; o cenário, rodado sozinho, deu 48 de 48. "Guided aim" passou nesta rodada. A rodada completa não
      foi repetida depois da correção dos testes.
+     Teste do dono (2026-11-27, 01:33): seção 78 aprovada. PEDIDO: o tamanho do canvas muda em volta do centro dele
+     e ficam só as quatro alças dos cantos — FEITO, AGUARDANDO TESTE. EM ABERTO (o dono pediu a opinião do agente):
+     tirar a possibilidade de mover o canvas (arrastar dentro dele, Move X e Move Y). Opinião dada: tirar; o canvas
+     fica sempre centrado e escolher outra parte da cena passa a ser mover as fotos com a edição global.
      FALTA do item 3: ferramenta do canvas (C1).
      3. IDEIA PARA DEPOIS (só anotar): a feature de label passar a aceitar várias labels, não só uma.
      **PASSAGEM PARA UM CHAT NOVO (2026-11-26):** o dono pediu um prompt de continuação porque as respostas

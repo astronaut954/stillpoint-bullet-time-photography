@@ -2778,27 +2778,32 @@ Decisões e retornos do dono (2026-11-27, 00:24), a conferir:
 
 ## 78. Ferramenta do canvas no Align photos (2026-11-27, câmeras simuladas servem)
 
-- [ ] **Export sessions** › aba **Framing** › **Align photos**: na barra de ferramentas à esquerda da foto, o botão do
+- [x] **Export sessions** › aba **Framing** › **Align photos**: na barra de ferramentas à esquerda da foto, o botão do
       **Resize photo** tem um triângulo no canto; segurar o botão (ou clicar com o direito) abre a lista com
       **Resize photo** e **Resize canvas**. A tecla **C** também escolhe **Resize canvas**.
-- [ ] Com **Resize canvas** escolhida: o canvas ganha oito alças; as alças da foto e a âncora somem; no painel da
+- [x] Com **Resize canvas** escolhida: o canvas ganha alças; as alças da foto e a âncora somem; no painel da
       direita o bloco **Canvas** entra no lugar do **This photo**, com o tamanho em pixels no título, **Move X**,
       **Move Y**, **Size**, **Fit to photos** e **Reset canvas**.
-- [ ] Arrastar uma alça para dentro: o canvas diminui, sempre na mesma proporção, com o lado oposto parado; o
+- [x] Arrastar uma alça para dentro: o canvas diminui, sempre na mesma proporção, com o lado oposto parado; o
       tamanho em pixels no título e na etiqueta do canvas diminui. Nenhuma foto muda de tamanho.
-- [ ] Arrastar dentro do canvas: ele anda; para (borda laranja) onde alguma foto deixaria de cobri-lo, e nunca sai
+- [x] Arrastar dentro do canvas: ele anda; para (borda laranja) onde alguma foto deixaria de cobri-lo, e nunca sai
       do canvas inteiro.
-- [ ] **Size** não passa de 100 (digitar 140 volta a 100). **Move X**, **Move Y** e **Size** pelos botões **−** e
+- [x] **Size** não passa de 100 (digitar 140 volta a 100). **Move X**, **Move Y** e **Size** pelos botões **−** e
       **+** e digitando.
-- [ ] **Fit to photos**: o canvas cresce o máximo que as fotos ainda cobrem, em volta de onde está. **Reset canvas**:
+- [x] **Fit to photos**: o canvas cresce o máximo que as fotos ainda cobrem, em volta de onde está. **Reset canvas**:
       volta ao canvas inteiro (até onde as fotos deixam).
-- [ ] **⌘Z** desfaz cada mudança do canvas.
-- [ ] Trocar para **Select**: o **This photo** volta; o canvas continua do tamanho escolhido, e as fotos passam a
+- [x] **⌘Z** desfaz cada mudança do canvas.
+- [x] Trocar para **Select**: o **This photo** volta; o canvas continua do tamanho escolhido, e as fotos passam a
       poder ser movidas e diminuídas até a borda do canvas novo.
-- [ ] Sair do Align photos: a prévia da aba **Framing** mostra o canvas escolhido. Fechar e abrir o programa: o
+- [x] Sair do Align photos: a prévia da aba **Framing** mostra o canvas escolhido. Fechar e abrir o programa: o
       canvas continua.
-- [ ] Exportar a sessão (JPEG): os arquivos saem com o tamanho em pixels do canvas escolhido, sem ampliação.
-- [ ] Passo **3 Save** do **Align cameras**: a ferramenta **Resize canvas** não aparece (lá o canvas é o do rig).
+- [x] Exportar a sessão (JPEG): os arquivos saem com o tamanho em pixels do canvas escolhido, sem ampliação.
+- [x] Passo **3 Save** do **Align cameras**: a ferramenta **Resize canvas** não aparece (lá o canvas é o do rig).
+
+Pedido do dono (2026-11-27, 01:33), a conferir:
+
+- [ ] Com **Resize canvas** escolhida, o canvas tem só quatro alças, nos cantos. Arrastar uma delas muda o tamanho
+      em volta do centro do canvas: o centro não sai do lugar e os quatro lados andam juntos.
 
 ## Resultado
 
