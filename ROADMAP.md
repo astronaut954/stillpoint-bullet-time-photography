@@ -2105,6 +2105,11 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      não existe no passo 3 do Align cameras; textos "Resize canvas", "Fit to photos", "Reset canvas" e a nota do
      bloco; tecla C. NÃO VERIFICADO: uma exportação completa em JPEG e vídeo com canvas escolhido (só a cópia de
      trabalho, que usa a mesma conta); o Edit in Lightroom Classic com canvas escolhido.
+     RODADA COMPLETA dos testes automáticos (2026-11-27, com tudo desta conversa): 590 passaram, 3 falharam, as três
+     no cenário das ferramentas do Align photos e por causa do próprio teste (contava seis botões e um grupo só com
+     triângulo; e o cenário anterior deixava "Resize canvas" como a ferramenta lembrada do grupo). Testes
+     corrigidos; o cenário, rodado sozinho, deu 48 de 48. "Guided aim" passou nesta rodada. A rodada completa não
+     foi repetida depois da correção dos testes.
      FALTA do item 3: ferramenta do canvas (C1).
      3. IDEIA PARA DEPOIS (só anotar): a feature de label passar a aceitar várias labels, não só uma.
      **PASSAGEM PARA UM CHAT NOVO (2026-11-26):** o dono pediu um prompt de continuação porque as respostas

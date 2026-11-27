@@ -2398,6 +2398,10 @@ def scenario_align_cameras(t, name, photos):
         t.button("Reset canvas")
         time.sleep(0.9)
         check(t, "canvas tool: 'Reset canvas' goes back to the full canvas and nothing stays saved", cvs()["nums"] == [0, 0, 100] and not entry() and saved() == auto_text, (cvs(), saved()))
+        # (o botão do grupo volta a mostrar o Resize photo, para os cenários seguintes)
+        t.js("() => document.activeElement && document.activeElement.blur()")
+        t.page.keyboard.press("s")
+        time.sleep(0.3)
         t.page.click('#exportSettings #alignTools .align-tool[data-group^="pointer"]')
         time.sleep(0.4)
         check(t, "canvas tool: back on Select, This photo returns", cvs()["photo"] and not cvs()["canvas"], cvs())
@@ -3228,11 +3232,11 @@ def scenario_align_tools(t, name, photos):
         time.sleep(0.5)
         d = st()
         check(t, "align tools: with the mouse in its area the bar lights up", d["near"] and d["barIn"] and d["barOp"] == "1", d)
-        check(t, "align tools: six buttons (Select and Direct select share one), Select chosen from the start", d["tools"] == ["pointer*", "move", "rotate", "scale", "pan", "zoom"] and d["tool"] == "pointer", d["tools"])
+        check(t, "align tools: six tool buttons (Select and Direct select share one, Resize photo and Resize canvas another) plus 'Edit all photos'; Select chosen from the start", [x for x in d["tools"] if x != "undefined"] == ["pointer*", "move", "rotate", "scale", "pan", "zoom"] and d["tool"] == "pointer" and t.js("() => !!document.querySelector('.align-stage .align-all-btn') && !document.querySelector('.align-stage .align-all-btn').classList.contains('on')"), d["tools"])
         # Grupo de ferramentas, como no Illustrator (decisão do dono, 2026-11-26): triângulo no canto, lista com o botão
         # direito ou segurando o esquerdo
         grp = t.js("() => { const b = document.querySelector('.align-tool[data-group]'); return { group: b.dataset.group, more: b.classList.contains('has-more'), mark: getComputedStyle(b, '::after').borderBottomWidth, others: [...document.querySelectorAll('.align-tool.has-more')].length }; }")
-        check(t, "tool groups: the Select button holds Select and Direct select and shows the corner mark; the others hold one tool", grp["group"] == "pointer handles" and grp["more"] and grp["mark"] == "5px" and grp["others"] == 1, grp)
+        check(t, "tool groups: the Select button holds Select and Direct select and shows the corner mark; so does the Resize button (photo and canvas); the others hold one tool", grp["group"] == "pointer handles" and grp["more"] and grp["mark"] == "5px" and grp["others"] == 2 and t.js("() => document.querySelector('.align-tool[data-group=\"scale canvas\"]').classList.contains('has-more')"), grp)
         t.page.click(".align-tool[data-group='pointer handles']", button="right"); time.sleep(0.3)
         fl = t.js("() => { const f = document.getElementById('alignFlyout'); return f ? [...f.querySelectorAll('.align-fly-item')].map((x) => x.textContent + (x.classList.contains('on') ? '*' : '')) : null; }")
         check(t, "tool groups: right-click opens the list with the tools of the group (name and letter), the current one lit", fl == ["SelectV*", "Direct selectA"], fl)
@@ -3362,7 +3366,7 @@ def scenario_align_tools(t, name, photos):
         still = vals() == h0 and pos() == hq
         hb = t.page.locator(".align-handle-br").bounding_box()
         t.page.mouse.move(hb["x"] + 5, hb["y"] + 5); t.page.mouse.down(); t.page.mouse.move(hb["x"] + 45, hb["y"] + 35, steps=3); t.page.mouse.up(); time.sleep(0.4)
-        check(t, "align tools: with Handles only, dragging the photo or the empty area does nothing and a corner handle resizes", still and vals()[2] != h0[2] and vals()[:2] == h0[:2], (h0, vals(), still))
+        check(t, "align tools: with Handles only, dragging the photo or the empty area does nothing and a corner handle resizes (around the anchor, which starts on the canvas centre: the photo is off it, so Move follows)", still and vals()[2] != h0[2] and vals()[3] == h0[3], (h0, vals(), still))
         t.page.keyboard.press("v"); time.sleep(0.15)
         # Diminuir de uma vez só além do limite: a foto vai até o limite (não fica parada no tamanho de antes)
         pick(".align-tool[data-tool=scale]")
