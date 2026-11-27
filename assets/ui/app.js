@@ -4492,7 +4492,8 @@
     }
     // Espaço: toca ou pausa a sequência da sessão aberta, em tela cheia ou não (pedido do dono, 2026-11-27; num botão
     // ou numa lista com o foco, o próprio elemento responde; com uma janela aberta por cima, não toca por trás)
-    if (e.key === " " && !order.open && !e.repeat && !["BUTTON", "SELECT", "TEXTAREA", "LABEL"].includes(e.target.tagName) &&
+    // (nas telas de alinhamento, Align cameras e Align photos, o espaço nunca toca: decisão do dono, 2026-11-27 20h11)
+    if (e.key === " " && !order.open && !al.open && !e.repeat && !["BUTTON", "SELECT", "TEXTAREA", "LABEL"].includes(e.target.tagName) &&
         (isFullscreen() || playTimer || !document.querySelector(".overlay:not(.hidden)"))) { e.preventDefault(); togglePlay(); }
     if (order.open) return;
     // Sessão: Esc sai da reordenação ou da tela cheia; F tela cheia; Delete apaga a foto

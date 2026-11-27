@@ -2003,6 +2003,9 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      PENDÊNCIA DE PRODUTO: mostrar as notas do Match (`notes`) na linha da câmera como um segundo tipo de aviso?
      **20h06: dono aprovou os testes deste bloco (seções 85 e 86).** DECISÃO: as etiquetas Before / After só somem
      ao tocar na tela cheia; na janela normal ficam à vista. Feito.
+     **20h09: dono aprovou os testes do Match automatically.** **DECISÃO (20h11): em qualquer tela de alinhamento
+     (Align photos e Align cameras) a barra de espaço NÃO toca a sequência** (encerra a pendência do toque curto).
+     Já era assim; reforçado na janela principal (`!al.open`). Segue pendente: mostrar as notas do Match na tabela?
      Teste do dono (2026-11-26): seção 68 aprovada ("os testes deu tudo certo").
      **Pedidos do dono (2026-11-26), feitos (seção 69):** o tocador do Align cameras também no Align photos do
      Export (mesma barra, mesmo comportamento; estado em `exp.play`, funções `expPlay`/`expPlayOff`); a mão de
