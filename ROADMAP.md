@@ -2012,6 +2012,13 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      `STILLPOINT_FAKE_NOTES=1` junta ao resultado as notas possíveis com os textos de verdade (três na câmera 04).
      Se o dono decidir NÃO manter: tirar `camNotes`/`otherNotes`/`noteLine` de `csMatchRenderReview` e as regras
      `.cs-review-note(s)`.
+     **20h35: o dono pediu protótipos do layout das observações:** https://claude.ai/artifact/QpD9Qn4LW4uBwQZB7Mj2CZ
+     (Hoje, N1 etiqueta + caixa padrão, N2 painel embaixo da prévia, N3 linha escolhida aberta), aguardando escolha.
+     DÚVIDA DO DONO sobre "Still a little different. Take another test shot to refine it.": é real (não só da
+     simulação): o Match tem um número fixo de fotos (2 ou 3 rodadas de correção, `shots` em auto_match.cpp); na
+     última foto, se a câmera ainda passa da tolerância final (1 passo de ajuste fino ou 0,3 stop), ele não muda
+     mais (não haveria foto para conferir) e deixa a nota. PENDÊNCIA DE PRODUTO: o Match deveria continuar sozinho
+     (mais rodadas) em vez de pedir outro Test shot?
      Teste do dono (2026-11-26): seção 68 aprovada ("os testes deu tudo certo").
      **Pedidos do dono (2026-11-26), feitos (seção 69):** o tocador do Align cameras também no Align photos do
      Export (mesma barra, mesmo comportamento; estado em `exp.play`, funções `expPlay`/`expPlayOff`); a mão de
