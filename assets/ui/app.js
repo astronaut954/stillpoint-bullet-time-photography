@@ -11756,6 +11756,19 @@
     const rowsBox = el("div", "cs-review-rows");  // as linhas rolam aqui dentro; a prévia à direita não cresce com elas
     table.appendChild(rowsBox);
     const { before, after } = csMatchSessions();
+    // Observações do Match (EM AVALIAÇÃO pelo dono, 2026-11-27: ele quer ver quais são antes de decidir se ficam): as
+    // que começam com o nome de uma câmera vão para a linha dela; as outras (várias câmeras, ou gerais) ficam embaixo
+    const camNames = placedCameras().map((c) => c.name), camNotes = {}, otherNotes = [];
+    [...new Set(e.notes || [])].forEach((n) => {
+      const who = camNames.find((name) => n.indexOf(name + ": ") === 0);
+      if (who) (camNotes[who] = camNotes[who] || []).push(n.slice(who.length + 2)); else otherNotes.push(n);
+    });
+    const noteLine = (text) => {
+      const line = el("span", "cs-review-note");
+      const ic = el("span", "cs-ratio-alert"); ic.innerHTML = ALERT_SVG; ic.setAttribute("aria-hidden", "true");
+      line.append(ic, el("span", "", text.charAt(0).toUpperCase() + text.slice(1)));
+      return line;
+    };
     placedCameras().filter((c) => c.connected).forEach((cam) => {
       const ch = changes.find((x) => x.camera === cam.name);
       const row = el("div", "cs-review-row" + (ch ? "" : " same") + (matchWin.cam === cam.name ? " current" : ""));
@@ -11785,6 +11798,7 @@
         const at = [...list.querySelectorAll(".cs-review-change")].find((it) => /^\d+:\d+$/.test((it.querySelector(".to") || {}).textContent || ""));
         if (at) at.appendChild(w); else { w.insertBefore(el("span", "cs-review-ratio-now", ratio.reported), w.firstChild); list.appendChild(w); }
       }
+      (camNotes[cam.name] || []).forEach((n) => list.appendChild(noteLine(n)));
       const thumb = el("span", "cs-review-thumb" + (ch ? " changed" : "") + (ratio && ratio.differs ? " ratio-warn" : ""));
       csMatchPhoto(after, cam.name, 320).then((url) => { if (url) thumb.style.backgroundImage = "url(" + url + ")"; });
       row.append(box, name, list, thumb);
@@ -11793,6 +11807,7 @@
       rowsBox.appendChild(row);
     });
     const tnote = el("div", "cs-review-tnote", "Click a row to see that camera on the right. Play runs the whole sequence, before and after at once. Untick a camera to keep it as it is.");
+    if (otherNotes.length) { const box = el("div", "cs-review-notes"); otherNotes.forEach((n) => box.appendChild(noteLine(n))); table.appendChild(box); }
     table.appendChild(tnote);
     wrap.appendChild(table);
     // Fotos: a câmera escolhida, antes e depois

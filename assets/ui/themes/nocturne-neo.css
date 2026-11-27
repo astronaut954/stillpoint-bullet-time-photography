@@ -2746,3 +2746,9 @@ html.kbd-focus #sessionGallery .stage:focus-within .stage-caption { opacity: 1; 
 .cs-review-change, .cs-review-ratio { display: inline-block; height: 16px; line-height: 16px; vertical-align: top; }
 .cs-review-ratio .cs-val.shot-ratio, .cs-review-ratio .cs-review-ratio-now { display: inline; vertical-align: baseline; }
 .cs-review-ratio .cs-ratio-alert { display: inline-block; width: 12px; height: 12px; vertical-align: -2px; }
+/* Observações do Match na tabela do 3 Review (em avaliação pelo dono): uma por linha, âmbar, com o triângulo */
+.cs-review-note { display: flex; align-items: flex-start; gap: 6px; flex: 0 0 100%; color: var(--noct-pending); font: 11px/16px var(--noct-font-mono); white-space: normal; }
+.cs-review-note .cs-ratio-alert { flex: none; margin: 2px 0 0; cursor: default; }
+.cs-review-note .cs-ratio-alert svg { width: 12px; height: 12px; }
+.cs-review-notes { flex: none; display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-top: 1px solid var(--noct-border); }
+.cs-review-notes .cs-review-note { flex: none; }

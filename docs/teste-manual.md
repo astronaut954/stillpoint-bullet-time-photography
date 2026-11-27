@@ -3064,4 +3064,7 @@ menos pixels: 1200 px de largura contra 1800 das outras).
       linha, sem cobrir a outra.
 - [ ] **Match automatically** › **3 Review**: tocando a sequência fora da tela cheia, as etiquetas **Before · …** e
       **After · …** continuam à vista; na tela cheia elas somem ao tocar e voltam ao pausar.
+- [ ] (Em avaliação) Com `STILLPOINT_FAKE_NOTES=1`: em **Match automatically** › **3 Review** as observações do Match
+      aparecem em âmbar na linha de cada câmera (três na 04) e, as que valem para várias câmeras, numa caixa embaixo
+      da tabela. Decidir se ficam.
 

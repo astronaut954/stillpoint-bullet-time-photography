@@ -5178,8 +5178,30 @@ namespace
                 options.review = flags & 256;
                 options.targets = targets;
                 options.grayCardSkipped = &cardPick.skipped;
-                const AutoMatch::Result result = AutoMatch::Run(controller, shoot, CalibrationFile(), [&] { return testCancel.load(); }, options,
+                AutoMatch::Result result = AutoMatch::Run(controller, shoot, CalibrationFile(), [&] { return testCancel.load(); }, options,
                                                                 debug.Active() ? std::function<void(const std::string&)>(trace) : nullptr);
+                // STILLPOINT_FAKE_NOTES=1: junta ao resultado as observações que o Match pode fazer (com os textos de
+                // verdade), espalhadas pelas câmeras e várias na 04, para ver como ficam na tabela do 3 Review
+                // (pedido do dono, 2026-11-27). Só para simulação; nada disso foi medido.
+                if (std::getenv("STILLPOINT_FAKE_NOTES") && result.ok && !result.cancelled)
+                {
+                    std::map<int, std::string> byOrder;
+                    for (const auto& cam : controller.GetCameras())
+                        byOrder[cam.orderPrefix] = cam.shortName;
+                    auto add = [&](int n, const std::string& text) { const auto it = byOrder.find(n); if (it != byOrder.end()) result.notes.push_back(it->second + ": " + text); };
+                    add(2, "its color is more different than the fine-tune can correct.");
+                    add(3, "still a little different. Take another test shot to refine it.");
+                    add(4, "its brightness is different, but its ISO is on Auto. Set an ISO to match it.");
+                    add(4, "its color is different, and it has no white balance fine-tune.");
+                    add(4, "still a little different. Take another test shot to refine it.");
+                    add(5, "its photo is mostly blown out, so its brightness was not changed.");
+                    add(6, "its settings can only be changed on the camera, so it was not matched.");
+                    add(7, "its brightness is different, and its ISO has no value left in that direction.");
+                    add(8, "does not offer the chosen white balance.");
+                    if (byOrder.count(1) && byOrder.count(2))
+                        result.notes.push_back(byOrder[1] + ", " + byOrder[2] + ": aspect ratio cannot be changed from the app and these cameras disagree. Set it in their menus.");
+                    result.notes.push_back("The white balance cannot be changed from the app on these cameras. Set the same white balance on each camera.");
+                }
                 if (debug.Active())
                 {
                     debug.Line(result.cancelled ? "Result: cancelled" : result.ok ? "Result: done" : "Result: " + result.error);

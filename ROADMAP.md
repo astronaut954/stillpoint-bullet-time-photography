@@ -2006,6 +2006,12 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      **20h09: dono aprovou os testes do Match automatically.** **DECISÃO (20h11): em qualquer tela de alinhamento
      (Align photos e Align cameras) a barra de espaço NÃO toca a sequência** (encerra a pendência do toque curto).
      Já era assim; reforçado na janela principal (`!al.open`). Segue pendente: mostrar as notas do Match na tabela?
+     **20h27, EM AVALIAÇÃO (o dono quer ver antes de decidir se ficam):** as notas do Match aparecem na tabela do
+     3 Review: as de uma câmera na linha dela (uma por linha, âmbar, com o triângulo), as de várias câmeras e as
+     gerais numa caixa embaixo da tabela. Layout provisório, sem protótipo aprovado. Simulação:
+     `STILLPOINT_FAKE_NOTES=1` junta ao resultado as notas possíveis com os textos de verdade (três na câmera 04).
+     Se o dono decidir NÃO manter: tirar `camNotes`/`otherNotes`/`noteLine` de `csMatchRenderReview` e as regras
+     `.cs-review-note(s)`.
      Teste do dono (2026-11-26): seção 68 aprovada ("os testes deu tudo certo").
      **Pedidos do dono (2026-11-26), feitos (seção 69):** o tocador do Align cameras também no Align photos do
      Export (mesma barra, mesmo comportamento; estado em `exp.play`, funções `expPlay`/`expPlayOff`); a mão de
