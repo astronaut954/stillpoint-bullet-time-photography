@@ -2683,3 +2683,7 @@ html.kbd-focus .align-tools:focus-within, html.kbd-focus .align-play:focus-withi
 .export-settings.theater .export-preview.th-show .lent-theater-btn, .export-settings.theater .export-preview.th-show .stage-caption,
 .export-settings.theater .export-preview .lent-theater-btn:hover, .export-settings.theater .export-preview .lent-theater-btn:focus-visible,
 html.kbd-focus .export-settings.theater .export-preview:focus-within .lent-theater-btn, html.kbd-focus .export-settings.theater .export-preview:focus-within .stage-caption { opacity: 1; }
+
+/* Passo 3 do Align cameras: o contorno do TAB no "Back to the stick values" saía cortado em cima e à direita (a linha
+   corta o que passa dela); o contorno fica por dentro do botão (captura do dono, 2026-11-27) */
+html.kbd-focus .rig-top :focus, html.kbd-focus .export-scope :focus { outline-offset: -2px; }

@@ -1942,6 +1942,14 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      rodada completa corre depois, com o resultado numa mensagem curta à parte; rodada completa obrigatória no fim
      de cada item da lista e antes de merge no main; (3) quando houver intervalo, pôr os cenários para rodar em
      paralelo (cada um na sua porta).
+     **TERCEIRO RETORNO DO DONO (2026-11-27, 17h17):** seções 80 e 81 aprovadas, menos três pontos, corrigidos
+     e aguardando teste (seção 82): no Guided aim as setas contavam a partir da câmera aberta, que demora a trocar
+     (o foco ficava uma atrás e pulava): agora contam a partir da aba com o foco; no passo 3 a linha de cima ainda
+     piscava quando a etiqueta de ampliação entrava ou saía (o Keeps e o arranjo da linha saíam um desenho depois):
+     agora saem no mesmo desenho com os tamanhos guardados (`keepsFrom`); o contorno do TAB no "Back to the stick
+     values" saía cortado: fica por dentro. Explicado ao dono: "Review alignment" desligado depois do Guided aim é
+     a regra de câmera mexida (`alMoved`), pede "Fire again". PROTÓTIPOS da etiqueta "X changes" (hoje não diz
+     mudanças de quê): https://claude.ai/artifact/UfX2wBv5C5THoDie9Td4CU, alternativas A a D, aguardando escolha.
      Teste do dono (2026-11-26): seção 68 aprovada ("os testes deu tudo certo").
      **Pedidos do dono (2026-11-26), feitos (seção 69):** o tocador do Align cameras também no Align photos do
      Export (mesma barra, mesmo comportamento; estado em `exp.play`, funções `expPlay`/`expPlayOff`); a mão de

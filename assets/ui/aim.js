@@ -85,9 +85,9 @@
       pad(t.order) + (t.state === "done" ? "<i> · READY</i>" : t.state === "needs" ? "<i> · CHANGE</i>" : "") + "</button>").join("");
     if (S.tabsHtml !== tabs) {
       S.tabsHtml = tabs;
-      const hadFocus = $("gaProg").contains(document.activeElement);  // (as abas são refeitas: o foco do teclado fica na câmera aberta)
+      const focusCam = $("gaProg").contains(document.activeElement) ? document.activeElement.dataset.camera : null;  // (as abas são refeitas: o foco do teclado continua na mesma câmera)
       $("gaProg").innerHTML = tabs;
-      if (hadFocus) { const here = $("gaProg").querySelector("button.here"); if (here) here.focus(); }
+      if (focusCam !== null) { const same = [...$("gaProg").querySelectorAll("button")].find((b) => b.dataset.camera === focusCam); if (same) same.focus(); }
       // (com as abas só no número, o estado aparece ao parar o mouse)
       $("gaProg").querySelectorAll("button").forEach((b) => { b.title = "Camera " + b.textContent.replace(" · ", ": ").replace("READY", "ready").replace("CHANGE", "needs a change"); });
       $("gaMini").innerHTML = (st.tabs || []).map((t) => '<span class="' + t.state + '" data-camera="' + esc(t.camera) + '" title="Camera ' + pad(t.order) + '"></span>').join("");
@@ -557,10 +557,12 @@
     if (e.key === "Tab") { document.documentElement.classList.add("kbd-focus"); showTools(); return; }
     // ← →: com o foco na linha das câmeras, a câmera anterior ou a seguinte
     if ((e.key === "ArrowLeft" || e.key === "ArrowRight") && !e.metaKey && !e.ctrlKey && !e.altKey && $("gaProg").contains(document.activeElement)) {
-      const all = [...$("gaProg").querySelectorAll("button")], here = $("gaProg").querySelector("button.here") || document.activeElement;
-      const to = all[all.indexOf(here) + (e.key === "ArrowRight" ? 1 : -1)];
+      // (a partir da aba com o foco, não da câmera aberta: a troca de câmera demora um instante, e contar a partir da
+      // aberta fazia o foco ficar uma atrás e pular; gravação do dono, 2026-11-27)
+      const all = [...$("gaProg").querySelectorAll("button")];
+      const to = all[all.indexOf(document.activeElement) + (e.key === "ArrowRight" ? 1 : -1)];
       e.preventDefault();
-      if (to) { to.focus(); to.click(); const again = $("gaProg").querySelector("button.here"); if (again) again.focus(); }
+      if (to) { to.focus(); to.click(); }
       return;
     }
     if (e.key === "Escape") {

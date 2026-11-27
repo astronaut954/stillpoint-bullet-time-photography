@@ -2877,24 +2877,24 @@ menos pixels: 1200 px de largura contra 1800 das outras).
 
 ## 80. Retorno do dono de 2026-11-27 (tarde): Resolution desligada, TAB, miniaturas, etiqueta (câmeras simuladas servem)
 
-- [ ] Sem `STILLPOINT_FAKE_SMALL` (todas as câmeras com a mesma resolução): a linha **Resolution** continua à
+- [x] Sem `STILLPOINT_FAKE_SMALL` (todas as câmeras com a mesma resolução): a linha **Resolution** continua à
       vista no **Framing** e no bloco **New sessions**, com os dois botões desligados.
-- [ ] Com uma sessão de câmeras desiguais (feita com `STILLPOINT_FAKE_SMALL=4`) em **Lowest camera** e outra de
+- [x] Com uma sessão de câmeras desiguais (feita com `STILLPOINT_FAKE_SMALL=4`) em **Lowest camera** e outra de
       câmeras iguais, as duas marcadas no **Export sessions**: nenhuma ganha a etiqueta **Different** por causa da
       resolução, e o aviso "1 session is different" não aparece por isso.
-- [ ] Etiqueta de ampliação com várias câmeras: curta, numa linha só (**4 cameras enlarged**), à direita da linha
+- [x] Etiqueta de ampliação com várias câmeras: curta, numa linha só (**4 cameras enlarged**), à direita da linha
       **Resolution**; o detalhe por câmera fica na caixa que abre com o mouse em cima.
 - [ ] **Align cameras**, passo **3 Save**: trocar de câmera com **← →** ou pelas miniaturas, e **⌘Z** / **⇧⌘Z**: a
       linha de cima (avisos e **Keeps**) não pisca.
-- [ ] Miniaturas dando a volta: no **Framing**, no **Align photos** e no passo **3 Save**, **→** na última foto vai
+- [x] Miniaturas dando a volta: no **Framing**, no **Align photos** e no passo **3 Save**, **→** na última foto vai
       para a primeira e **←** na primeira vai para a última.
-- [ ] Passo **2 Mark and aim**: o **TAB** passa pelas câmeras da lista da esquerda; **Enter** ou espaço escolhe a
+- [x] Passo **2 Mark and aim**: o **TAB** passa pelas câmeras da lista da esquerda; **Enter** ou espaço escolhe a
       câmera.
 - [ ] Janela **Guided aim**: o **TAB** passa pelas abas das câmeras, pelos botões e pelas opções de baixo, com o
       contorno no que está com o foco.
-- [ ] Passo **3 Save** e **Align photos**: com o **TAB** dentro da barra de ferramentas ou da barra de reprodução,
+- [x] Passo **3 Save** e **Align photos**: com o **TAB** dentro da barra de ferramentas ou da barra de reprodução,
       o painel fica aceso enquanto o foco estiver nele e volta a apagar quando o **TAB** sai.
-- [ ] Âncora: com a caixa aberta (botão da âncora no título **This photo**), o **TAB** anda por **Canvas center** e
+- [x] Âncora: com a caixa aberta (botão da âncora no título **This photo**), o **TAB** anda por **Canvas center** e
       pelos nove quadrados; **Enter** escolhe; **Esc** fecha e o foco volta ao botão.
 
 ## Resultado
@@ -2972,21 +2972,30 @@ menos pixels: 1200 px de largura contra 1800 das outras).
 
 ## 81. Segundo retorno do dono de 2026-11-27: Different, Sequence, TAB por setas, teatro (câmeras simuladas servem)
 
-- [ ] **Different** e resolução: com uma sessão de câmeras desiguais e outra de câmeras iguais marcadas, escolher
+- [x] **Different** e resolução: com uma sessão de câmeras desiguais e outra de câmeras iguais marcadas, escolher
       **Lowest camera** na desigual: nenhuma ganha **Different**, e a caixa **Same framing for all ticked
       sessions** continua marcada, sem o aviso "1 session is different".
-- [ ] Passo **3 Outputs**: as abas vêm na ordem **Sequence**, **Photos**, **Lenticular**, e a que abre é
+- [x] Passo **3 Outputs**: as abas vêm na ordem **Sequence**, **Photos**, **Lenticular**, e a que abre é
       **Sequence**. A saída marcada para exportar continua sendo **Photos**.
-- [ ] **2 Edit** e **3 Outputs** › **Photos**: **→** na última foto vai para a primeira; **←** na primeira vai para
+- [x] **2 Edit** e **3 Outputs** › **Photos**: **→** na última foto vai para a primeira; **←** na primeira vai para
       a última.
-- [ ] Passo **2 Mark and aim**: o **TAB** para uma vez só na coluna das câmeras (na câmera escolhida); **↑** e **↓**
+- [x] Passo **2 Mark and aim**: o **TAB** para uma vez só na coluna das câmeras (na câmera escolhida); **↑** e **↓**
       andam entre as câmeras.
 - [ ] **Guided aim**: o **TAB** para uma vez só na linha das câmeras; **←** e **→** trocam de câmera, com o foco
       acompanhando.
-- [ ] Barra de ferramentas do **Align photos** / passo **3 Save**: com o **TAB** no primeiro botão, **Enter** abre
+- [x] Barra de ferramentas do **Align photos** / passo **3 Save**: com o **TAB** no primeiro botão, **Enter** abre
       a lista com **Select** e **Direct select**; **↑ ↓** ou **TAB** andam nela, **Enter** escolhe; **Esc** fecha e
       o foco fica no primeiro botão (o **TAB** seguinte vai para o segundo).
-- [ ] Modo teatro no **2 Edit** e no **3 Outputs**: o botão do teatro (canto de cima à esquerda) tem fundo escuro,
+- [x] Modo teatro no **2 Edit** e no **3 Outputs**: o botão do teatro (canto de cima à esquerda) tem fundo escuro,
       e ele e a legenda da foto (canto de baixo à esquerda) aparecem ao mexer o mouse e somem 2 s depois de ele
       parar, junto com o painel de tocar. Fora do teatro, ficam sempre à vista como antes.
+
+## 82. Terceiro retorno do dono de 2026-11-27 (17h17)
+
+- [ ] **Guided aim**: com o foco na linha das câmeras, **←** e **→** trocam de câmera uma por vez, na ordem, com o
+      contorno do foco sempre na câmera aberta (antes o contorno ficava uma atrás e a câmera pulava).
+- [ ] Passo **3 Save**: **⌘Z** e **⇧⌘Z** até o último possível, inclusive quando a etiqueta de ampliação aparece
+      ou some: a linha de cima não mostra um instante as etiquetas por extenso antes de virar **N warnings**.
+- [ ] Passo **3 Save**: com o **TAB** em **Back to the stick values**, o contorno aparece inteiro (por dentro do
+      botão), sem corte em cima nem à direita.
 

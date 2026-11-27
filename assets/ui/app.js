@@ -4273,6 +4273,7 @@
     box.append(back);
     // A etiqueta da ampliação, ao lado do Keeps (protótipo S1, escolha do dono em 2026-11-27)
     { const tag = enlargedTag(ed.session, ed.st, () => setTimeout(alCompactTop, 0)), k = box.querySelector("#alignKeeps"); if (k) k.after(tag); else box.insertBefore(tag, back); }
+    alCompactTop();  // (já neste desenho, se a linha estiver na tela)
   }
   // Janela estreita (protótipo K3, escolha do dono em 2026-11-26): quando a linha de cima do passo 3 não cabe numa
   // linha só, os avisos viram uma etiqueta com a contagem (a lista abre com o mouse em cima, como o triângulo do
@@ -6285,20 +6286,23 @@
     });
   }
   // Quanto das fotos sobra depois do canvas e do alinhamento (média, 0 a 1); null se não der para medir
+  function keepsFrom(session, st, sizes) {
+    const items = alignItemsOf(session, st), frame = commonFrame(items, sizes, st);
+    if (!frame) return null;
+    let sum = 0, n = 0;
+    items.forEach((it) => {
+      const sz = sizes[it.file]; if (!sz) return;
+      const a = effectiveAlign(sz, alignOf(st, it.file), frame, st);
+      sum += Math.min(1, (frame.w * frame.h) / (a.scale * a.scale * sz.w * sz.h)); n += 1;
+    });
+    return n ? sum / n : null;
+  }
   function alignKeeps(session, st) {
     const items = alignItemsOf(session, st);
     return Promise.all(items.map((it) => alignSizeOf(session, st, it.file))).then((list) => {
       const sizes = {};
       items.forEach((it, k) => { if (list[k]) sizes[it.file] = list[k]; });
-      const frame = commonFrame(items, sizes, st);
-      if (!frame) return null;
-      let sum = 0, n = 0;
-      items.forEach((it) => {
-        const sz = sizes[it.file]; if (!sz) return;
-        const a = effectiveAlign(sz, alignOf(st, it.file), frame, st);
-        sum += Math.min(1, (frame.w * frame.h) / (a.scale * a.scale * sz.w * sz.h)); n += 1;
-      });
-      return n ? sum / n : null;
+      return keepsFrom(session, st, sizes);
     });
   }
   // Resolução (decisão D do dono, 2026-11-26): as fotos ampliadas mais de 25% (pela câmera de maior resolução, pelo
@@ -6379,13 +6383,16 @@
     // o "Keeps" do Export não aparecia depois de um Align cameras na mesma abertura do programa)
     const node = document.querySelector((st.rigStep ? "#csAlign" : "#exportSettings") + " #alignKeeps") || $("alignKeeps");
     if (!node) return;
-    alignKeeps(session, st).then((v) => {
-      if (!node.isConnected) return;
+    // (com os tamanhos já guardados o texto e o arranjo da linha saem no mesmo desenho: sem isto a linha aparecia um
+    // instante com as etiquetas por extenso antes de encolher; gravação do dono, 2026-11-27)
+    const known = sizesNow(session, st);
+    (known ? { then: (f) => f(keepsFrom(session, st, known)) } : alignKeeps(session, st)).then((v) => {
+      if (!node.isConnected && !known) return;
       const low = v != null && v < KEEP_WARN && alignModeOf(session, st) === "rig";
       node.textContent = v == null ? "" : "Keeps " + Math.round(v * 100) + (st.rigStep ? "% of each photo" : "% of the photos");
       node.classList.toggle("warn", low);
       node.dataset.full = node.textContent; node.dataset.short = v == null ? "" : "Keeps " + Math.round(v * 100) + "%";
-      if (st.rigStep) setTimeout(alCompactTop, 0); else expAlignTopFit();
+      if (st.rigStep) { alCompactTop(); if (!known) setTimeout(alCompactTop, 0); } else expAlignTopFit();
       node.removeAttribute("title");
       // (explicação na caixa padrão do app, com o cursor de ajuda; pedido do dono, 2026-11-26)
       node.dataset.itip = KEEPS_TIP + (low && st.rigStep ? "This alignment cuts a lot of each photo: the cameras are far from each other's framing. To keep more, go back, fix the cameras and fire again." : low ? "The alignment cuts a lot of the photos. To keep more, fix the cameras in Camera settings › Test shot › Align cameras and shoot again." : "");
