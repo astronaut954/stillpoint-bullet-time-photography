@@ -2666,3 +2666,7 @@ body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform:
 .align-anchor-btn svg, .align-mode-btn svg { display: block; }
 .align-title-name .info-tip { margin-left: 6px; vertical-align: middle; }
 .align-block h3 .info-tip-text { white-space: normal; letter-spacing: normal; text-transform: none; }
+
+/* Resolução em rig com câmeras diferentes (decisão D; protótipos S1 e E, 2026-11-27): a etiqueta da ampliação */
+#exportResRow .res-enlarged { margin-left: 14px; align-self: center; cursor: help; }
+.res-enlarged { cursor: help; }

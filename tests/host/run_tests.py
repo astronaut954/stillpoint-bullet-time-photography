@@ -3478,6 +3478,96 @@ def scenario_align_tools(t, name, photos):
         t.restart_app()
 
 
+def scenario_resolution(t, name, photos):
+    line("\n== 31. Resolution with cameras of different resolutions: Highest camera / Lowest camera")
+    import struct
+    def tiff_size(path):
+        with open(path, "rb") as f:
+            d = f.read(4096)
+        if d[:4] != b"II*\x00":
+            return None
+        ifd = struct.unpack_from("<I", d, 4)[0]
+        out = {}
+        for i in range(struct.unpack_from("<H", d, ifd)[0]):
+            tag, typ, count, value = struct.unpack_from("<HHII", d, ifd + 2 + i * 12)
+            if tag in (256, 257):
+                out[tag] = value
+        return out.get(256), out.get(257)
+    t.dismiss()
+    t.close_export()
+    t.env["STILLPOINT_FAKE_CAMERAS"] = "4"
+    t.env["STILLPOINT_FAKE_PHOTOS"] = "pole"
+    t.env["STILLPOINT_FAKE_SMALL"] = "4"   # a câmera 04 fotografa a mesma cena com 1200 px de largura (as outras, 1800)
+    try:
+        t.restart_app()
+        t.dismiss()
+        errors_before = len(t.errors)
+        s = t.shoot()
+        t.dismiss()
+        if not s:
+            check(t, "resolution: a new session for this scenario", False)
+            return
+        o = t.originals(s)
+        files = sorted(f for f in os.listdir(o) if f.lower().endswith(".jpg"))
+        sizes = [Image.open(os.path.join(o, f)).size for f in files]
+        check(t, "resolution: the simulated camera 04 shoots the same scene with fewer pixels", len(sizes) == 4 and sizes[0] == (1800, 1200) and sizes[3] == (1200, 800), sizes)
+        def step1():
+            if not t.export_open():
+                t.page.click("#saveBtn")
+                t.wait(lambda: t.export_open(), 5)
+                time.sleep(0.6)
+            t.js("() => { const b = document.querySelector('#exportSteps .export-step'); if (!b.classList.contains('on')) b.click(); }")
+            time.sleep(0.5)
+            t.page.click('#exportList li.export-item[data-name="%s"] .folder-date' % s)
+            time.sleep(1.2)
+        row = lambda: t.js("() => { const r = document.querySelector('#exportSettings #exportResRow'); if (!r) return null; const g = r.querySelector('.res-enlarged'); return { on: [...r.querySelectorAll('.segmented button')].filter(b => b.classList.contains('on')).map(b => b.textContent), all: [...r.querySelectorAll('.segmented button')].map(b => b.textContent), tag: g && !g.classList.contains('hidden') ? g.textContent : '', tip: g ? g.dataset.itip || '' : '', help: !!r.querySelector('.info-tip') }; }")
+        crop = lambda: (json.load(open(os.path.join(o, "session.json"))).get("crop") if os.path.exists(os.path.join(o, "session.json")) else None)
+        step1()
+        t.js("() => [...document.querySelectorAll('#exportSettings .segmented:not(.orient-seg) button')].find(x => x.textContent.trim() === '3:2').click()")
+        time.sleep(1.5)
+        r = row()
+        check(t, "resolution: Export › Framing has the Resolution row, with Highest camera chosen and a ?", bool(r) and r["all"] == ["Highest camera", "Lowest camera"] and r["on"] == ["Highest camera"] and r["help"], r)
+        check(t, "... and the amber label says which camera is enlarged and how much", bool(r) and r["tag"] == "Camera 04 enlarged 50%" and "Camera 04: enlarged 50%" in r["tip"], r)
+        # A cópia de trabalho do Photoshop sai pelo canvas do programa: pela câmera de maior resolução
+        edited_dir = os.path.join(t.project, "Edited", s)
+        copy1 = os.path.join(edited_dir, os.path.splitext(files[0])[0] + ".tif")
+        def working_copy():
+            t.export_edit(s)
+            t.js("() => document.activeElement && document.activeElement.blur()")
+            t.page.click("#exportSettings .export-strip > li:nth-child(1)")
+            time.sleep(0.5)
+            t.js("() => { const b = [...document.querySelectorAll('#exportSettings .ps-block button')].find(x => x.textContent.trim().startsWith('Edit photo 01 in Photoshop')); if (b) b.click(); }")
+            t.wait(lambda: os.path.exists(copy1), 10)
+            time.sleep(0.5)
+            size = tiff_size(copy1) if os.path.exists(copy1) else None
+            if os.path.exists(copy1):
+                os.remove(copy1)
+            time.sleep(2.5)
+            t.dismiss()
+            return size
+        hi = working_copy()
+        check(t, "resolution: with Highest camera the program's canvas has the size of the larger cameras (1520 × 1013)", hi == (1520, 1013), hi)
+        step1()
+        t.js("() => [...document.querySelectorAll('#exportSettings #exportResRow .segmented button')].find(b => b.textContent === 'Lowest camera').click()")
+        time.sleep(1.5)
+        r = row()
+        check(t, "resolution: Lowest camera: chosen, the label is gone and the choice is kept with the session", bool(r) and r["on"] == ["Lowest camera"] and r["tag"] == "" and str(crop()).endswith("|low"), (r, crop()))
+        lo = working_copy()
+        check(t, "resolution: with Lowest camera the program's canvas has the size of the smaller camera (1013 × 675)", lo == (1013, 675), lo)
+        step1()
+        t.page.keyboard.press("Control+z" if sys.platform != "darwin" else "Meta+z")
+        time.sleep(1.5)
+        r = row()
+        check(t, "resolution: undo brings Highest camera back", bool(r) and r["on"] == ["Highest camera"] and not str(crop()).endswith("|low"), (r, crop()))
+        check(t, "resolution: no page errors", len(t.errors) == errors_before, t.errors[errors_before:])
+    finally:
+        t.close_export()
+        del t.env["STILLPOINT_FAKE_SMALL"]
+        del t.env["STILLPOINT_FAKE_PHOTOS"]
+        t.env["STILLPOINT_FAKE_CAMERAS"] = "4"
+        t.restart_app()
+        t.dismiss()
+
 def scenario_align_marks(t, name, photos):
     line("\n== 20. Automatic alignment: the three marks and the recipe (calculation only, no window yet)")
     prog = os.path.join(BUILD, "AlignMarksTest")
@@ -3557,7 +3647,7 @@ def main():
                 only = os.environ.get("STILLPOINT_TEST_ONLY", "")  # para depurar: só os cenários com este nome
                 for sc in [x for x in (scenario_cleared, scenario_delete_edit_undo, scenario_photo_delete_restore,
                            scenario_remove_from_collection, scenario_delete_session, scenario_cancel, scenario_rapid_in_lightroom, scenario_crop_before_lightroom,
-                           scenario_export_edit, scenario_export_trash, scenario_lightroom_crop, scenario_undo_own_item, scenario_orientation, scenario_selection_kept, scenario_align_undo, scenario_flip, scenario_photoshop, scenario_rig_state, scenario_align_marks, scenario_align_cameras, scenario_camera_tags, scenario_guided_aim, scenario_live_many, scenario_custom_drag, scenario_align_gone, scenario_align_uneven, scenario_align_tools, scenario_align_drag, scenario_align_entry) if any(o in x.__name__ for o in only.split(","))]:  # vários, separados por vírgula
+                           scenario_export_edit, scenario_export_trash, scenario_lightroom_crop, scenario_undo_own_item, scenario_orientation, scenario_selection_kept, scenario_align_undo, scenario_flip, scenario_photoshop, scenario_rig_state, scenario_align_marks, scenario_align_cameras, scenario_camera_tags, scenario_guided_aim, scenario_live_many, scenario_custom_drag, scenario_align_gone, scenario_align_uneven, scenario_align_tools, scenario_align_drag, scenario_align_entry, scenario_resolution) if any(o in x.__name__ for o in only.split(","))]:  # vários, separados por vírgula
                     try:
                         sc(t, name, photos)
                     except Exception:  # noqa: BLE001

@@ -1886,6 +1886,22 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      junto com a tela). FALTA: protótipo da linha Resolution em cima da tela atual (as imagens de A1 e E não estão
      mais no ambiente do agente e o painel mudou), a tela, a etiqueta de ampliação acima de 25%, gravar a escolha
      no stillpoint-rig.json para as sessões novas, cenário automático e roteiro de teste.
+     **TELA FEITA (2026-11-27), AGUARDANDO TESTE (`docs/teste-manual.md`, seção 79).** Protótipo refeito em cima
+     da tela atual: https://claude.ai/artifact/AXzoMeBecNRAPsUd7gZa7S. **Escolha do dono: S1** (no passo 3 a
+     etiqueta da ampliação fica na linha de cima, ao lado do Keeps) **e E confirmado** (Export › Framing: linha
+     Resolution embaixo de Aspect ratio, etiqueta à direita). Textos confirmados pelo dono: opções "Highest
+     camera" / "Lowest camera", caixa do "?" (`RES_TIP`), nota de origem "Aspect ratio and resolution start from
+     Align cameras…", e o "?" de Aspect ratio sem "(the smallest camera's)". Feito: `enlargedList`/`enlargedTag`
+     (qualquer foto com tamanho em uso acima de 125%: pela resolução, pelo rig ou à mão), linha no bloco "New
+     sessions" (`rigStep.res`, um passo do ⌘Z, "Align cameras · resolution"), linha no Framing (vai às outras
+     sessões marcadas como a proporção), `res` em stillpoint-rig.json e a sessão nova nasce com o quarto campo
+     "low"; a chave que refaz o alinhamento do rig leva a resolução. Cenário automático novo
+     (`scenario_resolution`): etiqueta, troca, ⌘Z e o tamanho da cópia de trabalho feita pelo programa (1520 × 1013
+     pela maior, 1013 × 675 pela menor). Verificado à mão pelo agente: passo 3 (troca, ⌘Z) e sessão nova com
+     "low". PENDÊNCIAS PARA O DONO: (1) a linha Resolution aparece sempre, mesmo com todas as câmeras iguais
+     (onde não muda nada): esconder nesse caso?; (2) texto da etiqueta com várias câmeras ("Cameras 03, 04
+     enlarged up to 50%") e o texto da caixa dela são do agente; (3) a etiqueta conta a ampliação total da foto
+     (resolução + rig + ajuste à mão), não só a da resolução.
      Teste do dono (2026-11-26): seção 68 aprovada ("os testes deu tudo certo").
      **Pedidos do dono (2026-11-26), feitos (seção 69):** o tocador do Align cameras também no Align photos do
      Export (mesma barra, mesmo comportamento; estado em `exp.play`, funções `expPlay`/`expPlayOff`); a mão de

@@ -4099,6 +4099,7 @@
     {
       const sv = al.saved || {}, mixed = alRatioInfo().mixed;
       if (RATIOS[sv.ratio]) { st.crop.ratio = sv.ratio; st.crop.orient = sv.orient === "h" || sv.orient === "v" ? sv.orient : ""; }
+      st.crop.res = sv.res === "low" ? "low" : "high";
       st.crop.loaded = true;
       ed.ratioOpen = mixed && st.crop.ratio === "asshot";  // falta escolher
     }
@@ -4119,6 +4120,7 @@
       playStop: () => alPlayStop(ed),
       mixed: () => alRatioInfo().mixed,
       ratio: (ratio, orient) => alEditRatio(ed, ratio, orient),
+      res: (res) => alEditRatio(ed, ed.st.crop.ratio, ed.st.crop.orient, res),
     };
     exp.photo = 0; exp.alignView = null; alignPrefs.tool = "pointer"; exp.alignAll = false; exp.alignAllAnchor = null; exp.alignCanvasMode = false;
     rigApply(session, st, true).then(() => {
@@ -4141,17 +4143,19 @@
   }
   // Trocar a proporção das sessões novas no passo 3: os valores da haste são refeitos para o quadro novo (o fator
   // comum de tamanho muda com ele) e os ajustes feitos à mão acompanham na mesma medida. Um passo do ⌘Z.
-  function alEditRatio(ed, ratio, orient) {
+  // res ("high" ou "low"): a troca é da resolução; a proporção fica como está (mesmo ainda por escolher)
+  function alEditRatio(ed, ratio, orient, res) {
     if (al.edit !== ed || !ed.ready || !(ratio === "asshot" || RATIOS[ratio])) return;
-    if (ratio === "asshot" && alRatioInfo().mixed) return;  // (S4)
+    if (!res && ratio === "asshot" && alRatioInfo().mixed) return;  // (S4)
+    if (res && res === (ed.st.crop.res === "low" ? "low" : "high")) return;
     if (ed.playing) { clearTimeout(ed.timer); ed.playing = false; }
     const st = ed.st;
-    const state = () => ({ ratio: st.crop.ratio, orient: st.crop.orient, open: ed.ratioOpen, by: JSON.stringify(st.align.byFile), stick: JSON.stringify(ed.stick) });
-    const put = (q) => { if (!al.open || al.step !== 3 || al.edit !== ed) return false; st.crop.ratio = q.ratio; st.crop.orient = q.orient; ed.ratioOpen = q.open; st.align.byFile = JSON.parse(q.by); ed.stick = JSON.parse(q.stick); ed.snap = q.by; if (ed.playing) { clearTimeout(ed.timer); ed.playing = false; } alRender(); };
+    const state = () => ({ ratio: st.crop.ratio, orient: st.crop.orient, res: st.crop.res === "low" ? "low" : "high", open: ed.ratioOpen, by: JSON.stringify(st.align.byFile), stick: JSON.stringify(ed.stick) });
+    const put = (q) => { if (!al.open || al.step !== 3 || al.edit !== ed) return false; st.crop.ratio = q.ratio; st.crop.orient = q.orient; st.crop.res = q.res; ed.ratioOpen = q.open; st.align.byFile = JSON.parse(q.by); ed.stick = JSON.parse(q.stick); ed.snap = q.by; if (ed.playing) { clearTimeout(ed.timer); ed.playing = false; } alRender(); };
     const before = state(), prev = JSON.parse(before.by), old = JSON.parse(before.stick);
     const touched = ed.items.filter((it) => alEditTouched(ed, it.file)).map((it) => it.file);
-    st.crop.ratio = ratio; st.crop.orient = ratio === "asshot" || ratio === "1:1" ? "" : orient || "";
-    ed.ratioOpen = false;
+    if (res) st.crop.res = res;
+    else { st.crop.ratio = ratio; st.crop.orient = ratio === "asshot" || ratio === "1:1" ? "" : orient || ""; ed.ratioOpen = false; }
     ed.ready = false;  // (a entrada dos valores novos não é um passo à parte)
     rigApply(ed.session, st, true).then(() => {
       if (al.edit !== ed) return;
@@ -4167,7 +4171,7 @@
       ed.snap = JSON.stringify(st.align.byFile);
       ed.ready = true;
       const after = state();
-      recordAction({ label: "Align cameras · aspect ratio", undo: () => put(before), redo: () => put(after) });
+      recordAction({ label: res ? "Align cameras · resolution" : "Align cameras · aspect ratio", undo: () => put(before), redo: () => put(after) });
       alRender();
     });
   }
@@ -4250,6 +4254,8 @@
     back.id = "alignBackStick";
     back.disabled = !alEditHand(ed);
     box.append(back);
+    // A etiqueta da ampliação, ao lado do Keeps (protótipo S1, escolha do dono em 2026-11-27)
+    { const tag = enlargedTag(ed.session, ed.st, () => setTimeout(alCompactTop, 0)), k = box.querySelector("#alignKeeps"); if (k) k.after(tag); else box.insertBefore(tag, back); }
   }
   // Janela estreita (protótipo K3, escolha do dono em 2026-11-26): quando a linha de cima do passo 3 não cabe numa
   // linha só, os avisos viram uma etiqueta com a contagem (a lista abre com o mouse em cima, como o triângulo do
@@ -4376,7 +4382,7 @@
     if (ed && ed.ratioOpen) return;
     const ratio = ed ? ed.st.crop.ratio : "asshot", orient = ed ? ed.st.crop.orient || "" : "";
     const shape = ratio === "asshot" ? "as shot" : orient === "v" ? RATIO_TURNED[ratio] || ratio : ratio;
-    Promise.resolve(window.alignSave(JSON.stringify({ cameras, ratio, orient }))).then((info) => {
+    Promise.resolve(window.alignSave(JSON.stringify({ cameras, ratio, orient, res: ed && ed.st.crop.res === "low" ? "low" : "" }))).then((info) => {
       al.saved = info || null;
       alRenderEntry();
       alClose();
@@ -5867,6 +5873,15 @@
     r.appendChild(group);
     { const keep = keepShown(session.name, st); if (keep != null) r.appendChild(el("span", "export-keep", "keeps " + keep + "%")); }
     box.appendChild(r);
+    // Resolução com câmeras diferentes (decisão D; protótipo E, confirmado em 2026-11-27)
+    {
+      const rr = row("Resolution"); rr.id = "exportResRow";
+      const resSeg = segmented(RES_OPTIONS, st.crop.res === "low" ? "low" : "high", (v) => { if (locked || v === (st.crop.res === "low" ? "low" : "high")) return; st.crop.res = v; cropShare(session, st); rerender(); });
+      if (locked) resSeg.classList.add("locked-ctl");
+      { const g = el("span", "ratio-group"); g.appendChild(resSeg); rr.appendChild(g); }
+      rr.appendChild(enlargedTag(session, st));
+      box.appendChild(rr);
+    }
     if (locked) {
       // No lugar do aviso das proporções: por que está travado e como destravar
       const cur = sessions.find((x) => x.name === session.name) || session;
@@ -5890,9 +5905,10 @@
     } else if (info && info.mixed && st.crop.ratio === "asshot" && !sessionAligned(session, st)) box.appendChild(mixedWarn("Mixed ratios · " + ratioText(info).replace(/^Camera/, "camera") + " " + MIXED_EFFECT));
     else if (info && info.mixed) box.appendChild(el("div", "export-note", "Mixed ratios · " + ratioText(info).replace(/^Camera/, "camera") + " Every photo goes through the same frame, so nothing jumps."));
     // A sessão nasceu com a proporção salva no Align cameras (protótipo E, aprovado em 2026-11-26)
-    { const rig = rigOf(session); if (!locked && rig && (rig.ratio === "asshot" || RATIOS[rig.ratio])) { const n = el("div", "export-note", "Aspect ratio starts from Align cameras. Changing it here applies to this session only."); n.id = "exportRigNote"; box.appendChild(n); } }
+    { const rig = rigOf(session); if (!locked && rig && (rig.ratio === "asshot" || RATIOS[rig.ratio])) { const n = el("div", "export-note", "Aspect ratio and resolution start from Align cameras. Changing them here applies to this session only."); n.id = "exportRigNote"; box.appendChild(n); } }
     addTip(box, "The shape every export gets: converted photos, the sequence and the lenticular print (Fill) are cut to it; the originals are never cropped. " +
-      "One crop for the whole session, and every converted photo comes out with the same pixel size (the smallest camera's).", "Aspect ratio");
+      "One crop for the whole session, and every converted photo comes out with the same pixel size.", "Aspect ratio");
+    addTip(box, RES_TIP, "Resolution");
     // Position: só para sessão sem alinhamento próprio das fotos (com ele, cada foto se move no Align photos)
     if (st.crop.ratio !== "asshot" && !sessionAligned(session, st)) {
       const pos = row("Position");
@@ -6215,7 +6231,7 @@
   // (Back to automatic). Devolve Promise<true> se mudou algo.
   function rigApply(session, st, all) {
     alignLoad(session, st); cropLoad(session, st);
-    const key = st.crop.ratio + "/" + (st.crop.orient || "") + "/" + (rigOf(session) || {}).savedAt;
+    const key = st.crop.ratio + "/" + (st.crop.orient || "") + "/" + (st.crop.res || "") + "/" + (rigOf(session) || {}).savedAt;
     return rigCompute(session, st).then((auto) => {
       if (!auto) return false;
       const old = st.align.auto || {};
@@ -6250,6 +6266,42 @@
       });
       return n ? sum / n : null;
     });
+  }
+  // Resolução (decisão D do dono, 2026-11-26): as fotos ampliadas mais de 25% (pela câmera de maior resolução, pelo
+  // alinhamento ou à mão), com o número da câmera e quanto. Lista vazia = nada a avisar.
+  const ENLARGE_WARN = 1.25;
+  function enlargedList(session, st) {
+    const items = alignItemsOf(session, st);
+    return Promise.all(items.map((it) => alignSizeOf(session, st, it.file))).then((list) => {
+      const sizes = {};
+      items.forEach((it, k) => { if (list[k]) sizes[it.file] = list[k]; });
+      const frame = commonFrame(items, sizes, st);
+      if (!frame) return [];
+      const out = [];
+      items.forEach((it, k) => {
+        const sz = sizes[it.file]; if (!sz) return;
+        const a = effectiveAlign(sz, alignOf(st, it.file), frame, st);
+        if (a.scale > ENLARGE_WARN + 1e-6) out.push({ order: it.order || k + 1, pct: Math.round((a.scale - 1) * 100) });
+      });
+      return out;
+    });
+  }
+  const RES_OPTIONS = [["high", "Highest camera"], ["low", "Lowest camera"]];
+  const RES_TIP = "With cameras of different resolutions, the output takes the size of the highest camera (the smaller photos are enlarged) or of the lowest (every photo keeps its sharpness; the output has fewer pixels).";
+  // A etiqueta âmbar da ampliação: entra escondida e aparece quando a conta termina (then: depois de mostrar ou não)
+  function enlargedTag(session, st, then) {
+    const t = el("span", "al-chip al-uneven res-enlarged hidden"); t.id = st.rigStep ? "csAlignEnlarged" : "exportEnlarged";
+    enlargedList(session, st).then((list) => {
+      if (!t.isConnected) return;
+      if (!list.length) { t.remove(); if (then) then(); return; }
+      const top = Math.max(...list.map((x) => x.pct));
+      t.textContent = list.length === 1 ? "Camera " + pad(list[0].order) + " enlarged " + top + "%" : "Cameras " + list.map((x) => pad(x.order)).join(", ") + " enlarged up to " + top + "%";
+      t.dataset.itip = list.map((x) => "Camera " + pad(x.order) + ": enlarged " + x.pct + "%").join(" · ") + ". A photo enlarged more than 25% looks softer than the others. " +
+        (st.crop.res === "low" ? "" : "With Lowest camera in Resolution no photo is enlarged to match the others; the output has fewer pixels.");
+      t.classList.remove("hidden");
+      if (then) then();
+    });
+    return t;
   }
   const KEEP_WARN = 0.8;  // abaixo disto, aviso em âmbar (decisão do dono, 2026-11-16, opção B)
   function alignKeepsShow(session, st) {
@@ -6320,7 +6372,7 @@
       if (!rigOf(session) || framingLocked(session)) return;
       alignLoad(session, st); cropLoad(session, st);
       if (alignModeOf(session, st) !== "rig" || needsRatio(session, st) || st.align.rigBusy) return;
-      const key = st.crop.ratio + "/" + (st.crop.orient || "") + "/" + rigOf(session).savedAt;
+      const key = st.crop.ratio + "/" + (st.crop.orient || "") + "/" + (st.crop.res || "") + "/" + rigOf(session).savedAt;
       if (st.align.rigKey === key) return;
       st.align.rigBusy = true;
       rigApply(session, st, false).then((changed) => {
@@ -7115,6 +7167,11 @@
       r.appendChild(group);
       arRows.appendChild(r);
       addTip(arRows, "The shape every new session starts with. It is saved with the alignment; Export sessions can still change it for one session. The photos in Originals stay as the cameras shot them.", "Aspect ratio");
+      // Resolução das sessões novas (decisão D; protótipo A1 refeito em 2026-11-27)
+      const rr = row("Resolution"); rr.id = "alignNewRes";
+      { const g = el("span", "ratio-group"); g.appendChild(segmented(RES_OPTIONS, st.crop.res === "low" ? "low" : "high", (v) => rigStep.res(v))); rr.appendChild(g); }
+      arRows.appendChild(rr);
+      addTip(arRows, RES_TIP + " It is saved with the alignment; Export sessions can still change it for one session.", "Resolution");
     } else {
       const info = ratioInfoCached(session.name);
       const r = row("Aspect ratio");

@@ -2841,6 +2841,33 @@ Pedido do dono (2026-11-27, 02:35), a conferir:
       go past the photos. A smaller canvas means fewer pixels in the output; no photo is enlarged." O texto solto
       embaixo dos botões saiu.
 
+
+## 79. Resolução com câmeras de resoluções diferentes (2026-11-27, câmeras simuladas servem)
+
+Abrir com 8 câmeras simuladas, a cena da haste e `STILLPOINT_FAKE_SMALL=4` (a câmera 04 fotografa a mesma cena com
+menos pixels: 1200 px de largura contra 1800 das outras).
+
+- [ ] **Fire** (sessão nova) › **Export sessions** › aba **Framing**: embaixo de **Aspect ratio** há a linha
+      **Resolution**, com **Highest camera** escolhido e **Lowest camera** ao lado; à direita, a etiqueta âmbar
+      **Camera 04 enlarged 50%**. Na prévia, a foto 04 aparece do mesmo tamanho das outras, com a haste no mesmo
+      tamanho de cena.
+- [ ] Mouse em cima da etiqueta: a caixa padrão explica (câmera, quanto, e que acima de 25% a foto fica mais suave).
+      Mouse em cima do **?** de **Resolution**: a caixa padrão com a explicação das duas opções.
+- [ ] Clicar em **Lowest camera**: a etiqueta some; a prévia continua com todas as fotos no mesmo tamanho de cena.
+      **⌘Z** / **Ctrl+Z**: volta para **Highest camera** e a etiqueta volta.
+- [ ] **Align photos**: a linha de baixo do painel mostra o canvas em pixels; com **Highest camera** ele tem o
+      tamanho das câmeras maiores, com **Lowest camera** o da câmera 04.
+- [ ] **Camera settings** › **Align cameras** até o passo **3 Save**: no bloco **New sessions**, embaixo de
+      **Aspect ratio**, a linha **Resolution** com as duas opções; na linha de cima, ao lado de **Keeps**, a etiqueta
+      **Camera 04 enlarged …%**. Trocar para **Lowest camera**: o canvas diminui, a etiqueta some; **⌘Z** desfaz.
+- [ ] Com **Lowest camera**, **Save alignment** e **Fire**: a sessão nova abre no **Export sessions** › **Framing**
+      já com **Lowest camera**, e a nota embaixo diz "Aspect ratio and resolution start from Align cameras.
+      Changing them here applies to this session only."
+- [ ] Exportar (3 Outputs, fotos convertidas ou sequência) com **Highest camera** e com **Lowest camera**: os arquivos
+      saem todos do mesmo tamanho, o das câmeras maiores ou o da câmera 04.
+- [ ] Sem `STILLPOINT_FAKE_SMALL` (todas as câmeras iguais): tudo como antes; as duas opções dão o mesmo resultado
+      e a etiqueta não aparece.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |

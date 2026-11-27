@@ -2125,8 +2125,12 @@ namespace
                         bool ok = false;
                         const JsonLite::Value rig = JsonLite::Parse(alignment, &ok);
                         const std::string ratio = ok ? rig.get("ratio").asString() : std::string(), orient = ok ? rig.get("orient").asString() : std::string();
+                        // (e com a resolução: quarto campo "low" = pela câmera de menor resolução)
+                        const bool low = ok && rig.get("res").asString() == "low";
                         if (ok && rig.get("cameras").items().size() > 0 && !ratio.empty() && ratio != "asshot")
-                            info.Add("crop", ratio + (orient.empty() ? "" : "/" + orient) + "|0.500|0.500");
+                            info.Add("crop", ratio + (orient.empty() ? "" : "/" + orient) + "|0.500|0.500" + (low ? "|low" : ""));
+                        else if (low && rig.get("cameras").items().size() > 0)
+                            info.Add("crop", std::string("asshot|0.500|0.500|low"));
                     }
                     store.WriteSessionInfo(session.name, info.Str());
                 }
@@ -5584,6 +5588,8 @@ namespace
                     root.set("ratio", ratio);
                     root.set("orient", orient == "h" || orient == "v" ? orient : std::string());
                 }
+                // A resolução em rig com câmeras diferentes (decisão D): "low" = pela de menor; sem nada = pela de maior
+                if (in.get("res").asString() == "low") root.set("res", std::string("low"));
             }
             const std::string text = JsonLite::Stringify(root, 0);
             {
