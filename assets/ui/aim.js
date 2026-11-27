@@ -537,6 +537,19 @@
   document.addEventListener("keydown", (e) => {
     // Cmd+` / Cmd+Shift+`: passa para a outra janela do app
     if (e.metaKey && e.code === "Backquote" && typeof window.cycleWindows === "function") { e.preventDefault(); window.cycleWindows(e.shiftKey ? "1" : "0"); return; }
+    // O Tab passa por tudo o que se clica (abas das câmeras, botões, opções), como na janela Live: a janela do
+    // sistema não faz isso sozinha no Mac (teste do dono, 2026-11-27)
+    if (e.key === "Tab" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      document.documentElement.classList.add("kbd-focus"); showTools();
+      const screens = $("gaScreens"), scope = screens && !screens.classList.contains("hidden") ? screens : document.body;
+      const list = [...scope.querySelectorAll("a[href], button, input, select, textarea, [tabindex]")].filter((x) =>
+        !x.disabled && x.tabIndex >= 0 && x.getClientRects().length > 0 && getComputedStyle(x).visibility !== "hidden" && !x.closest(".hidden"));
+      if (!list.length) return;
+      e.preventDefault();
+      const i = list.indexOf(document.activeElement);
+      (i < 0 ? (e.shiftKey ? list[list.length - 1] : list[0]) : list[(i + (e.shiftKey ? -1 : 1) + list.length) % list.length]).focus();
+      return;
+    }
     if (e.key === "Tab") { document.documentElement.classList.add("kbd-focus"); showTools(); return; }
     if (e.key === "Escape") {
       e.preventDefault();

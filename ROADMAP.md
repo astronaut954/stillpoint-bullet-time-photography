@@ -1911,6 +1911,17 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      de a janela fechar (`alignWin`: saem ao fechar, como os do Export). NÃO confirmado que era esse o caso do dono.
      (c) roteiro impreciso: o botão da tela principal é "It's Bullet Time" ("Fire" só no Align cameras) e o valor
      da etiqueta depende de haver rig; seção 79 corrigida.
+     **SEÇÃO 79 APROVADA PELO DONO (2026-11-27, 15h: "Todos testes deram certo").** Pedidos do mesmo retorno,
+     FEITOS e aguardando teste (seção 80): linha Resolution sempre à vista e desligada com todas as câmeras na
+     mesma resolução (`resSegment`, `resUneven`); "Different" não conta a resolução nas sessões em que ela não muda
+     nada (`cropCompareText`); etiqueta curta com várias câmeras ("4 cameras enlarged", detalhe na caixa); a linha
+     de cima do passo 3 piscava a cada desenho porque a etiqueta chegava depois (tamanhos agora guardados,
+     `sizesNow`); miniaturas dão a volta no Framing e no Align photos / passo 3; TAB: lista de câmeras do passo 2
+     (`.ma-item` com foco, Enter/espaço), janela Guided aim (aim.js não movia o foco), painéis flutuantes do Align
+     photos acesos com o foco do teclado dentro, caixa da âncora (o Tab anda dentro dela, Esc devolve o foco).
+     AINDA NÃO FEITO, esperando resposta do dono: botões "+" e "−" de zoom (onde ficam e o que ampliam), e com
+     eles a prévia grande do Framing crescendo quando sobra espaço embaixo; ordem Sequence/Photos no passo 3
+     Outputs (falta saber se "selecionado" é a aba aberta ou a saída marcada para exportar).
      Teste do dono (2026-11-26): seção 68 aprovada ("os testes deu tudo certo").
      **Pedidos do dono (2026-11-26), feitos (seção 69):** o tocador do Align cameras também no Align photos do
      Export (mesma barra, mesmo comportamento; estado em `exp.play`, funções `expPlay`/`expPlayOff`); a mão de

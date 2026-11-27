@@ -2670,3 +2670,8 @@ body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform:
 /* Resolução em rig com câmeras diferentes (decisão D; protótipos S1 e E, 2026-11-27): a etiqueta da ampliação */
 #exportResRow .res-enlarged { margin-left: 14px; align-self: center; cursor: help; }
 .res-enlarged { cursor: help; }
+
+/* Painéis flutuantes do Align photos com o TAB (pedido do dono, 2026-11-27): acesos enquanto o foco do teclado
+   estiver dentro deles; voltam a apagar quando o TAB sai */
+.align-tools:has(:focus-visible), .align-play:has(:focus-visible) { opacity: 1; transition-duration: .16s; }
+html.kbd-focus .align-tools:focus-within, html.kbd-focus .align-play:focus-within { opacity: 1; transition-duration: .16s; }

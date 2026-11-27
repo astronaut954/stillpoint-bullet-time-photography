@@ -3966,6 +3966,13 @@
       it.appendChild(alPhotoEl(p, false));
       it.insertAdjacentHTML("beforeend", "<div><b>Camera " + alNum(p) + "</b>" + tag + (text ? '<span class="t">' + alEsc(text) + "</span>" : "") + "</div>");
       it.addEventListener("click", () => { al.sel = p.camera; if (al.clicks && al.clicks.camera !== p.camera) al.clicks = null; alRender(); });
+      // O Tab passa pelas câmeras da lista e Enter ou espaço escolhe (como nas outras listas; pedido do dono, 2026-11-27)
+      it.tabIndex = 0; it.setAttribute("role", "button");
+      it.addEventListener("keydown", (e) => {
+        if (e.target !== it || (e.key !== "Enter" && e.key !== " ")) return;
+        e.preventDefault(); it.click();
+        const again = document.querySelector('#csAlignMain .ma-item[data-camera="' + p.camera + '"]'); if (again) again.focus();
+      });
       it.dataset.order = String(p.order);
       list.appendChild(it);
     });
@@ -4529,7 +4536,7 @@
   // O que se compara entre as sessões em cada passo: o Framing (passo 1) ou as saídas (passo 2; uma saída ou todas)
   function stepConfig(name, step, kind) {
     const st = settingsFor(name);
-    if (step === 1) { const s = sessions.find((x) => x.name === name); if (s) cropLoad(s, st); return cropText(st); }
+    if (step === 1) { const s = sessions.find((x) => x.name === name); if (s) cropLoad(s, st); return s ? cropCompareText(s, st) : cropText(st); }
     const kinds = kind ? [kind] : OUTPUT_KINDS;
     return JSON.stringify(kinds.map((k) => [!!st.outputs[k], st[OUTPUT_KEY_OF[k]]]));
   }
@@ -5676,6 +5683,13 @@
   // texto guardado e mandado ao app ("3:2/v|0.5|0.5"); em As shot e 1:1 não muda nada e não é guardada.
   const RATIO_TURNED = { "3:2": "2:3", "4:3": "3:4", "16:9": "9:16", "1:1": "1:1" };
   function cropKey(st) { const r = st.crop.ratio || "asshot"; return r + (st.crop.orient && r !== "asshot" && r !== "1:1" ? "/" + st.crop.orient : ""); }
+  // O recorte para comparar sessões ("Different"; decisão do dono, 2026-11-27): a resolução só conta nas sessões em
+  // que as câmeras têm resoluções diferentes; nas outras a escolha não muda nada e não faz a sessão ser "diferente"
+  let resRedraw = 0;
+  function cropCompareText(session, st) {
+    const uneven = resUneven(session, st, () => { clearTimeout(resRedraw); resRedraw = setTimeout(() => { if (!$("exportOverlay").classList.contains("hidden")) renderExport(); }, 60); });
+    return uneven === true ? cropText(st) : cropText(st).replace(/\|low$/, "");
+  }
   function cropText(st) { return cropKey(st) + "|" + st.crop.x.toFixed(3) + "|" + st.crop.y.toFixed(3) + (st.crop.res === "low" ? "|low" : ""); }
   // A orientação que vale: a escolhida, ou a das fotos da sessão
   function orientOf(name, st) { const info = ratioInfoCached(name); return st.crop.orient || (info && info.natural) || "h"; }
@@ -5761,7 +5775,7 @@
     return r;
   }
   function framingAllSame() {
-    const list = chosenSessions().map((o) => { const ost = settingsFor(o.name); cropLoad(o, ost); return cropText(ost); });
+    const list = chosenSessions().map((o) => { const ost = settingsFor(o.name); cropLoad(o, ost); return cropCompareText(o, ost); });
     return list.every((x) => x === list[0]);
   }
   function cropSave(session, st) {
@@ -5880,8 +5894,7 @@
     // Resolução com câmeras diferentes (decisão D; protótipo E, confirmado em 2026-11-27)
     {
       const rr = row("Resolution"); rr.id = "exportResRow";
-      const resSeg = segmented(RES_OPTIONS, st.crop.res === "low" ? "low" : "high", (v) => { if (locked || v === (st.crop.res === "low" ? "low" : "high")) return; st.crop.res = v; cropShare(session, st); rerender(); });
-      if (locked) resSeg.classList.add("locked-ctl");
+      const resSeg = resSegment(session, st, (v) => { if (locked || v === (st.crop.res === "low" ? "low" : "high")) return; st.crop.res = v; cropShare(session, st); rerender(); }, locked);
       rr.appendChild(resSeg);
       rr.appendChild(enlargedTag(session, st));
       box.appendChild(rr);
@@ -6274,38 +6287,74 @@
   // Resolução (decisão D do dono, 2026-11-26): as fotos ampliadas mais de 25% (pela câmera de maior resolução, pelo
   // alinhamento ou à mão), com o número da câmera e quanto. Lista vazia = nada a avisar.
   const ENLARGE_WARN = 1.25;
-  function enlargedList(session, st) {
-    const items = alignItemsOf(session, st);
-    return Promise.all(items.map((it) => alignSizeOf(session, st, it.file))).then((list) => {
-      const sizes = {};
-      items.forEach((it, k) => { if (list[k]) sizes[it.file] = list[k]; });
-      const frame = commonFrame(items, sizes, st);
-      if (!frame) return [];
-      const out = [];
-      items.forEach((it, k) => {
-        const sz = sizes[it.file]; if (!sz) return;
-        const a = effectiveAlign(sz, alignOf(st, it.file), frame, st);
-        if (a.scale > ENLARGE_WARN + 1e-6) out.push({ order: it.order || k + 1, pct: Math.round((a.scale - 1) * 100) });
-      });
-      return out;
+  // Os tamanhos reais das fotos da sessão, guardados: quem desenha a tela usa na hora (sem piscar a cada desenho;
+  // teste do dono, 2026-11-27) e, na primeira vez, é avisado quando chegam (then)
+  const sizesCache = {};
+  function sizesNow(session, st, then) {
+    const items = alignItemsOf(session, st), key = items.map((it) => it.file).join("|");
+    let c = sizesCache[session.name];
+    if (c && c.key === key && c.sizes) return c.sizes;
+    if (!(c && c.key === key)) {
+      c = sizesCache[session.name] = { key, sizes: null, waiters: [] };
+      const mine = c;
+      Promise.all(items.map((it) => alignSizeOf(session, st, it.file))).then((list) => {
+        const sizes = {};
+        items.forEach((it, k) => { if (list[k]) sizes[it.file] = list[k]; });
+        mine.sizes = sizes;
+        const w = mine.waiters; mine.waiters = [];
+        w.forEach((f) => { try { f(); } catch (e) {} });
+      }).catch(() => {});
+    }
+    if (then) c.waiters.push(then);
+    return null;
+  }
+  // As câmeras desta sessão têm resoluções diferentes? (null: ainda não se sabe)
+  function resUneven(session, st, then) {
+    const sizes = sizesNow(session, st, then);
+    if (!sizes) return null;
+    let hi = 0, lo = 1e18;
+    Object.keys(sizes).forEach((f) => { const r = sensorRef(sizes[f]); hi = Math.max(hi, r); lo = Math.min(lo, r); });
+    return hi > 0 && hi - lo > 0.5;
+  }
+  function enlargedFrom(session, st, sizes) {
+    const items = alignItemsOf(session, st), frame = commonFrame(items, sizes, st), out = [];
+    if (!frame) return out;
+    items.forEach((it, k) => {
+      const sz = sizes[it.file]; if (!sz) return;
+      const a = effectiveAlign(sz, alignOf(st, it.file), frame, st);
+      if (a.scale > ENLARGE_WARN + 1e-6) out.push({ order: it.order || k + 1, pct: Math.round((a.scale - 1) * 100) });
     });
+    return out;
   }
   const RES_OPTIONS = [["high", "Highest camera"], ["low", "Lowest camera"]];
-  const RES_TIP = "With cameras of different resolutions, the output takes the size of the highest camera (the smaller photos are enlarged) or of the lowest (every photo keeps its sharpness; the output has fewer pixels).";
-  // A etiqueta âmbar da ampliação: entra escondida e aparece quando a conta termina (then: depois de mostrar ou não)
+  const RES_TIP = "With cameras of different resolutions, the output takes the size of the highest camera (the smaller photos are enlarged) or of the lowest (every photo keeps its sharpness; the output has fewer pixels). With every camera at the same resolution there is nothing to choose.";
+  // A etiqueta âmbar da ampliação (curta, sem quebrar a linha: pedido do dono, 2026-11-27; o detalhe por câmera fica
+  // na caixa dela). Com os tamanhos já guardados sai pronta; senão entra escondida e aparece quando chegam (then).
   function enlargedTag(session, st, then) {
     const t = el("span", "al-chip al-uneven res-enlarged hidden"); t.id = st.rigStep ? "csAlignEnlarged" : "exportEnlarged";
-    enlargedList(session, st).then((list) => {
-      if (!t.isConnected) return;
-      if (!list.length) { t.remove(); if (then) then(); return; }
+    const fill = (sizes) => {
+      const list = enlargedFrom(session, st, sizes);
+      if (!list.length) return false;
       const top = Math.max(...list.map((x) => x.pct));
-      t.textContent = list.length === 1 ? "Camera " + pad(list[0].order) + " enlarged " + top + "%" : "Cameras " + list.map((x) => pad(x.order)).join(", ") + " enlarged up to " + top + "%";
-      t.dataset.itip = list.map((x) => "Camera " + pad(x.order) + ": enlarged " + x.pct + "%").join(" · ") + ". A photo enlarged more than 25% looks softer than the others. " +
+      t.textContent = list.length === 1 ? "Camera " + pad(list[0].order) + " enlarged " + top + "%" : list.length + " cameras enlarged";
+      t.dataset.itip = list.map((x) => "Camera " + pad(x.order) + ": enlarged " + x.pct + "%").join(" · ") + ". This counts everything that makes a photo bigger: matching a camera of lower resolution, the alignment and what was adjusted by hand. A photo enlarged more than 25% looks softer than the others. " +
         (st.crop.res === "low" ? "" : "With Lowest camera in Resolution no photo is enlarged to match the others; the output has fewer pixels.");
       t.classList.remove("hidden");
-      if (then) then();
-    });
+      return true;
+    };
+    const sizes = sizesNow(session, st, () => { if (!t.isConnected) return; if (!fill(sizesNow(session, st) || {})) t.remove(); if (then) then(); });
+    if (sizes && !fill(sizes)) return document.createComment("no enlarged photo");
     return t;
+  }
+  // A linha Resolution: sempre à vista, desligada quando todas as câmeras têm a mesma resolução (decisão do dono,
+  // 2026-11-27)
+  function resSegment(session, st, onPick, locked) {
+    const seg = segmented(RES_OPTIONS, st.crop.res === "low" ? "low" : "high", onPick);
+    const off = (on) => seg.querySelectorAll("button").forEach((b) => { b.disabled = on; });
+    const known = resUneven(session, st, () => { if (seg.isConnected && !locked) off(resUneven(session, st) !== true); });
+    off(known !== true);
+    if (locked) seg.classList.add("locked-ctl");
+    return seg;
   }
   const KEEP_WARN = 0.8;  // abaixo disto, aviso em âmbar (decisão do dono, 2026-11-16, opção B)
   function alignKeepsShow(session, st) {
@@ -6761,7 +6810,7 @@
       strip.insertBefore(li, k < 0 ? null : [...strip.children].filter((x) => !x.classList.contains("gone"))[k]);
     });
     const slot = el("div", "export-strip-slot"); slot.appendChild(stripScroll); left.appendChild(slot);
-    exp.keyNav = (d) => { const k = Math.max(0, Math.min(n - 1, cur + d)); if (k === cur) return; exp.photo = k; goPhoto(); };
+    exp.keyNav = (d) => { const k = ((cur + d) % n + n) % n; if (k === cur) return; exp.photo = k; goPhoto(); };  // (dá a volta: da última para a primeira e o contrário; pedido do dono, 2026-11-27)
     wrap.appendChild(left);
 
     // Coluna de controles
@@ -7186,7 +7235,7 @@
       addTip(arRows, "The shape every new session starts with. It is saved with the alignment; Export sessions can still change it for one session. The photos in Originals stay as the cameras shot them.", "Aspect ratio");
       // Resolução das sessões novas (decisão D; protótipo A1 refeito em 2026-11-27)
       const rr = row("Resolution"); rr.id = "alignNewRes";
-      { const g = el("span", "ratio-group"); g.appendChild(segmented(RES_OPTIONS, st.crop.res === "low" ? "low" : "high", (v) => rigStep.res(v))); rr.appendChild(g); }
+      { const g = el("span", "ratio-group"); g.appendChild(resSegment(session, st, (v) => rigStep.res(v))); rr.appendChild(g); }
       arRows.appendChild(rr);
       addTip(arRows, RES_TIP + " It is saved with the alignment; Export sessions can still change it for one session.", "Resolution");
     } else {
@@ -7248,7 +7297,17 @@
     { const row = el("div", "align-anchor-row"); row.append(el("span", "align-anchor-lab", "Photo"), anchorGrid); anchorPop.appendChild(row); }
     self.appendChild(anchorPop);
     const anchorPopOutside = (e) => { if (!anchorPop.contains(e.target) && !anchorBtn.contains(e.target)) anchorPopSet(false); };
-    const anchorPopKey = (e) => { if (e.key === "Escape") { e.preventDefault(); e.stopImmediatePropagation(); anchorPopSet(false); } };
+    // (com a caixa aberta o Tab anda só dentro dela; Esc fecha e devolve o foco ao botão; teste do dono, 2026-11-27)
+    const anchorPopKey = (e) => {
+      if (e.key === "Escape") { e.preventDefault(); e.stopImmediatePropagation(); anchorPopSet(false); anchorBtn.focus(); return; }
+      if (e.key !== "Tab" || e.metaKey || e.ctrlKey || e.altKey) return;
+      const list = [...anchorPop.querySelectorAll("button")].filter((b) => !b.disabled && b.getClientRects().length);
+      if (!list.length) return;
+      e.preventDefault(); e.stopImmediatePropagation();
+      document.documentElement.classList.add("kbd-focus");
+      const i = list.indexOf(document.activeElement);
+      (i < 0 ? (e.shiftKey ? list[list.length - 1] : list[0]) : list[(i + (e.shiftKey ? -1 : 1) + list.length) % list.length]).focus();
+    };
     const anchorPopSet = (on) => {
       anchorPop.classList.toggle("hidden", !on); anchorBtn.classList.toggle("on", on); anchorBtn.setAttribute("aria-expanded", on ? "true" : "false");
       document.removeEventListener("pointerdown", anchorPopOutside, true); window.removeEventListener("keydown", anchorPopKey, true);
@@ -8029,7 +8088,7 @@
             li.addEventListener("click", () => { exp.photo = k; photoRerender(); });
             strip.appendChild(li);
           });
-          exp.keyNav = (d) => { const k = Math.max(0, Math.min(items.length - 1, (exp.photo || 0) + d)); if (k === exp.photo) return; exp.photo = k; photoRerender(); };
+          exp.keyNav = (d) => { const n = items.length, k = (((exp.photo || 0) + d) % n + n) % n; if (k === exp.photo) return; exp.photo = k; photoRerender(); };  // (dá a volta)
           const slot = el("div", "export-strip-slot");
           slot.appendChild(stripScroll);
           outer.insertBefore(slot, rows);
