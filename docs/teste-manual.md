@@ -2998,7 +2998,12 @@ menos pixels: 1200 px de largura contra 1800 das outras).
       ou some: a linha de cima não mostra um instante as etiquetas por extenso antes de virar **N warnings**.
 - [x] Passo **3 Save**: com o **TAB** em **Back to the stick values**, o contorno aparece inteiro (por dentro do
       botão), sem corte em cima nem à direita.
-- [ ] Passo **2 Mark and aim**: a etiqueta âmbar de cada câmera na lista diz **2 fixes needed** (ou **1 fix
+- [x] Passo **2 Mark and aim**: a etiqueta âmbar de cada câmera na lista diz **2 fixes needed** (ou **1 fix
       needed**) em vez de "2 changes".
-- [ ] **Export sessions** › **Framing**: com a janela alta, a prévia grande cresce e ocupa o espaço que sobrava
+- [x] **Export sessions** › **Framing**: com a janela alta, a prévia grande cresce e ocupa o espaço que sobrava
       embaixo das opções; com a janela baixa, ela fica na altura mínima de antes e as opções rolam.
+- [ ] **2 Edit** e **3 Outputs**: a prévia grande também cresce quando sobra espaço embaixo das opções (com a janela
+      baixa ou com muitas opções, fica na altura mínima e as opções rolam).
+- [ ] Janela principal, com uma sessão aberta (normal e em tela cheia): a legenda da foto (número da câmera e nome
+      do arquivo, canto de baixo à esquerda) aparece ao mexer o mouse sobre a foto e some junto com o painel de
+      tocar, 2 s depois de o mouse parar.

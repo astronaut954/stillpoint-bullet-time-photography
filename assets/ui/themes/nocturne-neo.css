@@ -2688,7 +2688,15 @@ html.kbd-focus .export-settings.theater .export-preview:focus-within .lent-theat
    corta o que passa dela); o contorno fica por dentro do botão (captura do dono, 2026-11-27) */
 html.kbd-focus .rig-top :focus, html.kbd-focus .export-scope :focus { outline-offset: -2px; }
 
-/* Export › Framing (pedido do dono, 2026-11-27): a prévia grande tem 200 px de altura mínima e cresce quando sobra
-   espaço embaixo; as opções ficam com a altura delas (e rolam quando a janela é baixa, como antes) */
-.export-settings:has(> .framing-stage) > .framing-stage { flex: 1 1 200px; height: auto; min-height: 200px; }
-.export-settings:has(> .framing-stage) > .export-rows { flex: 0 1 auto; }
+/* Export, passos 1 Sessions, 2 Edit e 3 Outputs (pedido do dono, 2026-11-27): a prévia grande tem 200 px de altura
+   mínima e cresce quando sobra espaço embaixo; as opções ficam com a altura delas (e rolam quando a janela é baixa,
+   como antes). Fora do teatro e do Align photos, que já têm o seu arranjo. */
+.export-settings:not(.theater):not(.aligning) > .export-preview { flex: 1 1 auto; min-height: 200px; }
+.export-settings:not(.theater):not(.aligning) > .export-preview.slide, .export-settings:not(.theater):not(.aligning) > .export-preview.slide-closed { flex-grow: 0; min-height: 0; }
+.export-settings:not(.theater):not(.aligning):has(> .export-preview:not(.slide-closed)) > .export-rows { flex: 0 1 auto; }
+
+/* Janela principal (sessão aberta, normal e em tela cheia; pedido do dono, 2026-11-27): a legenda da foto (número
+   da câmera e nome do arquivo) aparece e some junto com o painel de tocar */
+#sessionGallery .stage:has(.stage-ctrls) .stage-caption { opacity: 0; transition: opacity .3s ease; }
+#sessionGallery .stage:has(.stage-ctrls.show) .stage-caption, #sessionGallery .stage .stage-caption:hover,
+html.kbd-focus #sessionGallery .stage:focus-within .stage-caption { opacity: 1; }
