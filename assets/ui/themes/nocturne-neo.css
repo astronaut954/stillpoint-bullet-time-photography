@@ -2752,3 +2752,10 @@ html.kbd-focus #sessionGallery .stage:focus-within .stage-caption { opacity: 1; 
 .cs-review-note .cs-ratio-alert svg { width: 12px; height: 12px; }
 .cs-review-notes { flex: none; display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-top: 1px solid var(--noct-border); }
 .cs-review-notes .cs-review-note { flex: none; }
+/* Layout N1 das observações do Match (escolha do dono, 2026-11-27): etiqueta com a quantidade na linha, texto na caixa
+   padrão (uma observação por parágrafo); as de várias câmeras numa faixa no topo da tabela */
+.cs-review-notechip { display: inline-flex; align-items: center; gap: 5px; height: 16px; padding: 0 6px; box-sizing: border-box; border: 1px solid var(--noct-pending); color: var(--noct-pending); font: 700 10px var(--noct-font-mono); letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; cursor: help; }
+.cs-review-notechip svg { display: block; width: 12px; height: 12px; }
+.cs-review-notechip:focus-visible { outline: 1px dashed var(--noct-pending); outline-offset: 2px; }
+.cs-review-notes { border-top: 0; border-bottom: 1px solid var(--noct-border); }
+.itip { white-space: pre-line; }

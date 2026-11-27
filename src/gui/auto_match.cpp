@@ -1366,11 +1366,32 @@ namespace AutoMatch
         // 4. Cor e brilho de cada câmera até o alvo; foto de novo para conferir
         std::vector<std::string> state;
         const int baseShot = shot;
+        constexpr int kExtraRounds = 3;
+        int extraRounds = 0;
         for (;;)
         {
             if (cancelled())
                 return stopped();
-            const bool last = shot >= shots;
+            bool last = shot >= shots;
+            // Acabaram as fotos previstas e alguma câmera ainda está diferente além da tolerância final: em vez de
+            // pedir outro Test shot à pessoa, o Match continua sozinho, até kExtraRounds rodadas a mais (decisão do
+            // dono, 2026-11-27: teto de 3). Só depois disso fica a nota "still a little different".
+            if (last && extraRounds < kExtraRounds)
+            {
+                std::vector<std::string> dry;
+                Stats check = target;
+                check.ev = BrightnessTarget(controller, cams, target.ev);
+                bool still = false;
+                for (auto& c : cams)
+                    still = Correct(controller, c, check, false, dry) || still;
+                if (still)
+                {
+                    ++extraRounds;
+                    ++shots;
+                    last = false;
+                    Trace("Still different after the planned photos: extra round " + std::to_string(extraRounds) + " of " + std::to_string(kExtraRounds));
+                }
+            }
             if (commonWb && !last && shot == baseShot + 1)
                 RefineCommonWb(controller, cams, wbCams, target, notes);
             state.clear();

@@ -2019,6 +2019,14 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      última foto, se a câmera ainda passa da tolerância final (1 passo de ajuste fino ou 0,3 stop), ele não muda
      mais (não haveria foto para conferir) e deixa a nota. PENDÊNCIA DE PRODUTO: o Match deveria continuar sozinho
      (mais rodadas) em vez de pedir outro Test shot?
+     **DECISÕES DO DONO (20h42):** (1) observações no layout **N1**, feito: etiqueta âmbar com a quantidade na linha
+     (`cs-review-notechip`, texto "N note(s)" ILUSTRATIVO, do dono), texto na caixa padrão com uma observação por
+     parágrafo (`.itip { white-space: pre-line }`), as de várias câmeras numa faixa no topo da tabela. (2) **O Match
+     continua sozinho, com teto de 3 rodadas**: leitura adotada pelo agente = até 3 rodadas A MAIS depois das fotos
+     previstas (`kExtraRounds` em auto_match.cpp), só enquanto alguma câmera passar da tolerância final; A CONFIRMAR
+     com o dono (a outra leitura seria 3 no total). NÃO visto disparar na simulação do agente. (3) Persistindo a
+     diferença, um atalho no 3 Review para calibrar mais: PROTÓTIPOS em
+     https://claude.ai/artifact/HzXEhimEmszjrzKaae5WMa (S1 rodapé, S2 faixa no topo, S3 por câmera), aguardando escolha.
      Teste do dono (2026-11-26): seção 68 aprovada ("os testes deu tudo certo").
      **Pedidos do dono (2026-11-26), feitos (seção 69):** o tocador do Align cameras também no Align photos do
      Export (mesma barra, mesmo comportamento; estado em `exp.play`, funções `expPlay`/`expPlayOff`); a mão de

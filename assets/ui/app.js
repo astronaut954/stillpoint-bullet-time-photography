@@ -11798,7 +11798,14 @@
         const at = [...list.querySelectorAll(".cs-review-change")].find((it) => /^\d+:\d+$/.test((it.querySelector(".to") || {}).textContent || ""));
         if (at) at.appendChild(w); else { w.insertBefore(el("span", "cs-review-ratio-now", ratio.reported), w.firstChild); list.appendChild(w); }
       }
-      (camNotes[cam.name] || []).forEach((n) => list.appendChild(noteLine(n)));
+      // Layout N1 (escolha do dono, 2026-11-27): na linha só a etiqueta âmbar com a quantidade; o texto na caixa padrão
+      if ((camNotes[cam.name] || []).length) {
+        const ns = camNotes[cam.name].map((n) => n.charAt(0).toUpperCase() + n.slice(1));
+        const chip = el("span", "cs-review-notechip"); chip.innerHTML = ALERT_SVG;
+        chip.appendChild(el("span", "", plural(ns.length, "note", "notes")));
+        chip.dataset.itip = ns.join("\n\n"); chip.setAttribute("role", "img"); chip.setAttribute("aria-label", ns.join(" ")); chip.tabIndex = 0;
+        list.appendChild(chip);
+      }
       const thumb = el("span", "cs-review-thumb" + (ch ? " changed" : "") + (ratio && ratio.differs ? " ratio-warn" : ""));
       csMatchPhoto(after, cam.name, 320).then((url) => { if (url) thumb.style.backgroundImage = "url(" + url + ")"; });
       row.append(box, name, list, thumb);
@@ -11807,7 +11814,7 @@
       rowsBox.appendChild(row);
     });
     const tnote = el("div", "cs-review-tnote", "Click a row to see that camera on the right. Play runs the whole sequence, before and after at once. Untick a camera to keep it as it is.");
-    if (otherNotes.length) { const box = el("div", "cs-review-notes"); otherNotes.forEach((n) => box.appendChild(noteLine(n))); table.appendChild(box); }
+    if (otherNotes.length) { const box = el("div", "cs-review-notes"); otherNotes.forEach((n) => box.appendChild(noteLine(n))); table.insertBefore(box, rowsBox); }  // (N1: faixa no topo da tabela)
     table.appendChild(tnote);
     wrap.appendChild(table);
     // Fotos: a câmera escolhida, antes e depois

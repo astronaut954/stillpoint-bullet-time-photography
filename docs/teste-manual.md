@@ -3067,4 +3067,9 @@ menos pixels: 1200 px de largura contra 1800 das outras).
 - [ ] (Em avaliação) Com `STILLPOINT_FAKE_NOTES=1`: em **Match automatically** › **3 Review** as observações do Match
       aparecem em âmbar na linha de cada câmera (três na 04) e, as que valem para várias câmeras, numa caixa embaixo
       da tabela. Decidir se ficam.
+- [ ] Observações no layout N1 (com `STILLPOINT_FAKE_NOTES=1`): na linha de cada câmera só a etiqueta âmbar com a
+      quantidade; com o mouse em cima, a caixa padrão mostra as observações, uma por parágrafo; as que valem para
+      várias câmeras ficam numa faixa no topo da tabela.
+- [ ] (Câmeras reais) Match automatically com câmeras bem diferentes: quando as fotos previstas acabam e ainda sobra
+      diferença, ele continua sozinho (o total de "Photo N of up to M" cresce), no máximo 3 rodadas a mais.
 
