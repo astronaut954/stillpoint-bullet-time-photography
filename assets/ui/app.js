@@ -2929,6 +2929,10 @@
     al.firing = false;
     gaClose();
     alEditOff(); al.edit = null;
+    // Os passos do passo 3 só valem com a janela aberta: saem do desfazer ao fechar (senão o próximo ⌘Z gastava um
+    // passo que não faz nada, sem avisar)
+    history.undo = history.undo.filter((a) => !a.alignWin);
+    history.redo = history.redo.filter((a) => !a.alignWin);
     alShow(false);
     if (al.fromMain) { al.fromMain = false; closeCamSettingsNow(); }  // veio da janela principal: volta para ela
   }
@@ -4171,7 +4175,7 @@
       ed.snap = JSON.stringify(st.align.byFile);
       ed.ready = true;
       const after = state();
-      recordAction({ label: res ? "Align cameras · resolution" : "Align cameras · aspect ratio", undo: () => put(before), redo: () => put(after) });
+      recordAction({ label: res ? "Align cameras · resolution" : "Align cameras · aspect ratio", alignWin: true, undo: () => put(before), redo: () => put(after) });
       alRender();
     });
   }
@@ -4183,7 +4187,7 @@
       const before = ed.snap, at = exp.photo || 0;
       // (como no Export: desfazer e refazer voltam para a foto em que a mudança foi feita)
       const go = (snap) => { if (!al.open || al.step !== 3 || al.edit !== ed) return false; ed.st.align.byFile = JSON.parse(snap); ed.snap = snap; if (ed.playing) { clearTimeout(ed.timer); ed.playing = false; } exp.photo = at; alRender(); };
-      recordAction({ label: "Align cameras · photo adjustment", undo: () => go(before), redo: () => go(now) });
+      recordAction({ label: "Align cameras · photo adjustment", alignWin: true, undo: () => go(before), redo: () => go(now) });
       ed.snap = now;
     }
     const back = $("alignBackStick"); if (back) back.disabled = !alEditHand(ed);
@@ -4287,12 +4291,12 @@
       const pop = el("div", "al-warn-pop"); pop.id = "csAlignWarnPop";
       pop.appendChild(el("b", "", chips.length + " warnings"));
       const grid = el("div", "al-warn-rows");
-      chips.forEach((c) => { grid.append(el("span", "al-chip", c.id === "csAlignUneven" ? "Uneven marks" : c.textContent), el("span", "", c.dataset.itip || c.textContent)); });
+      chips.forEach((c) => { grid.append(el("span", "al-chip", c.id === "csAlignUneven" ? "Uneven marks" : c.id === "csAlignEnlarged" ? "Enlarged" : c.textContent), el("span", "", c.dataset.itip || c.textContent)); });
       pop.appendChild(grid);
       document.body.appendChild(pop);
       const r = w.getBoundingClientRect();
       pop.style.left = Math.max(8, Math.min(r.left, window.innerWidth - pop.offsetWidth - 8)) + "px";
-      pop.style.top = (r.bottom + 6) + "px";
+      pop.style.top = Math.max(8, Math.min(r.bottom + 6, window.innerHeight - pop.offsetHeight - 8)) + "px";
     };
     w.addEventListener("pointerenter", show); w.addEventListener("focus", show);
     w.addEventListener("pointerleave", alWarnPopOff); w.addEventListener("blur", alWarnPopOff);
@@ -4901,7 +4905,7 @@
       sel: [...exp.selected].sort(), dest: exp.dest || null },
       // ("host" é só a lembrança do último texto que o app mandou: não é uma escolha da pessoa e não entra na foto,
       // senão virava um passo do ⌘Z que não muda nada; teste do dono, 2026-11-11)
-      (key, v) => (key === "host" ? undefined : key === "byFile" && v ? Object.fromEntries(Object.entries(v).filter(([, al]) => !alignBlank(al))) : v));
+      (key, v) => (key === "host" || key === "rigBusy" ? undefined : key === "byFile" && v ? Object.fromEntries(Object.entries(v).filter(([, al]) => !alignBlank(al))) : v));
   }
   function expTrack() {
     if ($("exportOverlay").classList.contains("hidden")) return;
@@ -4912,7 +4916,7 @@
       // sessão, aba, foto, "Align photos") antes de aplicar, e o aviso diz o quê e onde. Navegar não é um passo.
       const where = expWhere();
       const go = (snap) => { if ($("exportOverlay").classList.contains("hidden")) return false; Object.assign(exp, where); return expApply(snap); };
-      recordAction({ label: expWhereText(where), exportWin: true, where, undo: () => go(before), redo: () => go(now) });
+      recordAction({ label: expWhereText(where), exportWin: true, where, after: now, undo: () => go(before), redo: () => go(now) });
     }
     expSnap = now;
   }
@@ -6374,11 +6378,24 @@
       if (alignModeOf(session, st) !== "rig" || needsRatio(session, st) || st.align.rigBusy) return;
       const key = st.crop.ratio + "/" + (st.crop.orient || "") + "/" + (st.crop.res || "") + "/" + rigOf(session).savedAt;
       if (st.align.rigKey === key) return;
+      // A pessoa trocou a proporção ou a resolução (não é a primeira conta desta sessão): a troca vira já o passo do
+      // ⌘Z, e o alinhamento refeito entra no mesmo passo (antes a conta apagava o passo: com Rig, a troca não era
+      // desfeita; teste do dono, 2026-11-27)
+      let step = null;
+      if (st.align.rigKey !== undefined) { const n = history.undo.length; expTrack(); if (history.undo.length > n || (n && history.undo[n - 1].exportWin && history.undo[n - 1].after === expSnap)) step = history.undo[history.undo.length - 1]; }
       st.align.rigBusy = true;
       rigApply(session, st, false).then((changed) => {
         st.align.rigBusy = false;
         st.align.rigKey = key;  // (mesmo sem dar para calcular: não tenta de novo a cada desenho)
         rigModeSave(session, st, "rig");
+        if (step && history.undo[history.undo.length - 1] === step) {
+          const now = expSnapshot(), where = step.where;
+          step.after = now;
+          step.redo = () => { if ($("exportOverlay").classList.contains("hidden")) return false; Object.assign(exp, where); return expApply(now); };
+          expSnap = now;
+          if (changed && after) after(session);
+          return;
+        }
         if (changed) { expSnap = null; if (after) after(session); }
       }).catch(() => { st.align.rigBusy = false; st.align.rigKey = key; });
     });

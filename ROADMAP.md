@@ -1902,6 +1902,15 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      (onde não muda nada): esconder nesse caso?; (2) texto da etiqueta com várias câmeras ("Cameras 03, 04
      enlarged up to 50%") e o texto da caixa dela são do agente; (3) a etiqueta conta a ampliação total da foto
      (resolução + rig + ajuste à mão), não só a da resolução.
+     **RETORNO DO DONO (2026-11-27, tarde) E CORREÇÕES:** (a) a lista de avisos do passo 3 saía quebrada: o nome
+     longo da etiqueta nova alargava a coluna dos nomes; na lista ela agora se chama "Enlarged", a coluna do texto
+     não encolhe e a caixa não passa do fim da janela. (b) "⌘Z não funciona": dois defeitos ANTERIORES achados e
+     corrigidos: com Rig, trocar Aspect ratio (ou Resolution) no Framing não virava passo do ⌘Z, porque
+     `rigRefreshAll` zerava a referência ao refazer o alinhamento (agora a troca e o alinhamento refeito são um
+     passo só; `rigBusy` saiu da foto do desfazer); e os passos do passo 3 do Align cameras ficavam na fila depois
+     de a janela fechar (`alignWin`: saem ao fechar, como os do Export). NÃO confirmado que era esse o caso do dono.
+     (c) roteiro impreciso: o botão da tela principal é "It's Bullet Time" ("Fire" só no Align cameras) e o valor
+     da etiqueta depende de haver rig; seção 79 corrigida.
      Teste do dono (2026-11-26): seção 68 aprovada ("os testes deu tudo certo").
      **Pedidos do dono (2026-11-26), feitos (seção 69):** o tocador do Align cameras também no Align photos do
      Export (mesma barra, mesmo comportamento; estado em `exp.play`, funções `expPlay`/`expPlayOff`); a mão de

@@ -2847,9 +2847,10 @@ Pedido do dono (2026-11-27, 02:35), a conferir:
 Abrir com 8 câmeras simuladas, a cena da haste e `STILLPOINT_FAKE_SMALL=4` (a câmera 04 fotografa a mesma cena com
 menos pixels: 1200 px de largura contra 1800 das outras).
 
-- [ ] **Fire** (sessão nova) › **Export sessions** › aba **Framing**: embaixo de **Aspect ratio** há a linha
-      **Resolution**, com **Highest camera** escolhido e **Lowest camera** ao lado; à direita, a etiqueta âmbar
-      **Camera 04 enlarged 50%**. Na prévia, a foto 04 aparece do mesmo tamanho das outras, com a haste no mesmo
+- [ ] **It's Bullet Time** (sessão nova) › **Export sessions** › aba **Framing**: embaixo de **Aspect ratio** há a
+      linha **Resolution**, com **Highest camera** escolhido e **Lowest camera** ao lado; à direita, uma etiqueta
+      âmbar que cita a câmera 04 (**Camera 04 enlarged 50%** numa sessão sem alinhamento do rig; com o rig
+      alinhado o número é maior e outras câmeras podem entrar, porque a etiqueta soma a ampliação da receita). Na prévia, a foto 04 aparece do mesmo tamanho das outras, com a haste no mesmo
       tamanho de cena.
 - [ ] Mouse em cima da etiqueta: a caixa padrão explica (câmera, quanto, e que acima de 25% a foto fica mais suave).
       Mouse em cima do **?** de **Resolution**: a caixa padrão com a explicação das duas opções.
@@ -2860,11 +2861,17 @@ menos pixels: 1200 px de largura contra 1800 das outras).
 - [ ] **Camera settings** › **Align cameras** até o passo **3 Save**: no bloco **New sessions**, embaixo de
       **Aspect ratio**, a linha **Resolution** com as duas opções; na linha de cima, ao lado de **Keeps**, a etiqueta
       **Camera 04 enlarged …%**. Trocar para **Lowest camera**: o canvas diminui, a etiqueta some; **⌘Z** desfaz.
-- [ ] Com **Lowest camera**, **Save alignment** e **Fire**: a sessão nova abre no **Export sessions** › **Framing**
+- [ ] Com **Lowest camera**, **Save alignment**, fechar o Camera settings e **It's Bullet Time**: a sessão nova abre no **Export sessions** › **Framing**
       já com **Lowest camera**, e a nota embaixo diz "Aspect ratio and resolution start from Align cameras.
       Changing them here applies to this session only."
 - [ ] Exportar (3 Outputs, fotos convertidas ou sequência) com **Highest camera** e com **Lowest camera**: os arquivos
       saem todos do mesmo tamanho, o das câmeras maiores ou o da câmera 04.
+- [ ] Passo **3 Save** em janela estreita: os avisos viram **N warnings**; com o mouse em cima, a lista abre inteira
+      dentro da janela, com os nomes curtos à esquerda (**Mixed ratios**, **Uneven marks**, **Enlarged**) e o texto
+      de cada um à direita, sem coluna espremida (defeito visto pelo dono em 2026-11-27).
+- [ ] ⌘Z com **Rig** em Alignment: no **Framing**, trocar **Aspect ratio** ou **Resolution** e apertar **⌘Z** desfaz
+      a troca (aviso "Undo: Framing · …"); **⇧⌘Z** refaz. Depois de fechar o Align cameras, o primeiro **⌘Z** no
+      Export não é gasto com um passo antigo de lá.
 - [ ] Sem `STILLPOINT_FAKE_SMALL` (todas as câmeras iguais): tudo como antes; as duas opções dão o mesmo resultado
       e a etiqueta não aparece.
 
