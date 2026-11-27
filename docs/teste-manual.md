@@ -2808,26 +2808,32 @@ Pedido do dono (2026-11-27, 01:33), a conferir:
 Mudanças pedidas pelo dono (2026-11-27, 02:02), que SUBSTITUEM o que está acima sobre a ferramenta na barra e sobre
 mover o canvas, a conferir:
 
-- [ ] A ferramenta **Resize canvas** saiu da barra de ferramentas (o botão do **Resize photo** volta a ter uma
+- [x] A ferramenta **Resize canvas** saiu da barra de ferramentas (o botão do **Resize photo** volta a ter uma
       ferramenta só; a tecla **C** não faz mais nada).
-- [ ] No título do painel **This photo**, à direita do nome, há um seletor com dois ícones: uma fotografia (aceso de
+- [x] No título do painel **This photo**, à direita do nome, há um seletor com dois ícones: uma fotografia (aceso de
       início) e um canvas. Clicar no do canvas: o bloco **Canvas** entra no lugar do **This photo** (com o mesmo
       seletor no título, para voltar), e o canvas ganha as quatro alças dos cantos.
-- [ ] No modo canvas: arrastar uma alça muda o tamanho em volta do centro; arrastar em qualquer outro lugar da foto
+- [x] No modo canvas: arrastar uma alça muda o tamanho em volta do centro; arrastar em qualquer outro lugar da foto
       grande desloca a vista; o canvas não se move. O bloco **Canvas** tem **Size**, **Fit to photos** e
       **Reset canvas** (sem **Move X** e **Move Y**).
-- [ ] Diminuir o canvas, voltar para a fotografia no seletor, diminuir uma foto até a borda do canvas novo, voltar ao
+- [x] Diminuir o canvas, voltar para a fotografia no seletor, diminuir uma foto até a borda do canvas novo, voltar ao
       canvas e clicar **Reset canvas**: abre a pergunta "Reset the canvas and the photos?", com **Cancel** (nada muda)
       e **Reset canvas and photos** (o canvas volta ao inteiro e as fotos voltam ao começo: ao rig, quando há).
-- [ ] **Reset canvas** com as fotos ainda cobrindo o canvas inteiro: volta direto, sem pergunta.
-- [ ] **Fit to photos**: o canvas cresce até onde as fotos ainda cobrem.
+- [x] **Reset canvas** com as fotos ainda cobrindo o canvas inteiro: volta direto, sem pergunta.
+- [x] **Fit to photos**: o canvas cresce até onde as fotos ainda cobrem.
 
 Escolha e pedidos do dono (2026-11-27, 02:17), a conferir:
 
-- [ ] Com o canvas diminuído, o ícone do canvas no seletor tem um quadrado âmbar no canto de cima à direita (com
+- [x] Com o canvas diminuído, o ícone do canvas no seletor tem um quadrado âmbar no canto de cima à direita (com
       qualquer dos dois ícones escolhido); com o canvas inteiro, não tem.
-- [ ] Os dois ícones do seletor são de traço fino: uma fotografia e um quadro com as linhas passando dos cantos.
-- [ ] O seletor fica no mesmo lugar no bloco **This photo** e no bloco **Canvas** (não anda ao trocar).
+- [x] Os dois ícones do seletor são de traço fino: uma fotografia e um quadro com as linhas passando dos cantos.
+- [x] O seletor fica no mesmo lugar no bloco **This photo** e no bloco **Canvas** (não anda ao trocar).
+
+Retornos do dono (2026-11-27, 02:24), a conferir:
+
+- [ ] Trocar entre a fotografia e o canvas no seletor: a linha de cima, a foto grande, a fileira de miniaturas e o
+      painel ficam na mesma altura e no mesmo lugar (antes tudo descia alguns pixels no modo canvas).
+- [ ] O desenho da âncora fica exatamente no meio do botão dela, no título do **This photo**.
 
 ## Resultado
 

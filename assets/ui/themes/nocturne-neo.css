@@ -2659,3 +2659,8 @@ body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform:
 /* (marca M1 aprovada, 2026-11-27: quadrado âmbar no canto do ícone do canvas quando o canvas não é o inteiro) */
 .align-mode-seg.canvas-changed .align-mode-btn[data-mode="canvas"]::after { content: ""; position: absolute; right: -4px; top: -4px; width: 7px; height: 7px; background: var(--noct-pending); box-shadow: 0 0 0 1px #000; z-index: 2; }
 .align-title-name { display: inline-block; }
+/* (a linha de cima do Align photos não encolhe: encolhia quando o painel da direita era mais alto, e a tela toda
+   mudava de altura ao trocar entre This photo e Canvas; gravação do dono, 2026-11-27) */
+.export-settings.aligning .export-scope { flex-shrink: 0; }
+/* (o desenho da âncora exatamente no meio do botão) */
+.align-anchor-btn svg, .align-mode-btn svg { display: block; }

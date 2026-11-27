@@ -2131,6 +2131,12 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      canvas como a prancheta do Illustrator, um quadro com as linhas passando dos cantos; desenho do agente, a
      confirmar) e o seletor no mesmo lugar nos dois blocos (o nome "Canvas" ocupa a largura de "This photo").
      FEITO, AGUARDANDO TESTE; captura enviada ao dono.
+     Teste do dono (2026-11-27, 02:24): aprovado, com dois retornos, FEITOS, AGUARDANDO TESTE: (a) trocar entre This
+     photo e Canvas mudava a altura da tela: a linha de cima do Align photos podia encolher (de 41 para 33 px)
+     quando o painel da direita era mais alto que o lugar, e voltava ao tamanho dela no modo canvas; agora ela não
+     encolhe (medido: linha de cima, foto grande, painel e miniaturas iguais nos dois modos). CONSEQUÊNCIA: no modo
+     This photo a foto grande ficou 8 px mais baixa do que era. (b) o desenho da âncora não estava no meio do botão
+     (caixa de 13 px num espaço de 20): agora 14 px, com 4 px de cada lado.
      FALTA do item 3: ferramenta do canvas (C1).
      3. IDEIA PARA DEPOIS (só anotar): a feature de label passar a aceitar várias labels, não só uma.
      **PASSAGEM PARA UM CHAT NOVO (2026-11-26):** o dono pediu um prompt de continuação porque as respostas
