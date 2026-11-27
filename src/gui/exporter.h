@@ -73,7 +73,15 @@ namespace Export
         bool Canvas() const { return !align.empty() && commonW > 0 && commonH > 0; }  // o canvas foi calculado: exporta por ele
         // Quadro comum, no canvas centrado em (0,0), em pixels (ComputeCommonFrame)
         double commonX = 0, commonY = 0, commonW = 0, commonH = 0;
+        // Canvas escolhido pela pessoa (ferramenta "Resize canvas" do Align photos; decisão do dono, 2026-11-26): um
+        // pedaço do canvas calculado, na mesma proporção. canvasK = fração do tamanho (0 = não escolhido; nunca acima
+        // de 1: nenhuma foto é ampliada, a saída fica com menos pixels); canvasCx/Cy = o centro dele, em pixels, a
+        // partir do centro do canvas calculado. Vem no texto do alinhamento, na entrada "@canvas" (TakeCanvas).
+        double canvasCx = 0, canvasCy = 0, canvasK = 0;
+        bool CustomCanvas() const { return canvasK > 0 && (canvasK < 1 - 1e-9 || std::abs(canvasCx) > 1e-6 || std::abs(canvasCy) > 1e-6); }
     };
+    // Lê a entrada "@canvas:cx,cy,k" do alinhamento da sessão (ParseAlign a entrega como uma foto com esse nome)
+    void TakeCanvas(Framing& framing, const std::map<std::string, Align>& aligns);
     double RatioValue(const std::string& ratio);  // "3:2" -> 1.5; 0 se não for uma das quatro
     // Recorta a foto no lugar (não faz nada se já estiver na proporção, ou sem proporção)
     void ApplyFraming(RgbFrame& frame, const Framing& framing);

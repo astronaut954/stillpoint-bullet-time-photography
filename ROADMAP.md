@@ -2091,6 +2091,20 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      cursor do sistema anda sempre à frente do desenho da página. TUDO FEITO, AGUARDANDO TESTE. Testes
      automáticos: Align cameras 113 de 113, Flip 64 de 64, desfazer do Align photos 20 de 20; sem verificações
      novas para estes pontos; rodada completa não refeita.
+     Teste do dono (2026-11-27, 00:37): seção 77 e retornos aprovados. EDIÇÃO GLOBAL ENCERRADA.
+     **FERRAMENTA DO CANVAS (C1): FEITA, AGUARDANDO TESTE (seção 78).** Como ficou: (a) o canvas escolhido é um
+     pedaço do canvas calculado, na mesma proporção: fração do tamanho (nunca acima de 1) e centro em pixels;
+     (b) fica guardado no texto do alinhamento da sessão, como uma entrada de nome "@canvas" (programas antigos a
+     ignoram); (c) na tela: `canvasSet`/`canvasRect` e `commonFrame` (todas as contas da tela passam a usar o
+     canvas escolhido; o alinhamento automático do rig continua calculado com o canvas inteiro); ferramenta
+     "canvas" no grupo do Resize photo (tecla C), alças, bloco "Canvas"; (d) no programa (exporter.cpp e os quatro
+     lugares do main_gui.cpp que montam o enquadramento): `TakeCanvas` lê a entrada e `ComputeCommonFrame` corta;
+     as fotos que a pessoa não mexeu ficam como ficariam sem canvas escolhido. Conferido: a cópia de trabalho de uma
+     foto sai com 1800 × 1013 no canvas inteiro e 1080 × 608 com o canvas em 60%. ESCOLHAS DO AGENTE, A CONFIRMAR:
+     o canvas mantém sempre a proporção (as oito alças mudam o tamanho inteiro); menor canvas 64 px; a ferramenta
+     não existe no passo 3 do Align cameras; textos "Resize canvas", "Fit to photos", "Reset canvas" e a nota do
+     bloco; tecla C. NÃO VERIFICADO: uma exportação completa em JPEG e vídeo com canvas escolhido (só a cópia de
+     trabalho, que usa a mesma conta); o Edit in Lightroom Classic com canvas escolhido.
      FALTA do item 3: ferramenta do canvas (C1).
      3. IDEIA PARA DEPOIS (só anotar): a feature de label passar a aceitar várias labels, não só uma.
      **PASSAGEM PARA UM CHAT NOVO (2026-11-26):** o dono pediu um prompt de continuação porque as respostas

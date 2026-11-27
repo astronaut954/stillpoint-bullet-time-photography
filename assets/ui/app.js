@@ -135,6 +135,7 @@
     toolPointer: '<path d="M3 1.8l8 4.5-3.5 1 2.1 3.8-1.5.8-2.100-3.8L3.300 10.800z"/>',
     toolMove: '<path d="M7 1.5v11M1.5 7h11"/><path d="M5.400 3.100L7 1.500l1.600 1.600M5.400 10.900L7 12.500l1.600-1.600M3.100 5.400L1.500 7l1.600 1.600M10.900 5.400L12.500 7l-1.600 1.600"/>',
     toolRotate: '<path d="M11.500 7.200a4.500 4.500 0 1 1-1.500-3.600"/><path d="M10.400 1.500v2.500H7.900"/>',
+    toolCanvas: '<rect x="3.500" y="3.500" width="7" height="7" stroke-dasharray="1.6 1.2"/><path d="M1.500 1.500h3v3h-3zM9.500 1.500h3v3h-3zM1.500 9.500h3v3h-3zM9.500 9.500h3v3h-3z" fill="currentColor"/>',
     toolScale: '<path d="M2.500 11.500l9-9"/><path d="M7.500 2.500h4v4M6.500 11.500h-4v-4"/>',
     toolPan: '<path d="M4.600 7.200V3.500a.9.9 0 0 1 1.800 0v3M6.400 6.300V2.700a.9.9 0 0 1 1.800 0v3.600M8.200 6.500V3.500a.9.9 0 0 1 1.800 0v5.200c0 2.200-1.400 3.700-3.500 3.700-1.500 0-2.400-.7-3.200-2L2.200 8.300a.9.9 0 0 1 1.500-1l.9 1.200"/>',
     guideEdges: '<path d="M3.500 3.500h7v7h-7z"/><path d="M1.500 1.500h2v2h-2zM10.500 1.500h2v2h-2zM1.500 10.500h2v2h-2zM10.500 10.500h2v2h-2z"/>',
@@ -5968,11 +5969,13 @@
     if (st.align.loaded) expSnap = null;
     st.align.loaded = true;
     st.align.host = host;
-    st.align.byFile = {};
+    st.align.byFile = {}; st.align.canvas = null;
     host.split(";").forEach((item) => {
       const colon = item.lastIndexOf(":");
       if (colon <= 0) return;
       const [dx, dy, scale, rot, base, flip, ax, ay] = item.slice(colon + 1).split(",").map(Number);
+      // (o canvas escolhido pela pessoa vem como uma "foto" de nome @canvas: centro em px e fração do tamanho)
+      if (item.slice(0, colon) === "@canvas") { if (scale > 0.01 && scale <= 1.000001) st.align.canvas = { cx: dx || 0, cy: dy || 0, k: Math.min(1, scale) }; return; }
       const one = { dx: dx || 0, dy: dy || 0, scale: scale > 0 ? scale : 1, rot: rot || 0, base: base > 0 ? base : (scale > 0 ? scale : 1), flip: (flip | 0) & 3 };
       if (ax >= 0 && ax <= 1 && ay >= 0 && ay <= 1) { one.ax = ax; one.ay = ay; }  // âncora da foto (frações da foto)
       st.align.byFile[item.slice(0, colon)] = one;
@@ -5980,7 +5983,16 @@
   }
   function alignText(st) {
     return Object.keys(st.align.byFile).filter((f) => !alignBlank(st.align.byFile[f]))
-      .map((f) => { const a = st.align.byFile[f]; return f + ":" + a.dx.toFixed(2) + "," + a.dy.toFixed(2) + "," + a.scale.toFixed(5) + "," + a.rot.toFixed(3) + "," + (a.base || a.scale).toFixed(5) + (alignFlip(a) || alignAnchored(a) ? "," + alignFlip(a) : "") + (alignAnchored(a) ? "," + a.ax.toFixed(4) + "," + a.ay.toFixed(4) : ""); }).join(";");
+      .map((f) => { const a = st.align.byFile[f]; return f + ":" + a.dx.toFixed(2) + "," + a.dy.toFixed(2) + "," + a.scale.toFixed(5) + "," + a.rot.toFixed(3) + "," + (a.base || a.scale).toFixed(5) + (alignFlip(a) || alignAnchored(a) ? "," + alignFlip(a) : "") + (alignAnchored(a) ? "," + a.ax.toFixed(4) + "," + a.ay.toFixed(4) : ""); })
+      .concat(canvasSet(st) ? ["@canvas:" + st.align.canvas.cx.toFixed(2) + "," + st.align.canvas.cy.toFixed(2) + "," + st.align.canvas.k.toFixed(5) + ",0.000," + st.align.canvas.k.toFixed(5)] : []).join(";");
+  }
+  // Canvas escolhido pela pessoa (ferramenta "Resize canvas"; decisão do dono, 2026-11-26): um pedaço do canvas
+  // calculado, na mesma proporção: k = fração do tamanho (nunca acima de 1: nenhuma foto é ampliada, a saída fica com
+  // menos pixels), cx/cy = o centro dele, em px, a partir do centro do canvas calculado
+  function canvasSet(st) { const c = st && st.align && st.align.canvas; return !!c && c.k > 0.01 && (c.k < 1 - 1e-9 || Math.abs(c.cx) > 1e-6 || Math.abs(c.cy) > 1e-6); }
+  function canvasRect(base, c) {
+    const w = Math.max(16, base.w * Math.min(1, c.k)), h = Math.max(16, base.h * Math.min(1, c.k));
+    return { x: Math.max(base.x, Math.min(base.x + base.w - w, c.cx - w / 2)), y: Math.max(base.y, Math.min(base.y + base.h - h, c.cy - h / 2)), w, h, base };
   }
   const alignSent = {};  // por sessão: os últimos textos de alinhamento que esta janela mandou gravar
   function alignSave(session, st) {
@@ -6071,7 +6083,9 @@
     // (a orientação escolhida manda; sem escolha, a do quadro que as fotos deixam: foto em pé fica em pé)
     if (r && cw > 0 && ch > 0) { const o = st.crop.orient, t = (o ? o === "h" : cw >= ch) ? r : 1 / r; if (cw / ch > t) cw = ch * t; else ch = cw / t; }
     if (cw < 16 || ch < 16) return null;
-    return { x: -cw / 2, y: -ch / 2, w: cw, h: ch };
+    const full = { x: -cw / 2, y: -ch / 2, w: cw, h: ch };
+    // (com canvas escolhido: o pedaço; "base" leva o calculado, para as fotos que a pessoa não mexeu)
+    return canvasSet(st) ? canvasRect(full, st.align.canvas) : full;
   }
   // O menor tamanho (a partir de from) com que a foto w×h, nessa posição e giro, cobre o retângulo r; 0 se nem 20× basta
   function minCoverOf(w, h, al, from, r) {
@@ -6086,6 +6100,7 @@
   // o que a pessoa fez, com o tamanho em uso nunca abaixo do necessário
   function effectiveAlign(sz, al, frame, st) {
     if (alignIsIdentity(al)) {
+      frame = frame.base || frame;  // (foto não mexida: fica como ficaria sem canvas escolhido; ele só corta)
       const base = { dx: 0, dy: 0, scale: 1, rot: 0, base: 1 };
       const need = minCoverOf(sz.w, sz.h, base, 1, frame) || 1;
       return { dx: (0.5 - st.crop.x) * (sz.w * need - frame.w), dy: (0.5 - st.crop.y) * (sz.h * need - frame.h), scale: need, rot: 0, base: 1, flip: alignFlip(al) };
@@ -6464,14 +6479,16 @@
     // (a letra entre parênteses é o atalho: as mesmas do Photoshop onde existe igual)
     const TOOLS = [["pointer", "toolPointer", "Select: move, resize or rotate, depending on where the mouse is (V)", "v"],
       ["handles", "toolPointer", "Direct select: resize by the corners and rotate by the top handle; dragging anywhere else does nothing (A)", "a"], ["move", "toolMove", "Move the photo (M)", "m"],
-      ["rotate", "toolRotate", "Rotate the photo (R)", "r"], ["scale", "toolScale", "Resize the photo (S)", "s"], ["pan", "toolPan", "Move the view: the photo stays where it is (H)", "h"],
-      ["zoom", "toolZoom", "Zoom the view: click to zoom in, " + (navigator.platform.indexOf("Mac") >= 0 ? "⌥" : "Alt") + " + click to zoom out (Z)", "z"]];
+      ["rotate", "toolRotate", "Rotate the photo (R)", "r"], ["scale", "toolScale", "Resize the photo (S)", "s"]]
+      // (a ferramenta do canvas não existe no passo 3 do Align cameras: lá o canvas é o do rig)
+      .concat(rigStep ? [] : [["canvas", "toolCanvas", "Resize canvas: make the canvas smaller or move it inside the photos. No photo is enlarged; a smaller canvas means fewer pixels in the output (C)", "c"]]).concat([ ["pan", "toolPan", "Move the view: the photo stays where it is (H)", "h"],
+      ["zoom", "toolZoom", "Zoom the view: click to zoom in, " + (navigator.platform.indexOf("Mac") >= 0 ? "⌥" : "Alt") + " + click to zoom out (Z)", "z"]]);
     if (!TOOLS.some((t) => t[0] === alignPrefs.tool)) alignPrefs.tool = "pointer";
     // Grupos, como no Illustrator (decisão do dono, 2026-11-26): um botão por grupo, mostrando a última ferramenta
     // usada dele; com mais de uma, um triângulo no canto de baixo à direita, e segurar o botão esquerdo ou clicar
     // com o direito abre a lista. As ferramentas novas de tamanho (canvas, todas as fotos) entram no grupo do Resize.
-    const TOOL_GROUPS = [["pointer", "handles"], ["move"], ["rotate"], ["scale"], ["pan"], ["zoom"]];
-    const TOOL_NAMES = { pointer: "Select", handles: "Direct select", move: "Move", rotate: "Rotate", scale: "Resize photo", pan: "Hand", zoom: "Zoom" };
+    const TOOL_GROUPS = [["pointer", "handles"], ["move"], ["rotate"], rigStep ? ["scale"] : ["scale", "canvas"], ["pan"], ["zoom"]];
+    const TOOL_NAMES = { pointer: "Select", handles: "Direct select", move: "Move", rotate: "Rotate", scale: "Resize photo", canvas: "Resize canvas", pan: "Hand", zoom: "Zoom" };
     if (!alignPrefs.groupTool) alignPrefs.groupTool = {};
     const groupOf = (key) => TOOL_GROUPS.findIndex((g) => g.includes(key));
     const shownIn = (gi) => { const g = TOOL_GROUPS[gi]; return g.includes(alignPrefs.tool) ? alignPrefs.tool : g.includes(alignPrefs.groupTool[gi]) ? alignPrefs.groupTool[gi] : g[0]; };
@@ -7226,6 +7243,106 @@
       anchorMark.classList.add("dragging");
       anchorMark.addEventListener("pointermove", move); anchorMark.addEventListener("pointerup", end); anchorMark.addEventListener("pointercancel", end);
     });
+    // ---- Ferramenta do canvas (decisões do dono, 2026-11-26; protótipo C1): no grupo do Resize photo; não amplia
+    // foto nenhuma (o canvas só diminui e anda dentro do canvas calculado), a saída fica com menos pixels, e o canvas
+    // não passa de onde todas as fotos cobrem. Com a ferramenta escolhida, o bloco "Canvas" entra no lugar do
+    // "This photo" e o canvas ganha oito alças (as da foto somem).
+    self.classList.add("for-photo");
+    const canvasCur = el("span", "align-cur", "");
+    const canvasBlock = block("Canvas", canvasCur);
+    canvasBlock.classList.add("for-canvas");
+    self.after(canvasBlock);
+    const canvasFull = () => { const f = usefulRect(); return f ? f.base || f : null; };
+    const canvasNow = () => { const f = usefulRect(), B = f && (f.base || f); return f ? { cx: f.x + f.w / 2, cy: f.y + f.h / 2, k: f.w / B.w } : null; };
+    const canvasOk = (c) => {
+      const B = canvasFull(), now = usefulRect(); if (!B || !now || !(c.k > 0) || c.k > 1 + 1e-9) return false;
+      const w = B.w * c.k, h = B.h * c.k, x = c.cx - w / 2, y = c.cy - h / 2, e = 0.01;
+      if (w < 64 || h < 64 || x < B.x - e || y < B.y - e || x + w > B.x + B.w + e || y + h > B.y + B.h + e) return false;
+      // (cada foto como está valendo agora, sem crescer: tem de cobrir o canvas pedido)
+      return items.every((it, k2) => { const sz = sizes[it.file]; if (!sz) return true; return photoCovers(sz.w, sz.h, effectiveAlign(sz, k2 === cur ? a : alignOf(st, it.file), now, st), { x, y, w, h }); });
+    };
+    const canvasPut = (c) => {
+      st.align.canvas = c.k > 1 - 1e-9 && Math.abs(c.cx) < 1e-6 && Math.abs(c.cy) < 1e-6 ? null : { cx: c.cx, cy: c.cy, k: Math.min(1, c.k) };
+      lockRect = null; layout(); canvasShow();
+    };
+    // Vai até onde dá no caminho entre o canvas de agora e o pedido; true se mudou
+    const canvasTry = (want) => {
+      const from = canvasNow(); if (!from) return false;
+      const at = (t) => ({ cx: from.cx + (want.cx - from.cx) * t, cy: from.cy + (want.cy - from.cy) * t, k: from.k + (want.k - from.k) * t });
+      if (canvasOk(want)) { canvasPut(want); return true; }
+      let lo = 0, hi = 1;
+      for (let i = 0; i < 16; i++) { const mid = (lo + hi) / 2; if (canvasOk(at(mid))) lo = mid; else hi = mid; }
+      stage.classList.add("locked"); clearTimeout(lockFlash); lockFlash = setTimeout(() => stage.classList.remove("locked"), 300);
+      if (lo < 1e-4) return false;
+      canvasPut(at(lo)); return true;
+    };
+    const canvasFields = {};
+    const canvasShow = () => {
+      const f = usefulRect(), c = canvasNow(); if (!f || !c) return;
+      canvasCur.textContent = Math.round(f.w) + " × " + Math.round(f.h) + " px";
+      if (canvasFields.cx) { canvasFields.cx.value = c.cx.toFixed(0); canvasFields.cy.value = c.cy.toFixed(0); canvasFields.k.value = (c.k * 100).toFixed(1); }
+    };
+    const canvasRow = (key, label, unit, step, big, decimals, get, want) => {
+      const r = el("div", "align-ctl");
+      const inp = document.createElement("input"); inp.type = "text"; inp.className = "lent-num align-num"; inp.inputMode = "decimal"; inp.setAttribute("aria-label", "Canvas " + label); inp.title = unit;
+      const go = (v) => { const c = canvasNow(); if (!c || isNaN(v)) { canvasShow(); return; } if (canvasTry(want(c, v))) save(); canvasShow(); };
+      inp.addEventListener("change", () => go(parseFloat(inp.value.trim().replace(",", "."))));
+      inp.addEventListener("focus", () => inp.select());
+      inp.addEventListener("keydown", (e) => { if (e.key === "Enter") inp.blur(); if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); canvasShow(); inp.blur(); } });
+      const stepBtn = (icon, sign) => button("", (e) => { const c = canvasNow(); if (c) go(get(c) + sign * (e && e.shiftKey ? big : step)); }, { icon, kind: "btn-secondary", title: (sign > 0 ? "+" : "−") + step + " (⇧ " + big + ")" });
+      r.append(el("span", "align-lab", label), stepBtn("minus", -1), inp, stepBtn("plus", 1));
+      canvasFields[key] = inp; canvasBlock.appendChild(r);
+    };
+    canvasRow("cx", "Move X", "Pixels of the original, from the center of the full canvas · steps of 1 (⇧ 10)", 1, 10, 0, (c) => c.cx, (c, v) => ({ cx: v, cy: c.cy, k: c.k }));
+    canvasRow("cy", "Move Y", "Pixels of the original, from the center of the full canvas · steps of 1 (⇧ 10)", 1, 10, 0, (c) => c.cy, (c, v) => ({ cx: c.cx, cy: v, k: c.k }));
+    canvasRow("k", "Size", "Percent of the full canvas (100 = the largest; it never goes above) · steps of 0.1 (⇧ 1)", 0.1, 1, 1, (c) => c.k * 100, (c, v) => ({ cx: c.cx, cy: c.cy, k: Math.max(0.02, Math.min(1, v / 100)) }));
+    { const row = el("div", "align-resets");
+      // (o maior canvas que as fotos ainda cobrem, em volta do centro de agora; e de volta ao canvas inteiro, até onde as fotos deixam)
+      row.appendChild(button("Fit to photos", () => {
+        const c = canvasNow(), B = canvasFull(); if (!c || !B) return;
+        let lo = c.k, hi = 1;
+        const centered = (k) => { const w = B.w * k, h = B.h * k; return { cx: Math.max(B.x + w / 2, Math.min(B.x + B.w - w / 2, c.cx)), cy: Math.max(B.y + h / 2, Math.min(B.y + B.h - h / 2, c.cy)), k }; };
+        if (canvasOk(centered(1))) lo = 1; else for (let i = 0; i < 20; i++) { const mid = (lo + hi) / 2; if (canvasOk(centered(mid))) lo = mid; else hi = mid; }
+        if (lo > c.k + 1e-6) { canvasPut(centered(lo)); save(); }
+      }, { kind: "btn-secondary", title: "Make the canvas as large as the photos still cover, around where it is now" }));
+      row.appendChild(button("Reset canvas", () => { if (canvasTry({ cx: 0, cy: 0, k: 1 })) save(); }, { kind: "btn-secondary", title: "Back to the full canvas (as far as the photos still cover it)" }));
+      canvasBlock.appendChild(row); }
+    canvasBlock.appendChild(el("p", "export-note align-canvas-note", "The canvas cannot go past the photos. A smaller canvas means fewer pixels in the output; no photo is enlarged."));
+    if (rigStep) canvasBlock.remove();  // (no passo 3 do Align cameras a ferramenta não existe: o canvas é o do rig)
+    // Alças do canvas (oito) e o gesto
+    [[0, 0], [0.5, 0], [1, 0], [0, 0.5], [1, 0.5], [0, 1], [0.5, 1], [1, 1]].forEach(([fx, fy]) => {
+      const h = el("div", "align-canvas-handle"); h.dataset.fx = fx; h.dataset.fy = fy; h.style.left = fx * 100 + "%"; h.style.top = fy * 100 + "%";
+      h.style.cursor = fx === 0.5 ? "ns-resize" : fy === 0.5 ? "ew-resize" : fx === fy ? "nwse-resize" : "nesw-resize";
+      ratio.appendChild(h);
+    });
+    const canvasDown = (e) => {
+      const f = usefulRect(), c0 = canvasNow(); if (!f || !c0) return;
+      const r = stage.getBoundingClientRect();
+      const world = (ev) => ({ x: (ev.clientX - r.left - stage.clientLeft - cx) / scaleK, y: (ev.clientY - r.top - stage.clientTop - cy) / scaleK });
+      const p0 = world(e), handle = e.target.classList && e.target.classList.contains("align-canvas-handle") ? e.target : null;
+      const inside = p0.x >= f.x && p0.x <= f.x + f.w && p0.y >= f.y && p0.y <= f.y + f.h;
+      if (!handle && !inside) return;
+      let moved = false;
+      const fx = handle ? +handle.dataset.fx : 0, fy = handle ? +handle.dataset.fy : 0;
+      // (pela alça: a mesma proporção, com o ponto oposto parado)
+      const O = { x: f.x + f.w * (1 - fx), y: f.y + f.h * (1 - fy) }, H0 = { x: f.x + f.w * fx, y: f.y + f.h * fy }, d0 = Math.max(1, Math.hypot(H0.x - O.x, H0.y - O.y));
+      const move = (ev) => {
+        const p = world(ev);
+        if (handle) {
+          // (a distância do mouse ao ponto oposto, medida na direção da alça)
+          const proj = ((p.x - O.x) * (H0.x - O.x) + (p.y - O.y) * (H0.y - O.y)) / d0;
+          const k = Math.max(0.02, Math.min(1, c0.k * Math.max(0.01, proj) / d0));
+          moved = canvasTry({ cx: O.x + (c0.cx - O.x) * (k / c0.k), cy: O.y + (c0.cy - O.y) * (k / c0.k), k }) || moved;
+        } else {
+          const now = canvasNow();
+          moved = canvasTry({ cx: c0.cx + (p.x - p0.x), cy: now.cy, k: c0.k }) || moved;
+          moved = canvasTry({ cx: canvasNow().cx, cy: c0.cy + (p.y - p0.y), k: c0.k }) || moved;
+        }
+      };
+      const end = () => { stage.removeEventListener("pointermove", move); stage.removeEventListener("pointerup", end); stage.removeEventListener("pointercancel", end); stage.classList.remove("canvas-drag"); if (moved) save(); };
+      stage.classList.add("canvas-drag");
+      stage.addEventListener("pointermove", move); stage.addEventListener("pointerup", end); stage.addEventListener("pointercancel", end);
+    };
     const curTagEl = self.querySelector("h3 .align-cur"), curTagText = curTagEl.textContent;
     const paintAll = (first) => {
       const on = !!exp.alignAll;
@@ -7351,6 +7468,7 @@
           const inv = 1 / al.scale; [...box.children].forEach((hd) => { hd.style.setProperty("--inv", inv); }); }
       });
       anchorPlace();
+      canvasShow();
       // Proporção de um tamanho: a mais próxima das quatro; "~" quando não é exata
       // (em pé, 3:2 é 2:3: o mesmo nome dos botões do Aspect ratio)
       const rn = (w, h) => { const n = ratioName(w, h); const exact = Math.abs(Math.max(w, h) / Math.min(w, h) - RATIOS[n]) < 0.01; const shown = h > w ? RATIO_TURNED[n] || n : n; return exact ? shown : "~" + shown; };
@@ -7421,6 +7539,8 @@
       stage.setPointerCapture(e.pointerId);
       // Zoom: um clique aproxima (com Alt, afasta); segurar e arrastar para a direita aproxima, para a esquerda afasta
       if (toolNow === "zoom" && !exp.spaceDown && !playing) { drag = { kind: "zoom", x: e.clientX, zoom: view.zoom, at: zoomAnchor(e), moved: false, alt: e.altKey, ev: e }; return; }
+      // Resize canvas: arrastar dentro do canvas move o canvas; pelas alças dele, muda o tamanho
+      if (toolNow === "canvas" && !exp.spaceDown && !playing) { canvasDown(e); return; }
       // Pointer: fora da foto que está sendo alinhada, arrastar desloca a vista (pedido do dono, 2026-11-24)
       const onPart = e.target === rotHandle || e.target.classList.contains("align-handle");
       if (toolNow === "handles" && !onPart && !exp.spaceDown && !playing) return;  // só as alças: arrastar em outro lugar não faz nada

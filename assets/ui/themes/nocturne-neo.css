@@ -2636,3 +2636,15 @@ body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform:
 /* (o guia "Handles and what is outside the canvas" desligado esconde a âncora também; pedido do dono, 2026-11-27) */
 .align-stage.clean .align-anchor-mark { display: none !important; }
 .align-stage.clean .align-cross.under-anchor { visibility: visible; }
+/* Ferramenta do canvas (protótipo C1 aprovado, 2026-11-26): com ela escolhida, o bloco "Canvas" entra no lugar do
+   "This photo", o canvas ganha oito alças e as alças da foto e a âncora somem */
+.align-block.for-canvas { display: none; }
+.export-settings:has(.align-stage[data-tool="canvas"]) .align-block.for-canvas { display: flex; }
+.export-settings:has(.align-stage[data-tool="canvas"]) .align-block.for-photo { display: none; }
+.align-canvas-handle { display: none; position: absolute; width: 11px; height: 11px; margin: -6px 0 0 -6px; box-sizing: border-box; background: #000; border: 2px solid var(--noct-primary); z-index: 7; pointer-events: auto; }
+.align-stage[data-tool="canvas"] .align-canvas-handle { display: block; }
+.align-stage[data-tool="canvas"] .align-box, .align-stage[data-tool="canvas"] .align-rot-line, .align-stage[data-tool="canvas"] .align-rot-handle, .align-stage[data-tool="canvas"] .align-anchor-mark { display: none !important; }
+.align-stage[data-tool="canvas"] { cursor: default; }
+.align-stage[data-tool="canvas"] .align-ratio { cursor: move; pointer-events: auto; }
+.align-stage.playing .align-canvas-handle { display: none; }
+.align-canvas-note { margin: 0; }

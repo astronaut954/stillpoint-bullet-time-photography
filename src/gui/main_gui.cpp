@@ -3155,6 +3155,7 @@ namespace
                                     if (!perGroup.count(group) || IsJpegPhoto(photo.file)) perGroup[group] = photo.file;
                                 }
                                 const auto aligns = Export::ParseAlign(cur->align);
+                                Export::TakeCanvas(framing, aligns);
                                 std::vector<std::pair<int, int>> sizes;
                                 std::vector<std::string> files;
                                 bool allSizes = !perGroup.empty();
@@ -3709,6 +3710,7 @@ namespace
                         if (!perGroup.count(group) || IsJpegPhoto(photo.file)) perGroup[group] = photo.file;
                     }
                     const auto aligns = Export::ParseAlign(session->align);
+                    Export::TakeCanvas(framing, aligns);
                     std::vector<std::pair<int, int>> sizes;
                     std::vector<std::string> groups;
                     bool allSizes = !perGroup.empty();
@@ -3903,6 +3905,7 @@ namespace
                     if (!perGroup.count(group) || IsJpegPhoto(photo.file)) perGroup[group] = photo.file;
                 }
                 const auto aligns = Export::ParseAlign(session->align);
+                Export::TakeCanvas(framing, aligns);
                 std::vector<std::pair<int, int>> sizes;
                 bool allSizes = !perGroup.empty();
                 size_t at = 0;
@@ -6158,6 +6161,7 @@ namespace
                     if (!perCamera.empty())
                     {
                         const auto aligns = Export::ParseAlign(session->align);
+                        Export::TakeCanvas(framing, aligns);
                         std::vector<std::pair<int, int>> sizes;
                         bool allSizes = true;
                         for (const auto& f : perCamera)

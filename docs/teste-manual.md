@@ -2728,53 +2728,77 @@ Layout novo (decisão do dono, 2026-11-26, 20:45: A1 com o conteúdo do A3), a c
 
 ## 77. Edição global no Align photos (2026-11-26, câmeras simuladas servem)
 
-- [ ] **Export sessions** › aba **Framing** › **Align photos**: na barra de ferramentas à esquerda da foto, embaixo
+- [x] **Export sessions** › aba **Framing** › **Align photos**: na barra de ferramentas à esquerda da foto, embaixo
       dos dois botões de guias e depois de um separador, há um botão novo (legenda "Edit all photos: every change
       made to a photo goes to all of them"), apagado.
-- [ ] Clicar o botão: ele fica laranja; o painel da direita passa a se chamar "All photos", com "01–NN" no lugar do
+- [x] Clicar o botão: ele fica laranja; o painel da direita passa a se chamar "All photos", com "01–NN" no lugar do
       número da foto e a moldura laranja; todas as miniaturas ganham contorno laranja.
-- [ ] Com ele ligado, mudar **Size** (botões **−** e **+**, número digitado, alças, ferramenta **Resize photo**):
+- [x] Com ele ligado, mudar **Size** (botões **−** e **+**, número digitado, alças, ferramenta **Resize photo**):
       todas as fotos mudam de tamanho juntas, pelo mesmo fator, em volta da âncora (que começa no centro do canvas).
-- [ ] **Rotate**: todas giram o mesmo ângulo em volta da âncora; se for preciso para continuar cobrindo o canvas,
+- [x] **Rotate**: todas giram o mesmo ângulo em volta da âncora; se for preciso para continuar cobrindo o canvas,
       todas são ampliadas juntas.
-- [ ] **Move X**, **Move Y** e arrastar a foto: todas andam juntas.
-- [ ] Diminuir (ou mover, ou girar) além do que a foto mais apertada permite: todas param juntas no limite dela
+- [x] **Move X**, **Move Y** e arrastar a foto: todas andam juntas.
+- [x] Diminuir (ou mover, ou girar) além do que a foto mais apertada permite: todas param juntas no limite dela
       (borda laranja do canvas).
-- [ ] **Flip** com ele ligado: o mesmo sentido muda em todas.
-- [ ] A âncora com ele ligado: uma só, presa ao canvas. Arrastá-la (com **Select** ou **Direct select**) move só
+- [x] **Flip** com ele ligado: o mesmo sentido muda em todas.
+- [x] A âncora com ele ligado: uma só, presa ao canvas. Arrastá-la (com **Select** ou **Direct select**) move só
       dentro do canvas; com **⌘** prende no centro e nos 9 pontos do canvas. Na caixa da âncora (botão com o ícone
       de âncora, no título do painel), a linha da grade se chama "Canvas".
-- [ ] Desligar o botão: o painel volta a "This photo", e a âncora de cada foto reaparece onde estava (a global não
+- [x] Desligar o botão: o painel volta a "This photo", e a âncora de cada foto reaparece onde estava (a global não
       mexe nas individuais). Uma mudança volta a valer só para a foto aberta.
-- [ ] **⌘Z** depois de uma mudança global: desfaz em todas de uma vez.
-- [ ] Sair do Align photos e entrar de novo: o botão começa desligado.
-- [ ] Passo **3 Save** do **Align cameras**: o botão existe e funciona igual.
+- [x] **⌘Z** depois de uma mudança global: desfaz em todas de uma vez.
+- [x] Sair do Align photos e entrar de novo: o botão começa desligado.
+- [x] Passo **3 Save** do **Align cameras**: o botão existe e funciona igual.
 
 Retornos do dono (2026-11-26, 21:11), a conferir:
 
-- [ ] Edição global ligada, girar e voltar ao giro de antes: as fotos são ampliadas enquanto o giro pede e voltam
+- [x] Edição global ligada, girar e voltar ao giro de antes: as fotos são ampliadas enquanto o giro pede e voltam
       a diminuir sozinhas, até o tamanho em que estavam, quando o giro volta (como numa foto só).
-- [ ] Edição global ligada: **Reset photo** fica apagado; desligando, volta a acender.
+- [x] Edição global ligada: **Reset photo** fica apagado; desligando, volta a acender.
 
 Escolha e retornos do dono (2026-11-26, 21:22), a conferir:
 
-- [ ] Botões de baixo do painel **This photo** (layout L2): **Fit to canvas** e **Reset photo** lado a lado, com a
+- [x] Botões de baixo do painel **This photo** (layout L2): **Fit to canvas** e **Reset photo** lado a lado, com a
       mesma largura; **Reset all** embaixo, da largura dos dois; o conjunto centrado no eixo dos botões de cima.
-- [ ] Arrastar a âncora (com ou sem a edição global): o ícone fica exatamente embaixo do cursor, sem ficar para
+- [x] Arrastar a âncora (com ou sem a edição global): o ícone fica exatamente embaixo do cursor, sem ficar para
       trás.
 
 Decisões e retornos do dono (2026-11-27, 00:24), a conferir:
 
-- [ ] Giro com a âncora no centro do canvas (uma foto ou edição global): a foto é ampliada sozinha o necessário,
+- [x] Giro com a âncora no centro do canvas (uma foto ou edição global): a foto é ampliada sozinha o necessário,
       como antes.
-- [ ] Giro com a âncora FORA do centro do canvas (uma foto ou edição global): não há ampliação automática; o giro
+- [x] Giro com a âncora FORA do centro do canvas (uma foto ou edição global): não há ampliação automática; o giro
       vai até onde a foto ainda cobre o canvas, no tamanho em que está, e para (borda laranja). Com a âncora num
       canto do canvas, na edição global, o giro praticamente não anda.
-- [ ] Edição global ligada, **Fit to canvas**: todas as fotos são centradas e ficam, cada uma, no menor tamanho que
+- [x] Edição global ligada, **Fit to canvas**: todas as fotos são centradas e ficam, cada uma, no menor tamanho que
       cobre o canvas (o giro de cada uma fica). Clicar de novo tira o giro de todas.
-- [ ] Desligar o guia **Handles and what is outside the canvas** (segundo botão de guias, na barra de ferramentas):
+- [x] Desligar o guia **Handles and what is outside the canvas** (segundo botão de guias, na barra de ferramentas):
       a âncora some da foto junto com as alças; ligar de novo: volta.
-- [ ] Arrastar a âncora: o cursor some enquanto ela é arrastada (o ícone é o ponto) e volta ao soltar.
+- [x] Arrastar a âncora: o cursor some enquanto ela é arrastada (o ícone é o ponto) e volta ao soltar.
+
+## 78. Ferramenta do canvas no Align photos (2026-11-27, câmeras simuladas servem)
+
+- [ ] **Export sessions** › aba **Framing** › **Align photos**: na barra de ferramentas à esquerda da foto, o botão do
+      **Resize photo** tem um triângulo no canto; segurar o botão (ou clicar com o direito) abre a lista com
+      **Resize photo** e **Resize canvas**. A tecla **C** também escolhe **Resize canvas**.
+- [ ] Com **Resize canvas** escolhida: o canvas ganha oito alças; as alças da foto e a âncora somem; no painel da
+      direita o bloco **Canvas** entra no lugar do **This photo**, com o tamanho em pixels no título, **Move X**,
+      **Move Y**, **Size**, **Fit to photos** e **Reset canvas**.
+- [ ] Arrastar uma alça para dentro: o canvas diminui, sempre na mesma proporção, com o lado oposto parado; o
+      tamanho em pixels no título e na etiqueta do canvas diminui. Nenhuma foto muda de tamanho.
+- [ ] Arrastar dentro do canvas: ele anda; para (borda laranja) onde alguma foto deixaria de cobri-lo, e nunca sai
+      do canvas inteiro.
+- [ ] **Size** não passa de 100 (digitar 140 volta a 100). **Move X**, **Move Y** e **Size** pelos botões **−** e
+      **+** e digitando.
+- [ ] **Fit to photos**: o canvas cresce o máximo que as fotos ainda cobrem, em volta de onde está. **Reset canvas**:
+      volta ao canvas inteiro (até onde as fotos deixam).
+- [ ] **⌘Z** desfaz cada mudança do canvas.
+- [ ] Trocar para **Select**: o **This photo** volta; o canvas continua do tamanho escolhido, e as fotos passam a
+      poder ser movidas e diminuídas até a borda do canvas novo.
+- [ ] Sair do Align photos: a prévia da aba **Framing** mostra o canvas escolhido. Fechar e abrir o programa: o
+      canvas continua.
+- [ ] Exportar a sessão (JPEG): os arquivos saem com o tamanho em pixels do canvas escolhido, sem ampliação.
+- [ ] Passo **3 Save** do **Align cameras**: a ferramenta **Resize canvas** não aparece (lá o canvas é o do rig).
 
 ## Resultado
 

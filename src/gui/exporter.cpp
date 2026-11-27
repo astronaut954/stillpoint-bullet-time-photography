@@ -913,8 +913,18 @@ namespace Export
         }
         return out;
     }
+    void TakeCanvas(Framing& framing, const std::map<std::string, Align>& aligns)
+    {
+        framing.canvasCx = framing.canvasCy = framing.canvasK = 0;
+        const auto it = aligns.find("@canvas");
+        if (it == aligns.end()) return;
+        const double k = it->second.scale;
+        if (!(k > 0.01) || k > 1.0 + 1e-9) return;
+        framing.canvasK = std::min(1.0, k); framing.canvasCx = it->second.dx; framing.canvasCy = it->second.dy;
+    }
     bool Framing::Aligned() const
     {
+        if (CustomCanvas()) return true;  // (um canvas escolhido também pede a exportação pelo canvas)
         for (const Align& a : align)
             if ((a.touched && !a.Identity()) || a.Flipped()) return true;
         return false;
@@ -971,12 +981,25 @@ namespace Export
         }
         if (cw < 16 || ch < 16) { framing.align.clear(); return false; }
         framing.commonX = -cw / 2; framing.commonY = -ch / 2; framing.commonW = cw; framing.commonH = ch;
-        // Tamanho em uso e posição de cada foto
+        // Canvas escolhido pela pessoa: um pedaço do calculado, na mesma proporção, sem sair dele
+        const bool custom = framing.CustomCanvas();
+        double ux = framing.commonX, uy = framing.commonY, uw = cw, uh = ch;
+        if (custom)
+        {
+            uw = std::max(16.0, cw * framing.canvasK); uh = std::max(16.0, ch * framing.canvasK);
+            ux = std::clamp(framing.canvasCx - uw / 2, -cw / 2, cw / 2 - uw); uy = std::clamp(framing.canvasCy - uh / 2, -ch / 2, ch / 2 - uh);
+        }
+        // Tamanho em uso e posição de cada foto. As que a pessoa não mexeu ficam como ficariam sem canvas escolhido
+        // (contra o canvas calculado: o canvas escolhido só corta); as mexidas, contra o canvas que vale.
+        for (int pass = 0; pass < 2; ++pass)
+        {
+        if (pass == 1 && custom) { framing.commonX = ux; framing.commonY = uy; framing.commonW = uw; framing.commonH = uh; }
         for (size_t k = 0; k < sizes.size(); ++k)
         {
             Align& a = framing.align[k];
             const double w = sizes[k].first, h = sizes[k].second;
             if (w <= 0 || h <= 0) continue;
+            if (a.touched != (pass == 1)) continue;
             if (!a.touched)
             {
                 // Sem ajuste da pessoa: o menor tamanho que cobre o canvas, centrada, e a posição do recorte (posX/posY)
@@ -986,13 +1009,14 @@ namespace Export
                 a.base = 1.0; a.scale = need > 0 ? need : 1.0;
                 a.dx = (0.5 - std::clamp(framing.posX, 0.0, 1.0)) * (w * a.scale - cw);
                 a.dy = (0.5 - std::clamp(framing.posY, 0.0, 1.0)) * (h * a.scale - ch);
-                a.noop = !a.Flipped() && std::abs(a.scale - 1.0) < 1e-9 && std::abs(w - cw) < 0.5 && std::abs(h - ch) < 0.5;
+                a.noop = !custom && !a.Flipped() && std::abs(a.scale - 1.0) < 1e-9 && std::abs(w - cw) < 0.5 && std::abs(h - ch) < 0.5;
             }
             else
             {
                 const double need = MinCover(w, h, a, std::max(0.05, a.base), framing);
                 a.scale = need > 0 ? std::max(a.scale, need) : a.scale;
             }
+        }
         }
         return true;
     }
