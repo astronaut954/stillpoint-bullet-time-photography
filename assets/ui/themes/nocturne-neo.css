@@ -2639,12 +2639,20 @@ body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform:
 /* Ferramenta do canvas (protótipo C1 aprovado, 2026-11-26): com ela escolhida, o bloco "Canvas" entra no lugar do
    "This photo", o canvas ganha oito alças e as alças da foto e a âncora somem */
 .align-block.for-canvas { display: none; }
-.export-settings:has(.align-stage[data-tool="canvas"]) .align-block.for-canvas { display: flex; }
-.export-settings:has(.align-stage[data-tool="canvas"]) .align-block.for-photo { display: none; }
+.export-settings:has(.align-stage[data-canvas="1"]) .align-block.for-canvas { display: flex; }
+.export-settings:has(.align-stage[data-canvas="1"]) .align-block.for-photo { display: none; }
 .align-canvas-handle { display: none; position: absolute; width: 11px; height: 11px; margin: -6px 0 0 -6px; box-sizing: border-box; background: #000; border: 2px solid var(--noct-primary); z-index: 7; pointer-events: auto; }
-.align-stage[data-tool="canvas"] .align-canvas-handle { display: block; }
-.align-stage[data-tool="canvas"] .align-box, .align-stage[data-tool="canvas"] .align-rot-line, .align-stage[data-tool="canvas"] .align-rot-handle, .align-stage[data-tool="canvas"] .align-anchor-mark { display: none !important; }
-.align-stage[data-tool="canvas"] { cursor: default; }
-.align-stage[data-tool="canvas"] .align-ratio { cursor: move; pointer-events: auto; }
+.align-stage[data-canvas="1"] .align-canvas-handle { display: block; }
+.align-stage[data-canvas="1"] .align-box, .align-stage[data-canvas="1"] .align-rot-line, .align-stage[data-canvas="1"] .align-rot-handle, .align-stage[data-canvas="1"] .align-anchor-mark { display: none !important; }
+.align-stage[data-canvas="1"] { cursor: default; }
+
 .align-stage.playing .align-canvas-handle { display: none; }
 .align-canvas-note { margin: 0; }
+/* Seletor foto / canvas no título do painel (pedido do dono, 2026-11-27) */
+.align-mode-seg { display: inline-flex; margin-left: 10px; flex: 0 0 auto; }
+.align-mode-btn { width: 24px; height: 22px; box-sizing: border-box; padding: 0; margin: 0; display: grid; place-items: center; background: transparent; border: 1px solid var(--noct-border-strong); color: var(--noct-primary); cursor: pointer; border-radius: 0; }
+.align-mode-btn + .align-mode-btn { margin-left: -1px; }
+.align-mode-btn:hover { border-color: var(--noct-primary); position: relative; }
+.align-mode-btn.on { background: var(--noct-primary); border-color: var(--noct-primary); color: var(--noct-on-primary); position: relative; }
+.align-block.for-canvas h3 { justify-content: flex-start; white-space: nowrap; }
+.align-block.for-canvas h3 .align-cur { margin-left: auto; }

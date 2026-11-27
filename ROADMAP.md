@@ -2118,6 +2118,15 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      qual a vantagem prática de mudar o tamanho do canvas no aplicativo como um todo; resposta do agente: a única
      vantagem que outra parte do app não dá é abrir folga para mover e girar fotos sem ampliar nenhuma. A DECIDIR
      PELO DONO: manter a ferramenta (só tamanho, centrada) ou tirar.
+     **DECISÕES DO DONO (2026-11-27, 02:02):** (1) mover o canvas SAI; "Fit to photos" FICA; (2) "Reset canvas" com
+     fotos que já não cobrem o canvas inteiro: avisa e oferece Cancel ou voltar o canvas junto com as fotos;
+     (3) a ferramenta sai da barra: vira um seletor de dois ícones (fotografia / canvas) à direita do título do
+     This photo; (4) o ícone do canvas indica quando o canvas foi modificado. FEITO, AGUARDANDO TESTE: (1), (2) e
+     (3) (`exp.alignCanvasMode`, `modeSeg`/`paintMode`, `stage.dataset.canvas`; no modo canvas, arrastar fora das
+     alças desloca a vista; a tecla C deixou de existir). Para (4), PROTÓTIPOS:
+     https://claude.ai/artifact/EGE2PBTLQxwrvNwUXf97M9 (M1 quadrado âmbar no canto do ícone; M2 o ícone inteiro em
+     âmbar; M3 barra âmbar embaixo; M4 o tamanho em % ao lado). AGUARDA A ESCOLHA. Testes automáticos: Align cameras
+     120 de 120 (verificações do canvas refeitas), ferramentas 48 de 48; rodada completa não refeita.
      FALTA do item 3: ferramenta do canvas (C1).
      3. IDEIA PARA DEPOIS (só anotar): a feature de label passar a aceitar várias labels, não só uma.
      **PASSAGEM PARA UM CHAT NOVO (2026-11-26):** o dono pediu um prompt de continuação porque as respostas
