@@ -3055,4 +3055,11 @@ menos pixels: 1200 px de largura contra 1800 das outras).
       tracejada, ao lado do valor da proporção aparece a proporção em que a foto saiu, em âmbar, e o triângulo de
       alerta; a explicação abre na caixa padrão com o mouse em cima (como na coluna **Ratio** da primeira tela do
       Camera settings).
+- [ ] Simulação com cores (`STILLPOINT_FAKE_LOOK=1`) e aviso de proporção em duas câmeras
+      (`STILLPOINT_FAKE_WRONG_RATIO=6`): em **Match automatically** › **3 Review**, aba **Flip**, clicar na prévia
+      troca a foto de antes pela de depois e a cor muda de verdade.
+- [ ] Na tabela, as linhas das câmeras 02 e 06 mostram o aviso da proporção alinhado com o resto das mudanças (mesma
+      linha de base, mesma altura de linha); na 06 a proporção não está entre as mudanças e o aviso vem no fim.
+- [ ] Etiquetas **Before · …** e **After · …** com muitos valores (layout L1): cada uma no seu canto, quebrando a
+      linha, sem cobrir a outra.
 

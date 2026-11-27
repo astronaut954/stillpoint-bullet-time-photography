@@ -2725,3 +2725,24 @@ html.kbd-focus #sessionGallery .stage:focus-within .stage-caption { opacity: 1; 
 /* Flip: só a etiqueta da foto que está na tela (antes ficavam as duas, e com fotos iguais não dava para ver a troca;
    teste do dono, 2026-11-27) */
 .cs-review-stage.flip.show-after .cs-review-img.before .cs-review-tag { opacity: 0; }
+/* Match automatically › 3 Review: etiquetas Before / After com muitos valores (layout L1, escolha do dono, 2026-11-27):
+   cada uma no seu canto, no máximo metade da largura, quebrando a linha em vez de cobrir a outra */
+.cs-review-tag { box-sizing: border-box; max-width: calc(50% - 16px); white-space: normal; line-height: 1.5; }
+.cs-review-img.after .cs-review-tag { text-align: right; }
+.cs-review-stage.side .cs-review-tag, .cs-review-stage.flip .cs-review-tag { max-width: calc(100% - 20px); }
+/* Aviso da proporção na linha da tabela: tudo na mesma linha de base do resto das mudanças (retorno do dono) */
+.cs-review-changes { align-items: center; }
+.cs-review-change { display: inline-flex; align-items: baseline; white-space: nowrap; }
+.cs-review-ratio { align-items: baseline; font: inherit; }
+.cs-review-ratio .cs-val.shot-ratio { font: inherit; margin-left: 8px; }
+.cs-review-ratio .cs-ratio-alert { align-self: center; margin-left: 5px; }
+.cs-review-ratio .cs-ratio-alert svg { width: 12px; height: 12px; }
+.cs-review-change .to:has(+ .cs-review-ratio) { border-bottom: 0; }
+.cs-review-change { height: 16px; line-height: 16px; }
+.cs-review-ratio { height: 16px; line-height: 16px; }
+.cs-review-ratio .cs-val.shot-ratio { padding: 0; border: 0; min-height: 0; line-height: 16px; margin-left: 6px; }
+.cs-review-ratio .cs-ratio-alert { height: 12px; }
+.cs-review-changes { align-items: flex-start; }
+.cs-review-change, .cs-review-ratio { display: inline-block; height: 16px; line-height: 16px; vertical-align: top; }
+.cs-review-ratio .cs-val.shot-ratio, .cs-review-ratio .cs-review-ratio-now { display: inline; vertical-align: baseline; }
+.cs-review-ratio .cs-ratio-alert { display: inline-block; width: 12px; height: 12px; vertical-align: -2px; }

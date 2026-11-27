@@ -1267,6 +1267,15 @@ namespace
         // menos pixels (1200 de largura em vez de 1800), para testar a resolução em rig com câmeras diferentes
         int fakeSmall = 0;
         if (const char* smallEnv = std::getenv("STILLPOINT_FAKE_SMALL")) fakeSmall = std::atoi(smallEnv);
+        // STILLPOINT_FAKE_LOOK=1 (com STILLPOINT_FAKE_PHOTOS=pole): a foto simulada muda com os ajustes da câmera
+        // simulada (mais clara com ISO maior ou obturador mais lento; mais quente ou fria com o balanço de branco e o
+        // ajuste fino), para dar para ver o antes e o depois do Match automatically (pedido do dono, 2026-11-27).
+        // Desligado por padrão: muda as cores das marcas e o que o Match mede.
+        const bool fakeLook = std::getenv("STILLPOINT_FAKE_LOOK") != nullptr;
+        // STILLPOINT_FAKE_WRONG_RATIO=<n>: a câmera simulada n também entrega sempre 16:9 (como a 02), para ver o aviso
+        // de proporção em mais de uma câmera
+        int fakeWrongRatio = 0;
+        if (const char* wrongEnv = std::getenv("STILLPOINT_FAKE_WRONG_RATIO")) fakeWrongRatio = std::atoi(wrongEnv);
         std::vector<double> fakeFocal;
         if (const char* text = std::getenv("STILLPOINT_FAKE_FOCAL"); text && *text)
         {
@@ -1954,6 +1963,8 @@ namespace
                     // A foto simulada sai na proporção que a câmera simulada informa (Ratio); a câmera 02
                     // entrega sempre 16:9, o que for que esteja marcado, para testar o aviso de proporção
                     double ratio = 1.5;
+                    double look[3] = { 1, 1, 1 };
+                    bool hasLook = false;
                     int fakeIndex = 0;  // a câmera simulada (fake1, fake2...), que não muda quando a ordem muda
                     for (const auto& cam : controller.GetCameras())
                         if (cam.shortName == plan[i].shortName)
@@ -1963,8 +1974,31 @@ namespace
                             for (const auto& st : s.settings)
                                 if (st.key == "aspect" && st.available)
                                     ratio = st.value == 1 ? 4.0 / 3.0 : st.value == 2 ? 16.0 / 9.0 : st.value == 7 ? 1.0 : 1.5;
-                            if (cam.orderPrefix == 2)
+                            if (cam.orderPrefix == 2 || (fakeWrongRatio > 0 && cam.orderPrefix == fakeWrongRatio))
                                 ratio = 16.0 / 9.0;
+                            if (fakeLook)
+                            {
+                                long long iso = 0x60, tv = 0x78, wb = 1;
+                                for (const auto& st : s.settings)
+                                {
+                                    if (st.key == "iso") iso = st.value;
+                                    else if (st.key == "tv") tv = st.value;
+                                    else if (st.key == "wb") wb = st.value;
+                                }
+                                // Fora do Kelvin, cada câmera simulada lê o mesmo balanço de um jeito um pouco diferente (como
+                                // modelos diferentes), para o antes e o depois não saírem iguais
+                                static const double presetOff[] = { 400, -500, 300, -350, 500, -300, 450, -400 };
+                                const double kelvin = wb == 9 ? s.kelvin
+                                    : (wb == 2 ? 6000 : wb == 3 ? 3200 : wb == 4 ? 4000 : wb == 8 ? 7000 : 5200) + presetOff[(std::max(1, fakeIndex) - 1) % 8] * (wb == 0 ? -1.5 : 1.0);
+                                if (iso <= 0) iso = 0x68;  // Auto: neutro (ISO 1600 a 1/125 é o ponto sem mudança)
+                                if (tv <= 0) tv = 0x70;
+                                const double light = std::clamp(std::pow(2.0, ((iso - 0x68) - (tv - 0x70)) / 8.0 * 0.12), 0.7, 1.12);
+                                const double warm = std::clamp((kelvin - 5200.0) / 5200.0 * 1.0 + s.shiftAB * 0.02, -0.35, 0.35);
+                                look[0] = light * (1.0 + warm);
+                                look[1] = light * (1.0 - s.shiftGM * 0.02);
+                                look[2] = light * (1.0 - warm);
+                                hasLook = true;
+                            }
                         }
                     const std::string base = std::string(prefix) + "_" + plan[i].shortName + "_IMG_" + std::to_string(1000 + i);
                     if (!fakePhotos.empty())
@@ -1979,7 +2013,8 @@ namespace
                         WritePoleTestPhoto(dir / (base + ".jpg"), std::max(1, fakeIndex), fakeCount, ratio,
                             fakeFocal.empty() ? 0 : fakeFocal[std::min(fakeFocal.size() - 1, static_cast<size_t>(std::max(1, fakeIndex) - 1))],
                             [&] { std::lock_guard<std::mutex> lock(fakeFixMutex); const auto it = fakeFix.find(std::max(1, fakeIndex)); return it == fakeFix.end() ? 0.0 : it->second; }(),
-                            fakeSmall > 0 && std::max(1, fakeIndex) == fakeSmall ? 1200 : 1800);
+                            fakeSmall > 0 && std::max(1, fakeIndex) == fakeSmall ? 1200 : 1800,
+                            hasLook ? look : nullptr);
                     else
                         WriteTestPhoto(dir / (base + ".jpg"), number, static_cast<int>(i) + 1, ratio);
                     ++done;

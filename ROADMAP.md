@@ -1989,7 +1989,14 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      "como na primeira tela do Camera settings"**: proporção da foto em âmbar + triângulo com a explicação na
      caixa padrão, junto do valor da proporção (`ratioWhy`, `cs-ratio-alert`); NÃO conferido na tela pelo agente (a
      simulação dele não gera esse aviso). PROTÓTIPOS das etiquetas Before / After com muitos valores (hoje uma
-     cobre a outra): https://claude.ai/artifact/5X6cYe1FXdABEsw4yj8kSH, alternativas L1 a L4, aguardando escolha.
+     cobre a outra): https://claude.ai/artifact/5X6cYe1FXdABEsw4yj8kSH, alternativas L1 a L4. **ESCOLHA DO DONO (19h39): L1**, feito (cada etiqueta no
+     seu canto, até metade da largura, quebrando a linha). Aviso da proporção realinhado (o sublinhado tracejado
+     saiu; itens em linha simples de 16px). SIMULAÇÃO NOVA, desligada por padrão: `STILLPOINT_FAKE_LOOK=1` (a foto
+     simulada muda de brilho e de cor com ISO, obturador, balanço de branco e ajuste fino; fora do Kelvin cada
+     câmera lê o balanço de um jeito) e `STILLPOINT_FAKE_WRONG_RATIO=<n>` (a câmera n também entrega 16:9). Nesta
+     tabela só existe UM tipo de aviso por câmera (proporção); as notas do Match (`notes`) não aparecem nela.
+     O agente conferiu o alinhamento do aviso com linhas montadas à mão na tela real (a simulação dele não gera o
+     aviso); nenhum cenário automático cobre o Match automatically.
      Teste do dono (2026-11-26): seção 68 aprovada ("os testes deu tudo certo").
      **Pedidos do dono (2026-11-26), feitos (seção 69):** o tocador do Align cameras também no Align photos do
      Export (mesma barra, mesmo comportamento; estado em `exp.play`, funções `expPlay`/`expPlayOff`); a mão de
