@@ -2001,6 +2001,8 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      cor forte e IGUAL em todas as câmeras (azulada) sempre que os ajustes forem diferentes dos da primeira foto
      da câmera nesta execução. Efeito colateral: o Match mede fotos azuladas e propõe mudanças diferentes.
      PENDÊNCIA DE PRODUTO: mostrar as notas do Match (`notes`) na linha da câmera como um segundo tipo de aviso?
+     **20h06: dono aprovou os testes deste bloco (seções 85 e 86).** DECISÃO: as etiquetas Before / After só somem
+     ao tocar na tela cheia; na janela normal ficam à vista. Feito.
      Teste do dono (2026-11-26): seção 68 aprovada ("os testes deu tudo certo").
      **Pedidos do dono (2026-11-26), feitos (seção 69):** o tocador do Align cameras também no Align photos do
      Export (mesma barra, mesmo comportamento; estado em `exp.play`, funções `expPlay`/`expPlayOff`); a mão de

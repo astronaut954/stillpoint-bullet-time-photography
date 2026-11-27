@@ -3062,4 +3062,6 @@ menos pixels: 1200 px de largura contra 1800 das outras).
       linha de base, mesma altura de linha); na 06 a proporção não está entre as mudanças e o aviso vem no fim.
 - [ ] Etiquetas **Before · …** e **After · …** com muitos valores (layout L1): cada uma no seu canto, quebrando a
       linha, sem cobrir a outra.
+- [ ] **Match automatically** › **3 Review**: tocando a sequência fora da tela cheia, as etiquetas **Before · …** e
+      **After · …** continuam à vista; na tela cheia elas somem ao tocar e voltam ao pausar.
 
