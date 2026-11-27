@@ -2700,3 +2700,11 @@ html.kbd-focus .rig-top :focus, html.kbd-focus .export-scope :focus { outline-of
 #sessionGallery .stage:has(.stage-ctrls) .stage-caption { opacity: 0; transition: opacity .3s ease; }
 #sessionGallery .stage:has(.stage-ctrls.show) .stage-caption, #sessionGallery .stage .stage-caption:hover,
 html.kbd-focus #sessionGallery .stage:focus-within .stage-caption { opacity: 1; }
+
+/* Framing com modo teatro e tocar (pedido do dono, 2026-11-27): o botão do teatro no canto de cima à esquerda, como
+   nos outros passos, e o "Align photos" ao lado dele; no teatro, a etiqueta de baixo some e volta como a legenda */
+.framing-stage .lent-theater-btn { z-index: 2; }
+.framing-stage .framing-align-btn { left: 54px; }
+.framing-stage .framing-play { z-index: 2; }
+.export-settings.theater .framing-stage .crop-tag { opacity: 0; transition: opacity .3s ease; }
+.export-settings.theater .framing-stage.th-show .crop-tag { opacity: 1; }

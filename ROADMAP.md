@@ -1952,6 +1952,13 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      mudanças de quê): https://claude.ai/artifact/UfX2wBv5C5THoDie9Td4CU, alternativas A a D, aguardando escolha.
      **ESCOLHA DO DONO (17h29): A, com o texto "2 fixes needed"** (feito); seção 82 aprovada ("Tudo certo com
      os testes").
+     **QUARTO RETORNO (17h47 e 17h57):** a prévia grande cresce com o espaço também no 2 Edit e no 3 Outputs; na
+     janela principal a legenda da foto some junto com o painel de tocar (aprovados). **Zoom nas prévias do Export
+     ("+" e "−"): ABANDONADO pelo dono em 2026-11-27** (não fazer). **Framing com modo teatro e botão de tocar**
+     (o dono mudou a decisão de 2026-11-03, "sem teatro nesta aba"): feito, aguardando teste (seção 83). O botão do
+     teatro fica no canto de cima à esquerda, o "Align photos" ao lado, o de tocar no canto de baixo à direita; a
+     prévia troca de foto no lugar (`cropStage.showPhoto`), sem refazer a tela. Posições escolhidas pelo agente por
+     igualdade com o 2 Edit, sem protótipo: confirmar com o dono.
      Teste do dono (2026-11-26): seção 68 aprovada ("os testes deu tudo certo").
      **Pedidos do dono (2026-11-26), feitos (seção 69):** o tocador do Align cameras também no Align photos do
      Export (mesma barra, mesmo comportamento; estado em `exp.play`, funções `expPlay`/`expPlayOff`); a mão de

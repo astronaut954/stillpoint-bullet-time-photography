@@ -5813,7 +5813,7 @@
     const frame = el("div", "crop-frame");
     const tag = el("span", "crop-tag");
     box.append(img, frame, tag);
-    const item = items[Math.max(0, Math.min(items.length - 1, exp.photo || 0))] || items[0];
+    let item = items[Math.max(0, Math.min(items.length - 1, exp.photo || 0))] || items[0];
     let nat = null;      // largura/altura natural da prévia
     let sizesAll = null; // tamanho real de cada foto (o canvas depende delas)
     let slack = null;    // folga da foto atrás do quadro, em px da tela (para arrastar)
@@ -5857,7 +5857,10 @@
     };
     // A original: a posição e o tamanho são calculados em pixels dela (a editada do Lightroom já vem recortada e
     // aparecia esticada aqui; teste do dono, 2026-11-07)
-    if (item) sessionPhotoOriginal(session.name, item.file, 1600).then((url) => { if (!url) return; img.onload = () => { nat = { w: img.naturalWidth, h: img.naturalHeight }; layout(); }; img.src = url; });
+    const load = () => { const mine = item; if (!mine) return; sessionPhotoOriginal(session.name, mine.file, 1600).then((url) => { if (!url || item !== mine) return; img.onload = () => { if (item !== mine) return; nat = { w: img.naturalWidth, h: img.naturalHeight }; layout(); }; img.src = url; }); };
+    load();
+    // Trocar de foto sem refazer a tela (para tocar a sequência na prévia do Framing; pedido do dono, 2026-11-27)
+    box.showPhoto = (k) => { const next = items[k]; if (!next || next === item) return; item = next; load(); };
     Promise.all(items.map((it) => photoSizeOf(session.name, it.file).then((sz) => [it.file, sz]))).then((pairs) => {
       sizesAll = {}; pairs.forEach(([f, sz]) => { if (sz) sizesAll[f] = sz; }); layout();
     });
@@ -7997,6 +8000,8 @@
     const prevRows = outer.querySelector(".export-rows");
     const keepScroll = prevRows ? prevRows.scrollTop : 0;  // a coluna é redesenhada a cada mudança: mantém a rolagem
     outer.innerHTML = "";
+    // (o teatro e o tocar do Framing só valem na aba Framing do passo 1)
+    if (!(exp.step === 1 && !exp.aligning)) { if (outer.dataset.frTheater) { outer.classList.remove("theater", "theater-strip"); delete outer.dataset.frTheater; } exp.framingPlaying = false; }
     const rows = el("div", "export-rows");
     outer.appendChild(rows);
     renderExportSettings.restoreScroll = () => { if (keepScroll) { rows.scrollTop = keepScroll; requestAnimationFrame(() => { rows.scrollTop = keepScroll; }); } };
@@ -8122,6 +8127,41 @@
           stage.appendChild(alignBtn);
           if (sessionAligned(session, st)) stage.appendChild(el("span", "framing-aligned-tag", "Aligned"));
           outer.insertBefore(stage, rows);
+          // Modo teatro e tocar a sequência também no Framing (pedido do dono, 2026-11-27; antes, sem teatro nesta aba)
+          const tb = button("", () => { const from = stage.offsetHeight; exp.framingTheater = !exp.framingTheater; applyFT(); slideHeight(stage, from);
+            if (!exp.framingTheater) { const r = outer.querySelector(".export-rows"); if (r && r.animate) r.animate([{ opacity: 0 }, { opacity: 1 }], { duration: EASE_MS, easing: "ease" }); } },
+            { icon: "theaterIn", title: "Theater mode: larger preview, settings hidden", kind: "btn-secondary" });
+          tb.classList.add("lent-theater-btn");
+          tb.addEventListener("pointerdown", (e) => e.stopPropagation());
+          const applyFT = () => {
+            const on = !!exp.framingTheater;
+            outer.classList.toggle("theater", on); outer.classList.toggle("theater-strip", on);
+            if (on) outer.dataset.frTheater = "1"; else delete outer.dataset.frTheater;
+            tb.classList.toggle("on", on); tb.innerHTML = icon(on ? "theaterOut" : "theaterIn");
+            tb.title = on ? "Leave theater mode" : "Theater mode: larger preview, settings hidden"; tb.setAttribute("aria-label", tb.title);
+          };
+          stage.insertBefore(tb, alignBtn);
+          applyFT();
+          theaterFade(stage);
+          const nPhotos = items.length;
+          const setPhoto = (k) => { exp.photo = k; stage.showPhoto(k); const lis = [...outer.querySelectorAll(".export-strip > li")]; lis.forEach((li, i) => li.classList.toggle("selected", i === k)); if (lis[k]) lis[k].scrollIntoView({ block: "nearest", inline: "nearest" }); };
+          const playBtn = button("", () => { if (exp.timer) pauseF(); else playF(); }, { icon: "play", title: "Play / pause the sequence", kind: "btn-overlay" });
+          playBtn.classList.add("preview-play", "framing-play");
+          playBtn.addEventListener("pointerdown", (e) => e.stopPropagation());
+          const paintPlay = () => { playBtn.innerHTML = icon(exp.timer ? "pause" : "play"); };
+          const tickF = () => {
+            if (!stage.isConnected) { stopPreview(); return; }
+            if (nPhotos < 2) return;
+            let i = exp.photo || 0;
+            if (!editPlay.reverse) i = (i + 1) % nPhotos;
+            else { i += exp.framingDir || 1; if (i >= nPhotos) { exp.framingDir = -1; i = nPhotos - 2; } else if (i < 0) { exp.framingDir = 1; i = 1; } }
+            setPhoto(i);
+          };
+          const playF = () => { stopPreview(); exp.framingPlaying = true; exp.framingDir = 1; if (nPhotos > 1) exp.timer = setInterval(tickF, Math.round(220 / PLAY_SPEEDS[editPlay.speed])); paintPlay(); };
+          const pauseF = () => { stopPreview(); exp.framingPlaying = false; paintPlay(); };
+          exp.framingPause = pauseF;
+          stage.appendChild(playBtn);
+          if (exp.framingPlaying) playF(); else paintPlay();  // (a tela é refeita a cada mudança: continua tocando)
           const stripScroll = el("div", "export-strip-scroll");
           const strip = el("ul", "export-strip fit-strip");
           stripScroll.appendChild(strip);
@@ -8132,10 +8172,10 @@
             // Com o recorte escolhido (pedido do dono, 2026-11-07), sempre sobre a original (2026-11-10)
             sessionPhotoOriginal(session.name, item.file, 320).then((url) => (url ? framedUrl(session, items, st, item, url, 320, true) : url))
               .then((url) => { if (url) li.querySelector("img").src = url; });
-            li.addEventListener("click", () => { exp.photo = k; photoRerender(); });
+            li.addEventListener("click", () => { exp.framingPlaying = false; exp.photo = k; photoRerender(); });
             strip.appendChild(li);
           });
-          exp.keyNav = (d) => { const n = items.length, k = (((exp.photo || 0) + d) % n + n) % n; if (k === exp.photo) return; exp.photo = k; photoRerender(); };  // (dá a volta)
+          exp.keyNav = (d) => { const n = items.length, k = (((exp.photo || 0) + d) % n + n) % n; if (k === exp.photo) return; exp.framingPlaying = false; exp.photo = k; photoRerender(); };  // (dá a volta; trocar de foto à mão para de tocar)
           const slot = el("div", "export-strip-slot");
           slot.appendChild(stripScroll);
           outer.insertBefore(slot, rows);

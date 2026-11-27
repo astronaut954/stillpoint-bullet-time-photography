@@ -3002,8 +3002,22 @@ menos pixels: 1200 px de largura contra 1800 das outras).
       needed**) em vez de "2 changes".
 - [x] **Export sessions** › **Framing**: com a janela alta, a prévia grande cresce e ocupa o espaço que sobrava
       embaixo das opções; com a janela baixa, ela fica na altura mínima de antes e as opções rolam.
-- [ ] **2 Edit** e **3 Outputs**: a prévia grande também cresce quando sobra espaço embaixo das opções (com a janela
+- [x] **2 Edit** e **3 Outputs**: a prévia grande também cresce quando sobra espaço embaixo das opções (com a janela
       baixa ou com muitas opções, fica na altura mínima e as opções rolam).
-- [ ] Janela principal, com uma sessão aberta (normal e em tela cheia): a legenda da foto (número da câmera e nome
+- [x] Janela principal, com uma sessão aberta (normal e em tela cheia): a legenda da foto (número da câmera e nome
       do arquivo, canto de baixo à esquerda) aparece ao mexer o mouse sobre a foto e some junto com o painel de
       tocar, 2 s depois de o mouse parar.
+
+## 83. Framing com modo teatro e tocar (2026-11-27, câmeras simuladas servem)
+
+- [ ] **Export sessions** › **1 Sessions** › **Framing**: a prévia tem o botão do modo teatro no canto de cima à
+      esquerda (o **Align photos** fica ao lado dele) e um botão de tocar no canto de baixo à direita.
+- [ ] Botão de tocar: a prévia passa pelas fotos da sessão, com o quadro do recorte parado; a miniatura da foto do
+      momento fica marcada. Clicar de novo pausa. Clicar numa miniatura ou usar **← →** também para de tocar.
+- [ ] Trocar **Aspect ratio** ou **Resolution** enquanto toca: continua tocando com o enquadramento novo.
+- [ ] Modo teatro: as opções de baixo e a barra de cima somem e a prévia ocupa o espaço; as miniaturas continuam.
+      O botão do teatro e a etiqueta de baixo somem com o mouse parado e voltam ao mexer. Clicar de novo no botão
+      volta ao normal.
+- [ ] Sair para **Align photos**, **2 Edit** ou **3 Outputs** com o teatro do Framing ligado: essas telas abrem no
+      arranjo normal delas (o teatro do Framing não passa para elas) e nada fica tocando sozinho.
+
