@@ -3057,7 +3057,7 @@ menos pixels: 1200 px de largura contra 1800 das outras).
       Camera settings).
 - [ ] Simulação com cores (`STILLPOINT_FAKE_LOOK=1`) e aviso de proporção em duas câmeras
       (`STILLPOINT_FAKE_WRONG_RATIO=6`): em **Match automatically** › **3 Review**, aba **Flip**, clicar na prévia
-      troca a foto de antes pela de depois e a cor muda de verdade.
+      troca a foto de antes pela de depois: a de depois sai bem azulada, igual em todas as câmeras que mudaram.
 - [ ] Na tabela, as linhas das câmeras 02 e 06 mostram o aviso da proporção alinhado com o resto das mudanças (mesma
       linha de base, mesma altura de linha); na 06 a proporção não está entre as mudanças e o aviso vem no fim.
 - [ ] Etiquetas **Before · …** e **After · …** com muitos valores (layout L1): cada uma no seu canto, quebrando a

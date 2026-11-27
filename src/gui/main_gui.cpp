@@ -1267,9 +1267,9 @@ namespace
         // menos pixels (1200 de largura em vez de 1800), para testar a resolução em rig com câmeras diferentes
         int fakeSmall = 0;
         if (const char* smallEnv = std::getenv("STILLPOINT_FAKE_SMALL")) fakeSmall = std::atoi(smallEnv);
-        // STILLPOINT_FAKE_LOOK=1 (com STILLPOINT_FAKE_PHOTOS=pole): a foto simulada muda com os ajustes da câmera
-        // simulada (mais clara com ISO maior ou obturador mais lento; mais quente ou fria com o balanço de branco e o
-        // ajuste fino), para dar para ver o antes e o depois do Match automatically (pedido do dono, 2026-11-27).
+        // STILLPOINT_FAKE_LOOK=1 (com STILLPOINT_FAKE_PHOTOS=pole): a foto da câmera simulada sai com uma mudança de cor
+        // forte e igual em todas (azulada) sempre que os ajustes dela forem diferentes dos da primeira foto que ela fez
+        // nesta execução, para dar para ver o antes e o depois do Match automatically (pedido do dono, 2026-11-27).
         // Desligado por padrão: muda as cores das marcas e o que o Match mede.
         const bool fakeLook = std::getenv("STILLPOINT_FAKE_LOOK") != nullptr;
         // STILLPOINT_FAKE_WRONG_RATIO=<n>: a câmera simulada n também entrega sempre 16:9 (como a 02), para ver o aviso
@@ -1978,26 +1978,22 @@ namespace
                                 ratio = 16.0 / 9.0;
                             if (fakeLook)
                             {
-                                long long iso = 0x60, tv = 0x78, wb = 1;
+                                // "Antes" = os ajustes com que a câmera simulada fez a primeira foto desta execução;
+                                // qualquer ajuste diferente disso dá a mesma mudança forte de cor em todas as câmeras
+                                std::string sig;
                                 for (const auto& st : s.settings)
+                                    if (st.key != "aspect" && st.key != "drive" && st.key != "quality")
+                                        sig += st.key + "=" + std::to_string(st.value) + ";";
+                                sig += std::to_string(s.kelvin) + "," + std::to_string(s.shiftAB) + "," + std::to_string(s.shiftGM);
+                                static std::mutex lookMutex;
+                                static std::map<std::string, std::string> firstLook;
+                                std::lock_guard<std::mutex> lock(lookMutex);
+                                const auto it = firstLook.emplace(cam.shortName, sig).first;
+                                if (it->second != sig)
                                 {
-                                    if (st.key == "iso") iso = st.value;
-                                    else if (st.key == "tv") tv = st.value;
-                                    else if (st.key == "wb") wb = st.value;
+                                    look[0] = 0.55; look[1] = 0.95; look[2] = 1.25;
+                                    hasLook = true;
                                 }
-                                // Fora do Kelvin, cada câmera simulada lê o mesmo balanço de um jeito um pouco diferente (como
-                                // modelos diferentes), para o antes e o depois não saírem iguais
-                                static const double presetOff[] = { 400, -500, 300, -350, 500, -300, 450, -400 };
-                                const double kelvin = wb == 9 ? s.kelvin
-                                    : (wb == 2 ? 6000 : wb == 3 ? 3200 : wb == 4 ? 4000 : wb == 8 ? 7000 : 5200) + presetOff[(std::max(1, fakeIndex) - 1) % 8] * (wb == 0 ? -1.5 : 1.0);
-                                if (iso <= 0) iso = 0x68;  // Auto: neutro (ISO 1600 a 1/125 é o ponto sem mudança)
-                                if (tv <= 0) tv = 0x70;
-                                const double light = std::clamp(std::pow(2.0, ((iso - 0x68) - (tv - 0x70)) / 8.0 * 0.12), 0.7, 1.12);
-                                const double warm = std::clamp((kelvin - 5200.0) / 5200.0 * 1.0 + s.shiftAB * 0.02, -0.35, 0.35);
-                                look[0] = light * (1.0 + warm);
-                                look[1] = light * (1.0 - s.shiftGM * 0.02);
-                                look[2] = light * (1.0 - warm);
-                                hasLook = true;
                             }
                         }
                     const std::string base = std::string(prefix) + "_" + plan[i].shortName + "_IMG_" + std::to_string(1000 + i);

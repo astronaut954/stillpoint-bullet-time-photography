@@ -1997,6 +1997,10 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      tabela só existe UM tipo de aviso por câmera (proporção); as notas do Match (`notes`) não aparecem nela.
      O agente conferiu o alinhamento do aviso com linhas montadas à mão na tela real (a simulação dele não gera o
      aviso); nenhum cenário automático cobre o Match automatically.
+     **RETORNO DAS 19h57:** `STILLPOINT_FAKE_LOOK` refeito a pedido: em vez do modelo por ajuste, uma mudança de
+     cor forte e IGUAL em todas as câmeras (azulada) sempre que os ajustes forem diferentes dos da primeira foto
+     da câmera nesta execução. Efeito colateral: o Match mede fotos azuladas e propõe mudanças diferentes.
+     PENDÊNCIA DE PRODUTO: mostrar as notas do Match (`notes`) na linha da câmera como um segundo tipo de aviso?
      Teste do dono (2026-11-26): seção 68 aprovada ("os testes deu tudo certo").
      **Pedidos do dono (2026-11-26), feitos (seção 69):** o tocador do Align cameras também no Align photos do
      Export (mesma barra, mesmo comportamento; estado em `exp.play`, funções `expPlay`/`expPlayOff`); a mão de
