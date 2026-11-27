@@ -1936,6 +1936,12 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      Framing crescendo quando sobra espaço embaixo.
      **ANOTADO PARA DEPOIS (dono, 2026-11-27):** sistema melhor de nomes dos arquivos, que considere pastas e
      labels; será feito junto com as várias labels.
+     **REGRA DE TRABALHO NOVA (decisão do dono, 2026-11-27, 16h40):** as respostas estavam demorando por causa da
+     rodada completa dos testes (17 min, às vezes duas por mensagem). Daqui em diante: (1) antes de mandar algo para
+     testar, rodam só os cenários ligados ao que mudou; (2) commit, push e roteiro vão assim que isso passa, e a
+     rodada completa corre depois, com o resultado numa mensagem curta à parte; rodada completa obrigatória no fim
+     de cada item da lista e antes de merge no main; (3) quando houver intervalo, pôr os cenários para rodar em
+     paralelo (cada um na sua porta).
      Teste do dono (2026-11-26): seção 68 aprovada ("os testes deu tudo certo").
      **Pedidos do dono (2026-11-26), feitos (seção 69):** o tocador do Align cameras também no Align photos do
      Export (mesma barra, mesmo comportamento; estado em `exp.play`, funções `expPlay`/`expPlayOff`); a mão de
