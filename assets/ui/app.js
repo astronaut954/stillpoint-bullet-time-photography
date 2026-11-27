@@ -2720,7 +2720,7 @@
     if (playTimer) return stopPlay();
     if (!currentSession || editing.on) return;
     playBtn.innerHTML = icon("pause");
-    playDirection = 1;
+    // (o sentido do vai-e-volta continua o de antes da pausa; pedido do dono, 2026-11-27)
     playTimer = setInterval(playStep, playInterval());
   }
 
@@ -8177,7 +8177,7 @@
             else { i += exp.framingDir || 1; if (i >= nPhotos) { exp.framingDir = -1; i = nPhotos - 2; } else if (i < 0) { exp.framingDir = 1; i = 1; } }
             setPhoto(i);
           };
-          const playF = () => { stopPreview(); exp.framingPlaying = true; exp.framingDir = 1; if (nPhotos > 1) exp.timer = setInterval(tickF, Math.round(220 / PLAY_SPEEDS[editPlay.speed])); paintPlay(); };
+          const playF = () => { stopPreview(); exp.framingPlaying = true; if (nPhotos > 1) exp.timer = setInterval(tickF, Math.round(220 / PLAY_SPEEDS[editPlay.speed])); paintPlay(); };
           const pauseF = () => { stopPreview(); exp.framingPlaying = false; paintPlay(); };
           exp.framingPause = pauseF;
           exp.framingToggle = () => { if (!stage.isConnected) return; if (exp.timer) pauseF(); else playF(); };
@@ -8892,7 +8892,7 @@
     };
     const play = () => { stopPreview(); editPlay.playing = true; if (n > 1) exp.timer = setInterval(tick, Math.round(220 / PLAY_SPEEDS[editPlay.speed])); setIcons(); };
     const pause = () => { stopPreview(); editPlay.playing = false; setIcons(); };
-    const toggle = () => { if (exp.timer) pause(); else { editPlay.dir = 1; play(); } };
+    const toggle = () => { if (exp.timer) pause(); else play(); };  // (o sentido do vai-e-volta continua o de antes da pausa)
     exp.editToggle = toggle;
     const go = (k) => { pause(); show(Math.max(0, Math.min(n - 1, k))); const li = strip.children[exp.photo]; if (li) li.scrollIntoView({ block: "nearest", inline: "nearest" }); };
     exp.keyNav = (d) => go(((exp.photo + d) % n + n) % n);  // (dá a volta)
@@ -11563,7 +11563,14 @@
     matchWin.returnAfterChart = false;
     if (!$("camSettingsOverlay").classList.contains("hidden")) csMatchOpen();
   }
+  // Esc na tela cheia da prévia do Match automatically: só sai da tela cheia (na janela, antes dos outros Esc)
+  window.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape" || !matchWin.full || $("csMatch").classList.contains("hidden") || !$("dialogOverlay").classList.contains("hidden")) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    matchWin.full = false; csMatchRenderReview();
+  }, true);
   function csMatchClose() {
+    matchWin.full = false;
     csMatchStopPlay();
     $("csMatch").classList.add("hidden");
     $("camSettingsOverlay").querySelector(".cs-sheet").classList.remove("matching");
@@ -11809,8 +11816,16 @@
     });
     top.append(camLabel, modes);
     photos.appendChild(top);
-    const stage = el("div", "cs-review-stage " + matchWin.mode);
+    const stage = el("div", "cs-review-stage " + matchWin.mode + (matchWin.playing ? " playing" : ""));
     const showCtrls = fadeControls(stage, ctrls);
+    // Tela cheia da prévia (pedido do dono, 2026-11-27): botão no canto de cima à esquerda; sai pelo botão ou com Esc
+    photos.classList.toggle("full", !!matchWin.full);
+    {
+      const fb = button("", () => { matchWin.full = !matchWin.full; csMatchRenderReview(); }, { icon: matchWin.full ? "shrink" : "expand", title: matchWin.full ? "Leave full screen (Esc)" : "Full screen", kind: "btn-secondary" });
+      fb.classList.add("cs-review-full");
+      ["pointerdown", "click", "dblclick"].forEach((t) => fb.addEventListener(t, (ev) => ev.stopPropagation()));
+      stage.appendChild(fb);
+    }
     if (matchWin.revealCtrls) { matchWin.revealCtrls = false; setTimeout(() => showCtrls(CTRLS_REVEAL_MS), 0); }  // ao chegar no passo 3, já aparecem
     const imgB = el("div", "cs-review-img before"), imgA = el("div", "cs-review-img after");
     imgB.appendChild(el("span", "cs-review-tag", "Before")); imgA.appendChild(el("span", "cs-review-tag on", "After"));
@@ -11886,6 +11901,8 @@
     if (!b) return;
     b.innerHTML = icon(matchWin.playing ? "pause" : "play");
     b.title = matchWin.playing ? "Pause" : "Play the sequence"; b.setAttribute("aria-label", b.title);
+    // (tocando, as etiquetas "Before" e "After" de baixo somem; voltam ao pausar: pedido do dono, 2026-11-27)
+    const st = $("csMatchBody").querySelector(".cs-review-stage"); if (st) st.classList.toggle("playing", !!matchWin.playing);
   }
   function csMatchStopPlay() { clearInterval(matchWin.playing); matchWin.playing = 0; csMatchPlayButton(); }
   function csMatchPlayTick() {
@@ -11901,7 +11918,7 @@
   function csMatchRestartPlay() { if (!matchWin.playing) return; clearInterval(matchWin.playing); matchWin.playing = setInterval(csMatchPlayTick, playInterval()); }
   function csMatchTogglePlay() {
     if (matchWin.playing) { csMatchStopPlay(); return; }
-    matchWin.dir = 1;
+    if (!matchWin.dir) matchWin.dir = 1;  // (o sentido do vai-e-volta continua o de antes da pausa)
     matchWin.playing = setInterval(csMatchPlayTick, playInterval());
     csMatchPlayButton();
   }

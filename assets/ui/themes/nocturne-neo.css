@@ -2713,3 +2713,10 @@ html.kbd-focus #sessionGallery .stage:focus-within .stage-caption { opacity: 1; 
 .framing-stage .framing-top { position: absolute; left: 10px; top: 10px; z-index: 3; display: flex; gap: 8px; align-items: center; }
 .framing-stage .framing-top .framing-align-btn, .framing-stage .framing-top .lent-theater-btn { position: static; }
 .export-settings.theater .framing-stage .framing-play, .export-settings.theater .framing-stage .framing-aligned-tag { display: none; }
+
+/* Match automatically, passo 3 Review (pedidos do dono, 2026-11-27): tocando, as etiquetas Before / After somem e
+   voltam ao pausar; botão de tela cheia no canto de cima à esquerda da prévia (a prévia ocupa a janela inteira) */
+.cs-review-tag { transition: opacity .3s ease; }
+.cs-review-stage.playing .cs-review-tag { opacity: 0; }
+.cs-review-full { position: absolute; left: 10px; top: 10px; z-index: 3; background: rgba(0, 0, 0, .78); }
+.cs-review-photos.full { position: fixed; inset: 0; z-index: 3000; background: var(--noct-surface, #020a03); padding: 18px; box-sizing: border-box; }

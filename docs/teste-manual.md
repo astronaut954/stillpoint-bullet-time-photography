@@ -3024,15 +3024,26 @@ menos pixels: 1200 px de largura contra 1800 das outras).
 
 ## 84. Espaço toca e pausa; sem a palavra "Edited" nas miniaturas (2026-11-27, câmeras simuladas servem)
 
-- [ ] **Align photos**: uma foto editada (com o alinhamento do rig) tem o quadrado âmbar na miniatura, sem a palavra
+- [x] **Align photos**: uma foto editada (com o alinhamento do rig) tem o quadrado âmbar na miniatura, sem a palavra
       **Edited** embaixo dela.
-- [ ] Janela principal, com uma sessão aberta e fora da tela cheia: a barra de espaço toca e pausa a sequência (antes
+- [x] Janela principal, com uma sessão aberta e fora da tela cheia: a barra de espaço toca e pausa a sequência (antes
       só valia em tela cheia ou já tocando).
-- [ ] **Export sessions** › **Framing**: a barra de espaço pausa e volta a tocar a prévia.
-- [ ] **Export sessions** › **2 Edit**: a barra de espaço toca e pausa (já era assim).
-- [ ] **Export sessions** › **3 Outputs** › **Sequence**: a barra de espaço pausa e volta a tocar a prévia.
-- [ ] **Camera settings** › **Match automatically**, na tela que toca as fotos de antes e depois: a barra de espaço
+- [x] **Export sessions** › **Framing**: a barra de espaço pausa e volta a tocar a prévia.
+- [x] **Export sessions** › **2 Edit**: a barra de espaço toca e pausa (já era assim).
+- [x] **Export sessions** › **3 Outputs** › **Sequence**: a barra de espaço pausa e volta a tocar a prévia.
+- [x] **Camera settings** › **Match automatically**, na tela que toca as fotos de antes e depois: a barra de espaço
       toca e pausa.
-- [ ] **Align photos** e passo **3 Save** do Align cameras: a barra de espaço continua sendo segurar e arrastar para
+- [x] **Align photos** e passo **3 Save** do Align cameras: a barra de espaço continua sendo segurar e arrastar para
       mover a vista (não mudou).
+
+## 85. Sentido do vai-e-volta; Match automatically: etiquetas e tela cheia (2026-11-27, câmeras simuladas servem)
+
+- [ ] Com **Reverse loop** ligado, pausar quando a sequência está voltando (indo para as fotos da esquerda) e tocar de
+      novo: continua voltando, não recomeça para a direita. Conferir na janela principal, no **Framing**, no
+      **2 Edit** e no **Match automatically**.
+- [ ] **Camera settings** › **Match automatically** › **3 Review**: ao tocar, as etiquetas **Before · …** e
+      **After · …** de baixo da prévia somem aos poucos; ao pausar, voltam aos poucos.
+- [ ] No canto de cima à esquerda da prévia há um botão de tela cheia: a prévia (com as abas **Split / Side by side
+      / Flip**, o painel de tocar e as miniaturas) ocupa a janela inteira. Sai pelo mesmo botão ou com **Esc**, e o
+      **Esc** só sai da tela cheia: a janela do Match automatically continua aberta.
 

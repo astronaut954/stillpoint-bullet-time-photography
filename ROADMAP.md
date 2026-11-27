@@ -1973,6 +1973,15 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      todas no cenário das marcas desiguais (a primeira por espera esgotada, as outras em cascata); repetido com o
      cenário de que ele depende, passou inteiro (132 de 132): falha intermitente, a acompanhar junto com a do
      Guided aim (item 6 da lista).
+     **RETORNO DAS 19h07:** seção 84 aprovada. Feito, aguardando teste (seção 85): pausar e tocar de novo mantém o
+     sentido do vai-e-volta (janela principal, Framing, 2 Edit, Match automatically; antes recomeçava para a
+     direita); no Match automatically › 3 Review as etiquetas Before / After somem ao tocar e voltam ao pausar, e a
+     prévia ganhou tela cheia (botão no canto de cima à esquerda; Esc só sai da tela cheia). PROTÓTIPOS do lugar do
+     aviso na linha da câmera (hoje só existe o aviso da proporção; o caso com dois avisos é ilustrativo):
+     https://claude.ai/artifact/5PWSPmDRY5UKyezpwHjCuP, alternativas A, B e C, aguardando escolha.
+     ACHADO DO AGENTE: as falhas "passageiras" de cenário logo no começo (cenário 1 com 8 miniaturas) vinham de
+     processos do programa de teste deixados abertos pelas conferências à mão do agente; passam a ser fechados
+     antes de cada cenário. Não confirma nem descarta que as 4 falhas da rodada completa tenham a mesma origem.
      Teste do dono (2026-11-26): seção 68 aprovada ("os testes deu tudo certo").
      **Pedidos do dono (2026-11-26), feitos (seção 69):** o tocador do Align cameras também no Align photos do
      Export (mesma barra, mesmo comportamento; estado em `exp.play`, funções `expPlay`/`expPlayOff`); a mão de
