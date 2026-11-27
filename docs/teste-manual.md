@@ -3046,4 +3046,13 @@ menos pixels: 1200 px de largura contra 1800 das outras).
 - [ ] No canto de cima à esquerda da prévia há um botão de tela cheia: a prévia (com as abas **Split / Side by side
       / Flip**, o painel de tocar e as miniaturas) ocupa a janela inteira. Sai pelo mesmo botão ou com **Esc**, e o
       **Esc** só sai da tela cheia: a janela do Match automatically continua aberta.
+- [ ] **Match automatically** › **3 Review**: tocar, pausar numa câmera qualquer: as etiquetas **Before · …** e
+      **After · …** que voltam são as da câmera em que parou (a que está marcada na tabela e nas miniaturas).
+- [ ] Aba **Flip**: clicar na prévia troca entre antes e depois, e só a etiqueta da foto que está na tela aparece
+      (**Before · …** à esquerda ou **After · …** à direita). Com câmeras simuladas as duas fotos são iguais, então
+      a etiqueta é o que mostra a troca.
+- [ ] Aviso da proporção na tabela (câmera que fotografou numa proporção e informa outra): em vez da etiqueta
+      tracejada, ao lado do valor da proporção aparece a proporção em que a foto saiu, em âmbar, e o triângulo de
+      alerta; a explicação abre na caixa padrão com o mouse em cima (como na coluna **Ratio** da primeira tela do
+      Camera settings).
 

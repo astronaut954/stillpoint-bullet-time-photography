@@ -1596,7 +1596,9 @@ td.cs-color .cs-more { margin-left: 0; margin-right: 8px; vertical-align: middle
 .cs-review-change .to { color: var(--noct-primary); margin-left: 4px; }
 .cs-review-none { color: var(--noct-text-dim); font: 11px var(--noct-font-mono); }
 /* Proporção da foto diferente da informada pela câmera: amarelo (Parte 2 da Proporção) */
-.cs-review-ratio { color: var(--noct-pending); font: 11px var(--noct-font-mono); border: 1px dashed var(--noct-pending); padding: 0 5px; }
+.cs-review-ratio { display: inline-flex; align-items: center; color: var(--noct-pending); font: 11px var(--noct-font-mono); }
+.cs-review-ratio .cs-review-ratio-now { color: var(--noct-text); }
+.cs-review-change .to:has(+ .cs-review-ratio) { border-bottom: 1px dashed var(--noct-pending); }
 .cs-review-mini.ratio-warn { border-color: var(--noct-pending); border-style: dashed; }  /* (a miniatura da linha da tabela não: a etiqueta amarela já avisa) */
 .cs-sel.shot-warn { border-style: dashed; border-color: var(--noct-pending); }
 .cs-val.shot-ratio { margin-left: 4px; color: var(--noct-pending); font: 10px var(--noct-font-mono); }
@@ -2720,3 +2722,6 @@ html.kbd-focus #sessionGallery .stage:focus-within .stage-caption { opacity: 1; 
 .cs-review-stage.playing .cs-review-tag { opacity: 0; }
 .cs-review-full { position: absolute; left: 10px; top: 10px; z-index: 3; background: rgba(0, 0, 0, .78); }
 .cs-review-photos.full { position: fixed; inset: 0; z-index: 3000; background: var(--noct-surface, #020a03); padding: 18px; box-sizing: border-box; }
+/* Flip: só a etiqueta da foto que está na tela (antes ficavam as duas, e com fotos iguais não dava para ver a troca;
+   teste do dono, 2026-11-27) */
+.cs-review-stage.flip.show-after .cs-review-img.before .cs-review-tag { opacity: 0; }

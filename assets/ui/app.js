@@ -11772,9 +11772,17 @@
       else list.appendChild(el("span", "cs-review-none", changes.length && cam.name === (changes[0] || {}).camera ? "reference" : "no change"));
       const ratio = csTest.ratios[cam.name];
       if (ratio && ratio.differs) {
-        const w = el("span", "cs-review-ratio", "Shot " + ratio.shot + " · camera reports " + ratio.reported);
-        w.title = "The test photo came out " + ratio.shot + ", but the camera says its aspect ratio is " + ratio.reported + ". Check the camera menu (some settings only apply to JPEG, not RAW).";
-        list.appendChild(w);
+        // Como na coluna Ratio da primeira tela do Camera settings (escolha do dono, 2026-11-27): a proporção em que a
+        // foto saiu, em âmbar, e o triângulo de alerta com a explicação na caixa padrão; ficam junto do valor da
+        // proporção quando ela está entre as mudanças, senão no fim da lista
+        const w = el("span", "cs-review-ratio");
+        w.appendChild(el("span", "cs-val shot-ratio", ratio.shot));
+        const alert = el("span", "cs-ratio-alert"); alert.innerHTML = ALERT_SVG;
+        const why = ratioWhy(ratio);
+        alert.setAttribute("role", "img"); alert.setAttribute("aria-label", why); alert.dataset.itip = why; alert.tabIndex = 0;
+        w.appendChild(alert);
+        const at = [...list.querySelectorAll(".cs-review-change")].find((it) => /^\d+:\d+$/.test((it.querySelector(".to") || {}).textContent || ""));
+        if (at) at.appendChild(w); else { w.insertBefore(el("span", "cs-review-ratio-now", ratio.reported), w.firstChild); list.appendChild(w); }
       }
       const thumb = el("span", "cs-review-thumb" + (ch ? " changed" : "") + (ratio && ratio.differs ? " ratio-warn" : ""));
       csMatchPhoto(after, cam.name, 320).then((url) => { if (url) thumb.style.backgroundImage = "url(" + url + ")"; });
@@ -11830,7 +11838,7 @@
     const imgB = el("div", "cs-review-img before"), imgA = el("div", "cs-review-img after");
     imgB.appendChild(el("span", "cs-review-tag", "Before")); imgA.appendChild(el("span", "cs-review-tag on", "After"));
     const ch = changes.find((x) => x.camera === matchWin.cam);
-    if (ch) { imgB.querySelector(".cs-review-tag").textContent = "Before · " + ch.items.map((i) => i[1]).join(" · "); imgA.querySelector(".cs-review-tag").textContent = "After · " + ch.items.map((i) => i[2]).join(" · "); }
+    csMatchTags(imgB, imgA, ch);
     csMatchPhoto(before, matchWin.cam, 1600).then((url) => { if (url) imgB.style.backgroundImage = "url(" + url + ")"; });
     csMatchPhoto(after, matchWin.cam, 1600).then((url) => { if (url) imgA.style.backgroundImage = "url(" + url + ")"; });
     stage.prepend(imgB, imgA);
@@ -11951,10 +11959,19 @@
   }
   const CTRLS_REVEAL_MS = 4000;  // ao entrar na tela cheia / no passo 3: os controles já aparecem e ficam 4 s
   // Tocando: só as fotos trocam (sem redesenhar tudo a cada passo)
+  // As etiquetas de baixo da prévia: os valores de antes e de depois da câmera que está na tela
+  function csMatchTags(imgB, imgA, ch) {
+    const b = imgB && imgB.querySelector(".cs-review-tag"), a = imgA && imgA.querySelector(".cs-review-tag");
+    if (b) b.textContent = ch ? "Before · " + ch.items.map((i) => i[1]).join(" · ") : "Before";
+    if (a) a.textContent = ch ? "After · " + ch.items.map((i) => i[2]).join(" · ") : "After";
+  }
   function csMatchSwapPhotos() {
     const { before, after } = csMatchSessions();
     const body = $("csMatchBody");
     const imgB = body.querySelector(".cs-review-img.before"), imgA = body.querySelector(".cs-review-img.after");
+    // (tocando, a câmera muda sem refazer a tela: as etiquetas acompanham, senão ao pausar mostravam os valores da
+    // câmera em que o tocar começou; teste do dono, 2026-11-27)
+    csMatchTags(imgB, imgA, ((matchWin.result || {}).changes || []).find((x) => x.camera === matchWin.cam));
     const label = body.querySelector(".cs-review-cam");
     if (label) label.textContent = matchWin.cam;
     body.querySelectorAll(".cs-review-row").forEach((r) => { const on = r.querySelector(".cs-review-name") && r.querySelector(".cs-review-name").textContent.trim().endsWith(matchWin.cam); r.classList.toggle("current", on); r.tabIndex = on ? 0 : -1; });

@@ -1982,6 +1982,14 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      ACHADO DO AGENTE: as falhas "passageiras" de cenário logo no começo (cenário 1 com 8 miniaturas) vinham de
      processos do programa de teste deixados abertos pelas conferências à mão do agente; passam a ser fechados
      antes de cada cenário. Não confirma nem descarta que as 4 falhas da rodada completa tenham a mesma origem.
+     **RETORNO DAS 19h25, feito (seção 85, itens novos):** ao pausar, as etiquetas Before / After eram as da
+     câmera em que o tocar começou (a tela não é refeita enquanto toca): agora acompanham a câmera (`csMatchTags`).
+     Flip: funcionava, mas as duas etiquetas ficavam à vista e, com fotos iguais (câmeras simuladas), não dava para
+     ver a troca: agora só aparece a etiqueta da foto que está na tela. Aviso da proporção: **escolha do dono, C
+     "como na primeira tela do Camera settings"**: proporção da foto em âmbar + triângulo com a explicação na
+     caixa padrão, junto do valor da proporção (`ratioWhy`, `cs-ratio-alert`); NÃO conferido na tela pelo agente (a
+     simulação dele não gera esse aviso). PROTÓTIPOS das etiquetas Before / After com muitos valores (hoje uma
+     cobre a outra): https://claude.ai/artifact/5X6cYe1FXdABEsw4yj8kSH, alternativas L1 a L4, aguardando escolha.
      Teste do dono (2026-11-26): seção 68 aprovada ("os testes deu tudo certo").
      **Pedidos do dono (2026-11-26), feitos (seção 69):** o tocador do Align cameras também no Align photos do
      Export (mesma barra, mesmo comportamento; estado em `exp.play`, funções `expPlay`/`expPlayOff`); a mão de
