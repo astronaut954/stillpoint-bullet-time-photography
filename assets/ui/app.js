@@ -7146,6 +7146,19 @@
       const i = [0, 0.5, 1].findIndex((v) => Math.abs(v - f.x) < 0.004), j = [0, 0.5, 1].findIndex((v) => Math.abs(v - f.y) < 0.004);
       return i >= 0 && j >= 0 ? "photo " + ANCHOR_NAMES[j * 3 + i].toLowerCase() : "";
     };
+    // Põe o ícone da âncora no lugar (e a etiqueta, a cruz do centro e o item "Canvas center" em dia)
+    const anchorPlace = () => {
+      if (!sizes[item.file]) return;
+      const at = anchorAt(a, anchorFrac()); anchorMark.style.left = (cx + at.x * scaleK) + "px"; anchorMark.style.top = (cy + at.y * scaleK) + "px"; anchorMark.style.display = playing ? "none" : "";
+        const where = anchorWhere(), tagEl = anchorMark.querySelector(".align-anchor-tag"), text = "Anchor" + (where ? " · " + where : "");
+        if (tagEl.textContent !== text) tagEl.textContent = text;
+        anchorMark.classList.toggle("at-point", !!where);
+        // (na caixa da âncora: "Canvas center" fica aceso quando a âncora está lá; pedido do dono, 2026-11-26)
+        // (a cruz do centro do canvas some, só na foto, enquanto a âncora está em cima dela: as duas nem sempre caíam
+        // no mesmo pixel; o botão da cruz na barra continua como está; ideia do dono, 2026-11-26)
+        cross.classList.toggle("under-anchor", where === "canvas center" && !playing);
+        anchorHome.classList.toggle("on", where === "canvas center"); anchorHome.setAttribute("aria-pressed", where === "canvas center" ? "true" : "false");
+    };
     const anchorShow = () => {
       const f = exp.alignAll ? exp.alignAllAnchor || { x: 0.5, y: 0.5 } : sizes[item.file] ? anchorFrac() : { x: 0.5, y: 0.5 };
       [...anchorGrid.children].forEach((d) => d.classList.toggle("on", Math.abs(+d.dataset.x - f.x) < 0.004 && Math.abs(+d.dataset.y - f.y) < 0.004));
@@ -7156,9 +7169,13 @@
       e.preventDefault(); e.stopPropagation();
       anchorMark.setPointerCapture(e.pointerId);
       const sz = sizes[item.file];
-      const move = (ev) => {
+      // (um passo por quadro da tela, e só o ícone é reposto: refazer a tela inteira a cada movimento do mouse
+      // deixava a âncora para trás do cursor; gravação do dono, 2026-11-26)
+      let lastEv = null, raf = 0;
+      const move = (ev) => { lastEv = ev; if (!raf) raf = requestAnimationFrame(() => { raf = 0; if (lastEv) step(lastEv); }); };
+      const step = (ev) => {
         const r = stage.getBoundingClientRect();
-        let mx = (ev.clientX - r.left - cx) / scaleK, my = (ev.clientY - r.top - cy) / scaleK;  // (o mouse no canvas)
+        let mx = (ev.clientX - r.left - stage.clientLeft - cx) / scaleK, my = (ev.clientY - r.top - stage.clientTop - cy) / scaleK;  // (o mouse no canvas)
         // Ctrl apertado: prende nos atalhos (pedido do dono, 2026-11-26): o centro do canvas, que tem prioridade, e os
         // 9 pontos da foto
         // (a mesma tecla do After Effects: ⌘ no Mac, Ctrl no Windows)
@@ -7169,7 +7186,7 @@
             const near = 14 / scaleK;
             [0, 0.5, 1].forEach((v) => { if (Math.abs(qx - v) * fr.w <= near) qx = v; if (Math.abs(qy - v) * fr.h <= near) qy = v; });
           }
-          exp.alignAllAnchor = { x: qx, y: qy }; anchorShow(); layout(); return;
+          exp.alignAllAnchor = { x: qx, y: qy }; anchorShow(); anchorPlace(); return;
         }
         if (navigator.platform.indexOf("Mac") >= 0 ? ev.metaKey : ev.ctrlKey) {
           const near = 14 / scaleK, fr = usefulRect();
@@ -7183,9 +7200,9 @@
         }
         const f = anchorFracAt(mx, my);
         a.ax = f.x; a.ay = f.y;
-        anchorShow(); layout();
+        anchorShow(); anchorPlace();
       };
-      const end = () => { anchorMark.removeEventListener("pointermove", move); anchorMark.removeEventListener("pointerup", end); anchorMark.removeEventListener("pointercancel", end); anchorMark.classList.remove("dragging"); if (!exp.alignAll) save(); };
+      const end = () => { anchorMark.removeEventListener("pointermove", move); anchorMark.removeEventListener("pointerup", end); anchorMark.removeEventListener("pointercancel", end); anchorMark.classList.remove("dragging"); if (raf) { cancelAnimationFrame(raf); raf = 0; if (lastEv) step(lastEv); } layout(); if (!exp.alignAll) save(); };
       anchorMark.classList.add("dragging");
       anchorMark.addEventListener("pointermove", move); anchorMark.addEventListener("pointerup", end); anchorMark.addEventListener("pointercancel", end);
     });
@@ -7313,16 +7330,7 @@
           // alças com o mesmo tamanho na tela, seja qual for o zoom da foto
           const inv = 1 / al.scale; [...box.children].forEach((hd) => { hd.style.setProperty("--inv", inv); }); }
       });
-      { const at = anchorAt(a, anchorFrac()); anchorMark.style.left = (cx + at.x * scaleK) + "px"; anchorMark.style.top = (cy + at.y * scaleK) + "px"; anchorMark.style.display = playing ? "none" : "";
-        const where = anchorWhere(), tagEl = anchorMark.querySelector(".align-anchor-tag"), text = "Anchor" + (where ? " · " + where : "");
-        if (tagEl.textContent !== text) tagEl.textContent = text;
-        anchorMark.classList.toggle("at-point", !!where);
-        // (na caixa da âncora: "Canvas center" fica aceso quando a âncora está lá; pedido do dono, 2026-11-26)
-        // (a cruz do centro do canvas some, só na foto, enquanto a âncora está em cima dela: as duas nem sempre caíam
-        // no mesmo pixel; o botão da cruz na barra continua como está; ideia do dono, 2026-11-26)
-        cross.classList.toggle("under-anchor", where === "canvas center" && !playing);
-        anchorHome.classList.toggle("on", where === "canvas center"); anchorHome.setAttribute("aria-pressed", where === "canvas center" ? "true" : "false");
-        }
+      anchorPlace();
       // Proporção de um tamanho: a mais próxima das quatro; "~" quando não é exata
       // (em pé, 3:2 é 2:3: o mesmo nome dos botões do Aspect ratio)
       const rn = (w, h) => { const n = ratioName(w, h); const exact = Math.abs(Math.max(w, h) / Math.min(w, h) - RATIOS[n]) < 0.01; const shown = h > w ? RATIO_TURNED[n] || n : n; return exact ? shown : "~" + shown; };

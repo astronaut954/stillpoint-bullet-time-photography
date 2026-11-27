@@ -2756,6 +2756,13 @@ Retornos do dono (2026-11-26, 21:11), a conferir:
       a diminuir sozinhas, até o tamanho em que estavam, quando o giro volta (como numa foto só).
 - [ ] Edição global ligada: **Reset photo** fica apagado; desligando, volta a acender.
 
+Escolha e retornos do dono (2026-11-26, 21:22), a conferir:
+
+- [ ] Botões de baixo do painel **This photo** (layout L2): **Fit to canvas** e **Reset photo** lado a lado, com a
+      mesma largura; **Reset all** embaixo, da largura dos dois; o conjunto centrado no eixo dos botões de cima.
+- [ ] Arrastar a âncora (com ou sem a edição global): o ícone fica exatamente embaixo do cursor, sem ficar para
+      trás.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |

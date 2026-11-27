@@ -2628,3 +2628,8 @@ body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform:
 .align-block.all-on { border-color: var(--noct-global); }
 .align-block.all-on h3, .align-block.all-on h3 .align-cur { color: var(--noct-global); }
 .export-strip.all-on > li { outline: 2px solid var(--noct-global); outline-offset: -2px; }
+/* Botões de baixo do This photo (protótipo L2 aprovado, 2026-11-26): "Fit to canvas" e "Reset photo" com a mesma
+   largura, "Reset all" embaixo da largura dos dois; o conjunto centrado no eixo dos botões de cima */
+.align-resets { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; width: 240px; max-width: 100%; margin-left: 20px; }
+.align-resets .btn { margin: 0; padding: 0 4px; height: 30px; white-space: nowrap; }
+.align-resets .btn:nth-child(3) { grid-column: 1 / -1; }

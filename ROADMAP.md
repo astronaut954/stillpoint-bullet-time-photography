@@ -2070,7 +2070,15 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      (pergunta feita ao dono). (d) Layout dos botões Fit to canvas / Reset photo / Reset all: PROTÓTIPOS em
      https://claude.ai/artifact/FsN6nWufeMxLDWHseF6JUs (L1 ícones numa linha, na coluna dos controles; L2 dois
      iguais em cima e "Reset all" embaixo, centrados no eixo da coluna; L3, sugestão do agente, os três empilhados
-     na coluna). AGUARDA A ESCOLHA DO DONO.
+     na coluna).
+     **ESCOLHA DO DONO (2026-11-26, 21:22): L2** — FEITO, AGUARDANDO TESTE (CSS de `.align-resets`).
+     Retornos com gravação: (a) a âncora ficava para trás do cursor ao ser arrastada: a tela inteira era refeita a
+     cada movimento do mouse; agora só o ícone é reposto, um passo por quadro (`anchorPlace`), e a conta considera a
+     borda da área da foto. FEITO; conferido: âncora e cursor no mesmo ponto. (b) Edição global com a âncora num
+     canto do canvas: girar 1,6° (de 1,53 para 3,11) levou o tamanho a 404%. NÃO É ERRO DE CONTA: em volta de um
+     canto do canvas, a foto só continua cobrindo o canvas se crescer muito (a sobra da foto além daquele canto é
+     pequena), e a ampliação automática vai até 4 vezes. DECISÃO DO DONO PENDENTE: o que fazer com a ampliação
+     automática do giro quando ela fica grande.
      FALTA do item 3: ferramenta do canvas (C1).
      3. IDEIA PARA DEPOIS (só anotar): a feature de label passar a aceitar várias labels, não só uma.
      **PASSAGEM PARA UM CHAT NOVO (2026-11-26):** o dono pediu um prompt de continuação porque as respostas
