@@ -2715,16 +2715,40 @@ Retornos do dono (2026-11-26, 19:58), a conferir:
 
 Layout novo (decisão do dono, 2026-11-26, 20:45: A1 com o conteúdo do A3), a conferir:
 
-- [ ] Título do painel **This photo** numa linha só: "This photo", a etiqueta "Edited" com moldura âmbar (só com a
+- [x] Título do painel **This photo** numa linha só: "This photo", a etiqueta "Edited" com moldura âmbar (só com a
       foto mexida), um botão com o ícone de âncora e o número da foto.
-- [ ] Clicar o botão da âncora: ele acende e abre uma caixa embaixo dele, por cima do painel, com **Canvas center**
+- [x] Clicar o botão da âncora: ele acende e abre uma caixa embaixo dele, por cima do painel, com **Canvas center**
       e a linha "Photo" com a grade de 9 quadrados (sem "Photo center": é o quadrado do meio). Fica aceso o que corresponde a onde a âncora
       está (ao abrir pela primeira vez, **Canvas center**).
-- [ ] **Canvas center** leva a âncora ao centro do canvas; cada quadrado da grade leva ao ponto da foto (o do meio,
+- [x] **Canvas center** leva a âncora ao centro do canvas; cada quadrado da grade leva ao ponto da foto (o do meio,
       ao centro da foto). A caixa continua aberta depois da
       escolha.
-- [ ] A caixa fecha ao clicar fora dela, ao clicar o botão da âncora de novo e com **Esc** (o Esc fecha só a caixa;
+- [x] A caixa fecha ao clicar fora dela, ao clicar o botão da âncora de novo e com **Esc** (o Esc fecha só a caixa;
       a tela continua no Align photos).
+
+## 77. Edição global no Align photos (2026-11-26, câmeras simuladas servem)
+
+- [ ] **Export sessions** › aba **Framing** › **Align photos**: na barra de ferramentas à esquerda da foto, embaixo
+      dos dois botões de guias e depois de um separador, há um botão novo (legenda "Edit all photos: every change
+      made to a photo goes to all of them"), apagado.
+- [ ] Clicar o botão: ele fica laranja; o painel da direita passa a se chamar "All photos", com "01–NN" no lugar do
+      número da foto e a moldura laranja; todas as miniaturas ganham contorno laranja.
+- [ ] Com ele ligado, mudar **Size** (botões **−** e **+**, número digitado, alças, ferramenta **Resize photo**):
+      todas as fotos mudam de tamanho juntas, pelo mesmo fator, em volta da âncora (que começa no centro do canvas).
+- [ ] **Rotate**: todas giram o mesmo ângulo em volta da âncora; se for preciso para continuar cobrindo o canvas,
+      todas são ampliadas juntas.
+- [ ] **Move X**, **Move Y** e arrastar a foto: todas andam juntas.
+- [ ] Diminuir (ou mover, ou girar) além do que a foto mais apertada permite: todas param juntas no limite dela
+      (borda laranja do canvas).
+- [ ] **Flip** com ele ligado: o mesmo sentido muda em todas.
+- [ ] A âncora com ele ligado: uma só, presa ao canvas. Arrastá-la (com **Select** ou **Direct select**) move só
+      dentro do canvas; com **⌘** prende no centro e nos 9 pontos do canvas. Na caixa da âncora (botão com o ícone
+      de âncora, no título do painel), a linha da grade se chama "Canvas".
+- [ ] Desligar o botão: o painel volta a "This photo", e a âncora de cada foto reaparece onde estava (a global não
+      mexe nas individuais). Uma mudança volta a valer só para a foto aberta.
+- [ ] **⌘Z** depois de uma mudança global: desfaz em todas de uma vez.
+- [ ] Sair do Align photos e entrar de novo: o botão começa desligado.
+- [ ] Passo **3 Save** do **Align cameras**: o botão existe e funciona igual.
 
 ## Resultado
 

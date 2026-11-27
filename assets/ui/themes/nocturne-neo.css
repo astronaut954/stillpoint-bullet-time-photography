@@ -2621,3 +2621,10 @@ body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform:
 .align-anchor-row .align-anchor-lab { font: 700 10px var(--noct-font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--noct-text-muted); }
 .align-anchor-pop .align-anchor-grid { grid-template-columns: repeat(3, 14px); gap: 4px; }
 .align-anchor-pop .align-anchor-dot { width: 14px; height: 14px; }
+/* Edição global no Align photos (protótipo G2 aprovado, 2026-11-26): botão na barra de ferramentas; ligado, laranja,
+   com o painel "All photos" e as miniaturas contornadas */
+:root { --noct-global: #ff7a1a; }
+.align-tool.align-all-btn.on { background: var(--noct-global); border-color: var(--noct-global); color: #000; }
+.align-block.all-on { border-color: var(--noct-global); }
+.align-block.all-on h3, .align-block.all-on h3 .align-cur { color: var(--noct-global); }
+.export-strip.all-on > li { outline: 2px solid var(--noct-global); outline-offset: -2px; }

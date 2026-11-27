@@ -2050,7 +2050,19 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      "Edited" com moldura de volta (T3 desfeito). A caixa continua aberta depois de escolher (escolha do agente,
      a confirmar); fecha ao clicar fora, no botão ou com Esc.
      Pedido do dono (2026-11-26, 20:52): tirar "Photo center" (redundante com o quadrado do meio). FEITO.
-     FALTA: botão de edição global (G2) e ferramenta do canvas (C1).
+     Teste do dono (2026-11-26, 20:57): aprovado. ÂNCORA ENCERRADA (ficam anotados os limites 1 a 3 acima).
+     **BOTÃO DE EDIÇÃO GLOBAL (G2). DECISÃO DO DONO (2026-11-26, 20:57): quando a mudança não cabe em alguma foto,
+     todas vão até onde a mais apertada deixa.** FEITO, AGUARDANDO TESTE (seção 77): botão `align-all-btn` na barra
+     de ferramentas; `exp.alignAll` (desligado ao entrar no Align photos e no passo 3 do Align cameras);
+     `tryApplyAll`: a mudança pedida na foto aberta (mover, fator de tamanho, ângulo) é aplicada a todas em volta da
+     âncora global (`exp.alignAllAnchor`, fração do canvas, começa no centro; não é gravada e não mexe nas âncoras
+     das fotos); procura a maior parte da mudança que cabe em todas. ESCOLHAS DO AGENTE, A CONFIRMAR: (1) a mesma
+     diferença, não o mesmo valor; (2) ao girar, todas são ampliadas juntas o mínimo para cobrir o canvas, e NÃO
+     voltam a diminuir sozinhas ao desfazer o giro (numa foto só, voltam); (3) Flip ligado muda o mesmo sentido em
+     todas; (4) "Fit to canvas", "Reset photo" e "Apply to all" continuam como são (não passam pelo modo global);
+     (5) painel "All photos · 01–NN" e contorno laranja nas miniaturas, como no protótipo. Testes automáticos:
+     Align cameras 113 de 113 (cinco verificações novas), Flip 64 de 64; rodada completa não refeita.
+     FALTA do item 3: ferramenta do canvas (C1).
      3. IDEIA PARA DEPOIS (só anotar): a feature de label passar a aceitar várias labels, não só uma.
      **PASSAGEM PARA UM CHAT NOVO (2026-11-26):** o dono pediu um prompt de continuação porque as respostas
      estavam demorando demais. Ordem combinada do que falta, do mais próximo ao mais distante: (a) item 1 acima;

@@ -4119,7 +4119,7 @@
       mixed: () => alRatioInfo().mixed,
       ratio: (ratio, orient) => alEditRatio(ed, ratio, orient),
     };
-    exp.photo = 0; exp.alignView = null; alignPrefs.tool = "pointer";
+    exp.photo = 0; exp.alignView = null; alignPrefs.tool = "pointer"; exp.alignAll = false; exp.alignAllAnchor = null;
     rigApply(session, st, true).then(() => {
       if (al.edit !== ed) return;
       items.forEach((it) => { if (st.align.byFile[it.file]) ed.stick[it.file] = Object.assign({}, st.align.byFile[it.file]); });
@@ -6547,6 +6547,13 @@
       b.addEventListener("click", () => { alignPrefs[key] = alignPrefs[key] === false; saveAlignPrefs(); paintTools(); });
       guideBtns[key] = b; tools.appendChild(b);
     });
+    // Edição global (decisão do dono, 2026-11-26; protótipo G2): desligada por padrão; ligada (laranja), toda
+    // mudança feita numa foto vale para todas, como a mesma mudança em volta de uma âncora só, presa ao canvas
+    tools.appendChild(el("span", "align-tools-sep"));
+    const allBtn = el("button", "align-tool align-all-btn"); allBtn.type = "button";
+    allBtn.innerHTML = '<svg viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><rect x="2.5" y="6.5" width="9" height="9"/><path d="M5.5 6.5v-3h10v10h-4"/></svg>';
+    allBtn.addEventListener("click", () => { exp.alignAll = !exp.alignAll; paintAll(); });
+    tools.appendChild(allBtn);
     // A barra fica sempre no lugar, apagada; com o mouse na área dela, acende (forma G4, escolha do dono em
     // 2026-11-26, depois de experimentar a metade para fora; antes havia um puxador com seta)
     stage.append(tools);
@@ -6718,7 +6725,14 @@
     };
     // Tenta aplicar uma mudança; se descobrir a área útil, mantém o que havia (nos movimentos, tenta cada eixo)
     // A âncora em uso, em px da foto a partir do centro dela; null = o centro da foto (nada a corrigir)
+    // Edição global: a âncora é uma só, um ponto do canvas (começa no centro); as âncoras das fotos ficam guardadas
+    const globalP = () => {
+      const fr = usefulRect(); if (!fr) return { x: 0, y: 0 };
+      const q = exp.alignAllAnchor || { x: 0.5, y: 0.5 };
+      return { x: fr.x + fr.w * Math.max(0, Math.min(1, q.x)), y: fr.y + fr.h * Math.max(0, Math.min(1, q.y)) };
+    };
     const anchorFrac = () => {
+      if (exp.alignAll && sizes[item.file]) { const P = globalP(); return anchorFracAt(P.x, P.y); }
       if (alignAnchored(a)) return { x: a.ax, y: a.ay };
       const sz = sizes[item.file]; if (!sz) return { x: 0.5, y: 0.5 };
       const first = rigStep && rigStep.anchorOf ? rigStep.anchorOf(item.file) : null;
@@ -6751,7 +6765,43 @@
       const r = lockRect, big = pin(Object.assign({}, cand, { scale: 20 }));
       return photoCovers(sz.w, sz.h, big, { x: r.x - 0.5, y: r.y - 0.5, w: r.w + 1, h: r.h + 1 });
     };
+    // Edição global: a mudança pedida nesta foto (mover, tamanho, giro) vira a mesma mudança em todas, em volta da
+    // âncora global. Se não cabe em alguma (descobriria o canvas), todas vão até onde a mais apertada deixa
+    // (decisão do dono, 2026-11-26). Ao girar, como numa foto só, todas são ampliadas juntas o mínimo necessário.
+    const tryApplyAll = (change) => {
+      const cand = Object.assign({}, a); change(cand);
+      const fr = lockRect || usefulRect(); if (!fr) return false;
+      const d = { mx: cand.dx - a.dx, my: cand.dy - a.dy, k: cand.scale / a.scale, th: cand.rot - a.rot };
+      if (!d.mx && !d.my && d.k === 1 && !d.th) return false;
+      const P = globalP();
+      const members = items.map((it, k) => { const sz = sizes[it.file]; if (!sz) return null; const al = k === cur ? Object.assign({}, a) : Object.assign({}, effectiveAlign(sz, alignOf(st, it.file), fr, st)); return { file: it.file, sz, al, me: k === cur }; }).filter(Boolean);
+      const moved = (al, t, g) => {
+        const kt = (1 + (d.k - 1) * t) * g, th = d.th * t, rad = th * Math.PI / 180, cs = Math.cos(rad), sn = Math.sin(rad), x = al.dx - P.x, y = al.dy - P.y;
+        const scale = Math.max(0.05, Math.min(20, al.scale * kt));
+        return Object.assign({}, al, { dx: P.x + kt * (x * cs - y * sn) + d.mx * t, dy: P.y + kt * (x * sn + y * cs) + d.my * t, scale, rot: Math.round((al.rot + th) * 1000) / 1000, base: Math.abs(kt - 1) > 1e-12 ? scale : al.base });
+      };
+      const coversAll = (t, g) => members.every((m) => photoCovers(m.sz.w, m.sz.h, moved(m.al, t, g), fr));
+      // (o quanto ampliar todas para a mudança caber: 1 = nada; só ao girar; null = não cabe)
+      const fit = (t) => {
+        if (coversAll(t, 1)) return 1;
+        if (!d.th || !coversAll(t, 4)) return null;
+        let lo = 1, hi = 4;
+        for (let i = 0; i < 22; i++) { const mid = (lo + hi) / 2; if (coversAll(t, mid)) hi = mid; else lo = mid; }
+        return hi;
+      };
+      let t = 1, g = fit(1);
+      if (g == null) {
+        let lo = 0, hi = 1, best = null;
+        for (let i = 0; i < 14; i++) { const mid = (lo + hi) / 2, gm = fit(mid); if (gm != null) { lo = mid; best = [mid, gm]; } else hi = mid; }
+        stage.classList.add("locked"); clearTimeout(lockFlash); lockFlash = setTimeout(() => stage.classList.remove("locked"), 300);
+        if (!best || best[0] < 1e-4) return false;
+        t = best[0]; g = best[1];
+      }
+      members.forEach((m) => { const n = moved(m.al, t, g); if (m.me) Object.assign(a, n); else st.align.byFile[m.file] = n; });
+      return true;
+    };
     const tryApply = (change) => {
+      if (exp.alignAll) return tryApplyAll(change);
       const cand = Object.assign({}, a); change(cand);
       pinAt = anchorFrac();
       if (cand.scale !== a.scale) cand.base = cand.scale;  // tamanho mexido pela pessoa: vira o novo base
@@ -6922,6 +6972,7 @@
           clearTimeout(saveTimer); clearTimeout(saveSoonTimer);
           a.flip = alignFlip(a) ^ bit;
           setFlip(item.file, a.flip);
+          if (exp.alignAll) items.forEach((it) => { if (it.file !== item.file) setFlip(it.file, alignFlip(st.align.byFile[it.file]) ^ bit); });
           alignSave(session, st); expTrack(); rerender();
         });
         pair.appendChild(b);
@@ -7022,7 +7073,10 @@
     for (let i = 0; i < 9; i++) {
       const d = el("button", "align-anchor-dot"); d.type = "button"; d.dataset.x = (i % 3) / 2; d.dataset.y = Math.floor(i / 3) / 2;
       d.title = "Anchor for Size and Rotate: " + ANCHOR_NAMES[i].toLowerCase() + " of the photo"; d.setAttribute("aria-label", d.title);
-      d.addEventListener("click", () => { a.ax = +d.dataset.x; a.ay = +d.dataset.y; anchorShow(); layout(); save(); });
+      d.addEventListener("click", () => {
+        if (exp.alignAll) { exp.alignAllAnchor = { x: +d.dataset.x, y: +d.dataset.y }; anchorShow(); layout(); return; }  // (global: os 9 pontos do canvas)
+        a.ax = +d.dataset.x; a.ay = +d.dataset.y; anchorShow(); layout(); save();
+      });
       anchorGrid.appendChild(d);
     }
     // Âncora atrás de um ícone (decisão do dono, 2026-11-26: protótipo A1, a caixa embaixo do ícone, com o conteúdo
@@ -7038,6 +7092,7 @@
     const anchorHome = anchorItem(CENTER_SVG, "Canvas center");
     anchorHome.addEventListener("click", () => {
       const fr = sizes[item.file] ? usefulRect() : null; if (!fr) return;
+      if (exp.alignAll) { exp.alignAllAnchor = null; anchorShow(); layout(); return; }
       const f = anchorFracAt(fr.x + fr.w / 2, fr.y + fr.h / 2);
       a.ax = f.x; a.ay = f.y; anchorShow(); layout(); save();
     });
@@ -7071,13 +7126,17 @@
     // Onde a âncora está, em palavras: "canvas center" (tem prioridade), um dos 9 pontos da foto, ou nada
     const anchorWhere = () => {
       if (!sizes[item.file]) return "";
+      if (exp.alignAll) {
+        const q = exp.alignAllAnchor || { x: 0.5, y: 0.5 }, gi = [0, 0.5, 1].findIndex((v) => Math.abs(v - q.x) < 0.002), gj = [0, 0.5, 1].findIndex((v) => Math.abs(v - q.y) < 0.002);
+        return gi === 1 && gj === 1 ? "canvas center" : gi >= 0 && gj >= 0 ? "canvas " + ANCHOR_NAMES[gj * 3 + gi].toLowerCase() : "";
+      }
       const f = anchorFrac(), at = anchorAt(a, f), fr = usefulRect();
       if (fr && Math.hypot(at.x - (fr.x + fr.w / 2), at.y - (fr.y + fr.h / 2)) < 0.75) return "canvas center";
       const i = [0, 0.5, 1].findIndex((v) => Math.abs(v - f.x) < 0.004), j = [0, 0.5, 1].findIndex((v) => Math.abs(v - f.y) < 0.004);
       return i >= 0 && j >= 0 ? "photo " + ANCHOR_NAMES[j * 3 + i].toLowerCase() : "";
     };
     const anchorShow = () => {
-      const f = sizes[item.file] ? anchorFrac() : { x: 0.5, y: 0.5 };
+      const f = exp.alignAll ? exp.alignAllAnchor || { x: 0.5, y: 0.5 } : sizes[item.file] ? anchorFrac() : { x: 0.5, y: 0.5 };
       [...anchorGrid.children].forEach((d) => d.classList.toggle("on", Math.abs(+d.dataset.x - f.x) < 0.004 && Math.abs(+d.dataset.y - f.y) < 0.004));
     };
     anchorMark.addEventListener("pointerdown", (e) => {
@@ -7092,6 +7151,15 @@
         // Ctrl apertado: prende nos atalhos (pedido do dono, 2026-11-26): o centro do canvas, que tem prioridade, e os
         // 9 pontos da foto
         // (a mesma tecla do After Effects: ⌘ no Mac, Ctrl no Windows)
+        if (exp.alignAll) {  // (global: um ponto do canvas; a tecla prende no centro e nos 9 pontos do canvas)
+          const fr = usefulRect(); if (!fr) return;
+          let qx = Math.max(0, Math.min(1, (mx - fr.x) / fr.w)), qy = Math.max(0, Math.min(1, (my - fr.y) / fr.h));
+          if (navigator.platform.indexOf("Mac") >= 0 ? ev.metaKey : ev.ctrlKey) {
+            const near = 14 / scaleK;
+            [0, 0.5, 1].forEach((v) => { if (Math.abs(qx - v) * fr.w <= near) qx = v; if (Math.abs(qy - v) * fr.h <= near) qy = v; });
+          }
+          exp.alignAllAnchor = { x: qx, y: qy }; anchorShow(); layout(); return;
+        }
         if (navigator.platform.indexOf("Mac") >= 0 ? ev.metaKey : ev.ctrlKey) {
           const near = 14 / scaleK, fr = usefulRect();
           const cc = fr ? { x: fr.x + fr.w / 2, y: fr.y + fr.h / 2 } : null;
@@ -7106,10 +7174,23 @@
         a.ax = f.x; a.ay = f.y;
         anchorShow(); layout();
       };
-      const end = () => { anchorMark.removeEventListener("pointermove", move); anchorMark.removeEventListener("pointerup", end); anchorMark.removeEventListener("pointercancel", end); anchorMark.classList.remove("dragging"); save(); };
+      const end = () => { anchorMark.removeEventListener("pointermove", move); anchorMark.removeEventListener("pointerup", end); anchorMark.removeEventListener("pointercancel", end); anchorMark.classList.remove("dragging"); if (!exp.alignAll) save(); };
       anchorMark.classList.add("dragging");
       anchorMark.addEventListener("pointermove", move); anchorMark.addEventListener("pointerup", end); anchorMark.addEventListener("pointercancel", end);
     });
+    const curTagEl = self.querySelector("h3 .align-cur"), curTagText = curTagEl.textContent;
+    const paintAll = (first) => {
+      const on = !!exp.alignAll;
+      allBtn.classList.toggle("on", on); allBtn.setAttribute("aria-pressed", on ? "true" : "false");
+      allBtn.title = on ? "Editing all photos: every change made here goes to all of them. Click to go back to one photo at a time." : "Edit all photos: every change made to a photo goes to all of them";
+      allBtn.setAttribute("aria-label", allBtn.title);
+      self.classList.toggle("all-on", on); strip.classList.toggle("all-on", on); stage.classList.toggle("all-on", on);
+      self.querySelector("h3").firstChild.textContent = on ? "All photos" : "This photo";
+      curTagEl.textContent = on && items.length > 1 ? pad(items[0].order || 1) + "–" + pad(items[items.length - 1].order || items.length) : curTagText;
+      const rowLab = anchorPop.querySelector(".align-anchor-lab"); if (rowLab) rowLab.textContent = on ? "Canvas" : "Photo";
+      [...anchorGrid.children].forEach((d, i) => { d.title = "Anchor for Size and Rotate: " + ANCHOR_NAMES[i].toLowerCase() + " of the " + (on ? "canvas" : "photo"); d.setAttribute("aria-label", d.title); });
+      if (!first) { anchorShow(); layout(); }
+    };
     const rigNotes = () => {
       const txt = rigMode && st.align.auto ? st.align.auto[item.file] : "";
       const v = txt ? txt.split(",").map(Number) : null;
@@ -7130,6 +7211,7 @@
     };
     const sync = () => { fields.dx.value = a.dx.toFixed(0); fields.dy.value = a.dy.toFixed(0); fields.scale.value = (a.scale * 100).toFixed(1); fields.rot.value = a.rot.toFixed(2); markPosDots(); rigNotes(); anchorShow(); };
     rigNotes();
+    paintAll(true);
     let saveTimer = 0;
     // Fim de uma mudança: vai para a sessão, para session.json (logo em seguida) e vira um passo do desfazer
     const save = () => {
@@ -7628,7 +7710,7 @@
           if (locked) stage.classList.add("locked");
           stage.classList.add("export-preview", "framing-stage");
           // "Align photos" (pedaço 2): abre a tela de alinhamento no lugar do ⤢ (decisão do dono, 2026-11-03, protótipo X1)
-          const alignBtn = button("Align photos", () => { if (needsRatio(session, st)) askRatioForAlign(session, st, rerender); else { exp.aligning = true; rerender(); } },
+          const alignBtn = button("Align photos", () => { if (needsRatio(session, st)) askRatioForAlign(session, st, rerender); else { exp.aligning = true; exp.alignAll = false; exp.alignAllAnchor = null; rerender(); } },
             { icon: "alignPhotos", title: "Align photos: move, resize and rotate each photo over the others", kind: "btn-secondary" });
           alignBtn.classList.add("framing-align-btn");
           if (locked) { alignBtn.disabled = true; alignBtn.classList.add("locked-ctl"); alignBtn.title = FRAMING_LOCKED_WHY; }

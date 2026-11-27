@@ -2338,6 +2338,39 @@ def scenario_align_cameras(t, name, photos):
         t.button("Back to automatic")
         t.wait(lambda: saved() == auto_text, 8)
         time.sleep(0.6)
+        # Edição global (G2): o botão da barra de ferramentas; ligado, a mudança numa foto vale para todas, como a
+        # mesma mudança em volta da âncora do canvas; sem lugar em alguma, todas vão até onde a mais apertada deixa
+        nums = lambda: [[float(v) for v in x.split(":")[1].split(",")[:4]] for x in saved().split(";") if ":" in x]
+        g0 = nums()
+        t.page.click("#exportSettings .align-all-btn")
+        time.sleep(0.5)
+        gs = t.js("() => { const ex = document.getElementById('exportSettings'), blk = ex.querySelector('.align-block.all-on'); return { on: ex.querySelector('.align-all-btn').classList.contains('on'), title: blk ? blk.querySelector('h3').firstChild.textContent : '', cur: blk ? blk.querySelector('.align-cur').textContent : '', strip: ex.querySelector('.export-strip').classList.contains('all-on') }; }")
+        check(t, "edit all: the button in the tool bar turns it on (the panel says 'All photos · 01–04' and the thumbnails are outlined)", gs["on"] and gs["title"] == "All photos" and gs["cur"] == "01–04" and gs["strip"], gs)
+        b.click(modifiers=["Shift"])
+        time.sleep(0.8)
+        g1 = nums()
+        ratios = [g1[k][2] / g0[k][2] for k in range(4)] if len(g1) == 4 and len(g0) == 4 else []
+        check(t, "edit all: Size + on one photo resizes the four by the same factor", len(ratios) == 4 and ratios[0] > 1.001 and max(ratios) - min(ratios) < 1e-4, (ratios, g0, g1))
+        t.page.locator('#exportSettings .align-ctl', has_text="Rotate").locator("button").nth(1).click(modifiers=["Shift"])
+        time.sleep(0.8)
+        g2 = nums()
+        drot = [round(g2[k][3] - g1[k][3], 3) for k in range(4)] if len(g2) == 4 else []
+        check(t, "edit all: Rotate + turns the four by the same angle", drot == [0.5] * 4, (drot, g2))
+        for _ in range(40):
+            t.page.locator('#exportSettings .align-ctl', has_text="Size").locator("button").nth(0).click(modifiers=["Shift"]); time.sleep(0.03)
+        time.sleep(0.8)
+        g3 = nums()
+        r3 = [g3[k][2] / g2[k][2] for k in range(4)] if len(g3) == 4 else []
+        check(t, "edit all: shrinking past what the tightest photo allows stops all of them at the same factor", len(r3) == 4 and r3[0] < 0.999 and max(r3) - min(r3) < 1e-4, r3)
+        t.page.click("#exportSettings .align-all-btn")
+        time.sleep(0.5)
+        b.click(modifiers=["Shift"])
+        time.sleep(0.8)
+        g4 = nums()
+        check(t, "edit all: turned off, a change goes to the open photo only", len(g4) == 4 and sum(1 for k in range(4) if abs(g4[k][2] - g3[k][2]) > 1e-6) == 1 and t.js("() => !document.querySelector('#exportSettings .align-block.all-on')"), (g3, g4))
+        t.button("Back to automatic")
+        t.wait(lambda: saved() == auto_text, 8)
+        time.sleep(0.6)
         # Espelhada conta como mexida: ganha as marcas, acende o "Back to automatic", e ele tira o espelhamento
         time.sleep(0.6)
         t.page.click("#exportSettings .flip-btn[data-flip=h]")
