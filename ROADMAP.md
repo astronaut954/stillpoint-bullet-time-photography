@@ -2097,7 +2097,8 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      (b) fica guardado no texto do alinhamento da sessão, como uma entrada de nome "@canvas" (programas antigos a
      ignoram); (c) na tela: `canvasSet`/`canvasRect` e `commonFrame` (todas as contas da tela passam a usar o
      canvas escolhido; CORREÇÃO de 2026-11-27: o alinhamento automático do rig, `rigCompute`, também usa esse
-     quadro, então é refeito para a proporção, a orientação e o canvas escolhido: pendência do dono); ferramenta
+     quadro, então é refeito para a proporção, a orientação e o canvas escolhido. DECISÃO do dono, 2026-11-27:
+     fica assim (com Rig, as fotos têm sempre o menor tamanho que cobre o canvas)); ferramenta
      "canvas" no grupo do Resize photo (tecla C), alças, bloco "Canvas"; (d) no programa (exporter.cpp e os quatro
      lugares do main_gui.cpp que montam o enquadramento): `TakeCanvas` lê a entrada e `ComputeCommonFrame` corta;
      as fotos que a pessoa não mexeu ficam como ficariam sem canvas escolhido. Conferido: a cópia de trabalho de uma
