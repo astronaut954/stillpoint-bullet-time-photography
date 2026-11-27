@@ -2114,6 +2114,10 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      e ficam só as quatro alças dos cantos — FEITO, AGUARDANDO TESTE. EM ABERTO (o dono pediu a opinião do agente):
      tirar a possibilidade de mover o canvas (arrastar dentro dele, Move X e Move Y). Opinião dada: tirar; o canvas
      fica sempre centrado e escolher outra parte da cena passa a ser mover as fotos com a edição global.
+     Teste do dono (2026-11-27, 01:43): alças dos cantos e tamanho em volta do centro aprovados. O dono perguntou
+     qual a vantagem prática de mudar o tamanho do canvas no aplicativo como um todo; resposta do agente: a única
+     vantagem que outra parte do app não dá é abrir folga para mover e girar fotos sem ampliar nenhuma. A DECIDIR
+     PELO DONO: manter a ferramenta (só tamanho, centrada) ou tirar.
      FALTA do item 3: ferramenta do canvas (C1).
      3. IDEIA PARA DEPOIS (só anotar): a feature de label passar a aceitar várias labels, não só uma.
      **PASSAGEM PARA UM CHAT NOVO (2026-11-26):** o dono pediu um prompt de continuação porque as respostas

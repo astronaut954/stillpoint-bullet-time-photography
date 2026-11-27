@@ -2802,7 +2802,7 @@ Decisões e retornos do dono (2026-11-27, 00:24), a conferir:
 
 Pedido do dono (2026-11-27, 01:33), a conferir:
 
-- [ ] Com **Resize canvas** escolhida, o canvas tem só quatro alças, nos cantos. Arrastar uma delas muda o tamanho
+- [x] Com **Resize canvas** escolhida, o canvas tem só quatro alças, nos cantos. Arrastar uma delas muda o tamanho
       em volta do centro do canvas: o centro não sai do lugar e os quatro lados andam juntos.
 
 ## Resultado
