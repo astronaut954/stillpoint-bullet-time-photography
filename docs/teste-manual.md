@@ -2837,7 +2837,7 @@ Retornos do dono (2026-11-27, 02:24), a conferir:
 
 Pedido do dono (2026-11-27, 02:35), a conferir:
 
-- [ ] No bloco **Canvas**, ao lado do nome, há um "?"; com o mouse em cima, a caixa padrão mostra "The canvas cannot
+- [x] No bloco **Canvas**, ao lado do nome, há um "?"; com o mouse em cima, a caixa padrão mostra "The canvas cannot
       go past the photos. A smaller canvas means fewer pixels in the output; no photo is enlarged." O texto solto
       embaixo dos botões saiu.
 
