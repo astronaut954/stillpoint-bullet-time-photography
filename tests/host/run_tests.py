@@ -40,12 +40,12 @@ def line(text):
 
 def rig_ratio(t, label):
     """Passo 3 do Align cameras: escolhe a proporção das sessões novas (bloco New sessions)."""
-    t.js("(l) => { const b = [...document.querySelectorAll('#alignNewSessions .segmented:not(.orient-seg) button')].find((x) => x.textContent.trim() === l); if (b) b.click(); }", label)
+    t.js("(l) => { const b = [...document.querySelectorAll('#alignNewSessions .export-row:not(#alignNewRes) .segmented:not(.orient-seg) button')].find((x) => x.textContent.trim() === l); if (b) b.click(); }", label)
     time.sleep(1.2)
 
 
 def rig_state(t):
-    return t.js("""() => ({ seg: [...document.querySelectorAll('#alignNewSessions .segmented:not(.orient-seg) button')].map((b) => b.textContent + (b.classList.contains('on') ? '*' : '') + (b.disabled ? '-' : '')).join(' '),
+    return t.js("""() => ({ seg: [...document.querySelectorAll('#alignNewSessions .export-row:not(#alignNewRes) .segmented:not(.orient-seg) button')].map((b) => b.textContent + (b.classList.contains('on') ? '*' : '') + (b.disabled ? '-' : '')).join(' '),
       orient: [...document.querySelectorAll('#alignNewSessions .orient-seg button')].map((b) => (b.classList.contains('on') ? '*' : '.') + (b.disabled ? '-' : '')).join(' '),
       mixed: (document.getElementById('csAlignMixed') || { dataset: {} }).dataset.itip || '', keeps: (document.getElementById('alignKeeps') || {}).textContent || '',
       save: [...document.querySelectorAll('#csAlign button')].filter((b) => /^Save/.test(b.textContent.trim())).map((b) => b.textContent.trim() + (b.disabled ? '-' : '')).join(),
@@ -2128,9 +2128,10 @@ def scenario_align_cameras(t, name, photos):
         t.page.set_viewport_size(vp); time.sleep(0.8)
         w2 = topst()
         t.js("() => { const c = document.getElementById('csAlignUneven'); if (c) c.remove(); window.dispatchEvent(new Event('resize')); }"); time.sleep(0.3)
+        w3 = topst()  # (sem a etiqueta de teste: com a da ampliação a mais, quatro avisos não cabem nem na janela larga)
         check(t, "align, step 3, narrow window: the top row stays on one line, the warnings join in '2 warnings' (the list opens on hover) and Keeps gets short; wide again, the full texts are back",
-              not w0["compact"] and w1["compact"] and w1["h"] == w0["h"] and w1["vis"][0] == "2 warnings" and re.match(r"^Keeps \d+%$", w1["vis"][1] or "") and "Mixed ratios" in wp and "Uneven marks" in wp and "Camera 02 shot 16:9" in wp
-              and not w2["compact"] and "Marks not at equal distances" in w2["vis"], (w0, w1, wp, w2))
+              not w0["compact"] and w1["compact"] and w1["h"] == w0["h"] and re.match(r"^[23] warnings$", w1["vis"][0] or "") and re.match(r"^Keeps \d+%$", w1["vis"][1] or "") and "Mixed ratios" in wp and "Uneven marks" in wp and "Camera 02 shot 16:9" in wp
+              and ((not w2["compact"] and "Marks not at equal distances" in w2["vis"]) or re.match(r"^\d warnings$", w2["vis"][0] or "")) and not w3["compact"] and re.match(r"^Keeps \d+% of each photo$", w3["vis"][-2] if "enlarged" not in w3["vis"][-2] else w3["vis"][-3]), (w0, w1, wp, w2, w3))
         # Bloco New sessions (protótipo A1; decisões B e S4 do dono, 2026-11-26): a câmera 02 fotografa em 16:9 e as
         # outras em 3:2, então "As shot" não vale e é preciso escolher uma proporção antes de salvar
         r0 = rig_state(t)
@@ -3502,10 +3503,15 @@ def scenario_resolution(t, name, photos):
         t.restart_app()
         t.dismiss()
         errors_before = len(t.errors)
+        # (um cenário anterior deixa o Timing em Custom, com dois passos: de volta ao primeiro modo, todas de uma vez)
+        t.js("() => { if (document.getElementById('timingAdv').classList.contains('hidden')) document.getElementById('timingToggle').click(); }")
+        time.sleep(0.5)
+        t.js("() => { const b = document.querySelector('#timingModes button'); if (b && !b.classList.contains('on')) b.click(); }")
+        time.sleep(0.5)
         s = t.shoot()
         t.dismiss()
         if not s:
-            check(t, "resolution: a new session for this scenario", False)
+            check(t, "resolution: a new session for this scenario", False, [x["name"] + ":" + str(len(x["photos"])) for x in t.sessions()][-3:])
             return
         o = t.originals(s)
         files = sorted(f for f in os.listdir(o) if f.lower().endswith(".jpg"))

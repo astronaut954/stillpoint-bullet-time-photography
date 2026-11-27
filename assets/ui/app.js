@@ -5878,7 +5878,7 @@
       const rr = row("Resolution"); rr.id = "exportResRow";
       const resSeg = segmented(RES_OPTIONS, st.crop.res === "low" ? "low" : "high", (v) => { if (locked || v === (st.crop.res === "low" ? "low" : "high")) return; st.crop.res = v; cropShare(session, st); rerender(); });
       if (locked) resSeg.classList.add("locked-ctl");
-      { const g = el("span", "ratio-group"); g.appendChild(resSeg); rr.appendChild(g); }
+      rr.appendChild(resSeg);
       rr.appendChild(enlargedTag(session, st));
       box.appendChild(rr);
     }
