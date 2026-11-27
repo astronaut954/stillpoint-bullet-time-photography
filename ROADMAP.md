@@ -2062,6 +2062,15 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      todas; (4) "Fit to canvas", "Reset photo" e "Apply to all" continuam como são (não passam pelo modo global);
      (5) painel "All photos · 01–NN" e contorno laranja nas miniaturas, como no protótipo. Testes automáticos:
      Align cameras 113 de 113 (cinco verificações novas), Flip 64 de 64; rodada completa não refeita.
+     Retornos do dono (2026-11-26, 21:11, com gravação): (a) no modo global as fotos não voltavam a diminuir ao
+     desfazer o giro (era a escolha 2 do agente): FEITO, AGUARDANDO TESTE — antes de cada giro a ampliação comum
+     (tamanho acima do "base" de cada foto, quando é o mesmo fator em todas) é desfeita e calculada de novo;
+     conferido: girar 6° e voltar devolve as quatro fotos exatamente ao rig. (b) "Reset photo" desligado com o
+     global ligado: FEITO. (c) "Fit to canvas" no global deve valer para todas: A DEFINIR o que isso significa
+     (pergunta feita ao dono). (d) Layout dos botões Fit to canvas / Reset photo / Reset all: PROTÓTIPOS em
+     https://claude.ai/artifact/FsN6nWufeMxLDWHseF6JUs (L1 ícones numa linha, na coluna dos controles; L2 dois
+     iguais em cima e "Reset all" embaixo, centrados no eixo da coluna; L3, sugestão do agente, os três empilhados
+     na coluna). AGUARDA A ESCOLHA DO DONO.
      FALTA do item 3: ferramenta do canvas (C1).
      3. IDEIA PARA DEPOIS (só anotar): a feature de label passar a aceitar várias labels, não só uma.
      **PASSAGEM PARA UM CHAT NOVO (2026-11-26):** o dono pediu um prompt de continuação porque as respostas

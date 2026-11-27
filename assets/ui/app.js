@@ -6775,10 +6775,20 @@
       if (!d.mx && !d.my && d.k === 1 && !d.th) return false;
       const P = globalP();
       const members = items.map((it, k) => { const sz = sizes[it.file]; if (!sz) return null; const al = k === cur ? Object.assign({}, a) : Object.assign({}, effectiveAlign(sz, alignOf(st, it.file), fr, st)); return { file: it.file, sz, al, me: k === cur }; }).filter(Boolean);
+      // Ao girar, a ampliação que o giro anterior pediu é desfeita antes (como numa foto só: o tamanho volta ao que a
+      // pessoa deixou quando o giro deixa): ela é o quanto o tamanho de todas está acima do "base" de cada uma, e só
+      // vale se for o mesmo fator em todas (pedido do dono, 2026-11-26)
+      if (d.th) {
+        const grown = members.map((m) => m.al.scale / (m.al.base > 0 ? m.al.base : m.al.scale));
+        const g0 = grown[0];
+        if (g0 > 1 + 1e-6 && grown.every((v) => Math.abs(v - g0) < 1e-4)) members.forEach((m) => { m.al.dx = P.x + (m.al.dx - P.x) / g0; m.al.dy = P.y + (m.al.dy - P.y) / g0; m.al.scale /= g0; });
+      }
+      // t: a parte da mudança (0 a 1); g: a ampliação extra, só para cobrir o canvas ao girar (não mexe no "base")
       const moved = (al, t, g) => {
-        const kt = (1 + (d.k - 1) * t) * g, th = d.th * t, rad = th * Math.PI / 180, cs = Math.cos(rad), sn = Math.sin(rad), x = al.dx - P.x, y = al.dy - P.y;
+        const ku = 1 + (d.k - 1) * t, kt = ku * g, th = d.th * t, rad = th * Math.PI / 180, cs = Math.cos(rad), sn = Math.sin(rad), x = al.dx - P.x, y = al.dy - P.y;
         const scale = Math.max(0.05, Math.min(20, al.scale * kt));
-        return Object.assign({}, al, { dx: P.x + kt * (x * cs - y * sn) + d.mx * t, dy: P.y + kt * (x * sn + y * cs) + d.my * t, scale, rot: Math.round((al.rot + th) * 1000) / 1000, base: Math.abs(kt - 1) > 1e-12 ? scale : al.base });
+        return Object.assign({}, al, { dx: P.x + kt * (x * cs - y * sn) + d.mx * t, dy: P.y + kt * (x * sn + y * cs) + d.my * t, scale, rot: Math.round((al.rot + th) * 1000) / 1000,
+          base: Math.abs(ku - 1) > 1e-12 ? Math.max(0.05, Math.min(20, al.scale * ku)) : (al.base > 0 ? al.base : al.scale) });
       };
       const coversAll = (t, g) => members.every((m) => photoCovers(m.sz.w, m.sz.h, moved(m.al, t, g), fr));
       // (o quanto ampliar todas para a mudança caber: 1 = nada; só ao girar; null = não cabe)
@@ -7018,8 +7028,9 @@
       if (rigOn()) { rigApply(session, st, all).then((changed) => { if (!changed) alignSave(session, st); expTrack(); rerender(); }); return; }
       alignSave(session, st); expTrack(); rerender();
     };
-    resets.appendChild(button("Reset photo", () => resetTo(false),
-      { kind: "btn-secondary", title: rigStep ? "This photo goes back to the values from the stick" : rigOn() ? "This photo goes back to the alignment of the rig" : "" }));
+    const resetOne = button("Reset photo", () => resetTo(false),
+      { kind: "btn-secondary", title: rigStep ? "This photo goes back to the values from the stick" : rigOn() ? "This photo goes back to the alignment of the rig" : "" });
+    resets.appendChild(resetOne);
     resets.appendChild(button("Reset all", () => resetTo(true),
       { kind: "btn-secondary", title: rigStep ? "Every photo goes back to the values from the stick" : rigOn() ? "Every photo goes back to the alignment of the rig" : "" }));
     self.appendChild(resets);
@@ -7189,6 +7200,7 @@
       curTagEl.textContent = on && items.length > 1 ? pad(items[0].order || 1) + "–" + pad(items[items.length - 1].order || items.length) : curTagText;
       const rowLab = anchorPop.querySelector(".align-anchor-lab"); if (rowLab) rowLab.textContent = on ? "Canvas" : "Photo";
       [...anchorGrid.children].forEach((d, i) => { d.title = "Anchor for Size and Rotate: " + ANCHOR_NAMES[i].toLowerCase() + " of the " + (on ? "canvas" : "photo"); d.setAttribute("aria-label", d.title); });
+      resetOne.disabled = on;  // (com a edição global ligada, "Reset photo" fica desligado; pedido do dono, 2026-11-26)
       if (!first) { anchorShow(); layout(); }
     };
     const rigNotes = () => {

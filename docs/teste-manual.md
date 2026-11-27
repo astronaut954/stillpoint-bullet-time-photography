@@ -2750,6 +2750,12 @@ Layout novo (decisão do dono, 2026-11-26, 20:45: A1 com o conteúdo do A3), a c
 - [ ] Sair do Align photos e entrar de novo: o botão começa desligado.
 - [ ] Passo **3 Save** do **Align cameras**: o botão existe e funciona igual.
 
+Retornos do dono (2026-11-26, 21:11), a conferir:
+
+- [ ] Edição global ligada, girar e voltar ao giro de antes: as fotos são ampliadas enquanto o giro pede e voltam
+      a diminuir sozinhas, até o tamanho em que estavam, quando o giro volta (como numa foto só).
+- [ ] Edição global ligada: **Reset photo** fica apagado; desligando, volta a acender.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |
