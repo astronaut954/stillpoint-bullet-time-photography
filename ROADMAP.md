@@ -2079,6 +2079,18 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      canto do canvas, a foto só continua cobrindo o canvas se crescer muito (a sobra da foto além daquele canto é
      pequena), e a ampliação automática vai até 4 vezes. DECISÃO DO DONO PENDENTE: o que fazer com a ampliação
      automática do giro quando ela fica grande.
+     **DECISÕES DO DONO (2026-11-27, 00:24):** (1) **sem ampliação automática com a âncora fora do centro do
+     canvas**: o giro vai até onde a foto ainda cobre o canvas, no tamanho em que está, e para; vale para uma foto
+     (`autoGrow` no `tryApply`) e para a edição global (`centered` no `tryApplyAll`). CONSEQUÊNCIA: no passo 3 do
+     Align cameras a âncora de partida é a marca do meio da haste; se ela não estiver no centro do canvas, o giro
+     ali também fica sem ampliação automática. (2) **"Fit to canvas" na edição global vale para todas as fotos,
+     cada uma encaixada por si**; o segundo clique tira o giro de todas. (3) o guia "Handles and what is outside the
+     canvas" desligado esconde a âncora. (4) a âncora "ainda não 100% no cursor": o passo passou a ser feito a
+     cada movimento do mouse (sem esperar o quadro), o ícone voltou a ser centrado exatamente no ponto (o meio
+     pixel da cruz não é mais preciso: a cruz some debaixo da âncora) e o cursor some durante o arraste, porque o
+     cursor do sistema anda sempre à frente do desenho da página. TUDO FEITO, AGUARDANDO TESTE. Testes
+     automáticos: Align cameras 113 de 113, Flip 64 de 64, desfazer do Align photos 20 de 20; sem verificações
+     novas para estes pontos; rodada completa não refeita.
      FALTA do item 3: ferramenta do canvas (C1).
      3. IDEIA PARA DEPOIS (só anotar): a feature de label passar a aceitar várias labels, não só uma.
      **PASSAGEM PARA UM CHAT NOVO (2026-11-26):** o dono pediu um prompt de continuação porque as respostas

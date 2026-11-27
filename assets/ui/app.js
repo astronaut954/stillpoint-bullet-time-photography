@@ -6778,7 +6778,8 @@
       // Ao girar, a ampliação que o giro anterior pediu é desfeita antes (como numa foto só: o tamanho volta ao que a
       // pessoa deixou quando o giro deixa): ela é o quanto o tamanho de todas está acima do "base" de cada uma, e só
       // vale se for o mesmo fator em todas (pedido do dono, 2026-11-26)
-      if (d.th) {
+      const centered = !exp.alignAllAnchor || (Math.abs(exp.alignAllAnchor.x - 0.5) < 0.002 && Math.abs(exp.alignAllAnchor.y - 0.5) < 0.002);  // (âncora no centro do canvas)
+      if (d.th && centered) {
         const grown = members.map((m) => m.al.scale / (m.al.base > 0 ? m.al.base : m.al.scale));
         const g0 = grown[0];
         if (g0 > 1 + 1e-6 && grown.every((v) => Math.abs(v - g0) < 1e-4)) members.forEach((m) => { m.al.dx = P.x + (m.al.dx - P.x) / g0; m.al.dy = P.y + (m.al.dy - P.y) / g0; m.al.scale /= g0; });
@@ -6794,7 +6795,7 @@
       // (o quanto ampliar todas para a mudança caber: 1 = nada; só ao girar; null = não cabe)
       const fit = (t) => {
         if (coversAll(t, 1)) return 1;
-        if (!d.th || !coversAll(t, 4)) return null;
+        if (!d.th || !centered || !coversAll(t, 4)) return null;  // (sem ampliação automática com a âncora fora do centro)
         let lo = 1, hi = 4;
         for (let i = 0; i < 22; i++) { const mid = (lo + hi) / 2; if (coversAll(t, mid)) hi = mid; else lo = mid; }
         return hi;
@@ -6814,11 +6815,15 @@
       if (exp.alignAll) return tryApplyAll(change);
       const cand = Object.assign({}, a); change(cand);
       pinAt = anchorFrac();
+      // A ampliação automática do giro só vale com a âncora no centro do canvas; fora dele, o giro vai até onde a foto
+      // ainda cobre o canvas, no tamanho em que está, e para (decisão do dono, 2026-11-27)
+      const autoGrow = anchorWhere() === "canvas center";
       if (cand.scale !== a.scale) cand.base = cand.scale;  // tamanho mexido pela pessoa: vira o novo base
       // Girar (ou mover com giro): o tamanho em uso é o base, ou o mínimo acima dele que ainda cobre a área (como o
       // Lightroom); ao desfazer o giro ele volta ao base
       if (cand.rot !== a.rot || (cand.scale === a.scale && (cand.dx !== a.dx || cand.dy !== a.dy))) {
-        const need = cand.rot !== a.rot && !edgesClear(cand) ? null : minCoverScale(cand, cand.base || cand.scale);
+        const need = cand.rot !== a.rot && !autoGrow ? (covers(pin(cand)) ? cand.scale : null)
+          : cand.rot !== a.rot && !edgesClear(cand) ? null : minCoverScale(cand, cand.base || cand.scale);
         if (need != null && cand.rot !== a.rot) { cand.scale = need; Object.assign(a, pin(cand)); return true; }
       }
       if (covers(pin(cand))) { Object.assign(a, pin(cand)); return true; }
@@ -6858,7 +6863,7 @@
       // Girar além do limite: vai até o maior giro que ainda dá (como o tamanho e o mover), em vez de ficar parado
       // onde estava e só andar quando o mouse volta a um ângulo possível (gravação do dono, 2026-11-26)
       if (cand.rot !== a.rot && cand.dx === a.dx && cand.dy === a.dy) {
-        const at = (t) => { const c = Object.assign({}, cand, { rot: Math.round((a.rot + (cand.rot - a.rot) * t) * 1000) / 1000 }); if (!edgesClear(c)) return null; const need = minCoverScale(c, c.base || c.scale); if (need == null) return null; c.scale = need; return c; };
+        const at = (t) => { const c = Object.assign({}, cand, { rot: Math.round((a.rot + (cand.rot - a.rot) * t) * 1000) / 1000 }); if (!autoGrow) return covers(pin(c)) ? c : null; if (!edgesClear(c)) return null; const need = minCoverScale(c, c.base || c.scale); if (need == null) return null; c.scale = need; return c; };
         let lo = 0, hi = 1, best = null;
         for (let i = 0; i < 14; i++) { const mid = (lo + hi) / 2, c = at(mid); if (c) { lo = mid; best = c; } else hi = mid; }
         stage.classList.add("locked"); clearTimeout(lockFlash); lockFlash = setTimeout(() => stage.classList.remove("locked"), 300);
@@ -7003,6 +7008,21 @@
     resets.appendChild(button("Fit to canvas", () => {
       if (!sizes[item.file]) return;
       lockStart();
+      // Edição global ligada: vale para todas as fotos, cada uma encaixada por si (decisão do dono, 2026-11-27). O
+      // segundo clique (quando o primeiro não mudaria nada em nenhuma) tira o giro de todas, como numa foto só.
+      if (exp.alignAll) {
+        const all = items.map((it, k) => { const zs = sizes[it.file]; if (!zs) return null; const al = k === cur ? Object.assign({}, a) : Object.assign({}, effectiveAlign(zs, alignOf(st, it.file), lockRect, st), { flip: alignFlip(st.align.byFile[it.file]) }); return { file: it.file, sz: zs, al, me: k === cur }; }).filter(Boolean);
+        all.forEach((m) => { m.need = minCoverOf(m.sz.w, m.sz.h, Object.assign({}, m.al, { dx: 0, dy: 0 }), 0.05, lockRect); });
+        if (all.some((m) => !m.need)) return;
+        const still = all.every((m) => Math.abs(m.al.dx) < 0.5 && Math.abs(m.al.dy) < 0.5 && Math.abs(m.al.scale - m.need) < 5e-4);
+        if (still && all.some((m) => Math.abs(m.al.rot) > 1e-9)) {
+          all.forEach((m) => { m.flat = minCoverOf(m.sz.w, m.sz.h, Object.assign({}, m.al, { dx: 0, dy: 0, rot: 0 }), 0.05, lockRect); });
+          if (all.every((m) => m.flat)) all.forEach((m) => { m.al.rot = 0; m.need = m.flat; });
+        }
+        all.forEach((m) => { const n = Object.assign({}, m.al, { dx: 0, dy: 0, scale: m.need, base: m.need }); if (m.me) Object.assign(a, n); else st.align.byFile[m.file] = n; });
+        sync(); layout(); save();
+        return;
+      }
       const sz = sizes[item.file];
       let need = minCoverOf(sz.w, sz.h, Object.assign({}, a, { dx: 0, dy: 0 }), 0.05, lockRect);
       if (!need) return;
@@ -7149,7 +7169,7 @@
     // Põe o ícone da âncora no lugar (e a etiqueta, a cruz do centro e o item "Canvas center" em dia)
     const anchorPlace = () => {
       if (!sizes[item.file]) return;
-      const at = anchorAt(a, anchorFrac()); anchorMark.style.left = (cx + at.x * scaleK) + "px"; anchorMark.style.top = (cy + at.y * scaleK) + "px"; anchorMark.style.display = playing ? "none" : "";
+      const at = anchorAt(a, anchorFrac()); anchorMark.style.left = (cx + at.x * scaleK) + "px"; anchorMark.style.top = (cy + at.y * scaleK) + "px"; anchorMark.style.display = playing ? "none" : "";  // (o guia "Handles and what is outside the canvas" desligado também a esconde: no CSS, classe "clean")
         const where = anchorWhere(), tagEl = anchorMark.querySelector(".align-anchor-tag"), text = "Anchor" + (where ? " · " + where : "");
         if (tagEl.textContent !== text) tagEl.textContent = text;
         anchorMark.classList.toggle("at-point", !!where);
@@ -7169,10 +7189,10 @@
       e.preventDefault(); e.stopPropagation();
       anchorMark.setPointerCapture(e.pointerId);
       const sz = sizes[item.file];
-      // (um passo por quadro da tela, e só o ícone é reposto: refazer a tela inteira a cada movimento do mouse
-      // deixava a âncora para trás do cursor; gravação do dono, 2026-11-26)
-      let lastEv = null, raf = 0;
-      const move = (ev) => { lastEv = ev; if (!raf) raf = requestAnimationFrame(() => { raf = 0; if (lastEv) step(lastEv); }); };
+      // (só o ícone é reposto a cada movimento: refazer a tela inteira deixava a âncora para trás do cursor. E o
+      // cursor some enquanto ela é arrastada, porque o ícone É o ponto: o cursor do sistema anda sempre um quadro à
+      // frente de qualquer desenho da página, e os dois nunca ficavam exatamente juntos; retornos do dono, 2026-11-26/27)
+      const move = (ev) => step(ev);
       const step = (ev) => {
         const r = stage.getBoundingClientRect();
         let mx = (ev.clientX - r.left - stage.clientLeft - cx) / scaleK, my = (ev.clientY - r.top - stage.clientTop - cy) / scaleK;  // (o mouse no canvas)
@@ -7202,7 +7222,7 @@
         a.ax = f.x; a.ay = f.y;
         anchorShow(); anchorPlace();
       };
-      const end = () => { anchorMark.removeEventListener("pointermove", move); anchorMark.removeEventListener("pointerup", end); anchorMark.removeEventListener("pointercancel", end); anchorMark.classList.remove("dragging"); if (raf) { cancelAnimationFrame(raf); raf = 0; if (lastEv) step(lastEv); } layout(); if (!exp.alignAll) save(); };
+      const end = () => { anchorMark.removeEventListener("pointermove", move); anchorMark.removeEventListener("pointerup", end); anchorMark.removeEventListener("pointercancel", end); anchorMark.classList.remove("dragging"); layout(); if (!exp.alignAll) save(); };
       anchorMark.classList.add("dragging");
       anchorMark.addEventListener("pointermove", move); anchorMark.addEventListener("pointerup", end); anchorMark.addEventListener("pointercancel", end);
     });

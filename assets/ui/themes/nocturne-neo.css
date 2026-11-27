@@ -2591,8 +2591,7 @@ body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform:
 .align-anchor-dot.on { background: var(--noct-primary); border-color: var(--noct-primary); }
 .align-anchor-mark { position: absolute; width: 0; height: 0; z-index: 7; cursor: move; }
 .align-anchor-mark::before { content: ""; position: absolute; left: -12px; top: -12px; width: 24px; height: 24px; }  /* (área de pegar) */
-/* (meio pixel para a direita e para baixo: a cruz do centro do canvas é desenhada assim, e a âncora tem de cair em cima dela) */
-.align-anchor-mark svg { position: absolute; left: -13.5px; top: -13.5px; overflow: visible; fill: none; }
+.align-anchor-mark svg { position: absolute; left: -14px; top: -14px; overflow: visible; fill: none; }
 .align-anchor-mark .ank-out { stroke: #000; stroke-width: 3.4; }
 .align-anchor-mark .ank-line { stroke: var(--noct-primary); stroke-width: 1.6; }
 .align-anchor-mark .ank-body { fill: rgba(0, 0, 0, .45); }
@@ -2633,3 +2632,7 @@ body:has(.sessions-panel.fullscreen) .log:not(.peek):not(.expanded) { transform:
 .align-resets { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; width: 240px; max-width: 100%; margin-left: 20px; }
 .align-resets .btn { margin: 0; padding: 0 4px; height: 30px; white-space: nowrap; }
 .align-resets .btn:nth-child(3) { grid-column: 1 / -1; }
+.align-anchor-mark.dragging, .align-anchor-mark.dragging * { cursor: none; }
+/* (o guia "Handles and what is outside the canvas" desligado esconde a âncora também; pedido do dono, 2026-11-27) */
+.align-stage.clean .align-anchor-mark { display: none !important; }
+.align-stage.clean .align-cross.under-anchor { visibility: visible; }

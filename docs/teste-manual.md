@@ -2763,6 +2763,19 @@ Escolha e retornos do dono (2026-11-26, 21:22), a conferir:
 - [ ] Arrastar a âncora (com ou sem a edição global): o ícone fica exatamente embaixo do cursor, sem ficar para
       trás.
 
+Decisões e retornos do dono (2026-11-27, 00:24), a conferir:
+
+- [ ] Giro com a âncora no centro do canvas (uma foto ou edição global): a foto é ampliada sozinha o necessário,
+      como antes.
+- [ ] Giro com a âncora FORA do centro do canvas (uma foto ou edição global): não há ampliação automática; o giro
+      vai até onde a foto ainda cobre o canvas, no tamanho em que está, e para (borda laranja). Com a âncora num
+      canto do canvas, na edição global, o giro praticamente não anda.
+- [ ] Edição global ligada, **Fit to canvas**: todas as fotos são centradas e ficam, cada uma, no menor tamanho que
+      cobre o canvas (o giro de cada uma fica). Clicar de novo tira o giro de todas.
+- [ ] Desligar o guia **Handles and what is outside the canvas** (segundo botão de guias, na barra de ferramentas):
+      a âncora some da foto junto com as alças; ligar de novo: volta.
+- [ ] Arrastar a âncora: o cursor some enquanto ela é arrastada (o ícone é o ponto) e volta ao soltar.
+
 ## Resultado
 
 | Data | Sistema | Branch/versão | Câmeras | Passou? | Observações |
