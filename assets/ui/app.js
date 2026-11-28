@@ -12667,23 +12667,46 @@
     rigAsks[e.id] = e;
     // Sempre o modelo com o nome (como no protótipo): a câmera que falta não está na lista para desempatar
     const label = (name, model) => model ? model + " (" + name + ")" : name;
-    const box = el("div", "rig-diff");
+    // Layout R2 + M2 (protótipos aprovados pelo dono, 2026-11-28): uma grade com as câmeras nas linhas e um ajuste por
+    // coluna (só os que diferem em alguma câmera); em cada célula o valor da câmera riscado e o do projeto embaixo, um
+    // ponto onde não há diferença. As câmeras do projeto que não estão conectadas: um bloco com um quadro por câmera.
+    const box = el("div", "rig-diff grid");
+    const KEY_ORDER = ["iso", "tv", "av", "expcomp", "metering", "quality", "aspect", "wb", "kelvin", "shiftab", "shiftgm", "style", "contrast", "saturation", "colortone"];
+    const SHORT = { aspect: "Ratio", wb: "White bal.", shiftab: "WB A/B", shiftgm: "WB G/M", style: "Style" };
+    const diffs = e.diffs || [];
+    const keys = [...new Set(diffs.map((d) => d.key))].sort((a, b) => (KEY_ORDER.indexOf(a) + 99) % 99 - (KEY_ORDER.indexOf(b) + 99) % 99);
+    const settingOf = (key) => (diffs.find((d) => d.key === key) || {}).setting || key;
+    const bare = (key, text) => { const pre = settingOf(key) + " "; return String(text).indexOf(pre) === 0 ? String(text).slice(pre.length) : String(text); };  // "ISO 400" → "400"
     const table = document.createElement("table");
-    table.innerHTML = '<thead><tr><th colspan="2">Camera</th><th>Setting</th><th>On the camera now</th><th>In this project</th></tr></thead>';
+    const hr = document.createElement("tr");
+    [["", "num"], ["Camera", ""]].concat(keys.map((k) => [SHORT[k] || settingOf(k), ""])).forEach(([text, cls]) => { const th = document.createElement("th"); if (cls) th.className = cls; th.textContent = text; hr.appendChild(th); });
+    const thead = document.createElement("thead"); thead.appendChild(hr); table.appendChild(thead);
     const body = document.createElement("tbody");
-    let last = "";
-    (e.diffs || []).forEach((d) => {
+    [...new Set(diffs.map((d) => d.camera))].forEach((camera) => {
+      const mine = diffs.filter((d) => d.camera === camera);
       const tr = document.createElement("tr");
-      const first = d.camera !== last; last = d.camera;
-      if (first) tr.className = "first";
-      [[first ? pad(d.order) : "", "num"], [first ? label(d.camera, d.model) : "", ""], [d.setting, ""], [d.now, ""], [d.want, "proj"]].forEach(([text, cls]) => {
-        const td = document.createElement("td"); if (cls) td.className = cls; td.textContent = text; tr.appendChild(td);
+      const num = document.createElement("td"); num.className = "num"; num.textContent = pad(mine[0].order);
+      const name = document.createElement("td"); name.className = "cam"; name.textContent = camera;
+      tr.append(num, name);
+      keys.forEach((k) => {
+        const td = document.createElement("td"), d = mine.find((x) => x.key === k);
+        if (d) { td.className = "diff"; td.dataset.setting = SHORT[k] || d.setting; td.append(el("s", "", bare(k, d.now)), el("span", "proj", bare(k, d.want))); }
+        else { td.className = "same"; td.textContent = "·"; }
+        tr.appendChild(td);
       });
       body.appendChild(tr);
     });
     table.appendChild(body); box.appendChild(table);
+    const legend = el("p", "rig-legend"); legend.append(el("s", "", "on the camera now"), el("span", "proj", "in this project")); box.appendChild(legend);
+    const missing = e.missing || [];
+    if (missing.length) {
+      const block = el("div", "rig-missing");
+      block.appendChild(el("div", "rig-missing-title", "Not connected · " + plural(missing.length, "camera", "cameras") + " of this project"));
+      const list = el("div", "rig-missing-list");
+      missing.forEach((c) => { const chip = el("span", "rig-miss-cam"); chip.append(el("span", "n", pad(c.order)), el("span", "", c.name)); list.appendChild(chip); });
+      block.appendChild(list); box.appendChild(block);
+    }
     const line = (bold, text) => { const p = el("p", "rig-line"); p.appendChild(el("b", "", bold)); p.appendChild(document.createTextNode(" " + text)); box.appendChild(p); };
-    (e.missing || []).forEach((c) => line("Not connected:", label(c.name, c.model) + ", camera " + pad(c.order) + " of this project."));
     (e.fresh || []).forEach((c) => line("New:", label(c.name, c.model) + " is not in this project yet. It stays as it is."));
     log("The cameras are not as project " + e.project + " left them: " + plural(e.differing, "camera differs", "cameras differ") + ".", "warn");
     dialog("The cameras are not as this project left them",

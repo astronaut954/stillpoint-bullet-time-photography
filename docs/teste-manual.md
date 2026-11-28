@@ -3083,4 +3083,9 @@ menos pixels: 1200 px de largura contra 1800 das outras).
       **1 note** do cabeçalho, ao lado de **Changes**.
 - [ ] Match automatically com **Gray card** marcado: depois de conferir o cartão uma vez, **Refine N cameras** não
       pede a conferência de novo.
+- [ ] Aviso **The cameras are not as this project left them** (abrir um projeto que guardou outros ajustes): uma grade
+      com uma linha por câmera e uma coluna por ajuste diferente; em cada célula o valor da câmera riscado e o do
+      projeto embaixo; ponto onde não há diferença; a legenda embaixo; e o bloco **Not connected · N cameras of this
+      project** com um quadro tracejado por câmera. Os botões **Keep the cameras as they are** e **Apply the project
+      settings** funcionam como antes.
 

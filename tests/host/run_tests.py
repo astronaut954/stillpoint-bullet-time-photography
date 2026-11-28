@@ -1311,8 +1311,10 @@ def scenario_rig_state(t, name, photos):
     on_screen = lambda: t.js("() => [...document.querySelectorAll('#cameraList li.camera, #cameras li.camera, li.camera')].map(li => (li.textContent.match(/(SL3|T7)_\\d+/) || [''])[0])")
     panel = lambda: t.js("() => ['countdown', 'sessions', 'downloadWait'].map(id => document.getElementById(id).value)")
     toast = lambda: t.js("() => { const x = document.getElementById('toast'); return x.classList.contains('hidden') ? '' : x.querySelector('.toast-text').textContent; }")
-    rows = lambda: t.js("() => [...document.querySelectorAll('#dialogOverlay .rig-diff tbody tr')].map(tr => [...tr.children].map(td => td.textContent).join('|'))")
-    lines = lambda: t.js("() => [...document.querySelectorAll('#dialogOverlay .rig-diff .rig-line')].map(p => p.textContent)")
+    # A grade (layout R2): uma célula por ajuste diferente → "número|câmera|coluna|valor na câmera|valor no projeto"
+    rows = lambda: t.js("() => [...document.querySelectorAll('#dialogOverlay .rig-diff tbody td.diff')].map(td => [td.parentElement.children[0].textContent, td.parentElement.children[1].textContent, td.dataset.setting, td.querySelector('s').textContent, td.querySelector('.proj').textContent].join('|'))")
+    # As câmeras não conectadas (bloco M2): o título e um quadro por câmera
+    lines = lambda: t.js("() => [...document.querySelectorAll('#dialogOverlay .rig-diff .rig-missing-title, #dialogOverlay .rig-diff .rig-miss-cam')].map(p => p.textContent)")
     text = lambda: t.js("() => document.getElementById('dialogText').textContent")
     TITLE = "The cameras are not as this project left them"
     def set_input(id_, v):
@@ -1349,7 +1351,7 @@ def scenario_rig_state(t, name, photos):
     asked = t.wait(lambda: t.dialog_title() == TITLE, 20)
     check(t, "opening again with a camera changed: Stillpoint asks before touching the cameras", bool(asked), t.dialog_title())
     check(t, "... the text counts the cameras", text() == PROJECT + " was saved with other settings on 1 of the 4 cameras connected now.", text())
-    check(t, "... one row: the camera, the setting, how it is now and how the project has it", rows() == ["02|Canon EOS Rebel SL3 (SL3_1)|ISO|ISO 400|ISO 100"], rows())
+    check(t, "... one row: the camera, the setting, how it is now and how the project has it", rows() == ["02|SL3_1|ISO|400|100"], rows())
     check(t, "... the two buttons of the approved layout", t.js("() => [...document.querySelectorAll('#dialogActions button')].map(b => b.textContent.trim())") == ["Keep the cameras as they are", "Apply the project settings"])
     check(t, "the Bullet time panel comes back as the project left it", panel()[0] == "3", panel())
     check(t, "the cameras come back in the order of the project", on_screen()[:4] == ["T7_1", "SL3_1", "SL3_2", "T7_2"], on_screen())
@@ -1364,7 +1366,7 @@ def scenario_rig_state(t, name, photos):
     # ⌘Z do Keep: o aviso volta, com a mesma linha (pedido do dono, 2026-11-11)
     t.undo()
     back = t.wait(lambda: t.dialog_title() == TITLE, 5)
-    check(t, "undo after Keep the cameras as they are: the dialog comes back, with the same row", bool(back) and rows() == ["02|Canon EOS Rebel SL3 (SL3_1)|ISO|ISO 400|ISO 100"], rows())
+    check(t, "undo after Keep the cameras as they are: the dialog comes back, with the same row", bool(back) and rows() == ["02|SL3_1|ISO|400|100"], rows())
     t.dialog_click("Keep the cameras as they are")
     time.sleep(2)
     check(t, "... and Keep again leaves the project as it was", open(rig_file).read() == before and t.dialog_title() != TITLE)
@@ -1390,7 +1392,7 @@ def scenario_rig_state(t, name, photos):
     restart(cameras=3)
     asked = t.wait(lambda: t.dialog_title() == TITLE, 20)
     check(t, "a camera not connected and another one changed: the dialog says both", bool(asked) and "on 1 of the 3 cameras" in text() and
-          lines() == ["Not connected: Canon EOS Rebel T7 (T7_2), camera 04 of this project."], (text(), lines()))
+          lines() == ["Not connected · 1 camera of this project", "04T7_2"], (text(), lines()))
     t.dialog_click("Keep the cameras as they are")
     time.sleep(4)
     check(t, "... and the warning toast does not repeat what the dialog said", not toast().startswith("The rig is not"), toast())
@@ -1428,7 +1430,7 @@ def scenario_rig_state(t, name, photos):
     t.js("(f) => window.projectOpen(f)", t.project)
     asked = t.wait(lambda: t.dialog_title() == TITLE, 20)
     check(t, "opening the project again: the panel is the project's, and Stillpoint asks about the camera changed meanwhile", bool(asked) and panel()[0] == "3" and
-          len(rows()) == 1 and rows()[0].endswith("(SL3_2)|Aperture|f/11|f/8"), (panel(), rows()))
+          len(rows()) == 1 and rows()[0].endswith("|SL3_2|Aperture|f/11|f/8"), (panel(), rows()))
     check(t, "... with the cameras in the order of the project again", on_screen()[:4] == ["T7_1", "SL3_1", "SL3_2", "T7_2"], on_screen())
     t.dialog_click("Apply the project settings")
     said = t.wait(lambda: toast().startswith("Project settings applied") and toast(), 15)
@@ -1447,7 +1449,7 @@ def scenario_rig_state(t, name, photos):
     check(t, "undo after Apply the project settings: the toast says so and the project does not change", said == "Apply the project settings (1 camera)" and open(rig_file).read() == applied and t.dialog_title() != TITLE, said)
     reopen()
     asked = t.wait(lambda: t.dialog_title() == TITLE, 20)
-    check(t, "... the camera is back to what it had (opening the project again asks the same)", bool(asked) and len(rows()) == 1 and rows()[0].endswith("(SL3_2)|Aperture|f/11|f/8"), rows())
+    check(t, "... the camera is back to what it had (opening the project again asks the same)", bool(asked) and len(rows()) == 1 and rows()[0].endswith("|SL3_2|Aperture|f/11|f/8"), rows())
     t.dialog_click("Apply the project settings")
     t.wait(lambda: toast().startswith("Project settings applied"), 15)
     time.sleep(1.5)

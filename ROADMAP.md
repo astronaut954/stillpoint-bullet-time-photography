@@ -2052,6 +2052,12 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      **01h59: o dono gostou do R2 (grade)** e pediu melhorar a parte das câmeras não conectadas: PROTÓTIPOS em
      https://claude.ai/artifact/8NUFop487cv9n7yS2pFSgQ (M1 linhas na grade, M2 quadros, M3 etiqueta + caixa padrão,
      M4 lista em duas colunas), aguardando escolha. R2 ainda NÃO implementado.
+     **02h03: o dono escolheu M2.** FEITO (R2 + M2, como nos protótipos): `rigAsk` monta a grade (colunas só dos
+     ajustes que diferem, na ordem do Camera settings; valor da câmera riscado e o do projeto embaixo; "·" onde é
+     igual; "ISO 400" vira "400" na coluna ISO), a legenda e o bloco "Not connected · N cameras of this project"
+     com um quadro tracejado por câmera. Na grade a câmera aparece só pelo nome (como no protótipo); o modelo saiu
+     da tela. Nomes curtos das colunas (Ratio, White bal., WB A/B, WB G/M, Style) e os textos novos são do
+     protótipo, do dono. Testes do cenário rig_state ajustados ao layout novo.
      Teste do dono (2026-11-26): seção 68 aprovada ("os testes deu tudo certo").
      **Pedidos do dono (2026-11-26), feitos (seção 69):** o tocador do Align cameras também no Align photos do
      Export (mesma barra, mesmo comportamento; estado em `exp.play`, funções `expPlay`/`expPlayOff`); a mão de
