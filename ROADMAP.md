@@ -2044,6 +2044,11 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      (`reuseCard` em main_gui): feito, NÃO testado (o fluxo do cartão não foi exercitado).
      **01h44: o dono confirmou a etiqueta no cabeçalho**, pedindo que a caixa diga quais são as câmeras: feito (os
      nomes de todas as câmeras do Match antes do texto, no mesmo formato da observação que cita várias).
+     **01h54: o dono achou o aviso "The cameras are not as this project left them" muito ruim quando há muitas
+     diferenças** (8 câmeras × vários ajustes + 7 "Not connected"; o layout de hoje é o protótipo aprovado em
+     2026-11-11). PROTÓTIPOS: https://claude.ai/artifact/D3FBXv2HEWsKFd8JGFWCbt (R1 linha por câmera que abre, R2
+     grade câmeras × ajustes, R3 linha por câmera como a tabela do Match; nos três as "Not connected" viram uma
+     linha só), aguardando escolha.
      Teste do dono (2026-11-26): seção 68 aprovada ("os testes deu tudo certo").
      **Pedidos do dono (2026-11-26), feitos (seção 69):** o tocador do Align cameras também no Align photos do
      Export (mesma barra, mesmo comportamento; estado em `exp.play`, funções `expPlay`/`expPlayOff`); a mão de
