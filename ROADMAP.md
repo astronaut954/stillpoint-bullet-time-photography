@@ -2081,6 +2081,7 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      **02h59: o dono escolheu C.** Feito: na lista estreita, faixa na base da miniatura (`.ma-strip`: verde "Ready";
      âmbar "N fix(es)", "No marks", "No photo", "Not connected", "No new photo"; textos curtos do protótipo, do
      dono) e a etiqueta embaixo do nome sai; em janela larga nada muda. Teste novo no cenário align_cameras.
+     **03h06: dono aprovou os testes; ITEM 5 CONCLUÍDO.**
      Teste do dono (2026-11-26): seção 68 aprovada ("os testes deu tudo certo").
      **Pedidos do dono (2026-11-26), feitos (seção 69):** o tocador do Align cameras também no Align photos do
      Export (mesma barra, mesmo comportamento; estado em `exp.play`, funções `expPlay`/`expPlayOff`); a mão de
