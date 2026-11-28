@@ -3964,6 +3964,11 @@
       it.className = "ma-item" + (p.camera === al.sel ? " sel" : "") + (fixes.length || (d.tried && !d.found) ? " needs" : d.found ? " ready" : "");
       it.dataset.camera = p.camera;
       it.appendChild(alPhotoEl(p, false));
+      // Lista estreita (janela abaixo de 1240px, layout C aprovado pelo dono, 2026-11-28): o estado numa faixa na base
+      // da miniatura, em poucas palavras, no lugar da etiqueta embaixo do nome
+      const strip = !p.file ? ["diff", "No photo"] : d.tried && !d.found ? ["diff", "No marks"]
+        : (d.found || alMoved(p.camera)) && alAim(p.camera) ? (fixes.length ? ["diff", plural(fixes.length, "fix", "fixes")] : ["ok", "Ready"]) : null;
+      if (strip) it.firstElementChild.insertAdjacentHTML("beforeend", '<span class="ma-strip ' + strip[0] + '">' + strip[1] + "</span>");
       it.insertAdjacentHTML("beforeend", "<div><b>Camera " + alNum(p) + "</b>" + tag + (text ? '<span class="t">' + alEsc(text) + "</span>" : "") + "</div>");
       it.addEventListener("click", () => { al.sel = p.camera; if (al.clicks && al.clicks.camera !== p.camera) al.clicks = null; alRender(); });
       // O Tab para uma vez só na coluna (na câmera escolhida) e ↑ ↓ andam entre as câmeras (pedido do dono, 2026-11-27)
@@ -3996,6 +4001,7 @@
       it.appendChild(ph);
       // (caiu depois da foto: basta religar; sumiu num Fire again e já voltou: falta a foto nova dela)
       const back = !g.live && !alIsOff(g.camera);
+      ph.insertAdjacentHTML("beforeend", '<span class="ma-strip diff">' + (back ? "No new photo" : "Not connected") + "</span>");
       it.insertAdjacentHTML("beforeend", "<div><b>Camera " + alNum(g) + '</b><span class="cs-tag diff">' + (back ? "No new photo" : "Not connected") + '</span><span class="t">' +
         (back ? "Connected again: fire again to include it" : g.live ? "Turn it on to reconnect" : g.url ? "No new photo: this is the last one it took" : "No photo") + "</span></div>");
       if (back) it.title = g.camera + " has no new photo";

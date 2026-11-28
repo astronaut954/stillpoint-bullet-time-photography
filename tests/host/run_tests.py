@@ -1964,6 +1964,17 @@ def scenario_align_cameras(t, name, photos):
         click(1)
         click(2)
         t.wait(lambda: t.js("() => document.querySelectorAll('#csAlignMain .ma-item.ready, #csAlignMain .ma-item.needs').length === 4"), 60)
+        # Lista estreita (layout C): o estado numa faixa na base da miniatura, no lugar da etiqueta embaixo do nome
+        vp3 = t.page.viewport_size
+        wide = t.js("() => [...document.querySelectorAll('#csAlignMain .ma-item')].map(i => [getComputedStyle(i.querySelector('.ma-strip')).display, getComputedStyle(i.querySelector('.cs-tag')).display, i.querySelector('.cs-tag').textContent])")
+        t.page.set_viewport_size({"width": 1100, "height": 760}); time.sleep(0.8)
+        narrow = t.js("() => [...document.querySelectorAll('#csAlignMain .ma-item')].map(i => { const s = i.querySelector('.ma-strip'), p = i.querySelector('.al-photo').getBoundingClientRect(), r = s.getBoundingClientRect(); return [getComputedStyle(s).display, getComputedStyle(i.querySelector('.cs-tag')).display, s.textContent, Math.abs(r.bottom - p.bottom) < 2 && r.left >= p.left - 1 && r.right <= p.right + 1]; })")
+        t.shot("align-step2-narrow-states")
+        t.page.set_viewport_size(vp3); time.sleep(0.8)
+        short = lambda tag: "Ready" if tag == "Ready" else tag.replace(" needed", "")
+        check(t, "align, step 2, narrow window: each camera shows its state in a strip at the foot of its thumbnail ('Ready', '2 fixes'), in place of the tag under the name; wide, the tag is back",
+              len(narrow) == 4 and all(n[0] == "flex" and n[1] == "none" and n[3] for n in narrow) and all(w[0] == "none" and w[1] != "none" for w in wide)
+              and [n[2] for n in narrow] == [short(w[2]) for w in wide], (wide, narrow))
         t.page.keyboard.press("Control+z")
         time.sleep(0.5)
         check(t, "align: Ctrl+Z right after the third click undoes the marking (two clicks back on the photo, no camera marked)",

@@ -2078,6 +2078,9 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      **02h54: dono aprovou os testes do item 5 e o limite de 1240px.** Quer uma marca do estado na miniatura, mas
      precisa ver: PROTÓTIPOS https://claude.ai/artifact/KcNZAzFo8FAmtDQXedXb3S (A como está: etiqueta embaixo do
      nome; B marca no canto + caixa padrão; C faixa na base da miniatura), aguardando escolha.
+     **02h59: o dono escolheu C.** Feito: na lista estreita, faixa na base da miniatura (`.ma-strip`: verde "Ready";
+     âmbar "N fix(es)", "No marks", "No photo", "Not connected", "No new photo"; textos curtos do protótipo, do
+     dono) e a etiqueta embaixo do nome sai; em janela larga nada muda. Teste novo no cenário align_cameras.
      Teste do dono (2026-11-26): seção 68 aprovada ("os testes deu tudo certo").
      **Pedidos do dono (2026-11-26), feitos (seção 69):** o tocador do Align cameras também no Align photos do
      Export (mesma barra, mesmo comportamento; estado em `exp.play`, funções `expPlay`/`expPlayOff`); a mão de

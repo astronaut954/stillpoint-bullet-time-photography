@@ -2794,3 +2794,18 @@ html.kbd-focus #sessionGallery .stage:focus-within .stage-caption { opacity: 1; 
   .ma-item b { font-size: 11px; }
   .ma-item span.t { display: none; }
 }
+/* Lista estreita do 2 Mark and aim: o estado numa faixa na base da miniatura (layout C, aprovado 2026-11-28) */
+.ma-strip { display: none; }
+@media (max-width: 1240px) {
+  .ma-item .al-photo { position: relative; }
+  .ma-item .ma-strip { display: flex; align-items: center; justify-content: center; position: absolute; left: 0; right: 0; bottom: 0; height: 16px; font: 700 9px var(--noct-font-mono); letter-spacing: .08em; text-transform: uppercase; color: #020d04; white-space: nowrap; overflow: hidden; }
+  .ma-item .ma-strip.ok { background: var(--noct-primary); }
+  .ma-item .ma-strip.diff { background: var(--noct-pending, #f0a020); }
+  .ma-item.gone .al-photo { opacity: 1; }
+  .ma-item .cs-tag { display: none; }
+}
+@media (max-width: 1240px) {
+  /* (a câmera não conectada continua apagada, mas a faixa dela fica legível) */
+  .ma-item.gone .al-photo::before { content: ""; position: absolute; inset: 0; background: rgba(2, 13, 4, .7); }
+  .ma-item.gone .al-photo .ma-strip, .ma-item.gone .al-photo .al-num { z-index: 1; }
+}

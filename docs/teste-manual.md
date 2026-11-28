@@ -3094,4 +3094,7 @@ menos pixels: 1200 px de largura contra 1800 das outras).
 - [ ] **2 Mark and aim** com a janela estreita (abaixo de cerca de 1240 px de largura): a lista de câmeras à esquerda
       vira uma coluna de miniaturas com o nome embaixo e a foto grande ganha espaço; alargando, a lista volta a ter a
       miniatura, o nome e o estado lado a lado. Clicar numa miniatura continua escolhendo a câmera.
+- [ ] **2 Mark and aim** com a janela estreita e as câmeras já com marcas: cada miniatura da lista tem uma faixa na
+      base com o estado (verde **Ready**; âmbar **2 fixes**, **No marks**, **No photo**), e a etiqueta embaixo do nome
+      não aparece; alargando a janela, a faixa some e a etiqueta volta.
 
