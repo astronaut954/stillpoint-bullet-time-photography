@@ -2082,6 +2082,22 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      âmbar "N fix(es)", "No marks", "No photo", "Not connected", "No new photo"; textos curtos do protótipo, do
      dono) e a etiqueta embaixo do nome sai; em janela larga nada muda. Teste novo no cenário align_cameras.
      **03h06: dono aprovou os testes; ITEM 5 CONCLUÍDO.**
+   - **ITEM 6 (falhas intermitentes dos testes automáticos), 2026-11-28:** rodada completa de `288a552`: 644
+     passaram, 2 falharam, de novo no Guided aim mas em outro passo ("Fire again" da janela: o botão não mudou e os
+     instrumentos não voltaram, embora a foto nova existisse e a janela principal estivesse certa). DUAS CAUSAS
+     ACHADAS, as duas no TESTE, não no programa: (1) o teste do "← Previous camera" exigia que a câmera anterior
+     fosse a primeira; com a máquina lenta a janela anda mais uma câmera sozinha antes de o Live aim ser desligado e
+     a anterior passa a ser a segunda: agora o teste confere que a anterior está READY. (2) a peça que faz o papel
+     da janela nos testes (`tests/host/webview/webview.h`) manda cada chamada da página por uma ligação HTTP à
+     parte, que podia chegar FORA DE ORDEM (duas chamadas seguidas de `aimPush` trocadas deixavam a janela Guided
+     aim com o estado antigo), e uma resposta perdida de `/events` sumia com os eventos. Agora: número de ordem nas
+     chamadas (entram na volta principal na ordem da página), eventos guardados até a página confirmar, marca do
+     processo (página que sobrevive a um reinício) e nada de repetir para a página nova o que a anterior já
+     recebeu. Na janela de verdade as chamadas já chegam em ordem: isso não muda o programa. A primeira versão
+     desta correção causou 4 falhas numa rodada (eventos repetidos para a página nova); corrigida. Rodada completa
+     depois: **646 passaram, 0 falharam**; o cenário Guided aim sozinho passou 3 vezes seguidas. INFERÊNCIA: a
+     falha do cenário das marcas desiguais (espera esgotada) tinha a mesma origem; não foi reproduzida para
+     confirmar. Uma rodada limpa não prova que a intermitência acabou: acompanhar nas próximas rodadas.
      Teste do dono (2026-11-26): seção 68 aprovada ("os testes deu tudo certo").
      **Pedidos do dono (2026-11-26), feitos (seção 69):** o tocador do Align cameras também no Align photos do
      Export (mesma barra, mesmo comportamento; estado em `exp.play`, funções `expPlay`/`expPlayOff`); a mão de

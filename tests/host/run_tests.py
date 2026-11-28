@@ -2655,7 +2655,10 @@ def scenario_guided_aim(t, name, photos):
         aim.click("#gaPrev")
         prv = names[(names.index(cur_cam) - 1) % 4]
         ok = t.wait(lambda: A("() => document.getElementById('gaName').textContent") == name_of(prv), 5)
-        check(t, "guided aim: '← Previous camera' goes back, also to a camera that is already right (and stays there)", ok and prv == first, A("() => document.getElementById('gaName').textContent"))
+        # (a câmera anterior já está certa: é a primeira ou, se a janela andou mais uma câmera sozinha antes de o Live aim
+        # ser desligado, a segunda. Antes o teste exigia a primeira e falhava de vez em quando, com a máquina lenta: item 6)
+        check(t, "guided aim: '← Previous camera' goes back, also to a camera that is already right (and stays there)",
+              ok and tabs()[names.index(prv)].rstrip("*") == num(prv) + " · READY", (A("() => document.getElementById('gaName').textContent"), prv, first, tabs()))
         aim.click("#gaProg button:nth-child(%d)" % (names.index(names[3]) + 1))
         ok = t.wait(lambda: A("() => document.getElementById('gaName').textContent") == name_of(names[3]), 5)
         check(t, "guided aim: a click on a camera's tab goes straight to that camera", ok and tabs()[3].endswith("*"), tabs())

@@ -9,6 +9,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
@@ -101,7 +102,7 @@ namespace webview
         noresult eval(const std::string& js)
         {
             std::lock_guard<std::mutex> g(lock);
-            events.push_back(js);
+            events.push_back({ ++eventId, js });
             return {};
         }
         noresult dispatch(std::function<void()> fn)
@@ -154,7 +155,19 @@ namespace webview
         std::mutex lock;
         std::condition_variable changed;
         std::deque<std::function<void()>> tasks;
-        std::deque<std::string> events;
+        // Os eventos ficam guardados até a página confirmar que recebeu (ack): uma resposta perdida no caminho não some
+        // com eles. As chamadas da página trazem um número de ordem (seq): entram na volta principal na ordem em que a
+        // página as fez, como na janela de verdade (cada fetch é uma ligação à parte e podia chegar fora de ordem: duas
+        // chamadas seguidas de aimPush trocadas deixavam a janela Guided aim com o estado antigo; item 6, 2026-11-28).
+        std::deque<std::pair<long long, std::string>> events;
+        long long eventId = 0, sentUpTo = 0;
+        std::mutex seqLock;
+        std::condition_variable seqChanged;
+        long long expectSeq = 1;
+        bool seqSeen = false;
+        // Cada processo tem a sua marca: a página que já estava aberta quando o app reiniciou recomeça a contagem dos
+        // eventos em vez de ignorar os novos (os números recomeçam do 1)
+        static const std::string& Boot() { static const std::string b = std::to_string(static_cast<long long>(getpid())) + "-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()); return b; }
         std::map<std::string, std::function<std::string(const std::string&)>> sync;
         std::map<std::string, Async> async;
         std::map<std::string, std::pair<int, std::string>> answers;
@@ -167,8 +180,19 @@ namespace webview
         static inline webview* serving = nullptr;
 
         // Chama uma função do app na linha principal e espera a resposta: (status, texto JSON)
-        std::pair<int, std::string> Call(const std::string& name, const std::string& args)
+        std::pair<int, std::string> Call(const std::string& name, const std::string& args, long long seq = 0)
         {
+            if (seq > 0)
+            {
+                std::unique_lock<std::mutex> g(seqLock);
+                if (!seqSeen) { seqSeen = true; expectSeq = seq; }  // a primeira chamada que chega dá o ponto de partida (a página pode ser mais antiga que este processo)
+                seqChanged.wait_for(g, std::chrono::seconds(2), [&] { return seq <= expectSeq; });
+            }
+            struct Turn
+            {
+                webview* w; long long seq;
+                ~Turn() { if (seq > 0) { std::lock_guard<std::mutex> g(w->seqLock); if (w->expectSeq <= seq) w->expectSeq = seq + 1; w->seqChanged.notify_all(); } }
+            };
             std::string id;
             std::function<void()> task;
             {
@@ -185,7 +209,10 @@ namespace webview
                     task = [a, args, id] { a.fn(id, args, a.arg); };
                 }
                 else
+                {
+                    Turn turn{ this, seq };
                     return { 1, "\"no binding " + name + "\"" };
+                }
             }
             {
                 // As funções rodam sempre na volta principal, a da primeira janela
@@ -194,6 +221,7 @@ namespace webview
                 loop->tasks.push_back(std::move(task));
                 loop->changed.notify_all();
             }
+            { Turn turn{ this, seq }; }  // a tarefa já está na fila: a próxima chamada da página pode entrar
             std::unique_lock<std::mutex> g(lock);
             changed.wait_for(g, std::chrono::seconds(60), [&] { return answers.count(id) > 0; });
             if (!answers.count(id)) return { 1, "\"timeout\"" };
@@ -212,12 +240,24 @@ namespace webview
                 for (const auto& [n, _] : async) names += (names.size() > 1 ? ",\"" : "\"") + n + "\"";
             }
             names += "]";
-            const std::string bridge = "<script>(function(){var names=" + names + ";"
+            {
+                std::lock_guard<std::mutex> g(seqLock);
+                expectSeq = 1;  // página nova: a contagem das chamadas recomeça
+                seqSeen = false;
+                seqChanged.notify_all();
+            }
+            {
+                // (o que a página anterior já tinha recebido não vai de novo para a página nova)
+                std::lock_guard<std::mutex> g(lock);
+                while (!events.empty() && events.front().first <= sentUpTo) events.pop_front();
+            }
+            const std::string bridge = "<script>(function(){var names=" + names + ";var seq=0;"
                 "names.forEach(function(n){window[n]=function(){var args=Array.prototype.slice.call(arguments);"
-                "return fetch('" + prefix + "/call/'+n,{method:'POST',body:JSON.stringify(args)}).then(function(r){return r.text().then(function(t){"
+                "return fetch('" + prefix + "/call/'+n+'?seq='+(++seq),{method:'POST',body:JSON.stringify(args)}).then(function(r){return r.text().then(function(t){"
                 "var v=t===''?undefined:JSON.parse(t);if(r.status!==200)throw v;return v;});});};});"
-                "function poll(){fetch('" + prefix + "/events').then(function(r){return r.json();}).then(function(list){"
-                "list.forEach(function(js){try{(0,eval)(js);}catch(e){console.error('event',e);}});setTimeout(poll,list.length?0:60);})"
+                "var last=0,boot='';function poll(){fetch('" + prefix + "/events?ack='+last+'&boot='+boot).then(function(r){return r.json();}).then(function(res){"
+                "if(res.boot!==boot){boot=res.boot;last=0;}var list=res.list;"
+                "list.forEach(function(ev){if(ev[0]<=last)return;last=ev[0];try{(0,eval)(ev[1]);}catch(e){console.error('event',e);}});setTimeout(poll,list.length?0:60);})"
                 ".catch(function(){setTimeout(poll,500);});}window.addEventListener('load',function(){setTimeout(poll,0);});"
                 "})();</script>";
             std::string html;
@@ -231,17 +271,20 @@ namespace webview
             return html;
         }
 
-        std::string Events()
+        std::string Events(long long ack = 0, const std::string& boot = "")
         {
-            std::deque<std::string> list;
+            if (boot != Boot()) ack = 0;  // confirmação de outro processo (ou a primeira busca): não vale
+            std::deque<std::pair<long long, std::string>> list;
             {
                 std::lock_guard<std::mutex> g(lock);
-                list.swap(events);
+                while (!events.empty() && events.front().first <= ack) events.pop_front();
+                list = events;
+                if (!events.empty()) sentUpTo = std::max(sentUpTo, events.back().first);
             }
-            std::string out = "[";
-            for (const auto& js : list)
+            std::string out = "{\"boot\":\"" + Boot() + "\",\"list\":[";
+            for (const auto& [eid, js] : list)
             {
-                std::string q = "\"";
+                std::string q = "[" + std::to_string(eid) + ",\"";
                 for (const char c : js)
                 {
                     switch (c)
@@ -256,9 +299,9 @@ namespace webview
                         else q += c;
                     }
                 }
-                out += (out.size() > 1 ? "," : "") + q + "\"";
+                out += (out.back() == '[' ? "" : ",") + q + "\"]";
             }
-            return out + "]";
+            return out + "]}";
         }
 
         static void Send(int fd, int code, const std::string& type, const std::string& body)
@@ -300,7 +343,19 @@ namespace webview
             const auto lineEnd = data.find("\r\n");
             const std::string first = data.substr(0, lineEnd);
             const auto sp1 = first.find(' '), sp2 = first.find(' ', sp1 + 1);
-            const std::string method = first.substr(0, sp1), path = first.substr(sp1 + 1, sp2 - sp1 - 1);
+            const std::string method = first.substr(0, sp1), fullPath = first.substr(sp1 + 1, sp2 - sp1 - 1);
+            // "?seq=N" (chamadas) e "?ack=N" (eventos) saem do caminho
+            const auto qm = fullPath.find('?');
+            const std::string path = fullPath.substr(0, qm);
+            long long queryNumber = 0;
+            std::string queryBoot;
+            if (qm != std::string::npos)
+            {
+                const auto eq = fullPath.find('=', qm);
+                if (eq != std::string::npos) queryNumber = std::atoll(fullPath.c_str() + eq + 1);
+                const auto b = fullPath.find("&boot=", qm);
+                if (b != std::string::npos) queryBoot = fullPath.substr(b + 6);
+            }
             const auto bodyStart = data.find("\r\n\r\n");
             const std::string body = bodyStart == std::string::npos ? "" : data.substr(bodyStart + 4);
             if (path.rfind("/w/", 0) == 0)
@@ -317,10 +372,10 @@ namespace webview
                 const std::string prefix = "/w/" + std::to_string(n);
                 if (!w) Send(fd, 404, "text/plain", "no window");
                 else if (rest == "/") Send(fd, 200, "text/html; charset=utf-8", w->Page(prefix));
-                else if (rest == "/events") Send(fd, 200, "application/json", w->Events());
+                else if (rest == "/events") Send(fd, 200, "application/json", w->Events(queryNumber, queryBoot));
                 else if (rest.rfind("/call/", 0) == 0)
                 {
-                    const auto r = w->Call(rest.substr(6), body.empty() ? "[]" : body);
+                    const auto r = w->Call(rest.substr(6), body.empty() ? "[]" : body, queryNumber);
                     Send(fd, r.first == 0 ? 200 : 500, "application/json", r.second);
                 }
                 else Send(fd, 404, "text/plain", "not found");
@@ -342,10 +397,10 @@ namespace webview
             else if (path == "/" || path == "/index.html")
                 Send(fd, 200, "text/html; charset=utf-8", Page());
             else if (path == "/events")
-                Send(fd, 200, "application/json", Events());
+                Send(fd, 200, "application/json", Events(queryNumber, queryBoot));
             else if (path.rfind("/call/", 0) == 0)
             {
-                const auto r = Call(path.substr(6), body.empty() ? "[]" : body);
+                const auto r = Call(path.substr(6), body.empty() ? "[]" : body, queryNumber);
                 Send(fd, r.first == 0 ? 200 : 500, "application/json", r.second);
             }
             else
