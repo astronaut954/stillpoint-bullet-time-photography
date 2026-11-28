@@ -5096,11 +5096,18 @@ namespace
                 if (cameraConnecting())
                     return;
                 testCancel = false;
+                bool reuseCard = false;
                 {
                     std::lock_guard<std::mutex> lock(cardPick.mutex);
-                    cardPick.confirmed = false;
-                    cardPick.skipped = false;
-                    cardPick.regions.clear();
+                    // Refinar (512): a marcação do cartão cinza já conferida vale de novo, sem perguntar outra vez
+                    // (decisão do dono, 2026-11-28); sem marcação guardada, pergunta como sempre
+                    reuseCard = (flags & 512) && grayCard && cardPick.confirmed && !cardPick.regions.empty();
+                    if (!reuseCard)
+                    {
+                        cardPick.confirmed = false;
+                        cardPick.skipped = false;
+                        cardPick.regions.clear();
+                    }
                     cardPick.files.clear();
                 }
                 MatchDebug debug;
@@ -5142,7 +5149,7 @@ namespace
                     for (const auto& p : session.photos)
                         if (!picks.count(p.camera) || IsJpegPhoto(p.file))
                             picks[p.camera] = &p;
-                    if (grayCard && shot == 1)
+                    if (grayCard && shot == 1 && !reuseCard)
                     {
                         // Acha o cartão em cada foto e espera a pessoa conferir
                         std::string regions = "[";

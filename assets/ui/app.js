@@ -11784,19 +11784,25 @@
     // Observações do Match (EM AVALIAÇÃO pelo dono, 2026-11-27: ele quer ver quais são antes de decidir se ficam): as
     // que começam com o nome de uma câmera vão para a linha dela; as outras (várias câmeras, ou gerais) ficam embaixo
     const camNames = placedCameras().map((c) => c.name), camNotes = {}, otherNotes = [];
+    // (decisão do dono, 2026-11-28: nada de faixa de texto na tabela; tudo dentro da caixa da etiqueta. A observação
+    // que cita várias câmeras entra na etiqueta de cada uma delas, com o texto inteiro; a que não cita nenhuma fica
+    // numa etiqueta no cabeçalho da tabela)
     [...new Set(e.notes || [])].forEach((n) => {
       const who = camNames.find((name) => n.indexOf(name + ": ") === 0);
-      if (who) (camNotes[who] = camNotes[who] || []).push(n.slice(who.length + 2)); else otherNotes.push(n);
+      if (who) { (camNotes[who] = camNotes[who] || []).push(n.slice(who.length + 2)); return; }
+      const colon = n.indexOf(": "), listed = colon > 0 ? n.slice(0, colon).split(", ") : [];
+      if (listed.length > 1 && listed.every((name) => camNames.includes(name))) listed.forEach((name) => (camNotes[name] = camNotes[name] || []).push(n));
+      else otherNotes.push(n);
     });
+    const noteChip = (ns) => {
+      const chip = el("span", "cs-review-notechip"); chip.innerHTML = ALERT_SVG;
+      chip.appendChild(el("span", "", plural(ns.length, "note", "notes")));
+      chip.dataset.itip = ns.join("\n\n"); chip.setAttribute("role", "img"); chip.setAttribute("aria-label", ns.join(" ")); chip.tabIndex = 0;
+      return chip;
+    };
     matchWin.refineCams = Object.keys(camNotes).filter((name) => camNotes[name].some((n) => STILL_DIFFERENT.test(n)));
     $("csMatchRefine").textContent = "Refine " + plural(matchWin.refineCams.length, "camera", "cameras");
     $("csMatchRefine").classList.toggle("hidden", !matchWin.refineCams.length);
-    const noteLine = (text) => {
-      const line = el("span", "cs-review-note");
-      const ic = el("span", "cs-ratio-alert"); ic.innerHTML = ALERT_SVG; ic.setAttribute("aria-hidden", "true");
-      line.append(ic, el("span", "", text.charAt(0).toUpperCase() + text.slice(1)));
-      return line;
-    };
     placedCameras().filter((c) => c.connected).forEach((cam) => {
       const ch = changes.find((x) => x.camera === cam.name);
       const row = el("div", "cs-review-row" + (ch ? "" : " same") + (matchWin.cam === cam.name ? " current" : ""));
@@ -11827,13 +11833,7 @@
         if (at) at.appendChild(w); else { w.insertBefore(el("span", "cs-review-ratio-now", ratio.reported), w.firstChild); list.appendChild(w); }
       }
       // Layout N1 (escolha do dono, 2026-11-27): na linha só a etiqueta âmbar com a quantidade; o texto na caixa padrão
-      if ((camNotes[cam.name] || []).length) {
-        const ns = camNotes[cam.name].map((n) => n.charAt(0).toUpperCase() + n.slice(1));
-        const chip = el("span", "cs-review-notechip"); chip.innerHTML = ALERT_SVG;
-        chip.appendChild(el("span", "", plural(ns.length, "note", "notes")));
-        chip.dataset.itip = ns.join("\n\n"); chip.setAttribute("role", "img"); chip.setAttribute("aria-label", ns.join(" ")); chip.tabIndex = 0;
-        list.appendChild(chip);
-      }
+      if ((camNotes[cam.name] || []).length) list.appendChild(noteChip(camNotes[cam.name].map((n) => n.charAt(0).toUpperCase() + n.slice(1))));
       const thumb = el("span", "cs-review-thumb" + (ch ? " changed" : "") + (ratio && ratio.differs ? " ratio-warn" : ""));
       csMatchPhoto(after, cam.name, 320).then((url) => { if (url) thumb.style.backgroundImage = "url(" + url + ")"; });
       row.append(box, name, list, thumb);
@@ -11842,7 +11842,7 @@
       rowsBox.appendChild(row);
     });
     const tnote = el("div", "cs-review-tnote", "Click a row to see that camera on the right. Play runs the whole sequence, before and after at once. Untick a camera to keep it as it is.");
-    if (otherNotes.length) { const box = el("div", "cs-review-notes"); otherNotes.forEach((n) => box.appendChild(noteLine(n))); table.insertBefore(box, rowsBox); }  // (N1: faixa no topo da tabela)
+    if (otherNotes.length) { const c = noteChip(otherNotes); c.classList.add("head"); const h = head.querySelector(".changes") || head.children[2] || head; h.appendChild(c); }
     table.appendChild(tnote);
     wrap.appendChild(table);
     // Fotos: a câmera escolhida, antes e depois

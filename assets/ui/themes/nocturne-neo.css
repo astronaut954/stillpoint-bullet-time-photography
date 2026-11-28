@@ -2762,3 +2762,5 @@ html.kbd-focus #sessionGallery .stage:focus-within .stage-caption { opacity: 1; 
 /* Atalho "Refine N cameras" no rodapé do 3 Review (layout S1, escolha do dono, 2026-11-28): âmbar, à esquerda do Back */
 .cs-match-refine { border-color: var(--noct-pending); color: var(--noct-pending); }
 .cs-match-refine:hover, .cs-match-refine:focus-visible { background: color-mix(in srgb, var(--noct-pending) 14%, transparent); border-color: var(--noct-pending); color: var(--noct-pending); }
+/* Observações sem câmera: etiqueta no cabeçalho da tabela, ao lado de "Changes" (decisão do dono, 2026-11-28: sem faixa de texto) */
+.cs-review-notechip.head { margin-left: 10px; vertical-align: middle; text-transform: uppercase; }

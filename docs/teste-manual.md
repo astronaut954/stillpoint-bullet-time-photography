@@ -3078,4 +3078,9 @@ menos pixels: 1200 px de largura contra 1800 das outras).
       o botão some (na simulação) e as etiquetas das outras câmeras continuam.
 - [ ] (Câmeras reais) Quando sobrar "Still a little different…", **Refine N cameras** aproxima só essas câmeras; pode
       ser usado várias vezes; as outras câmeras não mudam de proposta.
+- [ ] (Com `STILLPOINT_FAKE_NOTES=1`) No **3 Review** não há mais faixa de texto no topo da tabela: a observação que
+      cita SL3_1 e T7_1 aparece dentro da caixa da etiqueta dessas duas câmeras; a do balanço de branco, na etiqueta
+      **1 note** do cabeçalho, ao lado de **Changes**.
+- [ ] Match automatically com **Gray card** marcado: depois de conferir o cartão uma vez, **Refine N cameras** não
+      pede a conferência de novo.
 

@@ -2037,6 +2037,11 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      continuam (`matchWin.keepNotes`). Com cartão cinza, o refino pede a conferência do cartão de novo (não mexi).
      Conferido na simulação com `STILLPOINT_FAKE_NOTES=1` (que deixa de dizer "still a little different" depois do
      refino); o efeito na cor/brilho só dá para conferir com câmeras reais.
+     **01h34, DECISÕES DO DONO:** testes do atalho aprovados. (1) **Sem faixa de texto na tabela**: as observações
+     ficam todas dentro da caixa da etiqueta. Feito: a que cita várias câmeras entra na etiqueta de cada uma delas
+     (texto inteiro); a que não cita nenhuma fica numa etiqueta no cabeçalho, ao lado de "Changes" (ESCOLHA DO
+     AGENTE para esse caso, a confirmar). (2) **Com cartão cinza, o refino reaproveita a marcação já conferida**
+     (`reuseCard` em main_gui): feito, NÃO testado (o fluxo do cartão não foi exercitado).
      Teste do dono (2026-11-26): seção 68 aprovada ("os testes deu tudo certo").
      **Pedidos do dono (2026-11-26), feitos (seção 69):** o tocador do Align cameras também no Align photos do
      Export (mesma barra, mesmo comportamento; estado em `exp.play`, funções `expPlay`/`expPlayOff`); a mão de
