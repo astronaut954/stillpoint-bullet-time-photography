@@ -2049,6 +2049,9 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      2026-11-11). PROTÓTIPOS: https://claude.ai/artifact/D3FBXv2HEWsKFd8JGFWCbt (R1 linha por câmera que abre, R2
      grade câmeras × ajustes, R3 linha por câmera como a tabela do Match; nos três as "Not connected" viram uma
      linha só), aguardando escolha.
+     **01h59: o dono gostou do R2 (grade)** e pediu melhorar a parte das câmeras não conectadas: PROTÓTIPOS em
+     https://claude.ai/artifact/8NUFop487cv9n7yS2pFSgQ (M1 linhas na grade, M2 quadros, M3 etiqueta + caixa padrão,
+     M4 lista em duas colunas), aguardando escolha. R2 ainda NÃO implementado.
      Teste do dono (2026-11-26): seção 68 aprovada ("os testes deu tudo certo").
      **Pedidos do dono (2026-11-26), feitos (seção 69):** o tocador do Align cameras também no Align photos do
      Export (mesma barra, mesmo comportamento; estado em `exp.play`, funções `expPlay`/`expPlayOff`); a mão de
