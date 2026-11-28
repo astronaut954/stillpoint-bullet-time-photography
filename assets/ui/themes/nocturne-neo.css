@@ -2784,3 +2784,13 @@ html.kbd-focus #sessionGallery .stage:focus-within .stage-caption { opacity: 1; 
    direita (os pontos e as instruções) caber inteira; a linha de baixo acompanha a largura da foto */
 .ma-row > .al-photo { flex: 1 1 0; width: auto; min-width: 0; max-width: 640px; }
 .ma-under { max-width: min(640px, calc(100% - 248px)); }
+/* 2 Mark and aim em janela estreita, lista no layout P1 (protótipo aprovado pelo dono, 2026-11-28): a lista vira uma
+   coluna só com a miniatura e o nome embaixo (o texto do estado sai), para sobrar largura para a foto grande.
+   Abaixo de 1240px de janela (na janela de abertura, 1300px, fica como sempre). */
+@media (max-width: 1240px) {
+  .ma { grid-template-columns: 118px minmax(0, 1fr); }
+  .ma-item { grid-template-columns: 1fr; gap: 6px; padding: 6px; }
+  .ma-item .al-photo { width: 100%; }
+  .ma-item b { font-size: 11px; }
+  .ma-item span.t { display: none; }
+}

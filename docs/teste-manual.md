@@ -3091,4 +3091,7 @@ menos pixels: 1200 px de largura contra 1800 das outras).
 - [ ] **Align cameras** › **2 Mark and aim** com a janela do programa estreita (arrastar a borda até o mínimo): a
       coluna da direita (**Click the marks**, os três pontos e as instruções) aparece inteira; a foto grande é que
       encolhe. Alargando de novo, a foto volta ao tamanho de antes.
+- [ ] **2 Mark and aim** com a janela estreita (abaixo de cerca de 1240 px de largura): a lista de câmeras à esquerda
+      vira uma coluna de miniaturas com o nome embaixo e a foto grande ganha espaço; alargando, a lista volta a ter a
+      miniatura, o nome e o estado lado a lado. Clicar numa miniatura continua escolhendo a câmera.
 

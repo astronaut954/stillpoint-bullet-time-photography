@@ -2071,6 +2071,10 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      **02h45: o dono quer a lista estreitando**, pediu protótipo: https://claude.ai/artifact/65GAjE3DULPGbQsbmB9Uaa (no mínimo de 960×680: P1 só miniatura e
      nome, foto ~490px; P2 fileira no topo, foto ~440px limitada pela altura; P3 lista mais estreita com o texto,
      foto ~410px), aguardando escolha e a largura a partir da qual a lista muda.
+     **02h47: o dono escolheu P1.** Feito: abaixo de 1240px de janela a lista vira a coluna de miniaturas com o nome
+     (regra `@media (max-width: 1240px)`); na janela de abertura (1300px) fica como sempre. ESCOLHAS DO AGENTE a
+     confirmar: o limite de 1240px, e o estado de cada câmera deixar de aparecer em texto na lista estreita (as
+     etiquetas `cs-tag` continuam).
      Teste do dono (2026-11-26): seção 68 aprovada ("os testes deu tudo certo").
      **Pedidos do dono (2026-11-26), feitos (seção 69):** o tocador do Align cameras também no Align photos do
      Export (mesma barra, mesmo comportamento; estado em `exp.play`, funções `expPlay`/`expPlayOff`); a mão de
