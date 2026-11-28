@@ -3088,4 +3088,7 @@ menos pixels: 1200 px de largura contra 1800 das outras).
       projeto embaixo; ponto onde não há diferença; a legenda embaixo; e o bloco **Not connected · N cameras of this
       project** com um quadro tracejado por câmera. Os botões **Keep the cameras as they are** e **Apply the project
       settings** funcionam como antes.
+- [ ] **Align cameras** › **2 Mark and aim** com a janela do programa estreita (arrastar a borda até o mínimo): a
+      coluna da direita (**Click the marks**, os três pontos e as instruções) aparece inteira; a foto grande é que
+      encolhe. Alargando de novo, a foto volta ao tamanho de antes.
 

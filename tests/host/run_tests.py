@@ -1870,6 +1870,16 @@ def scenario_align_cameras(t, name, photos):
               t.wait(lambda: t.js("() => document.querySelector('#csAlignStep2').classList.contains('on') && document.querySelectorAll('#csAlignMain .ma-item').length === 4"), 30))
         t.wait(lambda: t.js("() => { const p = document.querySelector('#csAlignMain .ma-row .al-zoom'); return !!p && p.style.backgroundImage.length > 10; }"), 15)
         time.sleep(0.5)
+        # Janela estreita (item 5 da lista do dono): a coluna da direita (os pontos) não pode ficar cortada
+        vp2 = t.page.viewport_size
+        fit2 = {}
+        for w, h in ((1100, 760), (960, 680)):
+            t.page.set_viewport_size({"width": w, "height": h}); time.sleep(0.8)
+            fit2[w] = t.js("() => { const m = document.getElementById('csAlignMain'), s = m.querySelector('.ma-side').getBoundingClientRect(), box = m.getBoundingClientRect(), ph = m.querySelector('.ma-row > .al-photo').getBoundingClientRect(); return [m.scrollWidth <= m.clientWidth + 1, s.right <= box.right + 1 && s.width >= 200, Math.round(ph.width) >= 200]; }")
+        t.shot("align-step2-narrow")
+        t.page.set_viewport_size(vp2); time.sleep(0.8)
+        check(t, "align, step 2, narrow window (down to the smallest the window allows): the column on the right is whole, the big photo gets smaller instead",
+              all(all(v) for v in fit2.values()), fit2)
         t.shot("align-step2-before")
         # Os cliques na foto da câmera escolhida (a 01), a uns pixels do centro de cada bola
         order_dir = os.path.join(t.data, "Order photos")

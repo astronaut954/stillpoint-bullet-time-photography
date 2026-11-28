@@ -2060,6 +2060,14 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      protótipo, do dono. Testes do cenário rig_state ajustados ao layout novo.
      **02h08: dono aprovou os testes deste bloco** (observações nas etiquetas, nomes na etiqueta do cabeçalho,
      refino, aviso do projeto em grade).
+     Rodada completa de `330271a`: 643 passaram, 1 falhou (Guided aim, "← Previous camera"; sozinho passou 46/46:
+     intermitente, item 6).
+   - **ITEM 5 (2 Mark and aim corta a coluna da direita em janela estreita), feito 2026-11-28:** causa: a foto
+     grande tinha largura fixa (100% até 640px, sem encolher) ao lado da coluna dos pontos (230px) e da lista (300px);
+     abaixo de ~1250px de janela a coluna da direita saía da tela. Agora a foto encolhe (`.ma-row > .al-photo`
+     flexível) e a linha de baixo acompanha. Conferido a 1300, 1100 e 960 px (o mínimo da janela é 960×680); teste
+     novo no cenário align_cameras. PENDÊNCIA: no mínimo (960) a foto fica com ~310px de largura; estreitar a lista
+     da esquerda nesse caso é decisão do dono.
      Teste do dono (2026-11-26): seção 68 aprovada ("os testes deu tudo certo").
      **Pedidos do dono (2026-11-26), feitos (seção 69):** o tocador do Align cameras também no Align photos do
      Export (mesma barra, mesmo comportamento; estado em `exp.play`, funções `expPlay`/`expPlayOff`); a mão de

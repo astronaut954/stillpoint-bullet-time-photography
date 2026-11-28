@@ -2780,3 +2780,7 @@ html.kbd-focus #sessionGallery .stage:focus-within .stage-caption { opacity: 1; 
 .rig-diff .rig-missing-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .rig-diff .rig-miss-cam { display: inline-flex; gap: 8px; padding: 3px 8px; border: 1px dashed var(--noct-pending); color: var(--noct-pending); font: 12px var(--noct-font-mono); }
 .rig-diff .rig-miss-cam .n { opacity: .7; }
+/* Align cameras › 2 Mark and aim em janela estreita (item 5 da lista do dono): a foto grande encolhe para a coluna da
+   direita (os pontos e as instruções) caber inteira; a linha de baixo acompanha a largura da foto */
+.ma-row > .al-photo { flex: 1 1 0; width: auto; min-width: 0; max-width: 640px; }
+.ma-under { max-width: min(640px, calc(100% - 248px)); }
