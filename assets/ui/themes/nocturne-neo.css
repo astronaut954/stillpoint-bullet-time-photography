@@ -2759,3 +2759,6 @@ html.kbd-focus #sessionGallery .stage:focus-within .stage-caption { opacity: 1; 
 .cs-review-notechip:focus-visible { outline: 1px dashed var(--noct-pending); outline-offset: 2px; }
 .cs-review-notes { border-top: 0; border-bottom: 1px solid var(--noct-border); }
 .itip { white-space: pre-line; }
+/* Atalho "Refine N cameras" no rodapé do 3 Review (layout S1, escolha do dono, 2026-11-28): âmbar, à esquerda do Back */
+.cs-match-refine { border-color: var(--noct-pending); color: var(--noct-pending); }
+.cs-match-refine:hover, .cs-match-refine:focus-visible { background: color-mix(in srgb, var(--noct-pending) 14%, transparent); border-color: var(--noct-pending); color: var(--noct-pending); }

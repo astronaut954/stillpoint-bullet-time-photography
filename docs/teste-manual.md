@@ -3072,4 +3072,10 @@ menos pixels: 1200 px de largura contra 1800 das outras).
       várias câmeras ficam numa faixa no topo da tabela.
 - [ ] (Câmeras reais) Match automatically com câmeras bem diferentes: quando as fotos previstas acabam e ainda sobra
       diferença, ele continua sozinho (o total de "Photo N of up to M" cresce), no máximo 3 rodadas a mais.
+- [ ] Atalho de refino (com `STILLPOINT_FAKE_NOTES=1`): no **3 Review**, o botão âmbar **Refine 2 cameras** aparece no
+      rodapé, à esquerda de **← Back**. Clicar leva ao **2 Test shot** (texto "Refining the cameras that are still a
+      little different…"), tira as fotos e volta ao **3 Review** com as mesmas mudanças contra o "antes" de verdade;
+      o botão some (na simulação) e as etiquetas das outras câmeras continuam.
+- [ ] (Câmeras reais) Quando sobrar "Still a little different…", **Refine N cameras** aproxima só essas câmeras; pode
+      ser usado várias vezes; as outras câmeras não mudam de proposta.
 

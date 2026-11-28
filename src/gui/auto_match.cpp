@@ -1086,19 +1086,32 @@ namespace AutoMatch
         }
         result.matched = true;
 
+        // Refinar: as câmeras partem dos valores já propostos, sem igualar nada de novo
+        if (options.refine)
+        {
+            for (const auto& name : names)
+            {
+                const auto it = options.refineStart.find(name);
+                if (it == options.refineStart.end())
+                    continue;
+                for (const auto& [key, value] : it->second)
+                    Write(controller, name, key, value, notes);
+            }
+            Trace("Refine: starting from the proposed values; cameras to refine: " + std::to_string(options.refineOnly.size()));
+        }
         // 1. Mesmas configurações em todas (sem foto), conforme o que a pessoa pediu
         // (valor escolhido no passo 1: vai direto; sem escolha, a regra de cada um)
-        if (options.exposure)
+        if (!options.refine && options.exposure)
             for (const auto& [key, what] : { std::pair{ "tv", "shutter speed" }, std::pair{ "av", "aperture" }, std::pair{ "expcomp", "exposure compensation" } })
                 if (!UnifyChosen(controller, names, key, what, options.targets, notes))
                     UnifyLight(controller, names, key, notes);
-        if (options.iso && !UnifyChosen(controller, names, "iso", "ISO", options.targets, notes))
+        if (!options.refine && options.iso && !UnifyChosen(controller, names, "iso", "ISO", options.targets, notes))
             UnifyLight(controller, names, "iso", notes);
-        if (options.format && !UnifyChosen(controller, names, "quality", "format", options.targets, notes))
+        if (!options.refine && options.format && !UnifyChosen(controller, names, "quality", "format", options.targets, notes))
             UnifyChoice(controller, names, "quality", "format", notes);
-        if (options.aspect && !UnifyChosen(controller, names, "aspect", "aspect ratio", options.targets, notes))
+        if (!options.refine && options.aspect && !UnifyChosen(controller, names, "aspect", "aspect ratio", options.targets, notes))
             UnifyChoice(controller, names, "aspect", "aspect ratio", notes);
-        if (options.style)
+        if (!options.refine && options.style)
         {
             if (!UnifyChosen(controller, names, "style", "Picture Style", options.targets, notes))
                 UnifyStyle(controller, names, notes);
@@ -1135,8 +1148,8 @@ namespace AutoMatch
         const auto wbChosen = options.targets.find("wb");
         const auto kelvinChosen = options.targets.find("kelvin");
         const bool chosenWb = wbChosen != options.targets.end() || kelvinChosen != options.targets.end();
-        const bool commonWb = options.whiteBalance && (!sameFixed || options.grayCard || chosenWb) && !wbCams.empty();
-        if (options.whiteBalance && !sameFixed && wbCams.empty())
+        const bool commonWb = !options.refine && options.whiteBalance && (!sameFixed || options.grayCard || chosenWb) && !wbCams.empty();
+        if (!options.refine && options.whiteBalance && !sameFixed && wbCams.empty())
             notes.push_back("The white balance cannot be changed from the app on these cameras. Set the same white balance on each camera.");
 
         // Calibração guardada por modelo; as câmeras de modelo novo com ajuste fino são
@@ -1156,6 +1169,8 @@ namespace AutoMatch
                 needCalibration = true;
             cams.push_back(c);
         }
+        if (options.refine)
+            needCalibration = false;
         int shots = (commonWb ? 2 : 1) + (needCalibration ? 2 : 0) + (commonWb ? 3 : 2);
         bool extraShot = false;  // uma foto a mais quando uma câmera mostrou o sentido contrário
         int shot = 0;
@@ -1247,7 +1262,7 @@ namespace AutoMatch
         };
 
         // 2. Foto como estão: a média de todas é o alvo
-        if (!take("Reading how the cameras look"))
+        if (!take(options.refine ? "Reading the cameras with the proposed values" : "Reading how the cameras look"))
             return stopped();
         std::vector<Stats> all;
         for (const auto& c : cams)
@@ -1383,7 +1398,8 @@ namespace AutoMatch
                 check.ev = BrightnessTarget(controller, cams, target.ev);
                 bool still = false;
                 for (auto& c : cams)
-                    still = Correct(controller, c, check, false, dry) || still;
+                    if (!options.refine || options.refineOnly.count(c.name))
+                        still = Correct(controller, c, check, false, dry) || still;
                 if (still)
                 {
                     ++extraRounds;
@@ -1400,7 +1416,8 @@ namespace AutoMatch
             Trace("After photo " + std::to_string(shot) + " (brightness target " + Num(round.ev) + "):");
             bool any = false;
             for (auto& c : cams)
-                any = Correct(controller, c, round, !last, state) || any;
+                if (!options.refine || options.refineOnly.count(c.name))
+                    any = Correct(controller, c, round, !last, state) || any;
             if (!any || last)
             {
                 // Revisão: a última foto precisa mostrar o resultado final (mudou algo depois dela?)

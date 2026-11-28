@@ -5058,12 +5058,40 @@ namespace
                     }
                 }
             }
+            // Quinto valor (texto), com o bit 512: refinar a partir do resultado em revisão. Uma câmera por linha:
+            // "nome<TAB>1 ou 0 (refinar esta?)<TAB>chave=valor chave=valor" (os valores propostos; ver csMatchRefine no app)
+            std::map<std::string, std::vector<std::pair<std::string, long long>>> refineStart;
+            std::set<std::string> refineOnly;
+            if (flags & 512)
+            {
+                const auto strings = ParseStringArgs(request);
+                std::istringstream lines(strings.size() > 1 ? strings[1] : std::string());
+                std::string line;
+                while (std::getline(lines, line))
+                {
+                    const size_t t1 = line.find('\t'), t2 = t1 == std::string::npos ? t1 : line.find('\t', t1 + 1);
+                    if (t2 == std::string::npos)
+                        continue;
+                    const std::string name = line.substr(0, t1);
+                    if (line.substr(t1 + 1, t2 - t1 - 1) == "1")
+                        refineOnly.insert(name);
+                    std::istringstream in(line.substr(t2 + 1));
+                    std::string pair;
+                    while (in >> pair)
+                    {
+                        const size_t eq = pair.find('=');
+                        if (eq == std::string::npos)
+                            continue;
+                        try { refineStart[name].push_back({ pair.substr(0, eq), std::stoll(pair.substr(eq + 1)) }); } catch (...) {}
+                    }
+                }
+            }
             SequenceSettings settings;
             settings.countdownSeconds = 0;
             settings.sessionCount = 1;
             settings.downloadWaitSeconds = values.empty() ? 10 : std::max(1, values[0]);
             settings.playSounds = false;
-            run("orderPhotos", [&, settings, grayCard, flags, targets]
+            run("orderPhotos", [&, settings, grayCard, flags, targets, refineStart, refineOnly]
             {
                 if (cameraConnecting())
                     return;
@@ -5086,7 +5114,8 @@ namespace
                     listener.Emit(Json("autoMatchProgress").Add("shot", shot).Add("shots", shots).Add("stage", stage));
                     // Revisão: a primeira foto fica guardada (é o "antes"); as do meio vão embora.
                     // Na primeira foto, tudo o que havia de testes anteriores sai.
-                    if ((flags & 256) && shot > 1)
+                    // Refinar (512): a foto do "antes" de verdade já existe e fica; só as outras saem.
+                    if ((flags & 256) && (shot > 1 || (flags & 512)))
                     {
                         auto old = orderStore.ListSessions();
                         std::sort(old.begin(), old.end(), [](const StoredSession& a, const StoredSession& b) { return a.name < b.name; });
@@ -5178,6 +5207,9 @@ namespace
                 options.review = flags & 256;
                 options.targets = targets;
                 options.grayCardSkipped = &cardPick.skipped;
+                options.refine = (flags & 512) != 0;
+                options.refineStart = refineStart;
+                options.refineOnly = refineOnly;
                 AutoMatch::Result result = AutoMatch::Run(controller, shoot, CalibrationFile(), [&] { return testCancel.load(); }, options,
                                                                 debug.Active() ? std::function<void(const std::string&)>(trace) : nullptr);
                 // STILLPOINT_FAKE_NOTES=1: junta ao resultado as observações que o Match pode fazer (com os textos de
@@ -5188,7 +5220,10 @@ namespace
                     std::map<int, std::string> byOrder;
                     for (const auto& cam : controller.GetCameras())
                         byOrder[cam.orderPrefix] = cam.shortName;
-                    auto add = [&](int n, const std::string& text) { const auto it = byOrder.find(n); if (it != byOrder.end()) result.notes.push_back(it->second + ": " + text); };
+                    // (depois de refinar, a simulação deixa de dizer "still a little different", para dar para ver o
+                    // atalho do 3 Review sumir)
+                    const bool refined = (flags & 512) != 0;
+                    auto add = [&](int n, const std::string& text) { const auto it = byOrder.find(n); if (it != byOrder.end() && !(refined && text.rfind("still a little", 0) == 0)) result.notes.push_back(it->second + ": " + text); };
                     add(2, "its color is more different than the fine-tune can correct.");
                     add(3, "still a little different. Take another test shot to refine it.");
                     add(4, "its brightness is different, but its ISO is on Auto. Set an ISO to match it.");

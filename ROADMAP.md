@@ -2027,6 +2027,16 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      com o dono (a outra leitura seria 3 no total). NÃO visto disparar na simulação do agente. (3) Persistindo a
      diferença, um atalho no 3 Review para calibrar mais: PROTÓTIPOS em
      https://claude.ai/artifact/HzXEhimEmszjrzKaae5WMa (S1 rodapé, S2 faixa no topo, S3 por câmera), aguardando escolha.
+     **2026-11-28 01h21, DECISÕES DO DONO:** testes do N1 aprovados; teto confirmado (até 3 rodadas A MAIS); atalho
+     no layout **S1** (botão âmbar no rodapé, à esquerda do Back); o atalho refina **só as câmeras que ainda estão
+     diferentes** e **não tem teto** (quantas vezes a pessoa quiser). FEITO: botão `#csMatchRefine` ("Refine N
+     cameras", texto do protótipo, do dono), só aparece com nota "still a little different"; `csMatchRefine` manda
+     o bit 512 e os valores propostos de cada câmera; no motor `Options::refine/refineStart/refineOnly`: as câmeras
+     partem dos valores propostos, nada é igualado de novo, o alvo é a média de todas e só as marcadas passam pelo
+     `Correct`; a foto do "antes" de verdade fica (main_gui, bit 512); as observações das câmeras não refinadas
+     continuam (`matchWin.keepNotes`). Com cartão cinza, o refino pede a conferência do cartão de novo (não mexi).
+     Conferido na simulação com `STILLPOINT_FAKE_NOTES=1` (que deixa de dizer "still a little different" depois do
+     refino); o efeito na cor/brilho só dá para conferir com câmeras reais.
      Teste do dono (2026-11-26): seção 68 aprovada ("os testes deu tudo certo").
      **Pedidos do dono (2026-11-26), feitos (seção 69):** o tocador do Align cameras também no Align photos do
      Export (mesma barra, mesmo comportamento; estado em `exp.play`, funções `expPlay`/`expPlayOff`); a mão de

@@ -11407,7 +11407,10 @@
     $("csTestBox").classList.toggle("waiting", !match);
     csWaitSet("Taking a photo with each camera", 0, 0);
     csTest.before = match ? csSnapshot() : null;  // para desfazer o Match automatically de uma vez
-    if (match) window.autoMatch(intValue(ui.downloadWait, 1, 10), $("csCard").checked ? 1 : 0, csMatchFlags(), csMatchTargets());
+    // Refinar (atalho do 3 Review): bit 512 e, no quinto valor, os valores propostos de cada câmera (ver csMatchRefine)
+    const refine = match ? matchWin.refineSpec : null;
+    matchWin.refineSpec = null;
+    if (match) window.autoMatch(intValue(ui.downloadWait, 1, 10), $("csCard").checked ? 1 : 0, csMatchFlags() | (refine ? 512 : 0), csMatchTargets() || "", refine || "");
     else window.takeOrderPhotos(intValue(ui.downloadWait, 1, 10));
   }
   // ----- Match automatically em três passos (decisão do dono, 2026-11-01): 1 Choose (o que igualar),
@@ -11542,6 +11545,7 @@
     matchWin.step = n;
     [1, 2, 3].forEach((k) => $("csStep" + k).classList.toggle("on", k === n));
     $("csMatchBack").classList.toggle("hidden", n !== 3);
+    if (n !== 3) $("csMatchRefine").classList.add("hidden");
     $("csMatchKeep").classList.toggle("hidden", n !== 3);
     $("csMatchCancel").classList.toggle("hidden", n === 3);
     $("csMatchGo").textContent = n === 1 ? "Take the test shot" : n === 2 ? "Cancel the test shot" : "Apply";
@@ -11667,10 +11671,30 @@
     $("csMatchNote").textContent = n + " of " + MATCH_ITEMS.length + " settings selected";
     $("csMatchGo").disabled = n === 0;
   }
-  function csMatchStart() {
+  // Atalho do 3 Review (layout S1, escolha do dono, 2026-11-28): quando o Match parou com câmeras ainda um pouco
+  // diferentes (nota "still a little different"), refina só essas, a partir dos valores já propostos. Sem teto: pode
+  // ser usado quantas vezes a pessoa quiser.
+  const STILL_DIFFERENT = /still a little different/i;
+  function csMatchRefine() {
+    const e = matchWin.result, cams = matchWin.refineCams || [];
+    if (!e || !cams.length || csTest.capturing) return;
+    const lines = placedCameras().filter((c) => c.connected).map((cam) => {
+      const ch = (e.changes || []).find((x) => x.camera === cam.name);
+      return cam.name + "\t" + (cams.includes(cam.name) ? "1" : "0") + "\t" + ((ch && ch.apply) || []).map(([key, value]) => key + "=" + value).join(" ");
+    });
+    matchWin.refineSpec = lines.join("\n");
+    // As observações das câmeras que não vão ser refinadas (e as gerais) continuam valendo: a rodada de refino não
+    // passa por elas e não as repetiria
+    matchWin.keepNotes = (e.notes || []).filter((n) => !cams.some((name) => n.indexOf(name + ": ") === 0));
+    log("Match automatically: refining " + plural(cams.length, "camera", "cameras"), "tech", cams.join(", "));
+    csMatchStopPlay();
+    csMatchStart(true);
+  }
+  function csMatchStart(refining) {
     csMatchSetStep(2);
     $("csMatchBody").className = "cs-match-body progress";
-    $("csMatchSub").textContent = "Taking test photos. The cameras are changed only to measure; they go back to how they were before you review.";
+    $("csMatchSub").textContent = refining === true ? "Refining the cameras that are still a little different. The cameras go back to how they were before you review."
+      : "Taking test photos. The cameras are changed only to measure; they go back to how they were before you review.";
     $("csMatchNote").textContent = "";
     $("csMatchGo").disabled = false;
     const body = $("csMatchBody");
@@ -11680,7 +11704,7 @@
     const bar = el("div", "cs-match-bar"); bar.appendChild(el("div", "cs-match-bar-fill")); box.appendChild(bar);
     box.appendChild(el("div", "cs-match-shot", ""));
     body.appendChild(box);
-    matchWin.before = csSnapshot();
+    if (refining !== true) matchWin.before = csSnapshot();
     $("csAuto").checked = true;
     $("csCard").checked = !!csMatchChoices().grayCard;
     csTakeTest();
@@ -11694,6 +11718,7 @@
   }
   // Passo 3: o resultado veio, as câmeras já voltaram ao "antes"
   function csMatchReview(e) {
+    if (matchWin.keepNotes) { if (e.ok && e.matched) e.notes = [...new Set((e.notes || []).concat(matchWin.keepNotes))]; matchWin.keepNotes = null; }
     const notes = e.notes || [];
     matchWin.result = e;
     if (!e.ok || !e.matched) {
@@ -11763,6 +11788,9 @@
       const who = camNames.find((name) => n.indexOf(name + ": ") === 0);
       if (who) (camNotes[who] = camNotes[who] || []).push(n.slice(who.length + 2)); else otherNotes.push(n);
     });
+    matchWin.refineCams = Object.keys(camNotes).filter((name) => camNotes[name].some((n) => STILL_DIFFERENT.test(n)));
+    $("csMatchRefine").textContent = "Refine " + plural(matchWin.refineCams.length, "camera", "cameras");
+    $("csMatchRefine").classList.toggle("hidden", !matchWin.refineCams.length);
     const noteLine = (text) => {
       const line = el("span", "cs-review-note");
       const ic = el("span", "cs-ratio-alert"); ic.innerHTML = ALERT_SVG; ic.setAttribute("aria-hidden", "true");
@@ -12020,6 +12048,7 @@
   $("csMatchBtn").addEventListener("click", csMatchOpen);
   $("csMatchCancel").addEventListener("click", () => { if (csTest.capturing && !csTest.cancelling) csTakeTest(); csMatchClose(); });
   $("csMatchBack").addEventListener("click", () => { csMatchStopPlay(); csMatchRenderChoose(); });
+  $("csMatchRefine").addEventListener("click", csMatchRefine);
   $("csMatchKeep").addEventListener("click", () => { log("Match automatically: result not applied", "ok"); csMatchClose(); });
   $("csMatchGo").addEventListener("click", () => {
     if (matchWin.step === 1) csMatchStart();

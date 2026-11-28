@@ -25,6 +25,7 @@
 #include <filesystem>
 #include <functional>
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -99,6 +100,12 @@ namespace AutoMatch
         // Calibração com a cartela (LoadChartCalibration): com modelos misturados, cada modelo
         // recebe o Contrast/Saturation/Color tone que o deixa parecido com os outros
         std::filesystem::path chartFile;
+        // Refinar (atalho do 3 Review, decisão do dono, 2026-11-28): em vez de começar do zero, as câmeras recebem
+        // os valores já propostos (refineStart: câmera → chave do app, valor), e só as de refineOnly são corrigidas
+        // de novo pela foto, até o alvo (a média de todas). O "antes" continua sendo o de verdade.
+        bool refine = false;
+        std::map<std::string, std::vector<std::pair<std::string, long long>>> refineStart;
+        std::set<std::string> refineOnly;
     };
 
     // ---- Cartela de cores ----
