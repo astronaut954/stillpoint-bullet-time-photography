@@ -11842,7 +11842,9 @@
       rowsBox.appendChild(row);
     });
     const tnote = el("div", "cs-review-tnote", "Click a row to see that camera on the right. Play runs the whole sequence, before and after at once. Untick a camera to keep it as it is.");
-    if (otherNotes.length) { const c = noteChip(otherNotes); c.classList.add("head"); const h = head.querySelector(".changes") || head.children[2] || head; h.appendChild(c); }
+    // (a observação sem câmera vale para todas as câmeras do Match: a caixa diz quais são, decisão do dono, 2026-11-28)
+    const allNames = placedCameras().filter((c) => c.connected).map((c) => c.name).join(", ");
+    if (otherNotes.length) { const c = noteChip(otherNotes.map((n) => allNames + ": " + n)); c.classList.add("head"); const h = head.querySelector(".changes") || head.children[2] || head; h.appendChild(c); }
     table.appendChild(tnote);
     wrap.appendChild(table);
     // Fotos: a câmera escolhida, antes e depois

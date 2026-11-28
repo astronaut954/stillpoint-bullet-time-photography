@@ -2042,6 +2042,8 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      (texto inteiro); a que não cita nenhuma fica numa etiqueta no cabeçalho, ao lado de "Changes" (ESCOLHA DO
      AGENTE para esse caso, a confirmar). (2) **Com cartão cinza, o refino reaproveita a marcação já conferida**
      (`reuseCard` em main_gui): feito, NÃO testado (o fluxo do cartão não foi exercitado).
+     **01h44: o dono confirmou a etiqueta no cabeçalho**, pedindo que a caixa diga quais são as câmeras: feito (os
+     nomes de todas as câmeras do Match antes do texto, no mesmo formato da observação que cita várias).
      Teste do dono (2026-11-26): seção 68 aprovada ("os testes deu tudo certo").
      **Pedidos do dono (2026-11-26), feitos (seção 69):** o tocador do Align cameras também no Align photos do
      Export (mesma barra, mesmo comportamento; estado em `exp.play`, funções `expPlay`/`expPlayOff`); a mão de
