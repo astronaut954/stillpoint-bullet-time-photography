@@ -2098,6 +2098,15 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      depois: **646 passaram, 0 falharam**; o cenário Guided aim sozinho passou 3 vezes seguidas. INFERÊNCIA: a
      falha do cenário das marcas desiguais (espera esgotada) tinha a mesma origem; não foi reproduzida para
      confirmar. Uma rodada limpa não prova que a intermitência acabou: acompanhar nas próximas rodadas.
+   - **ITEM 7 (From this scene e rig reutilizável), levantamento de 2026-11-28, aguardando respostas do dono.**
+     O que existe: o alinhamento sai de três marcas coloridas numa haste (`align_marks`: a pessoa clica numa foto, o
+     app acha as mesmas marcas nas outras pela cor); fica no arquivo do projeto (`stillpoint-rig.json`, junto com
+     câmeras, ordem, ajustes, proporção e resolução das sessões novas) e cada sessão guarda a cópia do que valia
+     (`rigAlign`); o seletor do Align photos tem Rig e None ("From this scene" decidido em 2026-11-14 e nunca
+     feito). Não há biblioteca de visão no projeto (achar pontos comuns sozinho entre fotos de ângulos diferentes
+     não existe hoje). Perguntas feitas ao dono: no que a pessoa vai se apoiar na cena; quem marca os pontos (em
+     cada foto, ou numa e o app procura); se vale só para a sessão; e, no rig reutilizável, o que se leva de um
+     projeto para outro e como.
      Teste do dono (2026-11-26): seção 68 aprovada ("os testes deu tudo certo").
      **Pedidos do dono (2026-11-26), feitos (seção 69):** o tocador do Align cameras também no Align photos do
      Export (mesma barra, mesmo comportamento; estado em `exp.play`, funções `expPlay`/`expPlayOff`); a mão de
