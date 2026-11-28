@@ -2075,6 +2075,9 @@ Objetivo: profissionalizar o equipamento — menos travamentos, gargalos e queda
      (regra `@media (max-width: 1240px)`); na janela de abertura (1300px) fica como sempre. ESCOLHAS DO AGENTE a
      confirmar: o limite de 1240px, e o estado de cada câmera deixar de aparecer em texto na lista estreita (as
      etiquetas `cs-tag` continuam).
+     **02h54: dono aprovou os testes do item 5 e o limite de 1240px.** Quer uma marca do estado na miniatura, mas
+     precisa ver: PROTÓTIPOS https://claude.ai/artifact/KcNZAzFo8FAmtDQXedXb3S (A como está: etiqueta embaixo do
+     nome; B marca no canto + caixa padrão; C faixa na base da miniatura), aguardando escolha.
      Teste do dono (2026-11-26): seção 68 aprovada ("os testes deu tudo certo").
      **Pedidos do dono (2026-11-26), feitos (seção 69):** o tocador do Align cameras também no Align photos do
      Export (mesma barra, mesmo comportamento; estado em `exp.play`, funções `expPlay`/`expPlayOff`); a mão de
